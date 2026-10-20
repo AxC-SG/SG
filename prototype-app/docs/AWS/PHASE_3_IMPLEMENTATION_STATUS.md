@@ -72,6 +72,10 @@ The saved pre-change implementations reproduced duplicate credential audit, rota
 
 All **1,476** backend source/resource/test/POM files match the final verification copies. Manifest SHA-256: `100e4b86ea63d1c6a7bee7f68a60673e4d9538533f53805b27f09deb23dd020e`. The only test-source adjustment after the passing default verify was the retention integration fixture/diagnostic, followed by test compilation and the passing six-case PostgreSQL run; production and unit-test source stayed unchanged. Commands, XML reports, source manifest, saved earlier implementations and reproductions are under `/private/tmp/noscan-phase3-maintenance/`. The disposable PostgreSQL instance was stopped after verification and reproductions. The October 20 evidence remains a separate checkpoint. Phase 3 remains **in progress and not release-qualified**.
 
+## Full PostgreSQL CI follow-up — October 21, 2026
+
+The full PostgreSQL run on `8eea4151` reported 425 tests, with two failures and four errors. The observation test still expected snapshot-referenced evidence to become purge eligible after legal-hold release; it now verifies that the hold clears while the snapshot reference continues blocking purge. The disabled-deletion test now compares the password timestamp loaded from PostgreSQL before and after the request, avoiding Java nanosecond versus PostgreSQL microsecond rounding. The remaining four errors followed PostgreSQL shared-memory exhaustion in the CI service container; the Quality workflow now reserves 1 GiB of shared memory for that service. These changes affect tests and CI only. Fresh full-suite verification is pending on the updated PR revision.
+
 ## Next implementation work
 
 1. Qualify remaining maintenance overlap (finding workflow, asset lifecycle, suppression, incident/projection/exposure paths) and full process shutdown boundaries.
