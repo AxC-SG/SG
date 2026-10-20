@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -41,6 +43,19 @@ class RequestCorrelationFilterTest {
         String generated = response.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER);
         assertNotEquals("bad value with spaces", generated);
         assertTrue(generated.matches("[0-9a-f-]{36}"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"=SUM(A1)", "+cmd", "-cmd", "@command", " req-123", "req-123\n", "\tformula", "request/secret=value"})
+    void replacesFormulaControlAndStructuredRequestIds(String supplied) throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dashboard");
+        request.addHeader(RequestCorrelationFilter.REQUEST_ID_HEADER, supplied);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertNotEquals(supplied, response.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER));
+        assertTrue(response.getHeader(RequestCorrelationFilter.REQUEST_ID_HEADER).matches("[0-9a-f-]{36}"));
     }
 
     @Test

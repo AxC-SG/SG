@@ -44,7 +44,6 @@ public class SbomIngestionService {
         this.sbomUploadRepository = sbomUploadRepository;
     }
 
-    @Transactional
     public SbomIngestionResponse ingestFromEndpoint(Tenant tenant, SbomEndpointIngestionRequest request) throws IOException {
         SbomEndpointFetchResult fetchResult = sbomEndpointFetchService.fetch(request);
         return sbomIngestionLockService.withAssetLock(tenant, request.assetIdentifier(), () ->
@@ -60,19 +59,18 @@ public class SbomIngestionService {
                 ));
     }
 
-    @Transactional
+    // A batch reports per-document success/failure. Each proxied orchestrator call owns
+    // its document transaction; a rejected item must not roll back accepted siblings.
     public GithubSbomIngestionBatchResponse ingestFromGithub(Tenant tenant, com.prototype.vulnwatch.dto.GithubSbomIngestionRequest request)
             throws IOException {
         return githubSbomIngestionCoordinator.ingestFromGithub(tenant, request);
     }
 
-    @Transactional
     public GithubSbomIngestionBatchResponse ingestBomFilesFromGithub(Tenant tenant, com.prototype.vulnwatch.dto.GithubSbomIngestionRequest request)
             throws IOException {
         return githubSbomIngestionCoordinator.ingestBomFilesFromGithub(tenant, request);
     }
 
-    @Transactional
     public GithubGhcrIngestionSummary ingestAllFromGithubContainerRegistry(Tenant tenant, String owner) throws IOException {
         return githubSbomIngestionCoordinator.ingestAllFromGithubContainerRegistry(tenant, owner);
     }
@@ -87,7 +85,6 @@ public class SbomIngestionService {
         return sbomUploadSupportService.listUploadsPage(tenant, sourceSystem, page, size);
     }
 
-    @Transactional
     public SbomIngestionResponse executeEndpointJob(Tenant tenant, SbomEndpointIngestionRequest request) throws IOException {
         SbomEndpointFetchResult fetchResult = sbomEndpointFetchService.fetch(request);
         return sbomContentIngestionService.ingestBytes(

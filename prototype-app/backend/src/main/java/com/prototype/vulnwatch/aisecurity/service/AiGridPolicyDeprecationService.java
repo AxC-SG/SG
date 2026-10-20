@@ -38,7 +38,8 @@ public class AiGridPolicyDeprecationService {
                                           FindingRepository findings, FindingWorkflowService workflow,
                                           AuditEventService audit) {
         this.jdbc = jdbc;
-        this.transactions = transactions;
+        this.transactions = new TransactionTemplate(transactions.getTransactionManager(), transactions);
+        this.transactions.setTimeout(90);
         this.tenants = tenants;
         this.tenantExecution = tenantExecution;
         this.findings = findings;
@@ -115,26 +116,53 @@ public class AiGridPolicyDeprecationService {
         return deprecation;
     }
 
+    private com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy backgroundPolicy=com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy.allowAll();
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureBackgroundPolicy(com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy policy) { backgroundPolicy=policy; }
+
     @Scheduled(fixedDelayString = "${app.ai-grid.policy-deprecation.delay-ms:5000}")
     public void processPendingTasks() {
+        if (!backgroundPolicy.allowsBackgroundTask("processPendingTasks")) return;
         for (int index = 0; index < 25; index++) {
+            if (!backgroundPolicy.allowsBackgroundTask("policy-deprecation.claim")) return;
             ClaimedTask task = claim();
             if (task == null) return;
-            try {
-                Tenant tenant = tenants.requireTenantUuid(task.tenantId());
-                tenantExecution.run(tenant, () -> transactions.execute(status -> {
-                    for (Finding finding : findings.findOpenAiFindingsByTenantAndPolicy(tenant, task.policyId())) {
-                        workflow.autoCloseFinding(finding, FindingCloseReason.AUTO_POLICY_PLATFORM_DEPRECATED,
-                                "Finding closed because its AI Grid policy was deprecated",
-                                Map.of("policyId", task.policyId(), "deprecationId", task.deprecationId().toString()), Instant.now());
-                        findings.save(finding);
-                    }
-                    return null;
-                }));
-                complete(task.id());
-            } catch (RuntimeException ex) {
-                fail(task.id(), ex.getMessage());
-            }
+            process(task);
+        }
+    }
+
+    private void process(ClaimedTask task) {
+        try {
+            Tenant tenant = tenants.requireTenantUuid(task.tenantId());
+            tenantExecution.run(tenant, () -> transactions.execute(status -> {
+                // The platform task and tenant effects share one transaction. Holding this
+                // row prevents another claimant from processing the same retirement.
+                Boolean owned = jdbc.query("""
+                        select id from platform.ai_grid_policy_deprecation_tasks
+                         where id=:id and claim_token=:token and state='PROCESSING'
+                           and lease_expires_at>clock_timestamp() for update
+                        """, Map.of("id", task.id(), "token", task.token()),
+                        (org.springframework.jdbc.core.ResultSetExtractor<Boolean>) rs -> rs.next());
+                if (!Boolean.TRUE.equals(owned)) throw new IllegalStateException("Deprecation ownership expired");
+                for (Finding finding : findings.findOpenAiFindingsByTenantAndPolicy(tenant, task.policyId())) {
+                    workflow.autoCloseFinding(finding, FindingCloseReason.AUTO_POLICY_PLATFORM_DEPRECATED,
+                            "Finding closed because its AI Grid policy was deprecated",
+                            Map.of("policyId", task.policyId(), "deprecationId", task.deprecationId().toString()), Instant.now());
+                    findings.save(finding);
+                }
+                findings.flush();
+                int completed = jdbc.update("""
+                        update platform.ai_grid_policy_deprecation_tasks
+                           set state='COMPLETED',failure_detail=null,next_retry_at=null,
+                               completed_at=now(),updated_at=now(),claim_token=null,lease_expires_at=null
+                         where id=:id and claim_token=:token and state='PROCESSING'
+                           and lease_expires_at>clock_timestamp()
+                        """, Map.of("id", task.id(), "token", task.token()));
+                if (completed != 1) throw new IllegalStateException("Deprecation ownership expired");
+                return null;
+            }));
+        } catch (RuntimeException ex) {
+            fail(task);
         }
     }
 
@@ -143,29 +171,30 @@ public class AiGridPolicyDeprecationService {
                 select task.id, task.tenant_id, task.deprecation_id, deprecation.policy_id
                   from platform.ai_grid_policy_deprecation_tasks task
                   join platform.ai_grid_policy_deprecations deprecation on deprecation.id = task.deprecation_id
-                 where task.state in ('PENDING', 'FAILED')
+                 where (task.state in ('PENDING', 'FAILED')
+                        or (task.state='PROCESSING' and task.lease_expires_at<=clock_timestamp()))
                    and (task.next_retry_at is null or task.next_retry_at <= now())
                  order by task.created_at for update of task skip locked limit 1
                 """, rs -> {
             if (!rs.next()) return null;
             ClaimedTask task = new ClaimedTask(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
-                    rs.getObject(3, UUID.class), rs.getString(4));
+                    rs.getObject(3, UUID.class), rs.getString(4), UUID.randomUUID());
             jdbc.update("update platform.ai_grid_policy_deprecation_tasks set state='PROCESSING', attempts=attempts+1, "
-                    + "started_at=coalesce(started_at,now()), updated_at=now() where id=:id", Map.of("id", task.id()));
+                    + "claim_token=:token, lease_expires_at=clock_timestamp()+interval '2 minutes', "
+                    + "started_at=coalesce(started_at,now()), updated_at=now() where id=:id", Map.of("id", task.id(), "token", task.token()));
             return task;
         })));
     }
 
-    private void complete(UUID taskId) { updateTask(taskId, "COMPLETED", null); }
-    private void fail(UUID taskId, String detail) { updateTask(taskId, "FAILED", detail == null ? "deprecation task failed" : detail); }
-    private void updateTask(UUID taskId, String state, String detail) {
+    private void fail(ClaimedTask task) {
         TenantContext.runAsPlatform(() -> jdbc.update("""
                 update platform.ai_grid_policy_deprecation_tasks
-                   set state=:state, failure_detail=:detail,
-                       next_retry_at=case when :state='FAILED' then now() + interval '1 minute' else null end,
-                       completed_at=case when :state='COMPLETED' then now() else null end, updated_at=now()
-                 where id=:id and state='PROCESSING'
-                """, new MapSqlParameterSource().addValue("id", taskId).addValue("state", state).addValue("detail", detail)));
+                   set state='FAILED', failure_detail='Policy deprecation execution failed',
+                       next_retry_at=now() + interval '1 minute', completed_at=null,
+                       claim_token=null,lease_expires_at=null,updated_at=now()
+                 where id=:id and claim_token=:token and state='PROCESSING'
+                   and lease_expires_at>clock_timestamp()
+                """, Map.of("id", task.id(), "token", task.token())));
     }
 
     private Deprecation byIdempotencyKey(String key) {
@@ -191,7 +220,7 @@ public class AiGridPolicyDeprecationService {
     private static ResponseStatusException conflict(String message) { return new ResponseStatusException(HttpStatus.CONFLICT, message); }
     private static ResponseStatusException notFound(String message) { return new ResponseStatusException(HttpStatus.NOT_FOUND, message); }
 
-    private record ClaimedTask(UUID id, UUID tenantId, UUID deprecationId, String policyId) {}
+    private record ClaimedTask(UUID id, UUID tenantId, UUID deprecationId, String policyId, UUID token) {}
     public record DeprecationCommand(String reason, String successorPolicyId, String idempotencyKey) {}
     public record Deprecation(UUID id, String policyId, String policyVersion, String reason, String successorPolicyId,
                               String deprecatedBy, Instant deprecatedAt, String idempotencyKey) {}

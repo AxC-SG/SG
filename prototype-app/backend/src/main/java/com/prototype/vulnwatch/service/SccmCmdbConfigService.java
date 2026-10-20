@@ -10,7 +10,6 @@ import com.prototype.vulnwatch.repo.SccmCmdbConfigRepository;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,18 +22,6 @@ public class SccmCmdbConfigService {
     private final SccmQueryService sccmQueryService;
     private final TenantQuotaService tenantQuotaService;
     private final CredentialEncryptionService credentialEncryptionService;
-
-    @Value("${app.cmdb.sccm.jdbc-url:}")
-    private String fallbackJdbcUrl;
-
-    @Value("${app.cmdb.sccm.username:}")
-    private String fallbackUsername;
-
-    @Value("${app.cmdb.sccm.password:}")
-    private String fallbackPassword;
-
-    @Value("${app.cmdb.sccm.mock-mode:false}")
-    private boolean fallbackMockMode;
 
     public SccmCmdbConfigService(
             SccmCmdbConfigRepository sccmCmdbConfigRepository,
@@ -55,6 +42,7 @@ public class SccmCmdbConfigService {
 
     @Transactional
     public SccmCmdbConfigResponse save(Tenant tenant, SccmCmdbConfigRequest request) {
+        SccmPilotPolicy.requireEnabled();
         SccmCmdbConfig config = findConfig(tenant)
                 .orElseGet(() -> {
                     tenantQuotaService.assertCanCreateConnector(tenant, "sccm");
@@ -70,6 +58,7 @@ public class SccmCmdbConfigService {
 
     @Transactional
     public SccmConnectionTestResponse test(Tenant tenant) {
+        SccmPilotPolicy.requireEnabled();
         SccmCmdbConfig config = requireConfig(tenant);
 
         Instant testedAt = Instant.now();
@@ -102,46 +91,6 @@ public class SccmCmdbConfigService {
                 softwareViewReachable,
                 testedAt
         );
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<SccmRuntimeConfig> resolveRuntimeConfig(Tenant tenant) {
-        Optional<SccmCmdbConfig> saved = findConfig(tenant);
-        if (saved.isPresent()) {
-            SccmCmdbConfig config = saved.get();
-            return Optional.of(new SccmRuntimeConfig(
-                    trimToNull(config.getJdbcUrl()),
-                    config.getAuthType() == null ? SccmAuthType.SQL_AUTH : config.getAuthType(),
-                    trimToNull(config.getUsername()),
-                    trimToNull(credentialEncryptionService.decrypt(config.getCredentialSecret())),
-                    trimToNull(config.getSiteCode()),
-                    defaultIfBlank(config.getDatabaseName(), "CM_P01"),
-                    config.getFetchSize() == null ? 500 : Math.max(1, config.getFetchSize()),
-                    config.getQueryTimeoutSeconds() == null ? 120 : Math.max(1, config.getQueryTimeoutSeconds()),
-                    config.isMockMode(),
-                    config.isEnabled(),
-                    config.isAutoSyncEnabled(),
-                    config.getIntervalMinutes() == null ? 1440 : Math.max(5, config.getIntervalMinutes())
-            ));
-        }
-        // Fall back to environment-variable driven config
-        if (!hasText(fallbackJdbcUrl) && !fallbackMockMode) {
-            return Optional.empty();
-        }
-        return Optional.of(new SccmRuntimeConfig(
-                trimToNull(fallbackJdbcUrl),
-                SccmAuthType.SQL_AUTH,
-                trimToNull(fallbackUsername),
-                trimToNull(fallbackPassword),
-                null,
-                "CM_P01",
-                500,
-                120,
-                fallbackMockMode,
-                true,
-                false,
-                1440
-        ));
     }
 
     Optional<SccmCmdbConfig> findConfig(Tenant tenant) {
@@ -252,18 +201,4 @@ public class SccmCmdbConfigService {
         return hasText(value) ? value.trim() : fallback;
     }
 
-    public record SccmRuntimeConfig(
-            String jdbcUrl,
-            SccmAuthType authType,
-            String username,
-            String credentialSecret,
-            String siteCode,
-            String databaseName,
-            Integer fetchSize,
-            Integer queryTimeoutSeconds,
-            boolean mockMode,
-            boolean enabled,
-            boolean autoSyncEnabled,
-            Integer intervalMinutes
-    ) {}
 }

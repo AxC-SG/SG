@@ -125,6 +125,16 @@ class BomRelationshipParsingServiceTest {
     }
 
     @Test
+    void deepCompositionTraversalDoesNotUseTheJavaCallStack() {
+        var root = objectMapper.createObjectNode();
+        var current = root.putArray("components").addObject().put("bom-ref", "0");
+        for (int i = 1; i <= 10_000; i++) {
+            current = current.putArray("components").addObject().put("bom-ref", Integer.toString(i));
+        }
+        assertEquals(10_000, service.recordRelationships(record, root, List.of()));
+    }
+
+    @Test
     void duplicateAndSelfEdgesAreDiscarded() throws Exception {
         JsonNode root = json("""
                 {"dependencies":[

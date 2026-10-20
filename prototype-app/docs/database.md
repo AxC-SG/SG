@@ -1,6 +1,8 @@
 # VulnWatch Database
 
-Last updated: 2026-09-29
+Last updated: 2026-10-18
+
+> **Historical version labels:** ~70 section notes below cite pre-reset migration numbers (e.g. "Added in V44", "V40/V41"). Those histories were consolidated into the V1 baselines; the only post-reset migration is tenant `V2__ai_bom_correlation_evidence.sql`. Read older labels as provenance, not as files that exist.
 
 The runtime database is PostgreSQL with two independent Flyway lines, each consolidated into a complete V1 development baseline: `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`. They include current AI Grid, AI-BOM, GitHub advisory/OSV, deployment metadata, harm-baseline schema, and runtime exclusion. Tenant migrations are applied once per schema by `TenantSchemaMigrationService` / `ProductionBootstrapCli`. Historical version references below describe when features were introduced; their SQL is now incorporated in V1. Existing development databases must be recreated, and old packaged resources removed with `mvn clean`; `flyway:repair` cannot adopt this reset.
 
@@ -11,7 +13,7 @@ The runtime database is PostgreSQL with two independent Flyway lines, each conso
 - **Database name (local):** `vulnwatch`
 - **JDBC URL default:** `jdbc:postgresql://localhost:5432/vulnwatch`
 - **Migration directories:** `backend/src/main/resources/db/migration/postgres_reset/` (platform/`public` schema) and `backend/src/main/resources/db/migration/tenant/` (per-tenant schema, applied by the tenant schema control plane, not by the application's own startup Flyway run)
-- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; both current targets are V1; future changes start at V2
+- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; current heads are platform V1 and tenant V2 (`V2__ai_bom_correlation_evidence.sql`); next platform change is V2, next tenant change is V3
 - **Replay rule:** the V1 reset baselines use defensive creation patterns for the documented bootstrap repair path; post-baseline migrations are Flyway-managed and must not be replayed manually
 - **`ddl-auto`:** `none` (Flyway owns all DDL; Hibernate never creates or alters tables)
 
@@ -1182,7 +1184,7 @@ Investigation lifecycle for a CVE within a tenant. Activities are append-only ev
 
 ## AI Security / AI Grid Tables
 
-Backs the `com.prototype.vulnwatch.aisecurity` module (19 controllers, 63 services — see `docs/business-logic-guide.md#ai-security--ai-grid-pipeline` and `docs/architecture.md`) and the `/findings/ai`, `/policies`, `/inventory/ai` frontend routes. Two generations coexist: a legacy **AI Security** catalog (hardcoded ~14-policy checklist) and the newer, platform-governed **AI Grid** pipeline that has superseded it for policy evaluation (legacy findings and policy selections were migrated into the canonical/governed tables). Unlike every other table in this document, **none of these tables have a JPA `@Entity` or Spring Data repository** — all reads/writes go through `JdbcTemplate`/`NamedParameterJdbcTemplate` in the `aisecurity.service` classes directly.
+Backs the `com.prototype.vulnwatch.aisecurity` module (19 controllers, 71 services — see `docs/business-logic-guide.md#ai-security--ai-grid-pipeline` and `docs/architecture.md`) and the `/findings/ai`, `/policies`, `/inventory/ai` frontend routes. Two generations coexist: a legacy **AI Security** catalog (hardcoded ~14-policy checklist) and the newer, platform-governed **AI Grid** pipeline that has superseded it for policy evaluation (legacy findings and policy selections were migrated into the canonical/governed tables). Unlike every other table in this document, **none of these tables have a JPA `@Entity` or Spring Data repository** — all reads/writes go through `JdbcTemplate`/`NamedParameterJdbcTemplate` in the `aisecurity.service` classes directly.
 
 **A note on the version numbers below:** a one-time migration-history reset consolidated the prior numbered history into `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql` (see "Tenant Schema Control Plane" further down). Historical `V<n>` citations describe pre-reset provenance; current post-reset V2 additions are called out explicitly.
 
@@ -1222,6 +1224,467 @@ Both anomalies previously logged here (a pre-reset platform-only file missing it
 
 `app.tenancy.minimum-compatible-schema-version` defaults to `1`; it is a compatibility floor during tenant rollout, not the packaged target.
 
+## Supplemental Table Reference
+
+Tables below were added after the sections above were written and are documented from the V1/V2 baseline DDL. Column lists show type, `NOT NULL` (`*`) and non-trivial defaults; all tenant-schema tables carry `tenant_id` with the standard RLS posture. Constraint details (CHECK enums, indexes) live in the migration files.
+
+### Vulnerability advisory sources
+
+**`advisory_equivalences`** (`platform` schema) — Cross-source equivalence map linking one NVD CVE to its GHSA/OSV ids and CWE ids, with a confidence score, reason, and optional human verification.
+
+- Columns: `id` uuid*, `nvd_cve_id` varchar(50), `ghsa_id` varchar(50), `osv_id` varchar(50), `cwe_ids` jsonb, `equivalence_confidence` numeric(3,2), `equivalence_reason` varchar(100), `discovered_at` timestamp, `verified_at` timestamp, `verified_by_user_id` uuid, `notes` text, `created_at` timestamp, `updated_at` timestamp
+- PK: `id`
+
+**`advisory_source_registrations`** (`public` schema) — Registry of enabled advisory feed sources (`source_type`, JSON config, sync interval, last/next sync times).
+
+- Columns: `id` uuid*, `source_type` varchar(50)*, `is_enabled` boolean = true, `source_config` jsonb, `sync_interval_hours` integer = 1, `last_sync_at` timestamp, `next_sync_at` timestamp, `created_at` timestamp, `updated_at` timestamp
+- PK: `id`
+- Unique: `source_type`
+
+**`github_security_advisories`** (`public` schema) — Global GHSA advisory cache: package/ecosystem, affected and fixed version ranges, severity/CVSS, withdrawn and applicability flags, `sync_hash` for change detection.
+
+- Columns: `id` uuid*, `ghsa_id` varchar(20)*, `cve_id` varchar(20), `title` varchar(500)*, `description` text, `severity` varchar(20)*, `cvss_score` numeric(3,1), `cvss_vector` varchar(100), `ecosystem` varchar(50)*, `package_name` varchar(255)*, `affected_versions_start` varchar(50), `affected_versions_end` varchar(50), `affected_versions_pattern` varchar(500), `fixed_versions` text, `github_advisory_url` varchar(500), `published_at` timestamp*, `updated_at` timestamp, `withdrawn_at` timestamp, `first_synced_at` timestamp, `last_synced_at` timestamp, `is_applicable` boolean = true, `sync_hash` varchar(64), `created_at` timestamp
+- PK: `id`
+- Unique: `ghsa_id`
+
+**`github_advisory_sync_state`** (`public` schema) — Per-`sync_type` GHSA sync cursor and health: last full/incremental sync, cursor, counts, duration, consecutive errors.
+
+- Columns: `id` uuid*, `sync_type` varchar(50), `status` varchar(20) = 'IDLE', `last_full_sync_at` timestamp, `last_incremental_sync_at` timestamp, `next_scheduled_sync_at` timestamp, `last_cursor` varchar(1000), `sync_complete` boolean = false, `advisories_synced` integer = 0, `advisories_newly_found` integer = 0, `advisories_updated` integer = 0, `sync_duration_ms` integer, `last_error` varchar(1000), `consecutive_errors` integer = 0, `created_at` timestamp, `updated_at` timestamp
+- PK: `id`
+- Unique: `sync_type`
+
+**`osv_advisories`** (`platform` schema) — Global OSV advisory store: ecosystem/package, CVSS v3, affected ranges, references, raw `osv_data`, withdrawn/synced timestamps.
+
+- Columns: `id` uuid*, `osv_id` varchar(50)*, `ecosystem` varchar(50)*, `package_name` varchar(500)*, `summary` text*, `details` text, `severity` varchar(20), `cvss_v3_score` numeric(3,1), `cvss_v3_vector` varchar(100), `affected_ranges` jsonb*, `published_at` timestamp, `modified_at` timestamp, `withdrawn_at` timestamp, `reference_data` jsonb, `osv_data` jsonb*, `source` varchar(50)*, `created_at` timestamp, `updated_at` timestamp, `synced_at` timestamp
+- PK: `id`
+- Unique: `osv_id`
+
+**`tenant_ghsa_integrations`** (tenant schema) — Per-tenant GHSA switch: enabled/disabled times and auto-create-finding, auto-correlate, and low-severity options.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `is_enabled` boolean = false, `enabled_at` timestamp, `disabled_at` timestamp, `auto_create_findings` boolean = true, `auto_correlate_components` boolean = true, `create_finding_for_low_severity` boolean = false, `reason_enabled` varchar(255), `enabled_by_user_id` uuid, `created_at` timestamp, `updated_at` timestamp
+- PK: `id`
+- Unique: `tenant_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`tenant_ghsa_subscriptions`** (tenant schema) — Which GHSA advisories a tenant follows (`subscription_reason`, active flag, subscribe/unsubscribe times).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `advisory_id` uuid*, `subscription_reason` varchar(100), `is_active` boolean = true, `subscribed_at` timestamp, `unsubscribed_at` timestamp, `created_at` timestamp
+- PK: `id`
+- Unique: `tenant_id, advisory_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`tenant_github_repository_component_advisories`** (tenant schema) — Per-tenant match of a GitHub SBOM source component to an advisory: affected flag, installed version vulnerable-range result, linked finding, recommended fixed version, alert timestamps.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `github_source_id` uuid*, `component_id` varchar(500)*, `advisory_id` uuid*, `is_affected` boolean*, `installed_version` varchar(50)*, `is_installed_version_vulnerable` boolean*, `vulnerable_range_reason` varchar(255), `finding_id` uuid, `finding_kind` varchar(50), `recommended_fixed_version` varchar(50), `upgrade_available` boolean, `discovered_at` timestamp, `first_alert_sent_at` timestamp, `last_alert_sent_at` timestamp, `created_at` timestamp, `updated_at` timestamp
+- PK: `id`
+- FK: `github_source_id` → `github_sbom_sources.id`, `finding_id` → `findings.id`, `tenant_id` → `tenants.id`
+
+### Findings, investigations, and queues
+
+**`investigation_runbook`** (tenant schema) — Per-CVE analyst runbook state: task states, agent suggestions, false-positive overrides, log entries, lead analyst, agent confidence and run metadata.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `cve_external_id` varchar(50)*, `task_states` jsonb* = '[]', `agent_suggestions` jsonb* = '{}', `fp_overrides` jsonb* = '[]', `log_entries` jsonb* = '[]', `lead_analyst` varchar(100), `agent_confidence` jsonb, `agent_run_meta` jsonb, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, cve_external_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`personal_finding_queues`** (`platform` schema) — Saved personal findings queues per user (`queue_key`, title, `filter_json`, display order, default flag). Platform-schema table keyed by `tenant_id`.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `owner_user_id` uuid*, `queue_key` varchar(120)*, `title` varchar(160)*, `description` varchar(500), `filter_json` text*, `display_order` integer*, `is_default` boolean*, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, owner_user_id, queue_key`; `tenant_id, owner_user_id, title`; `tenant_id, owner_user_id`
+- FK: `owner_user_id` → `app_users.id`, `tenant_id` → `tenants.id`
+
+**`finding_queue_preferences`** (`platform` schema) — Per-user default queue reference for the findings page.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `owner_user_id` uuid*, `default_queue_ref` varchar(160)*, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, owner_user_id`
+- FK: `owner_user_id` → `app_users.id`, `tenant_id` → `tenants.id`
+
+### Tenancy, plans, and entitlements
+
+**`tenant_user_invites`** (`platform` schema) — Tenant user invitations: email, role, status, token, email-provider message id and delivery detail, expiry and acceptance times.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `invited_by` uuid, `email` varchar(320)*, `display_name` varchar(255), `external_subject` varchar(320)*, `role` varchar(64)*, `status` varchar(32)*, `token` varchar(96)*, `provider_message_id` varchar(255), `delivery_detail` varchar(500), `expires_at` timestamptz*, `accepted_at` timestamptz, `last_sent_at` timestamptz, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `token`
+- FK: `invited_by` → `app_users.id`, `tenant_id` → `tenants.id`
+
+**`plan_definitions`** (`platform` schema) — Catalog of plans (`code`, display name, status).
+
+- Columns: `code` varchar(64)*, `display_name` varchar(120)*, `status` varchar(32)*, `description` varchar(500), `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `code`
+
+**`entitlement_definitions`** (`platform` schema) — Catalog of entitlement keys (e.g. `ai.security`) with category and value type.
+
+- Columns: `key` varchar(128)*, `category` varchar(64)*, `value_type` varchar(32)*, `description` varchar(500), `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `key`
+
+**`plan_entitlements`** (`platform` schema) — Which entitlements each plan grants, with an `enabled` flag and optional `config_json`.
+
+- Columns: `plan_code` varchar(64)*, `entitlement_key` varchar(128)*, `enabled` boolean*, `config_json` jsonb, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `plan_code, entitlement_key`
+- FK: `entitlement_key` → `entitlement_definitions.key`, `plan_code` → `plan_definitions.code`
+
+### CBOM (cryptographic BOM) projections
+
+**`cbom_components`** (tenant schema) — Cryptographic components from CBOM documents per asset: algorithm/primitive, key size, curve, protocol, certificate fields, risk score, active flag, stable `component_fingerprint`.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `asset_id` uuid, `source_bom_id` uuid*, `bom_ref` text, `component_fingerprint` text*, `name` text*, `description` text, `asset_type` varchar(60)*, `component_type` text, `primitive` text, `parameter_set_identifier` text, `key_size` integer, `curve` text, `padding` text, `protocol_version` text, `state` text, `format` text, `storage_location` text, `transmission` text, `sensitivity` text, `used_in` text, `not_before` date, `not_after` date, `issuer` text, `subject` text, `serial_number` text, `signature_algorithm` text, `key_usage` text, `risk_score` numeric(4,2), `active` boolean* = true, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, source_bom_id, component_fingerprint`
+- FK: `asset_id` → `assets.id`, `source_bom_id` → `bom_ingestion_records.id`, `tenant_id` → `tenants.id`
+
+**`cbom_risk_findings`** (tenant schema) — Rule-driven crypto risk findings per CBOM component (`rule_id`/`rule_version`, `finding_fingerprint`, risk class, severity, evidence, status, first/last seen, withdrawal).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `cbom_component_id` uuid*, `rule_id` varchar(100)*, `rule_version` varchar(20)* = '1', `finding_fingerprint` text*, `risk_class` varchar(80)*, `severity` varchar(20)*, `title` text*, `detail` text, `evidence` jsonb, `recommendation` text, `status` varchar(20)* = 'OPEN', `first_seen_at` timestamptz*, `last_seen_at` timestamptz*, `resolved_at` timestamptz, `created_at` timestamptz*, `evidence_state` varchar(24)*, `withdrawn_at` timestamptz
+- PK: `id`
+- Unique: `tenant_id, cbom_component_id, finding_fingerprint`
+- FK: `cbom_component_id` → `cbom_components.id`, `tenant_id` → `tenants.id`
+
+**`cbom_posture_summary`** (tenant schema) — Per-asset CBOM rollup: component and severity counts, quantum-vulnerable/weak-algorithm/expiring-cert counts, posture score.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `asset_id` uuid*, `last_source_bom_id` uuid, `total_components` integer* = 0, `critical_findings` integer* = 0, `high_findings` integer* = 0, `medium_findings` integer* = 0, `low_findings` integer* = 0, `info_findings` integer* = 0, `accepted_findings` integer* = 0, `quantum_vulnerable` integer* = 0, `weak_algorithms` integer* = 0, `expiring_certs` integer* = 0, `posture_score` numeric(4,2), `last_evaluated_at` timestamptz
+- PK: `id`
+- Unique: `tenant_id, asset_id`
+- FK: `asset_id` → `assets.id`, `last_source_bom_id` → `bom_ingestion_records.id`, `tenant_id` → `tenants.id`
+
+### AI Security connectors and artifact integrity
+
+**`ai_security_connector_feature_flags`** (tenant schema) — Per-tenant connector feature flags with a `kill_switch`.
+
+- Columns: `tenant_id` uuid*, `feature_key` varchar(128)*, `enabled` boolean* = false, `kill_switch` boolean* = false, `updated_at` timestamptz*, `updated_by` varchar(255), `created_at` timestamptz*
+- PK: `tenant_id, feature_key`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_security_copilot_studio_configs`** (tenant schema) — Microsoft Copilot Studio connector config: organization URL, credential profile, discovery/execution toggles, kill switch, schedule cron, allowed Dataverse hosts.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `organization_url` varchar(512)*, `credential_profile_id` uuid*, `discovery_enabled` boolean* = false, `execution_enabled` boolean* = false, `kill_switch` boolean* = false, `schedule_cron` varchar(128)*, `created_at` timestamptz*, `updated_at` timestamptz*, `allowed_dataverse_hosts_json` jsonb* = '[]'
+- PK: `id`
+- Unique: `tenant_id, organization_url`
+- FK: `credential_profile_id` → `ai_security_azure_credential_profiles.id`, `tenant_id` → `tenants.id`
+
+**`ai_security_artifact_attribute_ownership`** (tenant schema) — Records which scan scope last observed each artifact attribute (`scope_key`, `attribute_key`), so partial-scope scans do not clobber attributes.
+
+- Columns: `tenant_id` uuid*, `artifact_id` uuid*, `scope_key` varchar(255)*, `attribute_key` varchar(255)*, `observed_at` timestamptz*
+- PK: `tenant_id, artifact_id, scope_key, attribute_key`
+- FK: `artifact_id` → `ai_security_artifacts.id`
+
+**`ai_security_artifact_digest_baselines`** (tenant schema) — Approved digest baselines per artifact and digest kind (algorithm, key version, approval status, approver, revocation).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `artifact_id` uuid*, `digest_kind` varchar(64)*, `algorithm` varchar(64)*, `key_version` varchar(64)*, `approved_digest` text*, `approval_status` varchar(32)*, `approved_by` varchar(255), `approved_at` timestamptz, `revoked_by` varchar(255), `revoked_at` timestamptz, `source_run_id` uuid, `created_at` timestamptz*, `updated_at` timestamptz*, `approval_reference_verified` boolean* = false
+- PK: `id`
+- Unique: `tenant_id, artifact_id, digest_kind`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `tenant_id` → `tenants.id`
+
+**`ai_security_artifact_digest_observations`** (tenant schema) — Latest observed digest per artifact/kind and its comparison outcome against the baseline.
+
+- Columns: `tenant_id` uuid*, `artifact_id` uuid*, `digest_kind` varchar(64)*, `algorithm` varchar(64)*, `key_version` varchar(64)*, `observed_digest` text*, `comparison_outcome` varchar(64)*, `source_run_id` uuid*, `observed_at` timestamptz*
+- PK: `tenant_id, artifact_id, digest_kind`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `tenant_id` → `tenants.id`
+
+**`ai_security_baseline_history`** (tenant schema) — Append-only audit of baseline approve/revoke actions (actor, source run, approved value).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `artifact_id` uuid*, `digest_kind` varchar(64)*, `action` varchar(32)*, `actor` varchar(255), `source_run_id` uuid, `algorithm` varchar(64), `key_version` varchar(64), `approved_value` text, `approval_reference_verified` boolean* = false, `recorded_at` timestamptz*
+- PK: `id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `tenant_id` → `tenants.id`
+
+### AI agent runtime storage (deferred)
+
+**`ai_agent_deployment_settings`** (tenant schema) — Per-tenant deployment-freshness window in hours (1–8760).
+
+- Columns: `tenant_id` uuid*, `freshness_hours` integer* = 24
+- PK: `tenant_id`
+
+**`ai_agent_execution_cursors`** (tenant schema) — Per connector/source/scope collection cursor with lookback and overlap days.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `connector_id` uuid*, `source` varchar(64)*, `scope_key` varchar(512)*, `provider_timestamp` timestamptz, `provider_stable_digest` varchar(512), `lookback_days` integer* = 30, `overlap_days` integer* = 3, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, connector_id, source, scope_key`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_agent_execution_participants`** (tenant schema) — Artifacts (MODEL/TOOL/PROMPT/COMPONENT) that participated in an execution. Runtime collection is out of scope in this release, so these runtime tables hold no evidence.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `execution_id` uuid*, `artifact_id` uuid*, `participant_role` varchar(32)*, `evidence_time` timestamptz*, `created_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, execution_id, artifact_id, participant_role`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `execution_id` → `ai_agent_executions.id`, `tenant_id` → `tenants.id`
+
+### AI Grid: coverage, snapshots, and budgets
+
+**`ai_grid_snapshot_manifests`** (tenant schema) — Per-run manifest rows tying an artifact and scope to an immutable snapshot body (`body_id`, schema version, connector config).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `run_id` uuid*, `artifact_id` uuid*, `scope_key` varchar(512)*, `body_id` uuid*, `schema_version` varchar(32)*, `observed_at` timestamptz*, `created_at` timestamptz*, `connector_config_id` uuid
+- PK: `id`
+- Unique: `tenant_id, run_id, artifact_id, scope_key`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `body_id` → `ai_grid_snapshot_bodies.id`, `connector_config_id` → `ai_security_connector_configs.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_capability_manifests`** (tenant schema) — Per-run registered connector capabilities with required scope keys; `REGISTERED` then `FINALIZED`.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `run_id` uuid*, `provider` varchar(32)*, `connector_id` uuid*, `account_id` varchar(255)*, `region` varchar(128)*, `capability_id` varchar(128)*, `required_scope_keys_json` jsonb*, `status` varchar(32)*, `created_at` timestamptz*, `finalized_at` timestamptz
+- PK: `id`
+- Unique: `tenant_id, run_id, provider, account_id, region, capability_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_capability_observations`** (tenant schema) — Observed capability status per run/provider/account/region/resource family, with reason code, expiry, and evidence scopes.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `run_id` uuid*, `provider` varchar(32)*, `capability_id` varchar(128)*, `connector` varchar(128)*, `account_id` varchar(255)*, `region` varchar(128)*, `resource_family` varchar(128)*, `connector_version` varchar(64), `observed_at` timestamptz*, `expires_at` timestamptz, `status` varchar(32)*, `detail` text, `reason_code` varchar(64), `evidence_scopes_json` jsonb* = '[]'
+- PK: `id`
+- Unique: `tenant_id, run_id, provider, capability_id, account_id, region`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_current_coverage_artifacts`** (tenant schema) — Current-coverage epoch projection: one row per artifact visible in the latest coverage epoch, with provider/account/region, type, technology, environment, owner.
+
+- Columns: `tenant_id` uuid*, `epoch_id` uuid*, `artifact_id` uuid*, `source_run_id` uuid*, `snapshot_manifest_id` uuid*, `provider` varchar(32)*, `account_id` varchar(64)*, `region` varchar(64)*, `resource_family` varchar(128)*, `artifact_type` varchar(64)*, `native_kind` varchar(128)*, `technology_id` varchar(128)*, `environment` varchar(64)*, `owner_name` varchar(255)* = 'UNOWNED', `observed_at` timestamptz*
+- PK: `tenant_id, artifact_id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `snapshot_manifest_id` → `ai_grid_snapshot_manifests.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_run_scope_metrics`** (tenant schema) — Per-run, per-scope processing duration in ms.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `run_id` uuid*, `scope_key` varchar(512)*, `processing_duration_ms` bigint*, `recorded_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, run_id, scope_key`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_budget_alerts`** (tenant schema) — Budget threshold alerts (`WARNING`/`EXCEEDED`) with observed vs limit values and `OPEN`/`ACKNOWLEDGED`/`RESOLVED` status.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `run_id` uuid, `metric` varchar(64)*, `level` varchar(32)*, `observed_value` bigint*, `limit_value` bigint*, `status` varchar(32)* = 'OPEN', `first_observed_at` timestamptz*, `last_observed_at` timestamptz*, `acknowledged_by` varchar(255), `acknowledged_at` timestamptz
+- PK: `id`
+- Unique: `tenant_id, metric`
+- FK: `tenant_id` → `tenants.id`
+
+### AI Grid: systems and exposure correlation
+
+**`ai_grid_system_revisions`** (tenant schema) — Immutable revisions of an AI system's membership (`membership_hash`, source, rationale, validity window, coverage epoch).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `system_id` uuid*, `revision` integer*, `membership_hash` varchar(64)*, `source` varchar(32)*, `rationale` text*, `created_at` timestamptz*, `run_id` uuid, `valid_from` timestamptz*, `valid_until` timestamptz, `coverage_epoch_id` uuid
+- PK: `id`
+- Unique: `tenant_id, system_id, revision`
+- FK: `system_id` → `ai_grid_systems.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_system_memberships`** (tenant schema) — Artifact membership in a system revision with state, confidence method/value, and evidence.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `system_revision_id` uuid*, `artifact_id` uuid*, `membership_state` varchar(32)*, `confidence_method` varchar(128)*, `confidence_method_version` varchar(32)*, `confidence` double precision*, `evidence_json` jsonb* = '{}', `valid_from` timestamptz*, `valid_until` timestamptz, `decided_by` varchar(255), `decided_at` timestamptz
+- PK: `id`
+- Unique: `tenant_id, system_revision_id, artifact_id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `system_revision_id` → `ai_grid_system_revisions.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_system_membership_overrides`** (tenant schema) — Analyst membership decisions per system/artifact with reason and actor.
+
+- Columns: `tenant_id` uuid*, `system_id` uuid*, `artifact_id` uuid*, `decision` varchar(16)*, `reason` text*, `actor` varchar(255)*, `decided_at` timestamptz*
+- PK: `tenant_id, system_id, artifact_id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `system_id` → `ai_grid_systems.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_system_lineage_participants`** (tenant schema) — System revisions participating in a lineage event, with role.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `event_id` uuid*, `system_id` uuid*, `system_revision_id` uuid, `participant_role` varchar(16)*
+- PK: `id`
+- Unique: `tenant_id, event_id, system_id, participant_role`
+- FK: `event_id` → `ai_grid_system_lineage_events.id`, `system_id` → `ai_grid_systems.id`, `system_revision_id` → `ai_grid_system_revisions.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_exposure_observations`** (tenant schema) — Observations of an exposure path per run: state, entry artifact, system revision, path and evidence JSON, temporal validity, confidence, correlation digest.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `exposure_path_id` uuid*, `run_id` uuid*, `state` varchar(32)*, `entry_artifact_id` uuid, `system_id` uuid, `system_revision_id` uuid, `path_json` jsonb*, `evidence_json` jsonb*, `temporal_valid_from` timestamptz*, `temporal_valid_until` timestamptz, `confidence` double precision, `observed_at` timestamptz*, `coverage_epoch_id` uuid, `correlation_material_digest` varchar(64)
+- PK: `id`
+- FK: `entry_artifact_id` → `ai_security_artifacts.id`, `exposure_path_id` → `ai_grid_exposure_paths.id`, `system_id` → `ai_grid_systems.id`, `system_revision_id` → `ai_grid_system_revisions.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_exposure_associations`** (tenant schema) — Systems/artifacts associated with an exposure path, with role.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `exposure_path_id` uuid*, `system_id` uuid, `system_revision_id` uuid, `artifact_id` uuid, `association_role` varchar(32)*
+- PK: `id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `exposure_path_id` → `ai_grid_exposure_paths.id`, `system_id` → `ai_grid_systems.id`, `system_revision_id` → `ai_grid_system_revisions.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_exposure_dispositions`** (tenant schema) — Analyst dispositions on an exposure path (accept/false-positive) with reason and actor.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `exposure_path_id` uuid*, `disposition` varchar(32)*, `reason` text*, `actor` varchar(255)*, `created_at` timestamptz*
+- PK: `id`
+- FK: `exposure_path_id` → `ai_grid_exposure_paths.id`, `tenant_id` → `tenants.id`
+
+### AI Grid: tenant policy configuration
+
+**`ai_grid_policy_scopes`** (tenant schema) — Per-tenant policy scope: mode, condition logic, and `conditions_json`.
+
+- Columns: `policy_id` varchar(128)*, `tenant_id` uuid*, `mode` varchar(32)* = 'ALL', `condition_logic` varchar(8)* = 'AND', `conditions_json` jsonb* = '[]', `updated_by` varchar(255)*, `updated_at` timestamptz*
+- PK: `policy_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_parameters`** (tenant schema) — Per-tenant policy parameter overrides (`parameters_json`).
+
+- Columns: `policy_id` varchar(128)*, `tenant_id` uuid*, `parameters_json` jsonb* = '{}', `updated_by` varchar(255)*, `updated_at` timestamptz*
+- PK: `policy_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_artifact_overrides`** (tenant schema) — Per-artifact include/exclude override for a policy, with reason.
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `policy_id` varchar(128)*, `artifact_id` uuid*, `override` varchar(16)*, `reason` text, `created_by` varchar(255)*, `created_at` timestamptz*, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `tenant_id, policy_id, artifact_id`
+- FK: `artifact_id` → `ai_security_artifacts.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_selection_history`** (tenant schema) — Audit of tenant policy enable/disable selection changes (previous, new, actor, reason).
+
+- Columns: `id` uuid*, `tenant_id` uuid*, `policy_id` varchar(128)*, `previous_selection` varchar(32), `selection` varchar(32)*, `actor` varchar(255)*, `reason` text, `changed_at` timestamptz*
+- PK: `id`
+- FK: `tenant_id` → `tenants.id`
+
+### AI Grid: platform policy rollout and deprecation
+
+**`ai_grid_policy_rollouts`** (`platform` schema) — Platform rollout of a policy version (previous/new version, package digest, distribution snapshot, status, release decision link).
+
+- Columns: `id` uuid*, `release_id` varchar(128)*, `release_type` varchar(64)*, `policy_id` varchar(128)*, `previous_version` varchar(32), `new_version` varchar(32)*, `package_digest` varchar(64)*, `distribution_snapshot_json` jsonb*, `status` varchar(32)* = 'PENDING', `created_at` timestamptz*, `started_at` timestamptz, `completed_at` timestamptz, `approved_package_digest` varchar(64), `release_decision_id` uuid
+- PK: `id`
+- Unique: `release_id, policy_id, new_version`
+
+**`ai_grid_policy_rollout_tasks`** (`platform` schema) — Per-tenant rollout work items drained by `AiGridPolicyRolloutService` (status, attempts, retry time, source/assessment run ids).
+
+- Columns: `id` uuid*, `rollout_id` uuid*, `tenant_id` uuid*, `status` varchar(32)* = 'PENDING', `attempts` integer* = 0, `next_retry_at` timestamptz, `source_snapshot_run_id` uuid, `assessment_run_id` uuid, `failure_detail` text, `created_at` timestamptz*, `started_at` timestamptz, `completed_at` timestamptz, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `rollout_id, tenant_id`
+- FK: `rollout_id` → `ai_grid_policy_rollouts.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_deprecations`** (`platform` schema) — Policy deprecation records with optional successor policy and idempotency key.
+
+- Columns: `id` uuid*, `policy_id` varchar(128)*, `policy_version` varchar(32)*, `reason` text*, `successor_policy_id` varchar(128), `deprecated_by` varchar(255)*, `deprecated_at` timestamptz*, `idempotency_key` varchar(128)*
+- PK: `id`
+- Unique: `idempotency_key`; `policy_id, policy_version`
+
+**`ai_grid_policy_deprecation_tasks`** (`platform` schema) — Per-tenant deprecation work items drained by `AiGridPolicyDeprecationService`.
+
+- Columns: `id` uuid*, `deprecation_id` uuid*, `tenant_id` uuid*, `state` varchar(32)* = 'PENDING', `attempts` integer* = 0, `next_retry_at` timestamptz, `failure_detail` text, `created_at` timestamptz*, `started_at` timestamptz, `completed_at` timestamptz, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `deprecation_id, tenant_id`
+- FK: `deprecation_id` → `ai_grid_policy_deprecations.id`, `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_inactivation_tasks`** (`platform` schema) — Per-tenant policy inactivation work items with retry state.
+
+- Columns: `id` uuid*, `policy_id` varchar(128)*, `tenant_id` uuid*, `reason` varchar(64)*, `status` varchar(32)* = 'PENDING', `attempts` integer* = 0, `next_retry_at` timestamptz, `failure_detail` text, `queued_at` timestamptz*, `started_at` timestamptz, `completed_at` timestamptz, `updated_at` timestamptz*
+- PK: `id`
+- Unique: `policy_id, tenant_id`
+- FK: `tenant_id` → `tenants.id`
+
+**`ai_grid_policy_replacements`** (`platform` schema) — Predecessor → successor policy mapping within a release family.
+
+- Columns: `predecessor_policy_id` varchar(128)*, `successor_policy_id` varchar(128)*, `release_family` varchar(64)*, `created_at` timestamptz*
+- PK: `predecessor_policy_id`
+- Unique: `successor_policy_id`
+
+**`ai_grid_policy_dev_deployments`** (`platform` schema) — Records of development deployments of a policy version to specific tenants.
+
+- Columns: `id` uuid*, `policy_id` varchar(128)*, `policy_version` varchar(32)*, `target_tenant_ids_json` jsonb*, `test_note` text*, `deployed_by` varchar(255)*, `deployed_at` timestamptz*
+- PK: `id`
+
+### AI Grid: release governance and precision evidence
+
+**`ai_grid_control_objectives`** (`platform` schema) — Control objective catalog (security and remediation intent, owner, lifecycle).
+
+- Columns: `control_objective_id` varchar(128)*, `name` varchar(512)*, `security_intent` text*, `remediation_intent` text*, `owner` varchar(255)*, `lifecycle` varchar(32)*, `created_at` timestamptz*
+- PK: `control_objective_id`
+
+**`ai_grid_relationship_definitions`** (`platform` schema) — Catalog of allowed relationship types between artifacts (source, directionality, lifecycle).
+
+- Columns: `relationship_type` varchar(128)*, `source` varchar(64)*, `directional` boolean* = true, `lifecycle` varchar(32)* = 'ACTIVE', `description` text*
+- PK: `relationship_type`
+
+**`ai_grid_policy_release_decisions`** (`platform` schema) — `APPROVED`/`BLOCKED` decisions for a policy version, referencing the answer-key run and precision review, with package digest and revocation fields.
+
+- Columns: `id` uuid*, `policy_id` varchar(128)*, `policy_version` varchar(32)*, `decision` varchar(32)*, `answer_key_run_id` uuid, `precision_review_id` uuid, `reason` text*, `decided_by` varchar(255)*, `decided_at` timestamptz*, `package_digest` varchar(64), `revoked_at` timestamptz, `revoked_by` varchar(255), `revocation_reason` text, `approved_package_digest` varchar(128)
+- PK: `id`
+- FK: `answer_key_run_id` → `ai_grid_answer_key_runs.id`, `precision_review_id` → `ai_grid_precision_reviews.id`
+
+**`ai_grid_policy_release_bindings`** (`platform` schema) — Binds an approval decision to an approved package digest, distribution snapshot, and target tenants; can be revoked.
+
+- Columns: `id` uuid*, `approval_decision_id` uuid*, `policy_id` varchar(128)*, `policy_version` varchar(32)*, `approved_package_digest` varchar(128)*, `distribution_snapshot_json` jsonb*, `target_tenant_ids_json` jsonb*, `bound_by` varchar(255)*, `bound_at` timestamptz*, `state` varchar(32)* = 'ACTIVE', `revoked_at` timestamptz, `revoked_by` varchar(255), `revocation_reason` text
+- PK: `id`
+- Unique: `policy_id, policy_version, approved_package_digest`; `approval_decision_id`
+- FK: `approval_decision_id` → `ai_grid_policy_release_decisions.id`
+
+**`ai_grid_release_decisions`** (`platform` schema) — Release-level `APPROVED`/`BLOCKED` decisions with a gate snapshot.
+
+- Columns: `id` uuid*, `release_id` varchar(32)*, `decision` varchar(16)*, `gate_snapshot_json` jsonb*, `reason` text*, `decided_by` varchar(255)*, `decided_at` timestamptz*
+- PK: `id`
+
+**`ai_grid_release_gate_evidence`** (`platform` schema) — Gate evidence per release and gate code (status, reference, validity, material digest).
+
+- Columns: `id` uuid*, `release_id` varchar(32)*, `gate_code` varchar(96)*, `status` varchar(16)*, `evidence_reference` text*, `rationale` text*, `valid_until` timestamptz*, `recorded_by` varchar(255)*, `recorded_at` timestamptz*, `material_digest` varchar(64)
+- PK: `id`
+
+**`ai_grid_release_manifest_items`** (`platform` schema) — Policies/subjects included in a release manifest, by type, id, and version.
+
+- Columns: `release_id` varchar(32)*, `subject_type` varchar(32)*, `subject_id` varchar(128)*, `subject_version` varchar(32)*, `created_at` timestamptz*
+- PK: `release_id, subject_type, subject_id, subject_version`
+
+**`ai_grid_phase_1_preview_release`** (`platform` schema) — Single-row-per-release-family preview state: manifest digest, policy count, internal tenant, approved cohort.
+
+- Columns: `release_family` varchar(64)*, `manifest_digest` varchar(64)*, `total_policies` integer*, `state` varchar(32)* = 'PAUSED', `internal_tenant_id` uuid, `approved_cohort_json` jsonb* = '[]', `last_approved_cohort_json` jsonb* = '[]', `approved_by` varchar(255), `approved_at` timestamptz, `updated_at` timestamptz*
+- PK: `release_family`
+
+**`ai_grid_phase_1_preview_gate_evidence`** (`platform` schema) — Preview gate results keyed by `gate_key`.
+
+- Columns: `gate_key` varchar(64)*, `status` varchar(16)* = 'PENDING', `evidence_ref` varchar(1024), `results_json` jsonb* = '{}', `recorded_by` varchar(255), `recorded_at` timestamptz*
+- PK: `gate_key`
+
+**`ai_grid_phase_1_release_gate_evidence`** (`platform` schema) — Phase-1 release gate evidence history.
+
+- Columns: `id` uuid*, `gate_key` varchar(64)*, `status` varchar(16)*, `evidence_json` jsonb*, `recorded_by` varchar(255)*, `recorded_at` timestamptz*
+- PK: `id`
+
+**`ai_grid_answer_key_cases`** (`platform` schema) — Labeled expected outcomes (applicability, decision, finding) per policy version used to validate policies.
+
+- Columns: `id` uuid*, `environment_id` uuid*, `case_key` varchar(160)*, `scenario` varchar(32)*, `policy_id` varchar(128), `policy_version` varchar(32), `expected_applicability` varchar(32), `expected_decision` varchar(32), `expected_finding` boolean, `expected_json` jsonb*, `label_version` varchar(32)*, `rationale` text*, `evidence_reference` text*, `created_by` varchar(255)*, `created_at` timestamptz*
+- PK: `id`
+- Unique: `environment_id, case_key`
+- FK: `environment_id` → `ai_grid_answer_key_environments.id`
+
+**`ai_grid_answer_key_runs`** (`platform` schema) — Answer-key validation runs (catalog digest, matched/total cases, PASS/FAIL, provenance `EXTERNAL_ATTESTATION` or `PLATFORM_RUN_BOUND`).
+
+- Columns: `id` uuid*, `environment_id` uuid*, `catalog_digest` varchar(128)*, `status` varchar(32)*, `total_cases` integer*, `matched_cases` integer*, `executed_by` varchar(255)*, `started_at` timestamptz*, `completed_at` timestamptz*, `source_tenant_id` uuid, `source_run_id` uuid, `provenance_state` varchar(32)*
+- PK: `id`
+- FK: `environment_id` → `ai_grid_answer_key_environments.id`, `source_tenant_id` → `tenants.id`
+
+**`ai_grid_answer_key_results`** (`platform` schema) — Per-case result of an answer-key run: observed JSON, matched flag, mismatch reason.
+
+- Columns: `id` uuid*, `run_id` uuid*, `case_id` uuid*, `observed_json` jsonb*, `matched` boolean*, `mismatch_reason` text, `created_at` timestamptz*, `source_assessment_id` uuid, `source_decision_fingerprint` varchar(64)
+- PK: `id`
+- Unique: `run_id, case_id`
+- FK: `case_id` → `ai_grid_answer_key_cases.id`, `run_id` → `ai_grid_answer_key_runs.id`
+
+**`ai_grid_precision_reviews`** (`platform` schema) — Statistical precision reviews per policy version: sampling method, minimum sample size, true/false positives, precision and confidence bounds, bias review.
+
+- Columns: `id` uuid*, `policy_id` varchar(128)*, `policy_version` varchar(32)*, `population_definition` text*, `sampling_method` text*, `minimum_sample_size` integer*, `confidence_level` double precision*, `precision_threshold` double precision* = 0.95, `material_change_digest` varchar(128)*, `bias_status` varchar(32)* = 'PENDING', `bias_rationale` text, `bias_reviewed_by` varchar(255), `status` varchar(32)* = 'DRAFT', `resolved_positive_samples` integer* = 0, `true_positives` integer* = 0, `false_positives` integer* = 0, `precision_value` double precision, `confidence_lower` double precision, `confidence_upper` double precision, `finalized_at` timestamptz, `created_by` varchar(255)*, `created_at` timestamptz*, `label_set_version` varchar(32)*, `answer_key_run_id` uuid
+- PK: `id`
+- Unique: `policy_id, policy_version, material_change_digest`
+- FK: `answer_key_run_id` → `ai_grid_answer_key_runs.id`
+
+**`ai_grid_precision_samples`** (`platform` schema) — Samples drawn for a precision review, with observed outcome and provenance.
+
+- Columns: `id` uuid*, `review_id` uuid*, `sample_key` varchar(160)*, `provider` varchar(32)*, `resource_family` varchar(128)*, `severity` varchar(32)*, `observed_outcome` varchar(32)*, `predicted_finding` boolean*, `evidence_reference` text*, `created_at` timestamptz*, `source_tenant_id` uuid, `source_run_id` uuid, `source_assessment_id` uuid, `source_decision_fingerprint` varchar(128), `provenance_state` varchar(32)*
+- PK: `id`
+- Unique: `review_id, sample_key`; `review_id, source_assessment_id`
+- FK: `review_id` → `ai_grid_precision_reviews.id`, `source_tenant_id` → `tenants.id`
+
+**`ai_grid_precision_labels`** (`platform` schema) — Reviewer labels on precision samples.
+
+- Columns: `id` uuid*, `sample_id` uuid*, `reviewer` varchar(255)*, `label` varchar(32)*, `label_version` varchar(32)*, `rationale` text*, `evidence_reference` text*, `created_at` timestamptz*
+- PK: `id`
+- Unique: `sample_id, reviewer`
+- FK: `sample_id` → `ai_grid_precision_samples.id`
+
+**`ai_grid_precision_adjudications`** (`platform` schema) — Final adjudicated label for a sample.
+
+- Columns: `id` uuid*, `sample_id` uuid*, `final_label` varchar(32)*, `rationale` text*, `adjudicated_by` varchar(255)*, `created_at` timestamptz*
+- PK: `id`
+- Unique: `sample_id`
+- FK: `sample_id` → `ai_grid_precision_samples.id`
+
+**`ai_grid_correlation_precision_reviews`** (`platform` schema) — Precision reviews for correlation logic (sample size, accepted samples, precision vs threshold, reviewer).
+
+- Columns: `id` uuid*, `correlation_id` varchar(128)*, `correlation_version` varchar(32)*, `material_digest` varchar(128)*, `sample_size` integer*, `accepted_samples` integer*, `precision_value` double precision*, `precision_threshold` double precision*, `status` varchar(32)*, `evidence_reference` varchar(1024)*, `reviewed_by` varchar(255)*, `reviewed_at` timestamptz*
+- PK: `id`
+- Unique: `correlation_id, correlation_version, material_digest`
+- FK: `correlation_id, correlation_version` → `ai_grid_correlation_versions.correlation_id, version`
+
+
 ## Migration Conventions
 
 - File pattern: `V{next}__short_snake_case.sql` in `backend/src/main/resources/db/migration/postgres_reset/` (platform line) or `backend/src/main/resources/db/migration/tenant/` (per-tenant line — see below)
@@ -1243,7 +1706,7 @@ There are **two independent Flyway migration lines**, never applied by the same 
 | Platform/reset | `postgres_reset/` | `public` and `platform`, plus an empty `tenant_default` schema | `public.flyway_schema_history` | Each file must open with a `-- migration-guard: platform-only` comment; `PostgresResetMigrationGuardTest` enforces this so tenant-schema DDL can't leak into the shared line by accident. |
 | Tenant | `tenant/` | Every tenant schema (`tenant_default` and each `tenant_<id>`), one Flyway run per schema | `<schema>.tenant_schema_history` | Each file begins `-- migration-guard: tenant-only`; tenant V1 is the reset baseline, and the baseline and future files may use `${tenantId}` / `${tenantSchema}` placeholders. |
 
-Current latest: platform `V1__platform_schema.sql` and tenant `V1__tenant_schema.sql`; future migrations start at V2.
+Current latest: platform `V1__platform_schema.sql` and tenant `V2__ai_bom_correlation_evidence.sql` (on top of `V1__tenant_schema.sql`); next platform migration is V2, next tenant migration is V3.
 
 **Rollout mechanics** (`TenantSchemaMigrationService.migrateAll()`, mirrored by `ProductionBootstrapCli` for the standalone production bootstrap path):
 1. Hold a Postgres advisory lock (`scout-tenant-schema-migrator` / `scout-production-bootstrap`, 30s timeout) so only one migration run proceeds at a time.

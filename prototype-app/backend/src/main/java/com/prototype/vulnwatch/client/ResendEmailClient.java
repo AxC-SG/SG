@@ -21,6 +21,9 @@ import org.springframework.stereotype.Component;
 public class ResendEmailClient {
 
     public enum DeliveryState {
+        QUEUED,
+        RETRYABLE,
+        UNKNOWN,
         SENT,
         SKIPPED,
         FAILED
@@ -32,8 +35,12 @@ public class ResendEmailClient {
             String html,
             String text,
             Map<String, String> tags,
-            String idempotencyKey
+            String idempotencyKey,
+            String from
     ) {
+        public EmailMessage(String to,String subject,String html,String text,Map<String,String> tags,String idempotencyKey) {
+            this(to,subject,html,text,tags,idempotencyKey,null);
+        }
     }
 
     public record DeliveryResult(
@@ -64,7 +71,7 @@ public class ResendEmailClient {
     private static final Pattern EMAIL_ADDRESS_PATTERN = Pattern.compile("<?\\s*([^<>\\s]+@[^<>\\s]+)\\s*>?$");
 
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
+    private final com.prototype.vulnwatch.client.http.CheckedHttpTransport httpClient;
     private final String baseUrl;
     private final String apiKey;
     private final String fromAddress;
@@ -78,9 +85,7 @@ public class ResendEmailClient {
             @Value("${app.email.resend.from-domain:${RESEND_FROM_DOMAIN:hossstore.in}}") String fromDomain
     ) {
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(CONNECT_TIMEOUT)
-                .build();
+        this.httpClient = new com.prototype.vulnwatch.client.http.CheckedHttpTransport();
         this.baseUrl = normalize(baseUrl, DEFAULT_BASE_URL);
         this.apiKey = normalize(apiKey, "");
         this.fromDomain = normalize(fromDomain, DEFAULT_FROM_DOMAIN).toLowerCase();
@@ -111,25 +116,31 @@ public class ResendEmailClient {
                         .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payloadFor(message))))
                         .build();
             }
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            var response = httpClient.sendString(request, 1_000_000);
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return DeliveryResult.sent(parseMessageId(response.body()));
             }
-            LOG.warn("Resend email delivery failed status={} body={}", response.statusCode(), response.body());
-            return DeliveryResult.failed("Resend rejected the email request with status " + response.statusCode());
+            LOG.warn("Resend request rejected with HTTP status {}",response.statusCode());
+            return new DeliveryResult(response.statusCode()==429 || response.statusCode()>=500 ? DeliveryState.RETRYABLE : DeliveryState.FAILED,
+                    null,"HTTP_"+response.statusCode());
         } catch (Exception ex) {
-            LOG.warn("Resend email delivery failed", ex);
-            return DeliveryResult.failed("Resend email delivery failed");
+            if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
+            LOG.warn("Resend request outcome is unknown");
+            return new DeliveryResult(DeliveryState.RETRYABLE,null,"PROVIDER_OUTCOME_UNKNOWN");
         }
     }
 
-    private boolean isConfigured() {
+    public EmailMessage freeze(EmailMessage message,String deliveryKey) {
+        return new EmailMessage(message.to(),message.subject(),message.html(),message.text(),message.tags()==null ? Map.of() : Map.copyOf(message.tags()),deliveryKey,fromAddress);
+    }
+
+    public boolean isConfigured() {
         return !apiKey.isBlank() && !fromAddress.isBlank();
     }
 
     private Map<String, Object> payloadFor(EmailMessage message) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("from", fromAddress);
+        payload.put("from", message.from()==null ? fromAddress : message.from());
         payload.put("to", List.of(message.to()));
         payload.put("subject", message.subject());
         payload.put("html", message.html());
@@ -150,7 +161,7 @@ public class ResendEmailClient {
             JsonNode payload = objectMapper.readTree(body);
             return payload.path("id").asText(null);
         } catch (Exception ex) {
-            LOG.debug("Unable to parse Resend response body", ex);
+            LOG.debug("Unable to parse Resend acceptance identifier");
             return null;
         }
     }

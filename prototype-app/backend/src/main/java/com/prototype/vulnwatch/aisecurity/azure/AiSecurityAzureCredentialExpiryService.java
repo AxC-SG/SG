@@ -34,7 +34,7 @@ public class AiSecurityAzureCredentialExpiryService {
                 : backgroundPolicy;
     }
 
-    @Scheduled(cron = "${app.ai-security.azure.credential-expiry-cron:0 20 2 * * *}")
+    @Scheduled(zone = "UTC", cron = "${app.ai-security.azure.credential-expiry-cron:0 20 2 * * *}")
     public void sweep() {
         if (!backgroundPolicy.allowsBackgroundTask("ai-security.azure-credential-expiry")) {
             return;

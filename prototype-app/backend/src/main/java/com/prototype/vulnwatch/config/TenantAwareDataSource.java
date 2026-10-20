@@ -1,12 +1,15 @@
 package com.prototype.vulnwatch.config;
 
 import com.prototype.vulnwatch.service.TenantContext;
+import com.zaxxer.hikari.HikariDataSource;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,19 +115,41 @@ public class TenantAwareDataSource extends DelegatingDataSource {
      * ConnectionWrapper was removed in Spring 6; Proxy is the portable alternative.
      */
     private Connection wrapWithReset(Connection target) {
+        AtomicBoolean closed = new AtomicBoolean();
         return (Connection) Proxy.newProxyInstance(
                 target.getClass().getClassLoader(),
                 new Class[]{Connection.class},
                 (proxy, method, args) -> {
                     if ("close".equals(method.getName())) {
+                        if (!closed.compareAndSet(false, true)) {
+                            return null;
+                        }
+                        // A caller returning an unfinished/aborted transaction cannot
+                        // make session RESET durable. Discard its physical connection.
+                        boolean autoCommit;
+                        try {
+                            autoCommit = target.getAutoCommit();
+                        } catch (SQLException | RuntimeException stateFailure) {
+                            discardConnection(target, stateFailure);
+                            throw stateFailure;
+                        }
+                        if (!autoCommit) {
+                            discardConnection(target, null);
+                            return null;
+                        }
                         try (Statement stmt = target.createStatement()) {
                             stmt.execute("RESET app.current_tenant_id");
                             stmt.execute("RESET search_path");
-                        } catch (SQLException ignored) {
-                            // Best-effort: connection still returned to pool.
+                        } catch (SQLException | RuntimeException resetFailure) {
+                            discardConnection(target, resetFailure);
+                            throw resetFailure;
                         }
                     }
-                    return method.invoke(target, args);
+                    try {
+                        return method.invoke(target, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                    }
                 });
     }
 
@@ -163,10 +188,66 @@ public class TenantAwareDataSource extends DelegatingDataSource {
     }
 
     private void closeAfterContextFailure(Connection conn, Exception original) throws SQLException {
+        discardConnection(conn, original);
+    }
+
+    private void discardConnection(Connection conn, Exception original) throws SQLException {
+        SQLException failure = original instanceof SQLException sqlException ? sqlException : null;
+        boolean discarded = false;
+        boolean poolEvicted = false;
+        try {
+            // This is the actual pool installed by TenantIsolationConfig. Closing
+            // its proxy alone would return a potentially contaminated session.
+            if (getTargetDataSource() instanceof HikariDataSource pool) {
+                pool.evictConnection(conn);
+                poolEvicted = true;
+            } else {
+                conn.abort(Runnable::run);
+            }
+            discarded = true;
+        } catch (SQLException | RuntimeException discardFailure) {
+            if (original != null) {
+                original.addSuppressed(discardFailure);
+            } else {
+                failure = new SQLException("Could not discard tenant connection", discardFailure);
+            }
+            try {
+                conn.abort(Runnable::run);
+                discarded = true;
+            } catch (SQLException | RuntimeException abortFailure) {
+                if (original != null) {
+                    original.addSuppressed(abortFailure);
+                } else {
+                    failure.addSuppressed(abortFailure);
+                }
+            }
+        }
+        // Do not return an uncertain pooled connection when both eviction and
+        // physical abort failed. Surface the failure and leave it out of reuse.
+        if (!discarded) {
+            if (original == null) {
+                throw failure;
+            }
+            return;
+        }
+        if (poolEvicted) {
+            // Hikari owns physical close and pool bookkeeping after eviction.
+            // Closing the detached proxy again can touch its cleared PoolEntry.
+            return;
+        }
         try {
             conn.close();
         } catch (SQLException closeFailure) {
-            original.addSuppressed(closeFailure);
+            if (original != null) {
+                original.addSuppressed(closeFailure);
+            } else if (failure == null) {
+                failure = closeFailure;
+            } else {
+                failure.addSuppressed(closeFailure);
+            }
+        }
+        if (original == null && failure != null) {
+            throw failure;
         }
     }
 }

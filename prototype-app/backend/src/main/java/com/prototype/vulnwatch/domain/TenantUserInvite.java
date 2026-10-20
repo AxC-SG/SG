@@ -6,6 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import com.prototype.vulnwatch.service.InvitationTokens;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -39,8 +41,11 @@ public class TenantUserInvite {
     @Column(nullable = false, length = 32)
     private String status = "READY";
 
-    @Column(nullable = false, length = 96, unique = true)
+    @Transient
     private String token;
+
+    @Column(name = "token_hash", nullable = false, length = 64, unique = true)
+    private String tokenHash;
 
     @Column(name = "provider_message_id", length = 255)
     private String providerMessageId;
@@ -125,12 +130,15 @@ public class TenantUserInvite {
         this.status = status;
     }
 
+    public String getTokenHash() { return tokenHash; }
+
     public String getToken() {
         return token;
     }
 
     public void setToken(String token) {
         this.token = token;
+        this.tokenHash = InvitationTokens.hash(token);
     }
 
     public String getProviderMessageId() {

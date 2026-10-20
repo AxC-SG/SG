@@ -4,6 +4,9 @@ import com.prototype.vulnwatch.domain.Tenant;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -68,5 +71,24 @@ public class TenantWorkRunner {
 
     public <T> T runScoped(UUID tenantId, Supplier<T> work) {
         return tenantSchemaExecutionService.run(tenantId, () -> transactionTemplate.execute(status -> work.get()));
+    }
+
+    /** Select the tenant before the document transaction and roll back checked failures. */
+    public <T> T runScopedChecked(Tenant tenant, Callable<T> work) throws IOException {
+        try {
+            return runScoped(tenant, () -> {
+                try {
+                    return work.call();
+                } catch (IOException failure) {
+                    throw new UncheckedIOException(failure);
+                } catch (RuntimeException failure) {
+                    throw failure;
+                } catch (Exception failure) {
+                    throw new UncheckedIOException(new IOException(failure));
+                }
+            });
+        } catch (UncheckedIOException failure) {
+            throw failure.getCause();
+        }
     }
 }

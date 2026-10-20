@@ -1,6 +1,6 @@
 # VulnWatch — End-to-End Business Logic Guide
 
-Last updated: 2026-09-29
+Last updated: 2026-10-18
 
 **Audience:** Engineers and product stakeholders who need to understand how the platform works end-to-end.
 
@@ -28,7 +28,7 @@ Inventory IN          →   Vulnerability Intel IN    →   Correlation
 
 ### Schema-Per-Tenant Isolation
 
-Every tenant gets its own PostgreSQL schema. The `TenantAwareDataSource` wraps HikariCP and sets `search_path = <tenant_schema>, public` on every connection checkout. This means:
+Every tenant gets its own PostgreSQL schema. The `TenantAwareDataSource` wraps HikariCP and sets `search_path = <tenant_schema>,platform` on every connection checkout (platform-context work uses `platform,public`). This means:
 
 - Tenant A cannot query Tenant B's data even with a crafted query — the schema isn't in the search path.
 - Platform-level tables (`tenants`, `app_users`, `tenant_memberships`, etc.) live in the `platform` schema.
@@ -36,20 +36,20 @@ Every tenant gets its own PostgreSQL schema. The `TenantAwareDataSource` wraps H
 
 ### Tenant Context Flow
 
-1. `TenantResolutionFilter` runs on every request, extracts tenant ID from JWT claim or header, stores in thread-local `TenantContext`.
-2. `TenantStatusFilter` follows — blocks suspended/expired tenants with HTTP 403.
+1. `TenantResolutionFilter` runs on every request, takes the tenant ID from the authenticated principal's `TenantAuthenticationDetails` (JWT/API-key path) or, only when `app.tenancy.allow-header-tenant-selection` is true, the `X-Tenant-ID` header, and stores it in thread-local `TenantContext`.
+2. `TenantStatusFilter` follows — for `/api/**` outside `/api/platform/`, `/api/auth/`, and `/api/me`, it returns HTTP 410 (`TENANT_DELETED`) for a missing tenant and HTTP 423 (`TENANT_SUSPENDED`) for any tenant that is deleted or not `ACTIVE`.
 3. All repository calls execute within the correct schema automatically via connection-level search path.
 4. `TenantSchemaService` creates new tenant schemas by cloning `tenant_default`.
 
 ### Tenant Lifecycle
 
-States: `ACTIVE`, `TRIAL`, `SUSPENDED`, `EXPIRED`, `DEMO`.
+`Tenant.status` values used by the code: `PROVISIONING` (set on creation; the schema control plane moves it on), `PROVISIONING_FAILED` (retryable), `ACTIVE`, `SUSPENDED`, `EXPIRED`, `PURGING`, `DELETED`. Demo tenants are identified by `demoExpiresAt`/`demoSource` or the `DEMO` plan code rather than a status value.
 
-Demo tenants auto-expire after 7 days. `DemoTenantExpiryJob` runs hourly, marks expired demos as `SUSPENDED`. `DemoTenantPurgeService` handles schema cleanup. `DemoDatasetProvisioningService` (polls every 30s by default) seeds or repairs a requested tenant's demo dataset once it reaches `ACTIVE`; `DemoDatasetController` (`POST /api/platform/tenants/{tenantId}/demo-data`, `PLATFORM_OWNER`) can trigger this manually.
+Demo tenants auto-expire after 7 days. `DemoLifecycleService.expireDemoTenants` runs hourly (`app.demo.expiration-cron`, default minute 10) and hands expired demos to `DemoTenantPurgeService`, which marks them `EXPIRED` and handles schema cleanup. `DemoDatasetProvisioningService` (polls every 30s by default) seeds or repairs a requested tenant's demo dataset once it reaches `ACTIVE`; `DemoDatasetController` (`POST /api/platform/tenants/{tenantId}/demo-data`, `PLATFORM_OWNER`) can trigger this manually.
 
 ### Tenant-Authorized Support Access
 
-`TenantSupportAccessController` (its supporting schema predates the migration-history reset and now lives in the `tenant/V1__tenant_schema.sql` baseline) lets a tenant admin grant a time-boxed, break-glass platform-owner access grant (`POST /api/tenants/{tenantId}/support-grants`, `TENANT_ADMIN`), which the invited platform owner then accepts (`POST /api/auth/support-grants/{grantId}/accept`). This is distinct from — and layers on top of — the existing `tenant_support_grants` table and `TenantSupportGrant` lifecycle described elsewhere in this doc; the new piece is that the *tenant* can initiate the grant rather than only the platform owner requesting access.
+`TenantSupportAccessController` (its `platform.tenant_support_grants` table lives in the `postgres_reset/V1__platform_schema.sql` baseline) lets a tenant admin grant a time-boxed, break-glass platform-owner access grant (`POST /api/tenants/{tenantId}/support-grants`, `TENANT_ADMIN`), which the invited platform owner then accepts (`POST /api/auth/support-grants/{grantId}/accept`). This is distinct from — and layers on top of — the existing `tenant_support_grants` table and `TenantSupportGrant` lifecycle described elsewhere in this doc; the new piece is that the *tenant* can initiate the grant rather than only the platform owner requesting access.
 
 ---
 
@@ -58,17 +58,17 @@ Demo tenants auto-expire after 7 days. `DemoTenantExpiryJob` runs hourly, marks 
 ### SBOM Ingestion
 
 SBOMs arrive via three paths:
-1. **File upload** — `POST /api/ingestion/sbom` with multipart file
+1. **File upload** — `POST /api/bom/upload` with multipart file (`POST /api/bom/fetch` and `POST /api/sbom-fetch` cover URL/endpoint fetch)
 2. **Endpoint fetch** — backend pulls SBOM from a configured URL on a schedule
 3. **GitHub** — periodic fetch from GitHub dependency graph or GHCR attestation for configured repos
 
 **Processing flow:**
-1. Parse SBOM (CycloneDX JSON/XML or SPDX JSON/tag-value)
+1. Parse SBOM (CycloneDX JSON/XML or SPDX JSON)
 2. Normalize each component: name, version, PURL, CPE
 3. Resolve or create `SoftwareIdentity` (deduplication by normalized name + ecosystem)
 4. Create/update `InventoryComponent` records linking identity to asset
 5. Resolve CPEs: match against `cpe_dim` and write `inventory_component_cpe_map`
-6. Update `SbomUpload` status to COMPLETE or FAILED
+6. Update `SbomUpload` status (`IN_PROGRESS` → `SUCCESS` or `FAILURE`)
 
 **Deduplication:** Components are deduplicated by `(softwareIdentityId, assetId)`. Re-ingesting the same SBOM updates version and metadata; it does not create duplicate rows.
 
@@ -77,11 +77,10 @@ SBOMs arrive via three paths:
 `ServiceNowCmdbSyncService` pulls CI records from ServiceNow CMDB using the configured instance URL and credentials.
 
 **Flow:**
-1. Fetch CI records (Hardware CIs, Software CIs) from ServiceNow table API
-2. Resolve each CI to an `Asset` using `IdentityMatchRule` (match on hostname, IP, serial number, or ServiceNow sys_id)
-3. Create `CiAlias` records for alternative identifiers
-4. Write `Ci` records linking ServiceNow CI metadata to Scout assets
-5. Write `SyncRun` with outcome metrics
+1. Fetch discovery-model rows and software-install rows from the configured ServiceNow tables via the Table API
+2. Enrich install rows with their discovery-model data and hand both to `CmdbIngestionService.ingestRows`
+3. Create/update `Ci` records, `CiAlias` records for alternative identifiers, `SoftwareInstance`s, and `InventoryComponent`s
+4. Write `SyncRun` with outcome metrics
 
 ### CMDB Sync (SCCM/MECM)
 
@@ -90,8 +89,8 @@ SBOMs arrive via three paths:
 **Flow:**
 1. Connect to SCCM DB using configured credentials (`SccmCmdbConfig`)
 2. Query device inventory tables
-3. Map device records to `Asset` + `SoftwareInstance` records
-4. Write `DiscoveryModel` with field mapping and raw payload
+3. Map device records to `Asset` + `SoftwareInstance` records via the shared `CmdbIngestionService.ingestRows` path (same as ServiceNow)
+4. Write `SyncRun` with outcome metrics
 
 ### AWS Discovery
 
@@ -101,11 +100,10 @@ SBOMs arrive via three paths:
 1. Resolve credentials via `AwsCredentialProvider` (IAM role assumption, access keys, or instance profile)
 2. For each configured `AwsDiscoveryTarget` (account + region + optional role ARN):
    - Call `DescribeInstanceInformation` via SSM to get managed instance inventory
-   - Map instance metadata (instance ID, OS, platform) to Scout `Asset` records
-   - Write `DiscoveryModel` with raw AWS payload
+   - Map instance metadata (instance ID, OS, platform) to Scout `Asset` records (`AwsResourceIngestionService`)
 3. Multi-account supported via cross-account role ARN + external ID
 
-**Auth types** (`AwsAuthType` enum): `IAM_ROLE`, `ACCESS_KEY`, `INSTANCE_PROFILE`.
+**Auth types** (`AwsAuthType` enum): `INSTANCE_METADATA`, `ACCESS_KEY`, `CROSS_ACCOUNT_ROLE`.
 
 ### Azure Discovery
 
@@ -131,8 +129,9 @@ SBOMs arrive via three paths:
 | Microsoft CSAF/VEX | Daily 01:45 | Microsoft product VEX assertions |
 | Red Hat CSAF/VEX | Daily 01:45 | Red Hat product VEX assertions |
 | EPSS | Daily 03:15 | Exploit Prediction Scoring System scores |
-| EUVD | On-demand | EU Vulnerability Database |
-| JVN | On-demand | Japan Vulnerability Notes |
+| EUVD | Daily 02:00 | EU Vulnerability Database |
+| JVN | Daily 02:30 | Japan Vulnerability Notes |
+| OSV | Daily 02:45 | OSV advisories (per-tenant correlation 02:50) |
 
 ### What Gets Written
 
@@ -166,11 +165,12 @@ The correlation engine answers: *"Which of our software components match CVE app
 `org_cve_records` is a rollup projection: one row per `(tenantId, cveId)`. It aggregates:
 - `matchedAssetCount` — distinct assets with applicable software
 - `matchedSoftwareCount` — distinct software components matched
-- `maxSeverity` — highest severity across all matches
-- `hasKev` — whether the CVE is in CISA KEV
+- `severity` — CVE severity (default `UNKNOWN`)
+- `inKev` — whether the CVE is in CISA KEV
 - `epssScore` — current EPSS score
-- `orgImpact` — assessed organizational impact
-- `applicabilityState` — overall state for the org (APPLICABLE, PARTIALLY_APPLICABLE, NOT_APPLICABLE)
+- `orgImpact` — assessed organizational impact (`NONE`, `LOW`, `MEDIUM`, `HIGH`)
+- `impactState` — `IMPACTED`, `NOT_IMPACTED`, `FIXED`, `NO_PATCH`, `UNDER_INVESTIGATION`, `UNKNOWN`
+- `applicabilityState` — overall state for the org (APPLICABLE, NOT_APPLICABLE, UNKNOWN)
 
 This table drives the **CVE Assessment Workbench** UI.
 
@@ -182,21 +182,18 @@ This table drives the **CVE Assessment Workbench** UI.
 
 A `Finding` represents a specific, actionable security issue: a vulnerability (CVE) that is applicable to an asset in the tenant's inventory and requires a decision.
 
-Findings are created automatically when `ComponentVulnerabilityState` transitions to APPLICABLE, or manually via `FindingCreationSource.MANUAL`.
+Findings are created automatically when `ComponentVulnerabilityState` transitions to APPLICABLE (only in `AUTO` generation mode — see below), or manually via `FindingCreationSource.MANUAL`.
 
 ### States
 
 ```
-OPEN → ACKNOWLEDGED → IN_PROGRESS → RESOLVED
-  ↓                              ↑
-SUPPRESSED ──────────────────────┘ (if suppression expires)
-  ↓
-FALSE_POSITIVE
-  ↓
-RISK_ACCEPTED
+OPEN ──→ RESOLVED
+  ↓  ↘
+  ↓    AUTO_CLOSED   (auto-close policy)
+SUPPRESSED ──→ OPEN  (when suppression expires)
 ```
 
-`FindingStatus` enum: `OPEN`, `ACKNOWLEDGED`, `IN_PROGRESS`, `RESOLVED`, `SUPPRESSED`, `FALSE_POSITIVE`, `RISK_ACCEPTED`.
+`FindingStatus` enum: `OPEN`, `RESOLVED`, `SUPPRESSED`, `AUTO_CLOSED`. Analyst triage outcomes (affected / not affected / fixed / under investigation / needs review) are carried separately in `FindingDecisionState` (`AFFECTED`, `NOT_AFFECTED`, `FIXED`, `UNDER_INVESTIGATION`, `NEEDS_REVIEW`), and the reason a finding closed in `FindingCloseReason` (e.g. `MANUAL_FIXED`, `MANUAL_FALSE_POSITIVE`, `MANUAL_ACCEPTED_RISK`, `AUTO_NOT_OBSERVED`).
 
 ### Finding Events
 
@@ -210,11 +207,11 @@ Every status transition is recorded as a `FindingEvent` with actor, timestamp, a
 
 `RiskPolicy.findingGenerationMode`:
 - `AUTO` — findings created automatically when correlation determines applicability
-- `MANUAL` — analysts must explicitly promote an org-CVE record to a finding
+- `MANUAL` — analysts must explicitly promote an org-CVE record to a finding (the default for a new `RiskPolicy`)
 
 ### Auto-Close
 
-The hourly auto-close job closes OPEN findings that meet the policy criteria (configurable in `RiskPolicy.autoClose*` fields). Typically used to close low-severity findings after a configurable number of days without action.
+The hourly auto-close job (`FindingWorkflowService.autoCloseFindingsByPolicy`) runs per tenant and, when `autoCloseEnabled` and `autoCloseNotObservedEnabled` are set and the run interval (`autoCloseRunIntervalDays`, default 1) has elapsed, moves OPEN findings that were not observed in recent scans to `AUTO_CLOSED` (close reason `AUTO_NOT_OBSERVED`). A finding qualifies once its `autoCloseEligibleAt` has passed and its consecutive-miss count reaches `autoCloseRequiredConsecutiveMisses` (default 2); `autoCloseAssetIdentifier` optionally scopes a run to one asset. `autoCloseEnabled` defaults to false.
 
 ---
 
@@ -222,15 +219,15 @@ The hourly auto-close job closes OPEN findings that meet the policy criteria (co
 
 `SuppressionRule` entities define conditions under which findings or CVE records are suppressed.
 
-**Lifecycle:** DRAFT → IN_REVIEW → APPROVED (active) → EXPIRED.
+**Lifecycle:** `SuppressionRule.State` is `DRAFT`, `IN_REVIEW`, `APPROVED` (active), `REJECTED`, `EXPIRED`.
 
 **Evaluation:**
-1. When a finding is created, all APPROVED suppression rules are evaluated
-2. If a rule matches, the finding is created in `SUPPRESSED` state
-3. The 15-minute reopen job re-evaluates expired suppressions and reopens affected findings
-4. Rules have an `executionOrder` — lower order evaluated first
+1. Only APPROVED rules execute — on demand (`SuppressionRuleService.execute`) and in a nightly midnight re-run across all tenants
+2. A FINDING-type rule moves matching OPEN findings to `SUPPRESSED`; a CVE-type rule suppresses matching org CVE records
+3. The 15-minute reopen job returns findings whose `suppressedUntil` has passed to `OPEN` and records a `SUPPRESSION_EXPIRED` event
+4. Rules are listed/executed in `createdAt` order
 
-**Suppress CVE (org-wide):** `POST /api/cve-detail/{cveId}/suppress` is a shortcut that creates a CVE-scoped suppression rule and suppresses all existing findings for that CVE.
+**Suppress CVE (org-wide):** `POST /api/cve-detail/{cveId}/suppress` requires a reason and justification, suppresses the tenant's org CVE record directly (`OrgCveRecordService.suppress`, optional expiry from `duration`), and suppresses all existing findings for that CVE; it does not create a `SuppressionRule`. Roles: `TENANT_ADMIN`, `SECURITY_ANALYST`.
 
 ---
 
@@ -240,11 +237,12 @@ The `RiskPolicy` is a single record per tenant (created on tenant provisioning) 
 
 | Field group | Effect |
 |-------------|--------|
-| `sla*` (critical/high/medium/low deadlines, asset criticality multipliers) | SLA breach calculation on findings |
-| `triage*` (6 weight fields: exploitability, blast radius, EOL risk, SLA breach, missing owner, patch gap) | S.AI Priority score weighting |
-| `autoClose*` (enabled, days) | Hourly auto-close job behavior |
+| `criticalSlaDays`/`highSlaDays`/`mediumSlaDays`/`lowSlaDays` (defaults 7/14/30/60), `asset*SlaMultiplier` (0.5/0.75/1.0/1.25), `criticalThreshold`/`highThreshold` (9.0/7.0) | SLA breach calculation on findings |
+| `autoClose*` (enabled, after-days, consecutive misses, per-reason toggles, run interval) | Hourly auto-close job behavior |
 | `findingGenerationMode` | AUTO vs. MANUAL finding creation |
 | `findingsScoreConfig` (JSONB) | Custom attribute-based finding score rules |
+
+The six S.AI `triage*` weights are a frontend/Configurations-page concept (`src/features/configurations/types.ts`, `riskScoring.ts`); they are not fields on the backend `RiskPolicy` entity.
 
 ---
 
@@ -254,27 +252,28 @@ The `RiskPolicy` is a single record per tenant (created on tenant provisioning) 
 
 1. **Catalog refresh** — fetch all products from endoflife.date API → write `EolProductCatalog`
 2. **Release data** — fetch release cycles for each product → write `EolRelease`
-3. **Slug resolution** — for each unique `SoftwareIdentity`, match to an EOL product slug. Uses OpenAI to suggest slugs for unmatched identities. Confirmed mappings stored in `SoftwareEolMapping`
-4. **Denormalization** — compute `is_eol`, `eol_days_remaining`, `eol_date` for each `InventoryComponent` based on its version and the matched EOL release data
+3. **Slug resolution** — for each unique `SoftwareIdentity`, match to an EOL product slug. `EolSlugResolverService` uses a deterministic four-tier match (CPE, PURL, catalog alias, normalized name against a curated hint map) with EXACT/HIGH/MEDIUM confidence — no LLM call. Confirmed mappings stored in `SoftwareEolMapping`
+4. **Denormalization** — write `eol_slug`, `eol_cycle`, `eol_date`, `is_eol` for each `InventoryComponent` based on its version and the matched EOL release data
 
 ### Daily Lifecycle Sweep (00:15)
 
-Checks for components that have crossed their EOL date since the last run and updates `is_eol` flags and triggers any configured alerts.
+Checks for components that have crossed their EOL date (or entered the near-EOL window) since the last run, updates `is_eol` flags, and enqueues lifecycle deltas on the finding delta queue.
 
 ---
 
 ## AI Integration (OpenAI)
 
-Gated by `OPENAI_ENABLED=true`. Results are persisted in `OrgCveAiArtifact` after first generation — subsequent reads return the cached result without calling OpenAI again.
+Gated by `OPENAI_ENABLED` (`app.openai.enabled`, default `true`). Results are persisted in `OrgCveAiArtifact` after first generation — subsequent reads return the cached result without calling OpenAI again.
 
 **AI features:**
 
 | Feature | Endpoint | What it does |
 |---------|----------|-------------|
-| Investigation summary | `POST /api/cve-detail/{cveId}/ai-summary` | Generates a natural-language summary of a CVE's impact on the org, citing matched assets |
-| EOL slug suggestion | Internal (EOL stage 3) | Suggests endoflife.date slugs for unmatched software identities |
+| Investigation summary | `POST /api/cve-detail/{cveId}/investigation-ai-summary` (saved result: `GET /api/cve-detail/{cveId}/saved-investigation-summary`) | Generates a natural-language summary of a CVE's impact on the org, citing matched assets |
+| AI solution | `GET`/`POST /api/cve-detail/{cveId}/ai-solution` | Generates/returns a persisted remediation solution for the CVE |
+| AI actions | `GET`/`POST /api/cve-detail/{cveId}/ai-actions` | Generates/returns persisted recommended actions for the CVE |
 
-The `VulnerabilityIntelSummary` entity stores `aiSummary` and `aiSummaryGeneratedAt` fields.
+`OrgCveAiArtifact` stores `investigationSummaryOutputJson`/`investigationSummaryGeneratedAt`, `aiSolutionJson`/`aiSolutionGeneratedAt`, and `aiActionsJson`/`aiActionsGeneratedAt`.
 
 ---
 
@@ -283,14 +282,14 @@ The `VulnerabilityIntelSummary` entity stores `aiSummary` and `aiSummaryGenerate
 `OwnershipRule` entities define conditions for auto-assigning findings to users or groups.
 
 **Evaluation:**
-1. Rules are ordered by `priority`
-2. Each rule's `conditions` (JSONB array: field + operator + value) are evaluated against the finding
-3. First matching rule sets `finding.assignee`
+1. Rules are ordered by `executionOrder` (then `createdAt`)
+2. Each rule's `conditionJson` (`{"logic":"AND"|"OR","conditions":[...]}`; field + operator + value) is evaluated against the finding by the same matcher used for suppression rules and the findings score
+3. First matching rule sets `finding.ownerGroup` to the rule's `userGroup`
 4. Re-evaluated when findings are created or when ownership rules are updated
 
-**Operators** (common): `equals`, `contains`, `starts_with`, `in`, `not_in`.
+**Operators** (from `FindingsScoreService`): `=`, `!=`, `>`, `<`, `>=`, `<=` (numeric), `contains`, `not contains`, `exact match`, `is`, `is not`.
 
-**Fields** (common): asset name, asset criticality, CVE severity, affected component name, business unit tag.
+**Fields:** table + column attributes of the finding and its related asset/vulnerability/component, as in the Findings Score and Suppression editors.
 
 ---
 
@@ -373,7 +372,7 @@ Deliberately not built: a model/dataset's own identity matching a CVE directly. 
 
 ## AI Security / AI Grid Pipeline
 
-Not to be confused with [AI Integration (OpenAI)](#ai-integration-openai) above — that section covers VulnWatch *using* an LLM internally (EOL slug suggestion, CVE investigation summaries). This section covers VulnWatch *discovering and governing other systems'* AI/ML resources (Bedrock agents, Azure AI Foundry projects, MCP servers, etc.) as a security posture management capability, entitlement-gated per tenant behind the `ai.security` key (`TenantEntitlementService.AI_SECURITY`). It backs the `/findings/ai`, `/policies`, and `/inventory/ai` frontend routes and lives in its own top-level backend package, `com.prototype.vulnwatch.aisecurity` (19 controllers, 63 services — separate from the main `controller`/`service` packages).
+Not to be confused with [AI Integration (OpenAI)](#ai-integration-openai) above — that section covers VulnWatch *using* an LLM internally (CVE investigation summaries, AI solutions and actions, campaign insights). This section covers VulnWatch *discovering and governing other systems'* AI/ML resources (Bedrock agents, Azure AI Foundry projects, MCP servers, etc.) as a security posture management capability, entitlement-gated per tenant behind the `ai.security` key (`TenantEntitlementService.AI_SECURITY`). It backs the `/findings/ai`, `/policies`, and `/inventory/ai` frontend routes and lives in its own top-level backend package, `com.prototype.vulnwatch.aisecurity` (19 controllers, 63 services — separate from the main `controller`/`service` packages).
 
 AI Grid is the sole policy and findings generation. It evaluates governed, versioned policies against discovered artifacts; canonical findings retain the host workflow. `AiSecurityController` remains only for shared artifact inventory, graph, discovery-run, and compatibility finding reads.
 
@@ -421,7 +420,7 @@ Semantics worth knowing before extending this:
 
 #### Runtime activity deferred
 
-Collection of execution events, logs, and curated activity summaries is deferred. Activity producers and `activity.*` facts are rejected with `RUNTIME_OUT_OF_SCOPE`; historical activity evidence does not affect exposure priority or appear in customer detail. Static host-context evidence continues. See [runtime exclusion](runtime-telemetry-exclusion.md).
+Collection of execution events, logs, and curated activity summaries is deferred. Activity producers and `activity.*` facts are rejected with `RUNTIME_OUT_OF_SCOPE`; historical activity evidence does not affect exposure priority or appear in customer detail. Static host-context evidence continues. Runtime exclusion detail doc is archived outside the repo.
 
 ### AI Grid Pipeline (per completed scope)
 
@@ -441,7 +440,7 @@ Host-context evidence (from external CIEM/DSPM/ASM/runtime tools, or analyst att
 
 A separate platform-owner-only track gates what AI Grid content ever reaches tenants, mirroring how NVD/GHSA feeds are trusted inputs but with an explicit sign-off step because policy false positives here can misdirect security teams:
 
-- **Policy catalog & distribution** (`AiGridPolicyCatalogService`) — platform imports immutable policy/correlation *versions* into a catalog, then controls rollout via `platform.ai_grid_policy_distribution` (GA / canary / paused / retired, canary tenant list, pinned version). V67 backfilled the earlier toggle table once; AI Grid is the only runtime authority.
+- **Policy catalog & distribution** (`AiGridPolicyCatalogService`) — platform imports immutable policy/correlation *versions* into a catalog, then controls rollout via `platform.ai_grid_policy_distribution` (GA / canary / paused / retired, canary tenant list, pinned version). AI Grid is the only runtime authority.
 - **Answer-key & precision review** (`AiGridValidationGovernanceService`) — a labeled test-case framework (`ai_grid_answer_key_*`) plus statistical (Wilson-interval) precision/bias review (`ai_grid_precision_reviews`) that a policy version must pass before it can be published.
 - **Release certification** (`AiGridR1CertificationService`, `AiGridR2CertificationService`) — combines platform-computed evidence with externally attested operational gates into an immutable release manifest (`ai_grid_release_manifest_items`, update/delete blocked by a database trigger).
 - **Portfolio** (`AiGridPolicyPortfolioService`) — reads the registered OWASP GenAI LLM Top 10 2026, OWASP Agentic Top 10 2026, and CSA AICM 1.1 control sets; computes tenant breadth/effective coverage for current or retained historical epochs; and maintains a RICE-scored intake backlog. Package grouping uses `release_family`, not an `AGCF-` naming convention. A mapping counts as effective only when its policy is distributed to the tenant, REQUIRED/ENABLED, applicable, and decision-ready; PREVIEW is visible but excluded from effective coverage.
@@ -451,24 +450,24 @@ A separate platform-owner-only track gates what AI Grid content ever reaches ten
 
 The infrastructure slice is implemented, but governed content review remains deliberately fail-closed:
 
-- Platform V2 registers framework versions/controls, typed runtime predicate fields, and one reusable tenant-visibility rule (available + GA, or tenant-listed CANARY/DEV). Catalog, selection, and coverage queries use that rule.
+- The platform V1 baseline registers framework versions/controls, typed runtime predicate fields, and one reusable tenant-visibility rule (available + GA, or tenant-listed CANARY/DEV). Catalog, selection, and coverage queries use that rule.
 - Framework coverage separates mapped breadth from effective coverage, reports PREVIEW independently, includes applicable and decision-ready counts, emits PARTIAL where appropriate, and returns mapping type/rationale/selection/readiness/distribution detail. A paused policy is breadth without effective coverage and carries `POLICY_PAUSED_PENDING_EVIDENCE` rather than a fictional per-subject assessment.
 - New mappings use `DIRECT`, `PARTIAL`, or `SUPPORTING`; legacy `INFORMATIVE` values remain readable as supporting compatibility data but should not be authored into new package versions. Mapping-level version comparison—not package-level uniqueness—is the intended grandfathering boundary.
 - Runtime predicates are allowed to reference only fields in `platform.ai_grid_runtime_field_definitions`; JSONB diagnostics/extensions are not predicate inputs.
-- Tenant V2 adds approved agent-version manifests and component allowlists. Approve/revoke writes and the bulk-enable operation are admin-only sensitive actions. Bulk enable changes only effective selections, audits once, and refreshes projections only when data changed.
+- The tenant V1 baseline includes approved agent-version manifests and component allowlists. Approve/revoke writes and the bulk-enable operation are admin-only sensitive actions. Bulk enable changes only effective selections, audits once, and refreshes projections only when data changed.
 - Release compilation/validation resolves columns by COPY header, preserves existing package/distribution digests, and validates the legacy parity artifact structurally. The 21 live legacy policies are not certified for retirement until each row has an explicit successor or no-successor disposition plus evidence, fingerprint, and selection capture; the validator currently reports them as installed but unverified rather than guessing parity.
 
-Program 1 exit also requires tenant V2 rollout completion for Wave A tenants. This is separate from the Program 2 entry gate below.
+Program 1 exit also requires tenant schema rollout completion for Wave A tenants. This is separate from the Program 2 entry gate below.
 
 ### Operations: Budget, Cadence, and Retention
 
 `AiGridBudgetService` enforces per-tenant daily scan/API-call/byte/processing-time budgets and scan-cadence throttling (new tenants start in an `OBSERVE`-only mode), raising `ai_grid_budget_alerts` on breach. `AiGridRetentionService` classifies evidence into HOT / ARCHIVE / RESTRICTED_EVIDENCE retention tiers, supports legal holds, and runs a purge sweep that leaves a durable audit trail (`ai_grid_retention_purge_audit`) even after the underlying snapshot bodies are deleted. Both are exposed to tenant admins via `AiGridOperationsGovernanceController` (`/api/ai-governance`).
 
-Runtime history is disposable in development. Tenant V17 purges execution records and their dependent data; `AiAgentExecutionRetentionService` no longer schedules runtime retention work.
+Runtime history is disposable in development. The tenant V1 baseline carries no runtime execution data; `AiAgentExecutionRetentionService` keeps its `app.ai-security.runtime.retention-cron` trigger but returns immediately while `AiRuntimeScope` excludes runtime.
 
 ### Runtime detection deferred
 
-Runtime collection, adapter admission, evaluation, readiness, execution APIs, graph overlays, and `AI_RUNTIME` findings are excluded from this release. All `AGCF-RT-*` distributions are unavailable/paused; tenant overrides are disabled. Development runtime records are purged by tenant V17; static policy definitions remain. The adapter scheduler performs no work. Details and rollout are in [runtime exclusion](runtime-telemetry-exclusion.md); external pilot shutdown is a separate operational runbook.
+Runtime collection, adapter admission, evaluation, readiness, execution APIs, graph overlays, and `AI_RUNTIME` findings are excluded from this release. All `AGCF-RT-*` distributions are unavailable/paused; tenant overrides are disabled. The tenant V1 baseline starts without runtime records; static policy definitions remain. The adapter scheduler performs no work. Details and rollout were in the runtime-exclusion doc, now archived outside the repo; external pilot shutdown is a separate operational runbook.
 
 ### Scheduled Jobs (AI Security / AI Grid)
 
@@ -492,9 +491,9 @@ Runtime collection, adapter admission, evaluation, readiness, execution APIs, gr
 
 `AuditEvent` records capture state-changing operations:
 
-- Fields: `tenantId`, `actorId`, `action`, `resourceType`, `resourceId`, `timestamp`, `detail` (JSONB)
-- Stored in the `platform` schema (accessible for cross-tenant admin/support queries)
-- `RequestCorrelationFilter` injects `traceId` and `requestId` into MDC; every structured log line carries both
+- Actual `audit_events` columns: `occurredAt`, `tenant`, `actorUser`/`actorSubject`/`actorRole`, `action`, `targetType`, `targetId`, `requestId`, `sourceIp`, `outcome` (default `SUCCESS`), `detailsJson`
+- Stored per tenant (`audit_events` in the tenant schema baseline)
+- `RequestCorrelationFilter` injects `requestId` (plus HTTP method/path, tenant ID, actor ID/roles) into MDC
 
 ---
 
@@ -503,7 +502,7 @@ Runtime collection, adapter admission, evaluation, readiness, execution APIs, gr
 - GHCR attestation ingestion does not perform cryptographic signature verification.
 - SCCM sync is a full sweep on every run — no incremental delta sync.
 - AWS Discovery is scoped to EC2 instances via SSM only.
-- Azure Discovery mirrors the AWS Discovery architecture but is newer (V40/V41) and less exercised in production.
+- Azure Discovery mirrors the AWS Discovery architecture but is newer and less exercised in production.
 - S.AI Risk Score and S.AI Priority are computed entirely in the browser — not stored in the database.
 - ServiceNow integration is read-heavy (finding → incident creation, then status polling) but not event-driven.
 - Multi-tenant schema-per-tenant isolation is implemented (`TenantAwareDataSource`, `TenantSchemaService`, `ProductionSafetyValidator`) and `TenantService.getDefaultTenant()` is no longer used by controllers or services. Row-level security policies are created on every provisioned tenant schema, but full RLS *enforcement* across existing production tenants remains gated behind `ProductionSafetyValidator.validateRuntimeRoleCannotBypassRls()` pending verification that the production/preprod database runtime role is non-superuser and lacks `BYPASSRLS`.

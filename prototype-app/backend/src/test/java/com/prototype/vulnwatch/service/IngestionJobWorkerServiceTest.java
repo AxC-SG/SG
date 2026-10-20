@@ -1,11 +1,18 @@
 package com.prototype.vulnwatch.service;
 
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.domain.IngestionJob;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +22,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MockitoExtension.class)
 class IngestionJobWorkerServiceTest {
@@ -114,6 +124,67 @@ class IngestionJobWorkerServiceTest {
 
         verify(tenantService, never()).listActiveTenants();
         verify(sbomJobExecutor, never()).execute(org.mockito.ArgumentMatchers.any(Runnable.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {IngestionJobService.JOB_TYPE_GITHUB_REPOSITORY, IngestionJobService.JOB_TYPE_GITHUB_GHCR})
+    void githubBatchRunsOutsideTheJobTransactionAndDoesNotHoldTheDocumentAssetLock(String type) throws Exception {
+        Tenant tenant = tenant("github");
+        IngestionJob job = executionFixture(tenant, type);
+        AtomicBoolean inTransaction = transactionFixture(tenant);
+        when(executionService.execute(tenant, job)).thenAnswer(invocation -> {
+            org.junit.jupiter.api.Assertions.assertFalse(inTransaction.get());
+            return new IngestionJobExecutionService.ExecutionOutcome(null, "{}");
+        });
+        service.execute(tenant.getId(), job.getId());
+        verify(ingestionJobService).recordStarted(job);
+        verify(ingestionJobService).markSucceeded(tenant.getId(), job.getId(), null, "{}");
+        verify(ingestionJobLockService, never()).tryAcquireTransactionLock(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void remoteEndpointRetainsItsJobTransactionAndAssetLock() throws Exception {
+        Tenant tenant = tenant("remote");
+        IngestionJob job = executionFixture(tenant, IngestionJobService.JOB_TYPE_REMOTE_ENDPOINT);
+        AtomicBoolean inTransaction = transactionFixture(tenant);
+        when(ingestionJobLockService.assetLockKey(tenant.getId(), job.getAssetIdentifier())).thenReturn(42L);
+        when(ingestionJobLockService.tryAcquireTransactionLock(42L)).thenReturn(true);
+        when(executionService.execute(tenant, job)).thenAnswer(invocation -> {
+            org.junit.jupiter.api.Assertions.assertTrue(inTransaction.get());
+            return new IngestionJobExecutionService.ExecutionOutcome(null, "{}");
+        });
+        service.execute(tenant.getId(), job.getId());
+        verify(ingestionJobLockService).tryAcquireTransactionLock(42L);
+        verify(ingestionJobService).markSucceeded(tenant.getId(), job.getId(), null, "{}");
+    }
+
+    private IngestionJob executionFixture(Tenant tenant, String type) {
+        IngestionJob job = new IngestionJob();
+        org.springframework.test.util.ReflectionTestUtils.setField(job, "id", UUID.randomUUID());
+        job.setJobType(type);
+        job.setAssetIdentifier("github:acme/app");
+        when(tenantService.resolveTenantUuid(tenant.getId())).thenReturn(tenant);
+        when(ingestionJobService.loadJob(tenant.getId(), job.getId())).thenReturn(job);
+        return job;
+    }
+
+    private AtomicBoolean transactionFixture(Tenant tenant) {
+        AtomicBoolean inTransaction = new AtomicBoolean();
+        doAnswer(invocation -> {
+            Supplier<?> action = invocation.getArgument(1);
+            return action.get();
+        }).when(tenantSchemaExecutionService).run(eq(tenant), any(Supplier.class));
+        doAnswer(invocation -> {
+            Consumer<TransactionStatus> action = invocation.getArgument(0);
+            inTransaction.set(true);
+            try {
+                action.accept(org.mockito.Mockito.mock(TransactionStatus.class));
+            } finally {
+                inTransaction.set(false);
+            }
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+        return inTransaction;
     }
 
     private Tenant tenant(String slug) {

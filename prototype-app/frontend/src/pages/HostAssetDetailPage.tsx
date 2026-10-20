@@ -233,7 +233,7 @@ function RecommendationCell({
       <div className="upgrade-rec-result">
         <div className="upgrade-rec-version">
           <span className={`upgrade-urgency-badge ${urgencyClass}`}>{state.result.urgency}</span>
-          <span className="upgrade-rec-version-text">{state.result.recommendedVersion}</span>
+          <span className="upgrade-rec-version-text">{state.result.recommendedVersion || 'Version not verified'}</span>
         </div>
         <div className="upgrade-rec-notes panel-caption">{state.result.upgradeNotes}</div>
       </div>

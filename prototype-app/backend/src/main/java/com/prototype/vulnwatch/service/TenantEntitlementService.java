@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -54,7 +55,6 @@ public class TenantEntitlementService {
             AI_SECURITY);
 
     private static final String METRIC_KEY_UNKNOWN = "UNKNOWN";
-    private static final String ENFORCE_ALL_SENTINEL = "*";
 
     private static final Logger LOG = LoggerFactory.getLogger(TenantEntitlementService.class);
 
@@ -62,8 +62,8 @@ public class TenantEntitlementService {
      * Rollout mode for the corrected resolver.
      * LEGACY  — return the historical always-enabled result; no corrected computation.
      * SHADOW  — enforce the legacy result, compute the corrected result, emit mismatch telemetry.
-     * ENFORCE — enforce the corrected result for tenants in the allowlist (or all when the
-     *           allowlist contains "*"); every other tenant behaves as SHADOW.
+     * ENFORCE — enforce the corrected result for explicitly named tenant IDs or slugs;
+     *           every other tenant behaves as SHADOW. Wildcards are never a pilot cohort.
      */
     public enum ResolutionMode { LEGACY, SHADOW, ENFORCE }
 
@@ -83,7 +83,7 @@ public class TenantEntitlementService {
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
         this.mode = parseMode(modeRaw);
-        this.enforceTenantAllowlist = parseAllowlist(enforceTenantAllowlistRaw);
+        this.enforceTenantAllowlist = parseEnforcementCohort(enforceTenantAllowlistRaw);
         LOG.info("TenantEntitlementService rollout mode={} enforceAllowlistSize={}",
                 this.mode, this.enforceTenantAllowlist.size());
     }
@@ -236,8 +236,8 @@ public class TenantEntitlementService {
         if (tenant == null || tenant.getId() == null) {
             return false;
         }
-        return enforceTenantAllowlist.contains(ENFORCE_ALL_SENTINEL)
-                || enforceTenantAllowlist.contains(tenant.getId().toString());
+        return enforceTenantAllowlist.contains(tenant.getId().toString())
+                || (tenant.getSlug() != null && enforceTenantAllowlist.contains("slug:" + tenant.getSlug()));
     }
 
     /** Increments the mismatch counter with a bounded key label. Logging is handled by the sweep. */
@@ -255,7 +255,7 @@ public class TenantEntitlementService {
             return ResolutionMode.LEGACY;
         }
         try {
-            return ResolutionMode.valueOf(raw.trim().toUpperCase());
+            return ResolutionMode.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             // Fail fast: a typo in the rollout mode must not silently defeat a planned cutover.
             throw new IllegalStateException(
@@ -263,12 +263,26 @@ public class TenantEntitlementService {
         }
     }
 
-    private Set<String> parseAllowlist(String raw) {
+    public static Set<String> parseEnforcementCohort(String raw) {
         Set<String> values = new HashSet<>();
         if (raw != null) {
             for (String part : raw.split(",")) {
-                String trimmed = part.trim();
+                String trimmed = part.trim().toLowerCase(Locale.ROOT);
                 if (!trimmed.isEmpty()) {
+                    if (trimmed.startsWith("slug:")) {
+                        String slug = trimmed.substring(5);
+                        if (slug.length() > 120 || !slug.matches("[a-z0-9]+(?:-[a-z0-9]+)*")) {
+                            throw new IllegalStateException("Entitlement cohort entries must be canonical tenant UUIDs or slug:<tenant-slug>.");
+                        }
+                    } else {
+                        try {
+                            if (!UUID.fromString(trimmed).toString().equals(trimmed)) {
+                                throw new IllegalArgumentException("Noncanonical UUID");
+                            }
+                        } catch (IllegalArgumentException ex) {
+                            throw new IllegalStateException("Entitlement cohort entries must be canonical tenant UUIDs or slug:<tenant-slug>; wildcards are forbidden.", ex);
+                        }
+                    }
                     values.add(trimmed);
                 }
             }

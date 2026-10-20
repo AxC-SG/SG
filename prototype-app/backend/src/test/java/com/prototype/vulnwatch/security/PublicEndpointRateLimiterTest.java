@@ -22,13 +22,13 @@ class PublicEndpointRateLimiterTest {
     }
 
     @Test
-    void trustsCloudflareAddressOnlyWhenConfigured() {
+    void ignoresCloudflareAddressWithoutAnExplicitTrustedProxyChain() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("10.0.0.5");
         request.addHeader("CF-Connecting-IP", "198.51.100.24");
 
         org.assertj.core.api.Assertions.assertThat(new PublicEndpointRateLimiter(true, true).clientIp(request))
-                .isEqualTo("198.51.100.24");
+                .isEqualTo("10.0.0.5");
         org.assertj.core.api.Assertions.assertThat(new PublicEndpointRateLimiter(true, false).clientIp(request))
                 .isEqualTo("10.0.0.5");
     }

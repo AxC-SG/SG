@@ -426,9 +426,11 @@ describe('PlatformConsolePage tenant privacy boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore Access' }));
     await waitFor(() => expect(updateStatus).toHaveBeenCalledWith(suspendedTenant.id, 'ACTIVE'));
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Tenant' }));
-    await waitFor(() => expect(deleteTenant.mock.calls[0]?.[0]).toBe(activeTenant.id));
+    const deleteButton = screen.getAllByRole('button', { name: 'Delete' })[0]!;
+    expect(deleteButton).toBeDisabled();
+    expect(deleteButton).toHaveAttribute('title', expect.stringContaining('temporarily unavailable'));
+    fireEvent.click(deleteButton);
+    expect(deleteTenant).not.toHaveBeenCalled();
   });
 
   it('sends demo data only when the provisioning option is selected', async () => {

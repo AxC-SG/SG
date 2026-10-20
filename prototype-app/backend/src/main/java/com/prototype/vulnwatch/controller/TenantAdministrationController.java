@@ -163,6 +163,7 @@ public class TenantAdministrationController {
     @DeleteMapping("/platform/tenants/{tenantId}")
     @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public ResponseEntity<Void> deleteTenant(@PathVariable UUID tenantId) {
+        com.prototype.vulnwatch.service.ManualTenantDeletionPolicy.requirePermitted();
         tenantAdministrationService.deleteTenant(tenantId);
         auditEventService.record(
                 "tenant.delete.requested",

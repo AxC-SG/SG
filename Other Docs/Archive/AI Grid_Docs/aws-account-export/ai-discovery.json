@@ -1,0 +1,968 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ai-discovery AWS demo fixtures, reconstructed from the ai_artifacts table. Provisions the 4 Bedrock agents, 3 action-group Lambdas, 2 PII-tagged datastores, 1 guardrail, and supporting IAM roles. WARNING: intentionally creates misconfigured resources (wildcard IAM role, agents without guardrails) as scanner detection fixtures. Deploy ONLY in an isolated demo account. Does NOT create: foundation models (AWS-provided, auto-discovered), Knowledge Bases (need a vector store), or the AgentCore Gateway (no CloudFormation support).",
+  "Parameters": {
+    "ScannerAccountId": {
+      "Type": "String",
+      "Description": "AWS account ID where the ai-discovery backend runs and assumes the scanner role.",
+      "AllowedPattern": "^[0-9]{12}$"
+    },
+    "ScannerExternalId": {
+      "Type": "String",
+      "Default": "ai-discovery-service",
+      "Description": "MUST match the value hardcoded in StsCredentialProvider.externalId(). Changing this breaks the scanner connection."
+    },
+    "ProModel": {
+      "Type": "String",
+      "Default": "amazon.nova-pro-v1:0",
+      "Description": "Model used by claims-triage-agent and prod-support-bot. Verify access is enabled in the Bedrock console."
+    },
+    "LiteModel": {
+      "Type": "String",
+      "Default": "amazon.nova-lite-v1:0",
+      "Description": "Model used by search-rerank-agent and agent-quick-start."
+    },
+    "DocsBucketName": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Leave blank to auto-generate aidiscovery-customer-docs-<accountid>. S3 names are globally unique, so the original name is still held by the old account and cannot be reused."
+    }
+  },
+  "Conditions": {
+    "GenerateBucketName": {
+      "Fn::Equals": [
+        {
+          "Ref": "DocsBucketName"
+        },
+        ""
+      ]
+    }
+  },
+  "Resources": {
+    "AiDiscoveryScannerRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryRole",
+        "Description": "Read-only cross-account role assumed by the ai-discovery scanner.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:aws:iam::${ScannerAccountId}:root"
+                }
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": {
+                    "Ref": "ScannerExternalId"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "AiDiscoveryReadOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:List*",
+                    "bedrock:Get*",
+                    "bedrock-agentcore:List*",
+                    "bedrock-agentcore:Get*",
+                    "iam:GetRole",
+                    "iam:ListRoles",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListRolePolicies",
+                    "iam:GetRolePolicy",
+                    "iam:GetPolicy",
+                    "iam:GetPolicyVersion",
+                    "iam:ListPolicies",
+                    "iam:ListEntitiesForPolicy",
+                    "lambda:ListFunctions",
+                    "lambda:GetFunction",
+                    "lambda:GetFunctionUrlConfig",
+                    "lambda:GetPolicy",
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketTagging",
+                    "s3:GetBucketPolicy",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "dynamodb:ListTables",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:ListTagsOfResource",
+                    "kms:DescribeKey",
+                    "kms:ListAliases",
+                    "logs:DescribeLogGroups",
+                    "cloudtrail:DescribeTrails",
+                    "cloudtrail:GetTrailStatus",
+                    "aoss:ListCollections",
+                    "aoss:BatchGetCollection",
+                    "apigateway:GET",
+                    "ec2:DescribeInstances",
+                    "ec2:DescribeVolumes",
+                    "ec2:DescribeSecurityGroups",
+                    "secretsmanager:ListSecrets",
+                    "secretsmanager:DescribeSecret",
+                    "tag:GetResources"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ClaimsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "claims-db",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "claimId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "claimId",
+            "KeyType": "HASH"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "sensitivity",
+            "Value": "PII"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "Owner",
+            "Value": "ai-discovery"
+          }
+        ]
+      }
+    },
+    "CustomerDocsBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Fn::If": [
+            "GenerateBucketName",
+            {
+              "Fn::Sub": "aidiscovery-customer-docs-${AWS::AccountId}"
+            },
+            {
+              "Ref": "DocsBucketName"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "sensitivity",
+            "Value": "PII"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "Owner",
+            "Value": "ai-discovery"
+          }
+        ]
+      }
+    },
+    "SearchRerankGuardrail": {
+      "Type": "AWS::Bedrock::Guardrail",
+      "Properties": {
+        "Name": "search-rerank-guardrail",
+        "BlockedInputMessaging": "Sorry, the model cannot answer this question.",
+        "BlockedOutputsMessaging": "Sorry, the model cannot answer this question.",
+        "ContentPolicyConfig": {
+          "FiltersConfig": [
+            {
+              "Type": "VIOLENCE",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            },
+            {
+              "Type": "PROMPT_ATTACK",
+              "InputStrength": "HIGH",
+              "OutputStrength": "NONE"
+            },
+            {
+              "Type": "MISCONDUCT",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            },
+            {
+              "Type": "HATE",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            },
+            {
+              "Type": "SEXUAL",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            },
+            {
+              "Type": "INSULTS",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            }
+          ]
+        }
+      }
+    },
+    "BedrockFullAccessRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "BedrockFullAccess",
+        "Description": "TEST FIXTURE - intentionally wildcard. Triggers the wildcard-execution-role rule.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "IntentionallyWildcard",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "bedrock:*",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:*",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:*",
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "BedrockSupportRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "BedrockSupportRole",
+        "Description": "Supervisor agent execution role. Scoped, but the agent has no guardrail attached.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "SupervisorInvoke",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:bedrock:${AWS::Region}::foundation-model/${ProModel}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:InvokeAgent",
+                    "bedrock:GetAgent",
+                    "bedrock:GetAgentAlias"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "BedrockComprehendReadOnlyRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "BedrockComprehendReadOnly",
+        "Description": "Least-privilege control fixture. Rules should NOT fire on the agent using this role.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ScopedInvokeAndComprehend",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:InvokeModel"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:bedrock:${AWS::Region}::foundation-model/${LiteModel}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "comprehend:DetectSentiment",
+                    "comprehend:DetectEntities"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "AgentQuickStartRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryAgentQuickStartRole",
+        "Description": "Replaces the console-generated AmazonBedrockExecutionRoleForAgents_* role with a deterministic name.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "QuickStartInvoke",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:InvokeModel"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:bedrock:${AWS::Region}::foundation-model/${LiteModel}"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ClaimsTriageLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryClaimsTriageLambdaRole",
+        "Description": "Grants DynamoDB READWRITE on claims-db. This is what makes pii_reachable_resources populate with READWRITE access for claims-triage-agent.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ClaimsTableReadWrite",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ClaimsTable",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ProdSupportLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryProdSupportLambdaRole",
+        "Description": "Grants S3 READ on the docs bucket and DynamoDB READ on claims-db, reproducing prod-support-bot's read-only reachability.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "DocsAndClaimsReadOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "CustomerDocsBucket",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${CustomerDocsBucket.Arn}/*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ClaimsTable",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "McpToolsLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryMcpToolsLambdaRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ]
+      }
+    },
+    "ClaimsTriageActionHandler": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "claims-triage-action-handler",
+        "Description": "Action-group executor for claims-triage-agent.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 15,
+        "Role": {
+          "Fn::GetAtt": [
+            "ClaimsTriageLambdaRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "CLAIMS_TABLE": {
+              "Ref": "ClaimsTable"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    fn = event.get('function', 'unknown')\n    return {\n        'messageVersion': '1.0',\n        'response': {\n            'actionGroup': event.get('actionGroup', 'claims-tools'),\n            'function': fn,\n            'functionResponse': {\n                'responseBody': {'TEXT': {'body': 'demo stub: %s' % fn}}\n            }\n        }\n    }\n"
+        }
+      }
+    },
+    "ProdSupportActionHandler": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "prod-support-action-handler",
+        "Description": "Action-group executor for prod-support-bot.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 15,
+        "Role": {
+          "Fn::GetAtt": [
+            "ProdSupportLambdaRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "DOCS_BUCKET": {
+              "Ref": "CustomerDocsBucket"
+            },
+            "CLAIMS_TABLE": {
+              "Ref": "ClaimsTable"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    fn = event.get('function', 'unknown')\n    return {\n        'messageVersion': '1.0',\n        'response': {\n            'actionGroup': event.get('actionGroup', 'support-tools'),\n            'function': fn,\n            'functionResponse': {\n                'responseBody': {'TEXT': {'body': 'demo stub: %s' % fn}}\n            }\n        }\n    }\n"
+        }
+      }
+    },
+    "FsBridgeMcpTools": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "fs-bridge-mcp-tools",
+        "Description": "Second action group on claims-triage-agent. Original name had a random suffix (fs-bridge-mcp-tools-c9nz3); using a deterministic name here.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 15,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpToolsLambdaRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    fn = event.get('function', 'unknown')\n    return {\n        'messageVersion': '1.0',\n        'response': {\n            'actionGroup': event.get('actionGroup', 'fs-bridge'),\n            'function': fn,\n            'functionResponse': {\n                'responseBody': {'TEXT': {'body': 'demo stub: %s' % fn}}\n            }\n        }\n    }\n"
+        }
+      }
+    },
+    "ClaimsTriageInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsTriageActionHandler",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "bedrock.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "ProdSupportInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ProdSupportActionHandler",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "bedrock.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "FsBridgeInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "FsBridgeMcpTools",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "bedrock.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "AgentQuickStart": {
+      "Type": "AWS::Bedrock::Agent",
+      "Properties": {
+        "AgentName": "agent-quick-start",
+        "Description": "Console quick-start agent. No guardrail, no action groups, scoped role. Baseline low-risk fixture.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "AgentQuickStartRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "LiteModel"
+        },
+        "Instruction": "You are a general purpose assistant. Answer the user's questions clearly and concisely, and ask for clarification when a request is ambiguous.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "DISABLED"
+      }
+    },
+    "SearchRerankAgent": {
+      "Type": "AWS::Bedrock::Agent",
+      "Properties": {
+        "AgentName": "search-rerank-agent",
+        "Description": "Control fixture: least-privilege role AND guardrail attached. Should produce no findings.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "BedrockComprehendReadOnlyRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "LiteModel"
+        },
+        "Instruction": "You are a search reranking assistant. Given a user query and a list of candidate documents, reorder the candidates by relevance and return the ranked list with a short justification for each item.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "DISABLED",
+        "GuardrailConfiguration": {
+          "GuardrailIdentifier": {
+            "Fn::GetAtt": [
+              "SearchRerankGuardrail",
+              "GuardrailId"
+            ]
+          },
+          "GuardrailVersion": "DRAFT"
+        }
+      }
+    },
+    "ClaimsTriageAgent": {
+      "Type": "AWS::Bedrock::Agent",
+      "DependsOn": [
+        "ClaimsTriageInvokePermission",
+        "FsBridgeInvokePermission"
+      ],
+      "Properties": {
+        "AgentName": "claims-triage-agent",
+        "Description": "TEST FIXTURE - highest-risk agent: wildcard execution role, READWRITE access to a PII-tagged table, two action groups. Acts as a collaborator under prod-support-bot.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "BedrockFullAccessRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "ProModel"
+        },
+        "Instruction": "You are a claims triage assistant. Review submitted insurance claims, summarize the key facts, and route each claim to the correct downstream queue based on severity and claim type. Use the available tools to look up and update claim records.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "DISABLED",
+        "ActionGroups": [
+          {
+            "ActionGroupName": "claims-tools",
+            "ActionGroupState": "ENABLED",
+            "Description": "Look up and update claim records in the claims table.",
+            "ActionGroupExecutor": {
+              "Lambda": {
+                "Fn::GetAtt": [
+                  "ClaimsTriageActionHandler",
+                  "Arn"
+                ]
+              }
+            },
+            "FunctionSchema": {
+              "Functions": [
+                {
+                  "Name": "lookupClaim",
+                  "Description": "Look up a claim record by its claim identifier.",
+                  "Parameters": {
+                    "claimId": {
+                      "Type": "string",
+                      "Description": "The claim identifier to look up.",
+                      "Required": true
+                    }
+                  }
+                },
+                {
+                  "Name": "updateClaimStatus",
+                  "Description": "Update the routing status of an existing claim.",
+                  "Parameters": {
+                    "claimId": {
+                      "Type": "string",
+                      "Description": "The claim identifier to update.",
+                      "Required": true
+                    },
+                    "status": {
+                      "Type": "string",
+                      "Description": "The new status value.",
+                      "Required": true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "ActionGroupName": "fs-bridge",
+            "ActionGroupState": "ENABLED",
+            "Description": "Filesystem bridge tools exposed to the agent.",
+            "ActionGroupExecutor": {
+              "Lambda": {
+                "Fn::GetAtt": [
+                  "FsBridgeMcpTools",
+                  "Arn"
+                ]
+              }
+            },
+            "FunctionSchema": {
+              "Functions": [
+                {
+                  "Name": "readDocument",
+                  "Description": "Read a supporting document associated with a claim.",
+                  "Parameters": {
+                    "path": {
+                      "Type": "string",
+                      "Description": "Document path to read.",
+                      "Required": true
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ClaimsTriageAgentAlias": {
+      "Type": "AWS::Bedrock::AgentAlias",
+      "Properties": {
+        "AgentId": {
+          "Fn::GetAtt": [
+            "ClaimsTriageAgent",
+            "AgentId"
+          ]
+        },
+        "AgentAliasName": "colab-target",
+        "Description": "Alias used by prod-support-bot to invoke this agent as a collaborator."
+      },
+      "Metadata": {
+        "Comment": "Required for multi-agent collaboration. A supervisor references collaborators by alias ARN, not agent ID."
+      }
+    },
+    "ProdSupportBot": {
+      "Type": "AWS::Bedrock::Agent",
+      "DependsOn": [
+        "ProdSupportInvokePermission"
+      ],
+      "Properties": {
+        "AgentName": "prod-support-bot",
+        "Description": "TEST FIXTURE - SUPERVISOR agent with a collaborator and no guardrail attached. Reproduces the multi-agent collaboration topology.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "BedrockSupportRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "ProModel"
+        },
+        "Instruction": "You are a production support supervisor. Triage incoming support requests, gather the relevant claim context from your collaborator agents, and produce a consolidated summary with a recommended next action.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "SUPERVISOR",
+        "AgentCollaborators": [
+          {
+            "CollaboratorName": "colab_prod_claim",
+            "CollaborationInstruction": "get relevant details",
+            "RelayConversationHistory": "TO_COLLABORATOR",
+            "AgentDescriptor": {
+              "AliasArn": {
+                "Fn::GetAtt": [
+                  "ClaimsTriageAgentAlias",
+                  "AgentAliasArn"
+                ]
+              }
+            }
+          }
+        ],
+        "ActionGroups": [
+          {
+            "ActionGroupName": "support-tools",
+            "ActionGroupState": "ENABLED",
+            "Description": "Read-only support lookups across docs and claims.",
+            "ActionGroupExecutor": {
+              "Lambda": {
+                "Fn::GetAtt": [
+                  "ProdSupportActionHandler",
+                  "Arn"
+                ]
+              }
+            },
+            "FunctionSchema": {
+              "Functions": [
+                {
+                  "Name": "searchDocs",
+                  "Description": "Search customer documentation for a keyword.",
+                  "Parameters": {
+                    "query": {
+                      "Type": "string",
+                      "Description": "Search keyword.",
+                      "Required": true
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ScannerRoleArn": {
+      "Description": "Register this as an AwsDiscoveryTarget in the ai-discovery backend.",
+      "Value": {
+        "Fn::GetAtt": [
+          "AiDiscoveryScannerRole",
+          "Arn"
+        ]
+      }
+    },
+    "ScannerExternalIdUsed": {
+      "Description": "Must match StsCredentialProvider's hardcoded external ID.",
+      "Value": {
+        "Ref": "ScannerExternalId"
+      }
+    },
+    "DocsBucket": {
+      "Description": "PII-tagged S3 bucket. Name differs from the original because S3 names are globally unique.",
+      "Value": {
+        "Ref": "CustomerDocsBucket"
+      }
+    },
+    "ClaimsTableName": {
+      "Description": "PII-tagged DynamoDB table.",
+      "Value": {
+        "Ref": "ClaimsTable"
+      }
+    },
+    "ExpectedFindings": {
+      "Description": "What the scanner should report after deploying this stack.",
+      "Value": "claims-triage-agent: wildcard IAM role + READWRITE to PII resource + no-guardrail-on-sensitive-agent. prod-support-bot: no-guardrail-on-sensitive-agent (READ access to PII resources) + supervisor collaboration. search-rerank-agent and agent-quick-start: expected clean."
+    },
+    "NotCreatedByThisTemplate": {
+      "Description": "Manual steps required to fully match the old account.",
+      "Value": "1) Foundation models are AWS-provided and auto-discovered - nothing to create, but verify model access is enabled for the Nova models. 2) Knowledge Bases (customer-kb, knowledge-base-quick-start) need a vector store and must be created manually. 3) The AgentCore Gateway has no CloudFormation resource type - create via CLI and use CUSTOM_JWT, not AWS_IAM, as the authorizer type. 4) The EC2 Ollama host is optional and was already INACTIVE."
+    }
+  }
+}
+

@@ -31,8 +31,7 @@ public class CopilotStudioDataverseClient {
     private final int maxPages;
     private final int maxAttempts;
     private final long retryBackoffMs;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15))
-            .followRedirects(HttpClient.Redirect.NEVER).build();
+    private final com.prototype.vulnwatch.client.http.CheckedHttpTransport http = new com.prototype.vulnwatch.client.http.CheckedHttpTransport();
 
     public CopilotStudioDataverseClient(ObjectMapper json, AiSecurityDigestService digests,
                                         AiGridProviderCallCounter providerCalls,
@@ -127,8 +126,8 @@ public class CopilotStudioDataverseClient {
                 AccessToken token = credential.getToken(new TokenRequestContext().addScopes(uri.getScheme() + "://" + uri.getHost() + "/.default")).block(Duration.ofSeconds(20));
                 if (token == null || token.getToken() == null || token.getToken().isBlank()) throw new DataverseException(401, "Dataverse token unavailable");
                 providerCalls.increment();
-                HttpResponse<String> response = http.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
-                        .header("Authorization", "Bearer " + token.getToken()).header("Accept", "application/json").GET().build(), HttpResponse.BodyHandlers.ofString());
+                var response = http.sendString(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                        .header("Authorization", "Bearer " + token.getToken()).header("Accept", "application/json").GET().build(), MAX_BODY_CHARS);
                 if (response.statusCode() < 200 || response.statusCode() >= 300) throw new DataverseException(response.statusCode(), "Dataverse metadata request failed");
                 if (response.body().length() > MAX_BODY_CHARS) throw new DataverseException(413, "Dataverse response budget exceeded");
                 return json.readTree(response.body());

@@ -66,6 +66,8 @@ public class AzureDiscoveryTargetService {
 
     @Transactional
     public AzureDiscoveryTargetResponse create(Tenant tenant, AzureDiscoveryTargetRequest request) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryConfig config = requireConfig(tenant);
         tenantQuotaService.assertCanCreateConnector(tenant, "azure-target");
         AzureDiscoveryTarget target = new AzureDiscoveryTarget();
@@ -77,6 +79,8 @@ public class AzureDiscoveryTargetService {
 
     @Transactional
     public AzureDiscoveryTargetResponse update(Tenant tenant, UUID targetId, AzureDiscoveryTargetRequest request) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryTarget target = requireTarget(tenant, targetId);
         apply(target, request, target.getConfig());
         target.touch();
@@ -85,12 +89,16 @@ public class AzureDiscoveryTargetService {
 
     @Transactional
     public void delete(Tenant tenant, UUID targetId) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryTarget target = requireTarget(tenant, targetId);
         targetRepository.delete(target);
     }
 
     @Transactional
     public AzureConnectionTestResponse test(Tenant tenant, UUID targetId) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryTarget target = requireTarget(tenant, targetId);
         Instant testedAt = Instant.now();
         TokenCredential credential;
@@ -109,6 +117,8 @@ public class AzureDiscoveryTargetService {
 
     @Transactional
     public void ensureLegacyTarget(AzureDiscoveryConfig config) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         if (config == null || config.getTenant() == null || targetRepository.countByConfig(config) > 0) {
             return;
         }

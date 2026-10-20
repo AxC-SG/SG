@@ -37,10 +37,11 @@ Every `/api/**` request goes through `ApiKeyAuthenticationFilter` (runs before `
 - Grants `ROLE_OPERATOR`, `ROLE_SECURITY_ANALYST` to all callers.
 - `X-Creator-Key` (or an unconfigured creator key) additionally grants `ROLE_CREATOR`, `ROLE_PLATFORM_OWNER`, `ROLE_TENANT_ADMIN`, `ROLE_INVENTORY_ADMIN`.
 - `X-User-ID` header sets the user identity; defaults to `APP_DEFAULT_USER_ID` (`local-analyst`).
-- Local defaults: api-key `change-me-in-prod`, no creator-key (all callers get creator-level access).
+- Defaults: `APP_API_KEY` is empty, so API-key requests are rejected ("API key is not configured") until it is set; with no creator key configured, every valid API-key caller gets creator-level access. `change-me-in-prod` is only the frontend dev-mode fallback.
 
 **JWT Bearer auth** (`Authorization: Bearer <token>`):
-- `JwtDecoder` bean is only created when `APP_JWT_ISSUER_URI` is set (see `JwtDecoderConfig`).
+- `APP_JWT_AUTH_MODE` selects `LOCAL` or `EXTERNAL`. `LOCAL` requires a 32-byte HMAC secret and local issuer, without external issuer/JWK settings. `EXTERNAL` requires an issuer URI and no local HMAC secret; a JWK URI is optional. Ambiguous combinations fail startup. See `JwtDecoderConfig` and `RuntimeConfigurationValidator`.
+- Both modes validate issuer, audience and `token_use=access`. Local login/token issuance is available only in `LOCAL` mode.
 - Decoded JWT is passed to `JwtTenantAuthenticationService.authenticate()`, which: resolves or creates the `platform.app_users` record, extracts roles from `APP_JWT_ROLES_CLAIM` (default `roles`), also handles namespaced claims ending in `/roles`, sets `TenantContext` from JWT tenant claims.
 - The resulting `AuthenticatedTenantActor` is stored as a `TenantAuthenticationDetails` on the `SecurityContext`.
 
@@ -107,7 +108,7 @@ The customer-facing assessment vocabulary is derived centrally by `AiGridFinding
 
 ### Runtime telemetry deferred
 
-Runtime event/log collection, execution evaluation, curated activity summaries, readiness reporting, and findings are outside the current release. `AiRuntimeScope` hard-blocks runtime admission/read paths even when a flag is enabled. The scheduled adapter worker never claims work, static scans skip the runtime evaluator, and Copilot permission checks never query transcripts. Startup rejects an enabled runtime flag in every environment. Fresh tenant V1 starts without runtime history and the retention scheduler is disabled; see `../docs/runtime-telemetry-exclusion.md` for migrations, endpoints, and rollout.
+Runtime event/log collection, execution evaluation, curated activity summaries, readiness reporting, and findings are outside the current release. `AiRuntimeScope` hard-blocks runtime admission/read paths even when a flag is enabled. The scheduled adapter worker never claims work, static scans skip the runtime evaluator, and Copilot permission checks never query transcripts. Startup rejects an enabled runtime flag in every environment. Fresh tenant V1 starts without runtime history and the retention scheduler is disabled; the standalone runtime-exclusion doc was archived outside the repo under `Other Docs/Archive/`; see `../docs/business-logic-guide.md#ai-security--ai-grid-pipeline`.
 
 
 ## Database migrations
@@ -116,7 +117,7 @@ There are **two independent Flyway migration lines**, each restarted at a fresh 
 
 - **Platform/public:** `src/main/resources/db/migration/postgres_reset/V1__platform_schema.sql` owns public/platform DDL, migration-owned reference seeds, and the empty `tenant_default` schema. Every file starts with `-- migration-guard: platform-only`. No AGCF-RT distributions are seeded; any catalog distributions with runtime evaluation modes are unavailable, DISABLED, PAUSED, and unpinned.
 - **Tenant:** `src/main/resources/db/migration/tenant/V1__tenant_schema.sql` owns the complete tenant DDL, RLS, constraints, and budget seed. Each tenant has its own `tenant_schema_history`, applied by the tenant control plane or `ProductionBootstrapCli`; application startup Flyway does not apply this line. The baseline uses `${tenantSchema}` and `${tenantId}` and starts without customer/runtime data.
-- Both current targets are **1**, independently resolved by `PackagedMigrationCatalog`. Future migrations start at V2 and update `MigrationCatalogTest`. `app.tenancy.minimum-compatible-schema-version` remains 1.
+- Current packaged targets are platform **V5** and tenant **V5**, independently resolved by `PackagedMigrationCatalog`. The next platform migration is V6 and the next tenant migration is V6; each must update `MigrationCatalogTest`. This binary requires tenant V5, including bounded retention progress; a configured lower minimum cannot bypass that floor. Additive-schema rollback compatibility still requires qualification before release.
 - This explicitly authorized development reset includes all changes from the former platform V1–V10 and tenant V1–V17 histories. Use a fresh database and `mvn clean` to remove stale packaged migration resources. Baselines are not idempotent repair scripts: do not replay them against existing tables or use `flyway:repair` to adopt the reset. `baseline-on-migrate` stays false.
 - Outside this one-time reset, never edit an already-applied migration; add the next version instead.
 
@@ -127,8 +128,11 @@ Set in `application-local.yml` or as env vars:
 | Env var | Purpose | Local default |
 |---|---|---|
 | `DB_URL` | JDBC URL | `jdbc:postgresql://localhost:5432/vulnwatch` |
-| `APP_JWT_ISSUER_URI` | OIDC issuer; enables JWT auth when set | (empty = disabled) |
-| `APP_SECURITY_JWT_AUDIENCE` | Expected JWT audience | (empty) |
+| `APP_JWT_AUTH_MODE` | Explicit `LOCAL` or `EXTERNAL` contract | `LOCAL` |
+| `APP_JWT_LOCAL_ISSUER` | Issuer for locally issued access tokens | `urn:scoutgrid:local` |
+| `APP_JWT_HMAC_SECRET` | Local signing/verification secret, at least 32 bytes | (empty; must be configured for local tokens) |
+| `APP_JWT_ISSUER_URI` | Required issuer for `EXTERNAL` mode | (empty) |
+| `APP_SECURITY_JWT_AUDIENCE` | Required expected access-token audience | `scoutgrid-api` |
 | `APP_JWT_ROLES_CLAIM` | Claim name for roles in JWT | `roles` |
 | `APP_ALLOW_HEADER_TENANT_SELECTION` | Trust `X-Tenant-ID` header | `false` (local: `true`) |
 | `APP_REQUIRE_TENANT_CONTEXT` | Enforce tenant context on every request | `true` (local: `false`) |
@@ -168,19 +172,19 @@ com.prototype.vulnwatch/
                # JwtDecoderConfig, TenantAwareDataSource, ProductionSafetyValidator,
                # TenantResolutionFilter, WebConfig, TenantSchemaReadinessHealthIndicator,
                # TenantSchemaMigratorRunner (21 files)
-  controller/  # 45 REST controllers under /api/**, incl. FixIntelligenceController
-  service/     # 251 business-logic services, incl. subpackages cbom/, cmdbingestion/,
+  controller/  # 48 REST controllers under /api/**, incl. FixIntelligenceController
+  service/     # 280 business-logic services, incl. subpackages cbom/, cmdbingestion/,
                # sbomingestion/, vulningestion/ (feed sync + the @Scheduled entry points)
-  domain/      # 128 JPA entities
-  dto/         # 271 API request/response objects, incl. dto/patch/ (unwired scaffolding)
-  repo/        # 83 Spring Data JPA repositories
-  client/      # 22 external API clients (NVD, EUVD, JVN, GHSA, CSAF, EPSS, GitHub, ServiceNow, AWS, Azure…)
+  domain/      # 153 JPA entities
+  dto/         # 283 API request/response objects, incl. dto/patch/ (unwired scaffolding)
+  repo/        # 97 Spring Data JPA repositories
+  client/      # 25 external API client files, incl. client/http/ (NVD, EUVD, JVN, GHSA, CSAF, EPSS, GitHub, ServiceNow, AWS, Azure…)
   security/    # SensitiveTenantAction annotation + interceptor, PasswordSetupCookieService,
                # PublicEndpointRateLimiter (5 files)
   util/        # CPE handling, version comparison, SBOM parsing (6 files)
   migration/   # Standalone (non-Spring) production bootstrap: ProductionBootstrapCli,
                # PlatformOwnerSetupLinkIssuer, TenantSchemaMigrationCli, TenantSchemaFingerprint,
-               # PackagedMigrationCatalog (5 files)
+               # PackagedMigrationCatalog, TenantSearchPathFlywayCallback (6 files)
   web/         # PlatformAdminRequestPaths — request-path classifier; no call site found
                # outside its own unit test as of this writing, verify before relying on it
   tools/       # LegacyGithubSyncRunBackfillTool — standalone main() CLI
@@ -188,7 +192,7 @@ com.prototype.vulnwatch/
 com.prototype.vulnwatch.aisecurity/   # separate top-level package, NOT under the tree above
   controller/  # 19 REST controllers — AI Security / AI Grid (posture management for AI/ML
                # resources discovered in AWS Bedrock / Azure AI Foundry)
-  service/     # 63 services — snapshot/facts/ownership/systems/policy-assessment/exposure-
+  service/     # 71 services — snapshot/facts/ownership/systems/policy-assessment/exposure-
                # correlation pipeline + platform governance (answer-key, release certification,
                # policy rollout/deprecation)
   model/, policy/, aws/, azure/, copilot/  # contracts, predicate engine, AWS/Azure/Copilot Studio discovery clients
@@ -216,4 +220,4 @@ The permanent `scout-backend` web service (`render.yaml`, repo root) never runs 
 
 ## AI-BOM correlation boundary
 
-Post-reset tenant V2 adds link lifecycle, dependency paths, and independent gaps; platform V1 and tenant V1 remain immutable. `AiBomResourceVulnerabilityCorrelationService` establishes tenant context before calling the Spring-proxied, per-resource `AiBomCorrelationReconciler`. Lock order is source then resource; upload promotion and document soft deletion take the same source lock, held until commit. Captured revision mismatch aborts without retirement. Never create or mutate canonical findings from this reconciler. Current readers use ACTIVE associations independently of finding status. Observation/backfill and missing-subject repair run with retirement disabled by default; the release owner records representative tenant evidence before enabling retirement. `AI_BOM_CORRELATION_WRITES_ENABLED=false` disables association writes for rollback while canonical software processing continues.
+Post-reset tenant V2 adds link lifecycle, dependency paths, and independent gaps; platform V1 and tenant V1 remain immutable (V2 is the first post-reset tenant migration). `AiBomResourceVulnerabilityCorrelationService` establishes tenant context before calling the Spring-proxied, per-resource `AiBomCorrelationReconciler`. Lock order is source then resource; upload promotion and document soft deletion take the same source lock, held until commit. Captured revision mismatch aborts without retirement. Never create or mutate canonical findings from this reconciler. Current readers use ACTIVE associations independently of finding status. Observation/backfill and missing-subject repair run with retirement disabled by default; the release owner records representative tenant evidence before enabling retirement. `AI_BOM_CORRELATION_WRITES_ENABLED=false` disables association writes for rollback while canonical software processing continues.

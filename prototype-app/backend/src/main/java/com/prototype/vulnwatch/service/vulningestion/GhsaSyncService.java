@@ -125,16 +125,12 @@ public class GhsaSyncService {
     }
 
     public void runScheduledSync() {
-        syncGhsa();
+        triggerGhsaSync();
     }
 
     public SyncTriggerResponse triggerGhsaSync() {
         VulnerabilitySyncRunService.TriggerDecision decision =
                 syncRunService.prepareQueuedRun("GHSA", List.of("GHSA"));
-        if (decision.queuedNewRun()) {
-            ingestionExecutor.execute(() ->
-                    syncRunService.markRunningIfQueued(decision.run().getId()).ifPresent(this::executeGhsaSync));
-        }
         return decision.toResponse("GHSA sync is already in progress", "GHSA sync queued");
     }
 
@@ -437,7 +433,7 @@ public class GhsaSyncService {
         headers.set(HttpHeaders.ACCEPT, "application/vnd.github+json");
         headers.set("X-GitHub-Api-Version", GHSA_API_VERSION);
         headers.set(HttpHeaders.USER_AGENT, GITHUB_USER_AGENT);
-        githubTokenProvider.applyBearerAuth(headers);
+        githubTokenProvider.applyPlatformFeedBearerAuth(headers);
         try {
             return outboundHttpClient.exchange(
                     URI.create(url).toString(),

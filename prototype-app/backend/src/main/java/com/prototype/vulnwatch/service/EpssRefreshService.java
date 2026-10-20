@@ -65,6 +65,7 @@ public class EpssRefreshService {
     private final OutboundHttpClient outboundHttpClient;
     private final OutboundPolicyFactory outboundPolicyFactory;
     private final ObjectMapper objectMapper;
+    private volatile RefreshStatus lastRefresh = new RefreshStatus("NOT_RUN", 0, 0, 0, null);
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
 
     public EpssRefreshService(
@@ -88,42 +89,83 @@ public class EpssRefreshService {
                 : backgroundTaskExecutionPolicy;
     }
 
+    private com.prototype.vulnwatch.service.vulningestion.VulnerabilitySyncRunService durableRuns;
+    private org.springframework.transaction.support.TransactionTemplate mutations;
+    @Value("${app.epss.refresh-cron:0 15 3 * * *}") private String refreshCron;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureDurableRuns(com.prototype.vulnwatch.service.vulningestion.VulnerabilitySyncRunService runs,
+                              org.springframework.transaction.PlatformTransactionManager manager) {
+        durableRuns = runs;
+        mutations = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
+
+    public void executeQueuedRun(UUID id) {
+        if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("epss.execute")) return;
+        var run = durableRuns.markRunning(id);
+        try {
+            RefreshStatus result = refreshAllInPlatformContext();
+            durableRuns.completeRun(run, "COMPLETED".equals(result.status()) ? "completed" : "partial",
+                    result.attempted(), 0, result.updated(), result.unavailable(),
+                    "COMPLETED".equals(result.status()) ? null : result.status());
+        } catch (com.prototype.vulnwatch.service.vulningestion.VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (RuntimeException failure) {
+            durableRuns.completeRun(run, "failed", 0, 0, 0, 1, failure.getMessage());
+        }
+    }
+
     /**
      * Daily refresh at 03:15 UTC — runs after the FIRST.org daily publication window.
      * Cron is configurable via {@code app.epss.refresh-cron}.
      */
-    @Scheduled(cron = "${app.epss.refresh-cron:0 15 3 * * *}")
+    @Scheduled(zone = "UTC", cron = "${app.epss.refresh-cron:0 15 3 * * *}")
     public void refreshAll() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("epss.refresh-all")) {
             return;
         }
-        TenantContext.runAsPlatform(this::refreshAllInPlatformContext);
-    }
-
-    private void refreshAllInPlatformContext() {
         if (!enabled) {
-            LOG.debug("EPSS refresh is disabled; skipping");
+            lastRefresh = new RefreshStatus("DISABLED", 0, 0, 0, Instant.now());
             return;
         }
-        LOG.info("Starting daily EPSS refresh");
-        int updated = 0;
-        int page = 0;
-        Instant staleBefore = Instant.now().minus(25, ChronoUnit.HOURS);
-
-        while (true) {
-            Page<Vulnerability> stale = vulnerabilityRepository.findStaleEpssRows(
-                    staleBefore, PageRequest.of(page, batchSize));
-            if (stale.isEmpty()) {
-                break;
-            }
-            updated += refreshBatch(stale.getContent());
-            if (!stale.hasNext()) {
-                break;
-            }
-            page++;
-        }
-        LOG.info("EPSS refresh complete — updated {} vulnerabilities", updated);
+        Instant occurrence = ScheduleOccurrence.due(refreshCron, Instant.now());
+        if (occurrence == null) { LOG.warn("EPSS callback missed its one-minute admission window"); return; }
+        TenantContext.runAsPlatform(() -> durableRuns.prepareScheduledRun("EPSS", occurrence));
     }
+
+    private RefreshStatus refreshAllInPlatformContext() {
+        if (!enabled) {
+            lastRefresh = new RefreshStatus("DISABLED", 0, 0, 0, Instant.now());
+            LOG.debug("EPSS refresh is disabled; skipping");
+            return lastRefresh;
+        }
+        LOG.info("Starting daily EPSS refresh");
+        int updated = 0, attempted = 0, incomplete = 0;
+        Instant staleBefore = Instant.now().minus(25, ChronoUnit.HOURS);
+        UUID upperId = vulnerabilityRepository.findTopByOrderByIdDesc().map(Vulnerability::getId).orElse(null);
+        UUID afterId = null;
+        if (upperId != null) {
+            while (true) {
+                List<Vulnerability> stale = vulnerabilityRepository.findStaleEpssRowsAfter(
+                        staleBefore, afterId, upperId, PageRequest.of(0, Math.max(1, Math.min(100, batchSize))));
+                if (stale.isEmpty()) break;
+                int batchUpdated = refreshBatch(stale);
+                updated += batchUpdated;
+                attempted += stale.size();
+                incomplete += stale.size() - batchUpdated;
+                afterId = stale.get(stale.size() - 1).getId();
+            }
+        }
+        RefreshStatus result = new RefreshStatus(incomplete == 0 ? "COMPLETED" : "INCOMPLETE",
+                attempted, updated, incomplete, Instant.now());
+        lastRefresh = result;
+        LOG.info("EPSS refresh {} — attempted {} updated {} unavailable {}",
+                result.status(), attempted, updated, incomplete);
+        return result;
+    }
+
+    public RefreshStatus lastRefresh() { return lastRefresh; }
+    public record RefreshStatus(String status, int attempted, int updated, int unavailable, Instant completedAt) {}
 
     // -------------------------------------------------------------------------
     // Visible for testing
@@ -201,9 +243,9 @@ public class EpssRefreshService {
                 updated++;
             }
         }
-        if (!toSave.isEmpty()) {
-            vulnerabilityRepository.saveAll(toSave);
-        }
+        mutations.executeWithoutResult(status -> {
+            if (!toSave.isEmpty()) vulnerabilityRepository.saveAll(toSave);
+        });
         if (!changedVulnerabilityIds.isEmpty()) {
             findingDeltaQueueService.enqueueCveMetadataDeltas(changedVulnerabilityIds, "epss-refresh");
         }
@@ -225,7 +267,8 @@ public class EpssRefreshService {
                     continue;
                 }
                 try {
-                    result.put(cve, Double.parseDouble(epssText));
+                    double score = Double.parseDouble(epssText);
+                    if (Double.isFinite(score) && score >= 0 && score <= 1) result.put(cve, score);
                 } catch (NumberFormatException ignored) {
                     // skip malformed entries
                 }

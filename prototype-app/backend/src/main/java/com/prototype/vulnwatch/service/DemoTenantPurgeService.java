@@ -62,6 +62,7 @@ public class DemoTenantPurgeService {
     }
 
     public void deleteTenant(UUID tenantId, Instant now) {
+        ManualTenantDeletionPolicy.requirePermitted();
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Unknown tenant: " + tenantId));
         if (TenantService.DEFAULT_TENANT_NAME.equalsIgnoreCase(tenant.getName())) {

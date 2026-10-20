@@ -16,19 +16,19 @@ import org.mockito.ArgumentCaptor;
 
 class TenantInviteEmailServiceTest {
 
-    private final ResendEmailClient resendEmailClient = org.mockito.Mockito.mock(ResendEmailClient.class);
+    private final InvitationEmailOutboxService resendEmailClient = org.mockito.Mockito.mock(InvitationEmailOutboxService.class);
 
     @Test
     void sendInvite_buildsExpectedMessageWithTrimmedBaseUrlAndTags() {
         TenantInviteEmailService service = new TenantInviteEmailService(resendEmailClient, "https://app.scout.ai///");
         TenantUserInvite invite = invite("Alice Example", "alice@example.com");
-        when(resendEmailClient.send(any())).thenReturn(ResendEmailClient.DeliveryResult.sent("provider-123"));
+        when(resendEmailClient.enqueue(any(), any(), any(), any(), any())).thenReturn(ResendEmailClient.DeliveryResult.sent("provider-123"));
 
         ResendEmailClient.DeliveryResult result = service.sendInvite(invite);
 
         assertEquals(ResendEmailClient.DeliveryState.SENT, result.state());
         ArgumentCaptor<ResendEmailClient.EmailMessage> captor = ArgumentCaptor.forClass(ResendEmailClient.EmailMessage.class);
-        verify(resendEmailClient).send(captor.capture());
+        verify(resendEmailClient).enqueue(any(), any(), any(), any(), captor.capture());
         ResendEmailClient.EmailMessage message = captor.getValue();
         assertEquals("alice@example.com", message.to());
         assertEquals("You have been invited to Acme Corp on Scout.ai", message.subject());
@@ -36,27 +36,27 @@ class TenantInviteEmailServiceTest {
         assertEquals("tenant_user_invite", message.tags().get("flow"));
         assertEquals(invite.getTenant().getId().toString(), message.tags().get("tenant_id"));
         assertEquals(invite.getId().toString(), message.tags().get("invite_id"));
-        assertTrue(message.html().contains("https://app.scout.ai/tenant-invite/token-123"));
+        assertTrue(message.html().contains("https://app.scout.ai/tenant-invite#token=token-123"));
         assertTrue(message.html().contains("https://app.scout.ai/login"));
         assertTrue(message.html().contains("Invite expires:</strong>"));
         assertTrue(message.html().contains("2026"));
         assertTrue(message.text().contains("Hello Alice Example,"));
-        assertTrue(message.text().contains("Accept your invite: https://app.scout.ai/tenant-invite/token-123"));
+        assertTrue(message.text().contains("Accept your invite: https://app.scout.ai/tenant-invite#token=token-123"));
     }
 
     @Test
     void sendInvite_usesEmailAsDisplayNameAndEscapesHtmlWhenNameMissing() {
         TenantInviteEmailService service = new TenantInviteEmailService(resendEmailClient, "");
         TenantUserInvite invite = invite("  ", "sam<&>@example.com");
-        when(resendEmailClient.send(any())).thenReturn(ResendEmailClient.DeliveryResult.skipped("not configured"));
+        when(resendEmailClient.enqueue(any(), any(), any(), any(), any())).thenReturn(ResendEmailClient.DeliveryResult.skipped("not configured"));
 
         service.sendInvite(invite);
 
         ArgumentCaptor<ResendEmailClient.EmailMessage> captor = ArgumentCaptor.forClass(ResendEmailClient.EmailMessage.class);
-        verify(resendEmailClient).send(captor.capture());
+        verify(resendEmailClient).enqueue(any(), any(), any(), any(), captor.capture());
         ResendEmailClient.EmailMessage message = captor.getValue();
         assertTrue(message.html().contains("Hello sam&lt;&amp;&gt;@example.com,"));
-        assertTrue(message.html().contains("http://localhost:5173/tenant-invite/token-123"));
+        assertTrue(message.html().contains("http://localhost:5173/tenant-invite#token=token-123"));
         assertTrue(message.text().contains("Hello sam<&>@example.com,"));
     }
 

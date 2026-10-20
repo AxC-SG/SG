@@ -119,7 +119,7 @@ public class TenantSupportGrantService {
 
     @Transactional
     public TenantSupportGrantResponse accept(UUID grantId, String platformSubject) {
-        TenantSupportGrant grant = tenantSupportGrantRepository.findById(grantId)
+        TenantSupportGrant grant = tenantSupportGrantRepository.findByIdForUpdate(grantId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Support grant not found"));
         refreshExpiredStatus(grant);
         String normalizedSubject = normalizeSubject(platformSubject);
@@ -135,6 +135,9 @@ public class TenantSupportGrantService {
         }
         AppUser acceptedBy = appUserRepository.findByExternalSubject(normalizedSubject)
                 .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "Authenticated platform owner is not registered"));
+        if (!isCurrentActiveOwner(acceptedBy)) {
+            throw new ResponseStatusException(FORBIDDEN, "Current active platform-owner access is required");
+        }
         grant.setAcceptedBy(acceptedBy);
         if (grant.getAcceptedAt() == null) {
             grant.setAcceptedAt(Instant.now());
@@ -146,7 +149,7 @@ public class TenantSupportGrantService {
 
     @Transactional
     public TenantSupportGrantResponse revoke(UUID tenantId, UUID grantId, String revokedBySubject) {
-        TenantSupportGrant grant = tenantSupportGrantRepository.findById(grantId)
+        TenantSupportGrant grant = tenantSupportGrantRepository.findByIdForUpdate(grantId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Support grant not found"));
         if (!grant.getTenant().getId().equals(tenantId)) {
             throw new ResponseStatusException(FORBIDDEN, "Support grant does not belong to the selected tenant");
@@ -162,6 +165,9 @@ public class TenantSupportGrantService {
 
     @Transactional(readOnly = true)
     public List<TenantSupportGrant> listActiveGrantsForPlatformOwner(String subject) {
+        if (!hasCurrentOwnerAuthority(subject)) {
+            return List.of();
+        }
         return tenantSupportGrantRepository.findActiveByInvitedPlatformSubject(normalizeSubject(subject), Instant.now()).stream()
                 .map(this::refreshExpiredStatus)
                 .filter(grant -> "ACTIVE".equalsIgnoreCase(grant.getStatus()))
@@ -171,6 +177,9 @@ public class TenantSupportGrantService {
 
     @Transactional(readOnly = true)
     public Optional<TenantSupportGrant> findActiveGrant(String subject, UUID tenantId) {
+        if (!hasCurrentOwnerAuthority(subject)) {
+            return Optional.empty();
+        }
         return tenantSupportGrantRepository.findActiveByInvitedPlatformSubjectAndTenantId(
                         normalizeSubject(subject),
                         tenantId,
@@ -186,6 +195,16 @@ public class TenantSupportGrantService {
     @Transactional(readOnly = true)
     public boolean hasActiveGrant(String subject, UUID tenantId) {
         return findActiveGrant(subject, tenantId).isPresent();
+    }
+
+    private boolean hasCurrentOwnerAuthority(String subject) {
+        return appUserRepository.findByExternalSubject(normalizeSubject(subject))
+                .filter(this::isCurrentActiveOwner).isPresent();
+    }
+
+    private boolean isCurrentActiveOwner(AppUser user) {
+        return "ACTIVE".equalsIgnoreCase(user.getStatus())
+                && globalRoleService.rolesForUser(user.getId()).contains("PLATFORM_OWNER");
     }
 
     @Transactional

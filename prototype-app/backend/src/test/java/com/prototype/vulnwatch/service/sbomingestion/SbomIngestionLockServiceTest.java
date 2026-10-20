@@ -26,7 +26,7 @@ class SbomIngestionLockServiceTest {
     @BeforeEach
     void setUp() {
         ingestionJobLockService = mock(IngestionJobLockService.class);
-        service = new SbomIngestionLockService(ingestionJobLockService);
+        service = new SbomIngestionLockService(ingestionJobLockService, scopedRunner());
         tenant = new Tenant();
         tenant.setId(UUID.randomUUID());
     }
@@ -99,5 +99,14 @@ class SbomIngestionLockServiceTest {
         assertThrows(IOException.class, () -> service.withAssetLock(tenant, "pkg:npm/app", () -> {
             throw new java.util.concurrent.TimeoutException("slow");
         }));
+    }
+
+    private static com.prototype.vulnwatch.service.TenantWorkRunner scopedRunner() {
+        return mock(com.prototype.vulnwatch.service.TenantWorkRunner.class, invocation -> {
+            if (invocation.getMethod().getName().equals("runScopedChecked")) {
+                return invocation.<java.util.concurrent.Callable<?>>getArgument(1).call();
+            }
+            return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 }

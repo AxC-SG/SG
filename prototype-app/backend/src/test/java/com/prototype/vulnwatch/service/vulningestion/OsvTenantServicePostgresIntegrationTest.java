@@ -70,9 +70,8 @@ class OsvTenantServicePostgresIntegrationTest {
   @Test
   void testCorrelateOsvAdvisories_HandlesEmptyInventory() {
     // When tenant has no components, should not create findings
-    tenantService.correlateOsvAdvisoriesForTenant(testTenantId);
-    // Should complete without error
-    assertTrue(true);
+    assertThrows(org.springframework.web.server.ResponseStatusException.class,
+        () -> tenantService.correlateOsvAdvisoriesForTenant(testTenantId));
   }
 
   @Test
@@ -90,10 +89,8 @@ class OsvTenantServicePostgresIntegrationTest {
 
     osvRepository.save(entity);
 
-    // Should not throw
-    assertDoesNotThrow(() -> {
-      tenantService.correlateOsvAdvisoriesForTenant(testTenantId);
-    });
+    assertThrows(org.springframework.web.server.ResponseStatusException.class,
+        () -> tenantService.correlateOsvAdvisoriesForTenant(testTenantId));
   }
 
   @Test
@@ -115,8 +112,8 @@ class OsvTenantServicePostgresIntegrationTest {
 
     assertEquals(5, osvRepository.count());
 
-    // Tenant correlation should see all platform data
-    tenantService.correlateOsvAdvisoriesForTenant(testTenantId);
-    assertTrue(true);  // Should complete successfully
+    // A stale scheduled callback remains inactive and preserves shared intelligence.
+    tenantService.correlateOsvForAllEnabledTenants();
+    assertEquals(5, osvRepository.count());
   }
 }

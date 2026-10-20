@@ -67,7 +67,9 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         if (trimmed.isBlank() || trimmed.length() > 128) {
             return false;
         }
-        return trimmed.toLowerCase(Locale.ROOT).matches("[a-z0-9._:/=@+-]+");
+        // The identifier is echoed in a header, stored in audit rows and exported to CSV.
+        // Keep it opaque and bounded; formula prefixes and whitespace are not identifiers.
+        return value.equals(trimmed) && trimmed.matches("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
     }
 
     private void clearRequestContext() {

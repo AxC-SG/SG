@@ -1,4 +1,7 @@
 app:
+  environment: test
+  runtime:
+    role: all
   http:
     outbound:
       allowed-hosts: "github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov;sbom-endpoint=example.com"

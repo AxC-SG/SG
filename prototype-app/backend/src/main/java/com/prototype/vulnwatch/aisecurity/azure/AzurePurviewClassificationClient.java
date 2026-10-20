@@ -41,7 +41,7 @@ public class AzurePurviewClassificationClient {
     private static final int MAX_PAGES = 25;
     private static final int PAGE_SIZE = 1_000;
 
-    private final HttpClient http;
+    private final com.prototype.vulnwatch.client.http.CheckedHttpTransport http;
     private final ObjectMapper objectMapper;
     private final AiGridProviderCallCounter providerCalls;
 
@@ -49,10 +49,7 @@ public class AzurePurviewClassificationClient {
     public AzurePurviewClassificationClient(ObjectMapper objectMapper, AiGridProviderCallCounter providerCalls) {
         this.objectMapper = objectMapper;
         this.providerCalls = providerCalls;
-        this.http = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(15))
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+        this.http = new com.prototype.vulnwatch.client.http.CheckedHttpTransport();
     }
 
     AzurePurviewClassificationClient(ObjectMapper objectMapper) {
@@ -87,7 +84,7 @@ public class AzurePurviewClassificationClient {
                         .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                         .build();
                 providerCalls.increment();
-                HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                var response = http.sendStream(request, MAX_RESPONSE_BYTES);
                 try (InputStream responseBody = response.body()) {
                     if (response.statusCode() == 404) return notScanned();
                     if (response.statusCode() < 200 || response.statusCode() >= 300) return lookupFailed();

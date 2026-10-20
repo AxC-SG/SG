@@ -338,6 +338,7 @@ class SbomUploadPostgresIntegrationTest {
         UUID jobId = UUID.fromString(objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("jobId").asText());
         Tenant tenant = tenantService.getDefaultTenant();
+        ingestionJobService.claimPendingJobs(tenant,1,1);
         ingestionJobWorkerService.execute(tenant.getId(), jobId);
         findingDeltaQueueService.processPendingDeltas();
         server.verify();

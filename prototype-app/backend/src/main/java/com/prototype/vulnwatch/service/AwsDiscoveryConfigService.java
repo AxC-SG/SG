@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.AwsCredentialProvider;
+import com.prototype.vulnwatch.client.AwsCustomerBinding;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient.AwsConnectivityResult;
 import com.prototype.vulnwatch.domain.AwsAuthType;
@@ -85,9 +86,6 @@ public class AwsDiscoveryConfigService {
         AwsConnectionTestResponse response = targets.isEmpty()
                 ? testConfigCredentials(runtimeConfig, config, testedAt)
                 : testTargets(runtimeConfig, targets, testedAt);
-        if (!"FAILED".equalsIgnoreCase(response.status()) && hasText(response.resolvedAccountId())) {
-            config.setAwsAccountId(response.resolvedAccountId());
-        }
         persistTestResult(config, response.status(), response.message(), testedAt, response.resolvedAccountId());
         return response;
     }
@@ -107,15 +105,24 @@ public class AwsDiscoveryConfigService {
     }
 
     private void apply(AwsDiscoveryConfig config, AwsDiscoveryConfigRequest request) {
-        if (request.authType() != null) {
-            config.setAuthType(parseAuthType(request.authType()));
+        if (request.authType() != null && parseAuthType(request.authType()) != AwsAuthType.CROSS_ACCOUNT_ROLE) {
+            throw new ResponseStatusException(BAD_REQUEST, "Customer AWS discovery requires a cross-account IAM role");
         }
+        String role = trimToNull(request.crossAccountRoleArn());
+        try {
+            config.setAwsAccountId(AwsCustomerBinding.accountForRole(role));
+            config.setExternalId(AwsCustomerBinding.externalId(config.getTenant().getId(), config.getExternalId(),
+                    config.getCredentialBindingVersion(), request.externalId()));
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(BAD_REQUEST, invalid.getMessage());
+        }
+        config.setAuthType(AwsAuthType.CROSS_ACCOUNT_ROLE);
+        config.setCredentialBindingVersion(AwsCustomerBinding.VERSION);
         config.setAccessKeyId(trimToNull(request.accessKeyId()));
         if (hasText(request.credentialSecret())) {
             config.setCredentialSecret(credentialEncryptionService.encrypt(request.credentialSecret().trim()));
         }
         config.setCrossAccountRoleArn(trimToNull(request.crossAccountRoleArn()));
-        config.setExternalId(trimToNull(request.externalId()));
         if (hasText(request.regionsJson())) {
             config.setRegionsJson(request.regionsJson().trim());
         }
@@ -131,9 +138,6 @@ public class AwsDiscoveryConfigService {
         config.setLastTestStatus(status);
         config.setLastTestMessage(message);
         config.setLastTestedAt(testedAt);
-        if (hasText(resolvedAccountId)) {
-            config.setAwsAccountId(resolvedAccountId);
-        }
         config.touch();
         repo.save(config);
     }
@@ -146,6 +150,7 @@ public class AwsDiscoveryConfigService {
         AwsCredentialsProvider creds;
         try {
             creds = AwsCredentialProvider.from(runtimeConfig);
+            awsDiscoveryClient.verifyCustomerIdentity(creds, persistedConfig.getAwsAccountId(), persistedConfig.getCrossAccountRoleArn());
         } catch (Exception e) {
             return failedResponse(appendExternalIdHint(e.getMessage(), persistedConfig.getCrossAccountRoleArn(), persistedConfig.getExternalId()), testedAt);
         }
@@ -226,6 +231,7 @@ public class AwsDiscoveryConfigService {
         AwsCredentialsProvider creds;
         try {
             creds = AwsCredentialProvider.from(runtimeConfig, target);
+            awsDiscoveryClient.verifyCustomerIdentity(creds, target.getAccountId(), target.getRoleArn());
         } catch (Exception e) {
             return failedResponse(appendExternalIdHint(e.getMessage(), target.getRoleArn(), target.getExternalId()), testedAt);
         }
@@ -281,6 +287,7 @@ public class AwsDiscoveryConfigService {
         legacyTarget.setAccountName(hasText(config.getAwsAccountId()) ? "AWS Account " + config.getAwsAccountId() : "AWS Account");
         legacyTarget.setRoleArn(config.getCrossAccountRoleArn());
         legacyTarget.setExternalId(config.getExternalId());
+        legacyTarget.setCredentialBindingVersion(config.getCredentialBindingVersion());
         legacyTarget.setEnabled(config.isEnabled());
         legacyTarget.setRegionsJson(defaultIfBlank(config.getRegionsJson(), "[\"us-east-1\"]"));
         return List.of(legacyTarget);
@@ -322,16 +329,15 @@ public class AwsDiscoveryConfigService {
     private AwsDiscoveryConfigResponse toResponse(AwsDiscoveryConfig config) {
         if (config == null) {
             return new AwsDiscoveryConfigResponse(
-                    null, "aws", false, AwsAuthType.INSTANCE_METADATA.name(),
+                    null, "aws", false, AwsAuthType.CROSS_ACCOUNT_ROLE.name(),
                     "", false, "", "", null,
                     "[\"us-east-1\"]",
                     DEFAULT_RESOURCE_TYPES,
                     true, false, 1440,
                     null, null, null, null);
         }
-        boolean configured = config.getAuthType() == AwsAuthType.INSTANCE_METADATA
-                || (hasText(config.getAccessKeyId()) && hasText(config.getCredentialSecret()))
-                || hasText(config.getCrossAccountRoleArn());
+        boolean configured = config.getCredentialBindingVersion() == AwsCustomerBinding.VERSION
+                && hasText(config.getCrossAccountRoleArn());
         return new AwsDiscoveryConfigResponse(
                 config.getId(),
                 config.getSourceSystem(),
@@ -340,7 +346,7 @@ public class AwsDiscoveryConfigService {
                 defaultIfBlank(config.getAccessKeyId(), ""),
                 hasText(config.getCredentialSecret()),
                 defaultIfBlank(config.getCrossAccountRoleArn(), ""),
-                defaultIfBlank(config.getExternalId(), ""),
+                config.getCredentialBindingVersion() == AwsCustomerBinding.VERSION ? defaultIfBlank(config.getExternalId(), "") : "",
                 config.getAwsAccountId(),
                 defaultIfBlank(config.getRegionsJson(), "[\"us-east-1\"]"),
                 DEFAULT_RESOURCE_TYPES,
@@ -392,6 +398,7 @@ public class AwsDiscoveryConfigService {
         runtimeConfig.setCredentialSecret(credentialEncryptionService.decrypt(config.getCredentialSecret()));
         runtimeConfig.setCrossAccountRoleArn(config.getCrossAccountRoleArn());
         runtimeConfig.setExternalId(config.getExternalId());
+        runtimeConfig.setCredentialBindingVersion(config.getCredentialBindingVersion());
         runtimeConfig.setAwsAccountId(config.getAwsAccountId());
         runtimeConfig.setRegionsJson(config.getRegionsJson());
         runtimeConfig.setResourceTypesJson(config.getResourceTypesJson());

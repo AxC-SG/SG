@@ -1,6 +1,15 @@
 package com.prototype.vulnwatch.client.http;
 
 import java.net.URI;
+import java.io.FilterInputStream;
+import java.io.InputStream;
+import java.io.IOException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.ResponseErrorHandler;
+import java.util.function.Supplier;
+import org.springframework.web.client.ResponseExtractor;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
@@ -97,10 +106,94 @@ public class OutboundHttpClient {
             OutboundFailureClassifier<E> classifier,
             OutboundResponseHandler<T, R> responseHandler
     ) throws E {
+        return executeAttempts(endpoint, operationName, policy, classifier,
+                () -> performExchange(endpoint, method, requestEntity, responseType, policy), responseHandler);
+    }
+
+    /** Reads a response inside RestTemplate's connection lifetime, before buffering it. */
+    public <T, E extends Exception> ResponseEntity<T> exchangeExtracted(
+            String endpoint,
+            HttpMethod method,
+            HttpEntity<?> requestEntity,
+            ResponseExtractor<ResponseEntity<T>> extractor,
+            long maxResponseBytes,
+            String operationName,
+            OutboundPolicy policy,
+            OutboundFailureClassifier<E> classifier
+    ) throws E {
+        // Share the configured request factory (timeouts, host guard, redirects) without
+        // changing the shared template's error handler during concurrent requests.
+        RestTemplate boundedTemplate = new RestTemplate(restTemplate.getRequestFactory());
+        ResponseErrorHandler delegate = restTemplate.getErrorHandler();
+        boundedTemplate.setErrorHandler(new ResponseErrorHandler() {
+            @Override
+            public boolean hasError(ClientHttpResponse response) throws IOException {
+                return delegate.hasError(response);
+            }
+
+            @Override
+            public void handleError(URI url, HttpMethod httpMethod, ClientHttpResponse response) throws IOException {
+                delegate.handleError(url, httpMethod, boundedResponse(response, maxResponseBytes));
+            }
+        });
+        return executeAttempts(endpoint, operationName, policy, classifier,
+                () -> performExchange(endpoint, method, policy,
+                        uri -> boundedTemplate.execute(uri, method,
+                                restTemplate.httpEntityCallback(requestEntity), extractor)), response -> response);
+    }
+
+    private ClientHttpResponse boundedResponse(ClientHttpResponse response, long maxBytes) throws IOException {
+        if (response.getHeaders().getContentLength() > maxBytes) {
+            throw new IOException("HTTP response exceeds max allowed size");
+        }
+        InputStream body = new FilterInputStream(response.getBody()) {
+            private long count;
+
+            @Override
+            public int read() throws IOException {
+                int value = super.read();
+                if (value != -1 && ++count > maxBytes) {
+                    throw new IOException("HTTP response exceeds max allowed size");
+                }
+                return value;
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws IOException {
+                int allowed = (int) Math.min(length, Math.max(1L, maxBytes - count + 1L));
+                int read = in.read(bytes, offset, allowed);
+                if (read > 0 && (count += read) > maxBytes) {
+                    throw new IOException("HTTP response exceeds max allowed size");
+                }
+                return read;
+            }
+        };
+        return new ClientHttpResponse() {
+            @Override
+            public HttpStatusCode getStatusCode() throws IOException { return response.getStatusCode(); }
+            @Override
+            public String getStatusText() throws IOException { return response.getStatusText(); }
+            @Override
+            public HttpHeaders getHeaders() { return response.getHeaders(); }
+            @Override
+            public InputStream getBody() { return body; }
+            @Override
+            public void close() { response.close(); }
+        };
+    }
+
+    private <T, R, E extends Exception> R executeAttempts(
+            String endpoint,
+            String operationName,
+            OutboundPolicy policy,
+            OutboundFailureClassifier<E> classifier,
+            Supplier<ResponseEntity<T>> request,
+            OutboundResponseHandler<T, R> responseHandler
+    ) throws E {
         int attempts = Math.max(1, policy.maxRetries());
         for (int attempt = 1; attempt <= attempts; attempt++) {
             try {
-                ResponseEntity<T> response = performExchange(endpoint, method, requestEntity, responseType, policy);
+                ResponseEntity<T> response = request.get();
                 return responseHandler.handle(response);
             } catch (Exception error) {
                 OutboundFailureContext context = new OutboundFailureContext(
@@ -144,6 +237,16 @@ public class OutboundHttpClient {
             Class<T> responseType,
             OutboundPolicy policy
     ) {
+        return performExchange(endpoint, method, policy,
+                uri -> restTemplate.exchange(uri, method, requestEntity, responseType));
+    }
+
+    private <T> ResponseEntity<T> performExchange(
+            String endpoint,
+            HttpMethod method,
+            OutboundPolicy policy,
+            java.util.function.Function<URI, ResponseEntity<T>> request
+    ) {
         ProviderPacingState state = pacingByProvider.computeIfAbsent(policy.providerKey(), ignored -> new ProviderPacingState());
         state.lock.lock();
         try {
@@ -152,7 +255,7 @@ public class OutboundHttpClient {
             try {
                 URI uri = URI.create(endpoint);
                 hostPolicy.validate(policy.providerKey(), uri);
-                return restTemplate.exchange(uri, method, requestEntity, responseType);
+                return request.apply(uri);
             } finally {
                 state.lastRequestCompletedAtMs = currentTimeMillis.getAsLong();
                 state.hasCompletedRequest = true;

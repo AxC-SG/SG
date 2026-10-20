@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +72,7 @@ class LocalCredentialAuthServiceTest {
         existingUser.setPasswordHash(BCrypt.hashpw("password-123", BCrypt.gensalt(10)));
         existingUser.setPlatformOwner(true);
 
-        when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(existingUser));
+        when(userRepository.findByEmailIgnoreCaseForUpdate("owner@example.com")).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LocalCredentialAuthService service = new LocalCredentialAuthService(
@@ -98,7 +100,7 @@ class LocalCredentialAuthServiceTest {
         assertNull(jwt.getClaimAsString("active_tenant_id"));
         assertTrue(existingUser.isPlatformOwner());
         verify(userRepository).save(existingUser);
-        verify(appUserGlobalRoleService).ensureRole(existingUser, "PLATFORM_OWNER");
+        verify(appUserGlobalRoleService, never()).ensureRole(any(), anyString());
     }
 
     @Test
@@ -111,7 +113,7 @@ class LocalCredentialAuthServiceTest {
         Tenant tenant = tenant("Example Co");
         TenantMembership membership = membership(user, tenant, "TENANT_ADMIN");
 
-        when(userRepository.findByEmailIgnoreCase("tenant.owner@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCaseForUpdate("tenant.owner@example.com")).thenReturn(Optional.of(user));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(membershipRepository.findByUserExternalSubjectAndStatusOrderByCreatedAtAsc("tenant.owner@example.com", "ACTIVE"))
                 .thenReturn(List.of(membership));
@@ -155,7 +157,7 @@ class LocalCredentialAuthServiceTest {
         Tenant tenant = tenant("Example Co");
         TenantMembership membership = membership(user, tenant, "TENANT_ADMIN");
 
-        when(userRepository.findByPasswordSetupTokenHash(hashToken("setup-token-123"))).thenReturn(Optional.of(user));
+        when(userRepository.findByPasswordSetupTokenHashForUpdate(hashToken("setup-token-123"))).thenReturn(Optional.of(user));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(membershipRepository.findByUserExternalSubjectAndStatusOrderByCreatedAtAsc("tenant.owner@example.com", "ACTIVE"))
                 .thenReturn(List.of(membership));
@@ -204,7 +206,7 @@ class LocalCredentialAuthServiceTest {
         user.setPasswordSetupTokenHash(hashToken("setup-token-123"));
         user.setPasswordSetupTokenExpiresAt(Instant.now().plusSeconds(3600));
 
-        when(userRepository.findByPasswordSetupTokenHash(hashToken("setup-token-123"))).thenReturn(Optional.of(user));
+        when(userRepository.findByPasswordSetupTokenHashForUpdate(hashToken("setup-token-123"))).thenReturn(Optional.of(user));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LocalCredentialAuthService service = new LocalCredentialAuthService(
@@ -241,7 +243,7 @@ class LocalCredentialAuthServiceTest {
                 "{\"mode\":\"self_service\"}",
                 "SUCCESS"
         );
-        verify(appUserGlobalRoleService).ensureRole(user, "PLATFORM_OWNER");
+        verify(appUserGlobalRoleService, never()).ensureRole(any(), anyString());
     }
 
     @Test
@@ -251,7 +253,7 @@ class LocalCredentialAuthServiceTest {
         user.setEmail("owner@example.com");
         user.setPlatformOwner(true);
 
-        when(userRepository.findByEmailIgnoreCase("owner@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCaseForUpdate("owner@example.com")).thenReturn(Optional.of(user));
 
         LocalCredentialAuthService service = new LocalCredentialAuthService(
                 userRepository,
@@ -278,6 +280,7 @@ class LocalCredentialAuthServiceTest {
         AppUser platformOwner = new AppUser();
         platformOwner.setExternalSubject("owner@example.com");
         platformOwner.setEmail("owner@example.com");
+        platformOwner.setPlatformOwner(true);
         Tenant tenant = tenant("Customer A");
 
         when(userRepository.findByExternalSubject("owner@example.com")).thenReturn(Optional.of(platformOwner));
@@ -378,6 +381,7 @@ class LocalCredentialAuthServiceTest {
         AppUser platformOwner = new AppUser();
         platformOwner.setExternalSubject("owner@example.com");
         platformOwner.setEmail("owner@example.com");
+        platformOwner.setPlatformOwner(true);
         when(userRepository.findByExternalSubject("owner@example.com")).thenAnswer(invocation -> {
             assertTrue(TenantContext.isPlatformContext());
             assertNull(TenantContext.getCurrentTenantId());
@@ -431,6 +435,49 @@ class LocalCredentialAuthServiceTest {
     }
 
     @Test
+    void ordinaryUserCannotSwitchOrClearPlatformOwnerTenantContext() {
+        AppUser ordinaryUser = new AppUser();
+        ordinaryUser.setExternalSubject("analyst@example.com");
+        ordinaryUser.setEmail("analyst@example.com");
+        when(userRepository.findByExternalSubject("analyst@example.com")).thenReturn(Optional.of(ordinaryUser));
+        LocalCredentialAuthService service = new LocalCredentialAuthService(
+                userRepository,
+                tenantRepository,
+                membershipRepository,
+                authTokenService(),
+                tenantSupportGrantService,
+                tenantLifecycleGuardService,
+                appUserGlobalRoleService,
+                auditEventService,
+                tenantWorkRunner,
+                false,
+                true,
+                "",
+                "",
+                "http://localhost:5173,http://127.0.0.1:5173"
+        );
+        UUID selectedTenantId = UUID.randomUUID();
+        TenantContext.setCurrentTenantId(selectedTenantId);
+        TenantContext.setCurrentSchemaName("tenant_default");
+        try {
+            ResponseStatusException switchError = assertThrows(ResponseStatusException.class,
+                    () -> service.switchTenantContext("analyst@example.com", UUID.randomUUID()));
+            assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, switchError.getStatusCode());
+            assertEquals(selectedTenantId, TenantContext.getCurrentTenantId());
+
+            ResponseStatusException clearError = assertThrows(ResponseStatusException.class,
+                    () -> service.clearTenantContext("analyst@example.com"));
+            assertEquals(org.springframework.http.HttpStatus.FORBIDDEN, clearError.getStatusCode());
+            assertEquals(selectedTenantId, TenantContext.getCurrentTenantId());
+            assertEquals("tenant_default", TenantContext.getCurrentSchemaName());
+            verifyNoInteractions(tenantRepository, membershipRepository, tenantSupportGrantService,
+                    tenantWorkRunner, auditEventService);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
     void localhostSharedTenantAdminLoginBootstrapsDefaultWorkspaceMembership() {
         String configuredPasswordHash = BCrypt.hashpw("LocalDevTenant123!", BCrypt.gensalt(10));
         Tenant tenant = tenant("Default Workspace");
@@ -440,8 +487,8 @@ class LocalCredentialAuthServiceTest {
 
         when(tenantRepository.findByNameIgnoreCase("Default Workspace")).thenReturn(Optional.of(tenant));
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
-        when(userRepository.findByEmailIgnoreCase("tenant.admin@localhost")).thenReturn(Optional.empty());
-        when(userRepository.findByExternalSubject("tenant.admin@localhost")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCaseForUpdate("tenant.admin@localhost")).thenReturn(Optional.empty());
+        when(userRepository.findByExternalSubjectForUpdate("tenant.admin@localhost")).thenReturn(Optional.of(user));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
         AtomicReference<TenantMembership> savedMembership = new AtomicReference<>();
         when(membershipRepository.findFirstByUserExternalSubjectAndTenantIdAndStatus(
@@ -493,7 +540,7 @@ class LocalCredentialAuthServiceTest {
         Tenant tenant = tenant("GM Test");
         TenantMembership membership = membership(user, tenant, "TENANT_ADMIN");
 
-        when(userRepository.findByEmailIgnoreCase("tenant.admin@localhost")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCaseForUpdate("tenant.admin@localhost")).thenReturn(Optional.of(user));
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(membershipRepository.findByUserExternalSubjectAndStatusOrderByCreatedAtAsc("tenant.admin@localhost", "ACTIVE"))
                 .thenReturn(List.of(membership));
@@ -523,6 +570,31 @@ class LocalCredentialAuthServiceTest {
 
         assertEquals(tenant.getId().toString(), jwt.getClaimAsString("active_tenant_id"));
         verify(tenantRepository).findById(tenant.getId());
+    }
+
+    @Test
+    void disabledSubjectAliasCannotBeReactivatedBySharedLocalhostLogin() {
+        String email = "tenant.admin@localhost";
+        AppUser user = new AppUser();
+        user.setExternalSubject(email);
+        user.setEmail("previous-email@example.test");
+        user.setStatus("INACTIVE");
+        Tenant tenant = tenant("Default Workspace");
+        when(userRepository.findByEmailIgnoreCaseForUpdate(email)).thenReturn(Optional.empty());
+        when(userRepository.findByExternalSubjectForUpdate(email)).thenReturn(Optional.of(user));
+        when(tenantRepository.findByNameIgnoreCase("Default Workspace")).thenReturn(Optional.of(tenant));
+        LocalCredentialAuthService service = new LocalCredentialAuthService(userRepository, tenantRepository,
+                membershipRepository, authTokenService(), tenantSupportGrantService, tenantLifecycleGuardService,
+                appUserGlobalRoleService, auditEventService, tenantWorkRunner, false, true, email,
+                BCrypt.hashpw("local-password", BCrypt.gensalt(10)), "http://localhost:5173");
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service.login(email, "local-password"));
+
+        assertEquals(401, error.getStatusCode().value());
+        assertEquals("INACTIVE", user.getStatus());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(membershipRepository);
     }
 
     private AuthTokenService authTokenService() {

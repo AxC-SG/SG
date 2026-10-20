@@ -31,6 +31,12 @@ public class AiBomProjectionWorker {
     private final AiBomProjectionSchedulingService schedulingService;
     private final AiBomResourceVulnerabilityCorrelationService vulnerabilityCorrelationService;
     private final boolean enabled;
+    private BackgroundTaskExecutionPolicy backgroundPolicy = BackgroundTaskExecutionPolicy.allowAll();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setBackgroundPolicy(BackgroundTaskExecutionPolicy policy) {
+        backgroundPolicy = java.util.Objects.requireNonNull(policy);
+    }
 
     public AiBomProjectionWorker(
             IngestionJobService jobs,
@@ -53,7 +59,7 @@ public class AiBomProjectionWorker {
             initialDelayString = "${app.ai-bom.projection.initial-delay-ms:5000}",
             fixedDelayString = "${app.ai-bom.projection.poll-interval-ms:5000}")
     public void poll() {
-        if (!enabled) return;
+        if (!enabled || !backgroundPolicy.allowsBackgroundTask("ai-bom.projection")) return;
         for (Tenant tenant : tenants.listActiveTenants()) {
             try {
                 List<IngestionJobService.ClaimedJobRef> claimed = jobs.claimPendingJobsByType(
@@ -79,7 +85,7 @@ public class AiBomProjectionWorker {
      */
     @Scheduled(fixedDelayString = "${app.ai-bom.projection.reconcile-interval-ms:60000}")
     public void reconcile() {
-        if (!enabled) return;
+        if (!enabled || !backgroundPolicy.allowsBackgroundTask("ai-bom.projection")) return;
         for (Tenant tenant : tenants.listActiveTenants()) {
             try {
                 schedulingService.reconcileHeldAndDeferredSources(tenant);
@@ -91,6 +97,14 @@ public class AiBomProjectionWorker {
     }
 
     private void processSafely(Tenant tenant, IngestionJobService.ClaimedJobRef ref) {
+        try (var ignored = jobs.openAttempt(ref.tenantId(), ref.jobId(), ref.claimToken())) {
+            processOwned(tenant, ref);
+        } catch (IngestionAttemptService.StaleAttemptException stale) {
+            log.info("Skipped expired AI-BOM attempt for job {}", ref.jobId());
+        }
+    }
+
+    private void processOwned(Tenant tenant, IngestionJobService.ClaimedJobRef ref) {
         tenantExecution.run(tenant, () -> {
             IngestionJob job = jobs.loadJob(ref.tenantId(), ref.jobId());
             jobs.recordStarted(job);
@@ -100,7 +114,11 @@ public class AiBomProjectionWorker {
                 projectionService.project(tenant, payload.sourceId());
                 jobs.markSucceeded(ref.tenantId(), ref.jobId(), null, null);
                 job.setCompletedAt(Instant.now());
-                jobs.recordCompleted(job);
+                try {
+                    jobs.recordCompleted(job);
+                } catch (RuntimeException reportingFailure) {
+                    log.warn("Ancillary completion reporting failed for succeeded job {}", ref.jobId());
+                }
             } catch (AiBomProjectionThrottledException throttled) {
                 // Not a failure: the work is still valid, just waiting for tomorrow's budget.
                 // recordCompleted/recordFailed are both skipped -- the job isn't done.

@@ -1,5 +1,7 @@
 package com.prototype.vulnwatch.service;
 
+import com.prototype.vulnwatch.domain.Tenant;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.http.OutboundFailureDecision;
@@ -60,6 +62,7 @@ public class ServiceNowCmdbSyncService {
     private final ObjectMapper objectMapper;
     private final TaskExecutor integrationQueueExecutor;
     private final TransactionTemplate transactionTemplate;
+    private final IngestionJobService jobs;
     private final WorkspaceService workspaceService;
     private final TenantService tenantService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
@@ -77,7 +80,8 @@ public class ServiceNowCmdbSyncService {
             TransactionTemplate transactionTemplate,
             WorkspaceService workspaceService,
             TenantService tenantService,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantSchemaExecutionService tenantSchemaExecutionService,
+            IngestionJobService jobs
     ) {
         this.serviceNowCmdbConfigRepository = serviceNowCmdbConfigRepository;
         this.serviceNowCmdbConfigService = serviceNowCmdbConfigService;
@@ -91,6 +95,7 @@ public class ServiceNowCmdbSyncService {
         this.workspaceService = workspaceService;
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.jobs = jobs;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -102,18 +107,19 @@ public class ServiceNowCmdbSyncService {
 
     public SyncTriggerResponse trigger() {
         var tenant = workspaceService.getWorkspace();
-        ClaimedRun claimed = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> claimManualRun(tenant))
-        );
+        ClaimedRun claimed = jobs.withAdmission(tenant, () -> {
+            ClaimedRun admitted = claimManualRun(tenant);
+            if (!admitted.reusedActiveRun()) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
+                    admitted.configId(), admitted.runId(), "manual", null);
+            return admitted;
+        });
         if (!claimed.reusedActiveRun()) {
-            integrationQueueExecutor.execute(() -> executeRun(tenant.getId(), claimed.configId(), claimed.runId(), "manual"));
             return new SyncTriggerResponse(claimed.runId(), "queued", "ServiceNow CMDB sync queued");
         }
         return new SyncTriggerResponse(claimed.runId(), "running", "ServiceNow CMDB sync is already queued or running");
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("servicenow-cmdb.run-scheduled-syncs")) {
             return;
@@ -131,20 +137,26 @@ public class ServiceNowCmdbSyncService {
             return scheduledConfigs;
         });
         for (ConfigRef configRef : configs) {
-            ClaimedRun claimed = tenantSchemaExecutionService.run(configRef.tenantId(), () -> {
-                ServiceNowCmdbConfig config = serviceNowCmdbConfigRepository.findById(configRef.configId()).orElse(null);
-                return transactionTemplate.execute(status -> config == null ? null : claimScheduledRun(config));
-            });
-            if (claimed == null) {
-                continue;
+            try {
+                Tenant tenant = tenantService.resolveTenantUuid(configRef.tenantId());
+                jobs.withAdmission(tenant, () -> {
+                    ServiceNowCmdbConfig config = serviceNowCmdbConfigRepository.findById(configRef.configId()).orElse(null);
+                    ClaimedRun claimed = config == null ? null : claimScheduledRun(config);
+                    if (claimed != null) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
+                            claimed.configId(), claimed.runId(), "scheduled", null);
+                    return null;
+                });
+            } catch (RuntimeException failure) {
+                LOG.warn("Scheduled connector {} admission deferred", configRef.configId());
             }
-            integrationQueueExecutor.execute(() -> executeRun(configRef.tenantId(), claimed.configId(), claimed.runId(), "scheduled"));
         }
     }
 
     @Transactional(readOnly = true)
     public boolean hasActiveRun() {
-        return !syncRunRepository.findActiveRunsBySyncType(SYNC_TYPE_SERVICENOW_CMDB, List.of("queued", "running")).isEmpty();
+        var tenant = workspaceService.getWorkspace();
+        return !syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenant.getId(), SYNC_TYPE_SERVICENOW_CMDB, List.of("queued", "running")).isEmpty();
     }
 
     private ClaimedRun claimManualRun(com.prototype.vulnwatch.domain.Tenant tenant) {
@@ -158,16 +170,24 @@ public class ServiceNowCmdbSyncService {
     }
 
     private ClaimedRun claimScheduledRun(ServiceNowCmdbConfig config) {
-        if (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config)) {
-            return null;
-        }
         return claimRunForConfig(config, "scheduled", false);
     }
 
     private ClaimedRun claimRunForConfig(ServiceNowCmdbConfig config, String triggerMode, boolean allowReuseActiveRun) {
+        // The configuration row is the admission lock, including when no run exists yet.
+        // Tenant context and the transaction are established by every caller before this lock.
+        config = serviceNowCmdbConfigRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
+                .orElseThrow(() -> new EntityNotFoundException("ServiceNow CMDB config not found"));
+        if ("scheduled".equals(triggerMode)
+                && (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config))) {
+            return null;
+        }
+        if ("manual".equals(triggerMode) && (!isConfigured(config) || !config.isEnabled())) {
+            throw new IllegalStateException("ServiceNow CMDB connector is not configured or is disabled");
+        }
         UUID tenantId = config.getTenant().getId();
-        Optional<SyncRun> active = syncRunRepository.findActiveRunsBySyncType(
-                SYNC_TYPE_SERVICENOW_CMDB,
+        Optional<SyncRun> active = syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenantId, SYNC_TYPE_SERVICENOW_CMDB,
                 List.of("queued", "running")
         ).stream().findFirst();
         if (active.isPresent()) {
@@ -192,8 +212,8 @@ public class ServiceNowCmdbSyncService {
     }
 
     private boolean isDue(ServiceNowCmdbConfig config) {
-        SyncRun latest = syncRunRepository.findTopBySyncTypeIgnoreCaseOrderByStartedAtDesc(
-                SYNC_TYPE_SERVICENOW_CMDB
+        SyncRun latest = syncRunRepository.findTopBySyncTypeIgnoreCaseAndTenant_IdOrderByStartedAtDesc(
+                SYNC_TYPE_SERVICENOW_CMDB, config.getTenant().getId()
         ).orElse(null);
         if (latest == null) {
             return true;
@@ -206,7 +226,7 @@ public class ServiceNowCmdbSyncService {
         return Duration.between(reference, Instant.now()).toMinutes() >= minutes;
     }
 
-    private void executeRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
+    public void executeQueuedRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markRunRunning(runId, triggerMode);
             try {

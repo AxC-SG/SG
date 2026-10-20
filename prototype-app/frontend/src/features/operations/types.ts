@@ -83,6 +83,8 @@ export type OperationalApiReadPath = {
   filterCacheMisses: number;
   filterCacheHitRatioPercent: number;
   endpointMetrics: OperationalEndpointMetric[];
+  sampleScope?: 'JVM_LOCAL_RECENT_REQUESTS';
+  maximumSamplesPerMetric?: number;
 };
 
 export type OperationalSourceFreshness = {

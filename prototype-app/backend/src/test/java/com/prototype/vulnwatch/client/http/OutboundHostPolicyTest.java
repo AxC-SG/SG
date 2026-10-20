@@ -9,6 +9,18 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class OutboundHostPolicyTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"fd00:ec2::254", "fc00::1", "64:ff9b::a9fe:a9fe", "::a9fe:a9fe", "::ffff:169.254.169.254", "2002:a9fe:a9fe::1", "2001:db8::1", "0.1.2.3", "240.0.0.1"})
+    void rejectsSpecialAndEmbeddedAddresses(String value) {
+        var policy = policyFor(Map.of("approved.example", new InetAddress[]{address(value)}));
+        assertThrows(IllegalArgumentException.class, () -> policy.validate("provider", URI.create("https://approved.example/resource")));
+    }
+
+    @Test
+    void permitsNativeGlobalIpv6() {
+        var policy = policyFor(Map.of("approved.example", new InetAddress[]{address("2606:4700:4700::1111")}));
+        assertDoesNotThrow(() -> policy.validate("provider", URI.create("https://approved.example/resource")));
+    }
 
     @Test
     void acceptsOnlyApprovedHttpsHostAndPort() {

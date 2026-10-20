@@ -1,6 +1,7 @@
 package com.prototype.vulnwatch.service;
 
 public enum TenantAccessMode {
+    SERVICE_ACCOUNT,
     DIRECT_PLAYGROUND_MEMBERSHIP,
     TENANT_MEMBERSHIP,
     SUPPORT_READ_ONLY,

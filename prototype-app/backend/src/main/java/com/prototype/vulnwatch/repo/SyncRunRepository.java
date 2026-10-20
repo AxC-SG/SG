@@ -11,6 +11,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SyncRunRepository extends JpaRepository<SyncRun, UUID> {
+    // One candidate per supported type keeps a blocked family from filling the bounded poll.
+    @Query(value="""
+            select candidate.* from platform.sync_runs candidate
+            join (
+                select distinct on (upper(sync_type)) id from platform.sync_runs
+                where tenant_id is null and run_scope='PLATFORM_VULNERABILITY'
+                  and lower(status)='queued' and upper(sync_type) in ('KEV','GHSA','CSAF_MICROSOFT','CSAF_REDHAT','EUVD','JVN','NVD','NVD_FULL','VEX_ASSERTION_REPAIR','VEX_ROLLOUT_BACKFILL','OSV','EPSS','EOL_CATALOG_REFRESH','EOL_RELEASE_REFRESH','EOL_MAPPING_RESOLVE','EOL_DENORMALIZE','EOL_FULL_REFRESH','EOL_DATE_SWEEP')
+                order by upper(sync_type),started_at,id
+            ) queued on queued.id=candidate.id
+            order by candidate.started_at,candidate.id limit 100
+            """,nativeQuery=true)
+    List<SyncRun> findQueuedPlatformVulnerabilityRuns();
     List<SyncRun> findTop10ByOrderByStartedAtDesc();
     List<SyncRun> findAllByOrderByStartedAtDesc();
     List<SyncRun> findByStatusIgnoreCase(String status);

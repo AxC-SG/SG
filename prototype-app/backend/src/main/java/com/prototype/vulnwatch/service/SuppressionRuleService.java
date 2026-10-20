@@ -204,7 +204,7 @@ public class SuppressionRuleService {
     }
 
     /** Nightly job — runs all APPROVED rules for every tenant at midnight. */
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(zone = "UTC", cron = "0 0 0 * * *")
     public void runAllApprovedRulesNightly() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("suppression-rule.run-approved-rules-nightly")) {
             return;

@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.AwsCredentialProvider;
+import com.prototype.vulnwatch.client.AwsCustomerBinding;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient.AwsConnectivityResult;
 import com.prototype.vulnwatch.domain.AssetType;
@@ -98,6 +99,7 @@ public class AwsDiscoveryTargetService {
         AwsCredentialsProvider creds;
         try {
             creds = AwsCredentialProvider.from(configWithDecryptedCredential(target.getConfig()), target);
+            awsDiscoveryClient.verifyCustomerIdentity(creds, target.getAccountId(), target.getRoleArn());
         } catch (Exception e) {
             persistTestResult(target, "FAILED", e.getMessage(), testedAt, null);
             return failedResponse(appendExternalIdHint(e.getMessage(), target.getRoleArn(), target.getExternalId()), testedAt);
@@ -125,6 +127,7 @@ public class AwsDiscoveryTargetService {
         target.setAccountName(hasText(config.getAwsAccountId()) ? "AWS Account " + config.getAwsAccountId() : "AWS Account");
         target.setRoleArn(trimToNull(config.getCrossAccountRoleArn()));
         target.setExternalId(trimToNull(config.getExternalId()));
+        target.setCredentialBindingVersion(config.getCredentialBindingVersion());
         target.setEnabled(config.isEnabled());
         target.setRegionsJson(defaultIfBlank(config.getRegionsJson(), DEFAULT_REGIONS));
         target.setResourceTypesJson(DEFAULT_RESOURCE_TYPES);
@@ -154,10 +157,21 @@ public class AwsDiscoveryTargetService {
     }
 
     private void apply(AwsDiscoveryTarget target, AwsDiscoveryTargetRequest request, AwsDiscoveryConfig config) {
+        try {
+            String account = trimToNull(request.accountId());
+            String role = trimToNull(request.roleArn());
+            if (account == null || !account.equals(AwsCustomerBinding.accountForRole(role))) {
+                throw new IllegalArgumentException("AWS target role must belong to its 12-digit account ID");
+            }
+            target.setExternalId(AwsCustomerBinding.externalId(target.getTenant().getId(), target.getExternalId(),
+                    target.getCredentialBindingVersion(), request.externalId()));
+            target.setCredentialBindingVersion(AwsCustomerBinding.VERSION);
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
+        }
         target.setAccountId(trimToNull(request.accountId()));
         target.setAccountName(defaultIfBlank(request.accountName(), hasText(request.accountId()) ? "AWS Account " + request.accountId().trim() : "AWS Account"));
         target.setRoleArn(trimToNull(request.roleArn()));
-        target.setExternalId(trimToNull(request.externalId()));
         target.setEnabled(request.enabled() == null || request.enabled());
         target.setRegionsJson(defaultIfBlank(request.regionsJson(), defaultIfBlank(config.getRegionsJson(), DEFAULT_REGIONS)));
         target.setResourceTypesJson(DEFAULT_RESOURCE_TYPES);
@@ -167,9 +181,6 @@ public class AwsDiscoveryTargetService {
         target.setLastTestStatus(status);
         target.setLastTestMessage(message);
         target.setLastTestedAt(testedAt);
-        if (hasText(accountId)) {
-            target.setAccountId(accountId.trim());
-        }
         target.touch();
         targetRepository.save(target);
     }
@@ -193,7 +204,7 @@ public class AwsDiscoveryTargetService {
                 target.getAccountId(),
                 target.getAccountName(),
                 target.getRoleArn(),
-                target.getExternalId(),
+                target.getCredentialBindingVersion() == AwsCustomerBinding.VERSION ? target.getExternalId() : "",
                 target.isEnabled(),
                 defaultIfBlank(target.getRegionsJson(), DEFAULT_REGIONS),
                 DEFAULT_RESOURCE_TYPES,
@@ -291,6 +302,7 @@ public class AwsDiscoveryTargetService {
         runtimeConfig.setCredentialSecret(credentialEncryptionService.decrypt(config.getCredentialSecret()));
         runtimeConfig.setCrossAccountRoleArn(config.getCrossAccountRoleArn());
         runtimeConfig.setExternalId(config.getExternalId());
+        runtimeConfig.setCredentialBindingVersion(config.getCredentialBindingVersion());
         runtimeConfig.setAwsAccountId(config.getAwsAccountId());
         runtimeConfig.setRegionsJson(config.getRegionsJson());
         runtimeConfig.setResourceTypesJson(config.getResourceTypesJson());

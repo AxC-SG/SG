@@ -2,7 +2,7 @@
 
 This document describes the React/TypeScript frontend for VulnWatch (package name `vulnwatch-frontend`). It is derived entirely from reading the source code in `frontend/src/`.
 
-Last updated: 2026-09-24
+Last updated: 2026-10-18
 
 ---
 
@@ -38,11 +38,12 @@ frontend/src/
   main.tsx                  Entry point — Sentry init, QueryClientProvider, BrowserRouter, StrictMode
   App.tsx                   Root component — lazy routes, AppShell, AuthSessionBoundary, theme, impersonation
   api/
-    client.ts               Single api object; all 60+ backend calls; auth header injection
+    client.ts               Single api object; 350+ backend calls; auth header injection
+  api/base.ts               resolveApiBase (VITE_API_BASE / dev proxy / production default)
   app/
     routes.ts               Typed path-builder helpers and legacy query-param redirect logic
   features/                 Feature-colocated modules; types live here, not in src/types/
-    auth/                   ActorContext type, context, role helpers, queries
+    auth/                   ActorContext type, context/provider, role helpers, entitlements, queries
     findings/               Finding type, queries, filters
     cve-workbench/          OrgSpecificCveExposureRecord, CveDetail, assessment helpers, scoring
     configurations/         RiskPolicy, OwnershipRule, SuppressionRule
@@ -56,11 +57,13 @@ frontend/src/
     admin/                  Tenant, PlatformUser, ServiceAccount, AuditEvent, admin queries
     campaigns/              Remediation campaign types + CampaignDetailPage; API calls inlined (no queries.ts)
     ai-security/            AI Security / AI Grid types, dependency graph, category helpers (entitlement-gated)
-    widgets/                DonutChart, HBarChart, WidgetCard SVG components
+    widgets/                FplWidgets.tsx — DonutChart, HBarChart, WidgetCard SVG components
   lib/
     riskScoring.ts          Pure TS: computeCveRiskScore, computeFindingPriorityScore
     queryClient.ts          createQueryClient factory (retry:1, staleTime:10s, no refetchOnWindowFocus)
     polling.ts              Refresh interval constants
+    queryPolling.ts         visibleInterval / isDocumentVisible helpers
+    performanceMonitoring.tsx  API/render timing telemetry
     time.ts                 timeAgo, formatTimestamp helpers
   pages/                    One file per route; lazy-loaded in App.tsx
   components/               Shared presentational components (max ~300 lines each)
@@ -79,10 +82,13 @@ frontend/src/
     vuln-repo.css           Vuln repo page styles
     user-management.css     User management page styles
     exposure-dashboard.css  Exposure dashboard exec-* classes
+    finding-detail.css      Finding detail page styles
+    findings-list.css       Findings list page styles
+    ai-security.css         AI Security / AI Grid page styles
   test/
-    setup.ts                @testing-library/jest-dom/vitest import
-    test-utils.tsx          renderWithProviders — QueryClientProvider + MemoryRouter
-    fixtures.ts             buildFinding, defaultRiskPolicy, defaultFindingFilterValues, pageOf
+    setup.ts                @testing-library/jest-dom/vitest import; ResizeObserver and DOMMatrixReadOnly stubs for @xyflow/react
+    test-utils.tsx          renderWithProviders — QueryClientProvider (retry: false) + MemoryRouter
+    fixtures.ts             buildFinding, defaultRiskPolicy, defaultFindingFilterValues, pageOf, findingPageOf
 ```
 
 ### Route Table
@@ -114,22 +120,29 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 | `/inventory/ai/assets` | `AiInventoryAssetsPage` | Filterable list of all discovered AI artifacts (AWS/Azure) — entitlement-gated (`ai.security`) |
 | `/inventory/ai/knowledge-data` | `AiKnowledgeMcpInventoryPage kind="knowledge-data"` | AI knowledge/data-source artifact inventory with sensitivity/PII posture |
 | `/inventory/ai/mcp` | `AiKnowledgeMcpInventoryPage kind="mcp"` | MCP (Model Context Protocol) server artifact inventory |
+| `/inventory/ai/overview`, `/inventory/ai/agents`, `/inventory/ai/agent-versions` | `AiInventoryPage` / `AiInventoryAssetsPage` | Alias routes for AI inventory sub-views — entitlement-gated (`ai.security`) |
+| `/inventory/ai/declared-resources[/:resourceId]` | `AiBomDeclaredResourcesPage`, `AiBomDeclaredResourceDetailPage` | AI-BOM declared models/datasets and deployment-mapping workflow — entitlement-gated; declared above `/inventory/ai/:assetId` |
 | `/inventory/ai/executions` | Redirect | Legacy bookmarks return to `/inventory/ai`; no runtime request |
 | `/inventory/ai/:assetId` | `AiAssetDetailPage` (via `InventoryAiAssetRoute`) | Single AI artifact detail — overview/policies/findings/relationships + dependency graph |
 | `/findings/ai` | `AiFindingsPage` | Deterministic AI policy-failure findings (separate stream from CVE findings) |
+| `/findings/ai/vulnerabilities` | `AiFindingsPage` (Software Vulnerabilities tab) | Canonical `VULNERABILITY` findings affecting declared AI-BOM resources |
 | `/findings/ai/:findingId` | `AiFindingDetailPage` (via `AiFindingDetailRoute`) | AI finding detail — evidence, review workflow, ServiceNow incident creation |
 | `/findings/ai/exposures` | `AiExposuresPage` | Cross-system "AI Grid" validated exposure paths |
 | `/findings/ai/exposures/:exposureId` | `AiExposuresPage` (detail branch) | Single exposure detail — root cause, evidence history, accept/false-positive disposition |
 | `/policies` | `AiPoliciesPage` | Tenant AI Grid workspace — policy selection plus framework coverage, latest assessment-state totals, with runtime telemetry deferred |
 | `/policies/:policyId` | `AiPolicyDetailPage` (via `AiPolicyDetailRoute`) | AI policy detail — overview/configure(scope, exceptions, parameters)/findings/artifacts tabs |
 | `/connect/:connectView?` | `ConnectRoute` (`ConnectPage`) | Default `sources`; also `run-history` |
-| `/admin/:adminView?` | `AdminRoute` (`UserManagementPage`) | Default `users`; Invites, Support Access, Roles, Service Accounts, Audit |
+| `/connect/copilot-studio` | `CopilotStudioConnectorPage` | Microsoft Copilot Studio connector config — entitlement-gated (`ai.security`) |
+| `/admin/:adminView?` | `AdminRoute` (`UserManagementPage`) | Default `users`; also `invites`, `roles`, `service-accounts`, `audit` (no `support-access` route view exists) |
 | `/platform/:platformView?` | `PlatformRoute` (`PlatformConsolePage`) | Default `tenants`; platform owner console. `ai-policies` sub-view renders `PlatformAiPolicyStudio` for global governed catalog/distribution/rollout; tenant coverage and telemetry are intentionally absent until a workspace is selected. Nav label: "Policy Distribution" |
+| `/platform/ai-policies/:policyId` | `PlatformAiPolicyDetailRoute` | Platform AI policy detail (`/vuln-repo/policies` redirects to `/platform/ai-policies`) |
 | `/configurations/:configView?` | `ConfigurationsPage` | Default `sla`; SLA, Triage, Automation, Ownership, Findings Score, Suppression, Auto-Finding (Vulnerability Sources moved to the Connect page — see below) |
 | `/authorized-workspaces` | `AuthorizedWorkspacesRoute` (`AuthorizedWorkspacesPage`) | Platform-owner-only list of tenant-approved support access grants |
 | `/demo` | `DemoLandingPage` | Public demo landing |
 | `/demo/blog` | `BlogIndexPage` | Public demo blog index |
 | `/demo/blog/zero-day-response-hours-not-weeks` | `ZeroDayBlogPage` | Public demo blog post |
+| `/demo/blog/mythos-readiness` | `MythosReadinessBlogPage` | Public demo blog post |
+| `/demo/blog/why-your-sbom-tool-doesnt-know-whats-exploitable` | `SbomExploitabilityBlogPage` | Public demo blog post |
 | `/demo/request` | `DemoRequestPage` | Demo request form |
 | `/demo/request/success` | `DemoRequestSuccessPage` | Demo request success |
 | `/demo/expired` | `DemoExpiredPage` | Demo expiry notice |
@@ -164,8 +177,8 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 ### Session lifecycle
 
-1. `useActorQuery()` in `src/features/auth/queries.tsx` calls `GET /api/auth/context`. The React Query key includes the raw token value so the cache auto-invalidates when the token changes (login / logout).
-   - `staleTime`: 5 minutes.
+1. `useActorQuery()` in `src/features/auth/queries.tsx` calls `GET /api/me` (via `authApi.getActorContext`). The React Query key includes the raw token value so the cache auto-invalidates when the token changes (login / logout).
+   - `staleTime`: 60 seconds.
    - `AUTH_CONTEXT_QUERY_ROOT = ['auth-context']`.
 2. `AuthSessionBoundary` in `App.tsx` wraps all authenticated routes. It renders a redirect to `/login` when the query fails or returns no actor data.
 3. The loaded `ActorContext` is published into React context via `ActorContextState = React.createContext<ActorContext | null>(null)`. Read it with `useActor()` from `src/features/auth/context.ts`.
@@ -187,18 +200,20 @@ All role checks must go through these helpers — never read `actor.roles` direc
 | Function | Purpose |
 |---|---|
 | `hasRole(actor, role)` | Check for a single role |
-| `hasAnyRole(actor, ...roles)` | Check for any of the listed roles |
-| `canManageTenant(actor)` | ROLE_TENANT_ADMIN or higher |
+| `hasAnyRole(actor, roles)` | Check for any of the listed roles (takes an array) |
+| `canManageTenant(actor)` | ROLE_TENANT_ADMIN |
 | `canAccessPlatformConsole(actor)` | ROLE_PLATFORM_OWNER |
-| `canManageInventorySources(actor)` | ROLE_INVENTORY_ADMIN or higher |
-| `canManageRiskPolicy(actor)` | ROLE_TENANT_ADMIN or higher |
-| `canRunSecurityWorkflow(actor)` | ROLE_SECURITY_ANALYST or higher |
-| `canViewReadOnly(actor)` | Any authenticated role |
-| `canRefreshTenantExposure(actor)` | ROLE_SECURITY_ANALYST or higher |
-| `canManageUsers(actor)` | ROLE_TENANT_ADMIN or higher |
-| `canManageServiceAccounts(actor)` | ROLE_TENANT_ADMIN or higher |
-| `canExportAudit(actor)` | ROLE_SECURITY_ANALYST or higher |
-| `isPlatformScopeOnly(actor)` | True when `platformScope=true` and not `actingAsPlatformOwner` |
+| `canManageInventorySources(actor)` | ROLE_TENANT_ADMIN or ROLE_INVENTORY_ADMIN |
+| `canManageRiskPolicy(actor)` | ROLE_PLATFORM_OWNER or ROLE_TENANT_ADMIN, not in platform scope |
+| `canRunSecurityWorkflow(actor)` | ROLE_PLATFORM_OWNER, ROLE_TENANT_ADMIN, or ROLE_SECURITY_ANALYST, not in platform scope |
+| `canViewReadOnly(actor)` | Any role, not in platform scope |
+| `canRefreshTenantExposure(actor)` | Same roles as `canRunSecurityWorkflow` |
+| `canManageUsers(actor)` | ROLE_TENANT_ADMIN |
+| `canManageServiceAccounts(actor)` | ROLE_TENANT_ADMIN |
+| `canExportAudit(actor)` | ROLE_TENANT_ADMIN or ROLE_READ_ONLY_AUDITOR |
+| `canManageSourceFilters(actor)` | ROLE_PLATFORM_OWNER, or ROLE_TENANT_ADMIN / ROLE_SECURITY_ANALYST when not in platform scope |
+
+`isPlatformScopeOnly` (`platformScope` and ROLE_PLATFORM_OWNER) is a module-private helper in `roles.ts`, not exported.
 
 ### Entitlements (distinct from roles)
 
@@ -206,8 +221,8 @@ All role checks must go through these helpers — never read `actor.roles` direc
 
 ### Multi-tenant switching
 
-- `api.selectTenantContext(tenantId)` — sets acting tenant; returns a new `ActorContext`.
-- `api.clearTenantContext()` — returns platform-scope mode.
+- `api.selectTenantContext(tenantId)` — sets acting tenant; returns an `AuthTokenResponse` (new token).
+- `api.clearTenantContext()` — returns platform-scope mode (also an `AuthTokenResponse`).
 - Both are used in `PlatformConsolePage` and the `AppShell` tenant switcher.
 - `setStoredAuthToken()` is also called on login to store the returned token.
 
@@ -219,13 +234,13 @@ Each module under `src/features/<feature>/` owns its TypeScript types, queries, 
 
 ### auth (`src/features/auth/`)
 
-Files: `types.ts`, `context.ts`, `roles.ts`, `queries.tsx`
+Files: `types.ts`, `context.ts`, `provider.tsx`, `roles.ts`, `entitlements.ts`, `api.ts`, `queries.tsx`
 
 `ActorContext` and `AllowedTenant` types; `ActorContextState` React context; `useActor()` hook; `useActorQuery()` React Query hook; all role-check functions.
 
 ### findings (`src/features/findings/`)
 
-Files: `types.ts`, `queries.ts`
+Files: `types.ts`, `queries.ts`, `hooks.ts`, `components/`
 
 **Finding type** (50+ fields): `id`, `displayId`, `componentId`, `assetName`, `vulnerabilityId`, `severity` (CRITICAL/HIGH/MEDIUM/LOW), `status` (OPEN/RESOLVED/SUPPRESSED/AUTO_CLOSED), `decisionState`, `inKev`, `epss`, `riskScore`, `vexStatus`, `isEol`, `incidentId`, `findingsScore`, `ownership: OwnershipSummary`, and many more.
 
@@ -234,6 +249,7 @@ Supporting types: `FindingPage`, `FindingFilterValues`, `FindingBulkWorkflowRequ
 Queries:
 - `useFindingsQuery(params)` — queryKey `['findings', params]`, uses `keepPreviousData`
 - `useFindingFiltersQuery()` — queryKey `['finding-filters']`
+- Also `useFindingSummaryQuery`, `useFindingDistributionsQuery`, `useFindingBacklogHealthQuery`, `useFindingProjectionStatusQuery`, `useFindingQueuesQuery`, `useFindingGroupsQueries`, `useRebuildFindingProjectionMutation`
 
 ### cve-workbench (`src/features/cve-workbench/`)
 
@@ -264,7 +280,7 @@ Files: `types.ts`
 - Asset SLA multipliers (criticality-based)
 - Automation: `autoCloseEnabled`, `autoCloseAfterDays`, `findingGenerationMode`
 - Custom scoring: `findingsScoreConfig` (JSONB)
-- **6 triage weight fields:** `triageExploitabilityWeight`, `triageBlastRadiusWeight`, `triageEolRiskWeight`, `triageSlaBreachWeight`, `triageMissingOwnerBoost`, `triagePatchGapBoost`
+- **6 triage weight fields (frontend-only; the backend `RiskPolicy` has none):** `triageExploitabilityWeight`, `triageBlastRadiusWeight`, `triageEolRiskWeight`, `triageSlaBreachWeight`, `triageMissingOwnerBoost`, `triagePatchGapBoost`
 
 Other types: `SuppressionRule`, `SuppressionRuleRequest` (fields: `name`, `state` DRAFT/APPROVED/IN_REVIEW/REJECTED/EXPIRED, `recordType` CVE/FINDING, `validFrom`, `validTo`, `executionOrder`, `reason`), `OwnershipRuleResponse`, `OwnershipRuleRequest`
 
@@ -319,7 +335,7 @@ Files: `types.ts`, `queries.ts`
 
 **Dashboard type:** `assets`, `components`, `openFindings`, severity counts, `topVulnerabilities`, `latestFindings`, `noiseReduction`, `csafVexAnalytics`, `correlationEfficiency`, `topAssetsAtRisk`, `openCritical/High/Medium/Low`, `averageOpenRiskScore`, `criticalFindings`
 
-**Queries:** `useDashboardSummaryQuery()` — queryKey `['dashboard-summary']`, polls at `DASHBOARD_REFRESH_INTERVAL_MS = 15s`; `useDashboardCveInventoryMapQuery(limit)`
+**Queries:** `useDashboardSummaryQuery()` — queryKey `['dashboard-summary']`, polls at `DASHBOARD_REFRESH_INTERVAL_MS = 4h`; `useDashboardCveInventoryMapQuery(limit)`, `useExposureSummaryQuery()`, `useGridExposureQuery()` (all on the same interval)
 
 ### vuln-repo-dashboard (`src/features/vuln-repo-dashboard/`)
 
@@ -347,11 +363,11 @@ Files: `types.ts`, `queries.ts`
 
 ### admin (`src/features/admin/`)
 
-Files: `types.ts`, `queries.ts`
+Files: `types.ts`, `queries.ts`, `csv.ts`
 
 **Types:** `Tenant`, `TenantMember`, `PlatformUser`, `ServiceAccount`, `AuditEvent`, `AuthContext`, `DemoRequest`, `DemoInvite`, `AuthTokenResponse`, `TenantSupportGrant`, `InventoryConnectorHealth`, `TenantSchemaStatusItem`, `TenantSchemaStatusPage` *(new — tenant, schema, current/target version, structural checksum, failure code/message, migration timestamps)*
 
-**Queries and mutations:** `useAuthContextQuery()`, `useTenantMembersQuery()`, `useAddTenantMemberMutation()`, `useTenantSupportGrantsQuery()`, `useCreateTenantSupportGrantMutation()`, `useRevokeTenantSupportGrantMutation()`, `useServiceAccountsQuery()`, `useCreateServiceAccountMutation()`, `useAuditEventsQuery()`, `usePlatformSupportGrantsQuery()`, `useAcceptPlatformSupportGrantMutation()`, `usePlatformInventoryConnectorHealthQuery()`
+**Queries and mutations:** `useAuthContextQuery()`, `useTenantMembersQuery()`, `useTenantInvitesQuery()`, `useAddTenantMemberMutation()`, `useUpdateTenantMemberMutation()`, `useDeleteTenantMemberMutation()`, `useCreateTenantInviteMutation()`, `useCreateTenantBulkInvitesMutation()`, `useResendTenantInviteMutation()`, `useCancelTenantInviteMutation()`, `useServiceAccountsQuery()`, `useCreateServiceAccountMutation()`, `useDeleteServiceAccountMutation()`, `useDeactivateServiceAccountMutation()`, `useReactivateServiceAccountMutation()`, `useAuditEventsQuery()`. Support grants (`api.listTenantSupportGrants`, `createTenantSupportGrant`, `revokeTenantSupportGrant`, `listInvitedSupportGrants`, `acceptSupportGrant`) and `api.listInventoryConnectorHealth` are called directly, not through `queries.ts` hooks.
 
 **Tenant schema status (new):** `api.getTenantSchemaStatus()` (`GET /platform/tenant-schema-status?page=0&size=200`) and `api.retryTenantProvisioning(tenantId)` (`POST /platform/tenants/{tenantId}/provisioning-retry`) are called directly from `PlatformConsolePage` (not via a `queries.ts` hook). The tenant lifecycle panel there joins each tenant row against its schema-status entry, disables "Enter workspace" for any tenant not `ACTIVE` (previously only `PURGING`/`DELETED` were blocked — tenant creation is asynchronous now, so a freshly-created tenant sits in `PROVISIONING` until the backend's tenant schema control plane actually migrates its schema), and shows a "Retry provisioning" action for tenants in `PROVISIONING_FAILED`.
 
@@ -367,24 +383,24 @@ Files: `types.ts`, `CampaignDetailPage.tsx` — undocumented until now; a fully 
 
 ### ai-security (`src/features/ai-security/`)
 
-Files: `types.ts`, `categories.ts`, `AiDependencyGraph.tsx`, `graph-layout.ts`, `AiInventoryOverviewStrip.tsx`, `ProviderLogo.tsx`, `test-support.ts`
+Files: `types.ts`, `categories.ts`, `assessment.ts`, `AiDependencyGraph.tsx`, `graph-layout.ts`, `AiBaselineSection.tsx`, `AiInventoryOverviewStrip.tsx`, `ProviderLogo.tsx`, `useAssessmentUpdates.ts`, `test-support.ts`
 
-Backs the AI Security / AI Grid posture-management surface (12 pages under `src/pages/Ai*.tsx` + `PlatformAiPolicyStudio.tsx`), entitlement-gated on `ai.security` (see [Entitlements](#entitlements-distinct-from-roles) above). Mirrors the backend `com.prototype.vulnwatch.aisecurity` module's two generations (legacy "AI Security" catalog + governed "AI Grid" pipeline) but the frontend does not distinguish them structurally — everything is under this one feature directory.
+Backs the AI Security / AI Grid posture-management surface (14 pages under `src/pages/Ai*.tsx` + `PlatformAiPolicyStudio.tsx`), entitlement-gated on `ai.security` (see [Entitlements](#entitlements-distinct-from-roles) above). Mirrors the backend `com.prototype.vulnwatch.aisecurity` module's two generations (legacy "AI Security" catalog + governed "AI Grid" pipeline) but the frontend does not distinguish them structurally — everything is under this one feature directory.
 
 **Types** (`types.ts`), grouped by concern:
 - Inventory/summary: `AiSecurityArtifact`, `AiArtifactSummary`, `AiSecuritySummary`, `AiSeverityGrid`/`Row`, `AiSecurityPage<T>`
 - Graph/relationships: `AiSecurityRelationship`, `AiSecurityGraph`
 - Findings: `AiSecurityFinding`, `AiTopRiskArtifact`
 - Policies (tenant-scoped): `AiSecurityPolicy`, `PolicyScope`/`PolicyScopeMode`/`PolicyScopeCondition`, `PolicyException`, `PolicyParameterValue`, `PolicyConfiguration`
-- Runs/connectors: `AiSecurityRun`, `AiSecurityScope`, `AiSecurityConnectorConfig` (AWS), `AiSecurityAzureConnector`/`AzureFoundryConfig`/`AzureCredentialProfile` (Azure)
-- AI Grid reporting/governance: `AiGridSystem`, `AiGridCoverage`, `AiFrameworkDefinition`, `AiFrameworkCoverage`, `AiRuntimeTelemetryReadiness`, `AiGridPolicyAssessmentStateSummary`, `AiGridPolicy`/`PolicySelection`/`PolicyDistribution`, `AiGridPolicyReleaseReadiness`, `AiGridPolicyTenantReconciliation`, `AiGridPolicyCandidate`, `AiGridRunMetrics`
+- Runs/connectors: `AiSecurityRun`, `AiSecurityScope`, `AiSecurityConnectorConfig` (AWS), `AiSecurityAzureConnector`/`AiSecurityAzureFoundryConfig`/`AiSecurityAzureCredentialProfile` (Azure)
+- AI Grid reporting/governance: `AiGridSystem`, `AiGridCoverage`, `AiFrameworkDefinition`, `AiFrameworkCoverage`, `AiRuntimeTelemetryReadiness`, `AiGridPolicyAssessmentStateSummary`, `AiGridPolicy`/`AiGridPolicySelection`/`AiGridPolicyDistribution`, `AiGridPolicyReleaseReadiness`, `AiGridPolicyTenantReconciliation`, `AiGridPolicyCandidate`, `AiGridRunMetrics`
 - Exposure intelligence: `AiGridExposureSummary`/`Page`/`Detail`, `AiExposurePriority` (priority breakdown now carries `activityPoints` alongside severity/confidence/publicExposure/criticality/recency), `AiExposureIntelligenceOverview`, `AiActionQueueItem`, `AiAssetPosture`
 - Runtime metadata: `AiAgentExecution`, `AiAgentExecutionPage`, `AiAgentExecutionEvent`
 - Activity evidence: `AiActivityEvidence` (`factKey`, raw `valueJson`, `state`, `evidenceReference`, `observedAt`/`validFrom`/`validUntil`, `confidence`, `producerId`, `expired`)
 
-**Activity Evidence panel (`AiAssetDetailPage`, overview tab).** Fed by `api.getAiActivityEvidence(artifactId)` → `GET /ai-security/artifacts/{id}/activity-evidence`. It renders the four evidence states the AI Grid model distinguishes — *Configured*, *Reachable*, *Activity observed*, *Confirmed exposure* — then a table of individual signals with observation time, confidence and freshness (`Expired` / `Valid until …` / `Current`). `isPositiveActivityEvidence()` treats a fact as positive only when it is unexpired, `state === 'KNOWN'`, and its parsed `valueJson` is `true` (or, for `activity.invocation_count_observed`, a number greater than zero; for `activity.agent_last_observed_at`, a non-empty string) — mirroring the backend's SQL predicate. When there is nothing to show the copy is **"No activity evidence available. This does not mean the agent is unused."** — never "Not used"; absence of evidence is not evidence of absence, and this wording is a product requirement rather than a style choice.
+**Activity evidence.** `api.getAiActivityEvidence(artifactId)` (`GET /ai-security/artifacts/{id}/activity-evidence`) and the `AiActivityEvidence` type remain, but `AiAssetDetailPage` no longer renders an Activity evidence panel, runtime-activity toggle, or "View executions" button (asserted absent in `AiAssetDetailPage.test.tsx`). If it is reintroduced, absence of evidence must not be worded as "Not used".
 
-**Tenant policy reporting (`AiPoliciesPage`).** Reads tenant-visible static policies, global framework definitions/tenant coverage, and latest static assessment-state totals. Runtime policies, readiness, findings, activity summaries, and graph overlays are excluded. Legacy execution bookmarks redirect to inventory. See [runtime scope](runtime-telemetry-exclusion.md).
+**Tenant policy reporting (`AiPoliciesPage`).** Reads tenant-visible static policies, global framework definitions/tenant coverage, and latest static assessment-state totals. Runtime policies, readiness, findings, activity summaries, and graph overlays are excluded. Legacy execution bookmarks redirect to inventory. See `docs/business-logic-guide.md#ai-security--ai-grid-pipeline` (runtime scope doc archived).
 
 **Platform policy distribution (`PlatformAiPolicyStudio`).** This page runs without tenant context and uses only global/platform APIs: catalog, shipping status, rollout queue, and `/ai-frameworks` for labels/control filters. The framework endpoint is intentionally platform-reference scoped. Do not add `/ai-framework-coverage`, `/ai-runtime-telemetry-readiness`, or `/ai-assessment-states/latest` calls to this page.
 
@@ -559,16 +575,14 @@ clearStoredAuthToken(): void               // removes from localStorage
 - `listFindings(params)` -> `FindingPage`
 - `getFinding(id)` -> `Finding`
 - `updateFindingWorkflow(id, payload)` -> `Finding`
-- `bulkUpdateFindings(payload)` -> `FindingBulkWorkflowResponse`
-- `deleteFinding(id)`
+- `bulkUpdateFindingWorkflow(payload)` -> `FindingBulkWorkflowResponse`
+- `bulkDeleteFindings(findingIds)`
 - `listFindingFilters()` -> filter option lists
-- `getFindingTimeline(id)` -> `FindingTimeline`
 
 **CVE / Vulnerability Repo:**
 - `getVulnRepoDashboard()` -> `VulnRepoDashboard`
 - `getPlatformVulnRepoDashboard()` -> `VulnRepoDashboard` (platform scope)
-- `getCveDetail(cveId)` -> `CveDetail`
-- `getCveAiSolution(cveId)` -> AI solution text
+- CVE detail and AI solution calls live on `cveWorkbenchApi` (`getCveDetail`, `getSavedAiSolution`, `generateAiSolution`), not the main `api` object
 - `getCveInventoryMap(limit)` -> CVE-inventory map data
 
 **Inventory:**
@@ -589,7 +603,7 @@ clearStoredAuthToken(): void               // removes from localStorage
 
 **Operations:**
 - `getOperationalDashboard()` -> `OperationalDashboard`
-- `getPlatformHealthData()` -> platform health metrics
+- Platform Health is composed in `useOperationsViewQuery` from `getOperationalApiReadPath()`, `getSloStatus()`, `getOperationalMetricCatalog()`, `getOperationalPerformanceScorecard()`
 
 **EOL:**
 - `getEolSummary()` -> `EolSummary`
@@ -611,13 +625,13 @@ clearStoredAuthToken(): void               // removes from localStorage
 
 **Connectors:**
 - `listSyncRuns(params)` -> `SyncRun[]`
-- `triggerSync(connectorId)` -> `SyncTriggerResponse`
-- `getServiceNowCmdbConfig()`, `updateServiceNowCmdbConfig(payload)`
-- `getSccmCmdbConfig()`, `updateSccmCmdbConfig(payload)`
-- `getAwsDiscoveryConfig()`, `updateAwsDiscoveryConfig(payload)`
+- Per-connector triggers returning `SyncTriggerResponse`: `triggerServiceNowCmdbSync()`, `triggerSccmCmdbSync()`, `triggerAwsDiscoverySync()`, `triggerAzureDiscoverySync()`
+- `getServiceNowCmdbConfig()`, `saveServiceNowCmdbConfig(payload)`
+- `getSccmCmdbConfig()`, `saveSccmCmdbConfig(payload)`
+- `getAwsDiscoveryConfig()`, `saveAwsDiscoveryConfig(payload)`
 - `listAwsDiscoveryTargets()`, `createAwsDiscoveryTarget(payload)`, `deleteAwsDiscoveryTarget(id)`
 - `listGithubSbomSources()`, `createGithubSbomSource(payload)`, `deleteGithubSbomSource(id)`
-- `getVulnerabilitySourceFilterConfig(sourceSystem)`, `updateVulnerabilitySourceFilterConfig(sourceSystem, payload)`
+- `getVulnerabilitySourceFilterConfig(sourceSystem)`, `saveVulnerabilitySourceFilterConfig(sourceSystem, payload)`
 - `getVexAssertionRepairSummary()`
 
 **AI Security / AI Grid** (base paths mixed — see the `ai-security` feature section above; method names below verified against `src/api/client.ts`):
@@ -633,20 +647,20 @@ clearStoredAuthToken(): void               // removes from localStorage
 - Platform governance: `listPlatformAiGridPolicies()`, policy-ID `approvePlatformAiGridPolicy()`, `publishPlatformAiGridPolicy(policyId, targetTenantIds)`, `deprecatePlatformAiGridPolicy()`, `revokePlatformAiGridReleaseBinding()`, policy detail/readiness, shipping status, rollout queue, and `getPlatformAiGridPolicyCandidates()`. `getAiFrameworks()` is shared global reference data; framework coverage itself is tenant-scoped.
 
 **Auth / Admin:**
-- `getAuthContext()` -> `ActorContext`
-- `login(credentials)` -> `AuthTokenResponse`
-- `selectTenantContext(tenantId)` -> `ActorContext`
-- `clearTenantContext()` -> `ActorContext`
+- `getAuthContext()` -> `AuthContext` (`GET /me`; the session uses `authApi.getActorContext` -> `ActorContext`)
+- `login(email, password)` -> `AuthTokenResponse`
+- `selectTenantContext(tenantId)` -> `AuthTokenResponse`
+- `clearTenantContext()` -> `AuthTokenResponse`
 - `listTenants()` -> `Tenant[]`
 - `listPlatformUsers()` -> `PlatformUser[]`
 - `listServiceAccounts()` -> `ServiceAccount[]`
 - `createServiceAccount(payload)` -> `ServiceAccount`
 - `listAuditEvents(params)` -> `AuditEvent[]`
 - `listTenantMembers()` -> `TenantMember[]`
-- `addTenantMember(payload)`, `updateTenantMember(id, payload)`, `removeTenantMember(id)`
+- `addTenantMember(payload)`, `updateTenantMember(id, payload)`, `deleteTenantMember(id)`
 - `listTenantSupportGrants()`, `createTenantSupportGrant(payload)`, `revokeTenantSupportGrant(id)`
-- `listPlatformSupportGrants()`, `acceptPlatformSupportGrant(id)`
-- `getPlatformInventoryConnectorHealth()` -> `InventoryConnectorHealth`
+- `listInvitedSupportGrants()`, `acceptSupportGrant(id)`
+- `listInventoryConnectorHealth()` -> `InventoryConnectorHealth[]`
 
 ---
 
@@ -687,10 +701,10 @@ The client is instantiated once in `src/main.tsx` and provided via `QueryClientP
 
 | Constant | Value | Used by |
 |---|---|---|
-| `DASHBOARD_REFRESH_INTERVAL_MS` | 15 000 ms | `useDashboardSummaryQuery` |
+| `DASHBOARD_REFRESH_INTERVAL_MS` | 14 400 000 ms (4 h) | dashboard, vuln-repo dashboard, EOL, and operations quality queries |
 | `OPERATIONS_REFRESH_INTERVAL_MS` | 15 000 ms | `useOperationsViewQuery` |
 | `ORG_CVE_STATUS_REFRESH_INTERVAL_MS` | 10 000 ms | `useOrgSpecificCveAutomationStatusQuery` (conditional) |
-| `RUN_QUEUE_REFRESH_INTERVAL_MS` | 3 000 ms | `useSyncRunsQuery` (conditional on active runs) |
+| `RUN_QUEUE_REFRESH_INTERVAL_MS` | 3 000 ms | `useSyncRunsQuery`, `useIngestionJobsQuery` (conditional on active runs/jobs), and several connector/AI inventory pages |
 
 ### localStorage keys
 
@@ -717,11 +731,11 @@ Debounces a value with a configurable delay (default 300 ms). Special behavior: 
 
 ### `useActorQuery()` (`src/features/auth/queries.tsx`)
 
-Calls `GET /api/auth/context`. Returns `UseQueryResult<ActorContext>`. Query key includes the raw token so it auto-invalidates on login/logout. `staleTime: 5 minutes`.
+Calls `GET /api/me`. Returns `UseQueryResult<ActorContext>`. Query key includes the raw token so it auto-invalidates on login/logout. `staleTime: 60 seconds`.
 
 ### `useActor()` (`src/features/auth/context.ts`)
 
-Reads the `ActorContext` from React context. Throws if called outside `AuthSessionBoundary`.
+Reads the `ActorContext` from React context. Returns `null` when no actor is loaded (it does not throw).
 
 ### `useFindingsQuery(params)` (`src/features/findings/queries.ts`)
 
@@ -781,7 +795,7 @@ Types are **feature-colocated**, not centralized. `src/types/index.ts` re-export
 
 ### S.AI scoring types (`src/lib/riskScoring.ts`)
 
-`PolicyWeights` mirrors the 6 `triage*` fields on `RiskPolicy`:
+`PolicyWeights` mirrors the 6 `triage*` fields on the frontend `RiskPolicy` type (the backend entity has none):
 - `triageExploitabilityWeight: number`
 - `triageBlastRadiusWeight: number`
 - `triageEolRiskWeight: number`
@@ -789,9 +803,9 @@ Types are **feature-colocated**, not centralized. `src/types/index.ts` re-export
 - `triageMissingOwnerBoost: number`
 - `triagePatchGapBoost: number`
 
-`CveRiskScoreResult` — output of `computeCveRiskScore`: `score` (0–10), `stages` array with per-stage contribution and reasoning.
+`CveRiskScoreResult` — output of `computeCveRiskScore`: `score` (0–10), `label`, `color`, `topReasons`, and a `journey` array of `CveScoreEvent` (`stage`, cumulative `score`, `delta`, `reason`, `isNote`). `computeOrgImpact(item, saiScore, externalFacingCount)` returns `'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'`; `riskScoreLabel` and `riskScoreColor` map a score to its label/color.
 
-`FindingPriorityScoreResult` — output of `computeFindingPriorityScore`: `score` (0–10), `signals` array.
+`FindingPriorityScoreResult` — output of `computeFindingPriorityScore`: `score` (0–10), `label`, `color`, `topReasons`.
 
 ---
 
@@ -874,7 +888,7 @@ Backend must be running on port 8080 (or configure `VITE_API_BASE`).
 
 ### Environment variables
 
-Copy `.env.example` to `.env.local`. All variables use the `VITE_` prefix.
+Set these in `.env.local` (no `.env.example` is committed). All variables use the `VITE_` prefix.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -912,7 +926,7 @@ These are different pages backed by different API endpoints — do not confuse t
 
 1. Add the connector ID to the `ConnectorId` union in `ConnectPage.tsx`.
 2. Add to the `CONNECTORS` array with `id`, `name`, `summary`, `icon`.
-3. Add to the appropriate category list — `CMDB_CONNECTOR_IDS`, `CLOUD_CONNECTOR_IDS`, or `AI_CONNECTOR_IDS` in `ConnectPage.tsx` (there is no rendered "Vulnerability Intelligence" connector-card category anymore — see below).
+3. Add to the appropriate category list — `INVENTORY_CONNECTOR_IDS`, `BOM_CONNECTOR_IDS`, or `PATCH_CONNECTOR_IDS` in `ConnectPage.tsx` (AI connectors are in `INVENTORY_CONNECTOR_IDS` and also listed in `AI_CONNECTOR_IDS` for entitlement gating) (there is no rendered "Vulnerability Intelligence" connector-card category anymore — see below).
 4. Add a `case` in `ConnectorDetailContent` that renders the connector's config component.
 
 Note: `endoflife-date`, `euvd-feed`, `jvn-feed`, and `sbom-github` are declared in the `ConnectorId` union and `CONNECTORS` array (with `ConnectorDetailContent` cases) but are not in any of the three category lists above, so they currently render no clickable card anywhere in the UI — likely a gap worth a follow-up ticket.
@@ -954,8 +968,9 @@ Available test fixtures in `src/test/fixtures.ts`:
 
 ### Exposure Dashboard layout
 
-`ExposureDashboardPage` fetches from three queries in parallel: `useDashboardSummaryQuery()`, `useVulnRepoDashboardQuery()`, `useEolSummaryQuery()`. It renders four rows:
+`ExposureDashboardPage` fetches from four queries in parallel: `useExposureSummaryQuery()`, `useVulnRepoDashboardQuery()`, `useEolSummaryQuery()`, `useGridExposureQuery()`. It renders these rows:
 1. 6 KPI cards: Critical Findings, Open Findings, Impacted CVEs, CISA KEV Exposure, Needs Attention, EOL Software
+1b. Grid Exposure widget (rendered only when grid exposure rows exist)
 2. CVE Exposure Pipeline (funnel with Tracked/Applicable/Impacted/Remediation) + Remediation Progress (status bars + Security Score)
 3. Critical CVEs Requiring Action list + Where Attention Is Required (insight chips)
 4. Most Exposed Software list + Critical Exposed Assets list
@@ -991,4 +1006,4 @@ Two nav items shown: `pipeline` and `platform-health`. The `quality` view key re
 
 `AiBomDeclaredResourceDetailPage` shows current ordered dependency paths, unresolved gaps/remediation, retained uncertain support, and a separate retired-history view. Evidence pages use the additive detail `correlation` field and the paginated `/bom/declared-resources/{resourceId}/correlation` API. Legacy associations awaiting path backfill are explicitly qualified. Active support does not imply an OPEN finding, proven deployment, or exploitability; finding status remains visible separately.
 
-Loading, failed requests, empty results, gaps, pagination, reactivation history, and retired support have distinct states and tests. Empty findings/evidence do not assert absence of risk. Upload success states that ingestion completed and that software assessment/finding creation and later AI-resource linking run asynchronously. No queue-derived assessment COMPLETE claim is rendered. See [release evidence](ai-bom-correlation-release-evidence.md) for browser screenshots and test results.
+Loading, failed requests, empty results, gaps, pagination, reactivation history, and retired support have distinct states and tests. Empty findings/evidence do not assert absence of risk. Upload success states that ingestion completed and that software assessment/finding creation and later AI-resource linking run asynchronously. No queue-derived assessment COMPLETE claim is rendered. See the archived release evidence (`Other Docs/Archive/ai-bom-correlation-release-evidence.md`) for browser screenshots and test results.

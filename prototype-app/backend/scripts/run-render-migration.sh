@@ -2,9 +2,11 @@
 set -eu
 
 validation_only=false
+run_once=false
 case "${1:-}" in
   "") ;;
   --validate-env-only) validation_only=true ;;
+  --run-once) run_once=true ;;
   *) echo "migration_env_validation=failed reason=unsupported_argument" >&2; exit 2 ;;
 esac
 
@@ -58,7 +60,9 @@ if [ "${PLATFORM_OWNER_SETUP_LINK_ENABLED:-false}" = "true" ]; then
   export PLATFORM_OWNER_SETUP_EMAIL
 fi
 
-export DB_URL="jdbc:postgresql://${MIGRATION_DB_HOST}:${MIGRATION_DB_PORT}/${MIGRATION_DB_NAME}?connectTimeout=10&socketTimeout=30"
+# Preserve explicitly supplied TLS/transport options. The CLI validates identity.
+: "${DB_URL:=jdbc:postgresql://${MIGRATION_DB_HOST}:${MIGRATION_DB_PORT}/${MIGRATION_DB_NAME}?connectTimeout=10&socketTimeout=30}"
+export DB_URL
 export DB_USERNAME="$MIGRATION_DB_USERNAME"
 export DB_PASSWORD="$MIGRATION_DB_PASSWORD"
 export EXPECTED_DB_NAME="$MIGRATION_DB_NAME"
@@ -70,6 +74,10 @@ if [ "$validation_only" = true ]; then
   exit 0
 fi
 
+if [ "$run_once" = true ]; then
+  exec java ${JAVA_TOOL_OPTIONS:-} ${JAVA_OPTS:-} -Dloader.main=com.prototype.vulnwatch.migration.ProductionBootstrapCli -cp /app/vulnwatch-backend.jar org.springframework.boot.loader.launch.PropertiesLauncher
+fi
+
 mkdir -p /tmp/scout-maintenance
 printf 'schema bootstrap running\n' > /tmp/scout-maintenance/index.txt
 busybox httpd -f -p "0.0.0.0:${PORT:-10000}" -h /tmp/scout-maintenance >/dev/null 2>&1 &
@@ -78,7 +86,13 @@ cleanup() {
   kill "$maintenance_listener_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
-trap 'exit 0' INT TERM
+migration_pid=""
+cancel_migration() {
+  if [ -n "$migration_pid" ]; then kill -TERM "$migration_pid" 2>/dev/null || true; fi
+  exit "$1"
+}
+trap 'cancel_migration 130' INT
+trap 'cancel_migration 143' TERM
 
 success_file=/tmp/scout-schema-migration-success
 rm -f "$success_file"
@@ -88,7 +102,10 @@ rm -f "$success_file"
 java ${JAVA_TOOL_OPTIONS:-} ${JAVA_OPTS:-} \
   -Dloader.main=com.prototype.vulnwatch.migration.ProductionBootstrapCli \
   -cp /app/vulnwatch-backend.jar \
-  org.springframework.boot.loader.launch.PropertiesLauncher
+  org.springframework.boot.loader.launch.PropertiesLauncher &
+migration_pid=$!
+wait "$migration_pid"
+migration_pid=""
 
 printf 'success\n' > "$success_file"
 printf 'schema bootstrap complete; privileged service awaiting deletion\n' > /tmp/scout-maintenance/index.txt

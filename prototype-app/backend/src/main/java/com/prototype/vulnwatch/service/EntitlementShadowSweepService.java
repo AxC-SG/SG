@@ -38,7 +38,7 @@ public class EntitlementShadowSweepService {
                 : backgroundTaskExecutionPolicy;
     }
 
-    @Scheduled(cron = "${app.entitlements.shadow-sweep-cron:0 */30 * * * *}")
+    @Scheduled(zone = "UTC", cron = "${app.entitlements.shadow-sweep-cron:0 */30 * * * *}")
     public void sweep() {
         // Nothing to shadow in LEGACY mode.
         if (!tenantEntitlementService.shadowSweepEnabled()) {

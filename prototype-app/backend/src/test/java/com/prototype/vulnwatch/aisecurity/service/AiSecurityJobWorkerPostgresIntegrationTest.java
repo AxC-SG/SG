@@ -67,6 +67,8 @@ class AiSecurityJobWorkerPostgresIntegrationTest {
                 eq(failingConnector)))
                 .thenThrow(new IllegalStateException("raw provider response must not persist"));
 
+        jobs.claimPendingJobsByType(healthy,IngestionJobService.JOB_TYPE_AI_SECURITY_AWS_BEDROCK,1,1);
+        jobs.claimPendingJobsByType(failing,IngestionJobService.JOB_TYPE_AI_SECURITY_AWS_BEDROCK,1,1);
         worker.execute(healthy.getId(), healthyJob);
         worker.execute(failing.getId(), failingJob);
 

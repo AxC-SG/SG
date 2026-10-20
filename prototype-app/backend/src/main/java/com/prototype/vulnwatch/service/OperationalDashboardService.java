@@ -250,7 +250,9 @@ public class OperationalDashboardService {
                 state.filterCacheHits(),
                 state.filterCacheMisses(),
                 filterCacheHitRatio,
-                endpointMetrics
+                endpointMetrics,
+                "JVM_LOCAL_RECENT_REQUESTS",
+                OperationalMetricsService.MAX_SAMPLES_PER_KEY
         );
     }
 

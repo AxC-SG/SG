@@ -1,16 +1,17 @@
 package com.prototype.vulnwatch.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
 class BackgroundTaskExecutionPolicyTest {
 
     @Test
-    void defaultsUnknownAndBlankRolesToAll() {
-        assertThat(new BackgroundTaskExecutionPolicy(null).runtimeRole()).isEqualTo("all");
-        assertThat(new BackgroundTaskExecutionPolicy("   ").runtimeRole()).isEqualTo("all");
-        assertThat(new BackgroundTaskExecutionPolicy("unexpected").runtimeRole()).isEqualTo("all");
+    void rejectsUnknownAndBlankRoles() {
+        for (String role : new String[] {null, "   ", "unexpected"}) {
+            assertThatThrownBy(() -> new BackgroundTaskExecutionPolicy(role)).isInstanceOf(IllegalStateException.class);
+        }
     }
 
     @Test

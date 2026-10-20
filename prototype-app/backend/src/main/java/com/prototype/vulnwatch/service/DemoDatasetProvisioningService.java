@@ -34,6 +34,15 @@ public class DemoDatasetProvisioningService {
         this.datasetService = datasetService;
     }
 
+    private TenantSchemaExecutionService tenantExecution;
+    private org.springframework.transaction.support.TransactionTemplate seedTransaction;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureSeedTransactions(TenantSchemaExecutionService tenantExecution,
+                                   org.springframework.transaction.PlatformTransactionManager manager) {
+        this.tenantExecution = tenantExecution;
+        this.seedTransaction = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
+
     @Transactional
     public Tenant request(UUID tenantId) {
         Tenant tenant = tenantRepository.findById(tenantId)
@@ -52,9 +61,14 @@ public class DemoDatasetProvisioningService {
         return datasetService.needsRepair(tenant);
     }
 
+    private com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy backgroundPolicy=com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy.allowAll();
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureBackgroundPolicy(com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy policy) { backgroundPolicy=policy; }
+
     @Scheduled(initialDelayString = "${app.demo-data.initial-delay-ms:15000}",
             fixedDelayString = "${app.demo-data.poll-delay-ms:30000}")
     public void seedRequestedTenants() {
+        if (!backgroundPolicy.allowsBackgroundTask("seedRequestedTenants")) return;
         tenantRepository.findAllByOrderByCreatedAtAsc().stream()
                 .filter(DemoDatasetProvisioningService::isRequested)
                 .filter(tenant -> "ACTIVE".equalsIgnoreCase(tenant.getStatus()))
@@ -74,33 +88,27 @@ public class DemoDatasetProvisioningService {
         if (!"ACTIVE".equalsIgnoreCase(tenant.getStatus())) {
             throw new IllegalStateException("Tenant must be ACTIVE before demo data can be seeded");
         }
-        int claimed = jdbcTemplate.update("""
-                UPDATE platform.tenants
-                   SET demo_source = ?,
-                       updated_at = now()
-                 WHERE id = ?
-                   AND coalesce(demo_source, '') <> ?
-                """, SEEDING_MARKER, tenantId, SEEDING_MARKER);
-        if (claimed == 0) {
-            throw new IllegalStateException("Demo data seed is already running");
-        }
         try {
-            CustomerDemoDatasetService.DemoDatasetSummary summary = datasetService.seed(tenant);
-            jdbcTemplate.update("""
-                    UPDATE platform.tenants
-                       SET demo_source = ?,
-                           updated_at = now()
-                     WHERE id = ?
-                    """, SEEDED_MARKER, tenantId);
-            return summary;
-        } catch (RuntimeException ex) {
-            jdbcTemplate.update("""
-                    UPDATE platform.tenants
-                       SET demo_source = ?,
-                           updated_at = now()
-                     WHERE id = ?
-                    """, REQUESTED_MARKER, tenantId);
-            throw ex;
+            return tenantExecution.run(tenant, () -> seedTransaction.execute(status -> {
+                // NOWAIT preserves a healthy seed; process death rolls back data and releases the lock.
+                String currentStatus = jdbcTemplate.queryForObject(
+                        "select status from platform.tenants where id=? for update nowait", String.class, tenantId);
+                if (!"ACTIVE".equalsIgnoreCase(currentStatus)) {
+                    throw new IllegalStateException("Tenant must remain ACTIVE while demo data is seeded");
+                }
+                jdbcTemplate.update("update platform.tenants set demo_source=?,updated_at=clock_timestamp() where id=?",
+                        SEEDING_MARKER, tenantId);
+                CustomerDemoDatasetService.DemoDatasetSummary summary = datasetService.seed(tenant);
+                jdbcTemplate.update("update platform.tenants set demo_source=?,updated_at=clock_timestamp() where id=?",
+                        SEEDED_MARKER, tenantId);
+                return summary;
+            }));
+        } catch (org.springframework.dao.DataAccessException failure) {
+            if (failure.getMostSpecificCause() instanceof java.sql.SQLException sql
+                    && "55P03".equals(sql.getSQLState())) {
+                throw new IllegalStateException("Demo data seed is already running", failure);
+            }
+            throw failure;
         }
     }
 

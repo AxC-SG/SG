@@ -60,7 +60,7 @@ public class OsvPlatformService {
         try {
           syncEcosystemPackages(ecosystem);
         } catch (Exception e) {
-          log.warn("Failed to sync ecosystem: {}", ecosystem, e);
+          throw new IllegalStateException("OSV ecosystem retrieval is incomplete: " + ecosystem, e);
         }
       }
 
@@ -69,7 +69,7 @@ public class OsvPlatformService {
       log.info("OSV advisory sync completed successfully");
 
     } catch (Exception e) {
-      log.error("OSV advisory sync failed", e);
+      throw new IllegalStateException("OSV advisory sync failed; previous intelligence is retained", e);
     }
   }
 
@@ -100,14 +100,14 @@ public class OsvPlatformService {
             }
           }
         } catch (Exception e) {
-          log.warn("Failed to query OSV for {}:{}", ecosystem, packageName, e);
+          throw new IllegalStateException("OSV package retrieval is incomplete", e);
         }
       }
 
       log.debug("Completed OSV sync for ecosystem: {}", ecosystem);
 
     } catch (Exception e) {
-      log.error("Error syncing ecosystem packages: {}", ecosystem, e);
+      throw new IllegalStateException("OSV ecosystem retrieval is incomplete", e);
     }
   }
 
@@ -136,8 +136,7 @@ public class OsvPlatformService {
       return result;
 
     } catch (Exception e) {
-      log.error("Failed to get inventory packages", e);
-      return new HashMap<>();
+      throw new IllegalStateException("OSV package inventory is unavailable", e);
     }
   }
 
@@ -173,7 +172,7 @@ public class OsvPlatformService {
       log.debug("Saved OSV advisory: {}", vuln.getId());
 
     } catch (Exception e) {
-      log.error("Failed to save OSV advisory: {}", vuln.getId(), e);
+      throw new IllegalStateException("OSV advisory persistence failed", e);
     }
   }
 

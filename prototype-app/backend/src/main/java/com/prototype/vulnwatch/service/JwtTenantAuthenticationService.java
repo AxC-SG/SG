@@ -41,6 +41,15 @@ public class JwtTenantAuthenticationService {
     private final String nameClaim;
     private final String rolesClaim;
     private final String keycloakClientId;
+    private ServiceAccountJwtAuthorizationService machineAuthorization;
+    private org.springframework.transaction.support.TransactionTemplate authenticationTransactions;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void configureAuthorization(ServiceAccountJwtAuthorizationService machineAuthorization,
+            org.springframework.transaction.PlatformTransactionManager manager) {
+        this.machineAuthorization = machineAuthorization;
+        this.authenticationTransactions = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
 
     public JwtTenantAuthenticationService(
             AppUserRepository userRepository,
@@ -79,16 +88,32 @@ public class JwtTenantAuthenticationService {
         this.keycloakClientId = keycloakClientId;
     }
 
-    @Transactional
     public AuthenticatedTenantActor authenticate(Jwt jwt) {
         return authenticate(jwt, null);
     }
 
-    @Transactional
     public AuthenticatedTenantActor authenticate(Jwt jwt, String requestUri) {
+        Set<String> claimedRoles = extractJwtRoles(jwt);
+        if (claimedRoles.contains("SERVICE_ACCOUNT")) {
+            if (!claimedRoles.equals(Set.of("SERVICE_ACCOUNT")) || machineAuthorization == null) {
+                throw new ResponseStatusException(FORBIDDEN, "Service-account token authority is invalid");
+            }
+            String tenantId = claimAsString(jwt, activeTenantIdClaim);
+            if (!hasText(tenantId)) tenantId = claimAsString(jwt, tenantIdClaim);
+            if (!hasText(tenantId)) throw new ResponseStatusException(FORBIDDEN, "Service-account token requires an explicit tenant");
+            return machineAuthorization.authenticate(resolveSubject(jwt), parseUuid(tenantId));
+        }
+        return authenticationTransactions == null ? authenticateHuman(jwt, requestUri)
+                : authenticationTransactions.execute(status -> authenticateHuman(jwt, requestUri));
+    }
+
+    private AuthenticatedTenantActor authenticateHuman(Jwt jwt, String requestUri) {
         String subject = resolveSubject(jwt);
-        AppUser user = userRepository.findByExternalSubject(subject)
+        AppUser user = userRepository.findByExternalSubjectForUpdate(subject)
                 .orElseGet(() -> createUser(subject));
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw new ResponseStatusException(UNAUTHORIZED, "User account is inactive");
+        }
         user.setEmail(claimAsString(jwt, emailClaim));
         user.setDisplayName(claimAsString(jwt, nameClaim));
         user.setLastSeenAt(Instant.now());
@@ -96,26 +121,17 @@ public class JwtTenantAuthenticationService {
         userRepository.save(user);
 
         Set<String> jwtRoles = extractJwtRoles(jwt);
-        if (jwtRoles.contains("PLATFORM_OWNER")) {
-            appUserGlobalRoleService.ensureRole(user, "PLATFORM_OWNER");
-        }
-        Set<String> roles = new LinkedHashSet<>(jwtRoles);
-        roles.addAll(appUserGlobalRoleService.rolesForUser(user.getId()));
-        if (roles.contains("PLATFORM_OWNER") && !user.isPlatformOwner()) {
-            user.setPlatformOwner(true);
-            user.setUpdatedAt(Instant.now());
-            userRepository.save(user);
+        Set<String> roles = new LinkedHashSet<>();
+        appUserGlobalRoleService.rolesForUser(user.getId()).forEach(role ->
+                roles.add(TenantRolePolicy.canonicalRole(role)));
+        if (jwtRoles.contains("PLATFORM_OWNER") && !roles.contains("PLATFORM_OWNER")) {
+            throw new ResponseStatusException(FORBIDDEN, "Platform authorization changed; sign in again");
         }
         TenantAccessResolution access = resolveTenantAccess(jwt, subject, roles, requestUri);
         Tenant tenant = access == null ? null : access.tenant();
 
-        if (tenant != null) {
-            TenantMembership membership = membershipRepository
-                    .findFirstByUserExternalSubjectAndTenantIdAndStatus(subject, tenant.getId(), "ACTIVE")
-                    .orElse(null);
-            if (membership != null) {
-                roles.add(membership.getRole());
-            }
+        if (access != null && !access.mode().isSupport()) {
+            roles.add(TenantRolePolicy.forAuthorization(access.role()));
         }
 
         if (roles.isEmpty()) {
@@ -288,7 +304,7 @@ public class JwtTenantAuthenticationService {
         if (role == null || role.isBlank()) {
             return;
         }
-        roles.add(role.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_').replaceFirst("^ROLE_", ""));
+        roles.add(TenantRolePolicy.canonicalRole(role));
     }
 
     private String claimAsString(Jwt jwt, String claimName) {

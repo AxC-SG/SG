@@ -1,0 +1,933 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ai-discovery low-cost demo fixtures. Safer-by-default variant for a personal AWS account. Deploy only in an isolated demo account and delete when testing is complete.",
+  "Metadata": {
+    "FixtureVersion": "free-tier-1.0",
+    "CostProfile": "No customer-managed KMS key, Secrets Manager secret, NAT gateway, load balancer, knowledge base, vector store, EC2, or model invocation is created. Charges can still arise if you invoke Bedrock, invoke Lambda, store S3 data, or ingest CloudWatch logs.",
+    "SafetyProfile": "The public entry point and cross-account trust fixture are disabled by default. They are created only when DeployRiskyScenarios=true."
+  },
+  "Parameters": {
+    "ScannerAccountId": {
+      "Type": "String",
+      "Description": "AWS account ID where the ai-discovery scanner runs.",
+      "AllowedPattern": "^[0-9]{12}$"
+    },
+    "ScannerExternalId": {
+      "Type": "String",
+      "Default": "ai-discovery-service"
+    },
+    "ProModel": {
+      "Type": "String",
+      "Default": "amazon.nova-pro-v1:0"
+    },
+    "LiteModel": {
+      "Type": "String",
+      "Default": "amazon.nova-lite-v1:0"
+    },
+    "DeployRiskyScenarios": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Description": "Set true only for a short isolated test. Creates an unauthenticated public Lambda URL and an overbroad cross-account role."
+    }
+  },
+  "Conditions": {
+    "RiskyScenariosEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "DeployRiskyScenarios"
+        },
+        "true"
+      ]
+    }
+  },
+  "Resources": {
+    "AiDiscoveryScannerRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryFreeTierScannerRole",
+        "Description": "Read-only cross-account role for the ai-discovery scanner.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:aws:iam::${ScannerAccountId}:root"
+                }
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": {
+                    "Ref": "ScannerExternalId"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "AiDiscoveryReadOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:List*",
+                    "bedrock:Get*",
+                    "iam:GetRole",
+                    "iam:ListRoles",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListRolePolicies",
+                    "iam:GetRolePolicy",
+                    "iam:GetPolicy",
+                    "iam:GetPolicyVersion",
+                    "lambda:ListFunctions",
+                    "lambda:GetFunction",
+                    "lambda:GetFunctionUrlConfig",
+                    "lambda:GetPolicy",
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketTagging",
+                    "s3:GetBucketPolicy",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "dynamodb:ListTables",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:ListTagsOfResource",
+                    "logs:DescribeLogGroups",
+                    "tag:GetResources"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "ClaimsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "claims-db-free-tier",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "claimId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "claimId",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "Tags": [
+          {
+            "Key": "DataClassification",
+            "Value": "PII"
+          },
+          {
+            "Key": "Application",
+            "Value": "claims-triage"
+          },
+          {
+            "Key": "Owner",
+            "Value": "claims-platform"
+          },
+          {
+            "Key": "Criticality",
+            "Value": "high"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "CustomerDocsBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "aidiscovery-free-tier-docs-${AWS::AccountId}"
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "DataClassification",
+            "Value": "PII"
+          },
+          {
+            "Key": "DataUsage",
+            "Value": "RAG_SOURCE"
+          },
+          {
+            "Key": "Application",
+            "Value": "search-rerank"
+          },
+          {
+            "Key": "Owner",
+            "Value": "search-platform"
+          },
+          {
+            "Key": "Criticality",
+            "Value": "medium"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "SearchRerankGuardrail": {
+      "Type": "AWS::Bedrock::Guardrail",
+      "Properties": {
+        "Name": "search-rerank-guardrail-free-tier",
+        "BlockedInputMessaging": "Sorry, the model cannot answer this question.",
+        "BlockedOutputsMessaging": "Sorry, the model cannot answer this question.",
+        "ContentPolicyConfig": {
+          "FiltersConfig": [
+            {
+              "Type": "PROMPT_ATTACK",
+              "InputStrength": "HIGH",
+              "OutputStrength": "NONE"
+            },
+            {
+              "Type": "VIOLENCE",
+              "InputStrength": "HIGH",
+              "OutputStrength": "HIGH"
+            }
+          ]
+        },
+        "SensitiveInformationPolicyConfig": {
+          "PiiEntitiesConfig": [
+            {
+              "Type": "US_SOCIAL_SECURITY_NUMBER",
+              "Action": "BLOCK"
+            },
+            {
+              "Type": "EMAIL",
+              "Action": "ANONYMIZE"
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "guardrail-control"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "ClaimsAgentRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryClaimsAgentFreeTierRole",
+        "Description": "TEST FIXTURE - intentionally overbroad Bedrock role; no public path is deployed by default.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "IntentionallyWildcard",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "bedrock:*",
+                    "dynamodb:*",
+                    "s3:*"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "wildcard-agent-identity"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "SearchAgentRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoverySearchAgentFreeTierRole",
+        "Description": "Control fixture - model invocation only.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "bedrock.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "InvokeOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "bedrock:InvokeModel",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:bedrock:${AWS::Region}::foundation-model/${LiteModel}"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "least-privilege-control"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "ClaimsActionLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryClaimsActionFreeTierRole",
+        "Description": "TEST FIXTURE - action-group role can modify the PII-tagged claims table.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ClaimsReadWrite",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ClaimsTable",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "agent-tool-pii-path"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "SafeLookupLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoverySafeLookupFreeTierRole",
+        "Description": "Control fixture - action group can only read the tagged RAG source bucket.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ReadRagSourceOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "CustomerDocsBucket",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${CustomerDocsBucket.Arn}/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "least-privilege-tool-control"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "ClaimsTriageActionHandler": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "claims-triage-action-free-tier",
+        "Description": "TEST FIXTURE - PII write-capable Bedrock action-group handler. No real records are added.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 5,
+        "Role": {
+          "Fn::GetAtt": [
+            "ClaimsActionLambdaRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "CLAIMS_TABLE": {
+              "Ref": "ClaimsTable"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    return {'messageVersion':'1.0','response':{'actionGroup':event.get('actionGroup','claims-tools'),'function':event.get('function','lookupClaim'),'functionResponse':{'responseBody':{'TEXT':{'body':'demo stub'}}}}}\n"
+        },
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "agent-tool-pii-path"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "SafeLookupHandler": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "safe-rag-lookup-free-tier",
+        "Description": "Control fixture - read-only Bedrock action-group handler.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 5,
+        "Role": {
+          "Fn::GetAtt": [
+            "SafeLookupLambdaRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "DOCS_BUCKET": {
+              "Ref": "CustomerDocsBucket"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    return {'messageVersion':'1.0','response':{'actionGroup':event.get('actionGroup','safe-lookup'),'function':event.get('function','searchDocs'),'functionResponse':{'responseBody':{'TEXT':{'body':'demo stub'}}}}}\n"
+        },
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "least-privilege-tool-control"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          },
+          {
+            "Key": "FixtureTier",
+            "Value": "free"
+          }
+        ]
+      }
+    },
+    "ClaimsTriageInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "ClaimsTriageActionHandler"
+        },
+        "Principal": "bedrock.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "SafeLookupInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "SafeLookupHandler"
+        },
+        "Principal": "bedrock.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        }
+      }
+    },
+    "ClaimsTriageAgent": {
+      "Type": "AWS::Bedrock::Agent",
+      "DependsOn": [
+        "ClaimsTriageInvokePermission"
+      ],
+      "Properties": {
+        "AgentName": "claims-triage-free-tier",
+        "Description": "TEST FIXTURE - no guardrail, wildcard role, and PII write-capable action group. No public endpoint unless explicitly enabled.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "ClaimsAgentRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "ProModel"
+        },
+        "Instruction": "You are a claims triage assistant. Use available tools to look up and update claim records for this isolated demo only.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "DISABLED",
+        "ActionGroups": [
+          {
+            "ActionGroupName": "claims-tools",
+            "ActionGroupState": "ENABLED",
+            "Description": "Claims lookup and status update tools.",
+            "ActionGroupExecutor": {
+              "Lambda": {
+                "Fn::GetAtt": [
+                  "ClaimsTriageActionHandler",
+                  "Arn"
+                ]
+              }
+            },
+            "FunctionSchema": {
+              "Functions": [
+                {
+                  "Name": "lookupClaim",
+                  "Description": "Look up a claim.",
+                  "Parameters": {
+                    "claimId": {
+                      "Type": "string",
+                      "Description": "Claim identifier",
+                      "Required": true
+                    }
+                  }
+                },
+                {
+                  "Name": "updateClaimStatus",
+                  "Description": "Update a claim status.",
+                  "Parameters": {
+                    "claimId": {
+                      "Type": "string",
+                      "Description": "Claim identifier",
+                      "Required": true
+                    },
+                    "status": {
+                      "Type": "string",
+                      "Description": "New status",
+                      "Required": true
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": {
+          "FixtureScenario": "unguarded-agent-pii-write",
+          "Application": "claims-triage",
+          "Owner": "claims-platform",
+          "Criticality": "high",
+          "Environment": "demo",
+          "FixtureTier": "free"
+        }
+      }
+    },
+    "SearchRerankAgent": {
+      "Type": "AWS::Bedrock::Agent",
+      "DependsOn": [
+        "SafeLookupInvokePermission"
+      ],
+      "Properties": {
+        "AgentName": "search-rerank-free-tier",
+        "Description": "Control fixture: guardrail, least privilege, and read-only RAG-source action group.",
+        "AgentResourceRoleArn": {
+          "Fn::GetAtt": [
+            "SearchAgentRole",
+            "Arn"
+          ]
+        },
+        "FoundationModel": {
+          "Ref": "LiteModel"
+        },
+        "Instruction": "You are a search reranking assistant. Return the most relevant documents and a short explanation for each result.",
+        "IdleSessionTTLInSeconds": 600,
+        "AutoPrepare": true,
+        "AgentCollaboration": "DISABLED",
+        "GuardrailConfiguration": {
+          "GuardrailIdentifier": {
+            "Fn::GetAtt": [
+              "SearchRerankGuardrail",
+              "GuardrailId"
+            ]
+          },
+          "GuardrailVersion": "DRAFT"
+        },
+        "ActionGroups": [
+          {
+            "ActionGroupName": "safe-lookup",
+            "ActionGroupState": "ENABLED",
+            "Description": "Read-only document lookup.",
+            "ActionGroupExecutor": {
+              "Lambda": {
+                "Fn::GetAtt": [
+                  "SafeLookupHandler",
+                  "Arn"
+                ]
+              }
+            },
+            "FunctionSchema": {
+              "Functions": [
+                {
+                  "Name": "searchDocs",
+                  "Description": "Search documentation.",
+                  "Parameters": {
+                    "query": {
+                      "Type": "string",
+                      "Description": "Search query",
+                      "Required": true
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": {
+          "FixtureScenario": "protected-agent-control",
+          "Application": "search-rerank",
+          "Owner": "search-platform",
+          "Criticality": "medium",
+          "Environment": "demo",
+          "FixtureTier": "free"
+        }
+      }
+    },
+    "PublicAgentEntryRole": {
+      "Condition": "RiskyScenariosEnabled",
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryPublicEntryFreeTierRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "optional-public-entry-point"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          }
+        ]
+      }
+    },
+    "PublicAgentEntryHandler": {
+      "Condition": "RiskyScenariosEnabled",
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "public-agent-entry-free-tier",
+        "Description": "OPTIONAL TEST FIXTURE - unauthenticated public function URL. Enable only briefly for reachability tests.",
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Timeout": 5,
+        "Role": {
+          "Fn::GetAtt": [
+            "PublicAgentEntryRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "ZipFile": "def handler(event, context):\n    return {'statusCode': 200, 'body': 'Demo public entry point'}\n"
+        },
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "optional-public-entry-point"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          }
+        ]
+      }
+    },
+    "PublicAgentFunctionUrl": {
+      "Condition": "RiskyScenariosEnabled",
+      "Type": "AWS::Lambda::Url",
+      "Properties": {
+        "TargetFunctionArn": {
+          "Fn::GetAtt": [
+            "PublicAgentEntryHandler",
+            "Arn"
+          ]
+        },
+        "AuthType": "NONE"
+      }
+    },
+    "PublicAgentFunctionUrlPermission": {
+      "Condition": "RiskyScenariosEnabled",
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "PublicAgentEntryHandler"
+        },
+        "Action": "lambda:InvokeFunctionUrl",
+        "Principal": "*",
+        "FunctionUrlAuthType": "NONE"
+      }
+    },
+    "OverbroadCrossAccountRole": {
+      "Condition": "RiskyScenariosEnabled",
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "AiDiscoveryOverbroadTrustFreeTierRole",
+        "Description": "OPTIONAL TEST FIXTURE - do not leave deployed; allows any AWS principal to assume the role.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ReadClaims",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:Scan",
+                    "s3:GetObject"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "FixtureScenario",
+            "Value": "optional-cross-account-trust"
+          },
+          {
+            "Key": "Environment",
+            "Value": "demo"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "ScannerRoleArn": {
+      "Description": "Register as the scanner target role.",
+      "Value": {
+        "Fn::GetAtt": [
+          "AiDiscoveryScannerRole",
+          "Arn"
+        ]
+      }
+    },
+    "ClaimsTableName": {
+      "Description": "PII-tagged demo table using AWS-owned encryption.",
+      "Value": {
+        "Ref": "ClaimsTable"
+      }
+    },
+    "DocsBucket": {
+      "Description": "Empty PII-tagged RAG-source bucket using S3-managed AES-256 encryption.",
+      "Value": {
+        "Ref": "CustomerDocsBucket"
+      }
+    },
+    "OptionalPublicEntryUrl": {
+      "Condition": "RiskyScenariosEnabled",
+      "Description": "Created only when DeployRiskyScenarios=true. Delete the stack after testing.",
+      "Value": {
+        "Fn::GetAtt": [
+          "PublicAgentFunctionUrl",
+          "FunctionUrl"
+        ]
+      }
+    },
+    "ExpectedFindings": {
+      "Description": "Expected scanner result with default parameters.",
+      "Value": "claims-triage-free-tier: wildcard execution role + write access to PII-tagged data + no guardrail. search-rerank-free-tier: clean control. With DeployRiskyScenarios=true: also report public unauthenticated entry point and overbroad cross-account trust."
+    },
+    "Cleanup": {
+      "Description": "Delete this CloudFormation stack after the test; empty the S3 bucket first if you uploaded any objects.",
+      "Value": "No persistent paid KMS key or Secrets Manager secret is created by this template."
+    }
+  }
+}
+

@@ -58,6 +58,18 @@ class FixRecordJsonbPostgresIntegrationTest {
     @MockBean
     private FindingDeltaQueueService findingDeltaQueueService;
 
+    @org.springframework.test.context.transaction.BeforeTransaction
+    void selectCustomerBeforeTransaction() {
+        Tenant tenant = tenantService.getDefaultTenant();
+        com.prototype.vulnwatch.service.TenantContext.setCurrentTenantId(tenant.getId());
+        com.prototype.vulnwatch.service.TenantContext.setCurrentSchemaName(tenant.getSchemaName());
+    }
+
+    @org.springframework.test.context.transaction.AfterTransaction
+    void clearCustomerAfterTransaction() {
+        com.prototype.vulnwatch.service.TenantContext.clear();
+    }
+
     @Test
     void persistsJsonbFieldsAndSearchesSoftwareNamesStructurally() {
         ensureDefaultTenant();

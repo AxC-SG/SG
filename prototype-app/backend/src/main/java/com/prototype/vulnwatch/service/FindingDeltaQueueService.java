@@ -31,8 +31,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * on application restart and dropped them silently under backpressure.
  *
  * Events are written transactionally to finding_delta_queue and processed by a
- * scheduled poller using SELECT FOR UPDATE SKIP LOCKED, giving exactly-once
- * delivery within the JVM lifecycle and automatic retry on failure.
+ * scheduled poller using SELECT FOR UPDATE SKIP LOCKED, with automatic retry on failure. Effective writes must remain idempotent.
  */
 @Service
 public class FindingDeltaQueueService {
@@ -65,6 +64,7 @@ public class FindingDeltaQueueService {
     private int maxBatchesPerTenantPerPoll;
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TransactionTemplate writeTransactionTemplate;
+    private TransactionTemplate enqueueTransactionTemplate;
 
     public FindingDeltaQueueService(
             FindingDeltaQueueEntryRepository repository,
@@ -93,8 +93,11 @@ public class FindingDeltaQueueService {
     public void setTransactionManager(PlatformTransactionManager transactionManager) {
         if (transactionManager == null) {
             this.writeTransactionTemplate = null;
+            this.enqueueTransactionTemplate = null;
             return;
         }
+        this.enqueueTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.enqueueTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -134,7 +137,7 @@ public class FindingDeltaQueueService {
         if (tenantId == null || componentIds == null || componentIds.isEmpty()) {
             return 0;
         }
-        return executeWrite(() -> {
+        return executeEnqueue(() -> {
             int queued = 0;
             for (UUID componentId : sortedUniqueIds(componentIds)) {
                 String key = "software:" + tenantId + ":" + componentId + ":" + normalizeTag(sourceTag);
@@ -150,7 +153,8 @@ public class FindingDeltaQueueService {
         if (vulnerabilityIds == null || vulnerabilityIds.isEmpty()) {
             return 0;
         }
-        return executeWrite(() -> {
+        if (TenantContext.isPlatformContext()) return publishToActiveTenants(ids -> enqueueCveDeltas(ids, sourceTag), vulnerabilityIds);
+        return executeEnqueue(() -> {
             int queued = 0;
             for (UUID vulnerabilityId : sortedUniqueIds(vulnerabilityIds)) {
                 String key = "cve:" + vulnerabilityId + ":" + normalizeTag(sourceTag);
@@ -166,7 +170,8 @@ public class FindingDeltaQueueService {
         if (vulnerabilityIds == null || vulnerabilityIds.isEmpty()) {
             return 0;
         }
-        return executeWrite(() -> {
+        if (TenantContext.isPlatformContext()) return publishToActiveTenants(ids -> enqueueCveMetadataDeltas(ids, sourceTag), vulnerabilityIds);
+        return executeEnqueue(() -> {
             int queued = 0;
             for (UUID vulnerabilityId : sortedUniqueIds(vulnerabilityIds)) {
                 String key = "cve-metadata:" + vulnerabilityId + ":" + normalizeTag(sourceTag);
@@ -182,7 +187,8 @@ public class FindingDeltaQueueService {
         if (vulnerabilityIds == null || vulnerabilityIds.isEmpty()) {
             return 0;
         }
-        return executeWrite(() -> {
+        if (TenantContext.isPlatformContext()) return publishToActiveTenants(ids -> enqueueVexDeltas(ids, sourceKey, sourceTag), vulnerabilityIds);
+        return executeEnqueue(() -> {
             int queued = 0;
             for (UUID vulnerabilityId : sortedUniqueIds(vulnerabilityIds)) {
                 String normalizedSourceKey = normalizeTag(sourceKey);
@@ -196,11 +202,25 @@ public class FindingDeltaQueueService {
         });
     }
 
+    /** Global feed changes use the existing per-tenant outboxes. Never certify complete fanout after a tenant failure. */
+    private int publishToActiveTenants(java.util.function.ToIntFunction<Collection<UUID>> enqueue,Collection<UUID> ids) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Platform delta fanout must select the tenant before opening its publication transaction");
+        }
+        int published=0,failed=0;
+        for (Tenant tenant:tenantService.listActiveTenants()) {
+            try { published+=tenantSchemaExecutionService.run(tenant,() -> enqueue.applyAsInt(ids)); }
+            catch (RuntimeException unavailable) { failed++; LOG.warn("Platform delta publication is pending for tenant {}",tenant.getId()); }
+        }
+        if (failed>0) throw new IllegalStateException("Platform delta publication is incomplete for "+failed+" tenant(s); replay the retained feed run");
+        return published;
+    }
+
     public int enqueueLifecycleDeltas(UUID tenantId, Collection<UUID> componentIds, String sourceTag) {
         if (tenantId == null || componentIds == null || componentIds.isEmpty()) {
             return 0;
         }
-        return executeWrite(() -> {
+        return executeEnqueue(() -> {
             int queued = 0;
             for (UUID componentId : sortedUniqueIds(componentIds)) {
                 String key = "lifecycle:" + tenantId + ":" + componentId + ":" + normalizeTag(sourceTag);
@@ -216,7 +236,7 @@ public class FindingDeltaQueueService {
         if (tenantId == null) {
             return 0;
         }
-        return executeWrite(() -> repository.insertIfNotDuplicate(
+        return executeEnqueue(() -> repository.insertIfNotDuplicate(
                 NOISE_REDUCTION_REFRESH,
                 tenantId,
                 null,
@@ -638,6 +658,13 @@ public class FindingDeltaQueueService {
                 TenantContext.setCurrentSchemaName(previousSchema);
             }
         }
+    }
+
+    private <T> T executeEnqueue(Supplier<T> work) {
+        // Publication participates in the source transaction. Claims and acknowledgments
+        // deliberately keep their independent short transactions below.
+        return enqueueTransactionTemplate == null ? work.get()
+                : enqueueTransactionTemplate.execute(status -> work.get());
     }
 
     private <T> T executeWrite(Supplier<T> work) {

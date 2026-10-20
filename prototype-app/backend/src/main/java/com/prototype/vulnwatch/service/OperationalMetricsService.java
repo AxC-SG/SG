@@ -54,7 +54,7 @@ public class OperationalMetricsService {
     public static final String KEY_INGESTION_RECOMPUTE_FINDINGS = "ingestion-recompute-findings";
     public static final String KEY_NOISE_PROJECTION_REFRESH = "noise-reduction-projection-refresh";
     public static final String KEY_FINDINGS_PROJECTION_REFRESH = "findings-projection-refresh";
-    private static final int MAX_SAMPLES_PER_KEY = 500;
+    public static final int MAX_SAMPLES_PER_KEY = 500;
 
     private final Map<String, ArrayDeque<Sample>> samplesByKey = new HashMap<>();
 

@@ -52,6 +52,7 @@ public final class ProductionBootstrapCli {
                         phases.add(Phase.success("report_only_owner_verification", "complete"));
                     } else {
                         int platformVersion = runPlatformMigrations(config);
+                        provisionRuntimeRole(connection, config.runtimeDbUsername(), config.runtimeDbPassword());
                         phases.add(Phase.success("platform_migrations", "version=" + platformVersion));
                         if (config.platformOwnerBootstrapEnabled()) {
                             reconcilePlatformOwner(connection, config);
@@ -61,6 +62,7 @@ public final class ProductionBootstrapCli {
                         phases.add(Phase.success("default_tenant_registration", defaultTenant.schemaName()));
                         migrateTenant(config, defaultTenant);
                         String templateChecksum = fingerprint(connection, defaultTenant.schemaName());
+                        grantAndVerifySchema(connection,config.runtimeDbUsername(),defaultTenant.schemaName());
                         markCurrent(connection, defaultTenant, templateChecksum, runId);
                         phases.add(Phase.success("default_tenant_migration",
                                 "version=" + MIGRATION_TARGETS.tenantTarget()));
@@ -394,6 +396,7 @@ public final class ProductionBootstrapCli {
                     "Tenant schema does not match the migrated template: " + tenant.schemaName()
                             + " expected=" + templateChecksum + " actual=" + tenantChecksum);
         }
+        grantAndVerifySchema(connection,config.runtimeDbUsername(),tenant.schemaName());
         markCurrent(connection, tenant, tenantChecksum, runId);
     }
 
@@ -565,21 +568,28 @@ public final class ProductionBootstrapCli {
             statement.execute("revoke create on database " + quotedIdentifier(connection.getCatalog()) + " from " + quotedRole);
             statement.execute("revoke create on schema public from " + quotedRole);
         }
-        for (String schema : protectedSchemas(connection)) {
-            try (Statement statement = connection.createStatement()) {
-                String quotedSchema = quotedIdentifier(schema);
-                statement.execute("grant usage on schema " + quotedSchema + " to " + quotedRole);
-                statement.execute("grant select, insert, update, delete on all tables in schema " + quotedSchema + " to " + quotedRole);
-                statement.execute("grant usage, select on all sequences in schema " + quotedSchema + " to " + quotedRole);
-                statement.execute("revoke create on schema " + quotedSchema + " from " + quotedRole);
-                statement.execute("alter default privileges for role " + quotedIdentifier(currentUser(connection))
-                        + " in schema " + quotedSchema
-                        + " grant select, insert, update, delete on tables to " + quotedRole);
-                statement.execute("alter default privileges for role " + quotedIdentifier(currentUser(connection))
-                        + " in schema " + quotedSchema
-                        + " grant usage, select on sequences to " + quotedRole);
-            }
+        for (String schema : protectedSchemas(connection)) grantAndVerifySchema(connection,role,schema);
+        try (Statement statement=connection.createStatement()) {
+            statement.execute("grant usage on schema public to "+quotedRole);
+            statement.execute("grant select,insert,update,delete on public.github_security_advisories, public.github_advisory_sync_state to "+quotedRole);
         }
+    }
+
+    private static void grantAndVerifySchema(Connection connection,String role,String schema) throws SQLException {
+        String quotedRole=quotedIdentifier(role),quotedSchema=quotedIdentifier(schema);
+        try (Statement statement=connection.createStatement()) {
+            statement.execute("grant usage on schema "+quotedSchema+" to "+quotedRole);
+            statement.execute("grant select,insert,update,delete on all tables in schema "+quotedSchema+" to "+quotedRole);
+            statement.execute("grant usage,select on all sequences in schema "+quotedSchema+" to "+quotedRole);
+            statement.execute("revoke create on schema "+quotedSchema+" from "+quotedRole);
+            statement.execute("alter default privileges for role "+quotedIdentifier(currentUser(connection))+" in schema "+quotedSchema+" grant select,insert,update,delete on tables to "+quotedRole);
+            statement.execute("alter default privileges for role "+quotedIdentifier(currentUser(connection))+" in schema "+quotedSchema+" grant usage,select on sequences to "+quotedRole);
+        }
+        requireZero(connection,"""
+                select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+                where n.nspname=? and c.relkind in ('r','p')
+                  and not has_table_privilege(?,c.oid,'SELECT,INSERT,UPDATE,DELETE')
+                ""","runtime schema grants incomplete",schema,role);
     }
 
     private static void verifyControlPlane(Connection connection, String runtimeRole) throws Exception {
@@ -742,22 +752,12 @@ public final class ProductionBootstrapCli {
     }
 
     private static void verifyRuntimeDdlDenied(Connection connection) throws SQLException {
-        String tableName = "bootstrap_ddl_probe_" + UUID.randomUUID().toString().replace("-", "");
-        try (Statement statement = connection.createStatement()) {
-            statement.execute("create table platform." + quotedIdentifier(tableName) + " (id integer)");
-            try (Connection cleanup = DriverManager.getConnection(
-                    connection.getMetaData().getURL(),
-                    required("DB_USERNAME"),
-                    required("DB_PASSWORD"));
-                 Statement cleanupStatement = cleanup.createStatement()) {
-                cleanupStatement.execute("drop table if exists platform." + quotedIdentifier(tableName));
-            }
-            throw new BootstrapFailure("verification_failed", "runtime role can create protected tables");
-        } catch (SQLException ex) {
-            if (!"42501".equals(ex.getSQLState())) {
-                throw ex;
-            }
-        }
+        requireZero(connection,"""
+                select count(*) from pg_namespace where (nspname='platform' or nspname='public' or starts_with(nspname,'tenant_'))
+                    and has_schema_privilege(current_user,oid,'CREATE')
+                ""","runtime role can create protected tables");
+        requireZero(connection,"select case when has_database_privilege(current_user,current_database(),'CREATE') then 1 else 0 end",
+                "runtime role can create schemas");
     }
 
     private static void requireZero(Connection connection, String sql, String description, Object... params)

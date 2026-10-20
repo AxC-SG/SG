@@ -64,6 +64,7 @@ public class IngestionJobWorkerService {
     }
 
     @PostConstruct
+    @Scheduled(fixedDelayString="${app.ingestion.jobs.recovery-interval-ms:30000}")
     public void recoverInterruptedJobs() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("ingestion-job-worker.recover-interrupted-jobs")) {
             return;
@@ -102,13 +103,17 @@ public class IngestionJobWorkerService {
                                 pollBatchSize,
                                 maxConcurrentPerTenant
                         );
-                        for (IngestionJobService.ClaimedJobRef ref : claimed) {
+                        var allClaimed = new java.util.ArrayList<>(claimed);
+                        for (String connector : List.of(IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
+                                IngestionJobService.JOB_TYPE_SERVICENOW_CMDB)) {
+                            allClaimed.addAll(ingestionJobService.claimPendingJobsByType(tenant, connector, 1, 1));
+                        }
+                        for (IngestionJobService.ClaimedJobRef ref : allClaimed) {
                             try {
-                                sbomJobExecutor.execute(() -> execute(ref.tenantId(), ref.jobId()));
+                                sbomJobExecutor.execute(() -> execute(ref.tenantId(), ref.jobId(), ref.claimToken()));
                             } catch (RejectedExecutionException ex) {
-                                ingestionJobService.markQueuedForRetry(
-                                        ref.tenantId(),
-                                        ref.jobId(),
+                                ingestionJobService.retryRejectedClaim(
+                                        ref,
                                         "EXECUTOR_BUSY",
                                         "SBOM job executor is at capacity",
                                         Instant.now().plusMillis(retryDelayMs)
@@ -126,6 +131,18 @@ public class IngestionJobWorkerService {
     }
 
     void execute(java.util.UUID tenantId, java.util.UUID jobId) {
+        execute(tenantId, jobId, ingestionJobService.loadJob(tenantId, jobId).getClaimToken());
+    }
+
+    private void execute(java.util.UUID tenantId, java.util.UUID jobId, java.util.UUID token) {
+        try (var ignored = ingestionJobService.openAttempt(tenantId, jobId, token)) {
+            executeOwned(tenantId, jobId);
+        } catch (com.prototype.vulnwatch.service.IngestionAttemptService.StaleAttemptException stale) {
+            LOG.info("Skipped ingestion job {} because its attempt is no longer owned", jobId);
+        }
+    }
+
+    private void executeOwned(java.util.UUID tenantId, java.util.UUID jobId) {
         Tenant tenant = tenantService.resolveTenantUuid(tenantId);
         IngestionJob job = ingestionJobService.loadJob(tenantId, jobId);
         try {
@@ -134,6 +151,13 @@ public class IngestionJobWorkerService {
             // tenant schema is selected. Opening the transaction first would bind the default schema and
             // run the lock + ingestion against the wrong tenant.
             tenantSchemaExecutionService.run(tenant, () -> {
+                if (IngestionJobService.JOB_TYPE_GITHUB_REPOSITORY.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_GITHUB_GHCR.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_AWS_DISCOVERY.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_SERVICENOW_CMDB.equals(job.getJobType())) {
+                    executeGithubBatch(tenant, jobId);
+                    return null;
+                }
                 transactionTemplate.executeWithoutResult(status -> {
                     IngestionJob activeJob = ingestionJobService.loadJob(tenantId, jobId);
                     long lockKey = ingestionJobLockService.assetLockKey(tenantId, activeJob.getAssetIdentifier());
@@ -165,7 +189,11 @@ public class IngestionJobWorkerService {
             // the tenant scope too — otherwise it throws "Tenant context is required" on the worker thread
             // and a successful job is wrongly flipped to FAILED.
             tenantSchemaExecutionService.run(tenant, () -> {
-                ingestionJobService.recordCompleted(ingestionJobService.loadJob(tenantId, jobId));
+                try {
+                    ingestionJobService.recordCompleted(ingestionJobService.loadJob(tenantId, jobId));
+                } catch (RuntimeException reportingFailure) {
+                    LOG.warn("Ancillary completion reporting failed for succeeded job {}", jobId);
+                }
                 return null;
             });
         } catch (Exception ex) {
@@ -176,6 +204,24 @@ public class IngestionJobWorkerService {
                 return null;
             });
         }
+    }
+
+    private void executeGithubBatch(Tenant tenant, java.util.UUID jobId) {
+        // GitHub batches intentionally retain accepted documents when another item fails.
+        // A job-wide transaction would either poison their shared transaction on a checked
+        // rejection or hold the same asset lock needed by a separate document transaction.
+        transactionTemplate.executeWithoutResult(status ->
+                ingestionJobService.recordStarted(ingestionJobService.loadJob(tenant.getId(), jobId)));
+        IngestionJob activeJob = ingestionJobService.loadJob(tenant.getId(), jobId);
+        IngestionJobExecutionService.ExecutionOutcome outcome;
+        try {
+            outcome = executionService.execute(tenant, activeJob);
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex.getMessage(), ex);
+        }
+        // markSucceeded already owns its existing short status transaction. Each document
+        // has committed/rolled back under the orchestrator's transaction and asset lock.
+        ingestionJobService.markSucceeded(tenant.getId(), jobId, outcome.sbomUpload(), outcome.resultJson());
     }
 
     private String failureCode(Exception ex) {

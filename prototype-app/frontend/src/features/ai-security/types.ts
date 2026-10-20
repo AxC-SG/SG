@@ -763,6 +763,7 @@ export type AiSecurityConnectorConfig = {
   accountId: string;
   roleArn: string | null;
   authMode: 'WORKLOAD_IDENTITY' | 'CROSS_ACCOUNT_ROLE';
+  externalId?: string | null;
   regions: string[];
   enabled: boolean;
   createdAt: string;

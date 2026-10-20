@@ -4,8 +4,6 @@ import com.prototype.vulnwatch.domain.Tenant;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,25 +12,22 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 public class TenantSchemaExecutionService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TenantSchemaExecutionService.class);
-
     private final TenantService tenantService;
     private final TenantSchemaService tenantSchemaService;
-    private final TenantSwitchGuardMode tenantSwitchGuardMode;
 
     @Autowired
     public TenantSchemaExecutionService(
             TenantService tenantService,
             TenantSchemaService tenantSchemaService,
-            @Value("${app.tenancy.tenant-switch-guard-mode:WARN}") String tenantSwitchGuardMode
+            @Value("${app.tenancy.tenant-switch-guard-mode:FAIL}") String tenantSwitchGuardMode
     ) {
         this.tenantService = tenantService;
         this.tenantSchemaService = tenantSchemaService;
-        this.tenantSwitchGuardMode = TenantSwitchGuardMode.from(tenantSwitchGuardMode);
+        TenantSwitchGuardMode.from(tenantSwitchGuardMode);
     }
 
     TenantSchemaExecutionService(TenantService tenantService, TenantSchemaService tenantSchemaService) {
-        this(tenantService, tenantSchemaService, "WARN");
+        this(tenantService, tenantSchemaService, "FAIL");
     }
 
     public void run(Tenant tenant, Runnable runnable) {
@@ -94,10 +89,7 @@ public class TenantSchemaExecutionService {
         }
         String message = "Tenant context switch requested inside an active transaction: currentTenant=%s currentSchema=%s requestedTenant=%s requestedSchema=%s"
                 .formatted(previousTenantId, previousSchema, requestedTenantId, requestedSchema);
-        if (tenantSwitchGuardMode == TenantSwitchGuardMode.FAIL) {
-            throw new IllegalStateException(message);
-        }
-        LOG.warn(message);
+        throw new IllegalStateException(message);
     }
 
     private String normalizeBlank(String value) {
@@ -105,17 +97,16 @@ public class TenantSchemaExecutionService {
     }
 
     enum TenantSwitchGuardMode {
-        WARN,
         FAIL;
 
         static TenantSwitchGuardMode from(String value) {
             if (value == null || value.isBlank()) {
-                return WARN;
+                throw new IllegalArgumentException("app.tenancy.tenant-switch-guard-mode must be FAIL");
             }
             try {
                 return TenantSwitchGuardMode.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
             } catch (IllegalArgumentException ex) {
-                return WARN;
+                throw new IllegalArgumentException("app.tenancy.tenant-switch-guard-mode must be FAIL", ex);
             }
         }
     }

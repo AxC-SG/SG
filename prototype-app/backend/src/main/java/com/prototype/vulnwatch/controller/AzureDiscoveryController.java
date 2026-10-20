@@ -98,7 +98,7 @@ public class AzureDiscoveryController {
     @GetMapping("/sync/status")
     public AzureSyncStatusResponse syncStatus() {
         boolean active = azureDiscoverySyncService.hasActiveRun();
-        return new AzureSyncStatusResponse(active, active ? "running" : "idle");
+        return new AzureSyncStatusResponse(active, active ? "running" : "disabled");
     }
 
     @GetMapping("/targets")

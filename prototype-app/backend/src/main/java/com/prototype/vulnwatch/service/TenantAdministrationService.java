@@ -119,6 +119,7 @@ public class TenantAdministrationService {
     }
 
     public void deleteTenant(UUID tenantId) {
+        ManualTenantDeletionPolicy.requirePermitted();
         demoTenantPurgeService.deleteTenant(tenantId, Instant.now());
     }
 }

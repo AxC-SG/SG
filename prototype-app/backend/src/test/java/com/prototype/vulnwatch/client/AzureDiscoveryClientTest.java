@@ -12,6 +12,40 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class AzureDiscoveryClientTest {
+    @Test
+    void hostileContinuationCannotReceiveBearerToken() {
+        var template = new org.springframework.web.client.RestTemplate();
+        var server = org.springframework.test.web.client.MockRestServiceServer.bindTo(template).build();
+        server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo("https://management.azure.com/subscriptions/sub-1/resources?api-version=2021-04-01"))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess("{\"value\":[],\"nextLink\":\"https://attacker.example/resources\"}", org.springframework.http.MediaType.APPLICATION_JSON));
+        var credential = org.mockito.Mockito.mock(com.azure.core.credential.TokenCredential.class);
+        org.mockito.Mockito.when(credential.getToken(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(reactor.core.publisher.Mono.just(new com.azure.core.credential.AccessToken("sentinel", java.time.OffsetDateTime.now().plusHours(1))));
+        var guarded = new AzureDiscoveryClient(objectMapper, new com.prototype.vulnwatch.client.http.AzureManagementTransport(template), 2, 1000, 10000);
+        var result = guarded.fetchResources(credential, "sub-1", List.of());
+        assertTrue(result.error().contains("approved management endpoint"));
+        org.mockito.Mockito.verify(credential, org.mockito.Mockito.times(1)).getToken(org.mockito.ArgumentMatchers.any());
+        server.verify();
+    }
+
+    @Test
+    void loopingContinuationAndOversizeResponseRemainIncomplete() {
+        for (boolean oversized : List.of(false, true)) {
+            var template = new org.springframework.web.client.RestTemplate();
+            var server = org.springframework.test.web.client.MockRestServiceServer.bindTo(template).build();
+            String url = "https://management.azure.com/subscriptions/sub-1/resources?api-version=2021-04-01";
+            String body = oversized ? "x".repeat(101) : "{\"value\":[],\"nextLink\":\"" + url + "\"}";
+            server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo(url))
+                    .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(body, org.springframework.http.MediaType.APPLICATION_JSON));
+            var credential = org.mockito.Mockito.mock(com.azure.core.credential.TokenCredential.class);
+            org.mockito.Mockito.when(credential.getToken(org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(reactor.core.publisher.Mono.just(new com.azure.core.credential.AccessToken("sentinel", java.time.OffsetDateTime.now().plusHours(1))));
+            var result = new AzureDiscoveryClient(objectMapper, new com.prototype.vulnwatch.client.http.AzureManagementTransport(template), 2, oversized ? 100 : 1000, 10000)
+                    .fetchResources(credential, "sub-1", List.of());
+            assertTrue(result.error() != null);
+            server.verify();
+        }
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AzureDiscoveryClient client = new AzureDiscoveryClient(objectMapper);

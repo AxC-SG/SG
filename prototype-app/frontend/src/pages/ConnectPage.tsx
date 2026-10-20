@@ -270,7 +270,7 @@ const CONNECTORS: ConnectorDefinition[] = [
   {
     id: 'azure-discovery',
     name: 'Azure',
-    summary: 'Cloud infrastructure discovery from Azure compute and platform resources.',
+    summary: 'Disabled for the pilot. Existing Azure cloud inventory is retained.',
     icon: IconAzure
   },
   {

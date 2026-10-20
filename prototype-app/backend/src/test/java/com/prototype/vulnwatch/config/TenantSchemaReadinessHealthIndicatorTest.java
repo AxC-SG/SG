@@ -11,14 +11,15 @@ import org.springframework.boot.actuate.health.Status;
 class TenantSchemaReadinessHealthIndicatorTest {
 
     @Test
-    void readinessUsesExactPackagedTenantTarget() {
+    void tenantIncompatibilityIsVisibleWithoutDisablingHealthyTenants() {
         TenantSchemaStatusService service = org.mockito.Mockito.mock(TenantSchemaStatusService.class);
         PackagedMigrationCatalog catalog = new PackagedMigrationCatalog();
         when(service.readinessFailures(catalog.tenantTarget())).thenReturn(1L);
 
         var health = new TenantSchemaReadinessHealthIndicator(service, catalog).health();
 
-        assertEquals(Status.DOWN, health.getStatus());
+        assertEquals(Status.UP, health.getStatus());
+        assertEquals(1L,health.getDetails().get("unreadyTenantCount"));
         assertEquals(catalog.tenantTarget(), health.getDetails().get("packagedTenantTarget"));
     }
 

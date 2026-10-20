@@ -166,9 +166,9 @@ describe('Demo public pages', () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/invite/:token" element={<DemoInvitePage />} />
+        <Route path="/invite" element={<DemoInvitePage />} />
       </Routes>,
-      { route: '/invite/demo-token' }
+      { route: '/invite#token=demo-token' }
     );
 
     expect(await screen.findByText('Example Co')).toBeInTheDocument();
@@ -192,9 +192,9 @@ describe('Demo public pages', () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/invite/:token" element={<DemoInvitePage />} />
+        <Route path="/invite" element={<DemoInvitePage />} />
       </Routes>,
-      { route: '/invite/demo-token' }
+      { route: '/invite#token=demo-token' }
     );
 
     expect(await screen.findByText(/Email delivery failed/i)).toBeInTheDocument();
@@ -311,10 +311,10 @@ describe('Demo public pages', () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/invite/:token" element={<DemoInvitePage />} />
+        <Route path="/invite" element={<DemoInvitePage />} />
         <Route path="/login" element={<LoginPage />} />
       </Routes>,
-      { route: '/invite/demo-token' }
+      { route: '/invite#token=demo-token' }
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /Activate your workspace/i }));
@@ -349,10 +349,10 @@ describe('Demo public pages', () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/setup/:token" element={<SetupSessionPage />} />
+        <Route path="/setup" element={<SetupSessionPage />} />
         <Route path="/login" element={<LoginPage />} />
       </Routes>,
-      { route: '/setup/one-time-secret?email=alex%40example.com' }
+      { route: '/setup#token=one-time-secret&email=alex%40example.com' }
     );
 
     expect(await screen.findByText(/Set a password for your tenant workspace/i)).toBeInTheDocument();

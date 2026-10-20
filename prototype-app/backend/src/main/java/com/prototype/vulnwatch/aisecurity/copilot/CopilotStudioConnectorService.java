@@ -90,6 +90,35 @@ public class CopilotStudioConnectorService {
                 "ai-security-copilot", requestedBy);
     }
 
+    /** Cursor and accepted job commit together; a failed admission leaves the occurrence retryable. */
+    public void triggerScheduled(Tenant tenant, UUID connectorId, String expectedCron, Instant occurrence) {
+        if (occurrence == null) throw new IllegalArgumentException("Schedule occurrence is required");
+        tenantExecution.run(tenant, () -> transactions.executeWithoutResult(status -> {
+            var keys = Map.of("tenant", tenant.getId(), "connector", connectorId);
+            jdbc.update("""
+                    insert into platform.copilot_schedule_progress(tenant_id,connector_id)
+                    values (:tenant,:connector) on conflict do nothing
+                    """, keys);
+            Instant previous = jdbc.query("""
+                    select last_occurrence_at from platform.copilot_schedule_progress
+                    where tenant_id=:tenant and connector_id=:connector for update
+                    """, keys, rs -> {
+                rs.next();
+                var timestamp = rs.getTimestamp(1);
+                return timestamp == null ? null : timestamp.toInstant();
+            });
+            if (previous != null && !occurrence.isAfter(previous)) return;
+            Response current = required(tenant, connectorId);
+            if (current.killSwitch() || !current.discoveryEnabled() || !current.scheduleCron().equals(expectedCron)) return;
+            IngestionJobAcceptedResponse accepted = trigger(tenant, connectorId, "copilot-studio-schedule");
+            jdbc.update("""
+                    update platform.copilot_schedule_progress set last_occurrence_at=:occurrence,last_job_id=:job
+                    where tenant_id=:tenant and connector_id=:connector
+                    """, new MapSqlParameterSource(keys).addValue("occurrence", java.sql.Timestamp.from(occurrence))
+                    .addValue("job", accepted.jobId()));
+        }));
+    }
+
     private static URI validateOrganizationUrl(String value) {
         try {
             URI uri = URI.create(value == null ? "" : value.trim());

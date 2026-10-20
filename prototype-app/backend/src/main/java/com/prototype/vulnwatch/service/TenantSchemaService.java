@@ -21,8 +21,11 @@ public class TenantSchemaService {
     @Value("${app.tenancy.enforce-schema-version:false}")
     private boolean enforceSchemaVersion;
 
-    @Value("${app.tenancy.minimum-compatible-schema-version:1}")
+    @Value("${app.tenancy.minimum-compatible-schema-version:5}")
     private int minimumCompatibleSchemaVersion;
+
+    @Value("${app.tenancy.maximum-compatible-schema-version:5}")
+    private int maximumCompatibleSchemaVersion=5;
 
     public TenantSchemaService(
             @Qualifier("platformJdbcTemplate") JdbcTemplate platformJdbcTemplate,
@@ -111,10 +114,11 @@ public class TenantSchemaService {
             throw new IllegalStateException("Tenant schema is not CURRENT: " + normalized
                     + " (status=" + projection.status() + ")");
         }
-        if (projection.currentVersion() < minimumCompatibleSchemaVersion) {
-            throw new IllegalStateException("Tenant schema is below compatible version V"
-                    + minimumCompatibleSchemaVersion + ": " + normalized
-                    + " (current=V" + projection.currentVersion() + ")");
+        if (!TenantSchemaCompatibility.supports(projection.currentVersion(),minimumCompatibleSchemaVersion,maximumCompatibleSchemaVersion)) {
+            throw new IllegalStateException("Tenant schema is outside this release's supported range V"
+                    + Math.max(TenantSchemaCompatibility.REQUIRED_MINIMUM,minimumCompatibleSchemaVersion)+"..V"
+                    + Math.min(TenantSchemaCompatibility.SUPPORTED_MAXIMUM,maximumCompatibleSchemaVersion)+": "+normalized
+                    + " (current=V"+projection.currentVersion()+")");
         }
     }
 

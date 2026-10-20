@@ -2,6 +2,7 @@ package com.prototype.vulnwatch.client.http;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prototype.vulnwatch.service.GenerativeAssistancePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,28 +28,24 @@ public class OpenAiClient {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
 
-    @Value("${app.openai.api-key:}")
-    private String apiKey;
-
     @Value("${app.openai.base-url:https://api.openai.com/v1}")
     private String baseUrl;
 
     @Value("${app.openai.model:gpt-4o-mini}")
     private String model;
 
-    @Value("${app.openai.enabled:true}")
-    private boolean enabled;
-
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final GenerativeAssistancePolicy generativeAssistancePolicy;
 
-    public OpenAiClient(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public OpenAiClient(RestTemplate restTemplate, ObjectMapper objectMapper, GenerativeAssistancePolicy generativeAssistancePolicy) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.generativeAssistancePolicy = generativeAssistancePolicy;
     }
 
     public boolean isAvailable() {
-        return enabled && apiKey != null && !apiKey.isBlank();
+        return generativeAssistancePolicy.configuredApiKey() != null;
     }
 
     public String chatCompletion(String systemPrompt, String userPrompt) {
@@ -65,7 +62,8 @@ public class OpenAiClient {
     }
 
     public String chat(String systemPrompt, String userPrompt, AiCallOptions options) {
-        if (!isAvailable()) return null;
+        String apiKey = generativeAssistancePolicy.configuredApiKey();
+        if (apiKey == null) return null;
         try {
             String url = baseUrl.stripTrailing() + "/chat/completions";
 

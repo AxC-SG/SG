@@ -1,0 +1,50 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Recreates the stopped NoScan test EC2 host found in the source account (us-east-1 only).",
+  "Parameters": {
+    "KeyName": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "An existing key pair in the target account. The source private key cannot be exported from AWS."
+    },
+    "SshIngressCidr": {
+      "Type": "String",
+      "Default": "0.0.0.0/0",
+      "Description": "Source instance allowed SSH from anywhere. Restrict this to your IP/CIDR before deployment."
+    },
+    "HttpIngressCidr": {
+      "Type": "String",
+      "Default": "0.0.0.0/0",
+      "Description": "Source instance allowed HTTP from anywhere. Restrict this if public HTTP is not required."
+    }
+  },
+  "Resources": {
+    "NoScanSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "NoScan test host security group",
+        "SecurityGroupIngress": [
+          {"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "CidrIp": {"Ref": "SshIngressCidr"}},
+          {"IpProtocol": "tcp", "FromPort": 80, "ToPort": 80, "CidrIp": {"Ref": "HttpIngressCidr"}}
+        ],
+        "SecurityGroupEgress": [{"IpProtocol": "-1", "CidrIp": "0.0.0.0/0"}],
+        "Tags": [{"Key": "Name", "Value": "launch-wizard-2"}]
+      }
+    },
+    "NoScanTestInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": "ami-08f44e8eca9095668",
+        "InstanceType": "t3.micro",
+        "KeyName": {"Ref": "KeyName"},
+        "SecurityGroupIds": [{"Fn::GetAtt": ["NoScanSecurityGroup", "GroupId"]}],
+        "MetadataOptions": {"HttpTokens": "required", "HttpEndpoint": "enabled", "HttpPutResponseHopLimit": 2},
+        "BlockDeviceMappings": [{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 8, "VolumeType": "gp3", "Iops": 3000, "Throughput": 125, "DeleteOnTermination": true, "Encrypted": false}}],
+        "Tags": [{"Key": "Name", "Value": "NoScan test"}]
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceId": {"Value": {"Ref": "NoScanTestInstance"}},
+    "SecurityGroupId": {"Value": {"Fn::GetAtt": ["NoScanSecurityGroup", "GroupId"]}}
+  }
+}

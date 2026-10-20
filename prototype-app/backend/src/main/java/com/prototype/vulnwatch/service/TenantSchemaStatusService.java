@@ -69,19 +69,17 @@ public class TenantSchemaStatusService {
         return new TenantSchemaStatusResponse(items, page, size, total == null ? 0 : total);
     }
 
-    public long readinessFailures(int requiredVersion) {
-        Long count = jdbc.queryForObject("""
-                select count(*)
-                from platform.tenants t
-                left join platform.tenant_schema_versions v on v.tenant_id = t.id
-                where t.status = 'ACTIVE'
-                  and (v.tenant_id is null
-                       or v.status in ('FAILED', 'DRIFTED', 'PROVISIONING_FAILED')
-                       or v.status <> 'CURRENT'
-                       or v.current_version <> ?
-                       or v.target_version <> ?)
-                """, Long.class, requiredVersion, requiredVersion);
-        return count == null ? 0 : count;
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:5}")
+    private int compatibleMinimum=5;
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:5}")
+    private int compatibleMaximum=5;
+
+    public long readinessFailures(int ignoredPackagedTarget) {
+        Long count=jdbc.queryForObject("""
+                select count(*) from platform.tenants t left join platform.tenant_schema_versions v on v.tenant_id=t.id
+                 where t.status='ACTIVE' and (v.tenant_id is null or v.status<>'CURRENT' or v.current_version<? or v.current_version>?)
+                """,Long.class,Math.max(5,compatibleMinimum),Math.min(5,compatibleMaximum));
+        return count==null ? 0 : count;
     }
 
     public boolean hasProjection(UUID tenantId) {

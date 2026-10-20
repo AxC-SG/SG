@@ -1,9 +1,11 @@
 package com.prototype.vulnwatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.prototype.vulnwatch.domain.AppUser;
 import com.prototype.vulnwatch.domain.AuditEvent;
@@ -18,7 +20,9 @@ import com.prototype.vulnwatch.repo.TenantMembershipRepository;
 import com.prototype.vulnwatch.repo.TenantRepository;
 import com.prototype.vulnwatch.repo.TenantUserInviteRepository;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -89,7 +93,7 @@ class IdentityAdministrationServiceTest {
 
         assertEquals(user.getId(), response.userId());
         assertEquals("owner@example.com", response.email());
-        assertTrue(response.setupUrl().contains("/setup/setup-token-123"));
+        assertTrue(response.setupUrl().contains("/setup#token=setup-token-123"));
         assertTrue(response.setupUrl().contains("email=owner%40example.com"));
     }
 
@@ -125,6 +129,71 @@ class IdentityAdministrationServiceTest {
         assertEquals(user.getPasswordSetAt(), response.passwordSetAt());
         assertEquals(issued.getOccurredAt(), response.lastSetupIssuedAt());
         assertEquals(completed.getOccurredAt(), response.lastSetupCompletedAt());
+    }
+
+    @Test
+    void listPlatformUsersIncludesStoredOwnersWithCompatibilityFlagUnset() {
+        AppUser storedOwner = user("stored-owner@example.com", false);
+        AppUser compatibilityOwner = user("compatibility-owner@example.com", true);
+        AppUser ordinaryUser = user("ordinary@example.com", false);
+        List<AppUser> allUsers = List.of(storedOwner, compatibilityOwner, ordinaryUser);
+        when(userRepository.findAll()).thenReturn(allUsers);
+        when(appUserGlobalRoleService.rolesByUserIds(allUsers.stream().map(AppUser::getId).toList()))
+                .thenReturn(Map.of(storedOwner.getId(), Set.of("PLATFORM_OWNER"),
+                        compatibilityOwner.getId(), Set.of("PLATFORM_OWNER"),
+                        ordinaryUser.getId(), Set.of("SECURITY_ANALYST")));
+
+        List<PlatformUserResponse> response = service().listPlatformUsers();
+
+        assertEquals(Set.of(storedOwner.getId(), compatibilityOwner.getId()),
+                response.stream().map(PlatformUserResponse::userId).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(List.of("PLATFORM_OWNER"), response.stream()
+                .filter(user -> storedOwner.getId().equals(user.userId())).findFirst().orElseThrow().globalRoles());
+        assertFalse(storedOwner.isPlatformOwner());
+    }
+
+    @Test
+    void storedOwnerCanReceiveSetupLinkWithoutCompatibilityFlagMutation() {
+        AppUser storedOwner = user("stored-owner@example.com", false);
+        when(userRepository.findById(storedOwner.getId())).thenReturn(Optional.of(storedOwner));
+        when(appUserGlobalRoleService.rolesForUser(storedOwner.getId())).thenReturn(Set.of("PLATFORM_OWNER"));
+        when(localCredentialAuthService.issuePasswordSetupToken(storedOwner.getExternalSubject()))
+                .thenReturn("stored-owner-setup-token");
+
+        PlatformUserSetupLinkResponse response = service().issuePlatformUserSetupLink(storedOwner.getId());
+
+        assertEquals(storedOwner.getId(), response.userId());
+        assertTrue(response.setupUrl().contains("/setup#token=stored-owner-setup-token"));
+        assertFalse(storedOwner.isPlatformOwner());
+    }
+
+    @Test
+    void storedOwnerCannotBeProvisionedAsOrdinaryTenantOwner() {
+        AppUser storedOwner = user("stored-owner@example.com", false);
+        when(userRepository.findByExternalSubject(storedOwner.getExternalSubject())).thenReturn(Optional.of(storedOwner));
+        when(appUserGlobalRoleService.rolesForUser(storedOwner.getId())).thenReturn(Set.of("PLATFORM_OWNER"));
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service().assertOwnerCredentialProvisioningAllowed(storedOwner.getEmail()));
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("Platform-owner identities cannot be assigned as tenant owners", error.getReason());
+        assertFalse(storedOwner.isPlatformOwner());
+        verifyNoInteractions(membershipRepository);
+    }
+
+    @Test
+    void storedOwnerCannotBeAddedThroughOrdinaryTenantMembershipPath() {
+        AppUser storedOwner = user("stored-owner@example.com", false);
+        when(appUserGlobalRoleService.rolesForUser(storedOwner.getId())).thenReturn(Set.of("PLATFORM_OWNER"));
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service().assertEligibleForTenantMembership(storedOwner, UUID.randomUUID()));
+
+        assertEquals(409, error.getStatusCode().value());
+        assertEquals("Platform-owner identities cannot be added to tenant memberships", error.getReason());
+        assertFalse(storedOwner.isPlatformOwner());
+        verifyNoInteractions(membershipRepository);
     }
 
     private IdentityAdministrationService service() {

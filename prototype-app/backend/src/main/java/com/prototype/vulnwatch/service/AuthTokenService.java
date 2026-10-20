@@ -32,6 +32,13 @@ public class AuthTokenService {
     private final boolean requireProductionSecrets;
     private final boolean sharedLocalhostLoginEnabled;
     private final String corsAllowedOrigins;
+    private final AppUserGlobalRoleService globalRoleService;
+    @Value("${app.security.jwt.mode:LOCAL}")
+    private String jwtMode = "LOCAL";
+    @Value("${app.security.jwt.local-issuer:urn:scoutgrid:local}")
+    private String localIssuer = "urn:scoutgrid:local";
+    @Value("${app.security.jwt.audience:scoutgrid-api}")
+    private String audience = "scoutgrid-api";
 
     @Autowired
     public AuthTokenService(
@@ -40,7 +47,8 @@ public class AuthTokenService {
             @Value("${app.security.jwt.active-tenant-id-claim:active_tenant_id}") String activeTenantIdClaim,
             @Value("${app.security.require-production-secrets:false}") boolean requireProductionSecrets,
             @Value("${app.security.local-auth.shared-localhost-login-enabled:false}") boolean sharedLocalhostLoginEnabled,
-            @Value("${app.cors.allowed-origins:}") String corsAllowedOrigins
+            @Value("${app.cors.allowed-origins:}") String corsAllowedOrigins,
+            AppUserGlobalRoleService globalRoleService
     ) {
         this.hmacSecret = hmacSecret;
         this.tokenTtlMinutes = tokenTtlMinutes;
@@ -48,6 +56,13 @@ public class AuthTokenService {
         this.requireProductionSecrets = requireProductionSecrets;
         this.sharedLocalhostLoginEnabled = sharedLocalhostLoginEnabled;
         this.corsAllowedOrigins = corsAllowedOrigins;
+        this.globalRoleService = globalRoleService;
+    }
+
+    AuthTokenService(String hmacSecret, long tokenTtlMinutes, String activeTenantIdClaim,
+            boolean requireProductionSecrets, boolean sharedLocalhostLoginEnabled, String corsAllowedOrigins) {
+        this(hmacSecret, tokenTtlMinutes, activeTenantIdClaim, requireProductionSecrets,
+                sharedLocalhostLoginEnabled, corsAllowedOrigins, null);
     }
 
     AuthTokenService(String hmacSecret, long tokenTtlMinutes, String activeTenantIdClaim) {
@@ -72,18 +87,58 @@ public class AuthTokenService {
             TenantAccessResolution access
     ) {
         requireIssuerConfigured();
+        Set<String> authorizedRoles = validateRoles(user, roles, activeTenant, access);
         Instant now = Instant.now();
         Instant expiresAt = now.plus(Math.max(1, tokenTtlMinutes), ChronoUnit.MINUTES);
         return new AuthTokenResponse(
-                signToken(user, roles, activeTenant, access, now, expiresAt),
+                signToken(user, authorizedRoles, activeTenant, access, now, expiresAt),
                 "Bearer",
                 expiresAt);
     }
 
     private void requireIssuerConfigured() {
+        if (!"LOCAL".equalsIgnoreCase(jwtMode)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Local credential token issuance is disabled in EXTERNAL JWT mode");
+        }
         if (resolvedHmacSecret().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "APP_JWT_HMAC_SECRET is required for local credential login");
         }
+    }
+
+    private Set<String> validateRoles(AppUser user, Set<String> roles, Tenant tenant, TenantAccessResolution access) {
+        if (user == null || !"ACTIVE".equalsIgnoreCase(user.getStatus()) || roles == null || roles.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current authorization is required");
+        }
+        Set<String> normalized = roles.stream().map(TenantRolePolicy::canonicalRole)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean currentOwner = globalRoleService == null ? user.isPlatformOwner()
+                : globalRoleService.rolesForUser(user.getId()).contains("PLATFORM_OWNER");
+        if (normalized.contains("PLATFORM_OWNER") && !currentOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current platform-owner access is required");
+        }
+        if (tenant == null) {
+            if (!normalized.equals(Set.of("PLATFORM_OWNER"))) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Platform tokens require platform-owner access");
+            }
+        } else {
+            if (access == null || access.mode() == null || access.referenceId() == null
+                    || access.tenant() == null || !tenant.getId().equals(access.tenant().getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tenant-bound tokens require resolved authorization");
+            }
+            if (access.mode().isSupport()) {
+                if (!normalized.equals(Set.of("PLATFORM_OWNER")) || !currentOwner) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support tokens require platform-owner access");
+                }
+            } else {
+                String membershipRole = TenantRolePolicy.forAuthorization(access.role());
+                Set<String> expected = normalized.contains("PLATFORM_OWNER")
+                        ? Set.of("PLATFORM_OWNER", membershipRole) : Set.of(membershipRole);
+                if (!normalized.equals(expected)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token roles must match current tenant authorization");
+                }
+            }
+        }
+        return normalized;
     }
 
     private String signToken(
@@ -98,6 +153,9 @@ public class AuthTokenService {
             String header = json(Map.of("alg", "HS256", "typ", "JWT"));
             Map<String, Object> claims = new LinkedHashMap<>();
             claims.put("sub", user.getExternalSubject());
+            claims.put("iss", localIssuer);
+            claims.put("aud", List.of(audience));
+            claims.put("token_use", "access");
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
                 claims.put("email", user.getEmail());
             }

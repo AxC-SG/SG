@@ -7,15 +7,12 @@ import com.prototype.vulnwatch.service.TenantService;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 
 /** Runs tenant-configured Copilot schedules with discovery and runtime failure isolation. */
@@ -26,7 +23,6 @@ public class CopilotStudioScheduleService {
     private final CopilotStudioConnectorService configs;
     private final CopilotStudioRuntimeCollectionService runtime;
     private final boolean enabled;
-    private final Map<UUID, Instant> lastFire = new ConcurrentHashMap<>();
     private BackgroundTaskExecutionPolicy backgroundTasks = BackgroundTaskExecutionPolicy.allowAll();
 
     public CopilotStudioScheduleService(TenantService tenants, CopilotStudioConnectorService configs,
@@ -46,7 +42,10 @@ public class CopilotStudioScheduleService {
     @Scheduled(fixedDelayString = "${app.ai-security.copilot.schedule-poll-ms:60000}")
     public void poll() {
         if (!enabled || !backgroundTasks.allowsBackgroundTask("ai-security.copilot-schedule")) return;
-        TenantContext.runAsPlatform(() -> tenants.listActiveTenants().forEach(this::pollTenant));
+        TenantContext.runAsPlatform(() -> tenants.listActiveTenants().forEach(tenant -> {
+            try { pollTenant(tenant); }
+            catch (RuntimeException failure) { LOG.warn("Copilot schedule tenant {} failed: {}", tenant.getId(), failure.getClass().getSimpleName()); }
+        }));
     }
 
     void pollTenant(Tenant tenant) {
@@ -54,18 +53,16 @@ public class CopilotStudioScheduleService {
         for (CopilotStudioConnectorService.Response config : configs.list(tenant)) {
             if (config.killSwitch() || !config.discoveryEnabled()) continue;
             Instant due = dueTime(config.scheduleCron(), now);
-            if (due == null || due.equals(lastFire.put(config.id(), due))) continue;
+            if (due == null) continue;
             if (config.discoveryEnabled()) runSafely("discovery", tenant, config.id(),
-                    () -> configs.trigger(tenant, config.id(), "copilot-studio-schedule"));
+                    () -> configs.triggerScheduled(tenant, config.id(), config.scheduleCron(), due));
 
         }
-        lastFire.entrySet().removeIf(entry -> entry.getValue().isBefore(now.minusDays(2).toInstant()));
     }
 
     private static Instant dueTime(String cron, ZonedDateTime now) {
         try {
-            ZonedDateTime next = CronExpression.parse(cron).next(now.minusSeconds(61));
-            return next != null && !next.isAfter(now) ? next.toInstant() : null;
+            return com.prototype.vulnwatch.service.ScheduleOccurrence.due(cron, now.toInstant());
         } catch (IllegalArgumentException invalidCron) {
             return null;
         }

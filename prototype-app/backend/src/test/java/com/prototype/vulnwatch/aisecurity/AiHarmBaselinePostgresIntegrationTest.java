@@ -40,7 +40,7 @@ class AiHarmBaselinePostgresIntegrationTest {
     @Test void approvalDriftReapprovalRevocationRotationAndLateObservations() throws Exception {
         Tenant tenant = tenants.createTenant("Harm Baselines", "harm-baselines", "pilot", null);
         migrations.provisionNewTenant(tenant);
-        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", null, null, List.of("us-east-1"), true)).id();
+        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         Instant now = Instant.now().minusSeconds(60).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         observe(tenant, connector, "one", "v1", now);
         UUID artifact = execution.run(tenant, () -> jdbc.queryForObject("select id from ai_security_artifacts where provider_resource_id='prompt:approval-test'", Map.of(), UUID.class));
@@ -136,7 +136,7 @@ class AiHarmBaselinePostgresIntegrationTest {
         assertEquals("original-revoker", raw.queryForObject("select actor from " + schema + ".ai_security_baseline_history where action='REVOKED'", String.class));
         assertEquals(false, raw.queryForObject("select approval_reference_verified from " + schema + ".ai_security_artifact_digest_baselines where digest_kind='PROMPT'", Boolean.class));
         migrations.provisionNewTenant(tenant);
-        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", null, null, List.of("us-east-1"), true)).id();
+        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         UUID run = runs.start(tenant).getId();
         Instant observed = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         ingestion.ingest(tenant, new ObservationEnvelopeV1(AiSecurityObservationService.CONTRACT_VERSION, run, connector, tenant.getId(),
@@ -162,7 +162,7 @@ class AiHarmBaselinePostgresIntegrationTest {
     @Test void storesGuardrailSnapshotsAndRequiresReleaseGatesForFindings() {
         Tenant tenant = tenants.createTenant("Harm Guardrail", "harm-guardrail", "pilot", null);
         migrations.provisionNewTenant(tenant);
-        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", null, null, List.of("us-east-1"), true)).id();
+        UUID connector = connectors.save(tenant, new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         Instant now = Instant.now().minusSeconds(30).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         observeControl(tenant, connector, Map.of("guardrailAttached", true, "guardrailId", "g1", "guardrailVersion", "1"), now);
         UUID artifact = execution.run(tenant, () -> jdbc.queryForObject("select id from ai_security_artifacts where provider_resource_id='agent:guardrail-baseline'", Map.of(), UUID.class));

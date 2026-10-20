@@ -36,6 +36,9 @@ public class SensitiveTenantActionInterceptor implements HandlerInterceptor {
         }
         RequestActor actor = requestActorService.currentActor();
         TenantAccessMode accessMode = actor.accessMode();
+        if (accessMode == TenantAccessMode.SERVICE_ACCOUNT && actor.hasRole("SERVICE_ACCOUNT")) {
+            return true;
+        }
         if (accessMode == null || actor.hasDirectTenantMembership()) {
             return true;
         }

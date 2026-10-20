@@ -45,7 +45,7 @@ class DemoLifecycleControllerTest {
                 mock(PasswordSetupCookieService.class),
                 mock(PublicEndpointRateLimiter.class));
 
-        controller.acceptInvite("invite-token", new MockHttpServletRequest(), new MockHttpServletResponse());
+        controller.acceptInvite(new com.prototype.vulnwatch.dto.InvitationTokenRequest("invite-token"), new MockHttpServletRequest(), new MockHttpServletResponse());
 
         assertThat(TenantContext.isPreAuthenticationContext()).isFalse();
         assertThat(TenantContext.getCurrentTenantId()).isNull();

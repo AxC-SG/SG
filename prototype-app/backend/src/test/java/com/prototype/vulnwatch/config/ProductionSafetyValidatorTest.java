@@ -121,6 +121,15 @@ class ProductionSafetyValidatorTest {
     }
 
     @Test
+    void validatesEncodedAesKeyAndActualHmacBytes() {
+        ProductionSafetyValidator invalidAes = validator("", false, "https://issuer.example.com", "",
+                "a".repeat(32), false, true, "https://app.example.com", disabledBootstrap());
+        assertThrows(IllegalStateException.class, invalidAes::validate);
+        assertDoesNotThrow(hmacValidator("é".repeat(16), true)::validate);
+        assertThrows(IllegalStateException.class, hmacValidator(" ".repeat(32), true)::validate);
+    }
+
+    @Test
     void validateRejectsMissingTenantContextRequirement() {
         ProductionSafetyValidator validator = validator(
                 "",

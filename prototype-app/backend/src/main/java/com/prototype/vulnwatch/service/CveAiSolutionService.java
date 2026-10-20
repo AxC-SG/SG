@@ -114,7 +114,7 @@ public class CveAiSolutionService {
             Hard rules:
             - SCOPE: The affected_entities list contains ONLY the products with confirmed impact. All recommendations must be scoped exclusively to those products. Do NOT mention products not in the list.
             - If vendor advisory content is provided, extract patch KB numbers, fixed versions, workarounds, and compensating controls from it and use them as the PRIMARY source. Cite the advisory source in your reasoning_trace.
-            - If advisory content is absent or incomplete, use your training knowledge for the specific CVE (e.g. well-known KB numbers from MSRC advisories) and prefix with "Per MSRC:" or "Per NVD:".
+            - If advisory content is absent or incomplete, state the evidence gap. Do not invent patch IDs, versions, source citations, or vendor attribution from model memory. Attribute a claim to MSRC, NVD, or a vendor only when that claim is supported by the supplied evidence.
             - Never output the literal string "null" or "N/A" for patch_id or target_version — if genuinely unknown, omit the field entirely.
             - Every action in timeline.actions must name the specific product, patch ID, or asset count from context.
             - Never use the words "vendor instructions", "monitor for updates", or "additional security measures".
@@ -148,7 +148,7 @@ public class CveAiSolutionService {
         if (!openAiClient.isAvailable()) {
             CveDetailController.AiSolutionResponse response = new CveDetailController.AiSolutionResponse();
             response.success = false;
-            response.recommendation = "OpenAI is not configured. Please set app.openai.api-key in application properties.";
+            response.recommendation = "Generative assistance is disabled or unavailable. Use the deterministic assessment, linked advisories and recorded evidence to plan remediation.";
             return response;
         }
 

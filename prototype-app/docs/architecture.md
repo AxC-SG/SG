@@ -1,6 +1,6 @@
 # VulnWatch Architecture
 
-Last updated: 2026-09-24
+Last updated: 2026-10-18
 
 ---
 
@@ -11,19 +11,19 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Browser — React 18 + TypeScript + Vite (port 5173 local)           │
-│  Nginx (port 8080 container) ← static SPA                           │
+│  Vercel static SPA (prod); nginx:8080 image is CI-scan only         │
 └─────────────────────────────┬───────────────────────────────────────┘
                               │ REST API (http://localhost:8080/api)
 ┌─────────────────────────────▼───────────────────────────────────────┐
-│  Spring Boot 3.3.2 — Java 17 (port 8080)                            │
+│  Spring Boot 3.5.16 — Java 17 (port 8080)                            │
 │  ┌──────────────┐  ┌────────────────┐  ┌──────────────────────────┐ │
 │  │ Controllers  │  │   Services     │  │  Scheduled Jobs          │ │
-│  │ (58 REST)    │  │   (299)        │  │  (daily + hourly + 2s)   │ │
+│  │ (67 REST)    │  │   (351)        │  │  (daily + hourly + 2s)   │ │
 │  └──────┬───────┘  └───────┬────────┘  └──────────────────────────┘ │
 │         │                  │                                         │
 │  ┌──────▼──────────────────▼──────┐   ┌────────────────────────────┐│
 │  │  Spring Data JPA / HikariCP    │   │  OutboundHttpClient        ││
-│  │  TenantAwareDataSource         │   │  (retry + circuit breaker) ││
+│  │  TenantAwareDataSource         │   │  (retry + backoff)         ││
 │  └──────────────┬─────────────────┘   └──────────┬─────────────────┘│
 └─────────────────┼──────────────────────────────────┼────────────────┘
                   │ JDBC                             │ HTTPS
@@ -36,7 +36,7 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
                                         └────────────────────────────┘
 ```
 
-Of the 63 controllers / 314 services, 19 controllers / 63 services live under `com.prototype.vulnwatch.aisecurity` — a separate top-level package implementing AI Security / AI Grid posture management (see [Core Data Flow](#7-ai-security--ai-grid) below and `docs/business-logic-guide.md#ai-security--ai-grid-pipeline`). Its tables are read/written via `JdbcTemplate` directly, bypassing the Spring Data JPA path shown above.
+Of the 67 controllers / 351 services, 19 controllers / 71 services live under `com.prototype.vulnwatch.aisecurity` — a separate top-level package implementing AI Security / AI Grid posture management (see [Core Data Flow](#7-ai-security--ai-grid) below and `docs/business-logic-guide.md#ai-security--ai-grid-pipeline`). Its tables are read/written via `JdbcTemplate` directly, bypassing the Spring Data JPA path shown above.
 
 ---
 
@@ -110,8 +110,8 @@ Runs weekly (Sunday), 4 stages:
 
 1. Catalog refresh (02:00) → `eol_product_catalog`
 2. Release data (03:00) → `eol_release`
-3. Slug resolution (03:30) → `software_eol_mapping` (OpenAI-assisted for unmatched)
-4. Denormalization (04:00) → `inventory_components.is_eol`, `eol_days_remaining`, `eol_date`
+3. Slug resolution (03:30) → `software_eol_mapping` (deterministic tiered matching; no OpenAI)
+4. Denormalization (04:00) → `inventory_components.eol_slug`, `eol_cycle`, `eol_date`, `is_eol` (`eolDaysRemaining` is computed in response DTOs, not stored)
 
 Daily sweep (00:15) catches components that crossed their EOL date between weekly runs.
 
@@ -143,20 +143,21 @@ Each tenant gets a dedicated PostgreSQL schema. Connection-level `search_path` i
 - All JPA entities are schema-agnostic — they just use table names, and the schema is set at the connection level
 
 **TenantAwareDataSource** wraps HikariCP:
-- On checkout: `SET search_path = tenant_<id>, public`; `SET LOCAL app.current_tenant_id = '<id>'`
-- On return: reset to prevent leakage
+- On checkout: `set_config('search_path', '<tenant schema>,platform', false)` (`platform,public` in platform context) and `set_config('app.current_tenant_id', '<id>', false)` (session-level)
+- On return: `RESET search_path` / `RESET app.current_tenant_id` to prevent leakage
 
-**Platform schema** holds: `tenants`, `app_users`, `tenant_memberships`, `tenant_support_grants`, `demo_invites`, `audit_events`, and the global vulnerability intel tables.
+**Platform schema** holds: `tenants`, `app_users`, `tenant_memberships`, `tenant_support_grants`, `tenant_schema_versions`, and the global vulnerability intel, CPE, and EOL tables.
 
-**Per-tenant schemas** hold: all operational data — `findings`, `assets`, `inventory_components`, `org_cve_records`, `risk_policies`, `suppression_rules`, etc.
+**Per-tenant schemas** hold: all operational data — `findings`, `assets`, `inventory_components`, `org_cve_records`, `risk_policies`, `suppression_rules`, `audit_events`, `demo_invites`, etc.
 
 ### Tenant Context Flow
 
 ```
 HTTP Request
+  → TenantResolutionFilter (servlet filter, HIGHEST_PRECEDENCE + 10; populate TenantContext from JWT or X-Tenant-ID header)
   → ApiKeyAuthenticationFilter (API key or JWT Bearer)
-  → TenantResolutionFilter (populate TenantContext from JWT or X-Tenant-ID header)
-  → TenantStatusFilter (block SUSPENDED/EXPIRED tenants)
+  → RequestCorrelationFilter (X-Request-ID into MDC)
+  → TenantStatusFilter (block deleted or non-ACTIVE tenants)
   → Controller → Service → Repository (correct schema via HikariCP connection)
 ```
 
@@ -166,11 +167,11 @@ HTTP Request
 
 ### Tenant Schema Control Plane
 
-Per-tenant DDL is no longer applied by the application's own startup Flyway run. A second, independent Flyway migration line lives under `backend/src/main/resources/db/migration/tenant/` (its own `<schema>.tenant_schema_history` table per tenant), separate from the platform-only `postgres_reset/` line (each file there must start with a `-- migration-guard: platform-only` comment, enforced by `PostgresResetMigrationGuardTest`). Both lines have append-only migrations after their reset V1 baselines, now through platform `V5` and tenant `V11`: platform V3 adds bounded runtime evaluation modes and policy-addressable runtime fields; tenant V3 adds typed runtime evidence, governed producer/source registration, receipts, and rolling quota state. Platform V4 and V5, and tenant V4-V11, are an unrelated later integration (AI-BOM → AI Grid; platform V4 is itself unrelated to that too — see `docs/business-logic-guide.md#ai-bom--ai-grid-integration` and `docs/database.md`).
+Per-tenant DDL is no longer applied by the application's own startup Flyway run. A second, independent Flyway migration line lives under `backend/src/main/resources/db/migration/tenant/` (its own `<schema>.tenant_schema_history` table per tenant), separate from the platform-only `postgres_reset/` line (each file there must start with a `-- migration-guard: platform-only` comment, enforced by `PostgresResetMigrationGuardTest`). Both lines have append-only migrations after their reset V1 baselines: the platform line is currently at `V1` only, and the tenant line is at `V2` (`V2__ai_bom_correlation_evidence.sql`, the AI-BOM correlation evidence/lifecycle storage — see `docs/business-logic-guide.md#ai-bom--ai-grid-integration` and `docs/database.md`). `MigrationCatalogTest` asserts platform target 1 and tenant target 2.
 
 `TenantSchemaMigrationService` drives the rollout: hold a Postgres advisory lock → migrate the `tenant_default` template and compute a SHA-256 **structural fingerprint** (normalized dump of every column/constraint/index/sequence/RLS policy) → migrate one canary tenant → migrate the rest in batches of 10, comparing each tenant's post-migration fingerprint against the template and failing (`DRIFTED`) rather than silently diverging. Every step is recorded in `platform.tenant_schema_versions`, surfaced by `TenantSchemaStatusService`/`TenantSchemaStatusController` (`GET /api/platform/tenant-schema-status`, shown in the Platform Console) and by `TenantSchemaReadinessHealthIndicator` (an actuator health contributor gated behind `app.tenancy.enforce-schema-version=true`).
 
-Tenant V2 (and now V3) is therefore a control-plane rollout, not an application deploy side effect. Manifest/allowlist operations require the tenant schema to have reached V2; the typed runtime contract, governed producer/source registry, receipts, and rolling quota state require V3. Callers should report an unready tenant as not assessed with a schema-readiness blocker rather than treating it as a policy failure. The packaged tenant target is 11 (V4-V11 are the unrelated AI-BOM → AI Grid integration, not more runtime-contract work), while the configured minimum-compatible floor remains 1 during the controlled rollout.
+Tenant V2 is therefore a control-plane rollout, not an application deploy side effect. Callers should report an unready tenant as not assessed with a schema-readiness blocker rather than treating it as a policy failure. The packaged tenant target is 2, while the configured minimum-compatible floor remains 1 during the controlled rollout.
 
 For production, the same rollout runs from `ProductionBootstrapCli` — a standalone `main()` that skips Spring/JPA entirely — invoked by a temporary Render "migrator" web service (`backend/scripts/run-render-migration.sh`) rather than the long-running API service. See [Deployment](#deployment) below; there is no committed operational runbook right now (a prior reference to `docs/p0-production-runbook.md` pointed at a file that has since been deleted).
 
@@ -205,10 +206,10 @@ These are role string constants checked across `SecurityConfig` authorization ru
 
 ### Security Filters (in order)
 
-1. `ApiKeyAuthenticationFilter` — API key / JWT resolution
-2. `RequestCorrelationFilter` — inject `X-Request-ID`, `X-Trace-ID` into MDC
-3. `TenantResolutionFilter` — populate `TenantContext`
-4. `TenantStatusFilter` — block suspended tenants
+1. `TenantResolutionFilter` — populate `TenantContext` (registered as a servlet filter ahead of the Spring Security chain via `TenantIsolationConfig`)
+2. `ApiKeyAuthenticationFilter` — API key / JWT resolution
+3. `RequestCorrelationFilter` — inject `X-Request-ID` (plus method/path) into MDC
+4. `TenantStatusFilter` — block deleted or non-ACTIVE tenants (HTTP 410 for a missing tenant, 423 otherwise)
 
 ### Production Safety Checks
 
@@ -246,15 +247,15 @@ These tables are never the authoritative source; they are rebuilt from the under
 
 ## Outbound HTTP Infrastructure
 
-All external HTTP calls use `OutboundHttpClient` (wraps Spring `RestClient`):
+All external HTTP calls use `OutboundHttpClient` (wraps Spring `RestTemplate`):
 
-- `OutboundPolicy` — per-service config (timeout, max retries, circuit-breaker threshold)
+- `OutboundPolicy` — per-service config (min request interval, max retries, backoff, retryable statuses, Retry-After handling)
 - `OutboundPolicyFactory` — creates policies with `OutboundPolicyDefaults`
 - `OutboundFailureClassifier` — distinguishes transient vs. permanent failures
-- `OutboundFailureDecision` — controls retry vs. circuit-break behavior
+- `OutboundFailureDecision` — controls retry vs. fail behavior
 - `OutboundResponseHandler` — parses and validates responses
 
-`AdvisoryFetchService` handles bulk advisory fetching (CSAF/VEX sources with large document sets).
+`AdvisoryFetchService` (in `client/http/`) handles bulk advisory fetching (CSAF/VEX sources with large document sets).
 
 ---
 
@@ -314,4 +315,4 @@ For deployment-facing environment variables and operational endpoints, see [Back
 
 ## AI-BOM correlation authority and lifecycle
 
-The shared software pipeline owns canonical vulnerability findings. `AiBomCorrelationResolver` computes bounded source-document dependency support without writes; `AiBomCorrelationReconciler` applies association/path/gap/subject changes in one resource transaction after tenant context is established. Source locking serializes this boundary with replacement/deletion writers, and captured revision mismatch aborts the unit. Current readers filter ACTIVE links; history remains explicit, and finding workflow status is independent. Tenant V2 adds evidence/lifecycle storage without changing either V1 baseline. Observation/backfill precedes optional retirement enablement; disabling reconciliation writes preserves canonical software processing. See [implementation plan](ai-bom-correlation-implementation-plan.md) and [release evidence](ai-bom-correlation-release-evidence.md).
+The shared software pipeline owns canonical vulnerability findings. `AiBomCorrelationResolver` computes bounded source-document dependency support without writes; `AiBomCorrelationReconciler` applies association/path/gap/subject changes in one resource transaction after tenant context is established. Source locking serializes this boundary with replacement/deletion writers, and captured revision mismatch aborts the unit. Current readers filter ACTIVE links; history remains explicit, and finding workflow status is independent. Tenant V2 adds evidence/lifecycle storage without changing either V1 baseline. Observation/backfill precedes optional retirement enablement; disabling reconciliation writes preserves canonical software processing. The implementation plan and release evidence are archived outside the repo under `Other Docs/Archive/`.

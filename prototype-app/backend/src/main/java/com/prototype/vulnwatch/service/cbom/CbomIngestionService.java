@@ -42,6 +42,12 @@ public class CbomIngestionService {
         this.findingRepository = findingRepository;
     }
 
+    public void validateContent(byte[] content) throws IOException {
+        if (parser.parse(content).isEmpty()) {
+            throw new IOException("No CBOM cryptographic assets could be extracted from the submitted document");
+        }
+    }
+
     public CbomIngestionResult ingest(Tenant tenant, Asset asset, BomIngestionRecord sourceBom, byte[] content) throws IOException {
         List<CbomParsedComponent> parsedComponents = parser.parse(content);
         int findingCount = 0;

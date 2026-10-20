@@ -354,28 +354,25 @@ public class FixRecordService {
             List<String> relatedCveIds, List<String> fixedVersionsFromIntel,
             String targetOs  // null = all platforms; "Windows"/"Linux"/"macOS" for OS-specific fix
     ) {
+        if (!openAiClient.isAvailable()) {
+            // AI-off fallback is built from already stored intelligence by the caller. Do not
+            // fetch extra advisory payloads for an assistance path that cannot run.
+            return null;
+        }
         // Fetch advisory content
         String advisoryContent = "";
         if (!referenceUrls.isEmpty()) {
             try {
                 advisoryContent = advisoryFetchService.fetchAdvisoryContent(referenceUrls);
             } catch (Exception e) {
-                log.warn("Advisory fetch failed for {}: {}", LogUtil.safe(cveId), e.getMessage());
+                throw new IllegalStateException("Vendor advisory evidence is unavailable", e);
             }
         }
         try {
             String msrc = advisoryFetchService.fetchMsrcPatchInfo(cveId);
             if (!msrc.isBlank()) advisoryContent = (advisoryContent + "\n" + msrc).trim();
         } catch (Exception e) {
-            log.warn("MSRC fetch failed for {}: {}", LogUtil.safe(cveId), e.getMessage());
-        }
-
-        if (!openAiClient.isAvailable()) {
-            if (!advisoryContent.isBlank()) {
-                return buildReferenceFix(tenant, cveId, vulnerability, softwareMap,
-                        referenceUrls, advisoryContent, relatedCveIds);
-            }
-            return null;
+            throw new IllegalStateException("MSRC patch evidence is unavailable", e);
         }
 
         String softwareSummary = softwareMap.values().stream()
@@ -541,7 +538,7 @@ public class FixRecordService {
         r.setCveId(cveId);
         r.setRelatedCveIdsJson(toJson(relatedCveIds));
         r.setSummary("Review vendor advisories for " + cveId + " (" + severity + ")");
-        r.setDescription("No automated fix data was found from vendor intelligence or advisory content. "
+        r.setDescription("No verified automated fix is available; generative assistance may be disabled or unavailable. "
                 + "Review the CVE references and apply vendor-recommended patches or workarounds for the affected software. "
                 + "If a patch is unavailable, consider compensating controls such as network segmentation, "
                 + "access restrictions, or temporary disablement of the vulnerable feature.");

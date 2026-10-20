@@ -45,7 +45,7 @@ public class AdvisoryFetchService {
                     combined.append('\n');
                 }
             } catch (Exception e) {
-                log.debug("Could not fetch advisory {}: {}", url, e.getMessage());
+                throw new IllegalStateException("Vendor advisory retrieval is unavailable or incomplete", e);
             }
         }
         return combined.toString().trim();
@@ -70,8 +70,7 @@ public class AdvisoryFetchService {
             String truncated = body.length() > 4000 ? body.substring(0, 4000) : body;
             return "\n--- MSRC Affected Products API (JSON) for " + cveId + " ---\n" + truncated + "\n";
         } catch (Exception e) {
-            log.debug("MSRC API query failed for {}: {}", LogUtil.safe(cveId), e.getMessage());
-            return "";
+            throw new IllegalStateException("MSRC patch evidence is unavailable", e);
         }
     }
 

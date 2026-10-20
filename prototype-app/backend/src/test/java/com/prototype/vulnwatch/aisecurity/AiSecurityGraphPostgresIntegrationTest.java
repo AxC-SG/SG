@@ -66,7 +66,7 @@ class AiSecurityGraphPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
 
@@ -114,7 +114,7 @@ class AiSecurityGraphPostgresIntegrationTest {
         UUID connectorA = connectorService.save(
                 tenantA,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runA = syncRunFacade.start(tenantA).getId();
         ArtifactObservation agentA = new ArtifactObservation(
@@ -136,7 +136,7 @@ class AiSecurityGraphPostgresIntegrationTest {
         UUID connectorB = connectorService.save(
                 tenantB,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runB = syncRunFacade.start(tenantB).getId();
         ArtifactObservation agentB = new ArtifactObservation(

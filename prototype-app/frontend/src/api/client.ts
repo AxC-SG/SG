@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react';
+import { telemetryPath } from '../lib/telemetryPrivacy';
 import type {
   OwnershipRuleRequest,
   OwnershipRuleResponse,
@@ -675,11 +676,11 @@ import type {
 } from '../features/ai-security/types';
 
 const API_BASE = resolveApiBase();
-const API_KEY = import.meta.env.VITE_API_KEY ?? (import.meta.env.DEV ? 'change-me-in-prod' : '');
-const CREATOR_KEY = import.meta.env.VITE_CREATOR_KEY ?? (import.meta.env.DEV ? 'local-creator' : '');
-const DEFAULT_TENANT_ID = import.meta.env.VITE_TENANT_ID ?? (import.meta.env.DEV ? '1' : '');
-const DEFAULT_USER_ID = import.meta.env.VITE_USER_ID ?? (import.meta.env.DEV ? 'local-analyst' : '');
-const STATIC_AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN ?? '';
+const API_KEY = import.meta.env.DEV ? (import.meta.env.VITE_API_KEY ?? 'change-me-in-prod') : '';
+const CREATOR_KEY = import.meta.env.DEV ? (import.meta.env.VITE_CREATOR_KEY ?? 'local-creator') : '';
+const DEFAULT_TENANT_ID = import.meta.env.DEV ? (import.meta.env.VITE_TENANT_ID ?? '1') : '';
+const DEFAULT_USER_ID = import.meta.env.DEV ? (import.meta.env.VITE_USER_ID ?? 'local-analyst') : '';
+const STATIC_AUTH_TOKEN = import.meta.env.DEV ? (import.meta.env.VITE_AUTH_TOKEN ?? '') : '';
 const AUTH_TOKEN_STORAGE_KEY = 'vulnwatch.authToken';
 
 export type TestPersona = {
@@ -911,15 +912,15 @@ function buildApiHeaders(base?: HeadersInit, includeJsonContentType = true): Hea
   return headers;
 }
 
-function recordApiTiming(path: string, method: string, durationMs: number, status: number, requestId: string | null) {
+function recordApiTiming(path: string, method: string, durationMs: number, status: number) {
+  const safePath = telemetryPath(path);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('scout:api-request', {
       detail: {
-        path,
+        path: safePath,
         method,
         durationMs,
         status,
-        requestId,
       }
     }));
   }
@@ -927,8 +928,8 @@ function recordApiTiming(path: string, method: string, durationMs: number, statu
   Sentry.addBreadcrumb({
     category: 'api',
     level: status >= 400 ? 'warning' : 'info',
-    message: `${method} ${path} -> ${status} (${durationMs}ms)`,
-    data: requestId ? { requestId } : undefined
+    message: 'API request',
+    data: { path: safePath, method, status, durationMs }
   });
 }
 
@@ -956,8 +957,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     path,
     method,
     Math.round(endedAt - startedAt),
-    response.status,
-    response.headers.get('X-Request-ID')
+    response.status
   );
 
   if (!response.ok) {
@@ -1039,13 +1039,17 @@ export const api = {
     body: JSON.stringify(payload)
   }),
   listAssignmentGroups: () => request<string[]>('/cve-detail/servicenow/assignment-groups'),
-  validateDemoInvite: (token: string) => publicRequest<DemoInviteValidationResponse>(`/demo-invites/${encodeURIComponent(token)}`),
-  acceptDemoInvite: (token: string) => publicRequest<DemoInviteValidationResponse>(`/demo-invites/${encodeURIComponent(token)}/accept`, {
-    method: 'POST'
+  validateDemoInvite: (token: string) => publicRequest<DemoInviteValidationResponse>('/demo-invites/validate', {
+    method: 'POST', body: JSON.stringify({ token })
   }),
-  validateTenantInvite: (token: string) => publicRequest<TenantInviteValidationResponse>(`/tenant-invites/${encodeURIComponent(token)}`),
-  acceptTenantInvite: (token: string) => publicRequest<TenantInviteValidationResponse>(`/tenant-invites/${encodeURIComponent(token)}/accept`, {
-    method: 'POST'
+  acceptDemoInvite: (token: string) => publicRequest<DemoInviteValidationResponse>('/demo-invites/accept', {
+    method: 'POST', body: JSON.stringify({ token })
+  }),
+  validateTenantInvite: (token: string) => publicRequest<TenantInviteValidationResponse>('/tenant-invites/validate', {
+    method: 'POST', body: JSON.stringify({ token })
+  }),
+  acceptTenantInvite: (token: string) => publicRequest<TenantInviteValidationResponse>('/tenant-invites/accept', {
+    method: 'POST', body: JSON.stringify({ token })
   }),
   getDemoStatus: () => request<DemoStatus>('/demo/status'),
   listDemoRequests: () => request<DemoRequest[]>('/platform/demo-requests'),
@@ -2093,11 +2097,14 @@ export const api = {
     request<TenantSupportGrant>(`/auth/support-grants/${encodeURIComponent(grantId)}/accept`, {
       method: 'POST'
     }),
-  setupPassword: (password: string) => publicRequest<AuthTokenResponse>('/auth/setup-password', {
-    method: 'POST',
-    headers: { 'X-Scout-Setup': '1' },
-    body: JSON.stringify({ password })
-  }),
+  setupPassword: async (password: string) => {
+    const csrf = await publicRequest<{ headerName: string; token: string }>('/auth/csrf');
+    return publicRequest<AuthTokenResponse>('/auth/setup-password', {
+      method: 'POST',
+      headers: { 'X-Scout-Setup': '1', [csrf.headerName]: csrf.token },
+      body: JSON.stringify({ password })
+    });
+  },
   startPasswordSetupSession: (setupToken: string) => publicRequest<void>('/auth/setup-session', {
     method: 'POST',
     headers: { 'X-Scout-Setup': '1' },

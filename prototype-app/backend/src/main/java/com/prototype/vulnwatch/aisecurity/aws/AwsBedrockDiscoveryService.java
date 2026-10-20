@@ -196,7 +196,7 @@ public class AwsBedrockDiscoveryService {
 
     public DiscoveryResult discover(Tenant tenant, UUID connectorId) {
         ConnectorSecret config = connectorService.secret(tenant);
-        if (!config.id().equals(connectorId)) {
+        if (!config.id().equals(connectorId) || !tenant.getId().equals(config.tenantId()) || !config.enabled()) {
             throw new IllegalArgumentException("AI Security connector does not match claimed job");
         }
         SyncRun run = syncRunFacade.start(tenant, AiSecuritySyncRunFacade.AWS_SYNC_TYPE, json(Map.of(

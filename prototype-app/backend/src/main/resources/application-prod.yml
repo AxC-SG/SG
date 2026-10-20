@@ -13,10 +13,20 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 server:
-  forward-headers-strategy: framework
+  # Keep the socket peer intact. The application walks only configured trusted
+  # proxy hops; framework rewriting would discard the trust boundary.
+  forward-headers-strategy: none
   shutdown: graceful
 
 app:
+  environment: ${APP_ENVIRONMENT:production}
+  entitlements:
+    mode: ${APP_ENTITLEMENTS_MODE:ENFORCE}
+    # Deliberate internal cohort selected for qualification. Provision this workspace through
+    # the normal release process; this setting does not create it or enroll customer tenants.
+    enforce-tenant-allowlist: ${APP_ENTITLEMENTS_ENFORCE_TENANT_ALLOWLIST:slug:scoutgrid-internal-pilot}
+  openai:
+    enabled: false
   demo:
     # Production emails must point recipients at the public ScoutGrid application.
     # APP_DEMO_APP_BASE_URL may still override this for a separately hosted environment.
@@ -40,6 +50,9 @@ app:
     public-rate-limit:
       enabled: true
       trust-proxy-headers: true
+      # Set only after verifying the actual ingress peers and X-Forwarded-For
+      # sanitization. Empty configuration fails startup; no universal CIDRs apply.
+      trusted-proxy-cidrs: ${APP_PUBLIC_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
     turnstile:
       enabled: ${APP_TURNSTILE_ENABLED:true}
       expected-hostname: ${APP_TURNSTILE_EXPECTED_HOSTNAME:scoutgrid.io}
@@ -47,7 +60,7 @@ app:
     allow-header-tenant-selection: false
     require-tenant-context: true
     enforce-schema-version: true
-    minimum-compatible-schema-version: 1
+    minimum-compatible-schema-version: 5
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
 

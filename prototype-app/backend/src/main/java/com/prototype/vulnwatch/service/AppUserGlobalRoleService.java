@@ -4,11 +4,12 @@ import com.prototype.vulnwatch.domain.AppUser;
 import com.prototype.vulnwatch.domain.AppUserGlobalRole;
 import com.prototype.vulnwatch.repo.AppUserGlobalRoleRepository;
 import com.prototype.vulnwatch.repo.AppUserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -20,13 +21,16 @@ public class AppUserGlobalRoleService {
 
     private final AppUserGlobalRoleRepository globalRoleRepository;
     private final AppUserRepository userRepository;
+    private final EntityManager entityManager;
 
     public AppUserGlobalRoleService(
             AppUserGlobalRoleRepository globalRoleRepository,
-            AppUserRepository userRepository
+            AppUserRepository userRepository,
+            EntityManager entityManager
     ) {
         this.globalRoleRepository = globalRoleRepository;
         this.userRepository = userRepository;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -65,6 +69,7 @@ public class AppUserGlobalRoleService {
         if (user == null || user.getId() == null) {
             return;
         }
+        user = lockCurrentUser(user);
         String normalizedRole = normalizeRole(role);
         if (globalRoleRepository.findByUser_IdAndRole(user.getId(), normalizedRole).isPresent()) {
             syncCompatibilityFlag(user, normalizedRole, true);
@@ -83,9 +88,21 @@ public class AppUserGlobalRoleService {
         if (user == null || user.getId() == null) {
             return;
         }
+        user = lockCurrentUser(user);
         String normalizedRole = normalizeRole(role);
-        globalRoleRepository.deleteByUser_IdAndRole(user.getId(), normalizedRole);
+        // Historical aliases must not survive removal of the same effective authority.
+        globalRoleRepository.deleteAll(globalRoleRepository.findByUser_IdOrderByCreatedAtAsc(user.getId()).stream()
+                .filter(existing -> normalizedRole.equals(normalizeRole(existing.getRole())))
+                .toList());
         syncCompatibilityFlag(user, normalizedRole, false);
+    }
+
+    private AppUser lockCurrentUser(AppUser user) {
+        AppUser current = userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new IllegalStateException("User is not registered"));
+        // A caller may already have loaded the entity before acquiring its row lock.
+        entityManager.refresh(current, LockModeType.PESSIMISTIC_WRITE);
+        return current;
     }
 
     private void syncCompatibilityFlag(AppUser user, String normalizedRole, boolean granted) {
@@ -112,9 +129,6 @@ public class AppUserGlobalRoleService {
         if (role == null || role.isBlank()) {
             throw new IllegalArgumentException("role is required");
         }
-        return role.trim().toUpperCase(Locale.ROOT)
-                .replace('-', '_')
-                .replace(' ', '_')
-                .replaceFirst("^ROLE_", "");
+        return TenantRolePolicy.canonicalRole(role);
     }
 }

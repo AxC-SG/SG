@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -30,6 +29,8 @@ public class IngestionJobService {
 
     private static final Logger log = LoggerFactory.getLogger(IngestionJobService.class);
 
+    public static final String JOB_TYPE_AWS_DISCOVERY = "AWS_DISCOVERY";
+    public static final String JOB_TYPE_SERVICENOW_CMDB = "SERVICENOW_CMDB";
     public static final String JOB_TYPE_REMOTE_ENDPOINT = "REMOTE_ENDPOINT";
     public static final String JOB_TYPE_GITHUB_REPOSITORY = "GITHUB_REPOSITORY";
     public static final String JOB_TYPE_GITHUB_GHCR = "GITHUB_GHCR";
@@ -51,6 +52,10 @@ public class IngestionJobService {
     public static final String STATUS_CANCELLED = "CANCELLED";
 
     private final IngestionJobRepository ingestionJobRepository;
+    private final IngestionAttemptService attempts;
+    @org.springframework.beans.factory.annotation.Value("${app.ingestion.jobs.max-attempts:3}")
+    private int maxAttempts = 3;
+    private BackgroundTaskExecutionPolicy backgroundPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private final CredentialEncryptionService credentialEncryptionService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final TenantService tenantService;
@@ -62,6 +67,7 @@ public class IngestionJobService {
 
     public IngestionJobService(
             IngestionJobRepository ingestionJobRepository,
+            IngestionAttemptService attempts,
             CredentialEncryptionService credentialEncryptionService,
             TenantSchemaExecutionService tenantSchemaExecutionService,
             TenantService tenantService,
@@ -72,6 +78,7 @@ public class IngestionJobService {
             TransactionTemplate transactionTemplate
     ) {
         this.ingestionJobRepository = ingestionJobRepository;
+        this.attempts = attempts;
         this.credentialEncryptionService = credentialEncryptionService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
         this.tenantService = tenantService;
@@ -101,7 +108,6 @@ public class IngestionJobService {
     }
 
     private IngestionJobAcceptedResponse enqueueBomFetchJob(Tenant tenant, BomFetchRequest request, String requestedBy, String quotaSource) {
-        tenantQuotaService.assertCanCreateSbomIngestionJob(tenant, quotaSource);
         IngestionJobPayloads.EndpointIngestionPayload payload = new IngestionJobPayloads.EndpointIngestionPayload(
                 request.bomType(),
                 request.assetType(),
@@ -129,7 +135,6 @@ public class IngestionJobService {
             UUID sourceId,
             String requestedBy
     ) {
-        tenantQuotaService.assertCanCreateSbomIngestionJob(tenant, "github");
         String normalizedRepo = request.repo() == null ? "" : request.repo().trim();
         String assetIdentifier = request.assetIdentifier() == null || request.assetIdentifier().isBlank()
                 ? "github:" + normalize(request.owner()) + "/" + normalize(normalizedRepo)
@@ -162,7 +167,6 @@ public class IngestionJobService {
             UUID sourceId,
             String requestedBy
     ) {
-        tenantQuotaService.assertCanCreateSbomIngestionJob(tenant, "github");
         IngestionJobPayloads.GithubGhcrIngestionPayload payload = new IngestionJobPayloads.GithubGhcrIngestionPayload(
                 owner,
                 syncRunId,
@@ -205,9 +209,11 @@ public class IngestionJobService {
     // runs against the wrong tenant. Setting context via tenantSchemaExecutionService.run() and only then
     // opening a TransactionTemplate keeps the ordering correct for every tenant.
     public List<ClaimedJobRef> claimPendingJobs(Tenant tenant, int limit, int maxConcurrentPerTenant) {
+        if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
+            attempts.lockCapacity(tenant.getId());
             long running = ingestionJobRepository.countByStatusExcludingJobTypes(
-                    STATUS_RUNNING, AI_SECURITY_JOB_TYPES);
+                    STATUS_RUNNING, isolatedJobTypes());
             if (running >= maxConcurrentPerTenant) {
                 return List.of();
             }
@@ -216,18 +222,37 @@ public class IngestionJobService {
                 return List.of();
             }
             List<IngestionJob> jobs = ingestionJobRepository.pollPendingExcludingJobTypes(
-                    AI_SECURITY_JOB_TYPES, claimLimit);
+                    isolatedJobTypes(), claimLimit);
             Instant now = Instant.now();
             for (IngestionJob job : jobs) {
                 job.setStatus(STATUS_RUNNING);
                 job.setStartedAt(now);
                 job.setAttemptCount(job.getAttemptCount() + 1);
+                job.setClaimToken(UUID.randomUUID());
+                job.setHeartbeatAt(now);
+                job.setLeaseExpiresAt(now.plusSeconds(attempts.leaseSeconds()));
             }
             ingestionJobRepository.saveAll(jobs);
             return jobs.stream()
-                    .map(job -> new ClaimedJobRef(tenant.getId(), job.getId()))
+                    .map(job -> new ClaimedJobRef(tenant.getId(), job.getId(), job.getClaimToken()))
                     .toList();
         }));
+    }
+
+    private List<String> isolatedJobTypes() {
+        var types = new java.util.ArrayList<>(AI_SECURITY_JOB_TYPES);
+        types.add(JOB_TYPE_AWS_DISCOVERY);
+        types.add(JOB_TYPE_SERVICENOW_CMDB);
+        return types;
+    }
+
+    public IngestionJobAcceptedResponse enqueueConnectorJob(Tenant tenant, String jobType,
+            UUID configId, UUID runId, String triggerMode, UUID targetId) {
+        if (!List.of(JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB).contains(jobType)) {
+            throw new IllegalArgumentException("Unsupported durable connector type");
+        }
+        return enqueueJob(tenant, jobType, jobType.toLowerCase(Locale.ROOT), configId.toString(),
+                "connector:" + triggerMode, new ConnectorJobPayload(configId, runId, triggerMode, targetId));
     }
 
     public IngestionJobAcceptedResponse enqueueAiSecurityJob(
@@ -288,7 +313,13 @@ public class IngestionJobService {
 
     public List<ClaimedJobRef> claimPendingJobsByType(
             Tenant tenant, String jobType, int limit, int maxConcurrentPerTenant) {
+        if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
+        if (JOB_TYPE_AI_GRID_RUNTIME_ADAPTER.equals(jobType)) return List.of();
+        if (!java.util.Set.of(JOB_TYPE_AI_SECURITY_AWS_BEDROCK,JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
+                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB).contains(jobType))
+            throw new IllegalArgumentException("Unsupported retained ingestion job type");
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
+            attempts.lockCapacity(tenant.getId());
             long running = ingestionJobRepository.countByStatusAndJobType(STATUS_RUNNING, jobType);
             if (running >= maxConcurrentPerTenant) {
                 return List.of();
@@ -303,10 +334,21 @@ public class IngestionJobService {
                 job.setStatus(STATUS_RUNNING);
                 job.setStartedAt(now);
                 job.setAttemptCount(job.getAttemptCount() + 1);
+                job.setClaimToken(UUID.randomUUID());
+                job.setHeartbeatAt(now);
+                job.setLeaseExpiresAt(now.plusSeconds(attempts.leaseSeconds()));
             });
             ingestionJobRepository.saveAll(jobs);
-            return jobs.stream().map(job -> new ClaimedJobRef(tenant.getId(), job.getId())).toList();
+            return jobs.stream().map(job -> new ClaimedJobRef(tenant.getId(), job.getId(), job.getClaimToken())).toList();
         }));
+    }
+
+    public java.util.Optional<UUID> activeGithubSourceRun(Tenant tenant,UUID sourceId) {
+        return tenantSchemaExecutionService.run(tenant, () -> ingestionJobRepository.findActiveGithubSource(sourceId.toString()).map(this::relatedSyncRun));
+    }
+    public UUID relatedSyncRun(IngestionJob job) {
+        try { return UUID.fromString(objectMapper.readTree(job.getPayloadJson()).path("syncRunId").asText()); }
+        catch (Exception failure) { throw new IllegalStateException("Accepted GitHub job has invalid run identity"); }
     }
 
     public IngestionJob loadJob(UUID tenantId, UUID jobId) {
@@ -316,6 +358,7 @@ public class IngestionJobService {
 
     public void markQueuedForRetry(UUID tenantId, UUID jobId, String failureCode, String failureMessage, Instant visibleAt) {
         tenantSchemaExecutionService.run(tenantId, () -> transactionTemplate.execute(status -> {
+            attempts.lockOwnedJob(tenantId, jobId);
             IngestionJob job = ingestionJobRepository.findById(jobId)
                     .orElseThrow(() -> new IllegalArgumentException("Ingestion job not found: " + jobId));
             job.setStatus(STATUS_QUEUED);
@@ -347,8 +390,10 @@ public class IngestionJobService {
 
     public void markFailed(UUID tenantId, UUID jobId, String failureCode, String failureMessage) {
         tenantSchemaExecutionService.run(tenantId, () -> transactionTemplate.execute(status -> {
+            attempts.lockOwnedJob(tenantId, jobId);
             IngestionJob job = ingestionJobRepository.findById(jobId)
                     .orElseThrow(() -> new IllegalArgumentException("Ingestion job not found: " + jobId));
+            if (STATUS_SUCCEEDED.equals(job.getStatus())) return null;
             job.setStatus(STATUS_FAILED);
             job.setFailureCode(failureCode);
             job.setFailureMessage(failureMessage);
@@ -360,6 +405,7 @@ public class IngestionJobService {
 
     public void markSucceeded(UUID tenantId, UUID jobId, SbomUpload sbomUpload, String resultJson) {
         tenantSchemaExecutionService.run(tenantId, () -> transactionTemplate.execute(status -> {
+            attempts.lockOwnedJob(tenantId, jobId);
             IngestionJob job = ingestionJobRepository.findById(jobId)
                     .orElseThrow(() -> new IllegalArgumentException("Ingestion job not found: " + jobId));
             job.setStatus(STATUS_SUCCEEDED);
@@ -369,43 +415,75 @@ public class IngestionJobService {
             job.setSbomUpload(sbomUpload);
             job.setResultJson(resultJson);
             ingestionJobRepository.save(job);
+            // Audit intent commits atomically with the outcome. Metric publication is ancillary.
+            auditEventService.record("ingestion.job.completed", "ingestion_job", jobId.toString(), null);
             return null;
         }));
     }
 
     public int recoverInterruptedRunningJobs() {
+        if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.recover-expired")) return 0;
         return TenantContext.runAsPlatform(() -> {
-            Instant now = Instant.now();
             int recovered = 0;
             for (Tenant tenant : tenantService.listActiveTenants()) {
                 try {
-                    List<IngestionJob> stale = tenantSchemaExecutionService.run(
-                            tenant, () -> ingestionJobRepository.findByStatus(STATUS_RUNNING));
-                    if (stale.isEmpty()) {
-                        continue;
-                    }
-                    for (IngestionJob job : stale) {
-                        job.setStatus(STATUS_FAILED);
-                        job.setFailureCode("WORKER_INTERRUPTED");
-                        if (job.getFailureMessage() == null || job.getFailureMessage().isBlank()) {
-                            job.setFailureMessage("Ingestion job interrupted by service restart");
+                    recovered += tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
+                        attempts.lockCapacity(tenant.getId());
+                        var expired = ingestionJobRepository.pollExpiredAttempts(100);
+                        int changed=0;
+                        for (IngestionJob job : expired) {
+                            com.fasterxml.jackson.databind.JsonNode payload;
+                            try { payload=objectMapper.readTree(job.getPayloadJson()==null ? "{}" : job.getPayloadJson()); }
+                            catch (java.io.IOException invalid) { throw new IllegalStateException("Expired job payload is invalid"); }
+                            attempts.lockSourceForRecovery(job.getJobType(),payload);
+                            if (!attempts.lockExpiredJob(job.getId())) continue;
+                            changed++;
+                            job.setClaimToken(null);
+                            job.setHeartbeatAt(null);
+                            job.setLeaseExpiresAt(null);
+                            if (job.getAttemptCount() >= maxAttempts) {
+                                job.setStatus(STATUS_FAILED);
+                                job.setCompletedAt(Instant.now());
+                                job.setFailureCode("ATTEMPTS_EXHAUSTED");
+                                attempts.terminalizeExhausted(tenant.getId(),job.getJobType(),payload);
+                            } else {
+                                job.setStatus(STATUS_QUEUED);
+                                job.setVisibleAt(Instant.now());
+                                job.setFailureCode("ATTEMPT_EXPIRED");
+                            }
+                            job.setFailureMessage("Previous worker lease expired");
                         }
-                        if (job.getCompletedAt() == null) {
-                            job.setCompletedAt(now);
-                        }
-                    }
-                    tenantSchemaExecutionService.run(tenant, () -> ingestionJobRepository.saveAll(stale));
-                    recovered += stale.size();
-                    for (IngestionJob job : stale) {
-                        recordFailed(job);
-                    }
-                } catch (RuntimeException ex) {
-                    log.warn("Skipped interrupted ingestion recovery for tenant {}: {}",
-                            tenant.getId(), ex.getMessage());
+                        ingestionJobRepository.saveAll(expired);
+                        return changed;
+                    }));
+                } catch (RuntimeException failure) {
+                    log.warn("Skipped expired ingestion recovery for tenant {}", tenant.getId());
                 }
             }
             return recovered;
         });
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setBackgroundPolicy(BackgroundTaskExecutionPolicy policy) {
+        this.backgroundPolicy = java.util.Objects.requireNonNull(policy);
+    }
+
+    public IngestionAttemptService.AttemptScope openAttempt(UUID tenantId, UUID jobId, UUID token) {
+        return attempts.open(tenantId, jobId, token);
+    }
+
+    public void retryRejectedClaim(ClaimedJobRef ref, String code, String message, Instant visibleAt) {
+        try (var ignored = openAttempt(ref.tenantId(), ref.jobId(), ref.claimToken())) {
+            markQueuedForRetry(ref.tenantId(), ref.jobId(), code, message, visibleAt);
+        }
+    }
+
+    public <T> T withAdmission(Tenant tenant, java.util.function.Supplier<T> work) {
+        return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
+            attempts.lockCapacity(tenant.getId());
+            return work.get();
+        }));
     }
 
     public <T> T readPayload(IngestionJob job, Class<T> payloadType) {
@@ -435,7 +513,6 @@ public class IngestionJobService {
     }
 
     public void recordCompleted(IngestionJob job) {
-        auditEventService.record("ingestion.job.completed", "ingestion_job", job.getId().toString(), null);
         ingestionJobMetricsService.recordCompleted(job.getSourceType());
         ingestionJobMetricsService.recordExecutionDuration(job.getSourceType(), job.getStartedAt(), job.getCompletedAt());
     }
@@ -460,16 +537,18 @@ public class IngestionJobService {
     ) {
         String normalizedAssetIdentifier = normalize(assetIdentifier);
         String dedupeKey = jobType.toLowerCase(Locale.ROOT) + ":" + normalizedAssetIdentifier;
-        return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status ->
-                enqueueJobInCurrentTenantSchema(
-                        tenant,
-                        jobType,
-                        sourceType,
-                        assetIdentifier,
-                        requestedBy,
-                        payload,
-                        dedupeKey
-                )));
+        java.util.function.Supplier<IngestionJobAcceptedResponse> insert = () -> {
+            attempts.lockIdentity(tenant.getId(), dedupeKey);
+            return enqueueJobInCurrentTenantSchema(tenant, jobType, sourceType, assetIdentifier,
+                    requestedBy, payload, dedupeKey);
+        };
+        if (List.of(JOB_TYPE_REMOTE_ENDPOINT, JOB_TYPE_GITHUB_REPOSITORY, JOB_TYPE_GITHUB_GHCR,
+                JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB).contains(jobType)) {
+            return withAdmission(tenant, insert);
+        }
+        // AI projection/collection already owns its separate budget/source lock. Its
+        // identity lock follows that lock; it must not invert the SBOM capacity order.
+        return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> insert.get()));
     }
 
     private IngestionJobAcceptedResponse enqueueJobInCurrentTenantSchema(
@@ -489,6 +568,9 @@ public class IngestionJobService {
             return new IngestionJobAcceptedResponse(job.getId(), job.getStatus(), "Existing ingestion job already active", true, null);
         }
 
+        if (List.of(JOB_TYPE_REMOTE_ENDPOINT, JOB_TYPE_GITHUB_REPOSITORY, JOB_TYPE_GITHUB_GHCR).contains(jobType)) {
+            tenantQuotaService.assertCanCreateSbomIngestionJob(tenant, sourceType);
+        }
         IngestionJob newJob = new IngestionJob();
         newJob.setTenant(tenant);
         newJob.setJobType(jobType);
@@ -499,16 +581,9 @@ public class IngestionJobService {
         newJob.setPayloadJson(toJson(payload));
         newJob.setVisibleAt(Instant.now());
 
-        IngestionJob job;
-        try {
-            job = ingestionJobRepository.save(newJob);
-        } catch (DataIntegrityViolationException ex) {
-            IngestionJob existingJob = ingestionJobRepository.findActiveByDedupeKeyForUpdate(dedupeKey)
-                    .orElseThrow(() -> ex);
-            ingestionJobMetricsService.recordDeduped(sourceType);
-            auditEventService.record("ingestion.job.deduped", "ingestion_job", existingJob.getId().toString(), null);
-            return new IngestionJobAcceptedResponse(existingJob.getId(), existingJob.getStatus(), "Existing ingestion job already active", true, null);
-        }
+        // The tenant capacity lock serializes every producer before this lookup/insert.
+        // Keep the existing unique constraint as a backstop; never reuse an aborted transaction.
+        IngestionJob job = ingestionJobRepository.saveAndFlush(newJob);
 
         auditEventService.record("ingestion.job.created", "ingestion_job", job.getId().toString(), null);
         ingestionJobMetricsService.recordEnqueued(sourceType);
@@ -539,8 +614,11 @@ public class IngestionJobService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    public record ClaimedJobRef(UUID tenantId, UUID jobId) {
+    public record ClaimedJobRef(UUID tenantId, UUID jobId, UUID claimToken) {
+        public ClaimedJobRef(UUID tenantId, UUID jobId) { this(tenantId, jobId, null); }
     }
+
+    public record ConnectorJobPayload(UUID configId, UUID runId, String triggerMode, UUID targetId) { }
 
     public record AiSecurityJobPayload(UUID connectorId) {
     }

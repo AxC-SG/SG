@@ -1,0 +1,152 @@
+diff --git a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiGridR2ExposurePostgresIntegrationTest.java b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiGridR2ExposurePostgresIntegrationTest.java
+index bfc9a2d7..3cbdb7ce 100644
+--- a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiGridR2ExposurePostgresIntegrationTest.java
++++ b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiGridR2ExposurePostgresIntegrationTest.java
+@@ -52,6 +52,8 @@ class AiGridR2ExposurePostgresIntegrationTest {
+     @Autowired private AiGridApiService api;
+     @Autowired private AiGridHostContextService hostContext;
+     @Autowired private ObjectMapper objectMapper;
++    @Autowired private com.prototype.vulnwatch.aisecurity.service.AiGridExposureFindingService reviewFindingService;
++    @Autowired private com.prototype.vulnwatch.aisecurity.service.AiSecurityApiService reviewReadApi;
+ 
+     @Test
+     void exposureGraduatesDemotesClosesAndReopensWithStableIdentity() {
+@@ -331,6 +333,75 @@ class AiGridR2ExposurePostgresIntegrationTest {
+         });
+     }
+ 
++    @Test
++    void reviewRevalidationWithoutClosureShouldResumeSla() {
++        Tenant tenant = tenants.createTenant("Review SLA", "review-sla", "pilot", null);
++        migrations.provisionNewTenant(tenant);
++        UUID agent = UUID.randomUUID(); UUID kb = UUID.randomUUID();
++        tenantExecution.run(tenant, () -> {
++            seedArtifact(tenant, agent, "AI_AGENT", "AWS_BEDROCK_AGENT", "agent");
++            seedArtifact(tenant, kb, "KNOWLEDGE_BASE", "AWS_BEDROCK_KNOWLEDGE_BASE", "kb");
++            addValidatingFacts(tenant, agent, kb, Instant.now().plus(1, ChronoUnit.HOURS));
++            UUID run = seedRun(tenant, agent, kb, true, false);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            jdbc.update("update ai_grid_host_context_facts set valid_until=now()-interval '1 second'", Map.of());
++            run = seedRun(tenant, agent, kb, true, true);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            assertEquals(1, count("select count(*) from findings where workflow_class='NEEDS_EVIDENCE' and due_at is null"));
++            addValidatingFacts(tenant, agent, kb, Instant.now().plus(1, ChronoUnit.HOURS));
++            run = seedRun(tenant, agent, kb, true, false);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            assertEquals(1, count("select count(*) from findings where workflow_class='VALIDATED_EXPOSURE' and due_at is not null"),
++                    "Restored validating evidence should restart the paused SLA");
++            return null;
++        });
++    }
++
++    @Test
++    void reviewActiveExposureSuppressionShouldSurviveReassessment() {
++        Tenant tenant = tenants.createTenant("Review suppression", "review-suppression", "pilot", null);
++        migrations.provisionNewTenant(tenant);
++        UUID agent = UUID.randomUUID(); UUID kb = UUID.randomUUID();
++        tenantExecution.run(tenant, () -> {
++            seedArtifact(tenant, agent, "AI_AGENT", "AWS_BEDROCK_AGENT", "agent");
++            seedArtifact(tenant, kb, "KNOWLEDGE_BASE", "AWS_BEDROCK_KNOWLEDGE_BASE", "kb");
++            addValidatingFacts(tenant, agent, kb, Instant.now().plus(1, ChronoUnit.HOURS));
++            UUID run = seedRun(tenant, agent, kb, true, false);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            jdbc.update("update findings set status='SUPPRESSED',suppressed_until=now()+interval '1 day' where finding_kind='AI_EXPOSURE'", Map.of());
++            run = seedRun(tenant, agent, kb, true, false);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            assertEquals(1, count("select count(*) from findings where finding_kind='AI_EXPOSURE' and status='SUPPRESSED'"),
++                    "An active suppression should not be reopened by routine observation");
++            return null;
++        });
++    }
++
++    @Test
++    void reviewMergedExposureShouldAppearOnceWithArtifactContext() {
++        Tenant tenant = tenants.createTenant("Review listing", "review-listing", "pilot", null);
++        migrations.provisionNewTenant(tenant);
++        UUID agent = UUID.randomUUID(); UUID kb = UUID.randomUUID();
++        tenantExecution.run(tenant, () -> {
++            seedArtifact(tenant, agent, "AI_AGENT", "AWS_BEDROCK_AGENT", "agent");
++            seedArtifact(tenant, kb, "KNOWLEDGE_BASE", "AWS_BEDROCK_KNOWLEDGE_BASE", "kb");
++            addValidatingFacts(tenant, agent, kb, Instant.now().plus(1, ChronoUnit.HOURS));
++            UUID run = seedRun(tenant, agent, kb, true, false);
++            systems.deriveForRun(tenant, run); exposures.correlateCompleteRun(tenant, run);
++            UUID system = jdbc.queryForObject("select id from ai_grid_systems limit 1", Map.of(), UUID.class);
++            UUID root = jdbc.queryForObject("select root_cause_artifact_id from ai_grid_exposure_paths limit 1", Map.of(), UUID.class);
++            String correlation = jdbc.queryForObject("select correlation_id from ai_grid_exposure_paths limit 1", Map.of(), String.class);
++            reviewFindingService.reconcileValidated(tenant,
++                new com.prototype.vulnwatch.aisecurity.service.AiGridExposureFindingService.ExposureFinding(
++                    UUID.randomUUID(), run, "review-second-path", correlation, "1.0.0", "Second path", "HIGH", 0.99,
++                    system, 1, agent, root, List.of(agent, kb), Map.of()));
++            assertEquals(1, count("select count(*) from findings where finding_kind='AI_EXPOSURE'"));
++            assertEquals(1, reviewReadApi.findings(tenant, null, "OPEN", 0, 100).items().size(),
++                    "A shared-root finding should not produce duplicate finding rows for its primary paths");
++            return null;
++        });
++    }
++
+     private void addValidatingFacts(Tenant tenant, UUID agent, UUID kb, Instant validUntil) {
+         ingestTrusted(tenant, agent, hostFact("network.internet_reachability_verified", "GRAPH_ANALYSIS", "REACHABILITY", validUntil));
+         ingestTrusted(tenant, agent, hostFact("identity.inadequate_authentication_verified", "GRAPH_ANALYSIS", "IDENTITY", validUntil));
+diff --git a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiSecurityPolicyConfigurationPostgresIntegrationTest.java b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiSecurityPolicyConfigurationPostgresIntegrationTest.java
+index 00bae3f3..00624dbd 100644
+--- a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiSecurityPolicyConfigurationPostgresIntegrationTest.java
++++ b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/aisecurity/AiSecurityPolicyConfigurationPostgresIntegrationTest.java
+@@ -59,6 +59,7 @@ class AiSecurityPolicyConfigurationPostgresIntegrationTest {
+     @Autowired private AiSecuritySyncRunFacade syncRunFacade;
+     @Autowired private AiSecurityApiService apiService;
+     @Autowired private NamedParameterJdbcTemplate jdbc;
++    @Autowired private com.prototype.vulnwatch.aisecurity.service.AiGridApiService reviewGridApi;
+ 
+     @MockBean private IngestionJobWorkerService ingestionJobWorkerService;
+     @MockBean private FindingDeltaQueueService findingDeltaQueueService;
+@@ -119,6 +120,50 @@ class AiSecurityPolicyConfigurationPostgresIntegrationTest {
+                 "lowering the required threshold to LOW should resolve the finding for a LOW-strength guardrail");
+     }
+ 
++    @Test
++    void reviewReincludeOlderScopeAfterUnrelatedRunShouldReopenFinding() {
++        Tenant tenant = provision("Review multiple runs", "review-runs");
++        UUID connectorId = connector(tenant);
++        UUID firstRun = syncRunFacade.start(tenant).getId();
++        UUID agent = ingestWildcardAgents(tenant, connectorId, firstRun, "review-agent");
++        apiService.addPolicyException(tenant, WILDCARD_POLICY, agent, "EXCLUDED", "review", "tester");
++        assertEquals("AUTO_CLOSED", findingStatus(tenant, WILDCARD_POLICY, agent));
++        UUID secondRun = syncRunFacade.start(tenant).getId();
++        observationService.ingest(tenant, evidenceEnvelope(tenant, connectorId, secondRun,
++                "us-west-2", "BEDROCK_GUARDRAILS", "review-unrelated", List.of(new ArtifactObservation(
++                    "arn:aws:bedrock:us-west-2:123456789012:guardrail/review",
++                    "OTHER_AI_ARTIFACT", "AWS_BEDROCK_GUARDRAIL", "review-guardrail", Map.of()))));
++        apiService.removePolicyException(tenant, WILDCARD_POLICY, agent, "tester");
++        assertEquals("OPEN", findingStatus(tenant, WILDCARD_POLICY, agent),
++                "Reincluding an artifact should reassess its current scope even when a newer unrelated run exists");
++    }
++
++    @Test
++    void reviewEnablingPolicyWithStoredFailureShouldCreateFinding() {
++        Tenant tenant = provision("Review enable", "review-enable");
++        UUID connectorId = connector(tenant);
++        reviewGridApi.updateSelection(tenant, WILDCARD_POLICY, "PREVIEW", "tester", "review");
++        UUID run = syncRunFacade.start(tenant).getId();
++        UUID agent = ingestWildcardAgents(tenant, connectorId, run, "review-preview-agent");
++        assertEquals("FAIL", evaluationOutcome(tenant, run, WILDCARD_POLICY, agent));
++        assertEquals(0, apiService.findings(tenant, WILDCARD_POLICY, "OPEN", 0, 100).items().size());
++        reviewGridApi.updateSelection(tenant, WILDCARD_POLICY, "ENABLED", "tester", "review");
++        assertEquals(1, apiService.findings(tenant, WILDCARD_POLICY, "OPEN", 0, 100).items().size(),
++                "Enabling a policy with a known current failure should graduate it into a finding");
++    }
++
++    @Test
++    void reviewDisablingPolicyShouldWithdrawExistingFinding() {
++        Tenant tenant = provision("Review disable", "review-disable");
++        UUID connectorId = connector(tenant);
++        UUID run = syncRunFacade.start(tenant).getId();
++        UUID agent = ingestWildcardAgents(tenant, connectorId, run, "review-enabled-agent");
++        assertEquals("OPEN", findingStatus(tenant, WILDCARD_POLICY, agent));
++        reviewGridApi.updateSelection(tenant, WILDCARD_POLICY, "DISABLED", "tester", "review");
++        assertEquals("AUTO_CLOSED", findingStatus(tenant, WILDCARD_POLICY, agent),
++                "Disabling policy should withdraw owner-facing findings immediately");
++    }
++
+     private UUID connector(Tenant tenant) {
+         return connectorService.save(
+                 tenant,

@@ -206,7 +206,7 @@ class DemoLifecycleServiceTest {
         );
         when(demoRequestRepository.findFirstByEmailIgnoreCaseAndStatusInOrderByRequestedAtDesc(
                 eq("casey@example.com"),
-                eq(List.of("PENDING", "SENT", "ERROR"))))
+                eq(List.of("PENDING", "QUEUED", "SENT", "ERROR", "DELIVERY_UNKNOWN", "DELIVERY_ERROR"))))
                 .thenReturn(Optional.empty());
         when(demoRequestRepository.saveAndFlush(any(DemoRequest.class))).thenAnswer(invocation -> {
             DemoRequest saved = invocation.getArgument(0);
@@ -409,10 +409,11 @@ class DemoLifecycleServiceTest {
         invite.setTenant(tenant);
         invite.setEmail(request.getEmail());
         invite.setToken("invite-token-123");
+        lenient().when(demoInviteRepository.findByTokenHashForUpdate(invite.getTokenHash())).thenReturn(Optional.of(invite));
         invite.setStatus("ERROR");
         invite.setExpiresAt(java.time.Instant.now().plusSeconds(86400));
 
-        when(demoInviteRepository.findByToken("invite-token-123")).thenReturn(Optional.of(invite));
+        when(demoInviteRepository.findByTokenHash(InvitationTokens.hash("invite-token-123"))).thenReturn(Optional.of(invite));
 
         DemoLifecycleService service = service();
         DemoInviteValidationResponse response = service.validateInvite("invite-token-123");
@@ -434,10 +435,10 @@ class DemoLifecycleServiceTest {
         invite.setTenant(tenant);
         invite.setEmail(request.getEmail());
         invite.setToken("invite-token-123");
+        lenient().when(demoInviteRepository.findByTokenHashForUpdate(invite.getTokenHash())).thenReturn(Optional.of(invite));
         invite.setStatus("SENT");
         invite.setExpiresAt(Instant.now().plus(1, ChronoUnit.DAYS));
 
-        when(demoInviteRepository.findByToken("invite-token-123")).thenReturn(Optional.of(invite));
         when(demoInviteRepository.save(invite)).thenReturn(invite);
         when(demoRequestRepository.save(request)).thenReturn(request);
         when(localCredentialAuthService.issuePasswordSetupToken(request.getEmail())).thenReturn("setup-token");
@@ -562,6 +563,7 @@ class DemoLifecycleServiceTest {
         when(demoRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(demoInviteRepository.findByRequest_IdOrderByCreatedAtDesc(request.getId())).thenReturn(List.of(existingInvite));
+        when(demoInviteRepository.findByTokenHashForUpdate(existingInvite.getTokenHash())).thenReturn(Optional.of(existingInvite));
         DemoInvite detachedSaveResult = new DemoInvite();
         ReflectionTestUtils.setField(detachedSaveResult, "id", existingInvite.getId());
         detachedSaveResult.setStatus("SENT");
@@ -603,6 +605,7 @@ class DemoLifecycleServiceTest {
         when(demoRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(demoInviteRepository.findByRequest_IdOrderByCreatedAtDesc(request.getId())).thenReturn(List.of(acceptedInvite));
+        when(demoInviteRepository.findByTokenHashForUpdate(acceptedInvite.getTokenHash())).thenReturn(Optional.of(acceptedInvite));
 
         DemoLifecycleService service = service();
         DemoAccessException ex = assertThrows(
@@ -640,7 +643,7 @@ class DemoLifecycleServiceTest {
 
         assertEquals("ACCEPTED", response.inviteStatus());
         assertNotNull(existingInvite.getAcceptedAt());
-        assertEquals("https://app.example.com/setup/setup-token-123?email=alex%40example.com", response.setupUrl());
+        assertEquals("https://app.example.com/setup#token=setup-token-123&email=alex%40example.com", response.setupUrl());
         verify(localCredentialAuthService).issuePasswordSetupToken(request.getEmail());
     }
 
@@ -687,6 +690,11 @@ class DemoLifecycleServiceTest {
     }
 
     private DemoLifecycleService service() {
+        org.springframework.transaction.support.TransactionTemplate inviteTransactions = org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class);
+        org.mockito.Mockito.lenient().when(inviteTransactions.execute(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation ->
+                ((org.springframework.transaction.support.TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(null));
+        org.mockito.Mockito.lenient().when(demoRequestRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation ->
+                demoRequestRepository.findById(invocation.getArgument(0)));
         lenient().doAnswer(invocation -> invocation.getArgument(1, java.util.function.Supplier.class).get())
                 .when(tenantSchemaExecutionService)
                 .run(org.mockito.ArgumentMatchers.nullable(Tenant.class), org.mockito.ArgumentMatchers.<java.util.function.Supplier<Object>>any());
@@ -703,7 +711,8 @@ class DemoLifecycleServiceTest {
                 demoTenantPurgeService,
                 tenantLifecycleGuardService,
                 tenantSchemaExecutionService,
-                "https://app.example.com"
+                "https://app.example.com",
+                inviteTransactions
         );
     }
 

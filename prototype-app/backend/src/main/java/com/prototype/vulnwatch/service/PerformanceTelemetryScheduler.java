@@ -32,7 +32,7 @@ public class PerformanceTelemetryScheduler {
         try {
             performanceTelemetryService.refreshFreshnessSnapshot();
         } catch (Exception ex) {
-            LOG.warn("Failed refreshing performance telemetry snapshot: {}", ex.getMessage(), ex);
+            LOG.warn("Performance telemetry refresh failed; inspect refresh validity and error gauges.");
         }
     }
 }

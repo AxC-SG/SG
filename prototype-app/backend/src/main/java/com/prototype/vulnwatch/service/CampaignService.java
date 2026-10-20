@@ -520,6 +520,10 @@ public class CampaignService {
         }
     }
 
+    private CampaignEmailOutboxService emailOutbox;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureEmailOutbox(CampaignEmailOutboxService outbox) { emailOutbox=outbox; }
+
     private void deliverAttempt(
             Campaign campaign,
             String label,
@@ -540,17 +544,11 @@ public class CampaignService {
             attempt.setDeliveryState("SKIPPED");
             attempt.setDetail("No email configured for watchlist entry");
         } else {
-            ResendEmailClient.DeliveryResult result = resendEmailClient.send(new ResendEmailClient.EmailMessage(
-                    email,
-                    subject,
-                    "<p>" + escapeHtml(text).replace("\n", "<br/>") + "</p>",
-                    text,
-                    Map.of("feature", "campaign", "campaignId", campaign.getId().toString()),
-                    campaign.getId() + ":" + targetId + ":" + idempotencySuffix
-            ));
-            attempt.setDeliveryState(result.state().name());
-            attempt.setProviderMessageId(result.providerMessageId());
-            attempt.setDetail(result.detail());
+            attempt.setDeliveryState("QUEUED");
+            campaignDeliveryAttemptRepository.saveAndFlush(attempt);
+            emailOutbox.enqueue(campaign.getTenant().getId(),attempt.getId(),new ResendEmailClient.EmailMessage(
+                    email,subject,"<p>"+escapeHtml(text).replace("\n","<br/>")+"</p>",text,
+                    Map.of("feature","campaign","campaignId",campaign.getId().toString()),attempt.getId().toString()));
         }
         campaignDeliveryAttemptRepository.save(attempt);
     }

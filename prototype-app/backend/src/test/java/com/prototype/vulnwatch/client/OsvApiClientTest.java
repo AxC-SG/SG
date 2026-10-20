@@ -78,10 +78,7 @@ class OsvApiClientTest {
         org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class)))
         .thenThrow(new HttpClientErrorException(org.springframework.http.HttpStatus.BAD_REQUEST));
 
-    OsvQueryResponse result = client.queryByPackageVersion("npm", "lodash", "4.17.20");
-
-    assertNotNull(result);
-    assertEquals(0, result.getVulns().size());
+    assertThrows(IllegalStateException.class, () -> client.queryByPackageVersion("npm", "lodash", "4.17.20"));
   }
 
   @Test

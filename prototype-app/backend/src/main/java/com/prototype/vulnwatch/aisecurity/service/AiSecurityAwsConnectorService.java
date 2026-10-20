@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.aisecurity.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.client.AwsCustomerBinding;
 import com.prototype.vulnwatch.aisecurity.aws.AwsPermissionPreflightService;
 import com.prototype.vulnwatch.dto.IngestionJobAcceptedResponse;
 import com.prototype.vulnwatch.service.CredentialEncryptionService;
@@ -62,14 +63,22 @@ public class AiSecurityAwsConnectorService {
     public ConnectorConfigResponse save(Tenant tenant, ConnectorConfigRequest request) {
         validate(request);
         return tenantExecution.run(tenant, () -> transactionTemplate.execute(status -> {
-            UUID id = rows().stream().findFirst().map(ConnectorConfigResponse::id).orElse(UUID.randomUUID());
+            ConnectorConfigResponse existing = rows().stream().findFirst().orElse(null);
+            UUID id = existing == null ? UUID.randomUUID() : existing.id();
+            String externalId;
+            try {
+                externalId = AwsCustomerBinding.externalId(tenant.getId(), existing == null ? null : existing.externalId(),
+                        existing == null || existing.externalId() == null ? 0 : AwsCustomerBinding.VERSION, request.externalId());
+            } catch (IllegalArgumentException invalid) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
+            }
             jdbc.update("""
                     insert into ai_security_connector_configs as existing (
                         id, tenant_id, provider, account_id, role_arn, external_id_ciphertext,
-                        regions_json, enabled
+                        regions_json, enabled, credential_binding_version
                     ) values (
                         :id, :tenantId, 'AWS', :accountId, :roleArn, :externalId,
-                        cast(:regions as jsonb), :enabled
+                        cast(:regions as jsonb), :enabled, 1
                     ) on conflict (id) do update
                         set account_id = excluded.account_id,
                             role_arn = excluded.role_arn,
@@ -79,13 +88,14 @@ public class AiSecurityAwsConnectorService {
                             ),
                             regions_json = excluded.regions_json,
                             enabled = excluded.enabled,
+                            credential_binding_version = excluded.credential_binding_version,
                             updated_at = now()
                     """, new MapSqlParameterSource()
                     .addValue("id", id)
                     .addValue("tenantId", tenant.getId())
                     .addValue("accountId", request.accountId().trim())
                     .addValue("roleArn", blankToNull(request.roleArn()))
-                    .addValue("externalId", encryptionService.encrypt(blankToNull(request.externalId())))
+                    .addValue("externalId", encryptionService.encrypt(externalId))
                     .addValue("regions", json(request.regions()))
                     .addValue("enabled", request.enabled()));
             return rows().stream().filter(row -> row.accountId().equals(request.accountId().trim())).findFirst()
@@ -123,6 +133,7 @@ public class AiSecurityAwsConnectorService {
 
     public IngestionJobAcceptedResponse trigger(Tenant tenant, String requestedBy) {
         ConnectorSecret config = secret(tenant);
+        validateBinding(config);
         if (!config.enabled()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "AI Security connector is disabled");
         }
@@ -131,54 +142,67 @@ public class AiSecurityAwsConnectorService {
 
     public ConnectorSecret secret(Tenant tenant) {
         return tenantExecution.run(tenant, () -> jdbc.query("""
-                select id, account_id, role_arn, external_id_ciphertext, regions_json::text, enabled
+                select id, tenant_id, account_id, role_arn, external_id_ciphertext, regions_json::text, enabled, credential_binding_version
                   from ai_security_connector_configs
-                 where provider = 'AWS'
+                 where provider = 'AWS' and tenant_id = :tenantId
                  order by updated_at desc limit 1
-                """, rs -> {
+                """, Map.of("tenantId", tenant.getId()), rs -> {
             if (!rs.next()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "AI Security AWS connector is not configured");
             }
-            return new ConnectorSecret(
+            ConnectorSecret config = new ConnectorSecret(
                     rs.getObject("id", UUID.class),
                     rs.getString("account_id"),
                     rs.getString("role_arn"),
                     encryptionService.decrypt(rs.getString("external_id_ciphertext")),
                     readRegions(rs.getString("regions_json")),
-                    rs.getBoolean("enabled"));
+                    rs.getBoolean("enabled"), rs.getObject("tenant_id", UUID.class), rs.getInt("credential_binding_version"));
+            if (!tenant.getId().equals(config.tenantId())) throw new IllegalStateException("AWS connector tenant does not match");
+            return config;
         }));
     }
 
     public CredentialsHandle credentials(ConnectorSecret config) {
+        validateBinding(config);
         // Local pilot runs use a named profile. Resolve it explicitly when present so an SDK
         // upgrade cannot silently fall through to an unrelated environment/IMDS provider.
         String profile = System.getenv("AWS_PROFILE");
         AwsCredentialsProvider base = profile == null || profile.isBlank()
                 ? DefaultCredentialsProvider.create()
                 : ProfileCredentialsProvider.create(profile.trim());
-        if (config.roleArn() == null || config.roleArn().isBlank()) {
-            return new CredentialsHandle(base, null);
-        }
-        StsClient sts = StsClient.builder()
-                .region(Region.US_EAST_1)
-                .credentialsProvider(base)
-                .build();
+        StsClient sts = stsClient(base);
         AssumeRoleRequest.Builder request = AssumeRoleRequest.builder()
                 .roleArn(config.roleArn())
                 .roleSessionName("scout-ai-security-" + config.accountId());
-        if (config.externalId() != null && !config.externalId().isBlank()) {
-            request.externalId(config.externalId());
-        }
+        request.externalId(config.externalId());
         StsAssumeRoleCredentialsProvider assumed = StsAssumeRoleCredentialsProvider.builder()
                 .stsClient(sts)
                 .refreshRequest(request.build())
                 .build();
-        return new CredentialsHandle(assumed, sts);
+        CredentialsHandle handle = new CredentialsHandle(assumed, sts);
+        try (StsClient identity = stsClient(assumed)) {
+            var caller = identity.getCallerIdentity();
+            AwsCustomerBinding.verifyIdentity(config.accountId(), config.roleArn(), caller.account(), caller.arn());
+            return handle;
+        } catch (RuntimeException failure) {
+            handle.close();
+            throw failure;
+        }
+    }
+
+    StsClient stsClient(AwsCredentialsProvider provider) {
+        return StsClient.builder().region(Region.US_EAST_1).credentialsProvider(provider).build();
+    }
+
+    private void validateBinding(ConnectorSecret config) {
+        AwsCustomerBinding.validate(config.tenantId(), config.accountId(), config.roleArn(), config.externalId(), config.bindingVersion());
+        if (config.tenantId() == null) throw new IllegalArgumentException("AWS connector tenant binding is missing");
     }
 
     private List<ConnectorConfigResponse> rows() {
         return jdbc.query("""
-                select id, account_id, role_arn, regions_json::text, enabled, created_at, updated_at
+                select id, account_id, role_arn, regions_json::text, enabled, created_at, updated_at,
+                       external_id_ciphertext, credential_binding_version
                   from ai_security_connector_configs
                  where provider = 'AWS' order by updated_at desc
                 """, (rs, rowNum) -> new ConnectorConfigResponse(
@@ -186,6 +210,8 @@ public class AiSecurityAwsConnectorService {
                 rs.getString("account_id"),
                 rs.getString("role_arn"),
                 rs.getString("role_arn") == null ? "WORKLOAD_IDENTITY" : "CROSS_ACCOUNT_ROLE",
+                rs.getInt("credential_binding_version") == AwsCustomerBinding.VERSION
+                        ? encryptionService.decrypt(rs.getString("external_id_ciphertext")) : null,
                 readRegions(rs.getString("regions_json")),
                 rs.getBoolean("enabled"),
                 rs.getTimestamp("created_at").toInstant(),
@@ -198,6 +224,13 @@ public class AiSecurityAwsConnectorService {
         }
         if (request.regions() == null || request.regions().isEmpty() || request.regions().size() > 20) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one AWS region is required");
+        }
+        try {
+            if (!request.accountId().equals(AwsCustomerBinding.accountForRole(request.roleArn()))) {
+                throw new IllegalArgumentException("The cross-account role ARN must belong to the configured AWS account");
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
         }
         if (request.roleArn() != null && !request.roleArn().isBlank()
                 && !request.roleArn().matches("arn:aws[a-z-]*:iam::\\d{12}:role/.+")) {
@@ -260,6 +293,7 @@ public class AiSecurityAwsConnectorService {
             String accountId,
             String roleArn,
             String authMode,
+            String externalId,
             List<String> regions,
             boolean enabled,
             java.time.Instant createdAt,
@@ -288,8 +322,13 @@ public class AiSecurityAwsConnectorService {
             String roleArn,
             String externalId,
             List<String> regions,
-            boolean enabled
+            boolean enabled,
+            UUID tenantId,
+            int bindingVersion
     ) {
+        public ConnectorSecret(UUID id, String accountId, String roleArn, String externalId, List<String> regions, boolean enabled) {
+            this(id, accountId, roleArn, externalId, regions, enabled, null, 0);
+        }
     }
 
     public static final class CredentialsHandle implements AutoCloseable {

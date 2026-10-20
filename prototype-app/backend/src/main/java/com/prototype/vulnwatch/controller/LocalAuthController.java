@@ -16,6 +16,8 @@ import java.security.Principal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,12 @@ public class LocalAuthController {
     public AuthTokenResponse login(@Valid @RequestBody AuthLoginRequest request, HttpServletRequest servletRequest) {
         publicEndpointRateLimiter.checkLogin(servletRequest, request.email());
         return localCredentialAuthService.login(request.email(), request.password());
+    }
+
+    @GetMapping("/csrf")
+    public java.util.Map<String, String> csrf(CsrfToken token, HttpServletResponse response) {
+        passwordSetupCookieService.noStore(response);
+        return java.util.Map.of("headerName", token.getHeaderName(), "token", token.getToken());
     }
 
     @PostMapping("/setup-password")

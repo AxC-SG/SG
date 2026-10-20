@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service.cbom;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.CbomAssetType;
+import com.prototype.vulnwatch.util.BomInputLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,7 @@ public class CbomComponentParser {
     }
 
     public List<CbomParsedComponent> parse(byte[] content) throws IOException {
+        BomInputLimits.checkBytes(content);
         if (looksLikeXml(content)) {
             return parseXml(content);
         }
@@ -41,6 +43,9 @@ public class CbomComponentParser {
 
     private List<CbomParsedComponent> parseJson(byte[] content) throws IOException {
         JsonNode root = objectMapper.readTree(content);
+        if (root == null || !root.isObject()) {
+            throw new IOException("BOM must be a JSON object");
+        }
         JsonNode nested = root.path("cbom");
         if (nested.isObject()) {
             root = nested;
@@ -51,6 +56,7 @@ public class CbomComponentParser {
         if (!components.isArray()) {
             return List.of();
         }
+        BomInputLimits.checkComponentCount(components.size());
         List<CbomParsedComponent> result = new ArrayList<>();
         for (JsonNode component : components) {
             String type = text(component, "type");
@@ -120,6 +126,7 @@ public class CbomComponentParser {
             }
             List<CbomParsedComponent> result = new ArrayList<>();
             NodeList children = components.getChildNodes();
+            int componentCount = 0;
             for (int i = 0; i < children.getLength(); i++) {
                 if (children.item(i).getNodeType() != Node.ELEMENT_NODE) {
                     continue;
@@ -128,6 +135,7 @@ public class CbomComponentParser {
                 if (!"component".equals(localName(component))) {
                     continue;
                 }
+                BomInputLimits.checkComponentCount(++componentCount);
                 Element crypto = firstChild(component, "cryptoProperties");
                 String type = blankToNull(component.getAttribute("type"));
                 if (!"cryptographic-asset".equalsIgnoreCase(nullToBlank(type)) && crypto == null) {
@@ -322,7 +330,7 @@ public class CbomComponentParser {
 
     private String childText(Element parent, String name) {
         Element child = firstChild(parent, name);
-        return child == null ? null : child.getTextContent();
+        return child == null ? null : BomInputLimits.xmlText(child);
     }
 
     private String localName(Node node) {
