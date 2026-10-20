@@ -48,11 +48,13 @@ class RetentionBatchHoldPostgresIntegrationTest {
         migrations.provisionNewTenant(tenant);
         tenant = tenants.resolveTenantUuid(tenant.getId());
         role = "retention_" + UUID.randomUUID().toString().replace("-", "");
-        jdbc.execute("create role " + role + " login nosuperuser nobypassrls noinherit");
+        // CI uses password authentication; do not depend on a local trust rule.
+        String runtimePassword = UUID.randomUUID().toString();
+        jdbc.execute("create role " + role + " login nosuperuser nobypassrls noinherit password '" + runtimePassword + "'");
         jdbc.execute("grant usage on schema platform, \"" + tenant.getSchemaName() + "\" to " + role);
         jdbc.execute("grant select,insert,update,delete on all tables in schema \"" + tenant.getSchemaName() + "\" to " + role);
         jdbc.execute("grant usage,select on all sequences in schema \"" + tenant.getSchemaName() + "\" to " + role);
-        var source = new TenantAwareDataSource(new DriverManagerDataSource(DB.url(), role, ""), true,
+        var source = new TenantAwareDataSource(new DriverManagerDataSource(DB.url(), role, runtimePassword), true,
                 "tenant_default", new SimpleMeterRegistry());
         runtimeJdbc = new JdbcTemplate(source);
         runtimeTransactions = new TransactionTemplate(new DataSourceTransactionManager(source));
