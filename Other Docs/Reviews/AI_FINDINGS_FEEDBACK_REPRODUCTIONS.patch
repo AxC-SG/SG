@@ -1,0 +1,52 @@
+diff --git a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/AiBomResourceVulnerabilityCorrelationServiceTest.java b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/AiBomResourceVulnerabilityCorrelationServiceTest.java
+index 4d4c369d..f935f162 100644
+--- a/prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/AiBomResourceVulnerabilityCorrelationServiceTest.java
++++ b/prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/AiBomResourceVulnerabilityCorrelationServiceTest.java
+@@ -113,6 +113,47 @@ class AiBomResourceVulnerabilityCorrelationServiceTest {
+         return component;
+     }
+ 
++    @Test
++    void reviewTwoHopDependencyShouldReachCanonicalFinding() {
++        UUID libraryId = UUID.randomUUID();
++        BomComponentRelationship second = new BomComponentRelationship();
++        second.setSourceComponentId(targetComponentId);
++        second.setTargetComponentId(libraryId);
++        second.setRelationshipType("DEPENDS_ON");
++        when(relationshipRepository.findBySourceComponentId(declared.getBomComponentId()))
++                .thenReturn(List.of(relationshipTo(targetComponentId)));
++        when(relationshipRepository.findBySourceComponentId(targetComponentId)).thenReturn(List.of(second));
++        when(bomComponentRepository.findById(targetComponentId)).thenReturn(Optional.of(libraryComponent("wrapper", "1.0")));
++        when(bomComponentRepository.findById(libraryId)).thenReturn(Optional.of(libraryComponent("transformers", "4.38.0")));
++        when(inventoryComponentRepository.findActiveByTenantAssetAndComponentNameVersion(
++                eq(tenant.getId()), eq(source.getAssetId()), eq(InventoryComponentStatus.ACTIVE),
++                eq("transformers"), eq("4.38.0"))).thenReturn(List.of(new InventoryComponent()));
++        Finding finding = new Finding(); finding.setFindingKind("VULNERABILITY");
++        when(findingRepository.findByComponent_IdIn(any())).thenReturn(List.of(finding));
++        service.reconcileAllForTenant(tenant);
++        verify(linkRepository).save(any());
++    }
++
++    @Test
++    void reviewPartialLinkShouldRetryMissingSubject() {
++        when(relationshipRepository.findBySourceComponentId(declared.getBomComponentId()))
++                .thenReturn(List.of(relationshipTo(targetComponentId)));
++        when(bomComponentRepository.findById(targetComponentId)).thenReturn(Optional.of(libraryComponent("transformers", "4.38.0")));
++        when(inventoryComponentRepository.findActiveByTenantAssetAndComponentNameVersion(
++                eq(tenant.getId()), eq(source.getAssetId()), eq(InventoryComponentStatus.ACTIVE),
++                eq("transformers"), eq("4.38.0"))).thenReturn(List.of(new InventoryComponent()));
++        Finding finding = new Finding(); finding.setFindingKind("VULNERABILITY");
++        when(findingRepository.findByComponent_IdIn(any())).thenReturn(List.of(finding));
++        when(linkRepository.existsByDeclaredResourceIdAndFindingId(any(), any())).thenReturn(false, true);
++        when(jdbc.update(anyString(), any(MapSqlParameterSource.class)))
++                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("transient failure"))
++                .thenReturn(1);
++        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,
++                () -> service.reconcileAllForTenant(tenant));
++        service.reconcileAllForTenant(tenant);
++        verify(jdbc, times(2)).update(anyString(), any(MapSqlParameterSource.class));
++    }
++
+     @Test
+     void aResourceWithNoRelationshipsProducesNoLinks() {
+         when(relationshipRepository.findBySourceComponentId(declared.getBomComponentId()))
