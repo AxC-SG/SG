@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # SARIF upload reads the current workflow run.
   security-events: write  # Required to upload SARIF to GitHub Security tab
 
 jobs:
