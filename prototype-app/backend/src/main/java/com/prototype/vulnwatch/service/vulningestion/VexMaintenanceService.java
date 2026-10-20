@@ -76,38 +76,15 @@ public class VexMaintenanceService {
 
     public SyncTriggerResponse triggerVexAssertionRepair() {
         ensureVexRolloutControlsEnabled();
-        java.util.Optional<SyncRun> activeRun = syncRunService.findFirstActiveRun(List.of("VEX_ASSERTION_REPAIR", "VEX_ROLLOUT_BACKFILL"));
-        if (activeRun.isPresent()) {
-            SyncRun run = activeRun.get();
-            return new SyncTriggerResponse(run.getId(), run.getStatus(), "VEX assertion repair is already in progress");
-        }
-
-        SyncRun run = syncRunService.createQueuedRun("VEX_ASSERTION_REPAIR");
-        ingestionExecutor.execute(() ->
-                syncRunService.markRunningIfQueued(run.getId()).ifPresent(this::executeVexAssertionRepair));
-        return new SyncTriggerResponse(run.getId(), run.getStatus(), "VEX assertion repair queued");
+        return syncRunService.prepareQueuedRun("VEX_ASSERTION_REPAIR",List.of("VEX_ASSERTION_REPAIR","VEX_ROLLOUT_BACKFILL","CSAF_MICROSOFT","CSAF_REDHAT"))
+                .toResponse("VEX assertion repair is already in progress","VEX assertion repair queued");
     }
 
     public SyncTriggerResponse triggerVexRolloutBackfill() {
         ensureVexRolloutControlsEnabled();
-        if (!vexRolloutBackfillEnabled) {
-            throw new IllegalStateException("Vendor VEX backfill is disabled by feature flag");
-        }
-        java.util.Optional<SyncRun> conflictingRun = syncRunService.findFirstActiveRun(List.of(
-                "VEX_ROLLOUT_BACKFILL",
-                "CSAF_MICROSOFT",
-                "CSAF_REDHAT",
-                "VEX_ASSERTION_REPAIR"
-        ));
-        if (conflictingRun.isPresent()) {
-            SyncRun run = conflictingRun.get();
-            return new SyncTriggerResponse(run.getId(), run.getStatus(), "A VEX backfill-related run is already in progress");
-        }
-
-        SyncRun run = syncRunService.createQueuedRun("VEX_ROLLOUT_BACKFILL");
-        ingestionExecutor.execute(() ->
-                syncRunService.markRunningIfQueued(run.getId()).ifPresent(this::executeVexRolloutBackfill));
-        return new SyncTriggerResponse(run.getId(), run.getStatus(), "Vendor VEX backfill queued");
+        if (!vexRolloutBackfillEnabled) throw new IllegalStateException("Vendor VEX backfill is disabled by feature flag");
+        return syncRunService.prepareQueuedRun("VEX_ROLLOUT_BACKFILL",List.of("VEX_ROLLOUT_BACKFILL","CSAF_MICROSOFT","CSAF_REDHAT","VEX_ASSERTION_REPAIR"))
+                .toResponse("A VEX backfill-related run is already in progress","Vendor VEX backfill queued");
     }
 
     public void executeVexAssertionRepairAsync(UUID runId) {

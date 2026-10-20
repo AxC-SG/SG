@@ -46,7 +46,7 @@ public class AllowedTenantContextService {
                                     membership.getTenant().getId().toString(),
                                     membership.getTenant().getName(),
                                     membership.getTenant().getSlug(),
-                                    membership.getRole(),
+                                    TenantRolePolicy.forAuthorization(membership.getRole()),
                                     bootstrapPlayground
                                             ? TenantAccessMode.DIRECT_PLAYGROUND_MEMBERSHIP.name()
                                             : TenantAccessMode.TENANT_MEMBERSHIP.name(),
@@ -80,7 +80,7 @@ public class AllowedTenantContextService {
                         membership.getTenant().getId().toString(),
                         membership.getTenant().getName(),
                         membership.getTenant().getSlug(),
-                        membership.getRole(),
+                        TenantRolePolicy.forAuthorization(membership.getRole()),
                         TenantAccessMode.TENANT_MEMBERSHIP.name(),
                         membership.getId(),
                         null,

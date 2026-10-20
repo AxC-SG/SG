@@ -51,6 +51,21 @@ class CustomerDemoDatasetPostgresIntegrationTest {
     @Autowired
     private HostInventoryReadService hostInventoryReadService;
 
+    @Autowired private DemoDatasetProvisioningService provisioning;
+
+    @Test
+    void provisioningCommitsRealSeedDataAndCompletionInsideTheSelectedTenant() {
+        Tenant tenant=tenantService.getDefaultTenant();
+        jdbcTemplate.update("update platform.tenants set demo_source=? where id=?",
+                DemoDatasetProvisioningService.SEEDING_MARKER,tenant.getId());
+        var first=provisioning.seedIfReady(tenant.getId());
+        var second=provisioning.seedIfReady(tenant.getId());
+        assertEquals(first,second);
+        assertEquals(DemoDatasetProvisioningService.SEEDED_MARKER,
+                jdbcTemplate.queryForObject("select demo_source from platform.tenants where id=?",String.class,tenant.getId()));
+        tenantSchemaExecutionService.run(tenant,() -> assertEquals(10,count("assets")));
+    }
+
     @Test
     void seedsCompleteDatasetIdempotentlyInsideTheSelectedTenant() {
         Tenant tenant = tenantService.getDefaultTenant();

@@ -61,6 +61,12 @@ public class AwsDiscoveryConfig {
     @Column(name = "external_id", length = 255)
     private String externalId;
 
+    @Column(name = "credential_binding_version", nullable = false)
+    private int credentialBindingVersion;
+
+    public int getCredentialBindingVersion() { return credentialBindingVersion; }
+    public void setCredentialBindingVersion(int value) { credentialBindingVersion = value; }
+
     /** AWS account ID resolved via STS GetCallerIdentity; stored after a successful test. */
     @Column(name = "aws_account_id", length = 32)
     private String awsAccountId;

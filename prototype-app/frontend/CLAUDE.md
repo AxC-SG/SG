@@ -65,7 +65,7 @@ src/
     auth/              # ActorContext type, context, role helpers, queries
     findings/          # Finding type, queries, filters
     cve-workbench/     # Largest feature — CVE Assessment Workbench types and helpers
-    configurations/    # RiskPolicy (6 triage weight fields), OwnershipRule, SuppressionRule
+    configurations/    # RiskPolicy (6 triage weight fields, frontend-only — not on the backend entity), OwnershipRule, SuppressionRule
     inventory/         # Asset, HostAssetDetail, InventoryComponentPage
     connect/           # Connector configs, sync run types
     operations/        # OperationalDashboard, SLO, quality types
@@ -80,11 +80,13 @@ src/
     widgets/           # Shared chart/widget components
   hooks/
     useDebouncedValue.ts  # Generic debounce hook
-    polling.ts            # Polling helpers for run-queue pages
   lib/
     riskScoring.ts     # Pure TS: computeCveRiskScore, computeFindingPriorityScore, computeOrgImpact
     queryClient.ts     # createQueryClient factory (shared between app and tests)
     time.ts            # timeAgo, formatTimestamp
+    polling.ts         # Refresh-interval constants for run-queue and status polling
+    queryPolling.ts    # React Query refetchInterval helpers
+    performanceMonitoring.tsx  # Client performance telemetry
   pages/               # One file per route; lazy-loaded via React.lazy in App.tsx
   components/          # Shared presentational components (≤ 300 lines each)
   styles/              # Global CSS — index.css, finding-detail.css, and per-feature sheets

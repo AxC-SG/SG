@@ -59,6 +59,8 @@ public class AzureDiscoveryConfigService {
 
     @Transactional
     public AzureDiscoveryConfigResponse save(Tenant tenant, AzureDiscoveryConfigRequest request) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryConfig config = findConfig(tenant)
                 .orElseGet(() -> {
                     tenantQuotaService.assertCanCreateConnector(tenant, "azure");
@@ -74,6 +76,8 @@ public class AzureDiscoveryConfigService {
 
     @Transactional
     public AzureConnectionTestResponse test(Tenant tenant) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryConfig config = requireConfig(tenant);
         Instant testedAt = Instant.now();
         AzureDiscoveryConfig runtimeConfig = configWithDecryptedCredential(config);
@@ -169,6 +173,8 @@ public class AzureDiscoveryConfigService {
     }
 
     AzureDiscoveryConfig runtimeConfig(AzureDiscoveryConfig config) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         return configWithDecryptedCredential(config);
     }
 
@@ -243,11 +249,11 @@ public class AzureDiscoveryConfigService {
                 credentialEncryptionService.isEncrypted(config.getClientSecret()),
                 nullToEmpty(config.getSubscriptionIdsJson(), "[]"),
                 nullToEmpty(config.getRegionsJson(), "[\"eastus2\"]"),
-                config.isEnabled(),
-                config.isAutoSyncEnabled(),
+                false,
+                false,
                 config.getIntervalMinutes() == null ? 1440 : config.getIntervalMinutes(),
-                config.getLastTestStatus(),
-                config.getLastTestMessage(),
+                "DISABLED",
+                GenericAzureDiscoveryPolicy.MESSAGE,
                 config.getLastTestedAt(),
                 config.getLastSyncAt()
         );

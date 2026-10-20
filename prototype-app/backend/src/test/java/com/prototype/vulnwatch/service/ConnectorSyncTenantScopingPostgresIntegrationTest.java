@@ -1,0 +1,423 @@
+package com.prototype.vulnwatch.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.prototype.vulnwatch.controller.AwsDiscoveryController;
+import com.prototype.vulnwatch.controller.AzureDiscoveryController;
+import com.prototype.vulnwatch.controller.SccmCmdbController;
+import com.prototype.vulnwatch.domain.AwsDiscoveryConfig;
+import com.prototype.vulnwatch.domain.AwsDiscoveryTarget;
+import com.prototype.vulnwatch.domain.AzureAuthType;
+import com.prototype.vulnwatch.domain.AzureDiscoveryConfig;
+import com.prototype.vulnwatch.domain.AzureDiscoveryTarget;
+import com.prototype.vulnwatch.domain.SccmCmdbConfig;
+import com.prototype.vulnwatch.domain.ServiceNowCmdbConfig;
+import com.prototype.vulnwatch.domain.SyncRun;
+import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.dto.SyncTriggerResponse;
+import com.prototype.vulnwatch.repo.AwsDiscoveryConfigRepository;
+import com.prototype.vulnwatch.repo.AwsDiscoveryTargetRepository;
+import com.prototype.vulnwatch.repo.AzureDiscoveryConfigRepository;
+import com.prototype.vulnwatch.repo.AzureDiscoveryTargetRepository;
+import com.prototype.vulnwatch.repo.SccmCmdbConfigRepository;
+import com.prototype.vulnwatch.repo.ServiceNowCmdbConfigRepository;
+import com.prototype.vulnwatch.repo.SyncRunRepository;
+import com.prototype.vulnwatch.support.LocalPostgresTestDatabase;
+import com.prototype.vulnwatch.support.PostgresITSupport;
+import com.prototype.vulnwatch.support.PostgresIntegrationTest;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/** Real PostgreSQL admission locks; queued work is captured and never contacts providers. */
+@PostgresIntegrationTest
+@TestPropertySource(properties = "spring.main.allow-circular-references=true")
+class ConnectorSyncTenantScopingPostgresIntegrationTest {
+
+    private static final LocalPostgresTestDatabase.DatabaseConfig DATABASE =
+            LocalPostgresTestDatabase.provision("connector_sync_tenant_scoping");
+
+    @DynamicPropertySource
+    static void database(DynamicPropertyRegistry registry) {
+        PostgresITSupport.registerDatabaseProperties(registry, DATABASE);
+    }
+
+    @Autowired private TenantService tenants;
+    @Autowired private TenantSchemaMigrationService migrations;
+    @Autowired private TenantSchemaExecutionService tenantExecution;
+    @Autowired private TransactionTemplate transactions;
+    @Autowired private SyncRunRepository runs;
+    @Autowired private AwsDiscoveryConfigRepository awsConfigs;
+    @Autowired private AzureDiscoveryConfigRepository azureConfigs;
+    @Autowired private ServiceNowCmdbConfigRepository serviceNowConfigs;
+    @Autowired private SccmCmdbConfigRepository sccmConfigs;
+    @Autowired private AwsDiscoveryTargetRepository awsTargets;
+    @Autowired private AzureDiscoveryTargetRepository azureTargets;
+    @Autowired private AwsDiscoverySyncService aws;
+    @Autowired private AzureDiscoverySyncService azure;
+    @Autowired private ServiceNowCmdbSyncService serviceNow;
+    @Autowired private SccmCmdbSyncService sccm;
+    @Autowired private com.prototype.vulnwatch.repo.IngestionJobRepository jobs;
+    @Autowired private IngestionJobWorkerService worker;
+    @Autowired private GithubSbomSourceService github;
+    @Autowired private com.prototype.vulnwatch.repo.GithubSbomSourceRepository githubSources;
+
+    @MockitoBean private WorkspaceService workspace;
+    @MockitoBean(name = "integrationQueueExecutor") private TaskExecutor queue;
+
+    @BeforeEach
+    void captureOnly() {
+        reset(queue);
+        when(workspace.getWorkspace()).thenAnswer(invocation -> tenants.resolveTenantUuid(TenantContext.getCurrentTenantId()));
+    }
+
+    @org.junit.jupiter.api.Test
+    void disabledSccmRejectsAdmissionWithoutQueueingOrCrossTenantStatus() throws Exception {
+        Tenant first = configuredTenant(Connector.SCCM_CMDB, true);
+        Tenant second = configuredTenant(Connector.SCCM_CMDB, true);
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> trigger(first, Connector.SCCM_CMDB));
+        assertEquals(410, error.getStatusCode().value());
+        assertTrue(tenantRuns(first, Connector.SCCM_CMDB).isEmpty());
+        assertTrue(tenantRuns(second, Connector.SCCM_CMDB).isEmpty());
+        assertEndpointStatus(first, Connector.SCCM_CMDB, false);
+        assertEndpointStatus(second, Connector.SCCM_CMDB, false);
+        org.mockito.Mockito.verifyNoInteractions(queue);
+    }
+
+    @org.junit.jupiter.api.Test
+    void disabledGenericAzureNeverAdmitsOrSchedulesExistingConfigurations() {
+        Tenant first=configuredTenant(Connector.AZURE_DISCOVERY,true);
+        Tenant second=configuredTenant(Connector.AZURE_DISCOVERY,true);
+        assertEquals(410,assertThrows(org.springframework.web.server.ResponseStatusException.class,() -> trigger(first,Connector.AZURE_DISCOVERY)).getStatusCode().value());
+        scheduled(Connector.AZURE_DISCOVERY);
+        assertTrue(tenantRuns(first,Connector.AZURE_DISCOVERY).isEmpty());
+        assertTrue(tenantRuns(second,Connector.AZURE_DISCOVERY).isEmpty());
+        assertEquals(0L,tenantExecution.run(first,() -> jobs.count()));
+        assertEquals(0L,tenantExecution.run(second,() -> jobs.count()));
+        org.mockito.Mockito.verifyNoInteractions(queue);
+        setAutoSync(first,Connector.AZURE_DISCOVERY,false);setAutoSync(second,Connector.AZURE_DISCOVERY,false);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    void tenantsHaveIndependentAdmissionAndStatus(Connector connector) throws Exception {
+        Tenant first = configuredTenant(connector, false);
+        Tenant second = configuredTenant(connector, false);
+        SyncTriggerResponse firstRun = trigger(first, connector);
+
+        assertTrue(active(first, connector));
+        assertFalse(active(second, connector), "another tenant's active run must not appear in status");
+        assertEndpointStatus(second, connector, false);
+
+        SyncTriggerResponse secondRun = trigger(second, connector);
+        assertNotEquals(firstRun.runId(), secondRun.runId());
+        assertEquals(firstRun.runId(), trigger(first, connector).runId());
+        assertEquals(secondRun.runId(), trigger(second, connector).runId());
+        assertEquals(first.getId(), runs.findById(firstRun.runId()).orElseThrow().getTenant().getId());
+        assertEquals(second.getId(), runs.findById(secondRun.runId()).orElseThrow().getTenant().getId());
+        assertEndpointStatus(second, connector, true);
+        org.mockito.Mockito.verifyNoInteractions(queue);
+        assertEquals(1L,tenantExecution.run(first,() -> jobs.count()));
+        assertEquals(1L,tenantExecution.run(second,() -> jobs.count()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    void sameConfigurationWaitsForUncommittedAdmissionAndReusesOneRun(Connector connector) throws Exception {
+        Tenant tenant = configuredTenant(connector, false);
+        Tenant independentTenant = configuredTenant(connector, false);
+        var executor = Executors.newFixedThreadPool(2);
+        CountDownLatch admitted = new CountDownLatch(1);
+        CountDownLatch commit = new CountDownLatch(1);
+        CountDownLatch competing = new CountDownLatch(1);
+        try {
+            var first = executor.submit(() -> tenantExecution.run(tenant, () -> transactions.execute(status -> {
+                SyncTriggerResponse response = trigger(tenant, connector);
+                admitted.countDown();
+                await(commit);
+                return response;
+            })));
+            assertTrue(admitted.await(10, TimeUnit.SECONDS));
+            var second = executor.submit(() -> {
+                competing.countDown();
+                return trigger(tenant, connector);
+            });
+            assertTrue(competing.await(10, TimeUnit.SECONDS));
+            assertThrows(TimeoutException.class, () -> second.get(300, TimeUnit.MILLISECONDS),
+                    "a competing admission must wait until the first transaction commits");
+            SyncTriggerResponse independent = trigger(independentTenant, connector);
+            commit.countDown();
+            UUID firstRunId = first.get(10, TimeUnit.SECONDS).runId();
+            assertEquals(firstRunId, second.get(10, TimeUnit.SECONDS).runId());
+            assertNotEquals(firstRunId, independent.runId(), "another tenant must progress while this configuration is locked");
+            assertEquals(1, tenantRuns(tenant, connector).size());
+            org.mockito.Mockito.verifyNoInteractions(queue);
+            assertEquals(1L,tenantExecution.run(tenant,() -> jobs.count()));
+            assertEquals(1L,tenantExecution.run(independentTenant,() -> jobs.count()));
+        } finally {
+            commit.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    void scheduledDueTimeAndActiveRunsAreIndependentPerTenant(Connector connector) {
+        Tenant recent = configuredTenant(connector, true);
+        Tenant due = configuredTenant(connector, true);
+        try {
+            SyncRun latest = new SyncRun();
+            latest.setTenant(recent);
+            latest.setSyncType(connector.name());
+            latest.setRunScope("TENANT_INVENTORY");
+            latest.setStatus("completed");
+            latest.setCompletedAt(Instant.now());
+            runs.saveAndFlush(latest);
+
+            scheduled(connector);
+            assertEquals(List.of("completed"), tenantRuns(recent, connector).stream().map(SyncRun::getStatus).toList());
+            assertEquals(List.of("queued"), tenantRuns(due, connector).stream().map(SyncRun::getStatus).toList(),
+                    "recent execution in another tenant must not postpone a due configuration");
+            scheduled(connector);
+            assertEquals(1, tenantRuns(due, connector).size());
+            org.mockito.Mockito.verifyNoInteractions(queue);
+            assertEquals(1L,tenantExecution.run(due,() -> jobs.count()));
+            assertEquals(0L,tenantExecution.run(recent,() -> jobs.count()));
+        } finally {
+            setAutoSync(recent, connector, false);
+            setAutoSync(due, connector, false);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Connector.class, names = {"AWS_DISCOVERY"})
+    void targetAdmissionUsesOwningTenantAndConfiguration(Connector connector) {
+        Tenant first = configuredTenant(connector, false);
+        Tenant second = configuredTenant(connector, false);
+        UUID targetId = tenantExecution.run(second, () -> {
+            if (connector == Connector.AWS_DISCOVERY) {
+                AwsDiscoveryTarget target = new AwsDiscoveryTarget();
+                target.setTenant(second);
+                target.setConfig(awsConfigs.findByTenant_IdAndSourceSystemIgnoreCase(second.getId(), "aws").orElseThrow());
+                target.setAccountId("123456789012");
+                return awsTargets.saveAndFlush(target).getId();
+            }
+            AzureDiscoveryTarget target = new AzureDiscoveryTarget();
+            target.setTenant(second);
+            target.setConfig(azureConfigs.findByTenant_IdAndSourceSystemIgnoreCase(second.getId(), "azure").orElseThrow());
+            target.setSubscriptionId(UUID.randomUUID().toString());
+            return azureTargets.saveAndFlush(target).getId();
+        });
+        SyncTriggerResponse firstRun = trigger(first, connector);
+        SyncTriggerResponse targetRun = tenantExecution.run(second, () -> connector == Connector.AWS_DISCOVERY
+                ? aws.triggerTarget(second, targetId) : azure.triggerTarget(second, targetId));
+
+        assertNotEquals(firstRun.runId(), targetRun.runId());
+        assertEquals(targetRun.runId(), trigger(second, connector).runId(),
+                "target and whole-configuration requests share one effective run");
+        assertEquals(second.getId(), runs.findById(targetRun.runId()).orElseThrow().getTenant().getId());
+        org.mockito.Mockito.verifyNoInteractions(queue);
+        assertEquals(1L,tenantExecution.run(first,() -> jobs.count()));
+        assertEquals(1L,tenantExecution.run(second,() -> jobs.count()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value=Connector.class,names={"AWS_DISCOVERY","SERVICENOW_CMDB"})
+    void exhaustedAttemptTerminatesLinkedRunAndAllowsNewAdmission(Connector connector) {
+        Tenant tenant=configuredTenant(connector,false);
+        UUID prior=trigger(tenant,connector).runId();
+        expireFinalAttempt(tenant);
+        worker.recoverInterruptedJobs();
+        assertEquals("failed",runs.findById(prior).orElseThrow().getStatus());
+        assertNotEquals(prior,trigger(tenant,connector).runId());
+        assertEquals(2L,tenantExecution.run(tenant,() -> jobs.count()));
+    }
+
+    @org.junit.jupiter.api.Test
+    void exhaustedGithubAttemptReleasesSavedSourceForNewAdmission() {
+        Tenant tenant=configuredTenant(Connector.AWS_DISCOVERY,false);
+        UUID source=tenantExecution.run(tenant,() -> {
+            var value=new com.prototype.vulnwatch.domain.GithubSbomSource();value.setTenant(tenant);
+            value.setName("Recovery source");value.setOwner("offline");value.setRepo("repository");
+            value.setAssetName("Recovery source");value.setAssetIdentifier("recovery-source");
+            return githubSources.saveAndFlush(value).getId();
+        });
+        UUID prior=tenantExecution.run(tenant,() -> github.trigger(source).runId());
+        expireFinalAttempt(tenant);worker.recoverInterruptedJobs();
+        assertEquals("failed",runs.findById(prior).orElseThrow().getStatus());
+        assertNotEquals(prior,tenantExecution.run(tenant,() -> github.trigger(source).runId()));
+    }
+
+    private void expireFinalAttempt(Tenant tenant) {
+        tenantExecution.run(tenant,() -> transactions.executeWithoutResult(status -> {
+            var job=jobs.findAll().get(0);job.setStatus("RUNNING");job.setClaimToken(UUID.randomUUID());
+            job.setAttemptCount(3);job.setLeaseExpiresAt(Instant.now().minusSeconds(1));jobs.saveAndFlush(job);
+        }));
+    }
+
+    private Tenant configuredTenant(Connector connector, boolean autoSync) {
+        String slug = "p03-" + UUID.randomUUID().toString().substring(0, 8);
+        Tenant tenant = tenants.createTenant(slug, slug, "ENTERPRISE", null);
+        migrations.provisionNewTenant(tenant);
+        tenant = tenants.resolveTenantUuid(tenant.getId());
+        Tenant configured = tenant;
+        tenantExecution.run(configured, () -> {
+            switch (connector) {
+                case AWS_DISCOVERY -> {
+                    AwsDiscoveryConfig config = new AwsDiscoveryConfig();
+                    config.setAuthType(com.prototype.vulnwatch.domain.AwsAuthType.CROSS_ACCOUNT_ROLE);
+                    config.setAwsAccountId("123456789012");
+                    config.setCrossAccountRoleArn("arn:aws:iam::123456789012:role/Discovery");
+                    config.setExternalId(com.prototype.vulnwatch.client.AwsCustomerBinding.externalId(configured.getId(), null, 0, null));
+                    config.setCredentialBindingVersion(1);
+                    config.setTenant(configured);
+                    config.setAutoSyncEnabled(autoSync);
+                    awsConfigs.saveAndFlush(config);
+                }
+                case AZURE_DISCOVERY -> {
+                    AzureDiscoveryConfig config = new AzureDiscoveryConfig();
+                    config.setTenant(configured);
+                    config.setAuthType(AzureAuthType.MANAGED_IDENTITY);
+                    config.setSubscriptionIdsJson("[\"test-subscription\"]");
+                    config.setAutoSyncEnabled(autoSync);
+                    azureConfigs.saveAndFlush(config);
+                }
+                case SERVICENOW_CMDB -> {
+                    ServiceNowCmdbConfig config = new ServiceNowCmdbConfig();
+                    config.setTenant(configured);
+                    config.setBaseUrl("https://example.invalid");
+                    config.setCredentialSecret("controlled-test-double");
+                    config.setAutoSyncEnabled(autoSync);
+                    serviceNowConfigs.saveAndFlush(config);
+                }
+                case SCCM_CMDB -> {
+                    SccmCmdbConfig config = new SccmCmdbConfig();
+                    config.setTenant(configured);
+                    config.setJdbcUrl("jdbc:sqlserver://example.invalid");
+                    config.setAutoSyncEnabled(autoSync);
+                    sccmConfigs.saveAndFlush(config);
+                }
+            }
+        });
+        return configured;
+    }
+
+    private SyncTriggerResponse trigger(Tenant tenant, Connector connector) {
+        return tenantExecution.run(tenant, () -> switch (connector) {
+            case AWS_DISCOVERY -> aws.trigger();
+            case AZURE_DISCOVERY -> azure.trigger();
+            case SERVICENOW_CMDB -> serviceNow.trigger();
+            case SCCM_CMDB -> sccm.trigger();
+        });
+    }
+
+    private boolean active(Tenant tenant, Connector connector) {
+        return tenantExecution.run(tenant, () -> switch (connector) {
+            case AWS_DISCOVERY -> aws.hasActiveRun();
+            case AZURE_DISCOVERY -> azure.hasActiveRun();
+            case SERVICENOW_CMDB -> serviceNow.hasActiveRun();
+            case SCCM_CMDB -> sccm.hasActiveRun();
+        });
+    }
+
+    private void scheduled(Connector connector) {
+        switch (connector) {
+            case AWS_DISCOVERY -> aws.runScheduledSyncs();
+            case AZURE_DISCOVERY -> azure.runScheduledSyncs();
+            case SERVICENOW_CMDB -> serviceNow.runScheduledSyncs();
+            case SCCM_CMDB -> sccm.runScheduledSyncs();
+        }
+    }
+
+    private List<SyncRun> tenantRuns(Tenant tenant, Connector connector) {
+        return runs.findByTenant_IdOrderByStartedAtDesc(tenant.getId()).stream()
+                .filter(run -> connector.name().equals(run.getSyncType())).toList();
+    }
+
+    private void setAutoSync(Tenant tenant, Connector connector, boolean enabled) {
+        tenantExecution.run(tenant, () -> transactions.executeWithoutResult(status -> {
+            switch (connector) {
+                case AWS_DISCOVERY -> awsConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "aws")
+                        .ifPresent(config -> config.setAutoSyncEnabled(enabled));
+                case AZURE_DISCOVERY -> azureConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "azure")
+                        .ifPresent(config -> config.setAutoSyncEnabled(enabled));
+                case SERVICENOW_CMDB -> serviceNowConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "servicenow")
+                        .ifPresent(config -> config.setAutoSyncEnabled(enabled));
+                case SCCM_CMDB -> sccmConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "sccm")
+                        .ifPresent(config -> config.setAutoSyncEnabled(enabled));
+            }
+        }));
+    }
+
+    private void assertEndpointStatus(Tenant tenant, Connector connector, boolean expected) throws Exception {
+        if (connector == Connector.SERVICENOW_CMDB) {
+            return; // ServiceNow has no separate sync/status controller route.
+        }
+        Object controller = switch (connector) {
+            case AWS_DISCOVERY -> new AwsDiscoveryController(workspace, null, aws, null, null, null);
+            case AZURE_DISCOVERY -> new AzureDiscoveryController(workspace, null, null, azure, null, null);
+            case SCCM_CMDB -> new SccmCmdbController(workspace, null, sccm, null, null);
+            default -> throw new IllegalStateException();
+        };
+        String path = switch (connector) {
+            case AWS_DISCOVERY -> "aws-discovery";
+            case AZURE_DISCOVERY -> "azure-discovery";
+            case SCCM_CMDB -> "sccm-cmdb";
+            default -> throw new IllegalStateException();
+        };
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+        tenantExecution.run(tenant, () -> {
+            try {
+                mvc.perform(get("/api/connectors/" + path + "/sync/status"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.active").value(expected))
+                        .andExpect(jsonPath("$.status").value(expected ? "running" : "idle"));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        });
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting for admission test transaction");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private enum Connector { AWS_DISCOVERY, AZURE_DISCOVERY, SERVICENOW_CMDB, SCCM_CMDB }
+}

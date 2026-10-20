@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.prototype.vulnwatch.domain.Tenant;
-import com.prototype.vulnwatch.domain.AppUser;
 import com.prototype.vulnwatch.repo.AppUserRepository;
 import com.prototype.vulnwatch.repo.TenantRepository;
 import java.time.Instant;
@@ -100,79 +99,12 @@ class DemoTenantPurgeServiceTest {
     }
 
     @Test
-    void deleteTenantPurgesNonDemoTenantSchemaAndSharedRows() {
-        Tenant tenant = new Tenant();
-        tenant.setId(UUID.randomUUID());
-        tenant.setName("Customer One");
-        tenant.setSlug("customer-one");
-        tenant.setSchemaName("tenant_customer_one");
-        tenant.setPlanCode("pilot");
-        tenant.setStatus("ACTIVE");
+    void manualDeletionIsContainedBeforeReadingOrMutatingAnyTenant() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service.deleteTenant(UUID.randomUUID(), Instant.now()));
 
-        Instant now = Instant.parse("2026-06-11T00:00:00Z");
-        UUID userId = UUID.randomUUID();
-        AppUser user = new AppUser();
-        user.setId(userId);
-        user.setStatus("ACTIVE");
-
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
-        when(tenantSchemaService.canDropTenantSchema("tenant_customer_one")).thenReturn(true);
-        when(resetJdbcTemplate.query(any(String.class), any(org.springframework.jdbc.core.RowMapper.class), eq(tenant.getId())))
-                .thenReturn(java.util.List.of(userId));
-        when(resetJdbcTemplate.queryForObject("select count(*) from platform.tenant_memberships where user_id = ?", Integer.class, userId))
-                .thenReturn(0);
-        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(resetJdbcTemplate.queryForList(any(String.class), eq(String.class)))
-                .thenReturn(java.util.List.of("platform.tenant_support_grants", "platform.tenant_memberships"));
-
-        service.deleteTenant(tenant.getId(), now);
-
-        verify(tenantSchemaService).dropTenantSchema("tenant_customer_one");
-        verify(resetJdbcTemplate).update("delete from platform.tenant_support_grants where tenant_id = ?", tenant.getId());
-        verify(resetJdbcTemplate).update("delete from platform.tenant_memberships where tenant_id = ?", tenant.getId());
-        verify(resetJdbcTemplate).execute(any(org.springframework.jdbc.core.ConnectionCallback.class));
-        verify(resetJdbcTemplate).update("delete from platform.tenants where id = ?", tenant.getId());
-        verify(appUserRepository).save(user);
-        verify(auditEventService).record("tenant.deleted", "tenant", tenant.getId().toString(), null);
+        assertEquals(503, ex.getStatusCode().value());
+        verifyNoInteractions(tenantRepository, appUserRepository, resetJdbcTemplate,
+                auditEventService, tenantSchemaService, demoTenantPurgePlanner);
     }
-
-    @Test
-    void deleteTenantRemovesUnprovisionedTenantWithoutSchemaDdl() {
-        Tenant tenant = new Tenant();
-        tenant.setId(UUID.randomUUID());
-        tenant.setName("Pending Tenant");
-        tenant.setSlug("pending-tenant");
-        tenant.setSchemaName("tenant_pending_tenant");
-        tenant.setStatus("PROVISIONING");
-
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
-        when(resetJdbcTemplate.query(any(String.class), any(org.springframework.jdbc.core.RowMapper.class), eq(tenant.getId())))
-                .thenReturn(java.util.List.of());
-        when(resetJdbcTemplate.queryForList(any(String.class), eq(String.class)))
-                .thenReturn(java.util.List.of());
-
-        service.deleteTenant(tenant.getId(), Instant.parse("2026-06-11T00:00:00Z"));
-
-        verify(tenantSchemaService, never()).dropTenantSchema(any(String.class));
-        verify(resetJdbcTemplate).update("delete from platform.tenants where id = ?", tenant.getId());
-        verify(auditEventService).record("tenant.deleted", "tenant", tenant.getId().toString(), null);
-    }
-
-    @Test
-    void deleteTenantRejectsDefaultWorkspace() {
-        Tenant tenant = new Tenant();
-        tenant.setId(UUID.randomUUID());
-        tenant.setName(TenantService.DEFAULT_TENANT_NAME);
-
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
-
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
-                () -> service.deleteTenant(tenant.getId(), Instant.now())
-        );
-
-        assertEquals(400, ex.getStatusCode().value());
-        verify(tenantSchemaService, never()).dropTenantSchema(any(String.class));
-    }
-
 }

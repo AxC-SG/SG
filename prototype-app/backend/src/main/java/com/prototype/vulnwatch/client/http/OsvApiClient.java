@@ -44,14 +44,14 @@ public class OsvApiClient {
         return response;
       }
 
-      return OsvQueryResponse.builder().vulns(Collections.emptyList()).build();
+      throw new IllegalStateException("OSV returned no usable response");
 
     } catch (HttpClientErrorException e) {
       log.warn("OSV query failed for {}:{}: {}", ecosystem, packageName, e.getMessage());
-      return OsvQueryResponse.builder().vulns(Collections.emptyList()).build();
+      throw new IllegalStateException("OSV query is unavailable", e);
     } catch (Exception e) {
       log.error("OSV query error for {}:{}", ecosystem, packageName, e);
-      return OsvQueryResponse.builder().vulns(Collections.emptyList()).build();
+      throw new IllegalStateException("OSV query is unavailable", e);
     }
   }
 
@@ -64,7 +64,7 @@ public class OsvApiClient {
         OsvQueryResponse response = queryByPackageVersion(pkg.getEcosystem(), pkg.getName(), pkg.getVersion());
         results.put(key, response);
       } catch (Exception e) {
-        log.warn("Batch query failed for package", e);
+        throw new IllegalStateException("OSV batch query is incomplete", e);
       }
     }
 

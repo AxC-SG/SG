@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FindingAnalyticsService {
@@ -33,7 +32,7 @@ public class FindingAnalyticsService {
         return findingListProjectionService.groupCounts(tenant, filter, field);
     }
 
-    @Transactional(readOnly = true)
+    // Projection reads select their tenant before opening their own read transaction.
     public FindingSummaryResponse getSummary(Tenant tenant, FindingsFilter filter) {
         List<FindingListProjectionService.ProjectionRecord> rows = findingListProjectionService.loadRows(tenant, filter);
         long openCount = rows.stream().filter(FindingListProjectionService.ProjectionRecord::isOpen).count();
@@ -57,7 +56,6 @@ public class FindingAnalyticsService {
         );
     }
 
-    @Transactional(readOnly = true)
     public FindingDistributionsResponse getDistributions(Tenant tenant, FindingsFilter filter) {
         List<FindingListProjectionService.ProjectionRecord> findings = findingListProjectionService.loadRows(tenant, filter);
 
@@ -87,7 +85,6 @@ public class FindingAnalyticsService {
         );
     }
 
-    @Transactional(readOnly = true)
     public FindingBacklogHealthResponse getBacklogHealth(Tenant tenant, FindingsFilter filter) {
         List<FindingListProjectionService.ProjectionRecord> rows = findingListProjectionService.loadRows(tenant, filter);
         long overdue = 0;
@@ -118,7 +115,6 @@ public class FindingAnalyticsService {
         );
     }
 
-    @Transactional(readOnly = true)
     public long getMatchingCount(Tenant tenant, FindingsFilter filter) {
         return findingListProjectionService.loadRows(tenant, filter).size();
     }

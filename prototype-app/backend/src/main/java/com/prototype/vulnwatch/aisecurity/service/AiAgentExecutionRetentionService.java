@@ -26,7 +26,7 @@ public class AiAgentExecutionRetentionService {
         this.tenants = tenants; this.tenantExecution = tenantExecution; this.jdbc = jdbc;
         this.retentionDays = Math.max(1, retentionDays); this.batchSize = Math.max(1, batchSize);
     }
-    @Scheduled(cron = "${app.ai-security.runtime.retention-cron:0 17 2 * * *}")
+    @Scheduled(zone = "UTC", cron = "${app.ai-security.runtime.retention-cron:0 17 2 * * *}")
     public void purgeExpired() {
         if (AiRuntimeScope.excluded()) return;
         TenantContext.runAsPlatform(() -> tenants.listActiveTenants().forEach(tenant -> {

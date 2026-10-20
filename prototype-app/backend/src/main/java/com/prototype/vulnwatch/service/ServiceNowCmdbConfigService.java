@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -78,15 +77,6 @@ public class ServiceNowCmdbConfigService {
     private final TenantQuotaService tenantQuotaService;
     private final CredentialEncryptionService credentialEncryptionService;
     private final OutboundHostPolicy outboundHostPolicy;
-
-    @Value("${app.cmdb.servicenow.base-url:}")
-    private String fallbackBaseUrl;
-
-    @Value("${app.cmdb.servicenow.username:}")
-    private String fallbackUsername;
-
-    @Value("${app.cmdb.servicenow.password:}")
-    private String fallbackPassword;
 
     @Autowired
     public ServiceNowCmdbConfigService(
@@ -200,26 +190,7 @@ public class ServiceNowCmdbConfigService {
                     config.getIntervalMinutes() == null ? 1440 : Math.max(5, config.getIntervalMinutes())
             ));
         }
-        if (!hasText(fallbackBaseUrl)) {
-            return Optional.empty();
-        }
-        return Optional.of(new ServiceNowRuntimeConfig(
-                trimToNull(fallbackBaseUrl),
-                ServiceNowAuthType.BASIC,
-                trimToNull(fallbackUsername),
-                trimToNull(fallbackPassword),
-                "cmdb_sam_sw_install",
-                "cmdb_sam_sw_discovery_model",
-                "cmdb_ci",
-                null,
-                null,
-                DEFAULT_INSTALL_FIELDS,
-                DEFAULT_DISCOVERY_FIELDS,
-                1000,
-                true,
-                false,
-                1440
-        ));
+        return Optional.empty();
     }
 
     Optional<ServiceNowCmdbConfig> findConfig(Tenant tenant) {

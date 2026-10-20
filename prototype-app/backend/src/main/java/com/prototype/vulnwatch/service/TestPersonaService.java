@@ -113,6 +113,9 @@ public class TestPersonaService {
             user.setEmail(persona.subject() + "@example.test");
             user.setDisplayName(persona.label());
             user.setStatus("ACTIVE");
+            if (persona.roles().contains("PLATFORM_OWNER")) {
+                user.setPlatformOwner(true);
+            }
             user.setUpdatedAt(Instant.now());
             return userRepository.save(user);
         }).orElseGet(() -> {
@@ -120,24 +123,26 @@ public class TestPersonaService {
             user.setExternalSubject(persona.subject());
             user.setEmail(persona.subject() + "@example.test");
             user.setDisplayName(persona.label());
+            user.setPlatformOwner(persona.roles().contains("PLATFORM_OWNER"));
             return userRepository.save(user);
         });
     }
 
     private void ensureMembership(Tenant tenant, AppUser user, String role) {
+        String tenantRole = TenantRolePolicy.forAssignment(role);
         membershipRepository.findFirstByUserExternalSubjectAndTenantIdAndStatus(
                 user.getExternalSubject(),
                 tenant.getId(),
                 "ACTIVE"
         ).ifPresentOrElse(existing -> {
-            existing.setRole(role);
+            existing.setRole(tenantRole);
             existing.setUpdatedAt(Instant.now());
             membershipRepository.save(existing);
         }, () -> {
             TenantMembership membership = new TenantMembership();
             membership.setTenant(tenant);
             membership.setUser(user);
-            membership.setRole(role);
+            membership.setRole(tenantRole);
             membershipRepository.save(membership);
         });
     }

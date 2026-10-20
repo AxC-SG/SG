@@ -12,7 +12,28 @@ function buildToken(payload: Record<string, unknown>): string {
 describe('api client auth headers', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     clearStoredAuthToken();
+  });
+
+  it('excludes static authentication inputs in production while preserving stored browser authentication', async () => {
+    vi.stubEnv('DEV', false);
+    for (const name of ['VITE_API_KEY', 'VITE_CREATOR_KEY', 'VITE_AUTH_TOKEN', 'VITE_USER_ID', 'VITE_TENANT_ID']) {
+      vi.stubEnv(name, 'static-auth-sentinel');
+    }
+    vi.resetModules();
+    const productionClient = await import('./client');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(new Response('{}', {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })));
+    await productionClient.apiRequest('/me');
+    let headers = new Headers(fetchSpy.mock.calls[0][1]?.headers);
+    expect(headers.has('Authorization')).toBe(false);
+    for (const name of ['X-API-Key', 'X-Creator-Key', 'X-User-ID', 'X-Tenant-ID']) expect(headers.has(name)).toBe(false);
+    productionClient.setStoredAuthToken('browser-session-sentinel');
+    await productionClient.apiRequest('/me');
+    headers = new Headers(fetchSpy.mock.calls[1][1]?.headers);
+    expect(headers.get('Authorization')).toBe('Bearer browser-session-sentinel');
   });
 
   it('uses bearer auth for audit export when a session token is present', async () => {

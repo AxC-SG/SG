@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,9 +35,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class IdentityAdministrationService {
-
-    private static final Set<String> TENANT_ROLES = Set.of(
-            "TENANT_ADMIN", "INVENTORY_ADMIN", "SECURITY_ANALYST", "READ_ONLY_AUDITOR");
 
     private final AppUserRepository userRepository;
     private final TenantRepository tenantRepository;
@@ -117,6 +113,7 @@ public class IdentityAdministrationService {
 
     @Transactional
     public TenantMembership addMember(UUID tenantId, String subject, String email, String displayName, String role) {
+        String tenantRole = TenantRolePolicy.forAssignment(role);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + tenantId));
         AppUser user = loadOrCreateEligibleLockedUser(tenantId, subject, email, displayName);
@@ -128,7 +125,7 @@ public class IdentityAdministrationService {
         TenantMembership membership = new TenantMembership();
         membership.setTenant(tenant);
         membership.setUser(user);
-        membership.setRole(normalizeRole(role));
+        membership.setRole(tenantRole);
         return membershipRepository.save(membership);
     }
 
@@ -170,7 +167,7 @@ public class IdentityAdministrationService {
         if (existing == null) {
             return;
         }
-        if (existing.isPlatformOwner()) {
+        if (isCurrentPlatformOwner(existing)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Platform-owner identities cannot be assigned as tenant owners");
         }
@@ -191,10 +188,7 @@ public class IdentityAdministrationService {
                 || !"ACTIVE".equalsIgnoreCase(user.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Subject is not an active platform owner");
         }
-        String normalizedRole = normalizeRole(role);
-        if (!TENANT_ROLES.contains(normalizedRole)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported tenant role");
-        }
+        String normalizedRole = TenantRolePolicy.forAssignment(role);
         AppUser grantedBy = userRepository.findByExternalSubject(requireText(grantedBySubject, "grantedBySubject"))
                 .orElseThrow(() -> new IllegalStateException("Authenticated tenant administrator is not registered"));
         TenantMembership membership = membershipRepository
@@ -217,9 +211,9 @@ public class IdentityAdministrationService {
     @Transactional
     public TenantMembership updateMember(UUID tenantId, UUID memberId, String role, String status) {
         TenantMembership membership = findMember(tenantId, memberId);
-        if (hasText(role)) {
-            membership.setRole(normalizeRole(role));
-        }
+        membership.setRole(hasText(role)
+                ? TenantRolePolicy.forAssignment(role)
+                : TenantRolePolicy.forAuthorization(membership.getRole()));
         if (hasText(status)) {
             membership.setStatus(normalizeStatus(status));
         }
@@ -235,13 +229,15 @@ public class IdentityAdministrationService {
 
     @Transactional(readOnly = true)
     public List<PlatformUserResponse> listPlatformUsers() {
-        List<AppUser> users = userRepository.findAll().stream()
-                .filter(AppUser::isPlatformOwner)
+        List<AppUser> allUsers = userRepository.findAll();
+        Map<UUID, java.util.Set<String>> rolesByUserId = appUserGlobalRoleService.rolesByUserIds(
+                allUsers.stream().map(AppUser::getId).toList()
+        );
+        List<AppUser> users = allUsers.stream()
+                .filter(user -> user.isPlatformOwner()
+                        || rolesByUserId.getOrDefault(user.getId(), java.util.Set.of()).contains("PLATFORM_OWNER"))
                 .toList();
         Map<String, PlatformUserAuditSummary> auditByTargetId = latestPlatformUserAuditByTargetId(users);
-        Map<UUID, java.util.Set<String>> rolesByUserId = appUserGlobalRoleService.rolesByUserIds(
-                users.stream().map(AppUser::getId).toList()
-        );
         return users.stream()
                 .map(user -> toPlatformUserResponse(
                         user,
@@ -280,7 +276,7 @@ public class IdentityAdministrationService {
     public PlatformUserSetupLinkResponse issuePlatformUserSetupLink(UUID userId) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown user: " + userId));
-        if (!user.isPlatformOwner()) {
+        if (!isCurrentPlatformOwner(user)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Password setup is only available for platform users");
         }
         if (!hasText(user.getEmail())) {
@@ -290,7 +286,7 @@ public class IdentityAdministrationService {
         return new PlatformUserSetupLinkResponse(
                 user.getId(),
                 user.getEmail(),
-                appBaseUrl + "/setup/" + setupToken + "?email=" + URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8)
+                appBaseUrl + "/setup#token=" + setupToken + "&email=" + URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8)
         );
     }
 
@@ -301,6 +297,9 @@ public class IdentityAdministrationService {
     }
 
     public ServiceAccount createServiceAccount(UUID tenantId, String name, String keyId, String role) {
+        if (!"SERVICE_ACCOUNT".equals(normalizeRole(role))) {
+            throw new IllegalArgumentException("Service accounts may only use SERVICE_ACCOUNT authority");
+        }
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + tenantId));
         tenantQuotaService.assertCanCreateServiceAccount(tenant);
@@ -309,7 +308,7 @@ public class IdentityAdministrationService {
             account.setTenant(tenant);
             account.setName(requireText(name, "name"));
             account.setKeyId(requireText(keyId, "keyId"));
-            account.setRole(normalizeRole(role));
+            account.setRole("SERVICE_ACCOUNT");
             return serviceAccountRepository.save(account);
         }));
     }
@@ -360,6 +359,7 @@ public class IdentityAdministrationService {
 
     @Transactional
     public TenantUserInvite saveInvite(TenantUserInvite invite) {
+        invite.setRole(TenantRolePolicy.forAssignment(invite.getRole()));
         invite.setUpdatedAt(Instant.now());
         return tenantUserInviteRepository.save(invite);
     }
@@ -372,7 +372,25 @@ public class IdentityAdministrationService {
 
     @Transactional(readOnly = true)
     public TenantUserInvite findInviteByToken(String token) {
-        return tenantUserInviteRepository.findByToken(requireText(token, "token"))
+        return tenantUserInviteRepository.findByTokenHash(InvitationTokens.hash(requireText(token, "token")))
+                .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public UUID findInviteTenantId(String token) {
+        return tenantUserInviteRepository.findTenantIdByTokenHash(InvitationTokens.hash(token))
+                .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
+    }
+
+    @Transactional
+    public TenantUserInvite findInviteByTokenForUpdate(String token) {
+        return tenantUserInviteRepository.findByTokenHashForUpdate(InvitationTokens.hash(token))
+                .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
+    }
+
+    @Transactional
+    public TenantUserInvite findInviteForUpdate(UUID tenantId, UUID inviteId) {
+        return tenantUserInviteRepository.findByIdAndTenantIdForUpdate(inviteId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
     }
 
@@ -435,6 +453,7 @@ public class IdentityAdministrationService {
             String role,
             AppUser invitedBy
     ) {
+        String tenantRole = TenantRolePolicy.forAssignment(role);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + tenantId));
         String normalizedSubject = requireText(subject, "subject");
@@ -452,21 +471,21 @@ public class IdentityAdministrationService {
                     created.setTenant(tenant);
                     created.setUser(user);
                     created.setInvitedBy(invitedBy);
-                    created.setRole(normalizeRole(role));
+                    created.setRole(tenantRole);
                     created.setStatus("ACTIVE");
                     return created;
                 });
         membership.setTenant(tenant);
         membership.setUser(user);
         membership.setInvitedBy(invitedBy);
-        membership.setRole(normalizeRole(role));
+        membership.setRole(tenantRole);
         membership.setStatus("ACTIVE");
         membership.setUpdatedAt(Instant.now());
         return membershipRepository.save(membership);
     }
 
     public void assertEligibleForTenantMembership(AppUser user, UUID tenantId) {
-        if (user.isPlatformOwner()) {
+        if (isCurrentPlatformOwner(user)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Platform-owner identities cannot be added to tenant memberships");
         }
@@ -480,6 +499,11 @@ public class IdentityAdministrationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This user already has active access to another tenant");
         }
+    }
+
+    private boolean isCurrentPlatformOwner(AppUser user) {
+        return user.isPlatformOwner()
+                || appUserGlobalRoleService.rolesForUser(user.getId()).contains("PLATFORM_OWNER");
     }
 
     private AppUser createUser(String subject, String email, String displayName) {

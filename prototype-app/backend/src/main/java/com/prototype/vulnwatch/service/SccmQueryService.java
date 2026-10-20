@@ -69,22 +69,6 @@ public class SccmQueryService {
             "SELECT TOP 5 CAST(ResourceID AS VARCHAR(50)) AS sys_id, Name0 AS computer_name "
             + "FROM v_R_System WHERE Active0 = 1";
 
-    // ── Mock fixtures ──────────────────────────────────────────────────────────────────────────
-
-    private static final String[][] MOCK_HOSTS = {
-        {"1001", "WKSTN-001", "CORP", "Microsoft Windows 10 Enterprise", "jdoe"},
-        {"1002", "WKSTN-002", "CORP", "Microsoft Windows 10 Enterprise", "asmith"},
-        {"1003", "SRV-WEB-001", "CORP", "Microsoft Windows Server 2022 Standard", "svc-iis"}
-    };
-
-    private static final String[][] MOCK_SOFTWARE = {
-        {"Microsoft Corporation", "Microsoft Office 365", "16.0.17231.20236", "2023-08-15", "{90160000-0011-0000-0000-0000000FF1CE}"},
-        {"Google LLC", "Google Chrome", "117.0.5938.62", "2023-09-05", "{13A49EFB-E02F-39A3-B4FF-DB3A0B6C944D}"},
-        {"Microsoft Corporation", ".NET Framework 4.8", "4.8.03761", "2022-11-02", "{92FB6C44-E685-45AD-9B20-CADF4CABA132}"},
-        {"OpenSSL Software Foundation", "OpenSSL 3.0.7", "3.0.7", "2023-01-10", null},
-        {"Apache Software Foundation", "Log4j 2.14.1", "2.14.1", "2021-12-03", null}
-    };
-
     // ── Public API ─────────────────────────────────────────────────────────────────────────────
 
     /**
@@ -95,10 +79,7 @@ public class SccmQueryService {
      * {@code version}, {@code install_date}, {@code version_evidence}.
      */
     public List<Map<String, String>> fetchInstallRows(SccmCmdbConfig config) throws Exception {
-        if (config.isMockMode()) {
-            LOG.info("SCCM mock mode: returning {} fixture install rows", MOCK_HOSTS.length * MOCK_SOFTWARE.length);
-            return buildMockInstallRows();
-        }
+        SccmPilotPolicy.requireEnabled();
         LOG.info("SCCM live mode: executing install query against {}", safeJdbcUrl(config.getJdbcUrl()));
         return executeQuery(config, INSTALL_SQL);
     }
@@ -139,10 +120,7 @@ public class SccmQueryService {
      * @return a two-element boolean array: {@code [systemViewReachable, softwareViewReachable]}
      */
     public boolean[] testConnection(SccmCmdbConfig config) {
-        if (config.isMockMode()) {
-            LOG.info("SCCM mock mode: test connection always succeeds");
-            return new boolean[]{true, true};
-        }
+        SccmPilotPolicy.requireEnabled();
         boolean systemOk = false;
         boolean softwareOk = false;
         try (Connection conn = openConnection(config)) {
@@ -195,6 +173,7 @@ public class SccmQueryService {
     }
 
     private Connection openConnection(SccmCmdbConfig config) throws Exception {
+        SccmPilotPolicy.requireEnabled();
         String url = config.getJdbcUrl();
         if (url == null || url.isBlank()) {
             throw new IllegalStateException("SCCM JDBC URL is not configured");
@@ -216,36 +195,6 @@ public class SccmQueryService {
             props.setProperty("password", password);
         }
         return DriverManager.getConnection(url.trim(), props);
-    }
-
-    private List<Map<String, String>> buildMockInstallRows() {
-        List<Map<String, String>> rows = new ArrayList<>();
-        for (String[] host : MOCK_HOSTS) {
-            for (String[] sw : MOCK_SOFTWARE) {
-                Map<String, String> row = new LinkedHashMap<>();
-                row.put("sys_id", host[0]);
-                row.put("computer_name", host[1]);
-                row.put("domain", host[2]);
-                row.put("os_name", host[3]);
-                row.put("last_user", host[4]);
-                row.put("display_name", sw[1]);
-                row.put("publisher", sw[0]);
-                row.put("version", sw[2]);
-                row.put("install_date", sw[3]);
-                if (sw[4] != null) {
-                    row.put("version_evidence", sw[4]);
-                }
-                // Ingestion pipeline fields
-                row.put("environment", "production");
-                row.put("department", "IT");
-                row.put("support_group", "Desktop Support");
-                row.put("managed_by", "IT Operations");
-                row.put("assigned_to", host[4]);
-                row.put("business_criticality", "medium");
-                rows.add(row);
-            }
-        }
-        return rows;
     }
 
     private String blankToEmpty(String value) {

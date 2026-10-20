@@ -36,7 +36,7 @@ class PlatformOwnerSetupLinkIssuerPostgresIntegrationTest {
     private static final String RUNTIME_USERNAME = "scout_runtime_setup_link_it";
     private static final String RUNTIME_PASSWORD = "scout-runtime-setup-link-it-" + UUID.randomUUID();
     private static final String OWNER_EMAIL = "platform-owner@example.test";
-    private static final Pattern SETUP_TOKEN = Pattern.compile("/setup/([0-9a-f-]+)");
+    private static final Pattern SETUP_TOKEN = Pattern.compile("/setup#token=([0-9a-f-]+)");
 
     @Test
     void deliversHashedOneTimeTokenAndRollsBackFailedDelivery() throws Exception {
@@ -62,7 +62,7 @@ class PlatformOwnerSetupLinkIssuerPostgresIntegrationTest {
         verify(emailClient).send(messageCaptor.capture());
         ResendEmailClient.EmailMessage message = messageCaptor.getValue();
         assertEquals(OWNER_EMAIL, message.to());
-        assertTrue(message.text().contains("https://scoutgrid.io/setup/"));
+        assertTrue(message.text().contains("https://scoutgrid.io/setup#token="));
         String token = extractToken(message.text());
         assertEquals(hashToken(token), queryString(
                 "select password_setup_token_hash from platform.app_users where id = ?", userId));

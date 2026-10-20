@@ -27,7 +27,7 @@ class GithubTokenProviderTest {
         ReflectionTestUtils.setField(provider, "apiToken", "inline-token");
         ReflectionTestUtils.setField(provider, "apiTokenFile", configuredTokenFile.toString());
 
-        assertEquals("configured-token", provider.currentToken());
+        assertEquals("configured-token", provider.platformFeedToken());
     }
 
     @Test
@@ -39,12 +39,12 @@ class GithubTokenProviderTest {
         ReflectionTestUtils.setField(provider, "apiToken", "inline-token");
         ReflectionTestUtils.setField(provider, "apiTokenFile", "");
 
-        assertEquals("local-token", provider.currentToken());
+        assertEquals("local-token", provider.platformFeedToken());
 
         HttpHeaders headers = new HttpHeaders();
-        provider.applyBearerAuth(headers);
+        provider.applyPlatformFeedBearerAuth(headers);
         assertEquals("Bearer local-token", headers.getFirst(HttpHeaders.AUTHORIZATION));
-        assertTrue(provider.hasToken());
+        assertFalse(provider.hasToken());
     }
 
     @Test
@@ -54,6 +54,28 @@ class GithubTokenProviderTest {
         ReflectionTestUtils.setField(provider, "apiTokenFile", "");
 
         assertFalse(provider.hasToken());
+        assertEquals("", provider.platformFeedToken());
+    }
+    @Test
+    void consecutiveCustomerJobsNeverInheritFeedOrPreviousCustomerCredentials() {
+        GithubTokenProvider provider = new GithubTokenProvider(tempDir.resolve("missing"));
+        ReflectionTestUtils.setField(provider, "apiToken", "platform-feed-secret");
+        assertEquals("", provider.currentToken());
+        try (GithubTokenProvider.TokenScope ignored = provider.customerCredentials("tenant-a")) {
+            assertEquals("tenant-a", provider.currentToken());
+            assertEquals("platform-feed-secret", provider.platformFeedToken());
+        }
+        try (GithubTokenProvider.TokenScope ignored = provider.customerCredentials(null)) {
+            HttpHeaders headers = new HttpHeaders();
+            provider.applyBearerAuth(headers);
+            assertFalse(headers.containsKey(HttpHeaders.AUTHORIZATION));
+            assertFalse(provider.hasToken());
+        }
+        assertEquals("", provider.currentToken());
+        try (GithubTokenProvider.TokenScope ignored = provider.customerCredentials("tenant-b")) {
+            assertEquals("tenant-b", provider.currentToken());
+        }
         assertEquals("", provider.currentToken());
     }
+
 }

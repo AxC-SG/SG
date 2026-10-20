@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.prototype.vulnwatch.util.LogUtil;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -154,7 +153,7 @@ public class CveInvestigationAiSummaryService {
     private final OutboundHttpClient outboundHttpClient;
     private final OutboundPolicyFactory outboundPolicyFactory;
     private final ObjectMapper objectMapper;
-    private final Environment environment;
+    private final GenerativeAssistancePolicy generativeAssistancePolicy;
 
     @Value("${app.openai.base-url:https://api.openai.com/v1}")
     private String openAiBaseUrl;
@@ -179,27 +178,33 @@ public class CveInvestigationAiSummaryService {
             OutboundHttpClient outboundHttpClient,
             OutboundPolicyFactory outboundPolicyFactory,
             ObjectMapper objectMapper,
-            Environment environment
+            GenerativeAssistancePolicy generativeAssistancePolicy
     ) {
         this.deterministicSummaryService = deterministicSummaryService;
         this.outboundHttpClient = outboundHttpClient;
         this.outboundPolicyFactory = outboundPolicyFactory;
         this.objectMapper = objectMapper;
-        this.environment = environment;
+        this.generativeAssistancePolicy = generativeAssistancePolicy;
     }
 
     public CveInvestigationSummaryResponse generateAiSummary(
             String cveId,
             Map<String, Object> payload
     ) {
-        String apiKey = resolveApiKey();
+        CveInvestigationSummaryResponse deterministicSummary = deterministicSummaryService.generateSummary(cveId, payload);
+        String apiKey = generativeAssistancePolicy.configuredApiKey();
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("OpenAI API key is not configured. Set OPENAI_API_KEY.");
+            return normalizeGeneratedAt(deterministicSummary);
         }
 
-        CveInvestigationSummaryResponse deterministicSummary = deterministicSummaryService.generateSummary(cveId, payload);
         String requestBody = buildRequestBody(cveId, payload, deterministicSummary);
-        String rawResponse = executeOpenAiRequest(apiKey, requestBody);
+        String rawResponse;
+        try {
+            rawResponse = executeOpenAiRequest(apiKey, requestBody);
+        } catch (RuntimeException ex) {
+            LOG.warn("Generative summary unavailable for {}; returning deterministic assessment.", LogUtil.safe(cveId));
+            return normalizeGeneratedAt(deterministicSummary);
+        }
         String markdown = extractMarkdownText(rawResponse);
 
         if (markdown == null || markdown.isBlank()) {
@@ -217,16 +222,6 @@ public class CveInvestigationAiSummaryService {
                 deterministicSummary.metrics(),
                 markdown
         );
-    }
-
-    private String resolveApiKey() {
-        for (String key : List.of("app.openai.api-key", "OPENAI_API_KEY", "openai_API_KEY", "openai.api.key")) {
-            String value = environment.getProperty(key);
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return null;
     }
 
     private String buildRequestBody(

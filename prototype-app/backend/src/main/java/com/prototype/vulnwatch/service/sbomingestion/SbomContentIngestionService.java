@@ -21,6 +21,8 @@ import com.prototype.vulnwatch.service.SbomParserService;
 import com.prototype.vulnwatch.service.SoftwareInventorySyncService;
 import com.prototype.vulnwatch.service.SoftwareIdentitySummaryProjectionService;
 import com.prototype.vulnwatch.util.PurlUtil;
+import com.prototype.vulnwatch.util.BomInputLimits;
+import com.prototype.vulnwatch.service.TenantWorkRunner;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.io.IOException;
@@ -55,6 +57,8 @@ public class SbomContentIngestionService {
     private final SbomUploadSupportService sbomUploadSupportService;
     private final com.prototype.vulnwatch.service.BomComponentCategorizationService categorizationService;
 
+    private final TenantWorkRunner tenantWorkRunner;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -68,7 +72,8 @@ public class SbomContentIngestionService {
             FindingDeltaQueueService findingDeltaQueueService,
             SoftwareIdentitySummaryProjectionService softwareIdentitySummaryProjectionService,
             SbomUploadSupportService sbomUploadSupportService,
-            com.prototype.vulnwatch.service.BomComponentCategorizationService categorizationService
+            com.prototype.vulnwatch.service.BomComponentCategorizationService categorizationService,
+            TenantWorkRunner tenantWorkRunner
     ) {
         this.sbomParserService = sbomParserService;
         this.sbomUploadRepository = sbomUploadRepository;
@@ -80,6 +85,7 @@ public class SbomContentIngestionService {
         this.softwareIdentitySummaryProjectionService = softwareIdentitySummaryProjectionService;
         this.sbomUploadSupportService = sbomUploadSupportService;
         this.categorizationService = categorizationService;
+        this.tenantWorkRunner = tenantWorkRunner;
     }
 
     public SbomIngestionResponse ingestBytes(
@@ -111,6 +117,24 @@ public class SbomContentIngestionService {
             Consumer<Asset> assetCustomizer,
             boolean authoritativeForAssetSoftware
     ) throws IOException {
+        return tenantWorkRunner.runScopedChecked(tenant, () -> ingestScoped(tenant, assetType, assetName,
+                assetIdentifier, content, originalFilename, metadata, assetCustomizer, authoritativeForAssetSoftware));
+    }
+
+    private SbomIngestionResponse ingestScoped(
+            Tenant tenant, AssetType assetType, String assetName, String assetIdentifier,
+            byte[] content, String originalFilename, SbomIngestionSourceMetadata metadata,
+            Consumer<Asset> assetCustomizer, boolean authoritativeForAssetSoftware
+    ) throws IOException {
+        BomInputLimits.checkBytes(content);
+        SbomFormat format = sbomParserService.detectFormat(content);
+        if (format == SbomFormat.UNKNOWN) {
+            throw new IOException("Unsupported or unrecognized BOM format");
+        }
+        List<ParsedComponent> components = sbomParserService.parse(content);
+        if (components.isEmpty()) {
+            throw new IOException("No BOM components could be extracted from the submitted document");
+        }
         Asset asset = sbomUploadSupportService.resolveAsset(tenant, assetType, assetName, assetIdentifier);
         asset.setName(assetName);
         asset.setType(assetType);
@@ -147,9 +171,6 @@ public class SbomContentIngestionService {
         upload = sbomUploadRepository.save(upload);
 
         try {
-            SbomFormat format = sbomParserService.detectFormat(content);
-            List<ParsedComponent> components = sbomParserService.parse(content);
-
             // Declared model, dataset and cryptographic types stay outside this software
             // inventory pipeline. Direct artifact advisory ingestion is separate; this
             // boundary does not imply that those artifacts cannot have vulnerabilities. They belong to the declared AI inventory and the CBOM evaluator
@@ -280,9 +301,6 @@ public class SbomContentIngestionService {
             upload.setStatus(SbomIngestionStatus.SUCCESS);
             sbomUploadRepository.save(upload);
             return new SbomIngestionResponse(asset.getId(), upload.getId(), softwareComponents.size(), 0);
-        } catch (IOException ioException) {
-            sbomUploadSupportService.markUploadFailed(upload, ioException.getMessage());
-            throw ioException;
         } catch (RuntimeException runtimeException) {
             sbomUploadSupportService.markUploadFailed(upload, runtimeException.getMessage());
             throw runtimeException;

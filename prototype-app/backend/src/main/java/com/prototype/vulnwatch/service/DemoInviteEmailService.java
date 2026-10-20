@@ -18,20 +18,20 @@ public class DemoInviteEmailService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a 'UTC'").withZone(ZoneOffset.UTC);
 
-    private final ResendEmailClient resendEmailClient;
+    private final InvitationEmailOutboxService outbox;
     private final String appBaseUrl;
 
     public DemoInviteEmailService(
-            ResendEmailClient resendEmailClient,
+            InvitationEmailOutboxService outbox,
             @Value("${app.demo.app-base-url:http://localhost:5173}") String appBaseUrl
     ) {
-        this.resendEmailClient = resendEmailClient;
+        this.outbox = outbox;
         this.appBaseUrl = appBaseUrl == null || appBaseUrl.isBlank() ? "http://localhost:5173" : appBaseUrl.replaceAll("/+$", "");
     }
 
     public ResendEmailClient.DeliveryResult sendInvite(DemoRequest request, DemoInvite invite) {
         Tenant tenant = invite.getTenant();
-        String inviteUrl = appBaseUrl + "/invite/" + invite.getToken();
+        String inviteUrl = appBaseUrl + "/invite#token=" + invite.getToken();
         String loginUrl = appBaseUrl + "/login";
         String displayName = request.getFullName() == null || request.getFullName().isBlank() ? request.getEmail() : request.getFullName().trim();
         String tenantName = tenant.getName();
@@ -44,7 +44,7 @@ public class DemoInviteEmailService {
             tags.put("request_id", request.getId().toString());
         }
 
-        return resendEmailClient.send(new ResendEmailClient.EmailMessage(
+        return outbox.enqueue(invite.getTenant().getId(),"DEMO_INVITE",invite.getId(),invite.getTokenHash(),new ResendEmailClient.EmailMessage(
                 invite.getEmail(),
                 subject,
                 htmlBody(displayName, tenantName, inviteUrl, loginUrl, invite.getExpiresAt(), tenant.getDemoExpiresAt()),

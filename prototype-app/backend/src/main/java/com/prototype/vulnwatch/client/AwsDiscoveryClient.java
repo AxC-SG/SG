@@ -99,6 +99,18 @@ public class AwsDiscoveryClient {
     }
 
     /** Test connectivity: STS GetCallerIdentity + EC2 DescribeInstances probe in configured regions. */
+    public void verifyCustomerIdentity(AwsCredentialsProvider credentials, String account, String roleArn) {
+        try (StsClient sts = identityClient(credentials)) {
+            var identity = sts.getCallerIdentity();
+            AwsCustomerBinding.verifyIdentity(account, roleArn, identity.account(), identity.arn());
+        }
+    }
+
+    StsClient identityClient(AwsCredentialsProvider credentials) {
+        return StsClient.builder().region(Region.US_EAST_1).credentialsProvider(credentials)
+                .httpClientBuilder(httpClientBuilder).build();
+    }
+
     public AwsConnectivityResult testConnectivity(AwsCredentialsProvider creds, List<String> regions) {
         try (StsClient sts = StsClient.builder()
                 .region(Region.US_EAST_1)

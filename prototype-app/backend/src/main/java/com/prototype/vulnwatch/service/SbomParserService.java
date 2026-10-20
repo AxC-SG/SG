@@ -7,6 +7,7 @@ import com.prototype.vulnwatch.dto.BomSupportEntryResponse;
 import com.prototype.vulnwatch.dto.BomSupportMatrixResponse;
 import com.prototype.vulnwatch.domain.SbomFormat;
 import com.prototype.vulnwatch.dto.ParsedComponent;
+import com.prototype.vulnwatch.util.BomInputLimits;
 import com.prototype.vulnwatch.util.CpeUtil;
 import com.prototype.vulnwatch.util.PurlUtil;
 import java.io.ByteArrayInputStream;
@@ -36,6 +37,7 @@ public class SbomParserService {
     }
 
     public SbomFormat detectFormat(byte[] content) throws IOException {
+        BomInputLimits.checkBytes(content);
         if (isXmlBytes(content)) {
             return detectFormatFromXml(content);
         }
@@ -50,6 +52,7 @@ public class SbomParserService {
     }
 
     public List<ParsedComponent> parse(byte[] content) throws IOException {
+        BomInputLimits.checkBytes(content);
         if (isXmlBytes(content)) {
             return parseXmlContent(content);
         }
@@ -168,7 +171,7 @@ public class SbomParserService {
         }
     }
 
-    List<ParsedComponent> parseXmlContent(byte[] content) {
+    List<ParsedComponent> parseXmlContent(byte[] content) throws IOException {
         List<ParsedComponent> result = new ArrayList<>();
         try {
             Document doc = buildXmlDocument(content);
@@ -178,17 +181,21 @@ public class SbomParserService {
                 return result;
             }
             NodeList children = componentsEl.getChildNodes();
+            int componentCount = 0;
             for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);
                 if (node.getNodeType() != Node.ELEMENT_NODE) continue;
                 if (!xmlLocalNameMatches((Element) node, "component")) continue;
+                BomInputLimits.checkComponentCount(++componentCount);
                 ParsedComponent parsed = parseXmlComponent((Element) node);
                 if (parsed != null) {
                     result.add(parsed);
                 }
             }
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
-            // return whatever was collected
+            throw new IOException("Failed to parse XML BOM components", e);
         }
         return result;
     }
@@ -231,7 +238,7 @@ public class SbomParserService {
                 if (n.getNodeType() != Node.ELEMENT_NODE) continue;
                 Element hashEl = (Element) n;
                 if (!xmlLocalNameMatches(hashEl, "hash")) continue;
-                digest = normalizeDigest(hashEl.getAttribute("alg"), hashEl.getTextContent());
+                digest = normalizeDigest(hashEl.getAttribute("alg"), BomInputLimits.xmlText(hashEl));
             }
         }
 
@@ -255,6 +262,7 @@ public class SbomParserService {
     }
 
     Document buildXmlDocument(byte[] content) throws Exception {
+        BomInputLimits.checkBytes(content);
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         // These are mandatory security controls. If the parser cannot enforce
@@ -326,11 +334,12 @@ public class SbomParserService {
             }
         }
         if (child == null) return null;
-        String text = child.getTextContent();
+        String text = BomInputLimits.xmlText(child);
         return (text == null || text.isBlank()) ? null : text.trim();
     }
 
-    private List<ParsedComponent> parseCycloneDx(JsonNode root) {
+    private List<ParsedComponent> parseCycloneDx(JsonNode root) throws IOException {
+        BomInputLimits.checkComponentCount(root.path("components").size());
         List<ParsedComponent> components = new ArrayList<>();
         for (JsonNode component : root.path("components")) {
             String purl = component.path("purl").asText("");
@@ -379,7 +388,8 @@ public class SbomParserService {
         return components;
     }
 
-    private List<ParsedComponent> parseSpdx(JsonNode root) {
+    private List<ParsedComponent> parseSpdx(JsonNode root) throws IOException {
+        BomInputLimits.checkComponentCount(root.path("packages").size());
         List<ParsedComponent> components = new ArrayList<>();
         for (JsonNode pkg : root.path("packages")) {
             String name = pkg.path("name").asText("unknown").toLowerCase();
@@ -564,7 +574,10 @@ public class SbomParserService {
         return normalized.isBlank() ? null : normalized;
     }
 
-    private JsonNode normalizeRoot(JsonNode root) {
+    private JsonNode normalizeRoot(JsonNode root) throws IOException {
+        if (root == null || !root.isObject()) {
+            throw new IOException("BOM must be a JSON object");
+        }
         JsonNode nestedSbom = root.path("sbom");
         if (nestedSbom.isObject()) {
             return nestedSbom;

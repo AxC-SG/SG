@@ -12,8 +12,20 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(name = "ingestion_jobs")
 public class IngestionJob {
+
+    private UUID claimToken;
+    private Instant leaseExpiresAt;
+    private Instant heartbeatAt;
+
+    public UUID getClaimToken() { return claimToken; }
+    public void setClaimToken(UUID value) { claimToken = value; }
+    public Instant getLeaseExpiresAt() { return leaseExpiresAt; }
+    public void setLeaseExpiresAt(Instant value) { leaseExpiresAt = value; }
+    public Instant getHeartbeatAt() { return heartbeatAt; }
+    public void setHeartbeatAt(Instant value) { heartbeatAt = value; }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

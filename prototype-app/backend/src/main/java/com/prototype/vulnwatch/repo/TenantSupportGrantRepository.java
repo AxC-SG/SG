@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 public interface TenantSupportGrantRepository extends JpaRepository<TenantSupportGrant, UUID> {
@@ -45,4 +47,8 @@ public interface TenantSupportGrantRepository extends JpaRepository<TenantSuppor
     );
 
     Optional<TenantSupportGrant> findById(UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select g from TenantSupportGrant g where g.id = :id")
+    Optional<TenantSupportGrant> findByIdForUpdate(@Param("id") UUID id);
 }

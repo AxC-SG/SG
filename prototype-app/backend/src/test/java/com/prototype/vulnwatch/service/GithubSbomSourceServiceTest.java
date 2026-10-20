@@ -91,6 +91,8 @@ class GithubSbomSourceServiceTest {
                     TransactionCallback<?> callback = invocation.getArgument(0);
                     return callback.doInTransaction((TransactionStatus) null);
                 });
+        lenient().when(ingestionJobService.withAdmission(org.mockito.ArgumentMatchers.any(Tenant.class), org.mockito.ArgumentMatchers.<Supplier<?>>any()))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
         githubSbomSourceService = new GithubSbomSourceService(
                 githubSbomSourceRepository,
                 syncRunRepository,
@@ -99,6 +101,7 @@ class GithubSbomSourceServiceTest {
                 ingestionJobService,
                 requestActorService,
                 githubTokenProvider,
+                new CredentialEncryptionService("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
                 transactionTemplate,
                 new ObjectMapper(),
                 tenantService,
@@ -132,7 +135,7 @@ class GithubSbomSourceServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        assertTrue(exception.getReason().contains("backend/secrets/github-api-token"));
+        assertTrue(exception.getReason().contains("tenant GitHub token"));
         verify(githubSbomSourceRepository).findById(sourceId);
         verifyNoInteractions(syncRunRepository, transactionTemplate, ingestionJobService);
     }
@@ -147,7 +150,7 @@ class GithubSbomSourceServiceTest {
         source.setOwner("openai");
         source.setAssetName("ghcr.io/openai");
         source.setAssetIdentifier("ghcr:openai");
-        source.setGithubToken("ghp_source_token");
+        source.setGithubToken(new CredentialEncryptionService("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").encrypt("ghp_source_token"));
         ReflectionTestUtils.setField(source, "id", sourceId);
         when(githubSbomSourceRepository.findById(sourceId)).thenReturn(Optional.of(source));
         when(githubSbomSourceRepository.findByIdForUpdate(sourceId)).thenReturn(Optional.of(source));

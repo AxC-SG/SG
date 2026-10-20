@@ -3,7 +3,6 @@ package com.prototype.vulnwatch.controller;
 import static com.prototype.vulnwatch.support.AuthRequest.asPlatformOwner;
 import static com.prototype.vulnwatch.support.AuthRequest.authedDelete;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -70,7 +69,7 @@ class TenantDeletionPostgresIntegrationTest {
     private JdbcTemplate platformJdbcTemplate;
 
     @Test
-    void deletingTenantDropsSchemaRevokesMembershipAndBlocksFurtherAccess() throws Exception {
+    void disabledDeletionPreservesTenantSchemaMembershipCredentialsAndAccess() throws Exception {
         Tenant tenant = tenantService.createTenant(
                 "15June_Demo_Enterprise",
                 "15june-demo-enterprise",
@@ -102,22 +101,22 @@ class TenantDeletionPostgresIntegrationTest {
                 .andReturn()
                 .getResponse();
         assertEquals(
-                204,
+                503,
                 deletionResponse.getStatus(),
                 "Tenant deletion failed: status=" + deletionResponse.getStatus()
                         + " body=" + deletionResponse.getContentAsString()
                         + " requestId=" + deletionResponse.getHeader("X-Request-ID"));
 
-        assertTrue(tenantRepository.findById(tenant.getId()).isEmpty());
-        assertSchemaMissing(tenant.getSchemaName());
+        assertTrue(tenantRepository.findById(tenant.getId()).isPresent());
+        assertSchemaPresent(tenant.getSchemaName());
         assertTrue(tenantMembershipRepository
                 .findFirstByUserExternalSubjectAndTenantId(subject, tenant.getId())
-                .isEmpty());
+                .isPresent());
 
         AppUser scrubbedUser = appUserRepository.findById(user.getId()).orElseThrow();
-        assertNull(scrubbedUser.getPasswordHash());
-        assertNull(scrubbedUser.getPasswordSetAt());
-        assertEquals("INACTIVE", scrubbedUser.getStatus());
+        assertTrue(BCrypt.checkpw(password, scrubbedUser.getPasswordHash()));
+        assertEquals(user.getPasswordSetAt(), scrubbedUser.getPasswordSetAt());
+        assertEquals("ACTIVE", scrubbedUser.getStatus());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,15 +126,15 @@ class TenantDeletionPostgresIntegrationTest {
                                   "password": "%s"
                                 }
                                 """.formatted(email, password)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/me")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/tenants/{tenantId}/members", tenant.getId())
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     private AppUser createTenantUser(String subject, String email, String password) {
@@ -176,12 +175,12 @@ class TenantDeletionPostgresIntegrationTest {
         return JsonPath.read(response, "$.token");
     }
 
-    private void assertSchemaMissing(String schemaName) {
+    private void assertSchemaPresent(String schemaName) {
         Integer count = platformJdbcTemplate.queryForObject("""
                 select count(*)
                 from information_schema.schemata
                 where schema_name = ?
                 """, Integer.class, schemaName);
-        assertEquals(0, count);
+        assertEquals(1, count);
     }
 }

@@ -1,10 +1,10 @@
 package com.prototype.vulnwatch.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.annotation.Order;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import java.util.List;
@@ -80,8 +80,7 @@ public class ProductionSafetyValidator {
         this.platformOwnerBootstrapProperties = platformOwnerBootstrapProperties;
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    @Order(0)
+    @PostConstruct
     public void validate() {
         if (aiRuntimeEnabled) {
             throw new IllegalStateException("RUNTIME_OUT_OF_SCOPE: APP_AI_SECURITY_RUNTIME_ENABLED must be false in this release.");
@@ -109,7 +108,7 @@ public class ProductionSafetyValidator {
             }
             if (!hasStrongValue(jwtHmacSecret) || isPlaceholder(jwtHmacSecret)) {
                 throw new IllegalStateException(
-                        "APP_JWT_HMAC_SECRET must be a non-placeholder value of at least 32 characters when HMAC is enabled."
+                        "APP_JWT_HMAC_SECRET must be a non-placeholder value of at least 32 UTF-8 bytes when HMAC is enabled."
                 );
             }
         }
@@ -119,13 +118,13 @@ public class ProductionSafetyValidator {
         if (!requireTenantContext) {
             throw new IllegalStateException("APP_REQUIRE_TENANT_CONTEXT must be true for production startup.");
         }
-        if (!hasStrongValue(credentialEncryptionKey) || isPlaceholder(credentialEncryptionKey)
+        if (!hasAes256Key(credentialEncryptionKey) || isPlaceholder(credentialEncryptionKey)
                 || "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".equals(credentialEncryptionKey)) {
             throw new IllegalStateException("APP_CREDENTIAL_ENCRYPTION_KEY must be set to a non-default 256-bit base64 key for production startup.");
         }
         if (!hasStrongValue(aiIdentityHmacKey) || isPlaceholder(aiIdentityHmacKey)) {
             throw new IllegalStateException(
-                    "APP_AI_SECURITY_IDENTITY_HMAC_KEY must be a non-placeholder value of at least 32 characters in production.");
+                    "APP_AI_SECURITY_IDENTITY_HMAC_KEY must be a non-placeholder value of at least 32 UTF-8 bytes in production.");
         }
         if (corsAllowedOrigins == null || corsAllowedOrigins.isBlank() || corsAllowedOrigins.contains("*")) {
             throw new IllegalStateException("APP_CORS_ALLOWED_ORIGINS must be set to explicit production origins.");
@@ -135,6 +134,14 @@ public class ProductionSafetyValidator {
         }
         validateForbiddenProductionIdentities();
         validateRuntimeRoleCannotBypassRls();
+    }
+
+    private boolean hasAes256Key(String key) {
+        try {
+            return key != null && Base64.getDecoder().decode(key).length == 32;
+        } catch (IllegalArgumentException invalidEncoding) {
+            return false;
+        }
     }
 
     private void validateForbiddenProductionIdentities() {
@@ -277,7 +284,8 @@ public class ProductionSafetyValidator {
                     from platform.tenants t
                     join pg_namespace n on n.nspname = t.schema_name
                     join pg_class c on c.relnamespace = n.oid and c.relkind in ('r', 'p')
-                    where c.relname not in ('tenant_schema_history', 'flyway_schema_history', 'demo_requests')
+                    where t.status='ACTIVE' and exists(select 1 from platform.tenant_schema_versions v where v.tenant_id=t.id and v.status='CURRENT' and v.current_version between 5 and 5)
+                      and c.relname not in ('tenant_schema_history', 'flyway_schema_history', 'demo_requests')
                       and (
                           not c.relrowsecurity
                           or not c.relforcerowsecurity
@@ -291,24 +299,12 @@ public class ProductionSafetyValidator {
         if (Boolean.TRUE.equals(incompleteRls)) {
             throw new IllegalStateException("Production startup rejected: tenant RLS coverage is incomplete.");
         }
-        Boolean conflictingRows = platformJdbcTemplate.queryForObject("""
-                select exists (
-                    select 1
-                    from platform.tenants t
-                    left join platform.tenant_schema_versions v on v.tenant_id = t.id
-                    where t.status = 'ACTIVE'
-                      and (v.tenant_id is null or v.status <> 'CURRENT' or v.current_version < 1)
-                )
-                """, Boolean.class);
-        if (Boolean.TRUE.equals(conflictingRows)) {
-            throw new IllegalStateException("Production startup rejected: one or more tenant schemas are not current.");
-        }
         validateRegisteredTenantRows();
     }
 
     private void validateRegisteredTenantRows() {
         List<Map<String, Object>> schemas = platformJdbcTemplate.queryForList("""
-                select id, schema_name from platform.tenants where status = 'ACTIVE'
+                select t.id,t.schema_name from platform.tenants t join platform.tenant_schema_versions v on v.tenant_id=t.id where t.status='ACTIVE' and v.status='CURRENT' and v.current_version between 5 and 5
                 """);
         for (Map<String, Object> tenant : schemas) {
             String schema = String.valueOf(tenant.get("schema_name"));
@@ -351,7 +347,7 @@ public class ProductionSafetyValidator {
     }
 
     private boolean hasStrongValue(String value) {
-        return value != null && value.trim().length() >= 24;
+        return value != null && !value.isBlank() && value.getBytes(StandardCharsets.UTF_8).length >= 32;
     }
 
     private boolean hasText(String value) {

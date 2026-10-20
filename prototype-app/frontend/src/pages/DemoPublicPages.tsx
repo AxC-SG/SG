@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pathForConnectView } from '../app/routes';
 import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
@@ -1042,8 +1042,21 @@ export function DemoRequestSuccessPage() {
   );
 }
 
+function usePrivateLink() {
+  const location = useLocation();
+  const [link] = React.useState(() => {
+    const isCurrentLink = /^\/(invite|tenant-invite|setup)$/.test(location.pathname);
+    const params = new URLSearchParams(isCurrentLink ? location.hash.slice(1) : '');
+    // Remove bearer values before child effects, requests, or subsequent navigation.
+    const cleanPath = '/' + location.pathname.split('/')[1];
+    window.history.replaceState(window.history.state, '', cleanPath);
+    return { token: params.get('token') ?? '', email: params.get('email') ?? '' };
+  });
+  return link;
+}
+
 export function DemoInvitePage() {
-  const { token = '' } = useParams();
+  const { token } = usePrivateLink();
   const navigate = useNavigate();
   const inviteQuery = useQuery({
     queryKey: ['demo-invite', token],
@@ -1069,7 +1082,9 @@ export function DemoInvitePage() {
     <PublicDemoShell compact>
       <section className="public-form-panel">
         <h1>Demo invite</h1>
-        {inviteQuery.isLoading ? (
+        {!token ? (
+          <div className="notice error">This link has expired. Request a new invitation link.</div>
+        ) : inviteQuery.isLoading ? (
           <p>Checking invite...</p>
         ) : inviteQuery.isError ? (
           <div className="notice error">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
@@ -1108,7 +1123,7 @@ export function DemoInvitePage() {
 }
 
 export function TenantInvitePage() {
-  const { token = '' } = useParams();
+  const { token } = usePrivateLink();
   const navigate = useNavigate();
   const inviteQuery = useQuery({
     queryKey: ['tenant-invite', token],
@@ -1135,7 +1150,9 @@ export function TenantInvitePage() {
     <PublicDemoShell compact>
       <section className="public-form-panel">
         <h1>Workspace invite</h1>
-        {inviteQuery.isLoading ? (
+        {!token ? (
+          <div className="notice error">This link has expired. Request a new invitation link.</div>
+        ) : inviteQuery.isLoading ? (
           <p>Checking invite...</p>
         ) : inviteQuery.isError ? (
           <div className="notice error">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
@@ -1339,8 +1356,7 @@ export function LoginPage() {
 }
 
 export function SetupSessionPage() {
-  const { token = '' } = useParams();
-  const [searchParams] = useSearchParams();
+  const { token, email } = usePrivateLink();
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
   const exchangePromiseRef = React.useRef<Promise<void> | null>(null);
@@ -1350,7 +1366,6 @@ export function SetupSessionPage() {
       setError('Password setup link is invalid or expired.');
       return;
     }
-    const email = searchParams.get('email') ?? '';
     if (!exchangePromiseRef.current) {
       window.history.replaceState(window.history.state, '', '/login?setup=pending');
       exchangePromiseRef.current = api.startPasswordSetupSession(token);
@@ -1370,7 +1385,7 @@ export function SetupSessionPage() {
     return () => {
       active = false;
     };
-  }, [navigate, searchParams, token]);
+  }, [navigate, email, token]);
 
   return (
     <PublicDemoShell compact>

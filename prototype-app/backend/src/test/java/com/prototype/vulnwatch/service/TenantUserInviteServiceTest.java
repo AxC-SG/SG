@@ -93,7 +93,8 @@ class TenantUserInviteServiceTest {
         membership.setId(membershipId);
         membership.setRole("TENANT_ADMIN");
 
-        when(identityAdministrationService.findInviteByToken("invite-token")).thenReturn(invite);
+        when(identityAdministrationService.findInviteTenantId("invite-token")).thenReturn(tenantId);
+        when(identityAdministrationService.findInviteByTokenForUpdate("invite-token")).thenReturn(invite);
         when(identityAdministrationService.activateInvitedMembership(
                 tenantId,
                 "customer@example.com",

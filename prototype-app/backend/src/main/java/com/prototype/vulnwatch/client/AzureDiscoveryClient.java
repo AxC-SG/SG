@@ -8,9 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -22,6 +19,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import com.prototype.vulnwatch.client.http.AzureManagementTransport;
 
 @Service
 public class AzureDiscoveryClient {
@@ -30,14 +30,27 @@ public class AzureDiscoveryClient {
     private static final String MANAGEMENT_SCOPE = "https://management.azure.com/.default";
     private static final String API_VERSION = "2021-04-01";
 
-    private final HttpClient httpClient;
+    private final AzureManagementTransport httpClient;
     private final ObjectMapper objectMapper;
+    private final int maxPages;
+    private final int maxResponseBytes;
+    private final long maxDurationMs;
 
     public AzureDiscoveryClient(ObjectMapper objectMapper) {
+        this(objectMapper, new AzureManagementTransport(), 100, 8_000_000, 120_000);
+    }
+
+    @Autowired
+    public AzureDiscoveryClient(ObjectMapper objectMapper, AzureManagementTransport httpClient,
+            @Value("${app.azure.discovery.max-pages:100}") int maxPages,
+            @Value("${app.azure.discovery.max-response-bytes:8000000}") int maxResponseBytes,
+            @Value("${app.azure.discovery.max-duration-ms:120000}") long maxDurationMs) {
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(15))
-                .build();
+        this.httpClient = httpClient;
+        if (maxPages < 1 || maxResponseBytes < 1 || maxDurationMs < 1) throw new IllegalArgumentException("Azure HTTP budgets must be positive");
+        this.maxPages = maxPages;
+        this.maxResponseBytes = maxResponseBytes;
+        this.maxDurationMs = maxDurationMs;
     }
 
     /** Test connectivity to a single Azure subscription using the shared credential. */
@@ -61,10 +74,16 @@ public class AzureDiscoveryClient {
         Set<String> seen = new LinkedHashSet<>();
         String nextUrl = "https://management.azure.com/subscriptions/" + encode(subscriptionId) + "/resources?api-version=" + API_VERSION;
         String error = null;
+        Set<String> visited = new LinkedHashSet<>();
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(maxDurationMs);
 
         while (nextUrl != null) {
             try {
+                if (visited.size() >= maxPages || !visited.add(nextUrl) || System.nanoTime() > deadline) {
+                    throw new IllegalStateException("Azure continuation exceeded its page or time budget");
+                }
                 JsonNode response = getJson(credential, nextUrl);
+                if (System.nanoTime() > deadline) throw new IllegalStateException("Azure discovery exceeded its time budget");
                 JsonNode values = response.path("value");
                 if (values.isArray()) {
                     for (JsonNode value : values) {
@@ -122,17 +141,13 @@ public class AzureDiscoveryClient {
     }
 
     private JsonNode getJson(TokenCredential credential, String url) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Authorization", "Bearer " + bearerToken(credential))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("Azure management API returned " + response.statusCode() + ": " + abbreviate(response.body()));
+        URI uri = URI.create(url);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || !"management.azure.com".equalsIgnoreCase(uri.getHost())
+                || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443) || uri.getFragment() != null) {
+            throw new IllegalArgumentException("Azure continuation must use the approved management endpoint");
         }
-        return objectMapper.readTree(response.body());
+        String token = bearerToken(credential);
+        return objectMapper.readTree(httpClient.get(uri, token, maxResponseBytes, maxDurationMs));
     }
 
     private String bearerToken(TokenCredential credential) {

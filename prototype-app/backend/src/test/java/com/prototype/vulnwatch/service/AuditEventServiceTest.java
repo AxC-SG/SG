@@ -18,6 +18,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -32,6 +34,35 @@ class AuditEventServiceTest {
     TenantRepository tenantRepository;
     @Mock
     RequestActorService requestActorService;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"=SUM(A1:A2)", "+cmd", "-1+2", "@SUM(A1)", " =SUM(A1)", "\tordinary", "\rordinary", "\nordinary", "\uFEFF=SUM(A1)", "\u200B@SUM(A1)", "\u00a0+cmd", "\u0001=SUM(A1)"})
+    void csvNeutralizesUntrustedFormulaAndControlPrefixes(String supplied) {
+        AuditEvent event = new AuditEvent();
+        event.setActorSubject(supplied);
+        event.setRequestId(supplied);
+        AuditEventService service = new AuditEventService(auditEventRepository, tenantRepository, requestActorService);
+
+        String csv = service.toCsv(java.util.List.of(event));
+
+        assertTrue(csv.contains("\"'" + supplied + "\""));
+        assertEquals(2, csv.split(java.util.regex.Pattern.quote("\"'" + supplied + "\""), -1).length - 1);
+    }
+
+    @Test
+    void csvPreservesQuotedMultilineTextAndOrdinaryIdentifiers() {
+        AuditEvent event = new AuditEvent();
+        event.setActorSubject("analyst@example.com");
+        event.setRequestId("req-123:abc");
+        event.setDetailsJson("ordinary \"quoted\" text\nsecond line");
+        AuditEventService service = new AuditEventService(auditEventRepository, tenantRepository, requestActorService);
+
+        String csv = service.toCsv(java.util.List.of(event));
+
+        assertTrue(csv.contains("\"analyst@example.com\""));
+        assertTrue(csv.contains("\"req-123:abc\""));
+        assertTrue(csv.contains("\"ordinary \"\"quoted\"\" text\nsecond line\""));
+    }
 
     @Test
     void recordTenantExposureRefreshPersistsOperationalDetails() {

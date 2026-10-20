@@ -3,6 +3,7 @@ spring:
     import: optional:classpath:application-prod.yml
 
 app:
+  environment: ${APP_ENVIRONMENT:preproduction}
   security:
     require-production-secrets: true
     allow-api-key-auth: false
@@ -12,7 +13,7 @@ app:
     allow-header-tenant-selection: false
     require-tenant-context: true
   entitlements:
-    # Preprod (customer-validation) runs the corrected resolver in SHADOW: legacy is still enforced,
-    # corrected results are computed, and mismatch telemetry is emitted. Flip to ENFORCE with a
-    # canary allowlist only after >=7 days of clean/explained mismatches (see the Phase 0 runbook).
-    mode: ${APP_ENTITLEMENTS_MODE:SHADOW}
+    mode: ${APP_ENTITLEMENTS_MODE:ENFORCE}
+    enforce-tenant-allowlist: ${APP_ENTITLEMENTS_ENFORCE_TENANT_ALLOWLIST:slug:scoutgrid-internal-pilot}
+  openai:
+    enabled: false

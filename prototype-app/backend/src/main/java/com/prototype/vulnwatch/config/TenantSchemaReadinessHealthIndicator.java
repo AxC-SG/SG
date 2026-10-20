@@ -26,10 +26,11 @@ public class TenantSchemaReadinessHealthIndicator implements HealthIndicator {
     public Health health() {
         try {
             long failures = service.readinessFailures(packagedTenantTarget);
-            return failures == 0
-                    ? Health.up().withDetail("packagedTenantTarget", packagedTenantTarget).build()
-                    : Health.down().withDetail("unreadyTenantCount", failures)
-                            .withDetail("packagedTenantTarget", packagedTenantTarget).build();
+            // A customer's migration state controls that customer's eligibility. The control
+            // plane query failing still removes the instance from service.
+            return Health.up().withDetail("unreadyTenantCount",failures)
+                    .withDetail("supportedTenantVersions","5..5")
+                    .withDetail("packagedTenantTarget",packagedTenantTarget).build();
         } catch (RuntimeException ex) {
             return Health.down().withDetail("reason", "tenant schema control plane unavailable").build();
         }

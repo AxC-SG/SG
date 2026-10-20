@@ -13,11 +13,10 @@ import java.util.List;
 public class UpgradeRecommendationService {
 
     private static final String SYSTEM_PROMPT =
-        "You are a software security advisor with up-to-date knowledge of software release versions. " +
-        "Given software details, recommend a specific upgrade version. " +
-        "You MUST provide the exact version number (e.g. '135.0.7049.85', '17.0.12', '3.4.1') — " +
-        "NEVER use vague strings like 'latest stable', 'latest', or 'current'. " +
-        "Use your training knowledge to state the most recent stable release version you know of. " +
+        "You are a software security advisor. Give cautious upgrade guidance from the supplied evidence. " +
+        "Only recommend an exact version when authoritative release evidence is included in the input. " +
+        "Otherwise recommendedVersion must be an empty string and notes must say that the version is not verified. " +
+        "Do not supply version numbers or vendor attribution from model memory. " +
         "Respond ONLY with a valid JSON object with exactly these three fields: " +
         "{\"recommendedVersion\": \"<exact version number>\", " +
         "\"upgradeNotes\": \"<concise 1-2 sentence upgrade summary including what the upgrade fixes>\", " +
@@ -47,9 +46,9 @@ public class UpgradeRecommendationService {
             : (req.cveIds() != null && !req.cveIds().isEmpty() ? "HIGH" : "MEDIUM");
 
         return new UpgradeRecommendationResponse(
-            "Latest stable release",
-            "Upgrade to the latest stable release to address " +
-            (req.eolDate() != null ? "end-of-life status" : "known vulnerabilities") + ".",
+            "",
+            "No upgrade version has been verified. Review the vendor's supported releases and advisories, " +
+            "select a release that addresses the recorded vulnerabilities or end-of-life status, and test compatibility before rollout.",
             urgency
         );
     }
@@ -70,8 +69,7 @@ public class UpgradeRecommendationService {
         if (cveIds != null && !cveIds.isEmpty()) {
             sb.append("Known CVEs: ").append(String.join(", ", cveIds)).append("\n");
         }
-        sb.append("\nProvide the exact recommended version number and upgrade notes as JSON. ")
-          .append("Do NOT say 'latest stable' — give the actual version number you know from your training data.");
+        sb.append("\nNo verified release-version evidence is supplied. Return an empty recommendedVersion and cautious upgrade notes as JSON.");
         return sb.toString();
     }
 

@@ -94,7 +94,7 @@ class AiSecurityObservationPostgresIntegrationTest {
     void verifiedRoutesAndDefinitionVersionsStaySeparateAcrossExpiryAndEmptyEnumeration() {
         Tenant tenant = provision("Served agents Co", "served-agents-co");
         UUID connector = connectorService.save(tenant,new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                "123456789012",null,null,List.of("us-east-1"),true)).id();
+                "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly",null,List.of("us-east-1"),true)).id();
         String root = "arn:aws:bedrock:us-east-1:123456789012:agent/served";
         UUID run = syncRunFacade.start(tenant).getId();
         observationService.ingest(tenant,new ObservationEnvelopeV1(AiSecurityObservationService.CONTRACT_VERSION,
@@ -147,7 +147,7 @@ class AiSecurityObservationPostgresIntegrationTest {
     void logicalAgentRosterKeepsIdentityTotalsAndHistoryAcrossRoutingFailures() {
         Tenant tenant = provision("Logical agents Co", "logical-agents-co");
         UUID connectorId = connectorService.save(tenant,
-                new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", null, null, List.of("us-east-1"), true)).id();
+                new AiSecurityAwsConnectorService.ConnectorConfigRequest("123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         String root = "arn:aws:bedrock:us-east-1:123456789012:agent/roster";
         List<ArtifactObservation> agents = List.of(
                 new ArtifactObservation(root, "AI_AGENT", "AWS_BEDROCK_AGENT", "Same name", Map.of()),
@@ -211,7 +211,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
 
@@ -249,7 +249,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
 
         UUID firstRun = syncRunFacade.start(tenant).getId();
@@ -299,7 +299,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         ArtifactObservation agent = new ArtifactObservation(
@@ -337,7 +337,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         String resourceId = "arn:aws:bedrock:us-east-1:123456789012:agent/owned-attributes-agent";
 
@@ -380,7 +380,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         Tenant tenant = provision("Partial Attribute Co", "partial-attribute-co");
         UUID connectorId = connectorService.save(tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)).id();
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         String resourceId = "arn:aws:bedrock:us-east-1:123456789012:agent/partial-attribute-agent";
 
         UUID completeRun = syncRunFacade.start(tenant).getId();
@@ -407,7 +407,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         Tenant tenant = provision("AWS Definition Graph Co", "aws-definition-graph-co");
         UUID connectorId = connectorService.save(tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)).id();
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         capabilityService.registerRun(tenant, runId, "AWS", connectorId, "123456789012",
                 List.of("us-east-1"), List.of("BEDROCK_AGENT_VERSIONS"));
@@ -462,7 +462,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         String providerResourceId = "/subscriptions/" + "a".repeat(220);
@@ -495,7 +495,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         tenantExecution.run(tenant, () -> jdbc.update("""
@@ -589,7 +589,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         ArtifactObservation agent = new ArtifactObservation(
@@ -1088,7 +1088,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         Tenant tenant = provision("AI Grid Atomic Co", "ai-grid-atomic-co");
         UUID connectorId = connectorService.save(tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)).id();
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         ArtifactObservation agent = new ArtifactObservation(
                 "arn:aws:bedrock:us-east-1:123456789012:agent/atomic-agent",
@@ -1207,7 +1207,7 @@ class AiSecurityObservationPostgresIntegrationTest {
         UUID connectorId = connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
         UUID runId = syncRunFacade.start(tenant).getId();
         Instant scannedAt = Instant.parse("2026-08-01T00:00:00Z");

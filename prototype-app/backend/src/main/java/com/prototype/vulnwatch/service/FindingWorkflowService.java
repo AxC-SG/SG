@@ -386,7 +386,7 @@ public class FindingWorkflowService {
                 eventDetails);
     }
 
-    @Scheduled(cron = "0 */15 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */15 * * * *")
     public void reopenExpiredSuppressions() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-workflow.reopen-expired-suppressions")) {
             return;
@@ -418,7 +418,7 @@ public class FindingWorkflowService {
         }
     }
 
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 0 * * * *")
     public void autoCloseFindingsByPolicy() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-workflow.auto-close-findings")) {
             return;

@@ -13,6 +13,8 @@ public record OperationalApiReadPathResponse(
         long filterCacheHits,
         long filterCacheMisses,
         double filterCacheHitRatioPercent,
-        List<OperationalEndpointMetricResponse> endpointMetrics
+        List<OperationalEndpointMetricResponse> endpointMetrics,
+        String sampleScope,
+        int maximumSamplesPerMetric
 ) {
 }

@@ -7,23 +7,19 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenCredential;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.aisecurity.service.AiGridProviderCallCounter;
-import java.net.URI;
-import java.net.http.HttpClient;
+import com.prototype.vulnwatch.client.http.CheckedHttpTransport;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 
-/** Mock the java.net.http transport used by this adapter; no provider credentials or calls. */
+/** Mock the checked transport used by this adapter; no provider credentials or calls. */
 class FoundryDeploymentCollectionTest {
     private static final String ACCOUNT = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.CognitiveServices/accounts/acct";
     private static final String PROJECT = ACCOUNT + "/projects/project";
@@ -31,9 +27,9 @@ class FoundryDeploymentCollectionTest {
     private final List<HttpRequest> requests = new ArrayList<>();
     private AzureAiManagementClient client(int appStatus) throws Exception {
         AzureAiManagementClient client = new AzureAiManagementClient(new ObjectMapper(),new AzurePolicyPermissionMatrix());
-        HttpClient http = mock(HttpClient.class);
+        CheckedHttpTransport http = mock(CheckedHttpTransport.class);
         ReflectionTestUtils.setField(client,"http",http);
-        when(http.send(any(HttpRequest.class), org.mockito.ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenAnswer(call -> {
+        when(http.sendString(any(HttpRequest.class), anyInt())).thenAnswer(call -> {
             HttpRequest request = call.getArgument(0); requests.add(request);
             String path = request.uri().getPath();
             String body;
@@ -80,16 +76,7 @@ class FoundryDeploymentCollectionTest {
     private static String node(String id,String type,String properties) {
         return "{\"id\":\"" + id + "\",\"name\":\"resource\",\"type\":\"" + type + "\",\"location\":\"eastus\",\"properties\":" + properties + "}";
     }
-    private static HttpResponse<String> response(HttpRequest request,int status,String body) {
-        return new HttpResponse<>() {
-            public int statusCode() { return status; }
-            public HttpRequest request() { return request; }
-            public Optional<HttpResponse<String>> previousResponse() { return Optional.empty(); }
-            public HttpHeaders headers() { return HttpHeaders.of(Map.of(),(key,value) -> true); }
-            public String body() { return body; }
-            public Optional<SSLSession> sslSession() { return Optional.empty(); }
-            public URI uri() { return request.uri(); }
-            public HttpClient.Version version() { return HttpClient.Version.HTTP_1_1; }
-        };
+    private static CheckedHttpTransport.Response<String> response(HttpRequest request,int status,String body) {
+        return new CheckedHttpTransport.Response<>(status,HttpHeaders.of(Map.of(),(key,value) -> true),body);
     }
 }

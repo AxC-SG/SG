@@ -1,6 +1,9 @@
 # Copy to application-local.yml (which is ignored) only when a local profile file is needed.
 # application.yml automatically imports backend/.env.local when present.
 app:
+  environment: local
+  runtime:
+    role: all
   demo:
     # Local database runs use the migration-owner connection, so newly-created
     # tenants become usable immediately instead of waiting for the production

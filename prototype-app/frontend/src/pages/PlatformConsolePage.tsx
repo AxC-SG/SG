@@ -1196,13 +1196,6 @@ function TenantLifecyclePanel() {
     name: string;
     nextStatus: 'ACTIVE' | 'SUSPENDED';
   } | null>(null);
-  const [tenantPendingDelete, setTenantPendingDelete] = React.useState<{
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-    demoExpiresAt?: string | null;
-  } | null>(null);
   const [tenantPendingOwnerRecovery, setTenantPendingOwnerRecovery] = React.useState<{ id: string; name: string; email: string } | null>(null);
   const [ownerRecoveryEmail, setOwnerRecoveryEmail] = React.useState('');
   const [ownerRecoveryPassword, setOwnerRecoveryPassword] = React.useState('');
@@ -1251,15 +1244,6 @@ function TenantLifecyclePanel() {
       setTenantPendingStatus(null);
       await queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
       await queryClient.invalidateQueries({ queryKey: ['platform-inventory-connector-health'] });
-    }
-  });
-  const deleteTenant = useMutation({
-    mutationFn: api.deleteTenant,
-    onSuccess: async () => {
-      setTenantPendingDelete(null);
-      await queryClient.invalidateQueries({ queryKey: ['platform-tenants'] });
-      await queryClient.invalidateQueries({ queryKey: ['platform-inventory-connector-health'] });
-      await queryClient.invalidateQueries({ queryKey: ['platform-tenant-schema-status'] });
     }
   });
   const recoverTenantOwner = useMutation({
@@ -1461,15 +1445,8 @@ function TenantLifecyclePanel() {
                         <button
                           type="button"
                           className="btn btn-danger btn-sm"
-                          disabled={deleteTenant.isPending || tenant.status.toUpperCase() === 'PURGING' || tenant.status.toUpperCase() === 'DELETED'}
-                          onClick={() => setTenantPendingDelete({
-                            id: tenant.id,
-                            name: tenant.name,
-                            slug: tenant.slug,
-                            status: tenant.status,
-                            demoExpiresAt: tenant.demoExpiresAt ?? null
-                          })}
-                          title="Delete the tenant and purge its tenant schema"
+                          disabled
+                          title="Tenant deletion is temporarily unavailable. Expiry and access controls remain available."
                         >
                           Delete
                         </button>
@@ -1481,11 +1458,6 @@ function TenantLifecyclePanel() {
               })}
             </tbody>
           </table>
-        </div>
-      )}
-      {deleteTenant.isError && (
-        <div className="notice error" role="alert">
-          {deleteTenant.error instanceof Error ? deleteTenant.error.message : 'Failed to delete tenant'}
         </div>
       )}
       {extendTenant.isError && (
@@ -1605,30 +1577,6 @@ function TenantLifecyclePanel() {
           }
         }}
       />
-      <ConfirmDialog
-        isOpen={tenantPendingDelete != null}
-        title="Delete tenant?"
-        message={
-          tenantPendingDelete == null
-            ? ''
-            : tenantPendingDelete.demoExpiresAt
-              ? `Delete ${tenantPendingDelete.name} and purge all tenant-scoped tables now? This will immediately remove tenant access, clear memberships, and reset the tenant schema.`
-              : `Delete ${tenantPendingDelete.name} and purge all tenant-scoped tables now? This action is irreversible for this tenant workspace.`
-        }
-        confirmLabel={deleteTenant.isPending ? 'Deleting...' : 'Delete Tenant'}
-        cancelLabel="Cancel"
-        onCancel={() => {
-          if (!deleteTenant.isPending) {
-            setTenantPendingDelete(null);
-          }
-        }}
-        onConfirm={() => {
-          if (tenantPendingDelete != null && !deleteTenant.isPending) {
-            deleteTenant.mutate(tenantPendingDelete.id);
-          }
-        }}
-      />
-
       <div className="section-title-row" style={{ marginTop: 24 }}>
         <h4 className="section-title">Inventory Connector Health</h4>
         <button

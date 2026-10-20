@@ -61,8 +61,14 @@ public class SbomFetchGuardService {
         }
     }
 
+    public long maxPayloadBytes() {
+        // Both are existing bounds. A larger remote configuration cannot bypass the
+        // common BOM byte ceiling applied to fetched and uploaded documents.
+        return Math.min(maxPayloadBytes, com.prototype.vulnwatch.util.BomInputLimits.MAX_BOM_BYTES);
+    }
+
     public void ensurePayloadWithinLimit(long bytes) throws IOException {
-        if (bytes > maxPayloadBytes) {
+        if (bytes > maxPayloadBytes()) {
             throw new IOException("SBOM payload exceeds max allowed size");
         }
     }

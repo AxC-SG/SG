@@ -5,7 +5,8 @@ import com.prototype.vulnwatch.domain.AwsDiscoveryConfig;
 import com.prototype.vulnwatch.domain.AwsDiscoveryTarget;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -28,21 +29,20 @@ public final class AwsCredentialProvider {
      * rotated access keys and short-lived AssumeRole tokens are always current.
      */
     public static AwsCredentialsProvider from(AwsDiscoveryConfig config) {
-        AwsAuthType authType = config.getAuthType() == null
-                ? AwsAuthType.INSTANCE_METADATA
-                : config.getAuthType();
-
-        return switch (authType) {
-            case INSTANCE_METADATA -> InstanceProfileCredentialsProvider.create();
-            case ACCESS_KEY -> buildAccessKeyProvider(config);
-            case CROSS_ACCOUNT_ROLE -> buildAssumeRoleProvider(config);
-        };
+        AwsCustomerBinding.validate(config.getTenant() == null ? null : config.getTenant().getId(), config.getAwsAccountId(), config.getCrossAccountRoleArn(),
+                config.getExternalId(), config.getCredentialBindingVersion());
+        return buildAssumeRoleProvider(config);
     }
 
     public static AwsCredentialsProvider from(AwsDiscoveryConfig config, AwsDiscoveryTarget target) {
-        if (target == null || !hasText(target.getRoleArn())) {
-            return from(config);
+        if (target == null) return from(config);
+        if (config.getTenant() == null || target.getTenant() == null
+                || !config.getTenant().getId().equals(target.getTenant().getId())
+                || target.getConfig() == null || !config.getTenant().getId().equals(target.getConfig().getTenant().getId())) {
+            throw new IllegalArgumentException("AWS target does not belong to the customer connector");
         }
+        AwsCustomerBinding.validate(target.getTenant().getId(), target.getAccountId(), target.getRoleArn(),
+                target.getExternalId(), target.getCredentialBindingVersion());
         return buildAssumeRoleProvider(
                 target.getRoleArn(),
                 target.getExternalId(),
@@ -88,9 +88,7 @@ public final class AwsCredentialProvider {
         AssumeRoleRequest.Builder requestBuilder = AssumeRoleRequest.builder()
                 .roleArn(roleArn.trim())
                 .roleSessionName(roleSessionName);
-        if (hasText(externalId)) {
-            requestBuilder.externalId(externalId.trim());
-        }
+        requestBuilder.externalId(externalId.trim());
         // If access key credentials are provided, use them as the base identity for STS.
         // This supports the pattern: long-lived IAM user keys → AssumeRole → short-lived tokens.
         // Without explicit credentials, the STS client falls back to the default chain
@@ -105,14 +103,19 @@ public final class AwsCredentialProvider {
                                     credentialSecret.trim())))
                     .build();
         } else {
+            String profile = System.getenv("AWS_PROFILE");
+            AwsCredentialsProvider base = hasText(profile)
+                    ? ProfileCredentialsProvider.create(profile.trim()) : DefaultCredentialsProvider.create();
             stsClient = StsClient.builder()
                     .region(Region.US_EAST_1)
+                    .credentialsProvider(base)
                     .build();
         }
-        return StsAssumeRoleCredentialsProvider.builder()
+        StsAssumeRoleCredentialsProvider assumed = StsAssumeRoleCredentialsProvider.builder()
                 .stsClient(stsClient)
                 .refreshRequest(requestBuilder.build())
                 .build();
+        return assumed;
     }
 
     private static boolean hasText(String value) {

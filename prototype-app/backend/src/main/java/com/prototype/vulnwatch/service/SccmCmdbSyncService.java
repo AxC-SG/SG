@@ -78,6 +78,7 @@ public class SccmCmdbSyncService {
     }
 
     public SyncTriggerResponse trigger() {
+        SccmPilotPolicy.requireEnabled();
         var tenant = workspaceService.getWorkspace();
         ClaimedRun claimed = tenantSchemaExecutionService.run(
                 tenant,
@@ -90,8 +91,10 @@ public class SccmCmdbSyncService {
         return new SyncTriggerResponse(claimed.runId(), "running", "SCCM CMDB sync is already queued or running");
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
+        // Contained for the assisted pilot, including configurations saved before containment.
+        if (isPilotDisabled()) return;
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("sccm-cmdb.run-scheduled-syncs")) {
             return;
         }
@@ -121,7 +124,13 @@ public class SccmCmdbSyncService {
 
     @Transactional(readOnly = true)
     public boolean hasActiveRun() {
-        return !syncRunRepository.findActiveRunsBySyncType(SYNC_TYPE_SCCM_CMDB, List.of("queued", "running")).isEmpty();
+        var tenant = workspaceService.getWorkspace();
+        return !syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenant.getId(), SYNC_TYPE_SCCM_CMDB, List.of("queued", "running")).isEmpty();
+    }
+
+    private boolean isPilotDisabled() {
+        return true;
     }
 
     // ── Run claiming ───────────────────────────────────────────────────────────────────────────
@@ -137,16 +146,25 @@ public class SccmCmdbSyncService {
     }
 
     private ClaimedRun claimScheduledRun(SccmCmdbConfig config) {
-        if (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config)) {
-            return null;
-        }
         return claimRunForConfig(config, "scheduled", false);
     }
 
     private ClaimedRun claimRunForConfig(SccmCmdbConfig config, String triggerMode, boolean allowReuseActiveRun) {
+        SccmPilotPolicy.requireEnabled();
+        // The configuration row is the admission lock, including when no run exists yet.
+        // Tenant context and the transaction are established by every caller before this lock.
+        config = sccmCmdbConfigRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
+                .orElseThrow(() -> new EntityNotFoundException("SCCM CMDB config not found"));
+        if ("scheduled".equals(triggerMode)
+                && (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config))) {
+            return null;
+        }
+        if ("manual".equals(triggerMode) && (!isConfigured(config) || !config.isEnabled())) {
+            throw new IllegalStateException("SCCM CMDB connector is not configured or is disabled");
+        }
         UUID tenantId = config.getTenant().getId();
-        Optional<SyncRun> active = syncRunRepository.findActiveRunsBySyncType(
-                SYNC_TYPE_SCCM_CMDB,
+        Optional<SyncRun> active = syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenantId, SYNC_TYPE_SCCM_CMDB,
                 List.of("queued", "running")
         ).stream().findFirst();
         if (active.isPresent()) {
@@ -173,7 +191,7 @@ public class SccmCmdbSyncService {
 
     private boolean isDue(SccmCmdbConfig config) {
         SyncRun latest = syncRunRepository
-                .findTopBySyncTypeIgnoreCaseOrderByStartedAtDesc(SYNC_TYPE_SCCM_CMDB)
+                .findTopBySyncTypeIgnoreCaseAndTenant_IdOrderByStartedAtDesc(SYNC_TYPE_SCCM_CMDB, config.getTenant().getId())
                 .orElse(null);
         if (latest == null) {
             return true;
@@ -192,10 +210,9 @@ public class SccmCmdbSyncService {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markRunRunning(runId, triggerMode);
             try {
+                SccmPilotPolicy.requireEnabled();
                 SccmCmdbConfig config = sccmCmdbConfigRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("SCCM CMDB config not found: " + configId));
-                sccmCmdbConfigService.resolveRuntimeConfig(config.getTenant())
-                        .orElseThrow(() -> new IllegalStateException("SCCM CMDB connector is not configured"));
 
                 LOG.info("SCCM sync run {} starting (trigger={})", runId, triggerMode);
                 List<Map<String, String>> installRows = sccmQueryService.fetchInstallRows(config);

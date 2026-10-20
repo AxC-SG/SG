@@ -88,10 +88,10 @@ public class AiSecurityJobWorkerService {
                                     tenant, provider.jobType(), 1, maxConcurrentPerTenant);
                             for (var ref : claimed) {
                                 try {
-                                    executor.execute(() -> execute(ref.tenantId(), ref.jobId()));
+                                    executor.execute(() -> execute(ref.tenantId(), ref.jobId(), ref.claimToken()));
                                 } catch (RejectedExecutionException ex) {
-                                    jobs.markQueuedForRetry(
-                                            ref.tenantId(), ref.jobId(), "EXECUTOR_BUSY",
+                                    jobs.retryRejectedClaim(
+                                            ref, "EXECUTOR_BUSY",
                                             "AI Security worker is at capacity", Instant.now().plusSeconds(5));
                                 }
                             }
@@ -109,6 +109,18 @@ public class AiSecurityJobWorkerService {
     }
 
     void execute(java.util.UUID tenantId, java.util.UUID jobId) {
+        execute(tenantId, jobId, jobs.loadJob(tenantId, jobId).getClaimToken());
+    }
+
+    private void execute(java.util.UUID tenantId, java.util.UUID jobId, java.util.UUID token) {
+        try (var ignored = jobs.openAttempt(tenantId, jobId, token)) {
+            executeOwned(tenantId, jobId);
+        } catch (com.prototype.vulnwatch.service.IngestionAttemptService.StaleAttemptException stale) {
+            LOG.info("Skipped ingestion job {} because its attempt is no longer owned", jobId);
+        }
+    }
+
+    private void executeOwned(java.util.UUID tenantId, java.util.UUID jobId) {
         Tenant tenant = tenants.resolveTenantUuid(tenantId);
         try {
             tenantExecution.run(tenant, () -> {
@@ -122,7 +134,11 @@ public class AiSecurityJobWorkerService {
                         jobs.readPayload(job, IngestionJobService.AiSecurityJobPayload.class);
                 Object result = provider.discover(tenant, payload.connectorId());
                 jobs.markSucceeded(tenantId, jobId, null, jobs.toJson(result));
-                jobs.recordCompleted(jobs.loadJob(tenantId, jobId));
+                try {
+                    jobs.recordCompleted(jobs.loadJob(tenantId, jobId));
+                } catch (RuntimeException reportingFailure) {
+                    LOG.warn("Ancillary completion reporting failed for succeeded job {}", jobId);
+                }
                 return null;
             });
         } catch (Exception ex) {

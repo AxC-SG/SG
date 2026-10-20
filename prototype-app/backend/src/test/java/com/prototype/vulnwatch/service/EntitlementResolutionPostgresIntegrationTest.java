@@ -107,13 +107,8 @@ class EntitlementResolutionPostgresIntegrationTest {
     }
 
     @Test
-    void enforceWildcardAppliesToAllTenants() {
-        Tenant tenant = proTenant("wildcard");
-        TenantEntitlementService svc = service("ENFORCE", "*", new SimpleMeterRegistry());
-        TenantContext.runAsPlatform(() -> {
-            assertFalse(svc.isEnabled(tenant, TenantEntitlementService.AI_SECURITY));
-            return null;
-        });
+    void enforceWildcardIsRejectedInsteadOfEnablingAnUnnamedCohort() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,() -> service("ENFORCE","*",new SimpleMeterRegistry()));
     }
 
     @Test
@@ -148,7 +143,7 @@ class EntitlementResolutionPostgresIntegrationTest {
 
     @Test
     void platformNullContextHasEmptySnapshotAndFailsClosedUnderEnforce() {
-        TenantEntitlementService svc = service("ENFORCE", "*", new SimpleMeterRegistry());
+        TenantEntitlementService svc = service("ENFORCE", "slug:scoutgrid-internal-pilot", new SimpleMeterRegistry());
         assertTrue(svc.snapshot(null).isEmpty());
         assertFalse(svc.isEnabled(null, TenantEntitlementService.AI_INVESTIGATION_SUMMARY));
     }

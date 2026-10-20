@@ -6,7 +6,6 @@ import com.prototype.vulnwatch.domain.TenantSupportGrant;
 import com.prototype.vulnwatch.repo.TenantMembershipRepository;
 import com.prototype.vulnwatch.repo.TenantRepository;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,7 +53,7 @@ public class TenantAccessResolutionService {
                     tenant,
                     playground ? TenantAccessMode.DIRECT_PLAYGROUND_MEMBERSHIP : TenantAccessMode.TENANT_MEMBERSHIP,
                     membership.getId(),
-                    normalizeRole(membership.getRole()),
+                    TenantRolePolicy.forAuthorization(membership.getRole()),
                     null);
         }
 
@@ -98,7 +97,7 @@ public class TenantAccessResolutionService {
                             tenant,
                             playground ? TenantAccessMode.DIRECT_PLAYGROUND_MEMBERSHIP : TenantAccessMode.TENANT_MEMBERSHIP,
                             membership.getId(),
-                            normalizeRole(membership.getRole()),
+                            TenantRolePolicy.forAuthorization(membership.getRole()),
                             null));
                 });
         supportGrantService.listActiveGrantsForPlatformOwner(subject).stream()
@@ -115,7 +114,4 @@ public class TenantAccessResolutionService {
                 .toList();
     }
 
-    private String normalizeRole(String role) {
-        return role == null ? "READ_ONLY_AUDITOR" : role.trim().toUpperCase(Locale.ROOT);
-    }
 }

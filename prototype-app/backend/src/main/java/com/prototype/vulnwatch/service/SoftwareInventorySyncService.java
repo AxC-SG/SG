@@ -16,27 +16,29 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SoftwareInventorySyncService {
 
     private final SoftwareInventoryItemRepository softwareInventoryItemRepository;
-    private final TenantSchemaExecutionService tenantSchemaExecutionService;
+    private final TenantWorkRunner tenantWorkRunner;
 
     public SoftwareInventorySyncService(
             SoftwareInventoryItemRepository softwareInventoryItemRepository,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantWorkRunner tenantWorkRunner
     ) {
         this.softwareInventoryItemRepository = softwareInventoryItemRepository;
-        this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.tenantWorkRunner = tenantWorkRunner;
     }
 
-    @Transactional
     public int syncFromInventoryDelta(Tenant tenant, Collection<InventoryComponent> components, Instant observedAt) {
         if (tenant == null || tenant.getId() == null || components == null || components.isEmpty()) {
             return 0;
         }
+        return tenantWorkRunner.runScoped(tenant, () -> syncScoped(tenant, components, observedAt));
+    }
+
+    private int syncScoped(Tenant tenant, Collection<InventoryComponent> components, Instant observedAt) {
 
         List<InventoryComponent> scopedComponents = components.stream()
                 .filter(component -> component != null
@@ -53,7 +55,7 @@ public class SoftwareInventorySyncService {
                 .map(InventoryComponent::getId)
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
         Map<UUID, SoftwareInventoryItem> existingByComponentId = new HashMap<>();
-        tenantSchemaExecutionService.run(tenant, () -> softwareInventoryItemRepository.findByComponent_IdIn(componentIds)).forEach(item -> {
+        softwareInventoryItemRepository.findByComponent_IdIn(componentIds).forEach(item -> {
             if (item.getComponent() != null && item.getComponent().getId() != null) {
                 existingByComponentId.put(item.getComponent().getId(), item);
             }

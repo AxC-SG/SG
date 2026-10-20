@@ -68,7 +68,7 @@ class AiSecurityAzureCredentialPostgresIntegrationTest {
                  where id = :id
                 """, Map.of("id", profile.id()), String.class));
         assertNotEquals(plaintext, stored);
-        assertTrue(stored.startsWith("enc:v1:"));
+        assertTrue(stored.startsWith("enc:v2:"));
         assertThrows(ResponseStatusException.class, () -> credentials.secret(second, profile.id()));
 
         credentials.revoke(first, profile.id(), "tenant-admin");

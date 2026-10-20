@@ -14,6 +14,15 @@ class SbomParserServiceTest {
     private final SbomParserService parser = new SbomParserService(new ObjectMapper());
 
     @Test
+    void preservesExistingBestEffortJsonDetectionButRejectsUnknownXmlNamespace() throws Exception {
+        Assertions.assertEquals(SbomFormat.CYCLONEDX,
+                parser.detectFormat("{\"components\":[{\"name\":\"a\"}]}".getBytes(StandardCharsets.UTF_8)));
+        Assertions.assertEquals(SbomFormat.UNKNOWN, parser.detectFormat((
+                "<bom xmlns=\"urn:unsupported\"><components><component><name>a</name>"
+                + "</component></components></bom>").getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
     void shouldParseGithubWrappedSpdxSbom() throws Exception {
         String payload = """
                 {

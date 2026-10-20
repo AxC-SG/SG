@@ -84,7 +84,7 @@ class DemoLifecycleControllerPostgresIntegrationTest {
 
         String tenantId = com.jayway.jsonpath.JsonPath.read(approvalResponse, "$.tenantId");
         String inviteUrl = com.jayway.jsonpath.JsonPath.read(approvalResponse, "$.latestInvite.inviteUrl");
-        String inviteToken = inviteUrl.substring(inviteUrl.lastIndexOf('/') + 1);
+        String inviteToken = inviteUrl.substring(inviteUrl.indexOf("#token=") + 7);
         Tenant tenant = tenantRepository.findById(UUID.fromString(tenantId)).orElseThrow();
 
         org.junit.jupiter.api.Assertions.assertEquals("ENTERPRISE", tenant.getPlanCode());
@@ -94,7 +94,7 @@ class DemoLifecycleControllerPostgresIntegrationTest {
         tenant.setStatus("ACTIVE");
         tenantRepository.saveAndFlush(tenant);
 
-        String setCookie = mockMvc.perform(post("/api/demo-invites/{token}/accept", inviteToken))
+        String setCookie = mockMvc.perform(post("/api/demo-invites/accept").contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"" + inviteToken + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.setupToken").doesNotExist())
@@ -102,7 +102,7 @@ class DemoLifecycleControllerPostgresIntegrationTest {
                 .andReturn().getResponse().getHeader("Set-Cookie");
 
         Cookie setupCookie = MockCookie.parse(setCookie);
-        mockMvc.perform(post("/api/auth/setup-password")
+        mockMvc.perform(post("/api/auth/setup-password").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .cookie(setupCookie)
                         .header("X-Scout-Setup", "1")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -91,6 +91,8 @@ public class AzureDiscoverySyncService {
     }
 
     public SyncTriggerResponse trigger() {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         Tenant tenant = workspaceService.getWorkspace();
         ClaimedRun claimed = tenantSchemaExecutionService.run(
                 tenant,
@@ -104,6 +106,8 @@ public class AzureDiscoverySyncService {
     }
 
     public SyncTriggerResponse triggerTarget(Tenant tenant, UUID targetId) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
+
         AzureDiscoveryTarget target = azureDiscoveryTargetService.requireTarget(tenant, targetId);
         ClaimedRun claimed = tenantSchemaExecutionService.run(
                 tenant,
@@ -116,8 +120,10 @@ public class AzureDiscoverySyncService {
         return new SyncTriggerResponse(claimed.runId(), "running", "Azure Cloud Discovery sync is already queued or running");
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
+        if (!GenericAzureDiscoveryPolicy.available()) return;
+
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("azure-discovery.run-scheduled-syncs")) {
             return;
         }
@@ -146,7 +152,11 @@ public class AzureDiscoverySyncService {
     }
 
     public boolean hasActiveRun() {
-        return !syncRunRepository.findActiveRunsBySyncType(SYNC_TYPE_AZURE_DISCOVERY, List.of("queued", "running")).isEmpty();
+        if (!GenericAzureDiscoveryPolicy.available()) return false;
+
+        var tenant = workspaceService.getWorkspace();
+        return !syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenant.getId(), SYNC_TYPE_AZURE_DISCOVERY, List.of("queued", "running")).isEmpty();
     }
 
     private ClaimedRun claimManualRun(Tenant tenant) {
@@ -160,15 +170,24 @@ public class AzureDiscoverySyncService {
     }
 
     private ClaimedRun claimScheduledRun(AzureDiscoveryConfig config) {
-        if (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config)) {
-            return null;
-        }
         return claimRunForConfig(config, "scheduled", false);
     }
 
     private ClaimedRun claimRunForConfig(AzureDiscoveryConfig config, String triggerMode, boolean allowReuseActiveRun) {
-        Optional<SyncRun> active = syncRunRepository.findActiveRunsBySyncType(
-                SYNC_TYPE_AZURE_DISCOVERY,
+        // The configuration row is the admission lock, including when no run exists yet.
+        // Tenant context and the transaction are established by every caller before this lock.
+        config = configRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Azure Cloud Discovery config not found"));
+        if ("scheduled".equals(triggerMode)
+                && (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config))) {
+            return null;
+        }
+        if ("manual".equals(triggerMode) && (!isConfigured(config) || !config.isEnabled())) {
+            throw new IllegalStateException("Azure Cloud Discovery connector is not configured or is disabled");
+        }
+        UUID tenantId = config.getTenant().getId();
+        Optional<SyncRun> active = syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenantId, SYNC_TYPE_AZURE_DISCOVERY,
                 List.of("queued", "running")
         ).stream().findFirst();
         if (active.isPresent()) {
@@ -196,7 +215,7 @@ public class AzureDiscoverySyncService {
 
     private boolean isDue(AzureDiscoveryConfig config) {
         SyncRun latest = syncRunRepository
-                .findTopBySyncTypeIgnoreCaseOrderByStartedAtDesc(SYNC_TYPE_AZURE_DISCOVERY)
+                .findTopBySyncTypeIgnoreCaseAndTenant_IdOrderByStartedAtDesc(SYNC_TYPE_AZURE_DISCOVERY, config.getTenant().getId())
                 .orElse(null);
         if (latest == null) {
             return true;
@@ -214,6 +233,7 @@ public class AzureDiscoverySyncService {
             Instant runStartTime = Instant.now();
             markRunRunning(runId, triggerMode);
             try {
+                GenericAzureDiscoveryPolicy.requireAvailable();
                 AzureDiscoveryConfig config = configRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("Azure Discovery config not found: " + configId));
 
@@ -280,6 +300,9 @@ public class AzureDiscoverySyncService {
     ) {
         List<String> regions = parseList(target.getRegionsJson());
         AzureResourceFetchResult fetchResult = azureDiscoveryClient.fetchResources(credential, target.getSubscriptionId(), regions);
+        if (fetchResult.error() != null) {
+            throw new IllegalStateException("Azure resource retrieval is incomplete; previous subscription inventory is retained");
+        }
         List<AzureResourceRecord> records = fetchResult.records();
 
         IngestionResult ingestionResult = azureDiscoveryIngestionService.ingestAll(

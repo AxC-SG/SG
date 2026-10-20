@@ -6,6 +6,8 @@ import com.prototype.vulnwatch.client.http.OutboundPolicy;
 import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
 import com.prototype.vulnwatch.dto.SbomEndpointIngestionRequest;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,15 +42,16 @@ public class SbomEndpointFetchService {
 
         ResponseEntity<byte[]> response;
         try {
-            response = outboundHttpClient.exchange(
+            response = outboundHttpClient.exchangeExtracted(
                     url,
                     HttpMethod.GET,
                     new HttpEntity<>(sbomFetchGuardService.buildEndpointHeaders(request.authorizationHeader())),
-                    byte[].class,
+                    this::readBoundedResponse,
+                    sbomFetchGuardService.maxPayloadBytes(),
                     "Remote SBOM fetch",
                     outboundPolicy(),
                     context -> new OutboundFailureDecision<>(
-                            context.isRetryableByDefault(),
+                            !isPayloadLimitFailure(context.error()) && context.isRetryableByDefault(),
                             context.retryAfterDelayMs(),
                             context.error() instanceof IOException ioException
                                     ? ioException
@@ -91,6 +94,47 @@ public class SbomEndpointFetchService {
                 sbomUploadSupportService.toJson(evidence)
         );
         return new SbomEndpointFetchResult(content, metadata);
+    }
+
+    private ResponseEntity<byte[]> readBoundedResponse(
+            org.springframework.http.client.ClientHttpResponse response) throws IOException {
+        long limit = sbomFetchGuardService.maxPayloadBytes();
+        if (response.getHeaders().getContentLength() > limit) {
+            throw new PayloadLimitException();
+        }
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        InputStream input = response.getBody();
+        byte[] buffer = new byte[8192];
+        long total = 0;
+        while (true) {
+            // Read at most one byte beyond the ceiling, including absent or false headers.
+            int length = (int) Math.min(buffer.length, Math.max(1L, limit - total + 1L));
+            int read = input.read(buffer, 0, length);
+            if (read == -1) {
+                break;
+            }
+            total += read;
+            if (total > limit) {
+                throw new PayloadLimitException();
+            }
+            output.write(buffer, 0, read);
+        }
+        return new ResponseEntity<>(output.toByteArray(), response.getHeaders(), response.getStatusCode());
+    }
+
+    private boolean isPayloadLimitFailure(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof PayloadLimitException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final class PayloadLimitException extends IOException {
+        private PayloadLimitException() {
+            super("SBOM payload exceeds max allowed size");
+        }
     }
 
     private OutboundPolicy outboundPolicy() {

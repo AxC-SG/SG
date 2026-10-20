@@ -105,7 +105,7 @@ class DemoTenantPurgePostgresIntegrationTest {
     }
 
     @Test
-    void restrictedRoleDeletesTenantWithSharedInviteAndRetainsRequestHistory() {
+    void restrictedRoleCannotDeleteTenantAndSharedHistoryRemains() {
         // Matches production grants: metadata cannot expose the referenced PK
         // through constraint_column_usage, even though DML is allowed.
         assertFalse(jdbc.queryForObject("select rolsuper or rolbypassrls from pg_roles where rolname = current_user", Boolean.class));
@@ -114,19 +114,22 @@ class DemoTenantPurgePostgresIntegrationTest {
                 where table_schema = 'platform' and table_name = 'tenants'
                 """, Integer.class));
 
-        service.deleteTenant(tenantId, Instant.now());
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> service.deleteTenant(tenantId, Instant.now()));
+        assertEquals(503, error.getStatusCode().value());
 
         assertEquals(otherTenantId.toString(), currentTenantContext());
-        assertEquals(0, countForTenant("platform.tenants", "id", tenantId));
-        assertEquals(0, countForTenant("platform.tenant_memberships", "tenant_id", tenantId));
-        assertEquals(0, countForTenant("platform.tenant_support_grants", "tenant_id", tenantId));
+        assertEquals(1, countForTenant("platform.tenants", "id", tenantId));
+        assertEquals(1, countForTenant("platform.tenant_memberships", "tenant_id", tenantId));
+        assertEquals(1, countForTenant("platform.tenant_support_grants", "tenant_id", tenantId));
         assertEquals(1, countForTenant("platform.tenants", "id", otherTenantId));
         assertEquals(1, countForTenant("platform.tenant_support_grants", "tenant_id", otherTenantId));
         assertEquals(1, countForTenant("tenant_default.demo_invites", "tenant_id", otherTenantId));
         assertEquals(1, countForTenant("tenant_default.demo_requests", "tenant_id", otherTenantId));
-        assertEquals(1, jdbc.queryForObject("select count(*) from tenant_default.demo_requests where tenant_id is null", Integer.class));
+        assertEquals(0, jdbc.queryForObject("select count(*) from tenant_default.demo_requests where tenant_id is null", Integer.class));
         jdbc.execute("RESET ROLE");
-        assertEquals(0, countForTenant("tenant_default.demo_invites", "tenant_id", tenantId));
+        assertEquals(1, countForTenant("tenant_default.demo_invites", "tenant_id", tenantId));
+        assertEquals(1, countForTenant("tenant_default.demo_requests", "tenant_id", tenantId));
     }
 
     @Test
@@ -145,7 +148,7 @@ class DemoTenantPurgePostgresIntegrationTest {
         ResponseStatusException error = assertThrows(ResponseStatusException.class,
                 () -> service.deleteTenant(tenantId, Instant.now()));
 
-        assertEquals(400, error.getStatusCode().value());
+        assertEquals(503, error.getStatusCode().value());
         assertEquals(otherTenantId.toString(), currentTenantContext());
         assertEquals(1, countForTenant("platform.tenants", "id", tenantId));
         assertEquals(1, countForTenant("tenant_default.demo_requests", "tenant_id", tenantId));

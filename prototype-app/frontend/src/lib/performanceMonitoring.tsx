@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 import { useLocation } from 'react-router-dom';
+import { telemetryPath } from './telemetryPrivacy';
 
 type PerformanceMetricDetail = {
   metric: string;
@@ -94,7 +95,8 @@ function useRouteTiming() {
     if (typeof performance === 'undefined') {
       return;
     }
-    const routeKey = `route:${location.pathname}${location.search}`;
+    const safePath = telemetryPath(location.pathname);
+    const routeKey = `route:${safePath}`;
     performance.mark(`${routeKey}:start`);
     const frame = requestAnimationFrame(() => {
       performance.mark(`${routeKey}:paint`);
@@ -106,7 +108,7 @@ function useRouteTiming() {
           metric: 'route-transition',
           value: Math.round(latest.duration),
           unit: 'ms',
-          context: { path: `${location.pathname}${location.search}` }
+          context: { path: safePath }
         });
       }
       performance.clearMarks(`${routeKey}:start`);

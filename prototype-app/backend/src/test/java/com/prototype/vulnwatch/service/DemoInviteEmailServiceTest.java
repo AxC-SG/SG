@@ -23,11 +23,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 class DemoInviteEmailServiceTest {
 
     @Mock
-    private ResendEmailClient resendEmailClient;
+    private InvitationEmailOutboxService resendEmailClient;
 
     @Test
     void sendInviteUsesValidationPasswordSetupFlow() {
-        when(resendEmailClient.send(org.mockito.ArgumentMatchers.any()))
+        when(resendEmailClient.enqueue(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any()))
                 .thenReturn(ResendEmailClient.DeliveryResult.sent("email-123"));
 
         DemoInviteEmailService service = new DemoInviteEmailService(
@@ -57,11 +57,11 @@ class DemoInviteEmailServiceTest {
         service.sendInvite(request, invite);
 
         ArgumentCaptor<ResendEmailClient.EmailMessage> messageCaptor = forClass(ResendEmailClient.EmailMessage.class);
-        verify(resendEmailClient).send(messageCaptor.capture());
+        verify(resendEmailClient).enqueue(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),messageCaptor.capture());
         ResendEmailClient.EmailMessage message = messageCaptor.getValue();
         assertEquals("alex@example.com", message.to());
         assertTrue(message.subject().contains("Welcome to Scout.ai"));
-        assertTrue(message.html().contains("/invite/invite-token-123"));
+        assertTrue(message.html().contains("/invite#token=invite-token-123"));
         assertTrue(message.html().contains("/login"));
         assertTrue(message.text().contains("activation link"));
         assertTrue(message.text().contains("Activation link expires:"));

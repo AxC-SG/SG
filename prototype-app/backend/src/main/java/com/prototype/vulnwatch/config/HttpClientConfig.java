@@ -5,8 +5,7 @@ import com.prototype.vulnwatch.client.http.OutboundHttpClient;
 import com.prototype.vulnwatch.client.http.OutboundHostPolicy;
 import com.prototype.vulnwatch.client.http.OutboundPolicyDefaults;
 import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
-import java.time.Duration;
-import java.net.http.HttpClient;
+import com.prototype.vulnwatch.client.http.CheckedOutboundRequestFactory;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -14,29 +13,36 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 @Configuration
 public class HttpClientConfig {
 
     @Bean
+    public CheckedOutboundRequestFactory checkedOutboundRequestFactory(OutboundHostPolicy policy,
+            @Value("${app.http.connect-timeout-ms:5000}") long connectTimeoutMs,
+            @Value("${app.http.read-timeout-ms:30000}") long readTimeoutMs) {
+        return new CheckedOutboundRequestFactory(policy, connectTimeoutMs, readTimeoutMs);
+    }
+
+    @Bean
     public RestTemplate restTemplate(
             RestTemplateBuilder builder,
             OutboundHostPolicy outboundHostPolicy,
+            CheckedOutboundRequestFactory requestFactory,
             @Value("${app.http.connect-timeout-ms:5000}") long connectTimeoutMs,
-            @Value("${app.http.read-timeout-ms:30000}") long readTimeoutMs
+            @Value("${app.http.read-timeout-ms:30000}") long readTimeoutMs,
+            @Value("${app.http.max-response-bytes:104857600}") long maxResponseBytes,
+            @Value("${app.http.max-response-duration-ms:120000}") long maxResponseDurationMs
     ) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+        if (connectTimeoutMs <= 0 || readTimeoutMs <= 0 || maxResponseBytes <= 0 || maxResponseDurationMs <= 0) {
+            throw new IllegalArgumentException("Outbound HTTP budgets must be positive");
+        }
         return builder
                 .requestFactory(() -> requestFactory)
                 .additionalInterceptors((request, body, execution) -> {
                     outboundHostPolicy.validateAny(request.getURI());
-                    return execution.execute(request, body);
+                    long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(maxResponseDurationMs);
+                    return CheckedOutboundRequestFactory.bounded(execution.execute(request, body), maxResponseBytes, deadline);
                 })
                 .build();
     }

@@ -6,7 +6,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Clock;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.ToDoubleFunction;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,65 +28,135 @@ public class PerformanceTelemetryService {
     private final FindingProjectionStatusService findingProjectionStatusService;
     private final JdbcTemplate jdbcTemplate;
     private final long staleProjectionThresholdSeconds;
-    private final AtomicLong pendingQueueCount = new AtomicLong();
-    private final AtomicLong oldestPendingAgeSeconds = new AtomicLong();
-    private final AtomicLong staleProjectionTenantCount = new AtomicLong();
-    private final AtomicLong maxProjectionLagSeconds = new AtomicLong();
+    private final long maximumSnapshotAgeSeconds;
+    private final boolean ownsRefresh;
+    private final Clock clock;
+    private final AtomicReference<Snapshot> snapshot = new AtomicReference<>(Snapshot.empty());
 
+    @Autowired
     public PerformanceTelemetryService(
             ObjectProvider<MeterRegistry> meterRegistryProvider,
             TenantService tenantService,
             TenantSchemaExecutionService tenantSchemaExecutionService,
             FindingProjectionStatusService findingProjectionStatusService,
             JdbcTemplate jdbcTemplate,
-            @Value("${app.slo.projection-stale-threshold-minutes:15}") long projectionStaleThresholdMinutes
+            @Value("${app.slo.projection-stale-threshold-minutes:15}") long projectionStaleThresholdMinutes,
+            @Value("${app.performance.telemetry-refresh-ms:30000}") long refreshIntervalMs,
+            BackgroundTaskExecutionPolicy executionPolicy
     ) {
+        this(meterRegistryProvider, tenantService, tenantSchemaExecutionService, findingProjectionStatusService,
+                jdbcTemplate, projectionStaleThresholdMinutes, refreshIntervalMs, executionPolicy, Clock.systemUTC());
+    }
+
+    PerformanceTelemetryService(ObjectProvider<MeterRegistry> meterRegistryProvider, TenantService tenantService,
+            TenantSchemaExecutionService tenantSchemaExecutionService, FindingProjectionStatusService findingProjectionStatusService,
+            JdbcTemplate jdbcTemplate, long projectionStaleThresholdMinutes, long refreshIntervalMs,
+            BackgroundTaskExecutionPolicy executionPolicy, Clock clock) {
         this.meterRegistry = meterRegistryProvider.getIfAvailable();
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
         this.findingProjectionStatusService = findingProjectionStatusService;
         this.jdbcTemplate = jdbcTemplate;
-        this.staleProjectionThresholdSeconds = projectionStaleThresholdMinutes * 60L;
+        this.staleProjectionThresholdSeconds = Math.max(1L, projectionStaleThresholdMinutes) * 60L;
+        this.maximumSnapshotAgeSeconds = Math.max(3L, Duration.ofMillis(Math.max(1000L, refreshIntervalMs)).toSeconds() * 3L);
+        this.clock = clock;
+        String role = executionPolicy.runtimeRole();
+        this.ownsRefresh = role.equals("worker") || role.equals("all");
         if (meterRegistry != null) {
-            Gauge.builder("scoutgrid.finding_delta_queue.pending", pendingQueueCount, AtomicLong::doubleValue)
-                    .description("Total PENDING entries across tenant finding delta queues.")
-                    .register(meterRegistry);
-            Gauge.builder("scoutgrid.finding_delta_queue.oldest_age_seconds", oldestPendingAgeSeconds, AtomicLong::doubleValue)
-                    .description("Age in seconds of the oldest visible PENDING finding delta entry.")
-                    .register(meterRegistry);
-            Gauge.builder("scoutgrid.finding_projection.stale_tenants", staleProjectionTenantCount, AtomicLong::doubleValue)
-                    .description("Tenants whose finding workspace projection is missing or stale.")
-                    .register(meterRegistry);
-            Gauge.builder("scoutgrid.finding_projection.max_lag_seconds", maxProjectionLagSeconds, AtomicLong::doubleValue)
-                    .description("Maximum lag in seconds since any tenant last rebuilt the finding workspace projection.")
-                    .register(meterRegistry);
+            register(role, "scoutgrid.finding_delta_queue.pending", "Observed pending entries; partial results require refresh_valid=0.",
+                    service -> service.observedValue(Snapshot::pendingCount));
+            register(role, "scoutgrid.finding_delta_queue.oldest_age_seconds", "Oldest visible pending age among observed active tenants.",
+                    service -> service.observedValue(Snapshot::oldestPendingAgeSeconds));
+            register(role, "scoutgrid.finding_projection.stale_tenants", "Observed active tenants with a missing or stale projection.",
+                    service -> service.observedValue(Snapshot::staleProjectionTenants));
+            register(role, "scoutgrid.finding_projection.max_lag_seconds", "Maximum known projection lag; unknown when any observed projection is missing.",
+                    service -> service.snapshot.get().projectionLagKnown() ? service.observedValue(Snapshot::maxProjectionLagSeconds) : Double.NaN);
+            register(role, "scoutgrid.performance.refresh_owner", "Whether this process owns worker refresh.", service -> service.ownsRefresh ? 1 : 0);
+            register(role, "scoutgrid.performance.refresh_valid", "One only for a fresh, complete active-tenant observation.", service -> service.isValid() ? 1 : 0);
+            register(role, "scoutgrid.performance.refresh_error", "One when tenant discovery or any eligible tenant failed in the latest attempt.",
+                    service -> service.snapshot.get().discoveryFailed() || service.snapshot.get().failedTenants() > 0 ? 1 : 0);
+            register(role, "scoutgrid.performance.last_attempt_timestamp_seconds", "Latest refresh attempt, unknown before startup refresh.",
+                    service -> epoch(service.snapshot.get().lastAttemptAt()));
+            register(role, "scoutgrid.performance.last_refresh_timestamp_seconds", "Latest completed observation, including partial observations.",
+                    service -> epoch(service.snapshot.get().lastRefreshAt()));
+            register(role, "scoutgrid.performance.last_success_timestamp_seconds", "Latest complete successful observation.",
+                    service -> epoch(service.snapshot.get().lastSuccessfulAt()));
+            register(role, "scoutgrid.performance.snapshot_age_seconds", "Age of the latest completed observation; unknown before refresh.",
+                    service -> service.snapshotAgeSeconds());
+            register(role, "scoutgrid.performance.eligible_tenants", "ACTIVE tenants selected in the latest observation.", service -> service.observedValue(Snapshot::eligibleTenants));
+            register(role, "scoutgrid.performance.observed_tenants", "Eligible tenants read successfully in the latest observation.", service -> service.observedValue(Snapshot::observedTenants));
+            register(role, "scoutgrid.performance.failed_tenants", "Eligible tenants that could not be read in the latest observation.", service -> service.observedValue(Snapshot::failedTenants));
+            register(role, "scoutgrid.performance.skipped_tenants", "Non-active tenants deliberately excluded from the latest observation.", service -> service.observedValue(Snapshot::skippedTenants));
         }
     }
 
-    public void refreshFreshnessSnapshot() {
-        if (meterRegistry == null) {
+    private void register(String role, String name, String description,
+            ToDoubleFunction<PerformanceTelemetryService> value) {
+        Gauge.builder(name, this, value).description(description)
+                .tag("role", role).tag("scope", "active-tenants-worker-observation").register(meterRegistry);
+    }
+
+    public synchronized void refreshFreshnessSnapshot() {
+        if (!ownsRefresh) {
             return;
         }
-        TenantContext.runAsPlatform(() -> {
-            Instant now = Instant.now();
-            long pendingCount = 0L;
-            long maxOldestAgeSeconds = 0L;
-            long staleTenants = 0L;
-            long maxLagSeconds = 0L;
+        Instant now = clock.instant();
+        Snapshot previous = snapshot.get();
+        try {
+            TenantContext.runAsPlatform(() -> {
+                List<Tenant> tenants = tenantService.listTenants();
+                int eligible = 0, observed = 0, failed = 0, skipped = 0;
+                long pending = 0, oldest = 0, stale = 0, lag = 0;
+                boolean lagKnown = true;
+                for (Tenant tenant : tenants) {
+                    if (tenant == null || tenant.getId() == null || !"ACTIVE".equalsIgnoreCase(tenant.getStatus())) {
+                        skipped++;
+                        continue;
+                    }
+                    eligible++;
+                    try {
+                        TenantSnapshot result = tenantSchemaExecutionService.run(tenant, () -> readTenantSnapshot(tenant, now));
+                        pending += result.pendingCount();
+                        oldest = Math.max(oldest, result.oldestPendingAgeSeconds());
+                        stale += result.staleProjection() ? 1 : 0;
+                        lag = Math.max(lag, result.projectionLagSeconds());
+                        lagKnown &= result.projectionLagKnown();
+                        observed++;
+                    } catch (RuntimeException ex) {
+                        // Publish only aggregate failures, with no tenant labels or exception payloads.
+                        failed++;
+                    }
+                }
+                snapshot.set(new Snapshot(now, now, failed == 0 ? now : previous.lastSuccessfulAt(),
+                        eligible, observed, failed, skipped, false, pending, oldest, stale, lag, lagKnown));
+            });
+        } catch (RuntimeException ex) {
+            snapshot.set(new Snapshot(now, previous.lastRefreshAt(), previous.lastSuccessfulAt(),
+                    previous.eligibleTenants(), previous.observedTenants(), previous.failedTenants(), previous.skippedTenants(),
+                    true, previous.pendingCount(), previous.oldestPendingAgeSeconds(), previous.staleProjectionTenants(),
+                    previous.maxProjectionLagSeconds(), previous.projectionLagKnown()));
+        }
+    }
 
-            for (Tenant tenant : tenantService.listTenants()) {
-                TenantSnapshot snapshot = tenantSchemaExecutionService.run(tenant, () -> readTenantSnapshot(tenant, now));
-                pendingCount += snapshot.pendingCount();
-                maxOldestAgeSeconds = Math.max(maxOldestAgeSeconds, snapshot.oldestPendingAgeSeconds());
-                staleTenants += snapshot.staleProjection() ? 1L : 0L;
-                maxLagSeconds = Math.max(maxLagSeconds, snapshot.projectionLagSeconds());
-            }
+    private boolean isValid() {
+        Snapshot current = snapshot.get();
+        return ownsRefresh && current.lastRefreshAt() != null && !current.discoveryFailed()
+                && current.failedTenants() == 0 && snapshotAgeSeconds() <= maximumSnapshotAgeSeconds;
+    }
 
-            pendingQueueCount.set(pendingCount);
-            oldestPendingAgeSeconds.set(maxOldestAgeSeconds);
-            staleProjectionTenantCount.set(staleTenants);
-            maxProjectionLagSeconds.set(maxLagSeconds);
-        });
+    private double observedValue(ToDoubleFunction<Snapshot> value) {
+        Snapshot current = snapshot.get();
+        return !ownsRefresh || current.lastRefreshAt() == null || snapshotAgeSeconds() > maximumSnapshotAgeSeconds
+                ? Double.NaN : value.applyAsDouble(current);
+    }
+
+    private double snapshotAgeSeconds() {
+        Instant refreshed = snapshot.get().lastRefreshAt();
+        return refreshed == null ? Double.NaN : Math.max(0L, Duration.between(refreshed, clock.instant()).getSeconds());
+    }
+
+    private static double epoch(Instant instant) {
+        return instant == null ? Double.NaN : instant.getEpochSecond();
     }
 
     private TenantSnapshot readTenantSnapshot(Tenant tenant, Instant now) {
@@ -107,6 +181,7 @@ public class PerformanceTelemetryService {
         FindingListProjectionService.ProjectionStatus projectionStatus =
                 findingProjectionStatusService.inspectProjectionStatus(tenant);
         long projectionLagSeconds = 0L;
+        boolean lagKnown = projectionStatus != null && projectionStatus.lastComputedAt() != null;
         boolean staleProjection = true;
         if (projectionStatus != null && projectionStatus.lastComputedAt() != null) {
             projectionLagSeconds = Math.max(0L, Duration.between(projectionStatus.lastComputedAt(), now).getSeconds());
@@ -117,7 +192,8 @@ public class PerformanceTelemetryService {
                 pendingCount == null ? 0L : pendingCount,
                 oldestAgeSeconds,
                 staleProjection,
-                projectionLagSeconds
+                projectionLagSeconds,
+                lagKnown
         );
     }
 
@@ -125,7 +201,17 @@ public class PerformanceTelemetryService {
             long pendingCount,
             long oldestPendingAgeSeconds,
             boolean staleProjection,
-            long projectionLagSeconds
+            long projectionLagSeconds,
+            boolean projectionLagKnown
     ) {
+    }
+
+    private record Snapshot(Instant lastAttemptAt, Instant lastRefreshAt, Instant lastSuccessfulAt,
+            int eligibleTenants, int observedTenants, int failedTenants, int skippedTenants, boolean discoveryFailed,
+            long pendingCount, long oldestPendingAgeSeconds, long staleProjectionTenants, long maxProjectionLagSeconds,
+            boolean projectionLagKnown) {
+        static Snapshot empty() {
+            return new Snapshot(null, null, null, 0, 0, 0, 0, false, 0, 0, 0, 0, false);
+        }
     }
 }

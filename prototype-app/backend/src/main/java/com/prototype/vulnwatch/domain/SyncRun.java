@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
+@org.hibernate.annotations.DynamicUpdate
 @Entity
 @Table(schema = "platform", name = "sync_runs")
 public class SyncRun {
@@ -54,6 +55,24 @@ public class SyncRun {
 
     @Column(columnDefinition = "TEXT")
     private String metadataJson;
+
+    @Column(insertable=false,updatable=false)
+    private UUID claimToken;
+    @Column(insertable=false,updatable=false)
+    private Instant leaseExpiresAt;
+    @Column(insertable=false,updatable=false)
+    private Instant heartbeatAt;
+    @Column(insertable=false,updatable=false)
+    private int attemptCount;
+
+    public UUID getClaimToken() { return claimToken; }
+    public void setClaimToken(UUID value) { claimToken=value; }
+    public Instant getLeaseExpiresAt() { return leaseExpiresAt; }
+    public void setLeaseExpiresAt(Instant value) { leaseExpiresAt=value; }
+    public Instant getHeartbeatAt() { return heartbeatAt; }
+    public void setHeartbeatAt(Instant value) { heartbeatAt=value; }
+    public int getAttemptCount() { return attemptCount; }
+    public void setAttemptCount(int value) { attemptCount=value; }
 
     public UUID getId() {
         return id;

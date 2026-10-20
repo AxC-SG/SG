@@ -31,6 +31,7 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @Service
 public class GithubSbomSourceService {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GithubSbomSourceService.class);
 
     public static final String PATH_REPOSITORY_SBOM = "dependency-graph/sbom";
     public static final String PATH_GHCR_ATTESTATIONS = "ghcr/attestations";
@@ -50,6 +51,7 @@ public class GithubSbomSourceService {
     private final IngestionJobService ingestionJobService;
     private final RequestActorService requestActorService;
     private final GithubTokenProvider githubTokenProvider;
+    private final CredentialEncryptionService credentialEncryptionService;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
     private final TenantService tenantService;
@@ -64,6 +66,7 @@ public class GithubSbomSourceService {
             IngestionJobService ingestionJobService,
             RequestActorService requestActorService,
             GithubTokenProvider githubTokenProvider,
+            CredentialEncryptionService credentialEncryptionService,
             TransactionTemplate transactionTemplate,
             ObjectMapper objectMapper,
             TenantService tenantService,
@@ -76,6 +79,7 @@ public class GithubSbomSourceService {
         this.ingestionJobService = ingestionJobService;
         this.requestActorService = requestActorService;
         this.githubTokenProvider = githubTokenProvider;
+        this.credentialEncryptionService = credentialEncryptionService;
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = objectMapper;
         this.tenantService = tenantService;
@@ -127,30 +131,41 @@ public class GithubSbomSourceService {
     public SyncTriggerResponse trigger(UUID id) {
         ensureGhcrTokenConfiguredIfNeeded(id);
         Tenant tenant = currentTenant();
-        ClaimedGithubSourceRun claimed = claimSourceRun(tenant, id, false, true);
-        enqueueClaimedSourceJob(tenant, claimed);
-        return new SyncTriggerResponse(claimed.runId(), "queued", "GitHub ingestion queued");
+        return ingestionJobService.withAdmission(tenant, () -> {
+            var active=ingestionJobService.activeGithubSourceRun(tenant,id);
+            if (active.isPresent()) {var existing=requireRun(active.get());return new SyncTriggerResponse(existing.getId(),existing.getStatus(),"GitHub ingestion is already accepted");}
+            ClaimedGithubSourceRun claimed = claimSourceRun(tenant, id, false, true);
+            enqueueClaimedSourceJob(tenant, claimed);
+            return new SyncTriggerResponse(claimed.runId(), "queued", "GitHub ingestion queued");
+        });
     }
 
     public SyncTriggerResponse triggerGhcrRunOnce(String owner) {
-        ensureGhcrTokenConfigured();
+        try (GithubTokenProvider.TokenScope ignored = githubTokenProvider.customerCredentials(null)) {
+            ensureGhcrTokenConfigured();
+        }
         Tenant tenant = currentTenant();
         String normalizedOwner = owner == null ? "" : owner.trim();
         if (normalizedOwner.isBlank()) {
             throw new IllegalArgumentException("GitHub owner is required");
         }
-        SyncRun run = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> createQueuedRun(SYNC_TYPE_GITHUB_GHCR_SBOM, tenant))
-        );
-        ingestionJobService.enqueueGithubGhcrJob(
+        return ingestionJobService.withAdmission(tenant, () -> {
+            SyncRun run = createQueuedRun(SYNC_TYPE_GITHUB_GHCR_SBOM, tenant);
+        var accepted=ingestionJobService.enqueueGithubGhcrJob(
                 tenant,
                 normalizedOwner,
                 run.getId(),
                 null,
                 requestActorService.currentActor().userId()
         );
+        if (accepted.existingJob()) {
+            UUID existingRunId=ingestionJobService.relatedSyncRun(ingestionJobService.loadJob(tenant.getId(),accepted.jobId()));
+            syncRunRepository.delete(run);
+            var original=requireRun(existingRunId);
+            return new SyncTriggerResponse(original.getId(),original.getStatus(),"GitHub ingestion is already accepted");
+        }
         return new SyncTriggerResponse(run.getId(), run.getStatus(), "GitHub GHCR ingestion queued");
+        });
     }
 
     public SyncTriggerResponse triggerRepositoryRunOnce(GithubSbomIngestionRequest request) {
@@ -161,21 +176,26 @@ public class GithubSbomSourceService {
             throw new IllegalArgumentException("GitHub owner is required");
         }
         String syncType = isBomFileScanPath(normalizedRequest.path()) ? syncTypeForPath(normalizedRequest.path()) : SYNC_TYPE_GITHUB_REPOSITORY_SBOM;
-        SyncRun run = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> createQueuedRun(syncType, tenant))
-        );
-        ingestionJobService.enqueueGithubRepositoryJob(
+        return ingestionJobService.withAdmission(tenant, () -> {
+            SyncRun run = createQueuedRun(syncType, tenant);
+        var accepted=ingestionJobService.enqueueGithubRepositoryJob(
                 tenant,
                 normalizedRequest,
                 run.getId(),
                 null,
                 requestActorService.currentActor().userId()
         );
+        if (accepted.existingJob()) {
+            UUID existingRunId=ingestionJobService.relatedSyncRun(ingestionJobService.loadJob(tenant.getId(),accepted.jobId()));
+            syncRunRepository.delete(run);
+            var original=requireRun(existingRunId);
+            return new SyncTriggerResponse(original.getId(),original.getStatus(),"GitHub ingestion is already accepted");
+        }
         return new SyncTriggerResponse(run.getId(), run.getStatus(), "GitHub repository ingestion queued");
+        });
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSources() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("github-sbom.run-scheduled-sources")) {
             return;
@@ -183,23 +203,31 @@ public class GithubSbomSourceService {
         List<ClaimedGithubSourceRun> scheduledSources = TenantContext.runAsPlatform(() -> {
             List<ClaimedGithubSourceRun> scheduled = new ArrayList<>();
             for (Tenant tenant : tenantService.listActiveTenants()) {
-                tenantSchemaExecutionService.run(tenant, () -> {
+                try { tenantSchemaExecutionService.run(tenant, () -> {
                     scheduled.addAll(githubSbomSourceRepository.findByEnabledTrueOrderByCreatedAtAsc()
                             .stream()
                             .map(source -> new ClaimedGithubSourceRun(tenant.getId(), source.getId(), null))
                             .toList());
                     return null;
-                });
+                }); } catch (RuntimeException unavailable) { LOG.warn("Skipped unavailable GitHub source workspace {}",tenant.getId()); }
             }
             return scheduled;
         });
         for (ClaimedGithubSourceRun source : scheduledSources) {
-            ClaimedGithubSourceRun claimed = tenantSchemaExecutionService.run(source.tenantId(), () ->
-                    claimSourceRun(currentTenant(), source.sourceId(), true, false));
-            if (claimed == null) {
-                continue;
+            try {
+                Tenant tenant = tenantService.resolveTenantUuid(source.tenantId());
+                ingestionJobService.withAdmission(tenant, () -> {
+                    ClaimedGithubSourceRun claimed = claimSourceRun(tenant, source.sourceId(), true, false);
+                    if (claimed != null) enqueueClaimedSourceJob(tenant, claimed);
+                    return null;
+                });
+            } catch (QuotaExceededException deferred) {
+                // The claim/source/run changes rolled back together; it remains due.
+                LOG.info("Deferred scheduled GitHub source {} for tenant {} at configured capacity",
+                        source.sourceId(), source.tenantId());
+            } catch (RuntimeException failure) {
+                LOG.warn("Scheduled GitHub source {} could not be admitted", source.sourceId());
             }
-            enqueueClaimedSourceJob(tenantService.resolveTenantUuid(claimed.tenantId()), claimed);
         }
     }
 
@@ -258,10 +286,9 @@ public class GithubSbomSourceService {
             if (snapshot == null) {
                 return null;
             }
-            if (snapshot.githubToken() != null) {
-                githubTokenProvider.setOverrideToken(snapshot.githubToken());
-            }
-            try {
+            try (GithubTokenProvider.TokenScope ignored = githubTokenProvider.customerCredentials(
+                    credentialEncryptionService.decrypt(snapshot.githubToken()))) {
+                if (isGhcrSourcePath(snapshot.path())) ensureGhcrTokenConfigured();
                 Tenant tenant = workspaceService.getWorkspace();
                 if (isGhcrSourcePath(snapshot.path())) {
                     SbomIngestionService.GithubGhcrIngestionSummary summary =
@@ -293,8 +320,6 @@ public class GithubSbomSourceService {
                 }
             } catch (Exception e) {
                 failSourceRun(sourceId, runId, e.getMessage());
-            } finally {
-                githubTokenProvider.clearOverrideToken();
             }
             return null;
         });
@@ -303,7 +328,8 @@ public class GithubSbomSourceService {
     public void executeGhcrRunOnce(UUID tenantId, UUID runId, String owner) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markStandaloneRunRunning(runId);
-            try {
+            try (GithubTokenProvider.TokenScope ignored = githubTokenProvider.customerCredentials(null)) {
+                ensureGhcrTokenConfigured();
                 Tenant tenant = workspaceService.getWorkspace();
                 SbomIngestionService.GithubGhcrIngestionSummary summary =
                         sbomIngestionService.ingestAllFromGithubContainerRegistry(tenant, owner);
@@ -318,7 +344,7 @@ public class GithubSbomSourceService {
     public void executeRepositoryRunOnce(UUID tenantId, UUID runId, GithubSbomIngestionRequest request) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markStandaloneRunRunning(runId);
-            try {
+            try (GithubTokenProvider.TokenScope ignored = githubTokenProvider.customerCredentials(null)) {
                 Tenant tenant = workspaceService.getWorkspace();
                 if (isBomFileScanPath(request.path())) {
                     var summary = sbomIngestionService.ingestBomFilesFromGithub(tenant, request);
@@ -387,7 +413,7 @@ public class GithubSbomSourceService {
         source.setIntervalMinutes(request.intervalMinutes() == null ? 60 : Math.max(5, request.intervalMinutes()));
         source.setEnabled(request.enabled() == null || request.enabled());
         if (request.githubToken() != null) {
-            source.setGithubToken(request.githubToken());
+            source.setGithubToken(credentialEncryptionService.encrypt(request.githubToken()));
         }
     }
 
@@ -736,9 +762,10 @@ public class GithubSbomSourceService {
 
     private void ensureGhcrTokenConfiguredIfNeeded(UUID sourceId) {
         GithubSbomSource source = githubSbomSourceRepository.findById(sourceId)
-                .orElseThrow(() -> new EntityNotFoundException("GitHub SBOM source not found: " + sourceId));
-        if (isGhcrSourcePath(source.getPath()) && !source.hasGithubToken()) {
-            ensureGhcrTokenConfigured();
+                .orElseThrow(() -> new EntityNotFoundException("GitHub SBOM source not found"));
+        String token = credentialEncryptionService.decrypt(source.getGithubToken());
+        if (isGhcrSourcePath(source.getPath()) && (token == null || token.isBlank())) {
+            throw new ResponseStatusException(BAD_REQUEST, "GitHub GHCR discovery requires a tenant GitHub token with read:packages access");
         }
     }
 

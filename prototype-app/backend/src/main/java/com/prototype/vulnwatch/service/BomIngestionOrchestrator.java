@@ -49,6 +49,7 @@ import com.prototype.vulnwatch.service.sbomingestion.SbomContentIngestionService
 import com.prototype.vulnwatch.service.sbomingestion.SbomUploadSupportService;
 import com.prototype.vulnwatch.service.cbom.CbomIngestionResult;
 import com.prototype.vulnwatch.service.cbom.CbomIngestionService;
+import com.prototype.vulnwatch.util.BomInputLimits;
 import com.prototype.vulnwatch.util.IdentityUtil;
 import com.prototype.vulnwatch.util.PurlUtil;
 import java.io.IOException;
@@ -67,7 +68,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -76,8 +76,7 @@ import org.w3c.dom.NodeList;
 @Service
 public class BomIngestionOrchestrator {
 
-    private static final int MAX_COMPONENTS = 100_000;
-    public static final long MAX_BOM_BYTES = 50L * 1024 * 1024;
+    public static final long MAX_BOM_BYTES = BomInputLimits.MAX_BOM_BYTES;
 
     private final SbomEndpointFetchService sbomEndpointFetchService;
     private final SbomContentIngestionService sbomContentIngestionService;
@@ -153,7 +152,6 @@ public class BomIngestionOrchestrator {
         this.aiBomProjectionSchedulingService = aiBomProjectionSchedulingService;
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestFromUrl(Tenant tenant, BomFetchRequest request) throws IOException {
         SbomEndpointIngestionRequest legacyRequest = new SbomEndpointIngestionRequest(
                 request.assetType(),
@@ -181,7 +179,6 @@ public class BomIngestionOrchestrator {
         );
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestFromUpload(
             Tenant tenant,
             BomType bomType,
@@ -205,7 +202,6 @@ public class BomIngestionOrchestrator {
         );
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestFetchedContent(
             Tenant tenant,
             BomType bomType,
@@ -234,7 +230,6 @@ public class BomIngestionOrchestrator {
         );
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestGithubRepository(
             Tenant tenant,
             GithubSbomIngestionRequest request,
@@ -259,7 +254,6 @@ public class BomIngestionOrchestrator {
         );
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestGithubContainerImage(
             Tenant tenant,
             String assetName,
@@ -285,7 +279,6 @@ public class BomIngestionOrchestrator {
         );
     }
 
-    @Transactional
     public BomIngestionResultResponse ingestGithubRepoBomFile(
             Tenant tenant,
             BomType bomType,
@@ -334,20 +327,7 @@ public class BomIngestionOrchestrator {
             Consumer<Asset> assetCustomizer,
             BomSourceSelector selector
     ) throws IOException {
-        if (content.length > MAX_BOM_BYTES) {
-            throw new IOException("BOM payload is too large (max 50 MB)");
-        }
-
-        Asset resolvedAsset = sbomUploadSupportService.resolveAsset(
-                tenant,
-                legacyRequest.assetType(),
-                legacyRequest.assetName(),
-                legacyRequest.assetIdentifier()
-        );
-        if (assetCustomizer != null) {
-            assetCustomizer.accept(resolvedAsset);
-            sbomUploadSupportService.saveAsset(resolvedAsset);
-        }
+        BomInputLimits.checkBytes(content);
 
         boolean isXml = isXmlContent(content);
         SbomFormat format = sbomParserService.detectFormat(content);
@@ -366,6 +346,31 @@ public class BomIngestionOrchestrator {
             root = parseRoot(content);
             serialNumber = extractSerialNumber(root);
             formatVersion = extractFormatVersion(root, format);
+        }
+
+        // Finish parsing and reject empty/over-limit documents before creating an asset,
+        // resolving a source or superseding any previously accepted version.
+        List<BomComponent> parsedComponents = List.of();
+        if (bomType == BomType.CBOM) {
+            cbomIngestionService.validateContent(content);
+        } else {
+            parsedComponents = isXml
+                    ? extractAndCategorizeXmlComponents(content, tenant, bomType, supplier)
+                    : extractAndCategorizeComponents(root, tenant, bomType, supplier);
+            if (parsedComponents.isEmpty()) {
+                throw new IOException("No BOM components could be extracted from the submitted document");
+            }
+        }
+
+        Asset resolvedAsset = sbomUploadSupportService.resolveAsset(
+                tenant,
+                legacyRequest.assetType(),
+                legacyRequest.assetName(),
+                legacyRequest.assetIdentifier()
+        );
+        if (assetCustomizer != null) {
+            assetCustomizer.accept(resolvedAsset);
+            sbomUploadSupportService.saveAsset(resolvedAsset);
         }
 
         String supplierKey = supplier == null ? null : supplier.trim().toLowerCase(Locale.ROOT);
@@ -503,9 +508,11 @@ public class BomIngestionOrchestrator {
             bomRecordRepository.save(record);
         } else {
             // Persist BomComponents with category
-            List<BomComponent> components = isXml
-                    ? extractAndCategorizeXmlComponents(content, record, tenant, bomType, supplier)
-                    : extractAndCategorizeComponents(root, record, tenant, bomType, supplier);
+            List<BomComponent> components = parsedComponents;
+            for (BomComponent component : components) {
+                component.setBomId(record.getId());
+            }
+            bomComponentRepository.saveAll(components);
             if (components.isEmpty()) {
                 record.setStatus(BomStatus.FAILED);
                 bomRecordRepository.save(record);
@@ -622,8 +629,8 @@ public class BomIngestionOrchestrator {
     }
 
     private List<BomComponent> extractAndCategorizeComponents(
-            JsonNode root, BomIngestionRecord record, Tenant tenant, BomType bomType, String supplierOverride
-    ) {
+            JsonNode root, Tenant tenant, BomType bomType, String supplierOverride
+    ) throws IOException {
         List<BomComponent> result = new ArrayList<>();
         JsonNode componentsNode = root.path("components");
         if (!componentsNode.isArray()) {
@@ -632,8 +639,8 @@ public class BomIngestionOrchestrator {
         if (!componentsNode.isArray()) {
             return result;
         }
+        BomInputLimits.checkComponentCount(componentsNode.size());
         for (JsonNode node : componentsNode) {
-            if (result.size() >= MAX_COMPONENTS) break;
 
             String name = node.path("name").asText(null);
             if (name == null || name.isBlank()) continue;
@@ -646,7 +653,6 @@ public class BomIngestionOrchestrator {
             BomComponentCategory category = categorizationService.categorize(rawType, bomType, compSupplier);
 
             BomComponent comp = new BomComponent();
-            comp.setBomId(record.getId());
             comp.setTenant(tenant);
             comp.setName(name.trim());
             comp.setVersion(blankToNull(node.path("version").asText(null)));
@@ -666,12 +672,11 @@ public class BomIngestionOrchestrator {
             comp.setActive(true);
             result.add(comp);
         }
-        bomComponentRepository.saveAll(result);
         return result;
     }
 
     private List<BomComponent> extractAndCategorizeXmlComponents(
-            byte[] content, BomIngestionRecord record, Tenant tenant, BomType bomType, String supplierOverride
+            byte[] content, Tenant tenant, BomType bomType, String supplierOverride
     ) throws IOException {
         List<BomComponent> result = new ArrayList<>();
         try {
@@ -685,7 +690,8 @@ public class BomIngestionOrchestrator {
                 return result;
             }
             NodeList children = componentsEl.getChildNodes();
-            for (int i = 0; i < children.getLength() && result.size() < MAX_COMPONENTS; i++) {
+            int componentCount = 0;
+            for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);
                 if (node.getNodeType() != Node.ELEMENT_NODE) continue;
                 Element comp = (Element) node;
@@ -697,6 +703,7 @@ public class BomIngestionOrchestrator {
                     compLocal = c >= 0 ? n2.substring(c + 1) : n2;
                 }
                 if (!"component".equals(compLocal)) continue;
+                BomInputLimits.checkComponentCount(++componentCount);
 
                 String name = sbomParserService.xmlChildText(comp, "name");
                 if (name == null || name.isBlank()) continue;
@@ -723,7 +730,6 @@ public class BomIngestionOrchestrator {
                 BomComponentCategory category = categorizationService.categorize(rawType, bomType, compSupplier);
 
                 BomComponent bomComp = new BomComponent();
-                bomComp.setBomId(record.getId());
                 bomComp.setTenant(tenant);
                 bomComp.setName(name.trim());
                 bomComp.setVersion(blankToNull(version));
@@ -745,18 +751,16 @@ public class BomIngestionOrchestrator {
         } catch (Exception e) {
             throw new IOException("Failed to parse XML BOM components", e);
         }
-        bomComponentRepository.saveAll(result);
         return result;
     }
 
-    private JsonNode parseRoot(byte[] content) {
-        try {
-            JsonNode root = objectMapper.readTree(content);
-            JsonNode nested = root.path("sbom");
-            return nested.isObject() ? nested : root;
-        } catch (Exception e) {
-            return objectMapper.createObjectNode();
+    private JsonNode parseRoot(byte[] content) throws IOException {
+        JsonNode root = objectMapper.readTree(content);
+        if (root == null || !root.isObject()) {
+            throw new IOException("BOM must be a JSON object");
         }
+        JsonNode nested = root.path("sbom");
+        return nested.isObject() ? nested : root;
     }
 
     private String extractSerialNumber(JsonNode root) {
@@ -1293,7 +1297,7 @@ public class BomIngestionOrchestrator {
     private String resolvePrimaryXmlCpe(Element componentElement) {
         Element cpes = sbomParserService.xmlFirstChild(componentElement, "cpe");
         if (cpes != null) {
-            return blankToNull(cpes.getTextContent());
+            return blankToNull(BomInputLimits.xmlText(cpes));
         }
         Element externalReferences = sbomParserService.xmlFirstChild(componentElement, "externalReferences");
         if (externalReferences != null) {
@@ -1338,12 +1342,12 @@ public class BomIngestionOrchestrator {
         if (tagId != null) {
             return tagId;
         }
-        return blankToNull(swid.getTextContent());
+        return blankToNull(BomInputLimits.xmlText(swid));
     }
 
     private String extractXmlHashes(Element componentElement) {
         Element hashes = sbomParserService.xmlFirstChild(componentElement, "hashes");
-        return hashes == null ? null : blankToNull(hashes.getTextContent());
+        return hashes == null ? null : blankToNull(BomInputLimits.xmlText(hashes));
     }
 
     private String extractXmlExternalReferences(Element componentElement) {

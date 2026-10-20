@@ -59,11 +59,13 @@ class IngestionJobServiceTest {
     private TransactionTemplate transactionTemplate;
 
     private IngestionJobService service;
+    private final IngestionAttemptService attempts=org.mockito.Mockito.mock(IngestionAttemptService.class);
 
     @BeforeEach
     void setUp() {
         service = new IngestionJobService(
                 ingestionJobRepository,
+                attempts,
                 credentialEncryptionService,
                 tenantSchemaExecutionService,
                 tenantService,
@@ -113,7 +115,7 @@ class IngestionJobServiceTest {
         );
         when(credentialEncryptionService.encrypt("Bearer secret")).thenReturn("enc-secret");
         when(ingestionJobRepository.findActiveByDedupeKeyForUpdate(anyString())).thenReturn(Optional.empty());
-        when(ingestionJobRepository.save(any(IngestionJob.class))).thenAnswer(invocation -> {
+        when(ingestionJobRepository.saveAndFlush(any(IngestionJob.class))).thenAnswer(invocation -> {
             IngestionJob job = invocation.getArgument(0);
             setId(job, UUID.randomUUID());
             return job;
@@ -124,7 +126,7 @@ class IngestionJobServiceTest {
         assertFalse(response.existingJob());
         assertEquals(IngestionJobService.STATUS_QUEUED, response.status());
         ArgumentCaptor<IngestionJob> jobCaptor = ArgumentCaptor.forClass(IngestionJob.class);
-        verify(ingestionJobRepository).save(jobCaptor.capture());
+        verify(ingestionJobRepository).saveAndFlush(jobCaptor.capture());
         IngestionJob saved = jobCaptor.getValue();
         assertEquals(" registry.example.com/payments ", saved.getAssetIdentifier());
         assertEquals("remote_endpoint:registry.example.com/payments", saved.getDedupeKey());
@@ -179,7 +181,7 @@ class IngestionJobServiceTest {
         );
         when(credentialEncryptionService.encrypt("Bearer secret")).thenReturn("enc-secret");
         when(ingestionJobRepository.findActiveByDedupeKeyForUpdate(anyString())).thenReturn(Optional.empty());
-        when(ingestionJobRepository.save(any(IngestionJob.class))).thenAnswer(invocation -> {
+        when(ingestionJobRepository.saveAndFlush(any(IngestionJob.class))).thenAnswer(invocation -> {
             IngestionJob job = invocation.getArgument(0);
             setId(job, UUID.randomUUID());
             return job;
@@ -208,7 +210,8 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
                         IngestionJobService.JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,
                         IngestionJobService.JOB_TYPE_AI_GRID_RUNTIME_ADAPTER,
-                        IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION)
+                        IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION,
+                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB)
         )).thenReturn(0L);
         when(ingestionJobRepository.pollPendingExcludingJobTypes(
                 List.of(
@@ -216,7 +219,8 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
                         IngestionJobService.JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,
                         IngestionJobService.JOB_TYPE_AI_GRID_RUNTIME_ADAPTER,
-                        IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION),
+                        IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION,
+                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB),
                 2
         )).thenReturn(List.of(first, second));
 
@@ -252,14 +256,14 @@ class IngestionJobServiceTest {
         List<IngestionJobService.ClaimedJobRef> claimed = service.claimPendingJobsByType(
                 tenant, IngestionJobService.JOB_TYPE_AI_SECURITY_AWS_BEDROCK, 1, 1);
 
-        assertEquals(List.of(new IngestionJobService.ClaimedJobRef(tenant.getId(), jobId)), claimed);
+        assertEquals(List.of(new IngestionJobService.ClaimedJobRef(tenant.getId(), jobId, aiJob.getClaimToken())), claimed);
         assertEquals(IngestionJobService.STATUS_RUNNING, aiJob.getStatus());
         verify(ingestionJobRepository).pollPendingByJobType(
                 IngestionJobService.JOB_TYPE_AI_SECURITY_AWS_BEDROCK, 1);
     }
 
     @Test
-    void recoverInterruptedRunningJobsMarksRunningRowsFailedAcrossTenants() throws Exception {
+    void recoverOnlyExpiredAttemptsAndRetainRetryableIntent() throws Exception {
         Tenant tenant = tenant();
         IngestionJob running = queuedJob(tenant, "asset-1");
         UUID jobId = UUID.randomUUID();
@@ -267,18 +271,18 @@ class IngestionJobServiceTest {
         running.setStatus(IngestionJobService.STATUS_RUNNING);
         running.setStartedAt(Instant.parse("2026-06-15T10:00:00Z"));
         when(tenantService.listActiveTenants()).thenReturn(List.of(tenant));
-        when(ingestionJobRepository.findByStatus(IngestionJobService.STATUS_RUNNING)).thenReturn(List.of(running));
+        when(ingestionJobRepository.pollExpiredAttempts(100)).thenReturn(List.of(running));
+        when(attempts.lockExpiredJob(jobId)).thenReturn(true);
 
         int recovered = service.recoverInterruptedRunningJobs();
 
         assertEquals(1, recovered);
-        assertEquals(IngestionJobService.STATUS_FAILED, running.getStatus());
-        assertEquals("WORKER_INTERRUPTED", running.getFailureCode());
-        assertEquals("Ingestion job interrupted by service restart", running.getFailureMessage());
-        assertNotNull(running.getCompletedAt());
+        assertEquals(IngestionJobService.STATUS_QUEUED, running.getStatus());
+        assertEquals("ATTEMPT_EXPIRED", running.getFailureCode());
+        assertEquals("Previous worker lease expired", running.getFailureMessage());
+        org.junit.jupiter.api.Assertions.assertNull(running.getCompletedAt());
         verify(ingestionJobRepository).saveAll(List.of(running));
-        verify(auditEventService).record("ingestion.job.failed", "ingestion_job", jobId.toString(), null);
-        verify(ingestionJobMetricsService).recordFailed("remote-endpoint");
+        verify(auditEventService,org.mockito.Mockito.never()).record(eq("ingestion.job.failed"),anyString(),anyString(),any());
     }
 
     @Test

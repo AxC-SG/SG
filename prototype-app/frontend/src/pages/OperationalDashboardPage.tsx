@@ -409,6 +409,7 @@ function renderReadPath(payload: OperationalSectionResponse<OperationalApiReadPa
           <SummaryMetricCard label="Filter Cache State" value={data.filterCacheActive ? 'Warm' : 'Cold'} />
           <SummaryMetricCard label="Filter Cache Hit Ratio" value={formatPercent(data.filterCacheHitRatioPercent)} />
         </div>
+        <p className="panel-caption">Recent requests on this application instance, up to {data.maximumSamplesPerMetric ?? 500} samples per metric. These readings are not fleet totals or a fixed time window.</p>
         <EndpointMetricsTable rows={data.endpointMetrics ?? []} />
       </section>
     </div>
@@ -701,26 +702,9 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
         <section className="panel">
           <div className="panel-header">
             <h3>Operations Workspace Access Required</h3>
-            <span className="panel-caption">Creator mode is enabled on backend</span>
+            <span className="panel-caption">Platform owner access is required</span>
           </div>
-          <div className="noise-summary-grid">
-            <div className="noise-summary-item">
-              <div className="noise-summary-label">Step 1</div>
-              <div className="noise-summary-value">
-                Use backend env <code>APP_CREATOR_KEY</code>.
-              </div>
-            </div>
-            <div className="noise-summary-item">
-              <div className="noise-summary-label">Step 2</div>
-              <div className="noise-summary-value">
-                Set frontend <code>VITE_CREATOR_KEY</code> to the same value.
-              </div>
-            </div>
-            <div className="noise-summary-item">
-              <div className="noise-summary-label">Step 3</div>
-              <div className="noise-summary-value">Restart backend and frontend.</div>
-            </div>
-          </div>
+          <p>Sign in with an authorized platform owner account. If access was recently granted, sign in again.</p>
         </section>
       );
     }

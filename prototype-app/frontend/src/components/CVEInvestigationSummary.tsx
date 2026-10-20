@@ -37,8 +37,8 @@ const COLORS = {
 };
 
 const API_BASE = resolveApiBase();
-const API_KEY = import.meta.env.VITE_API_KEY ?? (import.meta.env.DEV ? 'change-me-in-prod' : '');
-const CREATOR_KEY = import.meta.env.VITE_CREATOR_KEY ?? (import.meta.env.DEV ? 'local-creator' : '');
+const API_KEY = import.meta.env.DEV ? (import.meta.env.VITE_API_KEY ?? 'change-me-in-prod') : '';
+const CREATOR_KEY = import.meta.env.DEV ? (import.meta.env.VITE_CREATOR_KEY ?? 'local-creator') : '';
 
 const LOADING_STEPS = [
   'Analyzing 4 runbook results...',

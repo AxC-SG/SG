@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.AwsCredentialProvider;
+import com.prototype.vulnwatch.client.AwsCustomerBinding;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient.AwsEc2FetchResult;
 import com.prototype.vulnwatch.client.AwsDiscoveryClient.AwsResourceRecord;
@@ -51,6 +52,7 @@ public class AwsDiscoverySyncService {
     private final ObjectMapper objectMapper;
     private final TaskExecutor integrationQueueExecutor;
     private final TransactionTemplate transactionTemplate;
+    private final IngestionJobService jobs;
     private final CredentialEncryptionService credentialEncryptionService;
     private final WorkspaceService workspaceService;
     private final TenantService tenantService;
@@ -71,7 +73,8 @@ public class AwsDiscoverySyncService {
             CredentialEncryptionService credentialEncryptionService,
             WorkspaceService workspaceService,
             TenantService tenantService,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantSchemaExecutionService tenantSchemaExecutionService,
+            IngestionJobService jobs
     ) {
         this.awsDiscoveryConfigRepository = awsDiscoveryConfigRepository;
         this.awsDiscoveryTargetRepository = awsDiscoveryTargetRepository;
@@ -87,6 +90,7 @@ public class AwsDiscoverySyncService {
         this.workspaceService = workspaceService;
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.jobs = jobs;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -98,12 +102,13 @@ public class AwsDiscoverySyncService {
 
     public SyncTriggerResponse trigger() {
         Tenant tenant = workspaceService.getWorkspace();
-        ClaimedRun claimed = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> claimManualRun(tenant))
-        );
+        ClaimedRun claimed = jobs.withAdmission(tenant, () -> {
+            ClaimedRun admitted = claimManualRun(tenant);
+            if (!admitted.reusedActiveRun()) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
+                    admitted.configId(), admitted.runId(), "manual", null);
+            return admitted;
+        });
         if (!claimed.reusedActiveRun()) {
-            integrationQueueExecutor.execute(() -> executeRun(tenant.getId(), claimed.configId(), claimed.runId(), "manual", null));
             return new SyncTriggerResponse(claimed.runId(), "queued", "AWS Cloud Discovery sync queued");
         }
         return new SyncTriggerResponse(claimed.runId(), "running", "AWS Cloud Discovery sync is already queued or running");
@@ -111,18 +116,19 @@ public class AwsDiscoverySyncService {
 
     public SyncTriggerResponse triggerTarget(Tenant tenant, UUID targetId) {
         AwsDiscoveryTarget target = awsDiscoveryTargetService.requireTarget(tenant, targetId);
-        ClaimedRun claimed = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> claimRunForConfig(target.getConfig(), "manual-target", true))
-        );
+        ClaimedRun claimed = jobs.withAdmission(tenant, () -> {
+            ClaimedRun admitted = claimRunForConfig(target.getConfig(), "manual-target", true);
+            if (!admitted.reusedActiveRun()) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
+                    admitted.configId(), admitted.runId(), "manual-target", targetId);
+            return admitted;
+        });
         if (!claimed.reusedActiveRun()) {
-            integrationQueueExecutor.execute(() -> executeRun(tenant.getId(), claimed.configId(), claimed.runId(), "manual-target", targetId));
             return new SyncTriggerResponse(claimed.runId(), "queued", "AWS Cloud Discovery target sync queued");
         }
         return new SyncTriggerResponse(claimed.runId(), "running", "AWS Cloud Discovery sync is already queued or running");
     }
 
-    @Scheduled(cron = "0 */5 * * * *")
+    @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("aws-discovery.run-scheduled-syncs")) {
             return;
@@ -140,20 +146,26 @@ public class AwsDiscoverySyncService {
             return scheduledConfigs;
         });
         for (ConfigRef configRef : configs) {
-            ClaimedRun claimed = tenantSchemaExecutionService.run(configRef.tenantId(), () -> {
-                AwsDiscoveryConfig config = awsDiscoveryConfigRepository.findById(configRef.configId()).orElse(null);
-                return transactionTemplate.execute(status -> config == null ? null : claimScheduledRun(config));
-            });
-            if (claimed == null) {
-                continue;
+            try {
+                Tenant tenant = tenantService.resolveTenantUuid(configRef.tenantId());
+                jobs.withAdmission(tenant, () -> {
+                    AwsDiscoveryConfig config = awsDiscoveryConfigRepository.findById(configRef.configId()).orElse(null);
+                    ClaimedRun claimed = config == null ? null : claimScheduledRun(config);
+                    if (claimed != null) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
+                            claimed.configId(), claimed.runId(), "scheduled", null);
+                    return null;
+                });
+            } catch (RuntimeException failure) {
+                LOG.warn("Scheduled connector {} admission deferred", configRef.configId());
             }
-            integrationQueueExecutor.execute(() -> executeRun(configRef.tenantId(), claimed.configId(), claimed.runId(), "scheduled", null));
         }
     }
 
     @Transactional(readOnly = true)
     public boolean hasActiveRun() {
-        return !syncRunRepository.findActiveRunsBySyncType(SYNC_TYPE_AWS_DISCOVERY, List.of("queued", "running")).isEmpty();
+        var tenant = workspaceService.getWorkspace();
+        return !syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenant.getId(), SYNC_TYPE_AWS_DISCOVERY, List.of("queued", "running")).isEmpty();
     }
 
     // ── Run claiming ───────────────────────────────────────────────────────────────────────────
@@ -169,16 +181,27 @@ public class AwsDiscoverySyncService {
     }
 
     private ClaimedRun claimScheduledRun(AwsDiscoveryConfig config) {
-        if (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config)) {
-            return null;
-        }
         return claimRunForConfig(config, "scheduled", false);
     }
 
     private ClaimedRun claimRunForConfig(AwsDiscoveryConfig config, String triggerMode, boolean allowReuseActiveRun) {
+        // The configuration row is the admission lock, including when no run exists yet.
+        // Tenant context and the transaction are established by every caller before this lock.
+        config = awsDiscoveryConfigRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
+                .orElseThrow(() -> new EntityNotFoundException("AWS Cloud Discovery config not found"));
+        if (!isConfigured(config) || !config.isEnabled()) {
+            throw new IllegalStateException("AWS customer connector is disabled or requires a server binding");
+        }
+        if ("scheduled".equals(triggerMode)
+                && (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config))) {
+            return null;
+        }
+        if ("manual".equals(triggerMode) && (!isConfigured(config) || !config.isEnabled())) {
+            throw new IllegalStateException("AWS Cloud Discovery connector is not configured or is disabled");
+        }
         UUID tenantId = config.getTenant().getId();
-        Optional<SyncRun> active = syncRunRepository.findActiveRunsBySyncType(
-                SYNC_TYPE_AWS_DISCOVERY,
+        Optional<SyncRun> active = syncRunRepository.findActiveRunsByTenantAndSyncType(
+                tenantId, SYNC_TYPE_AWS_DISCOVERY,
                 List.of("queued", "running")
         ).stream().findFirst();
         if (active.isPresent()) {
@@ -208,7 +231,7 @@ public class AwsDiscoverySyncService {
 
     private boolean isDue(AwsDiscoveryConfig config) {
         SyncRun latest = syncRunRepository
-                .findTopBySyncTypeIgnoreCaseOrderByStartedAtDesc(SYNC_TYPE_AWS_DISCOVERY)
+                .findTopBySyncTypeIgnoreCaseAndTenant_IdOrderByStartedAtDesc(SYNC_TYPE_AWS_DISCOVERY, config.getTenant().getId())
                 .orElse(null);
         if (latest == null) {
             return true;
@@ -223,13 +246,16 @@ public class AwsDiscoverySyncService {
 
     // ── Execution ──────────────────────────────────────────────────────────────────────────────
 
-    private void executeRun(UUID tenantId, UUID configId, UUID runId, String triggerMode, UUID onlyTargetId) {
+    public void executeQueuedRun(UUID tenantId, UUID configId, UUID runId, String triggerMode, UUID onlyTargetId) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             Instant runStartTime = Instant.now();
             markRunRunning(runId, triggerMode);
             try {
                 AwsDiscoveryConfig config = awsDiscoveryConfigRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("AWS Discovery config not found: " + configId));
+                if (!tenantId.equals(config.getTenant().getId()) || !config.isEnabled() || !isConfigured(config)) {
+                    throw new IllegalStateException("AWS customer connector is disabled or no longer matches the queued work");
+                }
                 awsDiscoveryTargetService.ensureLegacyTarget(config);
 
                 LOG.info("AWS Discovery sync run {} starting (trigger={})", runId, triggerMode);
@@ -314,10 +340,14 @@ public class AwsDiscoverySyncService {
         metadata.put("accountId", defaultIfBlank(accountId, "unknown"));
         metadata.put("accountName", defaultIfBlank(target.getAccountName(), "AWS Account"));
         try {
+            if (target.getTenant() == null || !config.getTenant().getId().equals(target.getTenant().getId()) || !target.isEnabled()) {
+                throw new IllegalStateException("AWS discovery target is disabled or belongs to a different tenant");
+            }
             AwsDiscoveryConfig runtimeConfig = configWithDecryptedCredential(config);
             AwsCredentialsProvider creds = target.getId() == null
                     ? AwsCredentialProvider.from(runtimeConfig)
                     : AwsCredentialProvider.from(runtimeConfig, target);
+            awsDiscoveryClient.verifyCustomerIdentity(creds, accountId, target.getRoleArn());
             List<String> regions = parseRegions(defaultIfBlank(target.getRegionsJson(), config.getRegionsJson()));
             List<String> resourceTypes = parseResourceTypes(defaultIfBlank(target.getResourceTypesJson(), config.getResourceTypesJson()));
             AwsEc2FetchResult fetchResult = fetchTargetRecords(creds, regions);
@@ -532,12 +562,13 @@ public class AwsDiscoverySyncService {
 
     private boolean isConfigured(AwsDiscoveryConfig config) {
         if (config == null || config.getTenant() == null) return false;
-        return switch (config.getAuthType() == null ? com.prototype.vulnwatch.domain.AwsAuthType.INSTANCE_METADATA : config.getAuthType()) {
-            case INSTANCE_METADATA -> true;
-            case ACCESS_KEY -> hasText(config.getAccessKeyId()) && hasText(config.getCredentialSecret());
-            case CROSS_ACCOUNT_ROLE -> hasText(config.getCrossAccountRoleArn())
-                    || awsDiscoveryTargetRepository.countByConfig(config) > 0;
-        };
+        try {
+            AwsCustomerBinding.validate(config.getTenant().getId(), config.getAwsAccountId(), config.getCrossAccountRoleArn(),
+                    config.getExternalId(), config.getCredentialBindingVersion());
+            return true;
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
     }
 
     private AwsDiscoveryConfig configWithDecryptedCredential(AwsDiscoveryConfig config) {
@@ -552,6 +583,7 @@ public class AwsDiscoverySyncService {
         runtimeConfig.setCredentialSecret(credentialEncryptionService.decrypt(config.getCredentialSecret()));
         runtimeConfig.setCrossAccountRoleArn(config.getCrossAccountRoleArn());
         runtimeConfig.setExternalId(config.getExternalId());
+        runtimeConfig.setCredentialBindingVersion(config.getCredentialBindingVersion());
         runtimeConfig.setAwsAccountId(config.getAwsAccountId());
         runtimeConfig.setRegionsJson(config.getRegionsJson());
         runtimeConfig.setResourceTypesJson(config.getResourceTypesJson());
@@ -565,8 +597,9 @@ public class AwsDiscoverySyncService {
         if (onlyTargetId != null) {
             return awsDiscoveryTargetRepository.findById(onlyTargetId)
                     .filter(target -> target.getConfig() != null && config.getId().equals(target.getConfig().getId()))
+                    .filter(AwsDiscoveryTarget::isEnabled)
                     .map(List::of)
-                    .orElse(List.of());
+                    .orElseThrow(() -> new IllegalStateException("AWS target is disabled or no longer belongs to the queued connector"));
         }
         return awsDiscoveryTargetRepository.findByConfigAndEnabledTrueOrderByAccountNameAscAccountIdAsc(config);
     }
@@ -579,6 +612,7 @@ public class AwsDiscoverySyncService {
         target.setAccountName(hasText(config.getAwsAccountId()) ? "AWS Account " + config.getAwsAccountId() : "AWS Account");
         target.setRoleArn(config.getCrossAccountRoleArn());
         target.setExternalId(config.getExternalId());
+        target.setCredentialBindingVersion(config.getCredentialBindingVersion());
         target.setEnabled(config.isEnabled());
         target.setRegionsJson(config.getRegionsJson());
         target.setResourceTypesJson(config.getResourceTypesJson());

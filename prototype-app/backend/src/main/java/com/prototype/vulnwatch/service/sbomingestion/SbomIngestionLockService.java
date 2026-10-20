@@ -2,6 +2,7 @@ package com.prototype.vulnwatch.service.sbomingestion;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.service.IngestionJobLockService;
+import com.prototype.vulnwatch.service.TenantWorkRunner;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 import org.springframework.stereotype.Service;
@@ -17,8 +18,8 @@ import org.springframework.stereotype.Service;
  * lifetime of the process, and every later attempt failed with "already in progress".
  *
  * <p>It is now a transaction-scoped Postgres advisory lock, which is visible across instances
- * and released by the database when the transaction ends, so it cannot be leaked. Every
- * ingestion entry point is {@code @Transactional}, so a transaction is always open here.
+ * and released by the database when the transaction ends, so it cannot be leaked. The
+ * tenant work runner selects the customer before opening the document transaction here.
  *
  * <p>The key comes from {@link IngestionJobLockService} so that this path and the asynchronous
  * ingestion-job worker contend on the same key for the same asset. Previously one used a
@@ -30,12 +31,18 @@ import org.springframework.stereotype.Service;
 public class SbomIngestionLockService {
 
     private final IngestionJobLockService ingestionJobLockService;
+    private final TenantWorkRunner tenantWorkRunner;
 
-    public SbomIngestionLockService(IngestionJobLockService ingestionJobLockService) {
+    public SbomIngestionLockService(IngestionJobLockService ingestionJobLockService, TenantWorkRunner tenantWorkRunner) {
         this.ingestionJobLockService = ingestionJobLockService;
+        this.tenantWorkRunner = tenantWorkRunner;
     }
 
     public <T> T withAssetLock(Tenant tenant, String assetIdentifier, Callable<T> action) throws IOException {
+        return tenantWorkRunner.runScopedChecked(tenant, () -> withTransactionLock(tenant, assetIdentifier, action));
+    }
+
+    private <T> T withTransactionLock(Tenant tenant, String assetIdentifier, Callable<T> action) throws IOException {
         long lockKey = ingestionJobLockService.assetLockKey(
                 tenant == null ? null : tenant.getId(), assetIdentifier);
         if (!ingestionJobLockService.tryAcquireTransactionLock(lockKey)) {

@@ -56,6 +56,7 @@ public class TenantUserInviteService {
 
     @Transactional
     public TenantUserInvite createInvite(UUID tenantId, String email, String displayName, String role, String invitedBySubject) {
+        String tenantRole = TenantRolePolicy.forAssignment(role);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + tenantId));
         String normalizedEmail = normalizeEmail(email);
@@ -73,7 +74,7 @@ public class TenantUserInviteService {
         invite.setEmail(normalizedEmail);
         invite.setDisplayName(trimToNull(displayName));
         invite.setExternalSubject(externalSubject);
-        invite.setRole(normalizeRole(role));
+        invite.setRole(tenantRole);
         invite.setToken(newToken());
         invite.setStatus("READY");
         invite.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
@@ -86,7 +87,8 @@ public class TenantUserInviteService {
 
     @Transactional
     public TenantUserInvite resendInvite(UUID tenantId, UUID inviteId) {
-        TenantUserInvite invite = identityAdministrationService.findInvite(tenantId, inviteId);
+        TenantUserInvite invite = identityAdministrationService.findInviteForUpdate(tenantId, inviteId);
+        TenantRolePolicy.forAuthorization(invite.getRole());
         if ("ACCEPTED".equalsIgnoreCase(invite.getStatus()) || invite.getAcceptedAt() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Invite has already been accepted");
         }
@@ -102,7 +104,7 @@ public class TenantUserInviteService {
 
     @Transactional
     public void cancelInvite(UUID tenantId, UUID inviteId) {
-        TenantUserInvite invite = identityAdministrationService.findInvite(tenantId, inviteId);
+        TenantUserInvite invite = identityAdministrationService.findInviteForUpdate(tenantId, inviteId);
         invite.setStatus("CANCELLED");
         invite.setUpdatedAt(Instant.now());
         identityAdministrationService.saveInvite(invite);
@@ -116,14 +118,14 @@ public class TenantUserInviteService {
     }
 
     public TenantInviteValidationResponse acceptInvite(String token) {
-        TenantUserInvite invite = findInvite(token);
+        UUID tenantId = identityAdministrationService.findInviteTenantId(token);
         return tenantWorkRunner.runScoped(
-                invite.getTenant().getId(),
+                tenantId,
                 () -> acceptInviteInTenantScope(token));
     }
 
     private TenantInviteValidationResponse acceptInviteInTenantScope(String token) {
-        TenantUserInvite invite = findInvite(token);
+        TenantUserInvite invite = identityAdministrationService.findInviteByTokenForUpdate(token);
         TenantInviteValidationResponse validation = toValidationResponse(invite, null, null);
         if (!validation.valid()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, validation.message());
@@ -133,7 +135,7 @@ public class TenantUserInviteService {
                 invite.getExternalSubject(),
                 invite.getEmail(),
                 invite.getDisplayName(),
-                invite.getRole(),
+                TenantRolePolicy.forAuthorization(invite.getRole()),
                 invite.getInvitedBy()
         );
         invite.setStatus("ACCEPTED");
@@ -153,8 +155,13 @@ public class TenantUserInviteService {
     }
 
     private TenantUserInvite deliverInvite(TenantUserInvite invite) {
+        TenantRolePolicy.forAuthorization(invite.getRole());
         ResendEmailClient.DeliveryResult deliveryResult = tenantInviteEmailService.sendInvite(invite);
-        if (deliveryResult.state() == ResendEmailClient.DeliveryState.SENT) {
+        if (deliveryResult.state() == ResendEmailClient.DeliveryState.QUEUED) {
+            invite.setStatus("QUEUED");
+            invite.setDeliveryDetail(deliveryResult.detail());
+            auditEventService.record("member.invite.email.queued","tenant_user_invite",invite.getId().toString(),null);
+        } else if (deliveryResult.state() == ResendEmailClient.DeliveryState.SENT) {
             invite.setStatus("SENT");
             invite.setLastSentAt(Instant.now());
             invite.setProviderMessageId(deliveryResult.providerMessageId());
@@ -212,7 +219,7 @@ public class TenantUserInviteService {
                 tenant == null ? null : tenant.getId().toString(),
                 tenant == null ? null : tenant.getName(),
                 invite.getDisplayName(),
-                invite.getRole(),
+                TenantRolePolicy.forAuthorization(invite.getRole()),
                 invite.getExpiresAt(),
                 message,
                 setupToken
@@ -235,13 +242,6 @@ public class TenantUserInviteService {
             return null;
         }
         return appUserRepository.findByExternalSubject(invitedBySubject.trim()).orElse(null);
-    }
-
-    private String normalizeRole(String role) {
-        if (role == null || role.isBlank()) {
-            throw new IllegalArgumentException("role is required");
-        }
-        return role.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
     }
 
     private String normalizeEmail(String email) {

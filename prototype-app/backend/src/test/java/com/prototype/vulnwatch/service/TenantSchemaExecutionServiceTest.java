@@ -11,6 +11,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -124,8 +126,7 @@ class TenantSchemaExecutionServiceTest {
     }
 
     @Test
-    void guardFailsDifferentTenantInsideActiveTransactionWhenConfiguredToFail() {
-        service = new TenantSchemaExecutionService(tenantService, tenantSchemaService, "FAIL");
+    void guardFailsDifferentTenantInsideActiveTransactionByDefault() {
         UUID currentTenantId = UUID.randomUUID();
         UUID requestedTenantId = UUID.randomUUID();
         Tenant tenant = new Tenant();
@@ -142,4 +143,25 @@ class TenantSchemaExecutionServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Tenant context switch requested inside an active transaction");
     }
+    @ParameterizedTest
+    @ValueSource(strings = {"WARN", "unknown", ""})
+    void invalidOrPermissiveGuardConfigurationFailsExplicitly(String mode) {
+        assertThatThrownBy(() -> new TenantSchemaExecutionService(tenantService, tenantSchemaService, mode))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("must be FAIL");
+    }
+
+    @Test
+    void exceptionRestoresPreviousTenantContext() {
+        Tenant tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        tenant.setSchemaName("tenant_beta");
+        when(tenantSchemaService.schemaNameForTenant(tenant)).thenReturn("tenant_beta");
+        TenantContext.runAsPlatform(() -> {
+            assertThatThrownBy(() -> service.run(tenant, () -> { throw new IllegalStateException("work failed"); }))
+                    .hasMessage("work failed");
+            assertThat(TenantContext.isPlatformContext()).isTrue();
+            assertThat(TenantContext.getCurrentTenantId()).isNull();
+        });
+    }
+
 }

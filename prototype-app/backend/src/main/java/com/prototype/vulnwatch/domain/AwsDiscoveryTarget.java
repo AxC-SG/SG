@@ -53,6 +53,12 @@ public class AwsDiscoveryTarget {
     @Column(name = "external_id", length = 255)
     private String externalId;
 
+    @Column(name = "credential_binding_version", nullable = false)
+    private int credentialBindingVersion;
+
+    public int getCredentialBindingVersion() { return credentialBindingVersion; }
+    public void setCredentialBindingVersion(int value) { credentialBindingVersion = value; }
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 

@@ -24,7 +24,6 @@ export function AiSecurityConnectorPage() {
   });
   const [accountId, setAccountId] = React.useState('');
   const [roleArn, setRoleArn] = React.useState('');
-  const [externalId, setExternalId] = React.useState('');
   const [regions, setRegions] = React.useState(DEFAULT_REGIONS.join(', '));
   const [enabled, setEnabled] = React.useState(true);
   const [testResult, setTestResult] = React.useState<AiSecurityConnectionTest | null>(null);
@@ -42,12 +41,10 @@ export function AiSecurityConnectorPage() {
     mutationFn: () => api.saveAiSecurityConnector({
       accountId,
       roleArn: roleArn || undefined,
-      externalId: externalId || undefined,
       regions: regions.split(',').map((region) => region.trim()).filter(Boolean),
       enabled,
     }),
     onSuccess: () => {
-      setExternalId('');
       void queryClient.invalidateQueries({ queryKey: ['ai-security-connector'] });
     },
   });
@@ -83,7 +80,7 @@ export function AiSecurityConnectorPage() {
           <div className="panel-header"><div><h3>Connection</h3><span className="panel-caption">Static AWS access keys are not accepted.</span></div></div>
           <label>AWS account ID<input value={accountId} onChange={(event) => setAccountId(event.target.value)} placeholder="123456789012" /></label>
           <label>Cross-account role ARN<input value={roleArn} onChange={(event) => setRoleArn(event.target.value)} placeholder="arn:aws:iam::123456789012:role/ScoutAiSecurity" /></label>
-          <label>External ID<input type="password" value={externalId} onChange={(event) => setExternalId(event.target.value)} placeholder={configQuery.data ? 'Leave blank to keep or replace securely' : 'Optional but recommended'} /></label>
+          <label>External ID<input value={configQuery.data?.externalId ?? ''} readOnly placeholder="Save the connection to generate its External ID" /></label><p className="panel-caption">Add this server-generated External ID to the customer role trust policy before testing or running discovery.</p>
           <label>Regions<input value={regions} onChange={(event) => setRegions(event.target.value)} placeholder="us-east-1, us-west-2" /></label>
           <label className="ai-connector-enabled"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />Enable scheduled discovery</label>
           {saveMutation.isError && <div className="notice error">{saveMutation.error.message}</div>}

@@ -23,6 +23,9 @@ public class AiGridPolicyRolloutService {
     private final TenantSchemaExecutionService tenantExecution;
     private final TransactionTemplate transactions;
     private final AiGridAssessmentService assessments;
+    private com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy backgroundPolicy=com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy.allowAll();
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureBackgroundPolicy(com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy policy) { backgroundPolicy=policy; }
 
     public AiGridPolicyRolloutService(NamedParameterJdbcTemplate jdbc, TenantService tenants,
                                       TenantSchemaExecutionService tenantExecution,
@@ -67,8 +70,10 @@ public class AiGridPolicyRolloutService {
 
     @Scheduled(fixedDelayString = "${app.ai-grid.policy-rollout.delay-ms:5000}")
     public void processPendingTasks() {
+        if (!backgroundPolicy.allowsBackgroundTask("policy-rollout.poll")) return;
         try {
             for (int index = 0; index < 25; index++) {
+                if (!backgroundPolicy.allowsBackgroundTask("policy-rollout.claim")) return;
                 ClaimedTask task = claim();
                 if (task == null) return;
                 process(task);
@@ -80,43 +85,57 @@ public class AiGridPolicyRolloutService {
 
     private ClaimedTask claim() {
         return TenantContext.runAsPlatform(() -> transactions.execute(status -> jdbc.query("""
-                select t.id,t.tenant_id,t.rollout_id
+                select t.id,t.tenant_id,t.rollout_id,t.assessment_request_id,t.source_snapshot_run_id
                  from platform.ai_grid_policy_rollout_tasks t
                   join platform.ai_grid_policy_rollouts r on r.id=t.rollout_id
-                 where r.status='PENDING' and t.status in ('PENDING','FAILED') and t.attempts<5
+                 where r.status='PENDING' and (t.status in ('PENDING','FAILED','WAITING_FOR_ASSESSMENT','WAITING_FOR_SNAPSHOT') or (t.status='PROCESSING' and t.lease_expires_at<=now())) and (t.attempts<5 or t.assessment_request_id is not null)
                    and (t.next_retry_at is null or t.next_retry_at <= now())
                  order by t.created_at for update of t skip locked limit 1
                 """, rs -> {
             if (!rs.next()) return null;
             ClaimedTask task = new ClaimedTask(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
-                    rs.getObject(3, UUID.class));
-            jdbc.update("update platform.ai_grid_policy_rollout_tasks set status='PROCESSING', attempts=attempts+1, "
-                    + "started_at=coalesce(started_at,now()), updated_at=now() where id=:id", Map.of("id", task.id()));
+                    rs.getObject(3, UUID.class), UUID.randomUUID(), rs.getObject(4,UUID.class), rs.getObject(5,UUID.class));
+            jdbc.update("update platform.ai_grid_policy_rollout_tasks set status='PROCESSING', attempts=attempts+case when assessment_request_id is null then 1 else 0 end, claim_token=:token,lease_expires_at=now()+interval '2 minutes', "
+                    + "started_at=coalesce(started_at,now()), updated_at=now() where id=:id", Map.of("id", task.id(),"token",task.token()));
             return task;
         })));
     }
 
     private void process(ClaimedTask task) {
-        Tenant tenant = tenants.requireTenantUuid(task.tenantId());
         try {
+            Tenant tenant = tenants.requireTenantUuid(task.tenantId());
             if (!releaseBindingIsValid(task)) {
-                cancel(task.id(), "Cancelled: release binding, approval, digest, distribution, or lifecycle is no longer valid");
+                cancel(task, "Cancelled: release binding, approval, digest, distribution, or lifecycle is no longer valid");
                 return;
             }
-            UUID runId = tenantExecution.run(tenant, () -> transactions.execute(status -> latestSnapshotRun()));
+            UUID runId = task.sourceRunId()!=null ? task.sourceRunId() : tenantExecution.run(tenant, () -> transactions.execute(status -> latestSnapshotRun()));
             if (runId == null) {
-                updateWaiting(task.id());
+                updateWaiting(task);
                 return;
             }
             String policyId=TenantContext.runAsPlatform(() -> jdbc.queryForObject(
                     "select policy_id from platform.ai_grid_policy_rollouts where id=:id",Map.of("id",task.rolloutId()),String.class));
-            tenantExecution.run(tenant,() -> transactions.executeWithoutResult(status -> worker.getObject().enqueue(tenant,runId,java.util.Set.of(policyId))));
-            var result=worker.getObject().status(tenant,runId);
+            UUID requestId=task.requestId();
+            if (requestId==null) {
+                // Persist the exact accepted request and task transition in the same transaction.
+                tenantExecution.run(tenant, () -> transactions.executeWithoutResult(status -> {
+                    var owned=jdbc.query("select id from platform.ai_grid_policy_rollout_tasks where id=:id and claim_token=:token and status='PROCESSING' and lease_expires_at>clock_timestamp() for update",Map.of("id",task.id(),"token",task.token()),(org.springframework.jdbc.core.ResultSetExtractor<Boolean>) rs -> rs.next());
+                    if (!Boolean.TRUE.equals(owned)) throw new IllegalStateException("Rollout ownership expired");
+                    UUID accepted=worker.getObject().enqueue(tenant,runId,java.util.Set.of(policyId));
+                    jdbc.update("update platform.ai_grid_policy_rollout_tasks set assessment_request_id=:request,source_snapshot_run_id=:run,status='WAITING_FOR_ASSESSMENT',next_retry_at=now()+interval '5 seconds',claim_token=null,lease_expires_at=null,updated_at=now() where id=:id and claim_token=:token",Map.of("request",accepted,"run",runId,"id",task.id(),"token",task.token()));
+                }));
+                return;
+            }
+            var result=worker.getObject().statusForRequest(tenant,requestId);
+            if (java.util.Set.of("PENDING","RUNNING").contains(result.assessmentStatus())) {
+                update(task,"WAITING_FOR_ASSESSMENT",runId,null,null);
+                return;
+            }
             if (!"COMPLETE".equals(result.assessmentStatus())) throw new IllegalStateException("Policy rollout assessment is "+result.assessmentStatus());
-            if (!releaseBindingIsValid(task)) { cancel(task.id(),"Release binding changed during assessment"); return; }
-            complete(task.id(), runId);
+            if (!releaseBindingIsValid(task)) { cancel(task,"Release binding changed during assessment"); return; }
+            complete(task, runId);
         } catch (RuntimeException ex) {
-            fail(task.id(), ex.getMessage());
+            fail(task, ex.getMessage());
         }
     }
 
@@ -147,33 +166,27 @@ public class AiGridPolicyRolloutService {
         });
     }
 
-    private void updateWaiting(UUID taskId) { update(taskId, "WAITING_FOR_SNAPSHOT", null, null, null); }
-    private void complete(UUID taskId, UUID runId) { update(taskId, "COMPLETED", runId, runId, null); }
-    private void fail(UUID taskId, String detail) { update(taskId, "FAILED", null, null, detail == null ? "rollout execution failed" : detail); }
-    private void cancel(UUID taskId, String detail) {
-        TenantContext.runAsPlatform(() -> jdbc.update("""
-                update platform.ai_grid_policy_rollout_tasks set status='CANCELLED', failure_detail=:detail,
-                    next_retry_at=null, completed_at=now(), updated_at=now()
-                 where id=:id and status='PROCESSING'
-                """, Map.of("id", taskId, "detail", detail)));
-    }
-    private void update(UUID taskId, String state, UUID sourceRun, UUID assessmentRun, String detail) {
-        TenantContext.runAsPlatform(() -> jdbc.update("""
+    private void updateWaiting(ClaimedTask task) { update(task,"WAITING_FOR_SNAPSHOT",null,null,null); }
+    private void complete(ClaimedTask task,UUID runId) { update(task,"COMPLETED",runId,runId,null); }
+    private void fail(ClaimedTask task,String detail) { update(task,"FAILED",null,null,"Policy rollout execution failed; inspect the assessment request"); }
+    private void cancel(ClaimedTask task,String detail) { update(task,"CANCELLED",null,null,detail); }
+    private void update(ClaimedTask task,String state,UUID sourceRun,UUID assessmentRun,String detail) {
+        TenantContext.runAsPlatform(() -> transactions.executeWithoutResult(status -> {
+            int changed=jdbc.update("""
                 update platform.ai_grid_policy_rollout_tasks set status=:state, source_snapshot_run_id=coalesce(:sourceRun,source_snapshot_run_id),
-                    assessment_run_id=coalesce(:assessmentRun,assessment_run_id), failure_detail=:detail,
-                    next_retry_at=case when :state='FAILED' then now() + interval '1 minute' else null end,
-                    completed_at=case when :state='COMPLETED' then now() else null end, updated_at=now()
-                 where id=:id and status='PROCESSING'
-                """, new MapSqlParameterSource().addValue("id", taskId).addValue("state", state).addValue("sourceRun", sourceRun)
-                .addValue("assessmentRun", assessmentRun).addValue("detail", detail)));
-        if ("COMPLETED".equals(state)) {
-            TenantContext.runAsPlatform(() -> jdbc.update("""
-                    update platform.ai_grid_policy_rollouts r set status='COMPLETED', completed_at=now()
-                     where r.id=(select rollout_id from platform.ai_grid_policy_rollout_tasks where id=:taskId)
-                       and not exists (select 1 from platform.ai_grid_policy_rollout_tasks t
-                                        where t.rollout_id=r.id and t.status <> 'COMPLETED')
-                    """, Map.of("taskId", taskId)));
-        }
+                    assessment_run_id=coalesce(:assessmentRun,assessment_run_id),failure_detail=:detail,
+                    next_retry_at=case when :state in ('FAILED','WAITING_FOR_SNAPSHOT') then now()+interval '1 minute'
+                        when :state='WAITING_FOR_ASSESSMENT' then now()+interval '5 seconds' else null end,
+                    completed_at=case when :state in ('COMPLETED','CANCELLED') then now() else null end,
+                    claim_token=null,lease_expires_at=null,updated_at=now()
+                 where id=:id and claim_token=:token and status='PROCESSING' and lease_expires_at>clock_timestamp()
+                """,new MapSqlParameterSource().addValue("id",task.id()).addValue("token",task.token()).addValue("state",state)
+                    .addValue("sourceRun",sourceRun).addValue("assessmentRun",assessmentRun).addValue("detail",detail));
+            if (changed==1 && "COMPLETED".equals(state)) jdbc.update("""
+                    update platform.ai_grid_policy_rollouts r set status='COMPLETED',completed_at=now()
+                     where r.id=:id and not exists (select 1 from platform.ai_grid_policy_rollout_tasks t where t.rollout_id=r.id and t.status<>'COMPLETED')
+                    """,Map.of("id",task.rolloutId()));
+        }));
     }
 
     private static Instant instant(java.sql.ResultSet rs, int column) throws java.sql.SQLException {
@@ -184,5 +197,5 @@ public class AiGridPolicyRolloutService {
     public record RolloutTask(UUID id, UUID tenantId, String status, int attempts, Instant nextRetryAt,
                               UUID sourceSnapshotRunId, UUID assessmentRunId, String failureDetail, Instant updatedAt) {}
     public record RolloutDetail(Rollout rollout, List<RolloutTask> tasks) {}
-    private record ClaimedTask(UUID id, UUID tenantId, UUID rolloutId) {}
+    private record ClaimedTask(UUID id, UUID tenantId, UUID rolloutId, UUID token, UUID requestId, UUID sourceRunId) {}
 }

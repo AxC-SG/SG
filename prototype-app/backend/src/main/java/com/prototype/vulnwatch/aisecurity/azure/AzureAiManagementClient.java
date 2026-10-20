@@ -40,7 +40,7 @@ public class AzureAiManagementClient {
     private static final int MAX_ATTEMPTS = 3;
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(5);
 
-    private final HttpClient http;
+    private final com.prototype.vulnwatch.client.http.CheckedHttpTransport http;
     private final ObjectMapper objectMapper;
     private final AzurePolicyPermissionMatrix permissionMatrix;
     private final AiGridProviderCallCounter providerCalls;
@@ -57,10 +57,7 @@ public class AzureAiManagementClient {
         this.permissionMatrix = permissionMatrix;
         this.providerCalls = providerCalls;
         this.digests = digests;
-        this.http = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(15))
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+        this.http = new com.prototype.vulnwatch.client.http.CheckedHttpTransport();
     }
 
     AzureAiManagementClient(ObjectMapper objectMapper, AzurePolicyPermissionMatrix permissionMatrix) {
@@ -795,7 +792,7 @@ public class AzureAiManagementClient {
                         .GET()
                         .build();
                 providerCalls.increment();
-                HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+                var response = http.sendString(request, MAX_BODY_CHARS);
                 responseHeaders = response.headers();
                 String body = response.body() == null ? "" : response.body();
                 if (body.length() > MAX_BODY_CHARS) {

@@ -48,9 +48,9 @@ final class PlatformOwnerSetupLinkIssuer {
             Instant expiresAt = Instant.now().plus(tokenTtlMinutes, ChronoUnit.MINUTES);
             updateSetupToken(connection, owner.userId(), tokenHash, expiresAt);
 
-            String setupUrl = baseUrl + "/setup/"
+            String setupUrl = baseUrl + "/setup#token="
                     + URLEncoder.encode(token, StandardCharsets.UTF_8)
-                    + "?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
+                    + "&email=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
             ResendEmailClient.DeliveryResult result = emailClient.send(new ResendEmailClient.EmailMessage(
                     email,
                     "Set up your Scout platform-owner password",

@@ -31,6 +31,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -38,7 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class DemoLifecycleService {
     public static final String DEMO_PLAN_CODE = "DEMO";
     private static final String DEMO_SOURCE_REQUEST_REVIEW = "REQUEST_REVIEW";
-    private static final List<String> ACTIVE_REQUEST_STATUSES = List.of("PENDING", "SENT", "ERROR");
+    private static final List<String> ACTIVE_REQUEST_STATUSES = List.of("PENDING", "QUEUED", "SENT", "ERROR", "DELIVERY_UNKNOWN", "DELIVERY_ERROR");
     private static final ObjectMapper AUDIT_JSON = new ObjectMapper();
 
     private final DemoRequestRepository demoRequestRepository;
@@ -55,6 +56,7 @@ public class DemoLifecycleService {
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final SecureRandom secureRandom = new SecureRandom();
     private final String appBaseUrl;
+    private final TransactionTemplate transactionTemplate;
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TenantSchemaMigrationService tenantSchemaMigrationService;
     @Value("${app.demo.synchronous-tenant-provisioning-enabled:false}")
@@ -73,7 +75,8 @@ public class DemoLifecycleService {
             DemoTenantPurgeService demoTenantPurgeService,
             TenantLifecycleGuardService tenantLifecycleGuardService,
             TenantSchemaExecutionService tenantSchemaExecutionService,
-            @Value("${app.demo.app-base-url:http://localhost:5173}") String appBaseUrl
+            @Value("${app.demo.app-base-url:http://localhost:5173}") String appBaseUrl,
+            TransactionTemplate transactionTemplate
     ) {
         this.demoRequestRepository = demoRequestRepository;
         this.demoInviteRepository = demoInviteRepository;
@@ -87,6 +90,7 @@ public class DemoLifecycleService {
         this.demoTenantPurgeService = demoTenantPurgeService;
         this.tenantLifecycleGuardService = tenantLifecycleGuardService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.transactionTemplate = transactionTemplate;
         this.appBaseUrl = appBaseUrl == null || appBaseUrl.isBlank() ? "http://localhost:5173" : appBaseUrl.replaceAll("/+$", "");
     }
 
@@ -196,27 +200,33 @@ public class DemoLifecycleService {
         provisionTenantSchemaSynchronouslyWhenEnabled(tenant);
         request.setBootstrapStatus("CREATED");
 
-        DemoInvite invite = latestInvite(requestId);
-        if (invite == null) {
-            invite = createInvite(request, tenant);
-        }
-        if (invite.getAcceptedAt() == null && !"ACCEPTED".equalsIgnoreCase(invite.getStatus())) {
-            invite = deliverInvite(invite, request);
-            request.setStatus(requestStatusForInvite(invite));
-            if ("SENT".equalsIgnoreCase(invite.getStatus())) {
-                request.setBootstrapStatus("INVITE_SENT");
+        Tenant inviteTenant = tenant;
+        return transactionTemplate.execute(status -> {
+            demoRequestRepository.findByIdForUpdate(requestId).orElseThrow();
+            DemoInvite invite = latestInvite(requestId);
+            if (invite == null) {
+                invite = createInvite(request, inviteTenant);
             }
-        } else if (request.getStatus() == null || request.getStatus().isBlank() || "PENDING".equalsIgnoreCase(request.getStatus())) {
-            request.setStatus("SENT");
-            request.setBootstrapStatus("INVITE_ACCEPTED");
-        }
-        request.setDecidedAt(Instant.now());
-        request.setDecidedBy(trimToNull(actor));
-        request.setTenantId(tenant.getId());
-        demoRequestRepository.save(request);
-        auditEventService.record("demo.request.approved", "demo_request", request.getId().toString(),
-                "{\"tenantId\":\"" + tenant.getId() + "\",\"inviteId\":\"" + invite.getId() + "\"}");
-        return toRequestResponse(request);
+            if (invite.getAcceptedAt() == null && !"ACCEPTED".equalsIgnoreCase(invite.getStatus())) {
+                invite = demoInviteRepository.findByTokenHashForUpdate(invite.getTokenHash()).orElse(invite);
+                rotateInvite(invite);
+                invite = deliverInvite(invite, request);
+                request.setStatus(requestStatusForInvite(invite));
+                if ("SENT".equalsIgnoreCase(invite.getStatus())) {
+                    request.setBootstrapStatus("INVITE_SENT");
+                }
+            } else if (request.getStatus() == null || request.getStatus().isBlank() || "PENDING".equalsIgnoreCase(request.getStatus())) {
+                request.setStatus("SENT");
+                request.setBootstrapStatus("INVITE_ACCEPTED");
+            }
+            request.setDecidedAt(Instant.now());
+            request.setDecidedBy(trimToNull(actor));
+            request.setTenantId(inviteTenant.getId());
+            demoRequestRepository.save(request);
+            auditEventService.record("demo.request.approved", "demo_request", request.getId().toString(),
+                    "{\"tenantId\":\"" + inviteTenant.getId() + "\",\"inviteId\":\"" + invite.getId() + "\"}");
+            return toRequestResponse(request);
+        });
     }
 
     @Transactional
@@ -242,32 +252,35 @@ public class DemoLifecycleService {
         }
         Tenant tenant = tenantRepository.findById(request.getTenantId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + request.getTenantId()));
-        DemoInvite invite = latestInvite(requestId);
-        if (invite == null) {
-            invite = createInvite(request, tenant);
-        } else {
-            // Repository methods complete their own short transactions because
-            // this workflow intentionally suspends the outer transaction for DDL.
-            // Replace lazy associations with the explicitly loaded entities before
-            // provisioning, email rendering, audit recording, and DTO conversion.
-            invite.setRequest(request);
-            invite.setTenant(tenant);
-        }
         provisionTenantSchemaSynchronouslyWhenEnabled(tenant);
-        if ("ACCEPTED".equalsIgnoreCase(invite.getStatus()) || invite.getAcceptedAt() != null) {
-            throw new DemoAccessException("DEMO_INVITE_ALREADY_ACCEPTED", "This invite has already been accepted and cannot be resent", HttpStatus.CONFLICT);
-        }
-        invite = deliverInvite(invite, request);
-        request.setStatus(requestStatusForInvite(invite));
-        request.setBootstrapStatus("SENT".equalsIgnoreCase(invite.getStatus()) ? "INVITE_SENT" : "CREATED");
-        demoRequestRepository.save(request);
-        auditEventService.record("demo.invite.resent", "demo_invite", invite.getId().toString(), null);
-        return toInviteResponse(invite);
+        return transactionTemplate.execute(status -> {
+            demoRequestRepository.findByIdForUpdate(requestId).orElseThrow();
+            DemoInvite invite = latestInvite(requestId);
+            if (invite == null) {
+                invite = createInvite(request, tenant);
+            } else {
+                invite = demoInviteRepository.findByTokenHashForUpdate(invite.getTokenHash()).orElseThrow();
+                // DDL completed before this short transaction; use explicitly loaded associations
+                // for delivery and conversion while the invitation lock is held.
+                invite.setRequest(request);
+                invite.setTenant(tenant);
+            }
+            if ("ACCEPTED".equalsIgnoreCase(invite.getStatus()) || invite.getAcceptedAt() != null) {
+                throw new DemoAccessException("DEMO_INVITE_ALREADY_ACCEPTED", "This invite has already been accepted and cannot be resent", HttpStatus.CONFLICT);
+            }
+            rotateInvite(invite);
+            invite = deliverInvite(invite, request);
+            request.setStatus(requestStatusForInvite(invite));
+            request.setBootstrapStatus("SENT".equalsIgnoreCase(invite.getStatus()) ? "INVITE_SENT" : "CREATED");
+            demoRequestRepository.save(request);
+            auditEventService.record("demo.invite.resent", "demo_invite", invite.getId().toString(), null);
+            return toInviteResponse(invite);
+        });
     }
 
     @Transactional
     public DemoSetupLinkResponse issueSetupLink(UUID requestId, String actor) {
-        DemoRequest request = getRequest(requestId);
+        DemoRequest request = demoRequestRepository.findByIdForUpdate(requestId).orElseThrow();
         if (request.getTenantId() == null) {
             throw new DemoAccessException("DEMO_SETUP_NOT_READY", "Demo request must be provisioned before password setup can be issued", HttpStatus.CONFLICT);
         }
@@ -280,6 +293,7 @@ public class DemoLifecycleService {
         if (invite == null) {
             invite = createInvite(request, tenant);
         }
+        invite = demoInviteRepository.findByTokenHashForUpdate(invite.getTokenHash()).orElse(invite);
         if (invite.getAcceptedAt() == null) {
             invite.setAcceptedAt(Instant.now());
         }
@@ -302,8 +316,8 @@ public class DemoLifecycleService {
                 invite.getEmail(),
                 invite.getStatus(),
                 invite.getExpiresAt(),
-                appBaseUrl + "/invite/" + invite.getToken(),
-                appBaseUrl + "/setup/" + setupToken + "?email=" + java.net.URLEncoder.encode(invite.getEmail(), java.nio.charset.StandardCharsets.UTF_8)
+                invite.getToken() == null ? null : appBaseUrl + "/invite#token=" + invite.getToken(),
+                appBaseUrl + "/setup#token=" + setupToken + "&email=" + java.net.URLEncoder.encode(invite.getEmail(), java.nio.charset.StandardCharsets.UTF_8)
         );
     }
 
@@ -327,7 +341,10 @@ public class DemoLifecycleService {
 
     @Transactional
     public DemoInviteValidationResponse acceptInvite(String token) {
-        DemoInvite invite = findInvite(token);
+        demoInviteRepository.findRequestIdByTokenHash(InvitationTokens.hash(token))
+                .ifPresent(requestId -> demoRequestRepository.findByIdForUpdate(requestId).orElseThrow());
+        DemoInvite invite = demoInviteRepository.findByTokenHashForUpdate(InvitationTokens.hash(token))
+                .orElseThrow(() -> new DemoAccessException("DEMO_INVITE_INVALID", "Demo invite not found", HttpStatus.NOT_FOUND));
         DemoInviteValidationResponse validation = inviteValidationResponse(invite, null, null);
         if (!validation.valid()) {
             throw new DemoAccessException("DEMO_INVITE_INVALID", validation.message(), HttpStatus.BAD_REQUEST);
@@ -407,7 +424,7 @@ public class DemoLifecycleService {
                 || DEMO_PLAN_CODE.equalsIgnoreCase(tenant.getPlanCode()));
     }
 
-    @Scheduled(cron = "${app.demo.expiration-cron:0 10 * * * *}")
+    @Scheduled(zone = "UTC", cron = "${app.demo.expiration-cron:0 10 * * * *}")
     public void expireDemoTenants() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("demo-lifecycle.expire-demo-tenants")) {
             return;
@@ -501,6 +518,13 @@ public class DemoLifecycleService {
         return demoInviteRepository.save(invite);
     }
 
+    private void rotateInvite(DemoInvite invite) {
+        invite.setToken(newToken());
+        Instant expiry = Instant.now().plus(7, ChronoUnit.DAYS);
+        Instant tenantExpiry = invite.getTenant().getDemoExpiresAt();
+        invite.setExpiresAt(tenantExpiry != null && tenantExpiry.isBefore(expiry) ? tenantExpiry : expiry);
+    }
+
     private void provisionTenantSchemaSynchronouslyWhenEnabled(Tenant tenant) {
         if (!synchronousTenantProvisioningEnabled
                 || tenant == null
@@ -515,7 +539,10 @@ public class DemoLifecycleService {
 
     private DemoInvite deliverInvite(DemoInvite invite, DemoRequest request) {
         ResendEmailClient.DeliveryResult deliveryResult = demoInviteEmailService.sendInvite(request, invite);
-        if (deliveryResult.state() == ResendEmailClient.DeliveryState.SENT) {
+        if (deliveryResult.state() == ResendEmailClient.DeliveryState.QUEUED) {
+            invite.setStatus("QUEUED");
+            auditEventService.record("demo.invite.email.queued","demo_invite",invite.getId().toString(),null);
+        } else if (deliveryResult.state() == ResendEmailClient.DeliveryState.SENT) {
             invite.setStatus("SENT");
             invite.setLastSentAt(Instant.now());
             auditEventService.record("demo.invite.email.sent", "demo_invite", invite.getId().toString(), null);
@@ -538,7 +565,7 @@ public class DemoLifecycleService {
     }
 
     private String requestStatusForInvite(DemoInvite invite) {
-        return "SENT".equalsIgnoreCase(invite.getStatus()) ? "SENT" : "ERROR";
+        return java.util.Set.of("SENT","QUEUED","DELIVERY_UNKNOWN").contains(invite.getStatus()) ? invite.getStatus() : "ERROR";
     }
 
     private DemoRequest getRequest(UUID requestId) {
@@ -547,7 +574,7 @@ public class DemoLifecycleService {
     }
 
     private DemoInvite findInvite(String token) {
-        return demoInviteRepository.findByToken(requireText(token, "token"))
+        return demoInviteRepository.findByTokenHash(InvitationTokens.hash(requireText(token, "token")))
                 .orElseThrow(() -> new DemoAccessException("DEMO_INVITE_INVALID", "Demo invite not found", HttpStatus.NOT_FOUND));
     }
 
@@ -589,7 +616,7 @@ public class DemoLifecycleService {
                 tenant.getName(),
                 tenant.getDemoExpiresAt(),
                 invite.getExpiresAt(),
-                appBaseUrl + "/login?invite=" + invite.getToken(),
+                appBaseUrl + "/login",
                 message,
                 setupToken);
     }
@@ -643,7 +670,7 @@ public class DemoLifecycleService {
                 invite.getExpiresAt(),
                 invite.getAcceptedAt(),
                 invite.getLastSentAt(),
-                appBaseUrl + "/invite/" + invite.getToken()
+                invite.getToken() == null ? null : appBaseUrl + "/invite#token=" + invite.getToken()
         );
     }
 

@@ -1,6 +1,11 @@
 package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.dto.TenantInviteValidationResponse;
+import com.prototype.vulnwatch.dto.InvitationTokenRequest;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TenantUserInviteService;
 import com.prototype.vulnwatch.security.PasswordSetupCookieService;
@@ -31,21 +36,28 @@ public class TenantInviteController {
         this.publicEndpointRateLimiter = publicEndpointRateLimiter;
     }
 
-    @GetMapping("/{token}")
-    public TenantInviteValidationResponse validate(@PathVariable String token, HttpServletRequest request) {
+    @PostMapping("/validate")
+    public TenantInviteValidationResponse validate(@Valid @RequestBody InvitationTokenRequest body, HttpServletRequest request) {
+        String token = body.token();
         publicEndpointRateLimiter.checkInvite(request, token);
         return TenantContext.runAsPreAuthentication(() -> tenantUserInviteService.validateInvite(token));
     }
 
-    @PostMapping("/{token}/accept")
+    @PostMapping("/accept")
     public TenantInviteValidationResponse accept(
-            @PathVariable String token,
+            @Valid @RequestBody InvitationTokenRequest body,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
+        String token = body.token();
         publicEndpointRateLimiter.checkInvite(request, token);
         TenantInviteValidationResponse result = TenantContext.runAsPreAuthentication(() -> tenantUserInviteService.acceptInvite(token));
         passwordSetupCookieService.write(response, result.setupToken());
         return result;
     }
+    @GetMapping("/{token}")
+    public void legacyValidate() { throw new ResponseStatusException(HttpStatus.GONE, "Request a new invitation link"); }
+
+    @PostMapping("/{token}/accept")
+    public void legacyAccept() { throw new ResponseStatusException(HttpStatus.GONE, "Request a new invitation link"); }
 }

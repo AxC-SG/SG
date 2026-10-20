@@ -15,6 +15,18 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Optional<AppUser> findByPasswordSetupTokenHash(String passwordSetupTokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.externalSubject = :subject")
+    Optional<AppUser> findByExternalSubjectForUpdate(@Param("subject") String subject);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where lower(u.email) = lower(:email)")
+    Optional<AppUser> findByEmailIgnoreCaseForUpdate(@Param("email") String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.passwordSetupTokenHash = :tokenHash")
+    Optional<AppUser> findByPasswordSetupTokenHashForUpdate(@Param("tokenHash") String tokenHash);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from AppUser u where u.id = :id")
     Optional<AppUser> findByIdForUpdate(@Param("id") UUID id);
 }

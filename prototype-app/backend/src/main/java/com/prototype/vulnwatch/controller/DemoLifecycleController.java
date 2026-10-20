@@ -3,6 +3,9 @@ package com.prototype.vulnwatch.controller;
 import com.prototype.vulnwatch.dto.DemoInviteResponse;
 import com.prototype.vulnwatch.dto.DemoSetupLinkResponse;
 import com.prototype.vulnwatch.dto.DemoInviteValidationResponse;
+import com.prototype.vulnwatch.dto.InvitationTokenRequest;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import com.prototype.vulnwatch.dto.DemoRequestCreateRequest;
 import com.prototype.vulnwatch.dto.DemoRequestApprovalRequest;
 import com.prototype.vulnwatch.dto.DemoRequestDecisionRequest;
@@ -122,23 +125,31 @@ public class DemoLifecycleController {
         demoLifecycleService.deleteRequest(requestId, requestActorService.currentActor().userId());
     }
 
-    @GetMapping("/demo-invites/{token}")
-    public DemoInviteValidationResponse validateInvite(@PathVariable String token, HttpServletRequest request) {
+    @PostMapping("/demo-invites/validate")
+    public DemoInviteValidationResponse validateInvite(@Valid @RequestBody InvitationTokenRequest body, HttpServletRequest request) {
+        String token = body.token();
         publicEndpointRateLimiter.checkInvite(request, token);
         return TenantContext.runAsPreAuthentication(() -> demoLifecycleService.validateInvite(token));
     }
 
-    @PostMapping("/demo-invites/{token}/accept")
+    @PostMapping("/demo-invites/accept")
     public DemoInviteValidationResponse acceptInvite(
-            @PathVariable String token,
+            @Valid @RequestBody InvitationTokenRequest body,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
+        String token = body.token();
         publicEndpointRateLimiter.checkInvite(request, token);
         DemoInviteValidationResponse result = TenantContext.runAsPreAuthentication(() -> demoLifecycleService.acceptInvite(token));
         passwordSetupCookieService.write(response, result.setupToken());
         return result;
     }
+
+    @GetMapping("/demo-invites/{token}")
+    public void legacyValidate() { throw new ResponseStatusException(HttpStatus.GONE, "Request a new invitation link"); }
+
+    @PostMapping("/demo-invites/{token}/accept")
+    public void legacyAccept() { throw new ResponseStatusException(HttpStatus.GONE, "Request a new invitation link"); }
 
     @GetMapping("/demo/status")
     public DemoStatusResponse demoStatus() {

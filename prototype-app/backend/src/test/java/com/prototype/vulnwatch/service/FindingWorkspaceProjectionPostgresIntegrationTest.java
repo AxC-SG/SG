@@ -147,6 +147,15 @@ class FindingWorkspaceProjectionPostgresIntegrationTest {
                 null, null, null, null, null, null
         );
 
+        // Exercise direct callers with no thread-bound tenant: each projection read
+        // must select its customer before opening the repository transaction.
+        org.junit.jupiter.api.Assertions.assertNull(TenantContext.getCurrentTenantId());
+        assertEquals(90, findingAnalyticsService.getMatchingCount(tenant, criticalOpen));
+        assertEquals(90, findingAnalyticsService.getDistributions(tenant, criticalOpen).severityCounts()
+                .stream().mapToLong(com.prototype.vulnwatch.dto.FindingCountBucketResponse::count).sum());
+        var backlog = findingAnalyticsService.getBacklogHealth(tenant, criticalOpen);
+        assertEquals(90, backlog.overdue() + backlog.dueSoon() + backlog.onTrack() + backlog.noSla());
+        org.junit.jupiter.api.Assertions.assertNull(TenantContext.getCurrentTenantId());
         var summary = findingAnalyticsService.getSummary(tenant, criticalOpen);
         assertEquals(90, summary.openCount());
 

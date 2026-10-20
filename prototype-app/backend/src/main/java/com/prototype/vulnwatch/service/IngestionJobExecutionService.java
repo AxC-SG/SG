@@ -18,17 +18,25 @@ import org.springframework.stereotype.Service;
 public class IngestionJobExecutionService {
 
     private final BomIngestionOrchestrator bomIngestionOrchestrator;
+    private final AwsDiscoverySyncService awsDiscovery;
+    private final ServiceNowCmdbSyncService serviceNow;
+    private final com.prototype.vulnwatch.repo.SyncRunRepository syncRuns;
     private final GithubSbomSourceService githubSbomSourceService;
     private final IngestionJobService ingestionJobService;
 
     public IngestionJobExecutionService(
             BomIngestionOrchestrator bomIngestionOrchestrator,
             GithubSbomSourceService githubSbomSourceService,
-            IngestionJobService ingestionJobService
+            IngestionJobService ingestionJobService,
+            AwsDiscoverySyncService awsDiscovery, ServiceNowCmdbSyncService serviceNow,
+            com.prototype.vulnwatch.repo.SyncRunRepository syncRuns
     ) {
         this.bomIngestionOrchestrator = bomIngestionOrchestrator;
         this.githubSbomSourceService = githubSbomSourceService;
         this.ingestionJobService = ingestionJobService;
+        this.awsDiscovery = awsDiscovery;
+        this.serviceNow = serviceNow;
+        this.syncRuns = syncRuns;
     }
 
     public ExecutionOutcome execute(Tenant tenant, IngestionJob job) throws IOException {
@@ -36,8 +44,21 @@ public class IngestionJobExecutionService {
             case IngestionJobService.JOB_TYPE_REMOTE_ENDPOINT -> executeEndpointJob(tenant, job);
             case IngestionJobService.JOB_TYPE_GITHUB_REPOSITORY -> executeGithubRepositoryJob(tenant, job);
             case IngestionJobService.JOB_TYPE_GITHUB_GHCR -> executeGithubGhcrJob(tenant, job);
+            case IngestionJobService.JOB_TYPE_AWS_DISCOVERY -> executeConnector(tenant, job, true);
+            case IngestionJobService.JOB_TYPE_SERVICENOW_CMDB -> executeConnector(tenant, job, false);
             default -> throw new IOException("Unsupported ingestion job type: " + job.getJobType());
         };
+    }
+
+    private ExecutionOutcome executeConnector(Tenant tenant, IngestionJob job, boolean aws) {
+        var payload = ingestionJobService.readPayload(job, IngestionJobService.ConnectorJobPayload.class);
+        if (aws) awsDiscovery.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode(), payload.targetId());
+        else serviceNow.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode());
+        var run = syncRuns.findById(payload.runId()).orElseThrow();
+        if ("failed".equalsIgnoreCase(run.getStatus())) {
+            throw new IllegalStateException("Connector execution failed; inspect its recorded sync run");
+        }
+        return new ExecutionOutcome(null, ingestionJobService.toJson(Map.of("syncRunId", payload.runId(), "status", run.getStatus())));
     }
 
     private ExecutionOutcome executeEndpointJob(Tenant tenant, IngestionJob job) throws IOException {

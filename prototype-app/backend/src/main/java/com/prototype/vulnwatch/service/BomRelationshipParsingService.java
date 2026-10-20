@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -105,7 +107,17 @@ public class BomRelationshipParsingService {
         if (!components.isArray()) {
             return;
         }
-        for (JsonNode component : components) {
+        // Use explicit iterators rather than Java recursion. Serialized JSON keeps the
+        // mapper's existing nesting constraints; traversal itself cannot overflow the stack.
+        ArrayDeque<Iterator<JsonNode>> pending = new ArrayDeque<>();
+        pending.push(components.elements());
+        while (!pending.isEmpty() && edges.size() < MAX_EDGES) {
+            Iterator<JsonNode> siblings = pending.peek();
+            if (!siblings.hasNext()) {
+                pending.pop();
+                continue;
+            }
+            JsonNode component = siblings.next();
             String parentRef = text(component.path("bom-ref"));
             JsonNode nested = component.path("components");
             if (!nested.isArray()) {
@@ -116,9 +128,11 @@ public class BomRelationshipParsingService {
                 if (parentRef != null && childRef != null) {
                     add(edges, seen, record, tenantId, componentIdByRef, parentRef, childRef, COMPOSED_OF);
                 }
+                if (edges.size() >= MAX_EDGES) {
+                    return;
+                }
             }
-            // Nesting can go deeper than one level.
-            collectCompositions(nested, record, tenantId, componentIdByRef, seen, edges);
+            pending.push(nested.elements());
         }
     }
 

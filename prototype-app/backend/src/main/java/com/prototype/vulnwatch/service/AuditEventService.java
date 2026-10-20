@@ -251,7 +251,24 @@ public class AuditEventService {
 
     private String csv(Object value) {
         String text = value == null ? "" : value.toString();
+        int firstMeaningful = 0;
+        while (firstMeaningful < text.length()
+                && isSpreadsheetIgnorablePrefix(text.charAt(firstMeaningful))) {
+            firstMeaningful++;
+        }
+        boolean controlPrefix = !text.isEmpty() && (text.charAt(0) == '\t'
+                || text.charAt(0) == '\r' || text.charAt(0) == '\n');
+        boolean formulaPrefix = firstMeaningful < text.length()
+                && "=+-@".indexOf(text.charAt(firstMeaningful)) >= 0;
+        if (controlPrefix || formulaPrefix) {
+            text = "'" + text;
+        }
         return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+
+    private static boolean isSpreadsheetIgnorablePrefix(char value) {
+        return Character.isWhitespace(value) || Character.isSpaceChar(value)
+                || Character.isISOControl(value) || value == '\uFEFF' || value == '\u200B';
     }
 
     private String nullToEmpty(String value) {

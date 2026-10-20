@@ -48,7 +48,7 @@ public class FindingIncidentSyncService {
     }
 
     /** Scheduled daily at 07:00 to sync ServiceNow incident statuses back to findings. */
-    @Scheduled(cron = "0 0 7 * * *")
+    @Scheduled(zone = "UTC", cron = "0 0 7 * * *")
     public void syncIncidentStatuses() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-incident-sync.sync-incident-statuses")) {
             return;

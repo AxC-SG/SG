@@ -72,16 +72,12 @@ public class KevSyncService {
     }
 
     public void runScheduledDailySync() {
-        syncKev();
+        triggerKevSync();
     }
 
     public SyncTriggerResponse triggerKevSync() {
         VulnerabilitySyncRunService.TriggerDecision decision =
                 syncRunService.prepareQueuedRun("KEV", List.of("KEV"));
-        if (decision.queuedNewRun()) {
-            ingestionExecutor.execute(() ->
-                    syncRunService.markRunningIfQueued(decision.run().getId()).ifPresent(this::executeKevSync));
-        }
         return decision.toResponse("KEV sync is already in progress", "KEV sync queued");
     }
 

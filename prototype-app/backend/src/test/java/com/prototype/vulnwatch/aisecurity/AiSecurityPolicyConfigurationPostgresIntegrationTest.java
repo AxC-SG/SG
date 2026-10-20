@@ -123,7 +123,7 @@ class AiSecurityPolicyConfigurationPostgresIntegrationTest {
         return connectorService.save(
                 tenant,
                 new AiSecurityAwsConnectorService.ConnectorConfigRequest(
-                        "123456789012", null, null, List.of("us-east-1"), true)
+                        "123456789012", "arn:aws:iam::123456789012:role/NoScanPilotReadOnly", null, List.of("us-east-1"), true)
         ).id();
     }
 

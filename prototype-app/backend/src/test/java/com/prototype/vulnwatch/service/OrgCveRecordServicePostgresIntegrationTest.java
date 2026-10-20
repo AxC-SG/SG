@@ -79,6 +79,18 @@ class OrgCveRecordServicePostgresIntegrationTest {
     @Autowired
     private OrgCveRecordRepository orgCveRecordRepository;
 
+    @org.springframework.test.context.transaction.BeforeTransaction
+    void selectCustomerBeforeTransaction() {
+        Tenant tenant = tenantService.getDefaultTenant();
+        TenantContext.setCurrentTenantId(tenant.getId());
+        TenantContext.setCurrentSchemaName(tenant.getSchemaName());
+    }
+
+    @org.springframework.test.context.transaction.AfterTransaction
+    void clearCustomerAfterTransaction() {
+        TenantContext.clear();
+    }
+
     @Test
     void refreshIgnoresRetiredComponentImpactWhenComputingOrgExposure() {
         Tenant tenant = tenantService.getDefaultTenant();

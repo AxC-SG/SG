@@ -70,7 +70,10 @@ class IngestionJobExecutionServiceTest {
         IngestionJobExecutionService service = new IngestionJobExecutionService(
                 bomIngestionOrchestrator,
                 githubSbomSourceService,
-                ingestionJobService
+                ingestionJobService,
+                org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
+                org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 
         IngestionJobExecutionService.ExecutionOutcome outcome = service.execute(tenant, job);
@@ -103,7 +106,10 @@ class IngestionJobExecutionServiceTest {
         IngestionJobExecutionService service = new IngestionJobExecutionService(
                 bomIngestionOrchestrator,
                 githubSbomSourceService,
-                ingestionJobService
+                ingestionJobService,
+                org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
+                org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 
         IngestionJobExecutionService.ExecutionOutcome outcome = service.execute(tenant, job);
@@ -124,7 +130,10 @@ class IngestionJobExecutionServiceTest {
         IngestionJobExecutionService service = new IngestionJobExecutionService(
                 bomIngestionOrchestrator,
                 githubSbomSourceService,
-                ingestionJobService
+                ingestionJobService,
+                org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
+                org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 
         IOException error = assertThrows(IOException.class, () -> service.execute(tenant, job));

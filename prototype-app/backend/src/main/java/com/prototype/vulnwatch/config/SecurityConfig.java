@@ -22,9 +22,8 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 public class SecurityConfig {
 
     private static final RequestMatcher HEADER_AUTH_CSRF_BYPASS = request ->
-            hasHeader(request, "Authorization")
-                    || hasHeader(request, "X-API-Key")
-                    || hasHeader(request, "X-Creator-Key");
+            !"/api/auth/setup-password".equals(request.getRequestURI())
+                    && Boolean.TRUE.equals(request.getAttribute(ApiKeyAuthenticationFilter.VERIFIED_HEADER_AUTH));
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -49,7 +48,6 @@ public class SecurityConfig {
                         .ignoringRequestMatchers(
                                 "/actuator/**",
                                 "/api/auth/login",
-                                "/api/auth/setup-password",
                                 "/api/auth/setup-session",
                                 "/api/auth/context",
                                 "/api/me",
@@ -69,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/readiness", "/actuator/health/liveness", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/setup-password", "/api/auth/setup-session").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demo-requests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demo-invites/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demo-invites/**").permitAll()
@@ -78,7 +77,7 @@ public class SecurityConfig {
                         .hasAnyRole("PLATFORM_OWNER", "TENANT_ADMIN", "INVENTORY_ADMIN", "SECURITY_ANALYST", "READ_ONLY_AUDITOR")
                         .requestMatchers("/api/platform/**").hasRole("PLATFORM_OWNER")
                         .requestMatchers("/api/operations/**").hasRole("PLATFORM_OWNER")
-                        .requestMatchers("/api/fix-intelligence/**").permitAll() // Local dev: allow public access to Fix Intelligence
+                        .requestMatchers("/api/fix-intelligence", "/api/fix-intelligence/**").denyAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(apiKeyAuthenticationFilter, CsrfFilter.class)

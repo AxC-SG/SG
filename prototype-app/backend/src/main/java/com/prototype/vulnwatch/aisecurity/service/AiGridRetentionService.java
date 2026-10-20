@@ -20,6 +20,12 @@ public class AiGridRetentionService {
     private final NamedParameterJdbcTemplate jdbc;
     private final TenantSchemaExecutionService tenantExecution;
     private final TransactionTemplate transactions;
+    @org.springframework.beans.factory.annotation.Value("${app.ai-security.retention.batch-size:100}")
+    private int batchSize = 100;
+    @org.springframework.beans.factory.annotation.Value("${app.ai-security.retention.max-batches:10}")
+    private int maxBatches = 10;
+    @org.springframework.beans.factory.annotation.Value("${app.ai-security.retention.max-sweep-seconds:30}")
+    private int maxSweepSeconds = 30;
 
     public AiGridRetentionService(NamedParameterJdbcTemplate jdbc,
                                   TenantSchemaExecutionService tenantExecution,
@@ -30,7 +36,7 @@ public class AiGridRetentionService {
     }
 
     public RetentionStatus status(Tenant tenant) {
-        return tenantExecution.run(tenant, () -> new RetentionStatus(policies(), counts(), activeHolds()));
+        return tenantExecution.run(tenant, () -> new RetentionStatus(policies(), counts(), activeHolds(), cleanupState()));
     }
 
     public RetentionPolicy updatePolicy(Tenant tenant, PolicyCommand command, String actor) {
@@ -122,15 +128,70 @@ public class AiGridRetentionService {
     }
 
     public SweepResult sweep(Tenant tenant) {
-        return tenantExecution.run(tenant, () -> transactions.execute(status -> {
-            List<Body> bodies = jdbc.query("""
-                    select id, retention_class, retention_state, created_at, retain_until,
-                           legal_hold, replay_commitment_until
-                      from ai_grid_snapshot_bodies order by created_at
-                    """, (rs, n) -> new Body(rs.getObject("id", UUID.class), rs.getString("retention_class"),
-                    rs.getString("retention_state"), rs.getTimestamp("created_at").toInstant(),
-                    rs.getTimestamp("retain_until").toInstant(), rs.getBoolean("legal_hold"),
-                    instant(rs, "replay_commitment_until")));
+        return tenantExecution.run(tenant, () -> {
+            int evaluated = 0, retained = 0, archived = 0, blocked = 0, eligible = 0, purged = 0, batches = 0;
+            long started = System.nanoTime();
+            boolean complete = false;
+            TransactionTemplate bounded = new TransactionTemplate(transactions.getTransactionManager());
+            bounded.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            bounded.setTimeout(10);
+            try {
+                while (batches < Math.max(1, maxBatches)
+                        && System.nanoTime() - started < Math.max(1, maxSweepSeconds) * 1_000_000_000L) {
+                    SweepResult batch = bounded.execute(status -> sweepBatch(tenant));
+                    if (batch == null) throw new IllegalStateException("Retention batch returned no outcome");
+                    evaluated += batch.evaluated(); retained += batch.retained(); archived += batch.archived();
+                    blocked += batch.purgeBlocked(); eligible += batch.purgeEligible(); purged += batch.purged();
+                    batches++;
+                    if ("COMPLETED".equals(batch.status())) { complete = true; break; }
+                }
+            } catch (RuntimeException error) {
+                bounded.executeWithoutResult(status -> jdbc.update("""
+                        insert into ai_grid_retention_progress (tenant_id, state, last_error)
+                        values (:tenantId, 'FAILED', 'BATCH_FAILED')
+                        on conflict (tenant_id) do update set state = 'FAILED', last_error = 'BATCH_FAILED',
+                            updated_at = now()
+                        """, Map.of("tenantId", tenant.getId())));
+                throw error;
+            }
+            return new SweepResult(evaluated, retained, archived, blocked, eligible, purged,
+                    complete ? "COMPLETED" : "INCOMPLETE", batches, Math.max(1, batchSize));
+        });
+    }
+
+    private SweepResult sweepBatch(Tenant tenant) {
+        jdbc.getJdbcTemplate().execute("set local statement_timeout = '10s'");
+        jdbc.getJdbcTemplate().execute("set local lock_timeout = '1s'");
+        jdbc.update("""
+                insert into ai_grid_retention_progress (tenant_id, state) values (:tenantId, 'NOT_RUN')
+                on conflict (tenant_id) do nothing
+                """, Map.of("tenantId", tenant.getId()));
+        Map<String, Object> progress = jdbc.queryForMap("""
+                select after_id, upper_id from ai_grid_retention_progress
+                 where tenant_id = :tenantId for update
+                """, Map.of("tenantId", tenant.getId()));
+        UUID after = (UUID) progress.get("after_id");
+        UUID upper = (UUID) progress.get("upper_id");
+        if (upper == null) {
+            upper = jdbc.query("select id from ai_grid_snapshot_bodies order by id desc limit 1",
+                    (rs, row) -> rs.getObject(1, UUID.class)).stream().findFirst().orElse(null);
+            jdbc.update("""
+                    update ai_grid_retention_progress set upper_id = :upper, after_id = null,
+                        state = 'RUNNING', last_started_at = now(), last_error = null, updated_at = now()
+                     where tenant_id = :tenantId
+                    """, new MapSqlParameterSource("tenantId", tenant.getId()).addValue("upper", upper));
+        }
+        List<Body> bodies = upper == null ? List.of() : jdbc.query("""
+                select id, retention_class, retention_state, created_at, retain_until,
+                       legal_hold, replay_commitment_until from ai_grid_snapshot_bodies
+                 where (:afterId::uuid is null or id > :afterId::uuid) and id <= :upperId
+                 order by id limit :batchSize for update
+                """, new MapSqlParameterSource("afterId", after).addValue("upperId", upper)
+                .addValue("batchSize", Math.max(1, batchSize)),
+                (rs, n) -> new Body(rs.getObject("id", UUID.class), rs.getString("retention_class"),
+                rs.getString("retention_state"), rs.getTimestamp("created_at").toInstant(),
+                rs.getTimestamp("retain_until").toInstant(), rs.getBoolean("legal_hold"),
+                instant(rs, "replay_commitment_until")));
             Map<String, RetentionPolicy> policyByClass = new java.util.HashMap<>();
             policies().forEach(policy -> policyByClass.put(policy.retentionClass(), policy));
             int retained = 0, archived = 0, blocked = 0, eligible = 0;
@@ -169,28 +230,42 @@ public class AiGridRetentionService {
                 jdbc.update("""
                         insert into ai_grid_retention_decisions
                             (id, tenant_id, snapshot_body_id, decision, reason_code)
-                        values (:id, :tenantId, :bodyId, :decision, :reason)
+                        select :id, :tenantId, :bodyId, :decision, :reason
+                         where not exists (select 1 from ai_grid_retention_decisions
+                           where snapshot_body_id = :bodyId and decision = :decision and reason_code = :reason)
                         """, new MapSqlParameterSource().addValue("id", UUID.randomUUID())
                         .addValue("tenantId", tenant.getId()).addValue("bodyId", body.id())
                         .addValue("decision", decision).addValue("reason", reason));
             }
-            int purged = purgeUnreferencedEligible(tenant);
-            return new SweepResult(bodies.size(), retained, archived, blocked, eligible, purged);
-        }));
+            int purged = bodies.isEmpty() ? 0 : purgeUnreferencedEligible(tenant, bodies.stream().map(Body::id).toList());
+            boolean complete = bodies.size() < Math.max(1, batchSize);
+            jdbc.update("""
+                    update ai_grid_retention_progress set after_id = :afterId, upper_id = :upperId,
+                        state = :state, updated_at = now(), last_error = null,
+                        last_completed_at = case when :complete then now() else last_completed_at end
+                     where tenant_id = :tenantId
+                    """, new MapSqlParameterSource("tenantId", tenant.getId())
+                    .addValue("afterId", complete ? null : bodies.get(bodies.size() - 1).id())
+                    .addValue("upperId", complete ? null : upper).addValue("complete", complete)
+                    .addValue("state", complete ? "COMPLETED" : "INCOMPLETE"));
+            return new SweepResult(bodies.size(), retained, archived, blocked, eligible, purged,
+                    complete ? "COMPLETED" : "INCOMPLETE", 1, Math.max(1, batchSize));
     }
 
-    private int purgeUnreferencedEligible(Tenant tenant) {
+    private int purgeUnreferencedEligible(Tenant tenant, List<UUID> bodyIds) {
         List<PurgeCandidate> candidates = jdbc.query("""
                 select b.id, b.content_hash, b.byte_size
                   from ai_grid_snapshot_bodies b
-                 where b.retention_state = 'PURGE_ELIGIBLE'
+                 where b.retention_state = 'PURGE_ELIGIBLE' and b.id in (:bodyIds)
+                   and b.retain_until <= now() and b.legal_hold = false
+                   and (b.replay_commitment_until is null or b.replay_commitment_until <= now())
                    and not exists (select 1 from ai_grid_snapshot_manifests m where m.body_id = b.id)
                    and not exists (select 1 from ai_grid_evidence_holds h
                                     where h.snapshot_body_id = b.id and h.released_at is null
                                       and (h.expires_at is null or h.expires_at > now()))
-                 order by b.retain_until, b.id
-                 for update skip locked
-                """, (rs, n) -> new PurgeCandidate(rs.getObject("id", UUID.class),
+                 order by b.retain_until, b.id limit :batchSize
+                 for update
+                """, Map.of("bodyIds", bodyIds, "batchSize", Math.max(1, batchSize)), (rs, n) -> new PurgeCandidate(rs.getObject("id", UUID.class),
                 rs.getString("content_hash"), rs.getLong("byte_size")));
         for (PurgeCandidate candidate : candidates) {
             jdbc.update("""
@@ -222,7 +297,11 @@ public class AiGridRetentionService {
                   join findings f on f.assessment_id = a.id
                  where m.body_id = :id and f.status = 'OPEN'
                 """, Map.of("id", body.id()), Integer.class);
-        return activeFinding != null && activeFinding > 0 ? "ACTIVE_FINDING" : null;
+        if (activeFinding != null && activeFinding > 0) return "ACTIVE_FINDING";
+        Integer references = jdbc.queryForObject(
+                "select count(*) from ai_grid_snapshot_manifests where body_id = :id",
+                Map.of("id", body.id()), Integer.class);
+        return references != null && references > 0 ? "SNAPSHOT_REFERENCE" : null;
     }
 
     private List<RetentionPolicy> policies() {
@@ -233,6 +312,16 @@ public class AiGridRetentionService {
                 """, (rs, n) -> new RetentionPolicy(rs.getString("retention_class"), rs.getInt("retain_days"),
                 (Integer) rs.getObject("archive_after_days"), rs.getBoolean("restricted"),
                 rs.getString("updated_by"), rs.getString("reason"), rs.getTimestamp("updated_at").toInstant()));
+    }
+
+    private CleanupState cleanupState() {
+        return jdbc.query("""
+                select state, after_id, last_started_at, last_completed_at, updated_at, last_error
+                  from ai_grid_retention_progress
+                """, (rs, row) -> new CleanupState(rs.getString("state"), rs.getObject("after_id", UUID.class),
+                instant(rs, "last_started_at"), instant(rs, "last_completed_at"), instant(rs, "updated_at"),
+                rs.getString("last_error"))).stream().findFirst()
+                .orElse(new CleanupState("NOT_RUN", null, null, null, null, null));
     }
 
     private RetentionCounts counts() {
@@ -287,12 +376,14 @@ public class AiGridRetentionService {
     public record RetentionCounts(long bodies, long retainedBytes, long archived, long purgeBlocked,
                                   long purgeEligible) {}
     public record RetentionStatus(List<RetentionPolicy> policies, RetentionCounts counts,
-                                  List<EvidenceHold> activeHolds) {}
+                                  List<EvidenceHold> activeHolds, CleanupState cleanup) {}
+    public record CleanupState(String state, UUID afterId, Instant lastStartedAt, Instant lastCompletedAt,
+                               Instant updatedAt, String lastError) {}
     public record EvidenceHold(UUID id, UUID snapshotBodyId, String holdType, String referenceId,
                                String reason, Instant expiresAt, Instant releasedAt, String createdBy,
                                Instant createdAt) {}
     public record SweepResult(int evaluated, int retained, int archived, int purgeBlocked,
-                              int purgeEligible, int purged) {}
+                              int purgeEligible, int purged, String status, int batches, int batchSize) {}
     public record PolicyCommand(String retentionClass, int retainDays, Integer archiveAfterDays,
                                 boolean restricted, String reason) {}
     public record HoldCommand(UUID snapshotBodyId, String holdType, String referenceId, String reason,

@@ -86,10 +86,13 @@ public class LocalCredentialAuthService {
     public AuthTokenResponse login(String email, String password) {
         String normalizedEmail = normalizeEmail(email);
         String rawPassword = requirePassword(password);
-        AppUser user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        AppUser user = userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail).orElse(null);
+        if (user != null) {
+            requireActiveUser(user);
+        }
         if (user != null && hasText(user.getPasswordHash())) {
             verifyPassword(rawPassword, user.getPasswordHash());
-            if (user.isPlatformOwner()) {
+            if (isCurrentPlatformOwner(user)) {
                 return issuePlatformOwnerToken(user);
             }
             return loginTenantScopedUser(user);
@@ -141,9 +144,10 @@ public class LocalCredentialAuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Default workspace is not bootstrapped"));
         tenantLifecycleGuardService.assertTenantAccessible(tenant);
 
-        AppUser user = userRepository.findByExternalSubject(normalizedEmail)
-                .or(() -> userRepository.findByEmailIgnoreCase(normalizedEmail))
+        AppUser user = userRepository.findByExternalSubjectForUpdate(normalizedEmail)
+                .or(() -> userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail))
                 .orElseGet(() -> createUser(normalizedEmail));
+        requireActiveUser(user);
         user.setEmail(normalizedEmail);
         user.setDisplayName(user.getDisplayName() == null || user.getDisplayName().isBlank() ? "Local Tenant Admin" : user.getDisplayName());
         user.setStatus("ACTIVE");
@@ -177,8 +181,9 @@ public class LocalCredentialAuthService {
             throw invalidSetupToken();
         }
         String normalizedToken = setupToken.trim();
-        AppUser user = userRepository.findByPasswordSetupTokenHash(hashToken(normalizedToken))
+        AppUser user = userRepository.findByPasswordSetupTokenHashForUpdate(hashToken(normalizedToken))
                 .orElseThrow(this::invalidSetupToken);
+        requireActiveUser(user);
         if (user.getPasswordSetupTokenExpiresAt() == null || !user.getPasswordSetupTokenExpiresAt().isAfter(Instant.now())) {
             clearSetupToken(user);
             throw invalidSetupToken();
@@ -188,7 +193,7 @@ public class LocalCredentialAuthService {
         clearSetupToken(user);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
-        if (user.isPlatformOwner()) {
+        if (isCurrentPlatformOwner(user)) {
             auditEventService.recordExplicitActor(
                     null,
                     user.getExternalSubject(),
@@ -231,6 +236,7 @@ public class LocalCredentialAuthService {
     private AuthTokenResponse switchTenantContextInPlatformScope(String subject, UUID tenantId) {
         AppUser user = userRepository.findByExternalSubject(requireText(subject, "subject"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user is not registered"));
+        requireCurrentPlatformOwner(user);
         TenantAccessResolution access = accessResolutionService.resolve(user.getExternalSubject(), tenantId);
         Set<String> roles = access.mode().isSupport()
                 ? Set.of("PLATFORM_OWNER")
@@ -256,6 +262,7 @@ public class LocalCredentialAuthService {
     private AuthTokenResponse clearTenantContextInPlatformScope(String subject, UUID exitedTenantId) {
         AppUser user = userRepository.findByExternalSubject(requireText(subject, "subject"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user is not registered"));
+        requireCurrentPlatformOwner(user);
         if (exitedTenantId != null) {
             tenantWorkRunner.runScoped(exitedTenantId, () ->
                     auditEventService.recordExplicitActor(
@@ -273,7 +280,7 @@ public class LocalCredentialAuthService {
 
     @Transactional
     public String issuePasswordSetupToken(String subject) {
-        AppUser user = userRepository.findByExternalSubject(requireText(subject, "subject"))
+        AppUser user = userRepository.findByExternalSubjectForUpdate(requireText(subject, "subject"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invited user not found"));
         String token = UUID.randomUUID() + "-" + UUID.randomUUID();
         user.setPasswordSetupTokenHash(hashToken(token));
@@ -306,7 +313,6 @@ public class LocalCredentialAuthService {
         user.setLastSeenAt(Instant.now());
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
-        appUserGlobalRoleService.ensureRole(user, "PLATFORM_OWNER");
         return authTokenService.issueToken(user, Set.of("PLATFORM_OWNER"), null);
     }
 
@@ -373,7 +379,25 @@ public class LocalCredentialAuthService {
     }
 
     private String normalizeRole(String role) {
-        return requireText(role, "role").toUpperCase().replace('-', '_').replace(' ', '_').replaceFirst("^ROLE_", "");
+        return TenantRolePolicy.forAuthorization(role);
+    }
+
+    private void requireActiveUser(AppUser user) {
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            throw invalidCredentials();
+        }
+    }
+
+    private boolean isCurrentPlatformOwner(AppUser user) {
+        return user.isPlatformOwner()
+                || appUserGlobalRoleService.rolesForUser(user.getId()).contains("PLATFORM_OWNER");
+    }
+
+    private void requireCurrentPlatformOwner(AppUser user) {
+        requireActiveUser(user);
+        if (!isCurrentPlatformOwner(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Current platform-owner access is required");
+        }
     }
 
     private String normalizeEmail(String value) {

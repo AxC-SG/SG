@@ -1,13 +1,13 @@
 # VulnWatch Backend
 
-Last updated: 2026-09-24
+Last updated: 2026-10-18
 
 ## Tech Stack
 
 | Component | Version / Detail |
 |-----------|-----------------|
 | Java | 17 |
-| Spring Boot | 3.3.2 |
+| Spring Boot | 3.5.16 |
 | Spring Security | JWT Bearer + API key dual-auth |
 | Spring Data JPA | PostgreSQL via HikariCP |
 | Database | PostgreSQL (Flyway migrations in `postgres_reset/` for the platform schema; a second `tenant/` line, applied once per tenant schema by the tenant schema control plane, owns per-tenant DDL) |
@@ -32,24 +32,24 @@ Enabled when `APP_ALLOW_API_KEY_AUTH=true`.
 | `X-Creator-Key: <key>` | additionally: `ROLE_CREATOR`, `ROLE_PLATFORM_OWNER`, `ROLE_TENANT_ADMIN`, `ROLE_INVENTORY_ADMIN` |
 | `X-User-ID: <id>` | sets actor identity (defaults to `APP_DEFAULT_USER_ID`) |
 
-Default local api-key: `change-me-in-prod`. No creator-key configured locally means all callers get creator-level access.
+`APP_API_KEY` has no built-in default (`app.security.api-key` is empty, and every API-key request is rejected with "API key is not configured" until it is set); the default `X-User-ID` is `local-analyst`. No creator-key configured means all callers presenting a valid API key get creator-level access.
 
 ### JWT Bearer (production)
 
-Active when `APP_JWT_ISSUER_URI` is set. Token decoded by `JwtTenantAuthenticationService`. Roles resolved from the `roles` JWT claim (or any namespaced claim ending in `/roles`). Tenant ID resolved from `tenant_id` claim.
+Active when `APP_JWT_ISSUER_URI`, `APP_JWT_JWK_SET_URI`, or `APP_JWT_HMAC_SECRET` is set (`JwtDecoderConfig`). Token decoded by `JwtTenantAuthenticationService`. Roles resolved from the claim named by `app.security.jwt.roles-claim` (default `roles`, or any namespaced claim ending in `/roles`). Tenant resolved from the `active_tenant_id` claim, then `tenant_id`, then `tenant_slug` (claim names configurable under `app.security.jwt.*`).
 
 ### Tenant Resolution
 
 `TenantResolutionFilter` populates thread-local `TenantContext` from:
-1. JWT `tenant_id` claim (production)
+1. Tenant carried on the authenticated JWT (`active_tenant_id` / `tenant_id` / `tenant_slug` claims, production)
 2. `X-Tenant-ID` header (only when `APP_ALLOW_HEADER_TENANT_SELECTION=true` — local dev only)
-3. Default tenant fallback
+3. Default workspace fallback — only when `APP_REQUIRE_TENANT_CONTEXT=false`; with the default (`true`) the context is left empty
 
-`TenantStatusFilter` follows and rejects requests with HTTP 403 if tenant is `SUSPENDED` or `EXPIRED`.
+`TenantStatusFilter` follows (skipping `/api/platform/`, `/api/auth/`, `/api/me`) and rejects requests with HTTP 423 (`TENANT_SUSPENDED`) if the tenant is soft-deleted or its status is anything other than `ACTIVE`, and HTTP 410 (`TENANT_DELETED`) if the tenant row no longer exists.
 
 ### Local Credential Auth
 
-`LocalAuthController` / `AuthLoginController` (`POST /api/auth/login`, `POST /api/auth/setup-password`) provides bcrypt-based login for platform owner and tenant admins in validation/preprod environments.
+`LocalAuthController` (`POST /api/auth/login`, `POST /api/auth/setup-password`, `POST /api/auth/setup-session`, `POST /api/auth/tenant-context`) provides bcrypt-based login for platform owner and tenant admins in validation/preprod environments.
 
 ---
 
@@ -66,7 +66,7 @@ Active when `APP_JWT_ISSUER_URI` is set. Token decoded by `JwtTenantAuthenticati
 | `/api/tenant-invites/**` | Public (GET validate + POST accept — mirrors `/api/demo-invites/**`) |
 | `/api/platform/**` | `ROLE_PLATFORM_OWNER` |
 | `/api/operations/**` | `ROLE_PLATFORM_OWNER` |
-| `/api/operations/quality/**`, `GET /api/operations/software-identities/search` | also permit `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST`, `READ_ONLY_AUDITOR` |
+| `GET /api/operations/quality/**`, `GET /api/operations/software-identities/search` | also permit `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST`, `READ_ONLY_AUDITOR` |
 | `POST /api/internal/ai-grid/evidence/{producerId}` | `ROLE_SERVICE_ACCOUNT`, and the authenticated principal must equal `producerId` |
 | `/api/fix-intelligence/**` | Public — `permitAll()` unconditionally, not gated by profile/env. Added with the Fix Intelligence MVP; a real gap against the rule below, see [Fix Intelligence](#fix-intelligence) |
 | `GET /api/auth/context`, `GET /api/me` | Authenticated (no longer public); still CSRF-exempt as read-only endpoints |
@@ -76,7 +76,7 @@ Active when `APP_JWT_ISSUER_URI` is set. Token decoded by `JwtTenantAuthenticati
 
 ## REST Controllers
 
-63 controllers total (44 under `com.prototype.vulnwatch.controller`, described in this section, plus 19 under the separate `com.prototype.vulnwatch.aisecurity.controller` package, described in its own [AI Security / AI Grid](#ai-security--ai-grid) section below), verified against `@RequestMapping`/`@GetMapping`/etc. annotations directly (several base paths below differ from older drafts of this doc — connector controllers moved under a shared `/api/connectors/` prefix at some point, and quite a few controllers have grown far beyond simple CRUD).
+67 controllers total (48 under `com.prototype.vulnwatch.controller`, described in this section, plus 19 under the separate `com.prototype.vulnwatch.aisecurity.controller` package, described in its own [AI Security / AI Grid](#ai-security--ai-grid) section below), verified against `@RequestMapping`/`@GetMapping`/etc. annotations directly (several base paths below differ from older drafts of this doc — connector controllers moved under a shared `/api/connectors/` prefix at some point, and quite a few controllers have grown far beyond simple CRUD).
 
 ### Assets / Ingestion
 
@@ -101,12 +101,12 @@ Asset domain: `Asset` entity. Types: `AssetType` enum. Criticality: `BusinessCri
 | POST | `/ingestion/nvd-sync` | Trigger NVD incremental sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
 | POST | `/ingestion/nvd-full-sync` | Trigger NVD full sync (`PLATFORM_OWNER`) |
 | POST | `/ingestion/nvd-cve/{cveId}` | Refresh single CVE from NVD (`PLATFORM_OWNER`) |
-| POST | `/ingestion/kev-sync` | Trigger CISA KEV sync |
-| POST | `/ingestion/ghsa-sync` | Trigger GHSA sync |
-| POST | `/ingestion/euvd-sync` | Trigger EUVD sync |
-| POST | `/ingestion/jvn-sync` | Trigger JVN sync |
-| POST | `/ingestion/csaf/microsoft-sync` | Trigger Microsoft CSAF sync |
-| POST | `/ingestion/csaf/redhat-sync` | Trigger Red Hat CSAF sync |
+| POST | `/ingestion/kev-sync` | Trigger CISA KEV sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| POST | `/ingestion/ghsa-sync` | Trigger GHSA sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| POST | `/ingestion/euvd-sync` | Trigger EUVD sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| POST | `/ingestion/jvn-sync` | Trigger JVN sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| POST | `/ingestion/csaf/microsoft-sync` | Trigger Microsoft CSAF sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| POST | `/ingestion/csaf/redhat-sync` | Trigger Red Hat CSAF sync (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
 | POST | `/ingestion/vex-assertion-repair` | Repair VEX assertions (`PLATFORM_OWNER`) |
 | POST | `/ingestion/vex-rollout-backfill` | VEX rollout backfill (`PLATFORM_OWNER`) |
 | GET | `/ingestion/vex-assertion-repair/summary` | Get VEX repair summary |
@@ -139,8 +139,9 @@ Supported SBOM formats (`SbomFormat` enum): CycloneDX, SPDX.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/fetch` | Fetch BOM from URL |
-| POST | `/upload` | Upload BOM file (multipart) |
+| POST | `/fetch` | Fetch BOM from URL (`INVENTORY_ADMIN`/`TENANT_ADMIN`/`CREATOR`) |
+| POST | `/upload` | Upload BOM file (multipart; same roles as `/fetch`) |
+| GET | `/sources` | List BOM sources |
 | GET | `/inventory` | Paginated BOM inventory list |
 | GET | `/components` | Paginated BOM components list |
 | GET | `/components/{componentId}` | Get component detail |
@@ -150,7 +151,9 @@ Supported SBOM formats (`SbomFormat` enum): CycloneDX, SPDX.
 | GET | `/support` | BOM support matrix |
 | GET | `/inventory/{bomId}` | Get single BOM detail |
 | GET | `/inventory/{bomId}/lineage` | Get BOM lineage |
-| DELETE | `/inventory/{bomId}` | Soft-delete a BOM |
+| DELETE | `/inventory/{bomId}` | Soft-delete a BOM (`INVENTORY_ADMIN`/`TENANT_ADMIN`/`CREATOR`) |
+
+**AiBomDeclaredResourceController — `/api/bom/declared-resources`** — declared AI-BOM models/datasets. Reads (`SECURITY_ANALYST`/`INVENTORY_ADMIN`/`TENANT_ADMIN`/`CREATOR`/`OPERATOR`): `GET /`, `/setup-actions`, `/{resourceId}`, `/{resourceId}/findings`, `/{resourceId}/correlation`. Reviewed deployment-mapping workflow: `POST /{resourceId}/mapping/propose` (adds `SECURITY_ANALYST`), `/mapping/approve` and `/mapping/remove` (`INVENTORY_ADMIN`/`TENANT_ADMIN`/`CREATOR`), all `@SensitiveTenantAction`.
 
 **CbomController — `/api/bom/cbom`** *(undocumented until now — cloud/container BOM posture tracking)*
 
@@ -201,6 +204,12 @@ Supported SBOM formats (`SbomFormat` enum): CycloneDX, SPDX.
 
 Backed by `vulnerability_intel_summary` + `vulnerability_intel_observations` projections.
 
+**GithubAdvisoryPlatformController — `/api/platform/ghsa`** (`PLATFORM_OWNER`) — `GET /sync-status`, `POST /sync/trigger`, `GET /health`.
+
+**GithubAdvisoryTenantController — `/api/tenants/{tenantId}/ghsa`** (`TENANT_ADMIN`/`INVENTORY_ADMIN`/`PLATFORM_OWNER`) — per-tenant GHSA integration: `GET /integration-status`, `POST /enable`, `POST /disable`, `PUT /settings`, `GET /advisories`, `GET`/`DELETE /component-advisories/{sourceId}`, `POST /correlate/{sourceId}`.
+
+**OsvTenantController — `/api/tenants/{tenantId}/osv`** (`TENANT_ADMIN`/`INVENTORY_ADMIN`/`SECURITY_ANALYST`) — `GET /component-advisories`, `GET /coverage`.
+
 ### Findings
 
 **FindingController — `/api/findings`**
@@ -208,6 +217,7 @@ Backed by `vulnerability_intel_summary` + `vulnerability_intel_observations` pro
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | Paginated findings (cursor/limit or page/size) |
+| GET | `/groups` | Grouped findings |
 | GET | `/summary` | Finding summary metrics |
 | GET | `/distributions` | Finding distribution analytics |
 | GET | `/backlog-health` | Backlog health metrics |
@@ -263,6 +273,7 @@ Backed by `vulnerability_intel_summary` + `vulnerability_intel_observations` pro
 | POST | `/{cveId}/investigation/false-positive-analysis` | Analyze false positives |
 | POST | `/{cveId}/investigation/eol-analysis` | Analyze EOL status |
 | POST | `/{cveId}/investigation/run-agent` | Run investigation agent |
+| GET | `/{cveId}/advisory-equivalences` | Advisory equivalence groups for a CVE (`TENANT_ADMIN`/`INVENTORY_ADMIN`/`SECURITY_ANALYST`) |
 
 `OrgCveRecord` entity stores per-tenant CVE state. `OrgCveAiArtifact` stores persisted AI outputs. Most write endpoints require `TENANT_ADMIN`/`SECURITY_ANALYST`.
 
@@ -280,6 +291,7 @@ Backed by `vulnerability_intel_summary` + `vulnerability_intel_observations` pro
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | Main dashboard summary |
+| GET | `/exposure-summary` | Exposure summary |
 | GET | `/applicable-software` | Paginated applicable software |
 | GET | `/impacted-cves` | Paginated impacted CVEs |
 | GET | `/cve-inventory-map` | CVE-to-inventory mapping |
@@ -353,8 +365,8 @@ Requires `ROLE_PLATFORM_OWNER` (plus `TENANT_ADMIN`/`INVENTORY_ADMIN`/`SECURITY_
 |--------|------|-------------|
 | GET | `/` | Get tenant risk policy |
 | POST | `/` | Update risk policy (`TENANT_ADMIN`) |
-| POST | `/recompute-findings-scores` | Recompute all finding scores |
-| POST | `/auto-close/execute-now` | Run the auto-close job immediately |
+| POST | `/recompute-findings-scores` | Recompute all finding scores (`TENANT_ADMIN`) |
+| POST | `/auto-close/execute-now` | Run the auto-close job immediately (`TENANT_ADMIN`) |
 
 `RiskPolicy` entity. Fields include: `sla*`, `triage*` (6 weight fields), `autoClose*`, `findingGenerationMode`, `findingsScoreConfig` (JSONB).
 
@@ -370,7 +382,7 @@ Requires `ROLE_PLATFORM_OWNER` (plus `TENANT_ADMIN`/`INVENTORY_ADMIN`/`SECURITY_
 | POST | `/{id}/reopen-all` | Reopen findings suppressed by a rule |
 | POST | `/cve-reopen/{recordId}` | Reopen a specific suppressed CVE record |
 
-`SuppressionRule` entity. States: DRAFT, APPROVED, IN_REVIEW, REJECTED, EXPIRED. Types: CVE, FINDING.
+All write endpoints require `TENANT_ADMIN`. `SuppressionRule` entity. States: DRAFT, APPROVED, IN_REVIEW, REJECTED, EXPIRED. Types: CVE, FINDING.
 
 **OwnershipRuleController — `/api/ownership-rules`**
 
@@ -410,6 +422,8 @@ Per-tenant configuration of which vulnerability intelligence sources participate
 | POST | `/{campaignId}/exceptions/{exceptionId}/status` | Update exception status |
 | POST | `/{campaignId}/notify-groups/{notifyGroupId}` | Update notify group |
 | POST | `/{campaignId}/watchlist/{watchlistEntryId}` | Update watchlist entry |
+| POST | `/{campaignId}/ai-insights` | Generate AI insights (`CampaignAiService`) |
+| POST | `/{campaignId}/ai-advisories` | Generate AI advisories |
 
 All write endpoints: `PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`.
 
@@ -434,7 +448,7 @@ The `sccm-patch`/`bigfix-patch`/`tanium-patch` connector cards on `/connect` (se
 
 ### AI Security / AI Grid
 
-19 controllers under `com.prototype.vulnwatch.aisecurity.controller` (separate package from the rest of this doc — see [Service Layer](#ai-security--ai-grid-service-layer) below for the full pipeline). Tenant-facing endpoints additionally require the `ai.security` tenant entitlement (`AiSecurityAccessService.assertEntitled`); the global `/api/ai-frameworks` reference endpoint is the deliberate exception because platform owners need it before selecting a tenant. `SecurityConfig` has no dedicated path rule for `/api/ai-security/**` or `/api/ai-grid/**` — authorization is per-endpoint `@PreAuthorize` or service-level entitlement under the generic authenticated-`/api/**` rule. Two of the 19 — `AiGridPhase1PreviewController` and `AiGridPhase1ReleaseBoardController` — predate this doc's last full controller-by-controller sweep and aren't itemized below; read them directly if you need their surface. `AiGridPolicyRolloutController` is a thin trigger for `AiGridPolicyRolloutService.processPendingTasks` (see the Scheduled Jobs table) and likewise isn't itemized.
+19 controllers under `com.prototype.vulnwatch.aisecurity.controller` (separate package from the rest of this doc — see [Service Layer](#ai-security--ai-grid-service-layer) below for the full pipeline). Tenant-facing endpoints additionally require the `ai.security` tenant entitlement (`AiSecurityAccessService.assertEntitled`); the global `/api/ai-frameworks` reference endpoint is the deliberate exception because platform owners need it before selecting a tenant. `SecurityConfig` has no dedicated path rule for `/api/ai-security/**` or `/api/ai-grid/**` — authorization is per-endpoint `@PreAuthorize` or service-level entitlement under the generic authenticated-`/api/**` rule. Two of the 19 — `AiGridPhase1PreviewController` (`/api/platform/ai-grid/releases/phase-1/preview`) and `AiGridPhase1ReleaseBoardController` (`/api/platform/ai-grid/releases/phase-1`) — aren't itemized below; read them directly if you need their surface. `AiGridPolicyRolloutController` (`/api/platform/ai-grid`) exposes `GET /policies/shipping-status`, `GET /policy-rollouts[/{rolloutId}]`, and `POST /policy-rollouts/{rolloutId}/retry` over `AiGridPolicyRolloutService` (the scheduled drain is in the Scheduled Jobs table).
 
 **AiSecurityController — `/api/ai-security`** (shared artifact/finding/graph/run API — reads open to entitled callers; finding review mutations `PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`)
 
@@ -443,19 +457,27 @@ The `sccm-patch`/`bigfix-patch`/`tanium-patch` connector cards on `/connect` (se
 | GET | `/summary` | Artifact/finding counts, incomplete-scope counts |
 | GET | `/artifacts`, `/artifact-summaries` | Paginated artifact list / summary projection |
 | GET | `/inventory/knowledge-data`, `/inventory/mcp` | Knowledge-source / MCP-server artifact inventory |
-| GET | `/artifacts/{id}`, `/artifacts/{id}/relationships` | Artifact detail + relationships |
-| GET | `/artifacts/{id}/activity-evidence` | Curated, expiring `activity.*` host-context facts for one artifact (latest 100 by `observed_at`), each flagged `expired` when `valid_until` has passed. Advisory only — see [AWS activity evidence](#aws-activity-evidence) |
+| GET | `/artifacts/{id}`, `/artifacts/{id}/versions`, `/artifacts/{id}/relationships` | Artifact detail, versions + relationships |
+| GET | `/artifacts-export` | Artifact CSV export |
+| GET/PUT | `/agent-deployment/settings` | Agent deployment settings (PUT: `PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| GET | `/artifacts/{id}/activity-evidence` | Curated, expiring `activity.*` host-context facts for one artifact (latest 100 by `observed_at`), each flagged `expired` when `valid_until` has passed. Advisory only — see [AWS activity evidence](#aws-activity-evidence). Currently returns HTTP 410 `RUNTIME_OUT_OF_SCOPE` (`AiRuntimeScope`) |
 | GET | `/graph` | Artifact relationship graph |
 | GET | `/severity-grid`, `/top-risk-artifacts` | Inventory rollups |
 | GET | `/findings`, `/findings/{id}` | AI policy-failure findings |
 | PUT | `/findings/{id}/review` | Set review disposition (CONFIRMED/FALSE_POSITIVE/NEEDS_INVESTIGATION) |
 | GET | `/runs`, `/runs/{id}/scopes` | Discovery run history + per-scope detail |
 
-**AiSecurityConnectorController — `/api/connectors/ai-security/aws`** — AWS Bedrock connector config; reads open, writes `PLATFORM_OWNER`/`TENANT_ADMIN`/`INVENTORY_ADMIN`. `GET`/`PUT` config, `POST /test`, `POST /run`.
+**AiSecurityConnectorController — `/api/connectors/ai-security/aws`** — AWS Bedrock connector config; reads open, writes `PLATFORM_OWNER`/`TENANT_ADMIN`/`INVENTORY_ADMIN`. `GET`/`PUT` config, `GET /requirements`, `POST /test`, `POST /preflight`, `POST /run`.
 
 **AiSecurityAzureConnectorController — `/api/connectors/ai-security/azure`** — multi-step Azure connector (credential profiles + connector config): list/save connector, `/requirements`, `/{id}/test`, `/{id}/run`, `/targets/{id}/run`, plus `/credentials` CRUD + test/rotate/revoke.
 
-**AiSecurityAzureFoundryConfigController — `/api/connectors/ai-security/azure-foundry`** — newer single-form Azure setup orchestrating config+target+credential+connector in one save. `GET`, `PUT`, `POST /test`, `POST /run`.
+**AiSecurityAzureFoundryConfigController — `/api/connectors/ai-security/azure-foundry`** — newer single-form Azure setup orchestrating config+target+credential+connector in one save. `GET`, `PUT`, `POST /test`, `POST /run`, `POST /runtime-run` (HTTP 410 while runtime is out of scope).
+
+**AiSecurityConnectorFeatureFlagController — `/api/connectors/ai-security/feature-flags`** — `GET /` list, `PUT /{feature}` (`PLATFORM_OWNER`/`TENANT_ADMIN`/`INVENTORY_ADMIN`).
+
+**CopilotStudioConnectorController — `/api/connectors/ai-security/copilot-studio`** — `GET /`, `PUT /` save, `POST /{connectorId}/test`, `POST /{connectorId}/run` (writes `PLATFORM_OWNER`/`TENANT_ADMIN`/`INVENTORY_ADMIN`), `POST /{connectorId}/runtime-run` (HTTP 410 while runtime is out of scope).
+
+**AiSecurityDigestBaselineController — `/api/ai-security/artifacts/{artifactId}/digest-baselines`** — `GET /`, `/observations`, `/history`; `POST /approve`, `/reapprove`, `/revoke`, `/approve-observation` (`PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`).
 
 **AiGridController — `/api`** — the main AI Grid read/write API.
 
@@ -472,26 +494,29 @@ The `sccm-patch`/`bigfix-patch`/`tanium-patch` connector cards on `/connect` (se
 | GET | `/ai-frameworks` | Global framework/control registry; authenticated platform owners can read it without selecting a tenant |
 | GET | `/ai-framework-coverage?framework=&version=` | Tenant framework breadth/effective coverage for the current or requested retained coverage epoch |
 | GET | `/ai-policy-readiness`, `/ai-setup-actions` | Per-policy readiness + prioritized setup queue |
-| GET | `/ai-runtime-telemetry-readiness` | Tenant Program 2 numeric entry gate over the rolling pilot window |
+| GET | `/ai-runtime-telemetry-readiness` | Tenant Program 2 numeric entry gate over the rolling pilot window (HTTP 410 while runtime is out of scope) |
 | GET | `/ai-assessment-states/latest` | Latest per-policy-version totals in the customer vocabulary PASS/FAIL/UNKNOWN/NOT_ASSESSED |
 | GET | `/ai-assessment-runs`, `/ai-assessment-runs/{id}/metrics` | Run history + economics telemetry |
 | POST | `/ai-assessment-runs/{id}/replay` | Re-run the latest assessment after a policy edit |
 | GET | `/ai-policies`, `/ai-policies/{id}` | Canonical governed policy summaries and rich policy detail |
 | PUT | `/ai-policies/{id}/selection` | Change REQUIRED/ENABLED/PREVIEW/DISABLED selection (`TENANT_ADMIN`+) |
 | POST | `/ai-policies/enable-all` | Enable every distributed policy whose effective selection changes; admin-only, audited, and refreshes projections only when needed |
-| GET/PUT | `/ai-policies/{id}/configuration`, `/scope`, `/parameters` | Governed policy configuration |
-| POST/DELETE | `/ai-policies/{id}/exceptions[/{artifactId}]` | Governed per-artifact exception |
+| GET/PUT | `/ai-policies/{id}/configuration` (GET only), `/scope`, `/parameters` (PUT) | Governed policy configuration |
+| POST/DELETE | `/ai-policies/{id}/exceptions[/{artifactId}]`, `POST /ai-policies/{id}/exception-rules` | Governed per-artifact exception / exception rule |
 | GET | `/ai-policies/{id}/assist/explain` | Policy explanation using governed configuration |
 | GET/PUT/POST | `/ai-approved-manifests[...]`, `/ai-component-allowlist[...]` | Tenant V2 approved agent-version manifests and component allowlist; writes/revocations are admin-only sensitive actions |
 | GET | `/ai-overview` | Explainable prioritized exposure-intelligence overview |
+| GET | `/ai-exposure-priorities`, `/ai-action-queue`, `/ai-assets/{id}/posture`, `/ai-changes`, `/ai-connector-capabilities` | Prioritized exposures, action queue, per-asset posture, change feed, connector capability matrix |
+| POST/GET | `/ai-assessments/execute`, `/ai-assessments/{runId}/status`, `/ai-assessments/requests/{requestId}/retry`, `/ai-policies/{id}/assessment-status` | On-demand assessment execution/status/retry (writes `PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`) |
+| GET | `/ai-policies/{id}/versions` | Policy version history |
 
 **AiGridEvidenceIngestionController — `/api/internal/ai-grid/evidence`** — `POST /{producerId}`, `ROLE_SERVICE_ACCOUNT` only, principal must equal `producerId`. Trusted third-party evidence ingestion port.
 
-**AiGridRuntimeIngestionController — `/api/internal/ai-grid/runtime`** — `POST /{producerId}/v1/batches`, `ROLE_SERVICE_ACCOUNT` only, principal must equal `producerId` — the governed customer-telemetry adapter for frameworks/gateways/enforcement points that can supply consequential-action decisions a provider connector cannot. Body is a raw metadata-only batch (JSON); `AiGridRuntimeIngestionService.accept()` enforces, in order, a 2 MiB body cap, a 100-execution-per-batch cap, then the existing per-execution event/metadata limits, and recursively rejects any forbidden raw-content field (prompt/response/argument/credential/document/message-body/raw-payload). Returns `202 Accepted` with an `AdmissionResult` (receipt ID, accepted/duplicate/quarantined counts) or `429` + `Retry-After` on backlog or per-tenant quota exhaustion.
+**AiGridRuntimeIngestionController — `/api/internal/ai-grid/runtime`** — *currently returns HTTP 410 `RUNTIME_OUT_OF_SCOPE` (`AiRuntimeScope.requireInScope()`); the description below is the deferred design.* `POST /{producerId}/v1/batches`, `ROLE_SERVICE_ACCOUNT` only, principal must equal `producerId` — the governed customer-telemetry adapter for frameworks/gateways/enforcement points that can supply consequential-action decisions a provider connector cannot. Body is a raw metadata-only batch (JSON); `AiGridRuntimeIngestionService.accept()` enforces, in order, a 2 MiB body cap, a 100-execution-per-batch cap, then the existing per-execution event/metadata limits, and recursively rejects any forbidden raw-content field (prompt/response/argument/credential/document/message-body/raw-payload). Returns `202 Accepted` with an `AdmissionResult` (receipt ID, accepted/duplicate/quarantined counts) or `429` + `Retry-After` on backlog or per-tenant quota exhaustion.
 
-**AiGridRuntimeIngestionReceiptController — `/api/ai-security/runtime-ingestion/receipts`** — `GET /{receiptId}`, ordinary tenant auth + entitlement, `404` if the receipt doesn't belong to the caller's tenant. Lets a producer or operator poll a submitted batch's processing status.
+**AiGridRuntimeIngestionReceiptController — `/api/ai-security/runtime-ingestion/receipts`** — `GET /{receiptId}` (receipt lookups are deferred with the runtime adapter), ordinary tenant auth + entitlement, `404` if the receipt doesn't belong to the caller's tenant. Lets a producer or operator poll a submitted batch's processing status.
 
-**AiAgentExecutionController — `/api/ai-security/executions`** — read-only, tenant- and entitlement-scoped access to collected runtime metadata.
+**AiAgentExecutionController — `/api/ai-security/executions`** — read-only, tenant- and entitlement-scoped access to collected runtime metadata. All three endpoints currently return HTTP 410 `RUNTIME_OUT_OF_SCOPE`.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -503,7 +528,7 @@ The `sccm-patch`/`bigfix-patch`/`tanium-patch` connector cards on `/connect` (se
 
 **AiGridOperationsGovernanceController — `/api/ai-governance`** — tenant scan budget & retention operations. Reads `TENANT_ADMIN`+`SECURITY_ANALYST`; writes `PLATFORM_OWNER`/`TENANT_ADMIN`. `GET`/`PUT /budget`, `PUT /cadence`, `POST /budget-alerts/{id}/acknowledge`, `GET /retention`, `PUT /retention/policies`, `POST /retention/holds[/…/release]`, `POST /retention/sweep`.
 
-**AiGridPolicyCatalogController — `/api/platform/ai-grid/policies`** (`PLATFORM_OWNER` only) — policy package import/distribution/rollout and portfolio. `GET`/`POST` list/import, `PUT /{id}/distribution`, `GET .../impact-preview`, `GET/POST portfolio/*`, `POST /test-reset`.
+**AiGridPolicyCatalogController — `/api/platform/ai-grid/policies`** (`PLATFORM_OWNER` only) — policy package import/distribution/rollout and portfolio. `GET /` list, `GET /{policyId}/versions/{version}` detail, `PUT /{policyId}/distribution`.
 
 **AiGridValidationGovernanceController — `/api/platform/ai-grid/validation`** (`PLATFORM_OWNER` only) — answer-key/precision/bias review, policy-ID lifecycle, and R1/R2 release certification. `GET/POST /answer-keys[...]`, `POST /precision-reviews[...]`, `POST /policies/{id}/approve`, `POST /policies/{id}/dev-deploy`, `POST /policies/{id}/publish`, `POST /policies/{id}/deprecate`, and `POST /release-bindings/{id}/revoke`; legacy version-keyed digest/readiness/publish routes return an explicit migration error. DEV is reachable only through `dev-deploy` with a cohort and pinned approved version; `publish` performs CANARY (`publishAll=false`) or GA (`publishAll=true`). The catalog distribution endpoint intentionally rejects DEV and exposure-increasing writes. `GET/POST /releases/r1/*`, `GET/POST /releases/r2/*` remain available.
 
@@ -562,7 +587,7 @@ The `sccm-patch`/`bigfix-patch`/`tanium-patch` connector cards on `/connect` (se
 | POST | `/targets/{targetId}/test` | Test target connection |
 | POST | `/targets/{targetId}/sync` | Trigger target sync |
 
-Mirrors the AWS Discovery architecture. Auth: `CLIENT_SECRET` or `MANAGED_IDENTITY` (`azure_discovery_configs`/`azure_discovery_targets`, V40/V41).
+Mirrors the AWS Discovery architecture. Auth: `CLIENT_SECRET` or `MANAGED_IDENTITY` (`azure_discovery_configs`/`azure_discovery_targets`, tenant V1 baseline).
 
 **SyncController — `/api/sync-runs`**
 
@@ -582,6 +607,7 @@ Mirrors the AWS Discovery architecture. Auth: `CLIENT_SECRET` or `MANAGED_IDENTI
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/auth/context` or `/me` | Get current auth context (roles, tenant, demo status, etc.) |
+| GET | `/auth/authorized-workspaces` | List tenants the caller is allowed to enter (`AllowedTenantContextService`) |
 
 **LocalAuthController — `/api/auth`**
 
@@ -589,6 +615,7 @@ Mirrors the AWS Discovery architecture. Auth: `CLIENT_SECRET` or `MANAGED_IDENTI
 |--------|------|-------------|
 | POST | `/login` | Credential login (email + password) |
 | POST | `/setup-password` | Set password via one-time setup token |
+| POST | `/setup-session` | Start a setup session from a one-time setup token |
 | POST | `/tenant-context` | Switch acting tenant context (`PLATFORM_OWNER`) |
 | DELETE | `/tenant-context` | Clear acting tenant context (`PLATFORM_OWNER`) |
 
@@ -599,7 +626,7 @@ Mirrors the AWS Discovery architecture. Auth: `CLIENT_SECRET` or `MANAGED_IDENTI
 | GET | `/` | List available personas |
 | POST | `/{personaKey}/token` | Issue JWT for persona |
 
-Only registered when `app.test-personas.enabled=true`.
+The controller is always registered; `TestPersonaService` rejects calls unless `app.test-personas.enabled=true` (and `ProductionSafetyValidator` refuses production startup if it is on).
 
 **TenantAdministrationController — `/api`**
 
@@ -609,7 +636,9 @@ Only registered when `app.test-personas.enabled=true`.
 | POST | `/platform/tenants` | Create tenant (`PLATFORM_OWNER`) — returns **202 Accepted**, not 200 |
 | POST | `/platform/tenants/{tenantId}/provisioning-retry` | Retry a `PROVISIONING_FAILED` tenant (`PLATFORM_OWNER`) — returns 202 |
 | GET | `/platform/tenants/{tenantId}` | Get tenant (`PLATFORM_OWNER`) |
+| POST | `/platform/tenants/{tenantId}/owner-recovery` | Recover a tenant owner (`PLATFORM_OWNER`) |
 | PATCH | `/platform/tenants/{tenantId}/status` | Update tenant status |
+| PATCH | `/platform/tenants/{tenantId}/demo-expiry` | Extend a demo tenant's expiry |
 | PATCH | `/platform/tenants/{tenantId}/quotas` | Update entitlement quotas |
 | DELETE | `/platform/tenants/{tenantId}` | Delete tenant |
 | GET | `/platform/users` | List platform users |
@@ -653,10 +682,11 @@ Distinct from — and layers on top of — the existing `tenant_support_grants` 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/` | List service accounts |
+| GET | `/` | List service accounts (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
 | POST | `/` | Create service account (`TENANT_ADMIN`) |
 | DELETE | `/{accountId}` | Delete account |
 | POST | `/{accountId}/deactivate` | Deactivate account |
+| POST | `/{accountId}/reactivate` | Reactivate account |
 
 ### Demo
 
@@ -739,8 +769,8 @@ Backed by `platform.tenant_schema_versions` via `TenantSchemaStatusService`. Sho
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | List audit events (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
-| GET | `/export` | Export as CSV |
-| GET | `/support-bundle` | Get support bundle |
+| GET | `/export` | Export as CSV (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
+| GET | `/support-bundle` | Get support bundle (`PLATFORM_OWNER`/`TENANT_ADMIN`) |
 | GET | `/platform-users` | Platform user audit events (`PLATFORM_OWNER`) |
 
 **SloController — `/api/slo`**
@@ -751,7 +781,7 @@ Backed by `platform.tenant_schema_versions` via `TenantSchemaStatusService`. Sho
 
 ### ApiExceptionHandler
 
-`@RestControllerAdvice` providing consistent error responses for all controllers: 404 (entity not found), 400 (validation), 403 (authorization), 429 (quota exceeded), demo access violations, 409 (lock contention/data integrity), 500 (generic).
+`@RestControllerAdvice` providing consistent error responses for all controllers: 404 (entity/resource not found), 400 (validation, malformed body, illegal argument/state, data-integrity violations), 405 (method not supported), 403 (authorization), 429 (quota exceeded, public rate limit), demo access violations, 409 (lock contention), `ResponseStatusException` passthrough, 500 (generic).
 
 ---
 
@@ -759,7 +789,7 @@ Backed by `platform.tenant_schema_versions` via `TenantSchemaStatusService`. Sho
 
 ### NVD API (`NvdApiClient`)
 
-Fetches CVE data from NIST National Vulnerability Database. Used in daily incremental sync (`01:00` UTC) and on-demand CVE lookups. API key via `NVD_API_KEY`.
+Fetches CVE data from NIST National Vulnerability Database. Used in daily incremental sync (`01:00`, server time zone) and on-demand CVE lookups. API key via `NVD_API_KEY` (or `NVD_API_KEY_FILE`).
 
 ### EUVD API (`EuvdApiClient`)
 
@@ -771,7 +801,7 @@ Japan Vulnerability Notes — Japanese CVE database.
 
 ### GitHub API (`GithubApiClient`)
 
-SBOM ingestion from GitHub repos (dependency graph export) and GHCR (container image attestations). Also GHSA (GitHub Security Advisory) feed sync. Token via file `backend/secrets/github-api-token` or `GITHUB_API_TOKEN`.
+SBOM ingestion from GitHub repos (dependency graph export) and GHCR (container image attestations). Also GHSA (GitHub Security Advisory) feed sync. Token resolved via `GITHUB_API_TOKEN_FILE`, then `backend/secrets/github-api-token`, then `GITHUB_API_TOKEN` (`GithubTokenProvider`).
 
 ### EOL API (`EolApiClient`)
 
@@ -781,13 +811,13 @@ Fetches product lifecycle data from endoflife.date. Drives the 4-stage EOL pipel
 
 Discovers EC2 instances via AWS SSM. Supports IAM role assumption, access keys, and instance profile auth. Multi-account via cross-account role ARN + external ID in `AwsDiscoveryTarget`.
 
-### Azure (`AzureDiscoveryClient` and related)
+### Azure (`AzureDiscoveryClient`, `AzureCredentialProvider`)
 
-Discovers compute/platform resources per subscription. Supports `CLIENT_SECRET` and `MANAGED_IDENTITY` auth. Multi-subscription via `AzureDiscoveryTarget` (`azure_discovery_configs`/`azure_discovery_targets`, added in V40/V41). Mirrors the AWS Discovery client architecture; newer and less exercised in production.
+Discovers compute/platform resources per subscription. Supports `CLIENT_SECRET` and `MANAGED_IDENTITY` auth. Multi-subscription via `AzureDiscoveryTarget` (`azure_discovery_configs`/`azure_discovery_targets`, part of the tenant V1 baseline). Mirrors the AWS Discovery client architecture; newer and less exercised in production.
 
 ### OpenAI (`OpenAiClient`)
 
-AI investigation summaries, CVE triage, and AI-assisted actions. Gated by `OPENAI_ENABLED`. Results persisted in `org_cve_ai_artifacts` to avoid redundant API calls.
+AI investigation summaries, CVE triage, and AI-assisted actions (also campaign AI insights, fix records, upgrade recommendations). Gated by `OPENAI_ENABLED` (property `app.openai.enabled`, default `true`; calls still need `OPENAI_API_KEY`). Results persisted in `org_cve_ai_artifacts` to avoid redundant API calls.
 
 ### AI Security discovery (`aisecurity.aws.AwsBedrockDiscoveryService`, `aisecurity.azure.AzureAiManagementClient`)
 
@@ -806,6 +836,8 @@ IAM evidence is isolated **per role**: a role whose trust or policy documents ca
 A disabled collector reports scope status `DISABLED` rather than an empty `COMPLETE` scan, so intentional disablement is never mistaken for "scanned and found nothing".
 
 #### AWS activity evidence
+
+**Status: deferred.** `AiGridHostContextService` calls `AiRuntimeScope.requireInScope()` for any `activity.*` fact and for the `SCOUT_AWS_ACTIVITY` producer, so ingestion and the activity-evidence read currently fail with HTTP 410 `RUNTIME_OUT_OF_SCOPE`; the design below is retained for when runtime returns.
 
 The AWS activity-evidence path deliberately does **not** ingest CloudWatch logs or write `ai_agent_executions`. Instead `AiGridHostContextService` registers a trusted producer `SCOUT_AWS_ACTIVITY` (provenance `OBSERVED`, evidence class `RUNTIME_OBSERVATION`, source port `ASSET`, method version `1.0.0`) accepted through the existing `POST /api/internal/ai-grid/evidence/{producerId}` port. It authorizes exactly seven fact keys — `activity.agent_invocation_observed`, `activity.tool_use_observed`, `activity.identity_use_observed`, `activity.external_action_observed`, `activity.sensitive_data_access_observed`, `activity.invocation_count_observed`, `activity.agent_last_observed_at` (registered in the platform V1 baseline, allowed workflow uses `ACTIVITY_CONTEXT`/`EXPOSURE_PRIORITIZATION`, 24h default max age). This limitation is specific to AWS activity evidence: the Azure Foundry, Azure ML, and Microsoft Copilot collectors can already write bounded, metadata-only execution records. Neither path ingests raw or high-volume application logs.
 
@@ -829,7 +861,7 @@ Parses CycloneDX and SPDX SBOMs, normalizes component names and versions, resolv
 
 ### CMDB Ingestion (`service/cmdbingestion/`)
 
-ServiceNow CMDB sync: pulls CI records, resolves identity via `IdentityMatchRule`, writes `assets` and `cis`. SCCM sync performs full sweep of device records. Both write to `software_instances` and `discovery_models`.
+ServiceNow CMDB sync: pulls CI records, resolves identity via `CiResolutionService`, writes `assets` and `cis`. SCCM sync performs full sweep of device records. Both write to `software_instances` and `discovery_models`.
 
 ### Vulnerability Ingestion (`service/vulningestion/`)
 
@@ -844,12 +876,12 @@ Processes NVD CVE JSON, GHSA advisories, CISA KEV list, and Microsoft/Red Hat CS
 Four-stage weekly pipeline (Sunday):
 1. Catalog refresh — fetch product list from endoflife.date
 2. Release data — fetch release cycles per product
-3. Slug resolution — match `inventory_components` to EOL catalog slugs (AI-assisted via OpenAI)
-4. Denormalization — write `is_eol`, `eol_days_remaining`, `eol_date` onto `inventory_components`
+3. Slug resolution — match `inventory_components` to EOL catalog slugs (deterministic tiered matching in `EolSlugResolverService`, which also returns confidence-scored suggestions; no OpenAI call)
+4. Denormalization — write `eol_slug`, `eol_cycle`, `eol_date`, `is_eol` and support-phase fields onto `inventory_components` and `software_instances` (days remaining is computed at query time from `eol_date`)
 
 ### Ownership Rule Evaluation
 
-`OwnershipRuleEvaluationService` evaluates `ownership_rules` by priority when findings are created or updated. First matching rule assigns ownership. Evaluated server-side, not stored as a trigger.
+`OwnershipRuleService` (`applyOwnerGroupToFinding`, `applyToAll`, `applyRule`) evaluates `ownership_rules` by priority when findings are created or updated. First matching rule assigns ownership. Evaluated server-side, not stored as a trigger.
 
 ### Findings Score
 
@@ -857,7 +889,7 @@ Four-stage weekly pipeline (Sunday):
 
 ### Suppression
 
-Suppression rules evaluated at finding creation and on the 15-minute reopen sweep. `SuppressionRuleService` handles expiry, transitions, and finding state changes triggered by rule changes. All approved rules are also re-run nightly (midnight).
+Suppression rules evaluated at finding creation and on the 15-minute reopen sweep (`FindingWorkflowService.reopenExpiredSuppressions`). `SuppressionRuleService` handles rule execution, reopen-all, and finding state changes triggered by rule changes. All approved rules are also re-run nightly (midnight).
 
 ### Remediation Campaigns
 
@@ -869,7 +901,7 @@ Suppression rules evaluated at finding creation and on the 15-minute reopen swee
 
 ### AI Security / AI Grid Service Layer
 
-63 services under `com.prototype.vulnwatch.aisecurity.service`, backing the controllers in [AI Security / AI Grid](#ai-security--ai-grid) above. All tables are accessed via `JdbcTemplate` directly — there are no JPA entities or Spring Data repositories for this module. `AiSecurityJobWorkerService` polls `ingestion_jobs` (every 3s by default) for `AI_SECURITY_AWS_BEDROCK`, `AI_SECURITY_AZURE_DISCOVERY`, and `AI_SECURITY_COPILOT_STUDIO` jobs, dispatching to the corresponding provider under per-tenant/provider admission limits. Copilot's manual and scheduled discovery requests enqueue the same durable job as AWS/Azure; the worker applies its kill switch and budget admission before the Dataverse sweep, so it has the same queue visibility and terminal job record. All providers emit sanitized `ObservationEnvelopeV1` chunks (`AiSecurityMetadataSanitizer` — allow-listed fields only, no prompt bodies/secrets/PII). Once a scan scope completes, `AiSecurityObservationService` hands off to `AiGridPipelineService.processCompleteScope()`, which runs in order: **snapshot** (`AiGridSnapshotService` — immutable, hash-deduped, derives facts) → **ownership** (`AiGridOwnershipService` — CONFIRMED/INFERRED/CANDIDATE/UNOWNED, reuses the tenant's `ownership_rules`) → **system grouping** (`AiGridSystemService` — bounded BFS, depth 6/fan-out 100, with split/merge/successor lineage) → **policy assessment** (`AiGridAssessmentService` + `AiGridPredicateEngine`, a JSON predicate evaluator) → **R2 exposure correlation** (`AiGridExposureService` — three hardcoded graph-traversal templates, promoting hypotheses to "validated" only on exact, fresh evidence; `AiGridExposureFreshnessService` demotes stale ones) → **coverage/setup** (`AiGridReconciliationService`, `AiGridCoverageService`, `AiGridReadinessService`) → **finding bridge** (`AiGridFindingService`/`AiGridExposureFindingService` — writes into the canonical `findings` table with `finding_kind = AI_POSTURE`/`AI_EXPOSURE`, reusing `FindingWorkflowService`/SLA/ServiceNow, not a separate table). The governance track's `AiGridPolicyRolloutService` and `AiGridPolicyDeprecationService` each run their own `@Scheduled` worker (every 5s by default) draining a pending-task queue for GA/canary distribution and deprecation, respectively — see the Scheduled Jobs table above.
+71 services under `com.prototype.vulnwatch.aisecurity.service`, backing the controllers in [AI Security / AI Grid](#ai-security--ai-grid) above. All tables are accessed via `JdbcTemplate` directly — there are no JPA entities or Spring Data repositories for this module. `AiSecurityJobWorkerService` polls `ingestion_jobs` (every 3s by default) for `AI_SECURITY_AWS_BEDROCK`, `AI_SECURITY_AZURE_DISCOVERY`, and `AI_SECURITY_COPILOT_STUDIO` jobs, dispatching to the corresponding provider under per-tenant/provider admission limits. Copilot's manual and scheduled discovery requests enqueue the same durable job as AWS/Azure; the worker applies its kill switch and budget admission before the Dataverse sweep, so it has the same queue visibility and terminal job record. All providers emit sanitized `ObservationEnvelopeV1` chunks (`AiSecurityMetadataSanitizer` — allow-listed fields only, no prompt bodies/secrets/PII). Once a scan scope completes, `AiSecurityObservationService` hands off to `AiGridPipelineService.processCompleteScope()`, which runs in order: **snapshot** (`AiGridSnapshotService` — immutable, hash-deduped, derives facts) → **ownership** (`AiGridOwnershipService` — CONFIRMED/INFERRED/CANDIDATE/UNOWNED, reuses the tenant's `ownership_rules`) → **system grouping** (`AiGridSystemService` — bounded BFS, depth 6/fan-out 100, with split/merge/successor lineage) → **policy assessment** (`AiGridAssessmentService` + `AiGridPredicateEngine`, a JSON predicate evaluator) → **R2 exposure correlation** (`AiGridExposureService` — three hardcoded graph-traversal templates, promoting hypotheses to "validated" only on exact, fresh evidence; `AiGridExposureFreshnessService` demotes stale ones) → **coverage/setup** (`AiGridReconciliationService`, `AiGridCoverageService`, `AiGridReadinessService`) → **finding bridge** (`AiGridFindingService`/`AiGridExposureFindingService` — writes into the canonical `findings` table with `finding_kind = AI_POSTURE`/`AI_EXPOSURE`, reusing `FindingWorkflowService`/SLA/ServiceNow, not a separate table). The governance track's `AiGridPolicyRolloutService` and `AiGridPolicyDeprecationService` each run their own `@Scheduled` worker (every 5s by default) draining a pending-task queue for GA/canary distribution and deprecation, respectively — see the Scheduled Jobs table above.
 
 **Scope-owned artifact attributes.** Several AWS scopes enrich the *same* agent artifact (agent basics, IAM evidence, Lambda URL auth, knowledge-base counts), so `AiSecurityObservationService.upsertArtifact()` does not blanket-replace `attributes_json`. Each attribute key a scope emits is recorded in `ai_security_artifact_attribute_ownership` keyed by `scope_key`. Only a scope that lands a single-chunk `COMPLETE` observation clears its own previously-owned keys before writing the new set — a `PARTIAL`, `FAILED`, `UNAUTHORIZED`, or `DISABLED` scope leaves prior values intact, and a key also owned by another scope is never removed. Net effect: a field the provider stopped reporting disappears after a genuinely complete scan, while a transient failure in one scope cannot erase authoritative evidence produced by another.
 
@@ -878,6 +910,8 @@ Suppression rules evaluated at finding creation and on the 15-minute reopen swee
 A platform-owner-only governance track gates content before it reaches tenants: `AiGridPolicyCatalogService` imports packages as validated and prevents direct publishing; `AiGridValidationGovernanceService` requires digest-bound approval, then creates policy-ID release bindings for explicit active-tenant canary cohorts (with Default Workspace only as the no-body fallback), supports binding revocation and explicit deprecation; `AiGridR1CertificationService`/`AiGridR2CertificationService` provide release-gate certification; and `AiGridPolicyPortfolioService` provides registered framework coverage + RICE-scored candidate backlog. Coverage uses `release_family`, not policy-name prefixes, and calls the shared `platform.ai_grid_policy_visible_to_tenant` function so reporting cannot credit a policy the tenant cannot receive. AI Grid is the sole policy and tenant-configuration authority. Operationally, `AiGridBudgetService` enforces per-tenant daily scan/API-call/byte budgets (new tenants start `OBSERVE`-only) and `AiGridRetentionService` classifies evidence into HOT/ARCHIVE/RESTRICTED_EVIDENCE tiers with legal-hold support and an audited purge sweep.
 
 `AiGridFindingService.AssessmentResult.deriveAssessmentState` is the single customer-facing state projection: PASS and FAIL are direct, ERROR and incomplete/stale evidence are UNKNOWN, and OUT_OF_SCOPE/CAPABILITY_UNAVAILABLE/NOT_APPLICABLE are NOT_ASSESSED. `AiGridApiService.latestAssessmentStates` applies that derivation to the latest run for each policy version and exposes totals at `/api/ai-assessment-states/latest`; do not reproduce the mapping in SQL.
+
+**Runtime status: deferred.** `AiRuntimeScope` (`excluded()` is hard-coded `true`, `requireInScope()` throws HTTP 410 `RUNTIME_OUT_OF_SCOPE`) blocks the runtime paragraphs below — execution ingestion, readiness, runtime policy evaluation, the telemetry adapter and its worker/retention jobs do no work, and `ProductionSafetyValidator` fails startup if `APP_AI_SECURITY_RUNTIME_ENABLED=true`. They document the deferred design.
 
 `AiAgentExecutionIngestionService` is the shared metadata-only runtime write boundary. It HMACs provider identifiers before persistence, bounds event count and metadata size, applies lookback/overlap cursors, and uses receipts for idempotency. `AzureFoundryRuntimeCollectionService`, Azure ML job discovery, and `CopilotStudioRuntimeCollectionService` call this boundary directly as provider connectors; `AiGridRuntimeIngestionService`/`AiGridRuntimeIngestionWorker` call the same boundary indirectly for the governed customer-telemetry adapter (below). Raw prompts, responses, tool payloads, and provider log streams are outside its contract. Tenants read the resulting execution, timeline, and relationship projections through `AiAgentExecutionController`.
 
@@ -897,7 +931,7 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 
 - **`TenantSchemaMigrationService`** — drives the rollout: acquire a Postgres advisory lock (`scout-tenant-schema-migrator`) → migrate the `tenant_default` template and compute a SHA-256 structural fingerprint → migrate a canary tenant → migrate remaining tenants in batches of 10, comparing each tenant's fingerprint against the template and halting the batch on drift. Runs against `classpath:db/migration/tenant`, with its own `tenant_schema_history` table per schema, starting at V1. Also drives `provisionNewTenant(tenant)` for on-demand provisioning of a single new tenant.
 - **`TenantSchemaStatusService`** — reads/writes `platform.tenant_schema_versions` (list for the Platform Console, `readinessFailures(minVersion)` for the health indicator, `markMigrating`/`markCurrent`/`markFailure` called by the migration service).
-- **`TenantSchemaReadinessHealthIndicator`** — actuator `HealthIndicator`, only registered when `app.tenancy.enforce-schema-version=true`; reports `DOWN` with an `unreadyTenantCount` detail if any `ACTIVE` tenant is below `app.tenancy.minimum-compatible-schema-version` (default 1). The packaged tenant target is currently 3; the minimum remains a deliberately separate compatibility floor during rollout.
+- **`TenantSchemaReadinessHealthIndicator`** — actuator `HealthIndicator`, only registered when `app.tenancy.enforce-schema-version=true`; reports `DOWN` with an `unreadyTenantCount` detail if any `ACTIVE` tenant is below `app.tenancy.minimum-compatible-schema-version` (default 1). The packaged tenant target is currently 2; the minimum remains a deliberately separate compatibility floor during rollout.
 - **`TenantSchemaMigratorRunner`** — a legacy/test-only `ApplicationReadyEvent` listener, gated behind `app.schema-migration.legacy-test-runner-enabled=true` (off by default); superseded in production by `ProductionBootstrapCli` below but still used by some integration tests.
 - **`ProductionBootstrapCli`** (`com.prototype.vulnwatch.migration`) — standalone production bootstrap entry point; does **not** start Spring/JPA. Runs platform migrations, optionally reconciles the configured platform-owner identity (`APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED`), registers/migrates the default tenant, migrates every other tenant (canary + batches of 10, same drift-checking as above), provisions/rotates the least-privilege `scout_runtime` Postgres role, verifies the full control-plane invariants (RLS coverage on every active tenant table, no unsafe role attributes, runtime role actually denied DDL at runtime), and — when `PLATFORM_OWNER_SETUP_LINK_ENABLED=true` — emails a one-time password-setup link via `ResendEmailClient`. Prints a single-line `production_bootstrap_report=<json>` summary and exits non-zero on any phase failure. Invoked via `backend/scripts/run-render-migration.sh` from a temporary Render web service; `backend/scripts/provision-runtime-role.sql` is the equivalent automated role-provisioning script. (Prior references here to `docs/p0-production-runbook.md` and `docs/production-database-roles.sql` pointed at files that don't exist in this repository — read the scripts directly, or author replacement docs if this needs to be written down.)
 - **`TenantLifecycleGuardService`** — centralizes tenant-accessibility checks (demo-tenant detection/expiry, `DELETED`/`PURGING`/`EXPIRED`/non-`ACTIVE` status → `ResponseStatusException` with the appropriate HTTP status) previously duplicated across tenant-status filtering call sites.
@@ -908,37 +942,38 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 
 | Property | Env var | Default | Description |
 |----------|---------|---------|-------------|
-| `app.api-key` | `APP_API_KEY` | `change-me-in-prod` | API key for `X-API-Key` auth |
-| `app.creator-key` | `APP_CREATOR_KEY` | (none) | Creator key for elevated access |
-| `app.allow-api-key-auth` | `APP_ALLOW_API_KEY_AUTH` | `false` | Enable API key auth path |
-| `app.allow-header-tenant-selection` | `APP_ALLOW_HEADER_TENANT_SELECTION` | `false` | Allow `X-Tenant-ID` header |
-| `app.require-tenant-context` | `APP_REQUIRE_TENANT_CONTEXT` | `true` | Reject requests without tenant |
+| `app.security.api-key` | `APP_API_KEY` | (empty — API-key auth rejects until set) | API key for `X-API-Key` auth |
+| `app.security.creator-key` | `APP_CREATOR_KEY` | (none) | Creator key for elevated access |
+| `app.security.allow-api-key-auth` | `APP_ALLOW_API_KEY_AUTH` | `true` (base profile; `false` in `prod`/`preprod`) | Enable API key auth path |
+| `app.tenancy.allow-header-tenant-selection` | `APP_ALLOW_HEADER_TENANT_SELECTION` | `false` | Allow `X-Tenant-ID` header |
+| `app.tenancy.require-tenant-context` | `APP_REQUIRE_TENANT_CONTEXT` | `true` | Reject requests without tenant |
 | `app.test-personas.enabled` | `APP_TEST_PERSONAS_ENABLED` | `false` | Enable test persona endpoints |
-| `app.jwt.hmac-secret` | `APP_JWT_HMAC_SECRET` | — | HMAC secret for HS256 JWT signing |
-| `app.jwt.issuer-uri` | `APP_JWT_ISSUER_URI` | — | OIDC issuer for RS256 JWT validation |
+| `app.security.jwt.hmac-secret` | `APP_JWT_HMAC_SECRET` | — | HMAC secret for HS256 JWT signing |
+| `app.security.jwt.issuer-uri` | `APP_JWT_ISSUER_URI` | — | OIDC issuer for RS256 JWT validation |
 | `app.security.bootstrap.platform-owners.enabled` | `APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED` | `false` | Seed platform-owner identities from config at startup |
 | `app.security.bootstrap.platform-owners.users[n].email` | `APP_PLATFORM_OWNER_BOOTSTRAP_USERS_<N>_EMAIL` | — | Login email for a seeded platform owner |
 | `app.security.jwt.allow-hmac-in-production` | `APP_ALLOW_HMAC_IN_PRODUCTION` | `false` | Permits HS256 JWT signing (`APP_JWT_HMAC_SECRET`) when `require-production-secrets=true` — used by the Render preprod profile ahead of full OIDC |
-| `app.cors.allowed-origins` | `APP_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated CORS origins |
-| `app.credential-encryption-key` | `APP_CREDENTIAL_ENCRYPTION_KEY` | — | AES-256 key (base64) for credential storage |
-| `app.schema-migration.enabled` | `APP_SCHEMA_MIGRATION_ENABLED` | `false` | Enables the legacy in-process tenant schema migrator (`TenantSchemaMigratorRunner`); disabled on the permanent Render web service, which relies on the separate migrator job instead |
-| `app.schema-migration.report-only` | `APP_SCHEMA_MIGRATION_REPORT_ONLY` | `false` | Runs the tenant schema rollout in read-only drift-report mode |
+| `app.cors.allowed-origins` | `APP_CORS_ALLOWED_ORIGINS` (read by `application-prod.yml` only) | `http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174` in `application.yml` | Comma-separated CORS origins |
+| `app.security.credential-encryption-key` | `APP_CREDENTIAL_ENCRYPTION_KEY` | — | AES-256 key (base64) for credential storage |
+| `app.schema-migration.enabled` | `APP_SCHEMA_MIGRATION_ENABLED` | `false` | Declared in `application.yml` but no code reads it; `TenantSchemaMigratorRunner` is gated by `legacy-test-runner-enabled` below |
+| `app.schema-migration.report-only` | `APP_SCHEMA_MIGRATION_REPORT_ONLY` | `false` | Runs the tenant schema rollout in read-only drift-report mode (read by `TenantSchemaMigratorRunner`) |
 | `app.schema-migration.legacy-test-runner-enabled` | — | `false` | Gates `TenantSchemaMigratorRunner` registration (legacy/test path; production uses `ProductionBootstrapCli`) |
 | `app.tenancy.enforce-schema-version` | `APP_ENFORCE_TENANT_SCHEMA_VERSION` | `false` | Registers `TenantSchemaReadinessHealthIndicator` on `/actuator/health` |
-| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `1` | Compatibility/readiness floor; packaged tenant target is currently V11, so this is not the target version |
-| `spring.datasource.url` | `DB_URL` | `jdbc:postgresql://localhost:5432/vulnwatch` | Database URL |
-| `openai.enabled` | `OPENAI_ENABLED` | `false` | Enable OpenAI integration |
-| `openai.api-key` | `OPENAI_API_KEY` | — | OpenAI API key |
-| `nvd.api-key` | `NVD_API_KEY` | — | NVD API key (higher rate limit) |
-| `resend.api-key` | `RESEND_API_KEY` | — | Resend email API key |
-| `github.api-token` | `GITHUB_API_TOKEN` | — | GitHub personal access token |
+| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `1` | Compatibility/readiness floor; packaged tenant target is currently V2, so this is not the target version |
+| `spring.datasource.url` | `DB_URL` (or `DB_HOST`/`DB_PORT`/`DB_NAME`) | `jdbc:postgresql://localhost:5432/vulnwatch` | Database URL |
+| `app.openai.enabled` | `OPENAI_ENABLED` | `true` | Enable OpenAI integration (still requires an API key) |
+| `app.openai.api-key` | `OPENAI_API_KEY` | — | OpenAI API key |
+| `app.nvd.api-key` | `NVD_API_KEY` | — | NVD API key (higher rate limit) |
+| `app.email.resend.api-key` | `RESEND_API_KEY` | — | Resend email API key |
+| `app.github.api-token` | `GITHUB_API_TOKEN` | — | GitHub personal access token |
 | `app.ai-security.jobs.poll-interval-ms` | — | `3000` | `AiSecurityJobWorkerService` poll interval |
 | `app.ai-security.grid.exposure-freshness-ms` | — | `60000` | `AiGridExposureFreshnessService` sweep interval |
 | `app.ai-security.azure.credential-expiry-cron` | — | `0 20 2 * * *` | `AiSecurityAzureCredentialExpiryService` daily cron |
-| `app.ai-security.runtime.adapter.poll-interval-ms` | — | `2000` | `AiGridRuntimeIngestionWorker` poll interval |
+| `app.ai-security.runtime.enabled` | `APP_AI_SECURITY_RUNTIME_ENABLED` | `false` | Must stay `false` — `ProductionSafetyValidator` fails startup in every environment if set (`RUNTIME_OUT_OF_SCOPE`) |
+| `app.ai-security.runtime.adapter.poll-interval-ms` | — | `2000` | `AiGridRuntimeIngestionWorker` poll interval (worker is inert while runtime is out of scope) |
 | `app.ai-security.runtime.adapter.worker-enabled` | — | `true` | Kill switch for `AiGridRuntimeIngestionWorker` |
 | `app.ai-security.runtime.adapter.max-backlog-per-tenant` | — | `100` | Per-tenant queued-batch cap before admission returns `INGESTION_CAPACITY_EXHAUSTED` |
-| `app.ai-security.runtime.evaluation-lookback-days` | — | `14` | `AiGridRuntimeEvaluationService` lookback window |
+| `app.ai-security.runtime.evaluation-lookback-days` | — | `14` | `AiGridRuntimeEvaluationService` lookback window (deferred with runtime) |
 
 ---
 
@@ -953,6 +988,10 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 | `02:05` daily | Mark stale assets inactive |
 | `02:30` daily | VEX staleness recompute |
 | `03:15` daily | EPSS score refresh |
+| `02:00` daily | EUVD sync |
+| `02:30` daily | JVN sync |
+| `02:45` daily | OSV advisory sync (`OsvPlatformService`) |
+| `02:50` daily | Per-tenant OSV correlation (`OsvTenantService`) |
 | `07:00` daily | ServiceNow incident status sync |
 | `02:00` Sunday | EOL catalog refresh (stage 1) |
 | `03:00` Sunday | EOL release data (stage 2) |
@@ -973,7 +1012,11 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 | Every 30 sec (default) | Demo dataset provisioning poll (`DemoDatasetProvisioningService`) — seeds/repairs requested tenants' demo data once `ACTIVE` |
 | Every 1 min (default) | Recover stale `PROCESSING` finding-delta-queue entries (`FindingDeltaQueueService.recoverStaleProcessingEntriesOnSchedule` — sibling of the 2s drain above) |
 | Every 3 sec (default) | Poll `ingestion_jobs` for AI Security AWS/Azure/Copilot Studio discovery jobs (`AiSecurityJobWorkerService`) |
-| Every 2 sec (default) | Poll `ingestion_jobs` for AI Grid runtime telemetry-adapter batches (`AiGridRuntimeIngestionWorker`, one job claimed per tenant per tick) |
+| Every 2 sec (default) | `AiGridRuntimeIngestionWorker` poll — returns immediately while runtime is out of scope (`AiRuntimeScope.excluded()`) |
+| Every 5 sec (default) | Claim and process AI Grid assessment work (`AiGridAssessmentWorker.recover`) and AI-BOM projection jobs (`AiBomProjectionWorker.poll`); AI-BOM reconcile every 60 sec |
+| Every 60 sec (default) | Poll Copilot Studio connector schedules (`CopilotStudioScheduleService`) |
+| Every 5 min (default) | BOM contribution backfill (`BomContributionBackfillService`) |
+| Daily `02:17` (default) | AI runtime execution retention purge (`AiAgentExecutionRetentionService`) — no-op while runtime is out of scope |
 | Every 60 sec (default) | Demote AI Grid validated exposures with expired evidence (`AiGridExposureFreshnessService`) |
 | Daily `02:20` (default) | Sweep Azure AI credential profiles for expiry (`AiSecurityAzureCredentialExpiryService`) |
 | Every 5 sec (default) | Process pending AI Grid policy rollout tasks (`AiGridPolicyRolloutService.processPendingTasks`) |
@@ -988,15 +1031,15 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 |----------|-------------|
 | `GET /actuator/health` | Overall health |
 | `GET /actuator/health/readiness` | Readiness probe |
-| `GET /actuator/health/liveness` | Liveness probe (prod only) |
+| `GET /actuator/health/liveness` | Liveness probe (health probes are enabled in the base profile; `application-prod.yml` additionally enables the liveness/readiness state indicators and adds `tenantSchemaReadiness` to the readiness group) |
 | `GET /actuator/info` | Build info |
-| `GET /actuator/prometheus` | Micrometer/Prometheus scrape endpoint for explicitly enabled local or certification environments |
+| `GET /actuator/prometheus` | Micrometer/Prometheus scrape endpoint; only exposed when `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE` adds `prometheus` (default exposure is `health,info`) |
 
 ---
 
 ## Operational Metrics
 
-`OperationalMetricsInterceptor` tracks response time (ms) for 23 monitored endpoints. Metrics are exposed for query via `OperationalDashboardController`.
+`OperationalMetricsInterceptor` tracks response time (ms) and status for 40 metric keys (41 request routes; the three GitHub SBOM run routes share one key). Metrics are exposed for query via `OperationalDashboardController`.
 
 
 ## AI-BOM dependency correlation evidence
@@ -1005,4 +1048,4 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 
 Evidence contains ordered component and relationship IDs, source revision, match method, lifecycle history, uncertainty qualification, and gap remediation. Gaps can exist without a finding/link. The production sweep establishes tenant context before invoking the transaction-owning reconciler through a Spring proxy; locks source then resource, validates captured revision, and holds the source lock until commit. Replacement uploads and document soft deletion acquire the same source lock. A failed unit rolls back and does not prevent other resources or tenants from progressing.
 
-`AI_BOM_CORRELATION_WRITES_ENABLED=true` and `AI_BOM_CORRELATION_RETIREMENT_ENABLED=false` are the defaults. Observe desired versus active associations and backfill/repair subjects before enabling retirement. Set both flags false for rollback without undoing the forward migration or interrupting canonical software correlation. Traversal limits use `AI_BOM_CORRELATION_MAX_DEPTH/NODES/EDGES/PATHS`; see [release evidence](ai-bom-correlation-release-evidence.md) for validation and rollout accounting. Scheduling-state updates cannot overwrite the source's current document/revision.
+`AI_BOM_CORRELATION_WRITES_ENABLED=true` and `AI_BOM_CORRELATION_RETIREMENT_ENABLED=false` are the defaults. Observe desired versus active associations and backfill/repair subjects before enabling retirement. Set both flags false for rollback without undoing the forward migration or interrupting canonical software correlation. Traversal limits use `AI_BOM_CORRELATION_MAX_DEPTH/NODES/EDGES/PATHS`; see the archived release evidence (`Other Docs/Archive/ai-bom-correlation-release-evidence.md`) for validation and rollout accounting. Scheduling-state updates cannot overwrite the source's current document/revision.

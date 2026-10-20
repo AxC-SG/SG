@@ -48,6 +48,9 @@ spring:
       max-request-size: 50MB
 
 app:
+  # A deployed runtime must explicitly declare production/preproduction. Local
+  # development uses the local example profile; the Postgres harness declares test.
+  environment: ${APP_ENVIRONMENT:}
   demo:
     app-base-url: ${APP_DEMO_APP_BASE_URL:http://127.0.0.1:5173}
     synchronous-tenant-provisioning-enabled: ${APP_DEMO_SYNCHRONOUS_TENANT_PROVISIONING_ENABLED:false}
@@ -68,7 +71,7 @@ app:
     # compute + report the corrected result), ENFORCE (enforce corrected for allowlisted tenants).
     # An invalid value fails startup so a typo cannot silently defeat a planned cutover.
     mode: ${APP_ENTITLEMENTS_MODE:LEGACY}
-    # Comma-separated tenant IDs enforced under ENFORCE mode; "*" enforces every tenant.
+    # Explicit comma-separated tenant UUIDs or slug:<tenant-slug>; wildcards are forbidden.
     enforce-tenant-allowlist: ${APP_ENTITLEMENTS_ENFORCE_TENANT_ALLOWLIST:}
     # Cron for the leader-locked shadow-mismatch sweep (skipped entirely in LEGACY mode).
     shadow-sweep-cron: ${APP_ENTITLEMENTS_SHADOW_SWEEP_CRON:0 */30 * * * *}
@@ -129,14 +132,19 @@ app:
     creator-key: ${APP_CREATOR_KEY:}
     allow-api-key-auth: ${APP_ALLOW_API_KEY_AUTH:true}
     credential-encryption-key: ${APP_CREDENTIAL_ENCRYPTION_KEY:}
+    credential-encryption-key-id: ${APP_CREDENTIAL_ENCRYPTION_KEY_ID:primary}
+    credential-encryption-previous-keys: ${APP_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS:}
     default-user-id: ${APP_DEFAULT_USER_ID:local-analyst}
     require-production-secrets: ${APP_REQUIRE_PRODUCTION_SECRETS:false}
     jwt:
+      # LOCAL retains existing login/setup/context tokens; EXTERNAL disables local issuance.
+      mode: ${APP_JWT_AUTH_MODE:LOCAL}
+      local-issuer: ${APP_JWT_LOCAL_ISSUER:urn:scoutgrid:local}
       issuer-uri: ${APP_JWT_ISSUER_URI:}
       jwk-set-uri: ${APP_JWT_JWK_SET_URI:}
       hmac-secret: ${APP_JWT_HMAC_SECRET:}
       allow-hmac-in-production: ${APP_ALLOW_HMAC_IN_PRODUCTION:false}
-      audience: ${APP_SECURITY_JWT_AUDIENCE:}
+      audience: ${APP_SECURITY_JWT_AUDIENCE:scoutgrid-api}
       token-ttl-minutes: ${APP_JWT_TOKEN_TTL_MINUTES:480}
       subject-claim: ${APP_SECURITY_JWT_SUBJECT_CLAIM:sub}
       active-tenant-id-claim: ${APP_JWT_ACTIVE_TENANT_ID_CLAIM:active_tenant_id}
@@ -169,6 +177,7 @@ app:
     public-rate-limit:
       enabled: ${APP_PUBLIC_RATE_LIMIT_ENABLED:true}
       trust-proxy-headers: ${APP_PUBLIC_RATE_LIMIT_TRUST_PROXY_HEADERS:false}
+      trusted-proxy-cidrs: ${APP_PUBLIC_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
     headers:
       content-security-policy: ${APP_CONTENT_SECURITY_POLICY:default-src 'none'; frame-ancestors 'none'}
       permissions-policy: ${APP_PERMISSIONS_POLICY:camera=(), microphone=(), geolocation=(), payment=()}
@@ -177,11 +186,12 @@ app:
       secret-key: ${APP_TURNSTILE_SECRET_KEY:}
       expected-hostname: ${APP_TURNSTILE_EXPECTED_HOSTNAME:}
   tenancy:
+    tenant-switch-guard-mode: ${APP_TENANT_SWITCH_GUARD_MODE:FAIL}
     allow-header-tenant-selection: ${APP_ALLOW_HEADER_TENANT_SELECTION:false}
     require-tenant-context: ${APP_REQUIRE_TENANT_CONTEXT:true}
     default-schema: ${APP_DEFAULT_TENANT_SCHEMA:tenant_default}
     enforce-schema-version: ${APP_ENFORCE_TENANT_SCHEMA_VERSION:false}
-    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:1}
+    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:5}
   test-personas:
     enabled: ${APP_TEST_PERSONAS_ENABLED:false}
     token-ttl-minutes: ${APP_TEST_PERSONA_TOKEN_TTL_MINUTES:60}
@@ -209,12 +219,12 @@ app:
       retry-on-network-errors: ${HTTP_OUTBOUND_RETRY_ON_NETWORK_ERRORS:true}
       # Semicolon-separated provider=exact.hostname mappings. Dynamic providers
       # (servicenow and sbom-endpoint) must be explicitly configured per deployment.
-      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov}
+      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov;osv=api.osv.dev;msrc=api.msrc.microsoft.com;azure-management=management.azure.com}
   openai:
     api-key: ${OPENAI_API_KEY:}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
     model: ${OPENAI_MODEL:gpt-4o-mini}
-    enabled: ${OPENAI_ENABLED:true}
+    enabled: ${OPENAI_ENABLED:false}
   nvd:
     base-url: https://services.nvd.nist.gov/rest/json/cves/2.0
     api-key: ${NVD_API_KEY:}
@@ -295,7 +305,7 @@ app:
   scheduling:
     enabled: ${APP_SCHEDULING_ENABLED:true}
   runtime:
-    role: ${APP_RUNTIME_ROLE:all}
+    role: ${APP_RUNTIME_ROLE:}
   ai-bom:
     correlation:
       writes-enabled: ${AI_BOM_CORRELATION_WRITES_ENABLED:true}

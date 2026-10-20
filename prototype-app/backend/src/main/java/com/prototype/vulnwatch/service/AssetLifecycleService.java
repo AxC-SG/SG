@@ -179,7 +179,7 @@ public class AssetLifecycleService {
         }
     }
 
-    @Scheduled(cron = "0 5 2 * * *")
+    @Scheduled(zone = "UTC", cron = "0 5 2 * * *")
     public void markStaleAssetsInactive() {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("asset-lifecycle.mark-stale-assets-inactive")) {
             return;

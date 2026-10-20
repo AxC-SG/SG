@@ -37,9 +37,14 @@ public class AiGridExposureFreshnessService {
         this.exposures = exposures;
     }
 
+    private com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy backgroundPolicy=com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy.allowAll();
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureBackgroundPolicy(com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy policy) { backgroundPolicy=policy; }
+
     @Scheduled(fixedDelayString = "${app.ai-security.grid.exposure-freshness-ms:60000}",
             initialDelayString = "${app.ai-security.grid.exposure-freshness-initial-delay-ms:60000}")
     public void demoteExpiredEvidence() {
+        if (!backgroundPolicy.allowsBackgroundTask("demoteExpiredEvidence")) return;
         for (Tenant tenant : tenants.findAll()) {
             try {
                 tenantExecution.run(tenant, () -> transactions.execute(status -> {

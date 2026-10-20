@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   AlertCircle,
   Shield,
-  Zap,
   Database,
   Network,
   Settings,
@@ -38,13 +37,6 @@ export const TenantNavigation: React.FC = () => {
             <Link to="/findings" className="nav-item">
               <Shield size={18} />
               <span>Findings</span>
-            </Link>
-          </li>
-
-          <li className={isCurrent('/fix-intelligence') ? 'active' : ''}>
-            <Link to="/fix-intelligence" className="nav-item">
-              <Zap size={18} />
-              <span>Fix Intelligence</span>
             </Link>
           </li>
 

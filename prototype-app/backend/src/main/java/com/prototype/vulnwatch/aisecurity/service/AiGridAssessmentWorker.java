@@ -78,6 +78,9 @@ public class AiGridAssessmentWorker {
     @org.springframework.beans.factory.annotation.Autowired
     void configureRefresh(ObjectProvider<AiGridDiscoveryRefreshService> refresh,AiGridRunMetricsService metrics) { this.refresh=refresh; this.metrics=metrics; }
     private AiGridRunMetricsService metrics;
+    private com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy backgroundPolicy = com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy.allowAll();
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureBackgroundPolicy(com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy policy) { backgroundPolicy=policy; }
 
     @jakarta.annotation.PreDestroy
     void close() { heartbeats.shutdownNow(); }
@@ -111,6 +114,7 @@ public class AiGridAssessmentWorker {
                         "assessmentStatus","PENDING","assessedSubjects",0,"failedPolicies",0))));
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCommit() {
+                if (!backgroundPolicy.allowsBackgroundTask("assessment.after-commit")) return;
                 try { dispatch(tenant,requestId); }
                 catch (RuntimeException error) { LOG.warn("Assessment request {} is retained for recovery",requestId); }
             }
@@ -120,6 +124,7 @@ public class AiGridAssessmentWorker {
 
     @Scheduled(fixedDelayString="${app.ai-grid.assessment.poll-ms:5000}")
     public void recover() {
+        if (!backgroundPolicy.allowsBackgroundTask("assessment.recover")) return;
         for (Tenant tenant : tenants.listActiveTenants()) {
             try {
                 tenantExecution.run(tenant, () -> {
@@ -134,6 +139,7 @@ public class AiGridAssessmentWorker {
     }
 
     void dispatch(Tenant tenant, UUID requestId) {
+        if (!backgroundPolicy.allowsBackgroundTask("assessment.dispatch")) return;
         tenantExecution.run(tenant, () -> {
             Claim claim=transactions.execute(status -> claim(requestId));
             if (claim!=null) process(tenant,claim);
@@ -280,6 +286,11 @@ public class AiGridAssessmentWorker {
                  order by created_at desc,id desc limit 1
                 """,Map.of("type",EVENT_TYPE,"runId",runId),rs -> rs.next() ? processingStatus(rs.getString(1))
                         : legacyStatus(runId)));
+    }
+    public ProcessingStatus statusForRequest(Tenant tenant, UUID requestId) {
+        return tenantExecution.run(tenant, () -> jdbc.query("select payload_json::text from ai_grid_outbox where id=:id and event_type=:type",
+                Map.of("id",requestId,"type",EVENT_TYPE), rs -> rs.next() ? processingStatus(rs.getString(1))
+                        : new ProcessingStatus("MISSING",0,0,List.of(),0)));
     }
     private ProcessingStatus legacyStatus(UUID runId) {
         return jdbc.queryForObject("""

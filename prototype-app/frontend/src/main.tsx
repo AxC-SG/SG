@@ -5,12 +5,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { createQueryClient } from './lib/queryClient';
+import { privateTelemetryOptions } from './lib/telemetryPrivacy';
 
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  environment: import.meta.env.MODE,
-  sendDefaultPii: true
-});
+Sentry.init(privateTelemetryOptions(import.meta.env.VITE_SENTRY_DSN, import.meta.env.MODE));
 
 const queryClient = createQueryClient();
 

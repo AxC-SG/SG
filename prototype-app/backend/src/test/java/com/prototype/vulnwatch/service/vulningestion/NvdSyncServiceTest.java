@@ -86,28 +86,19 @@ class NvdSyncServiceTest {
                 syncRunService,
                 effectsService,
                 support,
-                new ObjectMapper()
+                new ObjectMapper(), org.mockito.Mockito.mock(FeedWatermarkService.class)
         );
         ReflectionTestUtils.setField(service, "defaultNvdLookbackHours", 24);
     }
 
     @Test
-    void triggerNvdSyncDispatchesImmediatelyAfterClaimingQueuedRun() {
-        SyncRun run = run("NVD");
-        VulnerabilitySyncRunService.TriggerDecision decision = new VulnerabilitySyncRunService.TriggerDecision(run, true);
-        when(syncRunService.prepareQueuedRun("NVD", List.of("NVD", "NVD_FULL"))).thenReturn(decision);
-        when(syncRunService.markRunningIfQueued(run.getId())).thenReturn(java.util.Optional.of(run));
-        doAnswer(invocation -> {
-            Runnable runnable = invocation.getArgument(0);
-            runnable.run();
-            return null;
-        }).when(ingestionExecutor).execute(any(Runnable.class));
-
-        SyncTriggerResponse response = service.triggerNvdSync(12);
-
-        assertEquals("queued", response.status());
-        verify(ingestionExecutor).execute(any(Runnable.class));
-        verify(syncRunService).markRunningIfQueued(run.getId());
+    void triggerNvdSyncPersistsAcceptedParametersWithoutExecutorDispatch() {
+        SyncRun run=run("NVD");
+        when(syncRunService.prepareQueuedRun("NVD",List.of("NVD","NVD_FULL"),Map.of("triggerMode","incremental","lookbackHours",12)))
+                .thenReturn(new VulnerabilitySyncRunService.TriggerDecision(run,true));
+        assertEquals("queued",service.triggerNvdSync(12).status());
+        org.mockito.Mockito.verifyNoInteractions(ingestionExecutor);
+        verify(syncRunService,org.mockito.Mockito.never()).markRunningIfQueued(any());
     }
 
     @Test
@@ -146,7 +137,9 @@ class NvdSyncServiceTest {
         UUID runId = UUID.randomUUID();
         SyncRun run = run("NVD_FULL");
         ReflectionTestUtils.setField(run, "id", runId);
-        run.setMetadataJson("{\"apiKeyOverride\":\"override-key\"}");
+        var encryption=new com.prototype.vulnwatch.service.CredentialEncryptionService("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+        service.configureEncryption(encryption);
+        run.setMetadataJson("{\"encryptedApiKeyOverride\":\""+encryption.encrypt("override-key")+"\"}");
         VulnerabilitySourceFilterConfigService.NvdFilters filters =
                 new VulnerabilitySourceFilterConfigService.NvdFilters(null, false, false, null, null);
         AtomicReference<String> apiKeyOverrideRef = new AtomicReference<>();

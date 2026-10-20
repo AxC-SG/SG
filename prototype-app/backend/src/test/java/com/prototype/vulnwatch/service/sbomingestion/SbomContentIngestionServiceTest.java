@@ -72,8 +72,8 @@ class SbomContentIngestionServiceTest {
                 .thenReturn(newAsset);
         when(sbomUploadSupportService.saveAsset(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(sbomUploadRepository.save(any(SbomUpload.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(sbomParserService.detectFormat(any(byte[].class))).thenReturn(com.prototype.vulnwatch.domain.SbomFormat.UNKNOWN);
-        when(sbomParserService.parse(any(byte[].class))).thenReturn(List.<ParsedComponent>of());
+        when(sbomParserService.detectFormat(any(byte[].class))).thenReturn(com.prototype.vulnwatch.domain.SbomFormat.CYCLONEDX);
+        when(sbomParserService.parse(any(byte[].class))).thenReturn(List.of(new ParsedComponent("generic", "model", "1", "pkg:generic/model@1", null, List.of(), null, null, null, "machine-learning-model")));
         when(identityGraphService.resolveFromComponents(any())).thenReturn(Map.of());
         when(inventoryComponentRepository.findByAsset(any(Asset.class))).thenReturn(List.of());
 
@@ -87,7 +87,7 @@ class SbomContentIngestionServiceTest {
                 findingDeltaQueueService,
                 softwareIdentitySummaryProjectionService,
                 sbomUploadSupportService,
-                new com.prototype.vulnwatch.service.BomComponentCategorizationService()
+                new com.prototype.vulnwatch.service.BomComponentCategorizationService(), scopedRunner()
         );
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
 
@@ -193,10 +193,10 @@ class SbomContentIngestionServiceTest {
             when(sbomUploadRepository.save(any(SbomUpload.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
             when(sbomParserService.detectFormat(any(byte[].class)))
-                    .thenReturn(com.prototype.vulnwatch.domain.SbomFormat.UNKNOWN);
-            // Empty parse: the incoming document declares nothing that matches the
-            // pre-existing component, which is exactly the "omits a component" case.
-            when(sbomParserService.parse(any(byte[].class))).thenReturn(List.<ParsedComponent>of());
+                    .thenReturn(com.prototype.vulnwatch.domain.SbomFormat.CYCLONEDX);
+            // A valid non-software declaration omits the pre-existing software component.
+            // An actually empty document is rejected before any asset mutation.
+            when(sbomParserService.parse(any(byte[].class))).thenReturn(List.of(new ParsedComponent("generic", "model", "1", "pkg:generic/model@1", null, List.of(), null, null, null, "machine-learning-model")));
             when(identityGraphService.resolveFromComponents(any())).thenReturn(Map.of());
 
             service = new SbomContentIngestionService(
@@ -209,7 +209,7 @@ class SbomContentIngestionServiceTest {
                     findingDeltaQueueService,
                     softwareIdentitySummaryProjectionService,
                     sbomUploadSupportService,
-                    new com.prototype.vulnwatch.service.BomComponentCategorizationService()
+                    new com.prototype.vulnwatch.service.BomComponentCategorizationService(), scopedRunner()
             );
             ReflectionTestUtils.setField(service, "entityManager", entityManager);
         }
@@ -232,5 +232,14 @@ class SbomContentIngestionServiceTest {
             when(inventoryComponentRepository.findByAsset(any(Asset.class))).thenReturn(List.of(component));
             return component;
         }
+    }
+
+    private static com.prototype.vulnwatch.service.TenantWorkRunner scopedRunner() {
+        return mock(com.prototype.vulnwatch.service.TenantWorkRunner.class, invocation -> {
+            if (invocation.getMethod().getName().equals("runScopedChecked")) {
+                return invocation.<java.util.concurrent.Callable<?>>getArgument(1).call();
+            }
+            return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 }

@@ -56,6 +56,7 @@ public class AzureDiscoveryIngestionService {
             Instant runStartTime,
             String targetSubscriptionId
     ) {
+        GenericAzureDiscoveryPolicy.requireAvailable();
         if (records == null || records.isEmpty()) {
             return new IngestionResult(0, 0, 0);
         }

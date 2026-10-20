@@ -123,3 +123,9 @@ SELECT EXISTS (
     \echo 'Runtime role owns a protected table'
     \quit 1
 \endif
+
+-- Dedicated legacy GHSA routes retain these two explicitly enumerated public tables.
+SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'runtime_role')
+\gexec
+SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.github_security_advisories, public.github_advisory_sync_state TO %I', :'runtime_role')
+\gexec

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 public class GithubTokenProvider {
 
     private static final String DEFAULT_LOCAL_TOKEN_PATH = "./secrets/github-api-token";
-    private static final String DEFAULT_LOCAL_TOKEN_DISPLAY = "backend/secrets/github-api-token";
 
     private static final ThreadLocal<String> OVERRIDE_TOKEN = new ThreadLocal<>();
 
@@ -39,23 +38,26 @@ public class GithubTokenProvider {
         readRequiredSecret(Path.of(apiTokenFile.trim()), "GitHub API token file");
     }
 
-    public void setOverrideToken(String token) {
-        if (token != null && !token.isBlank()) {
-            OVERRIDE_TOKEN.set(token.trim());
-        } else {
-            OVERRIDE_TOKEN.remove();
-        }
+    /** Customer runs are explicitly anonymous or tenant-authenticated; neither can inherit feed credentials. */
+    public TokenScope customerCredentials(String token) {
+        String previous = OVERRIDE_TOKEN.get();
+        OVERRIDE_TOKEN.set(token == null ? "" : token.trim());
+        return () -> {
+            if (previous == null) OVERRIDE_TOKEN.remove();
+            else OVERRIDE_TOKEN.set(previous);
+        };
     }
 
-    public void clearOverrideToken() {
-        OVERRIDE_TOKEN.remove();
+    public interface TokenScope extends AutoCloseable {
+        @Override void close();
     }
 
     public String currentToken() {
-        String override = OVERRIDE_TOKEN.get();
-        if (override != null && !override.isBlank()) {
-            return override;
-        }
+        String token = OVERRIDE_TOKEN.get();
+        return token == null ? "" : token;
+    }
+
+    public String platformFeedToken() {
         if (apiTokenFile != null && !apiTokenFile.isBlank()) {
             return readRequiredSecret(Path.of(apiTokenFile.trim()), "GitHub API token file");
         }
@@ -77,8 +79,13 @@ public class GithubTokenProvider {
         }
     }
 
+    public void applyPlatformFeedBearerAuth(HttpHeaders headers) {
+        String token = platformFeedToken();
+        if (!token.isBlank()) headers.setBearerAuth(token);
+    }
+
     public String configurationHint() {
-        return "Configure GITHUB_API_TOKEN_FILE, " + DEFAULT_LOCAL_TOKEN_DISPLAY + ", or GITHUB_API_TOKEN for the backend.";
+        return "Configure a tenant GitHub source credential for private repositories or GHCR; public repository runs use anonymous access.";
     }
 
     private String readRequiredSecret(Path path, String label) {

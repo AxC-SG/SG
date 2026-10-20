@@ -16,6 +16,14 @@ services:
         value: preprod
       - key: SERVER_PORT
         value: "10000"
+      - key: APP_ENVIRONMENT
+        value: preproduction
+      - key: APP_RUNTIME_ROLE
+        value: all
+      # Qualify the actual Render ingress peer ranges and forwarded chain before
+      # supplying this value. Do not substitute all private networks or 0.0.0.0/0.
+      - key: APP_PUBLIC_RATE_LIMIT_TRUSTED_PROXY_CIDRS
+        sync: false
       # Supply only the restricted runtime role to the permanent web service.
       # The owner/migration connection is used by an approved one-off migration
       # operation and must never be stored in this service environment.

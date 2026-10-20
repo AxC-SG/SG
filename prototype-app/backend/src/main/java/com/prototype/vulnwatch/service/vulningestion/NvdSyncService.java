@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NvdSyncService {
 
     private final NvdApiClient nvdApiClient;
+    private final FeedWatermarkService feedWatermarks;
     private final VulnerabilityRepository vulnerabilityRepository;
     private final VulnerabilityRuleRepository vulnerabilityRuleRepository;
     private final VulnerabilityTargetRepository vulnerabilityTargetRepository;
@@ -81,9 +82,11 @@ public class NvdSyncService {
             VulnerabilitySyncRunService syncRunService,
             VulnerabilityIngestionEffectsService effectsService,
             VulnerabilityIngestionCommonSupport support,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            FeedWatermarkService feedWatermarks
     ) {
         this.nvdApiClient = nvdApiClient;
+        this.feedWatermarks = feedWatermarks;
         this.vulnerabilityRepository = vulnerabilityRepository;
         this.vulnerabilityRuleRepository = vulnerabilityRuleRepository;
         this.vulnerabilityTargetRepository = vulnerabilityTargetRepository;
@@ -99,7 +102,7 @@ public class NvdSyncService {
     }
 
     public void runScheduledDailySync() {
-        syncNvd(defaultNvdLookbackHours);
+        triggerNvdSync(defaultNvdLookbackHours);
     }
 
     @Transactional
@@ -112,12 +115,7 @@ public class NvdSyncService {
 
     public SyncTriggerResponse triggerNvdSync(int lookbackHours) {
         VulnerabilitySyncRunService.TriggerDecision decision =
-                syncRunService.prepareQueuedRun("NVD", List.of("NVD", "NVD_FULL"));
-        if (decision.queuedNewRun()) {
-            ingestionExecutor.execute(() ->
-                    syncRunService.markRunningIfQueued(decision.run().getId())
-                            .ifPresent(run -> executeNvdIncrementalSync(run, lookbackHours)));
-        }
+                syncRunService.prepareQueuedRun("NVD", List.of("NVD", "NVD_FULL"), queuedIncrementalMetadata(lookbackHours));
         return decision.toResponse("NVD sync is already in progress", "NVD incremental sync queued");
     }
 
@@ -133,12 +131,7 @@ public class NvdSyncService {
 
     public SyncTriggerResponse triggerNvdFullSync(String apiKeyOverride) {
         VulnerabilitySyncRunService.TriggerDecision decision =
-                syncRunService.prepareQueuedRun("NVD_FULL", List.of("NVD", "NVD_FULL"));
-        if (decision.queuedNewRun()) {
-            ingestionExecutor.execute(() ->
-                    syncRunService.markRunningIfQueued(decision.run().getId())
-                            .ifPresent(run -> executeNvdFullSync(run, apiKeyOverride)));
-        }
+                syncRunService.prepareQueuedRun("NVD_FULL", List.of("NVD", "NVD_FULL"), queuedFullMetadata(apiKeyOverride));
         return decision.toResponse("NVD sync is already in progress", "NVD full sync queued");
     }
 
@@ -171,10 +164,30 @@ public class NvdSyncService {
     }
 
     private IngestionResult executeNvdIncrementalSync(SyncRun run, int lookbackHours) {
-        int safeLookbackHours = Math.max(1, lookbackHours);
         Instant end = Instant.now();
-        Instant start = end.minus(safeLookbackHours, ChronoUnit.HOURS);
-        return executeNvdSyncInternal(run, start, end, null, "NVD incremental sync complete");
+        var filters = vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters();
+        // A filter change starts its own continuity history; filtered coverage cannot certify another scope.
+        String key = "nvd:" + org.springframework.util.DigestUtils.md5DigestAsHex(
+                filters.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Instant start = feedWatermarks.completedUntil(key)
+                .map(value -> value.minus(1, ChronoUnit.HOURS))
+                .orElseGet(() -> end.minus(Math.max(1, lookbackHours), ChronoUnit.HOURS));
+        int fetched = 0, inserted = 0, updated = 0;
+        while (start.isBefore(end)) {
+            Instant intervalEnd = start.plus(120, ChronoUnit.DAYS);
+            if (intervalEnd.isAfter(end)) intervalEnd = end;
+            IngestionResult result = executeNvdSyncInternal(run, start, intervalEnd, null,
+                    "NVD interval complete", false);
+            fetched += result.fetched(); inserted += result.inserted(); updated += result.updated();
+            if (!"ok".equals(result.status())) {
+                syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, result.message());
+                return new IngestionResult("failed", fetched, inserted, updated, result.message());
+            }
+            feedWatermarks.complete(key, intervalEnd);
+            start = intervalEnd;
+        }
+        syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
+        return new IngestionResult("ok", fetched, inserted, updated, "NVD incremental coverage complete");
     }
 
     private IngestionResult executeNvdFullSync(SyncRun run, String apiKeyOverride) {
@@ -183,7 +196,7 @@ public class NvdSyncService {
             syncRunService.completeRun(run, "failed", 0, 0, 0, 0, message);
             return new IngestionResult("failed", 0, 0, 0, message);
         }
-        return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete");
+        return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true);
     }
 
     private Map<String, Object> queuedIncrementalMetadata(int lookbackHours) {
@@ -193,11 +206,15 @@ public class NvdSyncService {
         return metadata;
     }
 
+    private com.prototype.vulnwatch.service.CredentialEncryptionService encryption;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureEncryption(com.prototype.vulnwatch.service.CredentialEncryptionService encryption) { this.encryption=encryption; }
+
     private Map<String, Object> queuedFullMetadata(String apiKeyOverride) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("triggerMode", "full");
         if (support.hasText(apiKeyOverride)) {
-            metadata.put("apiKeyOverride", apiKeyOverride);
+            metadata.put("encryptedApiKeyOverride", encryption.encrypt(apiKeyOverride));
         }
         return metadata;
     }
@@ -215,8 +232,8 @@ public class NvdSyncService {
         if (metadata == null) {
             return null;
         }
-        String apiKeyOverride = metadata.path("apiKeyOverride").asText(null);
-        return support.hasText(apiKeyOverride) ? apiKeyOverride : null;
+        String apiKeyOverride = metadata.path("encryptedApiKeyOverride").asText(null);
+        return support.hasText(apiKeyOverride) ? encryption.decrypt(apiKeyOverride) : null;
     }
 
     private JsonNode readQueuedMetadata(SyncRun run) {
@@ -235,7 +252,8 @@ public class NvdSyncService {
             Instant startInclusive,
             Instant endExclusive,
             String apiKeyOverride,
-            String successMessage
+            String successMessage,
+            boolean terminal
     ) {
         int fetched = 0;
         int inserted = 0;
@@ -267,7 +285,13 @@ public class NvdSyncService {
                         apiKeyOverride
                 );
                 List<NvdApiClient.NvdRecord> records = page.records();
+                if (page.startIndex() != startIndex) {
+                    throw new IllegalStateException("NVD pagination did not match the requested interval page");
+                }
                 if (records.isEmpty()) {
+                    if (page.totalResults() > startIndex) {
+                        throw new IllegalStateException("NVD returned an incomplete empty page");
+                    }
                     break;
                 }
 
@@ -305,10 +329,10 @@ public class NvdSyncService {
                 effectsService.recomputeCveDeltas(changedVulnerabilityIds);
             }
 
-            syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
+            if (terminal) syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
             return new IngestionResult("ok", fetched, inserted, updated, successMessage);
         } catch (Exception e) {
-            syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
+            if (terminal) syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
             return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
         }
     }

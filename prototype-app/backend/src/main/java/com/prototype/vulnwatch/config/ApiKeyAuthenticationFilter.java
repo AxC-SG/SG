@@ -30,6 +30,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
+    public static final String VERIFIED_HEADER_AUTH="scout.verified-header-auth";
 
     @Value("${app.security.api-key:}")
     private String configuredApiKey;
@@ -61,10 +62,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 || "/api/auth/login".equals(path)
                 || "/api/auth/setup-password".equals(path)
                 || "/api/auth/setup-session".equals(path)
+                || "/api/auth/csrf".equals(path)
                 || ("/api/demo-requests".equals(path) && "POST".equalsIgnoreCase(request.getMethod()))
                 || path.startsWith("/api/demo-invites/")
-                || path.startsWith("/api/tenant-invites/")
-                || path.startsWith("/api/fix-intelligence/"); // Local dev: public Fix Intelligence API
+                || path.startsWith("/api/tenant-invites/");
     }
 
     @Override
@@ -82,8 +83,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         // JWT and API-key are two independent authentication paths. A Bearer token
         // intentionally bypasses the API-key check; if JWT validation fails the
         // request is rejected before reaching filterChain.doFilter.
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            if (!authenticateJwt(authorization.substring("Bearer ".length()).trim(), request, response)) {
+        if (authorization != null && !authorization.isBlank()) {
+            if (!authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                reject(response, "Unsupported authorization scheme");
+                return;
+            }
+            if (!authenticateJwt(authorization.substring(7).trim(), request, response)) {
                 return;
             }
             try {
@@ -129,6 +134,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 null,
                 authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        request.setAttribute(VERIFIED_HEADER_AUTH,Boolean.TRUE);
         MDC.put(RequestCorrelationFilter.ACTOR_ID_MDC_KEY, resolvedUserId);
         MDC.put(RequestCorrelationFilter.ACTOR_ROLES_MDC_KEY, authorities.stream()
                 .map(SimpleGrantedAuthority::getAuthority)
@@ -171,6 +177,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                     actor.accessReferenceId(),
                     actor.accessExpiresAt()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
+        request.setAttribute(VERIFIED_HEADER_AUTH,Boolean.TRUE);
             TenantContext.setCurrentTenantId(actor.tenantId());
             TenantContext.setCurrentSchemaName(actor.tenantSchemaName());
             MDC.put(RequestCorrelationFilter.ACTOR_ID_MDC_KEY, actor.subject());

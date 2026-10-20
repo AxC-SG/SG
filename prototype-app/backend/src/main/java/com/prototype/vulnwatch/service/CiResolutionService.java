@@ -28,7 +28,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -52,15 +51,6 @@ public class CiResolutionService {
     private final ServiceNowCmdbConfigService serviceNowCmdbConfigService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private TransactionTemplate writeTransactionTemplate;
-
-    @Value("${app.cmdb.servicenow.base-url:}")
-    private String serviceNowBaseUrl;
-
-    @Value("${app.cmdb.servicenow.username:}")
-    private String serviceNowUsername;
-
-    @Value("${app.cmdb.servicenow.password:}")
-    private String serviceNowPassword;
 
     public CiResolutionService(
             CiRepository ciRepository,
@@ -716,24 +706,9 @@ public class CiResolutionService {
             return null;
         }
         ServiceNowCmdbConfigService.ServiceNowRuntimeConfig runtimeConfig = serviceNowCmdbConfigService.resolveRuntimeConfig(tenant)
-                .orElseGet(() -> new ServiceNowCmdbConfigService.ServiceNowRuntimeConfig(
-                        trimToNull(serviceNowBaseUrl),
-                        com.prototype.vulnwatch.domain.ServiceNowAuthType.BASIC,
-                        trimToNull(serviceNowUsername),
-                        trimToNull(serviceNowPassword),
-                        "cmdb_sam_sw_install",
-                        "cmdb_sam_sw_discovery_model",
-                        "cmdb_ci",
-                        null,
-                        null,
-                        ServiceNowCmdbConfigService.DEFAULT_INSTALL_FIELDS,
-                        ServiceNowCmdbConfigService.DEFAULT_DISCOVERY_FIELDS,
-                        1000,
-                        true,
-                        false,
-                        1440
-                ));
-        if (!hasText(runtimeConfig.baseUrl()) || !hasText(runtimeConfig.ciTable())) {
+                .orElse(null);
+        if (runtimeConfig == null || !runtimeConfig.enabled()
+                || !hasText(runtimeConfig.baseUrl()) || !hasText(runtimeConfig.ciTable())) {
             return null;
         }
         try {
@@ -801,24 +776,9 @@ public class CiResolutionService {
             return null;
         }
         ServiceNowCmdbConfigService.ServiceNowRuntimeConfig runtimeConfig = serviceNowCmdbConfigService.resolveRuntimeConfig(tenant)
-                .orElseGet(() -> new ServiceNowCmdbConfigService.ServiceNowRuntimeConfig(
-                        trimToNull(serviceNowBaseUrl),
-                        com.prototype.vulnwatch.domain.ServiceNowAuthType.BASIC,
-                        trimToNull(serviceNowUsername),
-                        trimToNull(serviceNowPassword),
-                        "cmdb_sam_sw_install",
-                        "cmdb_sam_sw_discovery_model",
-                        "cmdb_ci",
-                        null,
-                        null,
-                        ServiceNowCmdbConfigService.DEFAULT_INSTALL_FIELDS,
-                        ServiceNowCmdbConfigService.DEFAULT_DISCOVERY_FIELDS,
-                        1000,
-                        true,
-                        false,
-                        1440
-                ));
-        if (!hasText(runtimeConfig.baseUrl()) || !hasText(runtimeConfig.ciTable())) {
+                .orElse(null);
+        if (runtimeConfig == null || !runtimeConfig.enabled()
+                || !hasText(runtimeConfig.baseUrl()) || !hasText(runtimeConfig.ciTable())) {
             return null;
         }
         try {

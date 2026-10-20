@@ -347,4 +347,14 @@ describe('App test persona switcher', () => {
     expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
     expect(screen.queryByText('End-of-Life')).not.toBeInTheDocument();
   });
+
+  it('removes synthetic Fix Intelligence navigation while retained workflows remain reachable', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
+    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
+  });
 });
