@@ -720,7 +720,7 @@ function PlatformOperationsOwnerspace({
         <div className="page-grid">
           <section className="panel">
             <div className="panel-header">
-              <h3>Freshness & Access</h3>
+              <h3>Freshness &amp; Access</h3>
               <span className="panel-caption">The two biggest early frustrations: stale data and broken setup.</span>
             </div>
             <MetricScopeNote
@@ -782,7 +782,7 @@ function PlatformOperationsOwnerspace({
         <div className="page-grid">
           <section className="panel">
             <div className="panel-header">
-              <h3>Trust & Reliability</h3>
+              <h3>Trust &amp; Reliability</h3>
               <span className="panel-caption">The quality and stability signals most likely to affect tenant confidence.</span>
             </div>
             <div className="noise-summary-grid">

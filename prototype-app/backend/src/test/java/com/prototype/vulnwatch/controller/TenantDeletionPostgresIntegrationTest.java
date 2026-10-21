@@ -96,6 +96,9 @@ class TenantDeletionPostgresIntegrationTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
+        // Compare persisted values: PostgreSQL rounds Instant nanoseconds to microseconds.
+        Instant passwordSetAtBeforeDeletion = appUserRepository.findById(user.getId())
+                .orElseThrow().getPasswordSetAt();
         var deletionResponse = mockMvc.perform(asPlatformOwner(
                         authedDelete("/api/platform/tenants/{tenantId}", tenant.getId())))
                 .andReturn()
@@ -115,7 +118,7 @@ class TenantDeletionPostgresIntegrationTest {
 
         AppUser scrubbedUser = appUserRepository.findById(user.getId()).orElseThrow();
         assertTrue(BCrypt.checkpw(password, scrubbedUser.getPasswordHash()));
-        assertEquals(user.getPasswordSetAt(), scrubbedUser.getPasswordSetAt());
+        assertEquals(passwordSetAtBeforeDeletion, scrubbedUser.getPasswordSetAt());
         assertEquals("ACTIVE", scrubbedUser.getStatus());
 
         mockMvc.perform(post("/api/auth/login")

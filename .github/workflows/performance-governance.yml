@@ -57,6 +57,8 @@ jobs:
       APP_CREDENTIAL_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       START_BACKEND: "true"
       SPRING_PROFILES_ACTIVE: local
+      APP_ENVIRONMENT: test
+      APP_RUNTIME_ROLE: all
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
       SEED_DEMO_DATA: ${{ github.event_name == 'workflow_dispatch' && (inputs.seed_demo_data || 'false') || 'false' }}
       BASELINE_ITERATIONS: ${{ inputs.baseline_iterations || '3' }}
