@@ -72,7 +72,7 @@ public class FindingIncidentSyncService {
     }
 
     private SyncResult syncCurrentTenant() {
-        List<Finding> findingsWithIncident = findingRepository.findAllWithIncidentId();
+        List<Finding> findingsWithIncident = findingRepository.findForIncidentSync();
         if (findingsWithIncident.isEmpty()) {
             log.info("No findings with linked ServiceNow incidents — nothing to sync");
             return new SyncResult(0, 0, 0);

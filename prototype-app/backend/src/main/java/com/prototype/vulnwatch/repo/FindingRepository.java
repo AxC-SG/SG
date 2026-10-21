@@ -22,6 +22,13 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FindingRepository extends JpaRepository<Finding, UUID>, JpaSpecificationExecutor<Finding> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Finding f where f.incidentId is not null order by f.id")
+    List<Finding> findForIncidentSync();
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Finding f where f.status = :status and (:assetId is null or f.asset.id = :assetId) order by f.id")
+    List<Finding> findForMaintenance(@Param("status") FindingStatus status, @Param("assetId") UUID assetId);
+
     interface VulnerabilityFindingCountRow {
         UUID getVulnerabilityId();
         long getFindingCount();
@@ -44,13 +51,16 @@ public interface FindingRepository extends JpaRepository<Finding, UUID>, JpaSpec
     );
     Page<Finding> findAllByOrderByUpdatedAtDesc(Pageable pageable);
     List<Finding> findByStatusOrderByUpdatedAtDesc(FindingStatus status);
-    List<Finding> findByStatusAndSuppressedUntilBefore(FindingStatus status, Instant before);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    List<Finding> findByStatusAndSuppressedUntilBeforeOrderById(FindingStatus status, Instant before);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select f
             from Finding f
             where f.tenant = :tenant
               and f.status = :status
               and f.autoCloseEligibleAt < :before
+            order by f.id
             """)
     List<Finding> findAutoCloseCandidates(
             @Param("tenant") Tenant tenant,

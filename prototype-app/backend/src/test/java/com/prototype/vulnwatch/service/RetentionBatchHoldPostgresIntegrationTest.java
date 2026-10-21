@@ -128,6 +128,47 @@ class RetentionBatchHoldPostgresIntegrationTest {
         });
     }
 
+    @Test void releasedHoldIdentityCannotSilentlyReactivateAndNewReferenceRetainsHistory() {
+        body(1);
+        var first = retention.createHold(tenant, hold(1,"LEGAL_HOLD"),"operator");
+        assertEquals(first.id(),retention.createHold(tenant,hold(1,"LEGAL_HOLD"),"operator").id());
+        retention.releaseHold(tenant,first.id(),"release-operator");
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> retention.createHold(tenant,hold(1,"LEGAL_HOLD"),"operator"));
+        scoped.run(tenant, () -> assertFalse(jdbc.queryForObject("select legal_hold from ai_grid_snapshot_bodies where id=?",Boolean.class,id(1))));
+        var replacement = retention.createHold(tenant,new AiGridRetentionService.HoldCommand(id(1),"LEGAL_HOLD",
+                "replacement-reference","new approved hold",null),"new-operator");
+        assertNotEquals(first.id(),replacement.id());
+        completeSweep();
+        scoped.run(tenant, () -> {
+            assertEquals(1,count("ai_grid_snapshot_bodies"));
+            assertEquals(2,count("ai_grid_evidence_holds"));
+            assertEquals("release-operator",jdbc.queryForObject("select released_by from ai_grid_evidence_holds where id=?",String.class,first.id()));
+        });
+    }
+
+    @Test void atomicHoldReplacementBlocksConcurrentPurge() throws Exception {
+        body(1);
+        var original = retention.createHold(tenant,hold(1,"LEGAL_HOLD"),"operator");
+        CountDownLatch replaced = new CountDownLatch(1), commit = new CountDownLatch(1);
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> replacement = pool.submit(() -> scoped.run(tenant, () -> runtimeTransactions.executeWithoutResult(status -> {
+                retention.releaseHold(tenant,original.id(),"operator");
+                retention.createHold(tenant,new AiGridRetentionService.HoldCommand(id(1),"EXCEPTION","replacement",
+                        "approved replacement",null),"operator");
+                replaced.countDown();
+                try { assertTrue(commit.await(10,TimeUnit.SECONDS)); }
+                catch (InterruptedException error) { Thread.currentThread().interrupt();throw new AssertionError(error); }
+            })));
+            assertTrue(replaced.await(10,TimeUnit.SECONDS));
+            assertThrows(RuntimeException.class, () -> retention.sweep(tenant));
+            commit.countDown();replacement.get(15,TimeUnit.SECONDS);
+        } finally { commit.countDown();pool.shutdownNow(); }
+        completeSweep();
+        scoped.run(tenant, () -> { assertEquals(1,count("ai_grid_snapshot_bodies"));assertEquals(0,count("ai_grid_retention_purge_audit")); });
+    }
+
     @Test void overlappingSweepsKeepOneAuditPerPurgedBody() throws Exception {
         for (int n = 1; n <= 7; n++) body(n);
         CyclicBarrier start = new CyclicBarrier(2);
@@ -172,6 +213,24 @@ class RetentionBatchHoldPostgresIntegrationTest {
                 "expired", "expired replay", java.time.Instant.now().minusSeconds(60)), "operator");
         completeSweep(); completeSweep();
         scoped.run(tenant, () -> { assertEquals(0, count("ai_grid_snapshot_bodies")); assertEquals(2, count("ai_grid_retention_purge_audit")); });
+    }
+
+    @Test void expiredLegalHoldStillRequiresExplicitReleaseBeforePurge() {
+        body(1);
+        var legal = retention.createHold(tenant, new AiGridRetentionService.HoldCommand(id(1), "LEGAL_HOLD",
+                "legal-expiry", "existing explicit release policy", java.time.Instant.now().minusSeconds(60)), "operator");
+        completeSweep();
+        scoped.run(tenant, () -> assertEquals(1, count("ai_grid_snapshot_bodies")));
+        retention.releaseHold(tenant, legal.id(), "operator");
+        scoped.run(tenant, () -> assertEquals(1, jdbc.queryForObject(
+                "select count(*) from ai_grid_evidence_holds where released_at is not null", Integer.class)));
+        completeSweep(); completeSweep();
+        scoped.run(tenant, () -> {
+            assertEquals(0, count("ai_grid_snapshot_bodies"));
+            assertEquals(1, count("ai_grid_retention_purge_audit"));
+            // Existing hold-to-body FK cascades after purge; the independent purge audit remains.
+            assertEquals(0, count("ai_grid_evidence_holds"));
+        });
     }
 
     @Test void concurrentPolicyExtensionPreservesItsLockedBodyAndRetriesTheSweep() throws Exception {

@@ -48,6 +48,16 @@ public class FindingProjectionRefreshService {
         });
     }
 
+    /** Workflow publication joins its source transaction; after-commit callers keep refreshTenant. */
+    public int refreshTenantWithSource(Tenant tenant) {
+        if (tenant == null || tenant.getId() == null) return 0;
+        return tenantSchemaExecutionService.run(tenant, () -> {
+            TransactionTemplate joined = new TransactionTemplate(writeTransactionTemplate.getTransactionManager());
+            Integer refreshed = joined.execute(status -> refreshTenantInCurrentTenantSchema(tenant));
+            return refreshed == null ? 0 : refreshed;
+        });
+    }
+
     long countProjectedRows(Tenant tenant) {
         Long count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM " + qualifiedTenantTable(tenant, "finding_list_projection"),
@@ -62,6 +72,8 @@ public class FindingProjectionRefreshService {
     }
 
     private int refreshTenantInCurrentTenantSchema(Tenant tenant) {
+        // JDBC must see this transaction's pending JPA workflow changes.
+        findingRepository.flush();
         String projectionTable = qualifiedTenantTable(tenant, "finding_list_projection");
         String statusTable = qualifiedTenantTable(tenant, "finding_workspace_projection_status");
         long startedAtNs = System.nanoTime();

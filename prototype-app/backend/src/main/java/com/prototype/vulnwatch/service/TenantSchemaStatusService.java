@@ -75,11 +75,40 @@ public class TenantSchemaStatusService {
     private int compatibleMaximum=5;
 
     public long readinessFailures(int ignoredPackagedTarget) {
+        assertPlatformDependencies();
         Long count=jdbc.queryForObject("""
                 select count(*) from platform.tenants t left join platform.tenant_schema_versions v on v.tenant_id=t.id
                  where t.status='ACTIVE' and (v.tenant_id is null or v.status<>'CURRENT' or v.current_version<? or v.current_version>?)
                 """,Long.class,Math.max(5,compatibleMinimum),Math.min(5,compatibleMaximum));
         return count==null ? 0 : count;
+    }
+
+    /** Read-only runtime contract, shared by startup and readiness; no migration-owner access required. */
+    public void assertPlatformDependencies() {
+        // Parsing these zero-row queries checks retained columns and runtime SELECT grants.
+        // Per-tenant failure remains a request eligibility decision, separate from this instance gate.
+        jdbc.query("""
+                select t.id,v.current_version,s.claim_token,s.lease_expires_at,s.metadata_json,
+                       invitation.encrypted_payload,invitation.reconciled_at,watermark.completed_until,
+                       progress.last_occurrence_at,task.assessment_request_id,task.lease_expires_at,
+                       deprecation.claim_token,advisory.ghsa_id
+                  from platform.tenants t,platform.tenant_schema_versions v,platform.sync_runs s,
+                       platform.invitation_email_outbox invitation,platform.feed_sync_watermarks watermark,
+                       platform.copilot_schedule_progress progress,platform.ai_grid_policy_rollout_tasks task,
+                       platform.ai_grid_policy_deprecation_tasks deprecation,public.github_security_advisories advisory
+                 where false
+                """, (org.springframework.jdbc.core.ResultSetExtractor<Void>) rs -> null);
+        Boolean coordinated = jdbc.queryForObject("""
+                select exists (select 1 from pg_constraint
+                         where conrelid='platform.ai_grid_policy_rollout_tasks'::regclass
+                           and conname='ai_grid_policy_rollout_tasks_status_check'
+                           and pg_get_constraintdef(oid) like '%WAITING_FOR_ASSESSMENT%')
+                   and exists (select 1 from pg_index
+                         where indexrelid=to_regclass('platform.sync_runs_schedule_occurrence_idx') and indisunique and indisvalid)
+                """, Boolean.class);
+        if (!Boolean.TRUE.equals(coordinated)) {
+            throw new IllegalStateException("Required platform work coordination schema is unavailable; run the authorized bootstrap separately");
+        }
     }
 
     public boolean hasProjection(UUID tenantId) {
