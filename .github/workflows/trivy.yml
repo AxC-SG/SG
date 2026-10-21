@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write  # Required to upload SARIF to GitHub Security tab
 
 jobs:
   filesystem:
@@ -47,15 +46,17 @@ jobs:
           trivyignores: .trivyignore.yaml
           exit-code: '0'
 
-      - name: Upload filesystem scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-filesystem
-
       - name: Enforce filesystem vulnerability gate
         run: trivy fs --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 .
+
+      - name: Retain filesystem scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-filesystem-${{ github.run_id }}
+          path: trivy-fs.sarif
+          if-no-files-found: error
+          retention-days: 14
 
   images:
     name: Docker image scan
@@ -83,13 +84,6 @@ jobs:
           severity: CRITICAL
           exit-code: '0'
 
-      - name: Upload backend image scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-backend.sarif
-          category: trivy-backend-image
-
       - name: Build frontend image
         run: docker build -f prototype-app/frontend/Dockerfile.ci -t vulnwatch-frontend:${{ github.sha }} prototype-app/frontend
 
@@ -105,14 +99,18 @@ jobs:
           severity: CRITICAL
           exit-code: '0'
 
-      - name: Upload frontend image scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-frontend.sarif
-          category: trivy-frontend-image
-
       - name: Enforce image vulnerability gate
         run: |
           trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-backend:${{ github.sha }}
           trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-frontend:${{ github.sha }}
+
+      - name: Retain image scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-images-${{ github.run_id }}
+          path: |
+            trivy-backend.sarif
+            trivy-frontend.sarif
+          if-no-files-found: error
+          retention-days: 14
