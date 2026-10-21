@@ -762,7 +762,18 @@ class AiSecurityObservationPostgresIntegrationTest {
                     Map.of(), Integer.class));
             retentionService.releaseHold(tenant, hold.id(), "integration-reviewer");
             var releasedSweep = retentionService.sweep(tenant);
-            assertTrue(releasedSweep.purgeEligible() >= 1);
+            assertEquals(0, releasedSweep.purgeEligible(),
+                    "releasing a legal hold must not make referenced snapshot evidence purge eligible");
+            assertEquals(0, releasedSweep.purged());
+            assertTrue(releasedSweep.purgeBlocked() >= 2);
+            assertFalse(jdbc.queryForObject(
+                    "select legal_hold from ai_grid_snapshot_bodies where id = :id",
+                    Map.of("id", guardrailBodyId), Boolean.class));
+            assertEquals(1, jdbc.queryForObject("""
+                    select count(*) from ai_grid_retention_decisions
+                     where snapshot_body_id = :id and decision = 'PURGE_BLOCKED'
+                       and reason_code = 'SNAPSHOT_REFERENCE'
+                    """, Map.of("id", guardrailBodyId), Integer.class));
             assertEquals("PURGE_BLOCKED", jdbc.queryForObject("""
                     select b.retention_state from ai_grid_snapshot_bodies b
                       join ai_grid_snapshot_manifests m on m.body_id = b.id

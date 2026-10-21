@@ -147,8 +147,10 @@ public class AiGridRetentionService {
                 }
             } catch (RuntimeException error) {
                 bounded.executeWithoutResult(status -> jdbc.update("""
-                        update ai_grid_retention_progress set state = 'FAILED', last_error = 'BATCH_FAILED',
-                            updated_at = now() where tenant_id = :tenantId
+                        insert into ai_grid_retention_progress (tenant_id, state, last_error)
+                        values (:tenantId, 'FAILED', 'BATCH_FAILED')
+                        on conflict (tenant_id) do update set state = 'FAILED', last_error = 'BATCH_FAILED',
+                            updated_at = now()
                         """, Map.of("tenantId", tenant.getId())));
                 throw error;
             }
@@ -295,7 +297,11 @@ public class AiGridRetentionService {
                   join findings f on f.assessment_id = a.id
                  where m.body_id = :id and f.status = 'OPEN'
                 """, Map.of("id", body.id()), Integer.class);
-        return activeFinding != null && activeFinding > 0 ? "ACTIVE_FINDING" : null;
+        if (activeFinding != null && activeFinding > 0) return "ACTIVE_FINDING";
+        Integer references = jdbc.queryForObject(
+                "select count(*) from ai_grid_snapshot_manifests where body_id = :id",
+                Map.of("id", body.id()), Integer.class);
+        return references != null && references > 0 ? "SNAPSHOT_REFERENCE" : null;
     }
 
     private List<RetentionPolicy> policies() {

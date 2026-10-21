@@ -3812,7 +3812,7 @@ function AutoFindingRuleForm({
         {/* ── RIGHT: Actions + Scope + Schedule ── */}
         <div>
           {/* Investigation & Findings */}
-          <p style={sectionLabelStyle}>Investigation & Findings</p>
+          <p style={sectionLabelStyle}>Investigation &amp; Findings</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', padding: '4px 0' }}>
               <input

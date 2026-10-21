@@ -13,8 +13,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -29,7 +27,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
@@ -171,7 +168,6 @@ public class EpssRefreshService {
     // Visible for testing
     // -------------------------------------------------------------------------
 
-    @Transactional
     int refreshBatch(List<Vulnerability> vulnerabilities) {
         if (vulnerabilities == null || vulnerabilities.isEmpty()) {
             return 0;
@@ -228,26 +224,24 @@ public class EpssRefreshService {
         Instant now = Instant.now();
         int updated = 0;
         List<Vulnerability> toSave = new ArrayList<>();
-        Set<UUID> changedVulnerabilityIds = new java.util.LinkedHashSet<>();
         for (Vulnerability vuln : vulnerabilities) {
             Double score = epssMap.get(vuln.getExternalId().toUpperCase(Locale.ROOT));
             if (score != null) {
-                Double previousScore = vuln.getEpssScore();
                 vuln.setEpssScore(score);
-                vuln.setEpssUpdatedAt(now);
                 vuln.touch();
                 toSave.add(vuln);
-                if (vuln.getId() != null && !Objects.equals(previousScore, score)) {
-                    changedVulnerabilityIds.add(vuln.getId());
-                }
                 updated++;
             }
         }
         mutations.executeWithoutResult(status -> {
             if (!toSave.isEmpty()) vulnerabilityRepository.saveAll(toSave);
         });
-        if (!changedVulnerabilityIds.isEmpty()) {
-            findingDeltaQueueService.enqueueCveMetadataDeltas(changedVulnerabilityIds, "epss-refresh");
+        if (!toSave.isEmpty()) {
+            List<UUID> scoredIds = toSave.stream().map(Vulnerability::getId).toList();
+            // Keep rows stale until every tenant has committed its recomputation intent.
+            // A crash or failed fanout then replays even when the provider returns the same score.
+            findingDeltaQueueService.enqueueCveMetadataDeltas(scoredIds, "epss-refresh");
+            mutations.executeWithoutResult(status -> vulnerabilityRepository.markEpssRefreshed(scoredIds, now));
         }
         return updated;
     }

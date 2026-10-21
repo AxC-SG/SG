@@ -97,6 +97,7 @@ public class IngestionJobWorkerService {
         try {
             TenantContext.runAsPlatform(() -> {
                 for (Tenant tenant : tenantService.listActiveTenants()) {
+                    if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("ingestion-job-worker.claim")) break;
                     try {
                         List<IngestionJobService.ClaimedJobRef> claimed = ingestionJobService.claimPendingJobs(
                                 tenant,
@@ -106,9 +107,15 @@ public class IngestionJobWorkerService {
                         var allClaimed = new java.util.ArrayList<>(claimed);
                         for (String connector : List.of(IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
                                 IngestionJobService.JOB_TYPE_SERVICENOW_CMDB)) {
+                            if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("ingestion-job-worker.claim")) break;
                             allClaimed.addAll(ingestionJobService.claimPendingJobsByType(tenant, connector, 1, 1));
                         }
                         for (IngestionJobService.ClaimedJobRef ref : allClaimed) {
+                            if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("ingestion-job-worker.dispatch")) {
+                                ingestionJobService.retryRejectedClaim(ref, "WORKER_STOPPING",
+                                        "Worker stopped before dispatch", Instant.now());
+                                continue;
+                            }
                             try {
                                 sbomJobExecutor.execute(() -> execute(ref.tenantId(), ref.jobId(), ref.claimToken()));
                             } catch (RejectedExecutionException ex) {

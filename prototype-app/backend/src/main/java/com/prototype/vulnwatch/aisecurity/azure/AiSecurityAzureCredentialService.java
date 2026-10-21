@@ -211,27 +211,35 @@ public class AiSecurityAzureCredentialService {
             Instant now = Instant.now();
             for (ExpiryCandidate candidate : candidates) {
                 if (!candidate.expiresAt().isAfter(now)) {
-                    jdbc.update("""
+                    int changed = jdbc.update("""
                             update ai_security_azure_credential_profiles
                                set status = 'EXPIRED', expiry_warning_days = 0, updated_at = now()
                              where id = :id and status = 'ACTIVE'
-                            """, Map.of("id", candidate.id()));
-                    audit.record("ai_security.azure_credential.expired", "azure_credential_profile",
-                            candidate.id().toString(), null);
-                    metrics.recordCredentialEvent("expired");
+                               and active_secret_expires_at = :expiresAt
+                            """, Map.of("id", candidate.id(), "expiresAt", Timestamp.from(candidate.expiresAt())));
+                    if (changed == 1) {
+                        audit.record("ai_security.azure_credential.expired", "azure_credential_profile",
+                                candidate.id().toString(), null);
+                        metrics.recordCredentialEvent("expired");
+                    }
                     continue;
                 }
                 long remaining = ChronoUnit.DAYS.between(now, candidate.expiresAt()) + 1;
                 int threshold = remaining <= 7 ? 7 : remaining <= 14 ? 14 : 30;
                 if (candidate.lastWarningDays() == null || threshold < candidate.lastWarningDays()) {
-                    jdbc.update("""
+                    int changed = jdbc.update("""
                             update ai_security_azure_credential_profiles
                                set expiry_warning_days = :threshold, updated_at = now()
                              where id = :id and status = 'ACTIVE'
-                            """, Map.of("threshold", threshold, "id", candidate.id()));
-                    audit.record("ai_security.azure_credential.expiry_warning", "azure_credential_profile",
-                            candidate.id().toString(), "{\"days\":" + threshold + "}");
-                    metrics.recordCredentialEvent("expiry_warning");
+                               and active_secret_expires_at = :expiresAt
+                               and (expiry_warning_days is null or expiry_warning_days > :threshold)
+                            """, Map.of("threshold", threshold, "id", candidate.id(),
+                            "expiresAt", Timestamp.from(candidate.expiresAt())));
+                    if (changed == 1) {
+                        audit.record("ai_security.azure_credential.expiry_warning", "azure_credential_profile",
+                                candidate.id().toString(), "{\"days\":" + threshold + "}");
+                        metrics.recordCredentialEvent("expiry_warning");
+                    }
                 }
             }
             return null;

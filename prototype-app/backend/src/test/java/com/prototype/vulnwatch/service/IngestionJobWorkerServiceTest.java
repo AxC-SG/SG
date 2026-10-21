@@ -117,6 +117,44 @@ class IngestionJobWorkerServiceTest {
     }
 
     @Test
+    void shutdownAfterClaimRequeuesOwnedWorkAndStopsFurtherClaims() {
+        BackgroundTaskExecutionPolicy policy = BackgroundTaskExecutionPolicy.allowAll();
+        service.setBackgroundTaskExecutionPolicy(policy);
+        Tenant first = tenant("first"), second = tenant("second");
+        var ref = new IngestionJobService.ClaimedJobRef(first.getId(), UUID.randomUUID(), UUID.randomUUID());
+        when(tenantService.listActiveTenants()).thenReturn(List.of(first, second));
+        when(ingestionJobService.claimPendingJobs(first, 10, 1)).thenAnswer(call -> {
+            policy.stopAcceptingWork();
+            return List.of(ref);
+        });
+
+        service.pollJobs();
+
+        verify(ingestionJobService).retryRejectedClaim(eq(ref), eq("WORKER_STOPPING"), any(), any());
+        verify(ingestionJobService, never()).claimPendingJobsByType(any(), any(), any(Integer.class), any(Integer.class));
+        verify(ingestionJobService, never()).claimPendingJobs(second, 10, 1);
+        verify(sbomJobExecutor, never()).execute(any(Runnable.class));
+    }
+
+    @Test
+    void shutdownDuringDispatchReturnsRemainingClaimsToTheQueue() {
+        BackgroundTaskExecutionPolicy policy = BackgroundTaskExecutionPolicy.allowAll();
+        service.setBackgroundTaskExecutionPolicy(policy);
+        Tenant tenant = tenant("dispatch");
+        var first = new IngestionJobService.ClaimedJobRef(tenant.getId(), UUID.randomUUID(), UUID.randomUUID());
+        var next = new IngestionJobService.ClaimedJobRef(tenant.getId(), UUID.randomUUID(), UUID.randomUUID());
+        when(tenantService.listActiveTenants()).thenReturn(List.of(tenant));
+        when(ingestionJobService.claimPendingJobs(tenant, 10, 1)).thenReturn(List.of(first, next));
+        doAnswer(call -> { policy.stopAcceptingWork(); return null; }).when(sbomJobExecutor).execute(any());
+
+        service.pollJobs();
+
+        verify(sbomJobExecutor).execute(any(Runnable.class));
+        verify(ingestionJobService).retryRejectedClaim(eq(next), eq("WORKER_STOPPING"), any(), any());
+        verify(ingestionJobService, never()).retryRejectedClaim(eq(first), any(), any(), any());
+    }
+
+    @Test
     void pollJobsSkipsWhenRuntimeRoleIsApi() {
         service.setBackgroundTaskExecutionPolicy(BackgroundTaskExecutionPolicy.forRole("api"));
 

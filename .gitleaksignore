@@ -1,5 +1,8 @@
 # Exact GitHub Actions Gitleaks 8.24 false-positive fingerprints for generated
 # AI Grid Phase 1 catalog identifiers. Do not add broad path or value exemptions here.
+# Historical architecture prose about SES domain verification and bounce/complaint
+# handling, verified to contain no credential. Exact commit/path/rule/line only.
+e5fee07bece0bda99f8031c462fed2c0aa8d1655:prototype-app/docs/AWS/AWS_production-architecture-review.md:generic-api-key:152
 2b7162fe3a73bff9a859a11407a782d344213634:prototype-app/backend/src/main/resources/db/migration/postgres_reset/V77__ai_grid_resource_and_relationship_catalog.sql:generic-api-key:99
 2b7162fe3a73bff9a859a11407a782d344213634:prototype-app/policy-packages/agcf/AGCF-AWS-013/1.0.0.json:generic-api-key:44
 2b7162fe3a73bff9a859a11407a782d344213634:prototype-app/policy-packages/agcf/AGCF-AWS-017/1.0.0.json:generic-api-key:42
