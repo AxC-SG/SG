@@ -612,6 +612,7 @@ export type CampaignAiResponse = {
 import { resolveApiBase } from './base';
 import type {
   AiArtifactSummary,
+  AiAssessmentProcessing,
   AiProvider,
   AiSecurityArtifact,
   AiSecurityConnectionTest,
@@ -1596,7 +1597,7 @@ export const api = {
   getAiGridRunMetrics: (runId: string) => request<AiGridRunMetrics>(
     `/ai-assessment-runs/${encodeURIComponent(runId)}/metrics`,
   ),
-  getAiAssessmentStatus: (runId: string) => request<import('../features/ai-security/types').AiAssessmentProcessing>(
+  getAiAssessmentStatus: (runId: string) => request<AiAssessmentProcessing>(
     `/ai-assessments/${encodeURIComponent(runId)}/status`,
   ),
   executeAiGridPolicies: (policyIds: string[]) => request<AiGridPolicyExecutionResult>('/ai-assessments/execute', {
