@@ -1,6 +1,6 @@
 # VulnWatch Architecture
 
-Last updated: 2026-10-18
+Last updated: 2026-10-21
 
 ---
 
@@ -36,7 +36,7 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
                                         └────────────────────────────┘
 ```
 
-Of the 67 controllers / 351 services, 19 controllers / 71 services live under `com.prototype.vulnwatch.aisecurity` — a separate top-level package implementing AI Security / AI Grid posture management (see [Core Data Flow](#7-ai-security--ai-grid) below and `docs/business-logic-guide.md#ai-security--ai-grid-pipeline`). Its tables are read/written via `JdbcTemplate` directly, bypassing the Spring Data JPA path shown above.
+Of the 67 controllers / 351 services, 19 controllers / 71 services live under `com.prototype.vulnwatch.aisecurity` — a separate top-level package implementing AI Security / AI Grid posture management (see [Core Data Flow](#7-ai-security--ai-grid) below and [business-logic-guide.md](business-logic-guide.md#ai-security--ai-grid-pipeline)). Its tables are read/written via `JdbcTemplate` directly, bypassing the Spring Data JPA path shown above.
 
 ---
 
@@ -53,17 +53,14 @@ Three ingestion paths populate the inventory:
 
 **CMDB sync:**
 - ServiceNow CMDB → `ServiceNowCmdbSyncService` → CI records → `Asset`, `Ci`, `CiAlias`
-- SCCM/MECM → `SccmCmdbSyncService` → device inventory → `Asset`, `SoftwareInstance`, `DiscoveryModel`
+- SCCM/MECM live JDBC is contained at configuration/test/admission/worker/client boundaries; existing inventory is retained, with no fixture substitution.
 - Runs every 5 minutes for scheduled syncs
 
 **AWS Discovery:**
 - `AwsDiscoveryClient` → SSM `DescribeInstanceInformation` → EC2 instances → `Asset`, `DiscoveryModel`
 - Runs every 5 minutes for configured targets
 
-**Azure Discovery** (newer, mirrors AWS):
-- `AzureDiscoveryController` (`/api/connectors/azure-discovery`) + sync service → subscription-scoped resource discovery
-- `CLIENT_SECRET` or `MANAGED_IDENTITY` auth; multi-subscription via `azure_discovery_targets`
-- Runs every 5 minutes for configured targets
+**Generic Azure Discovery** is contained by `GenericAzureDiscoveryPolicy`; saved settings and inventory are retained, but configuration changes, connection tests and discovery execution are unavailable. This is independent of the retained static Azure AI/Foundry capability and its provider/entitlement controls.
 
 **BOM / CBOM:**
 - `BomController` (`/api/bom`) handles general Bill-of-Materials ingestion; `CbomController` (`/api/bom/cbom`) tracks cloud-posture BOM data
@@ -126,11 +123,11 @@ A separate discovery-and-governance pipeline, entitlement-gated (`ai.security`),
 1. **Discovery** — AWS Bedrock and Azure AI connectors (`aisecurity.aws`/`aisecurity.azure`) emit sanitized `ObservationEnvelopeV1` chunks describing agents, models, guardrails, knowledge bases, and MCP servers.
 2. **AI Grid pipeline** — per completed scan scope: immutable snapshot → derived facts → ownership resolution → agent-rooted system grouping → policy assessment (JSON predicate engine) → R2 exposure correlation (cross-system risk chains, promoted to "validated" only on exact, fresh evidence) → coverage/setup-action reconciliation → bridge into the canonical `findings` table (`finding_kind = AI_POSTURE`/`AI_EXPOSURE`).
 3. **Platform governance** — a separate platform-owner track (answer-key precision review, release certification, GA/canary policy distribution) gates what policy/correlation content ever reaches tenants.
-4. **Tenant reporting** — `/policies` combines tenant-visible policies with registered framework coverage, latest assessment-state totals, and the numeric Program 2 telemetry gate. The customer state projection is `PASS`/`FAIL`/`UNKNOWN`/`NOT_ASSESSED`: out-of-scope, capability-unavailable, and not-applicable subjects have no security state (`NOT_ASSESSED`); incomplete, stale, or failed evidence is `UNKNOWN`.
+4. **Tenant reporting** — `/policies` combines tenant-visible policies with registered framework coverage, latest assessment-state totals, and static assessment coverage (runtime Program 2 telemetry is deferred). The customer state projection is `PASS`/`FAIL`/`UNKNOWN`/`NOT_ASSESSED`: out-of-scope, capability-unavailable, and not-applicable subjects have no security state (`NOT_ASSESSED`); incomplete, stale, or failed evidence is `UNKNOWN`.
 
-The framework registry (`GET /api/ai-frameworks`) is platform reference data and is readable without selecting a tenant. Framework coverage and runtime readiness remain tenant-scoped because they depend on distribution, selection, evidence, and connector data. Consequently, `/platform/ai-policies` is limited to global catalog/distribution governance and does not render tenant coverage or telemetry.
+The framework registry (`GET /api/ai-frameworks`) is platform reference data and is readable without selecting a tenant. Framework coverage is tenant-scoped; runtime readiness is retired/out of scope and must not be called by current customer pages. Consequently, `/platform/ai-policies` is limited to global catalog/distribution governance and does not render tenant coverage or telemetry.
 
-Full mechanics: `docs/business-logic-guide.md#ai-security--ai-grid-pipeline`. Schema: `docs/database.md#ai-security--ai-grid-tables`.
+Full mechanics: [business-logic-guide.md](business-logic-guide.md#ai-security--ai-grid-pipeline). Schema: [database.md](database.md#ai-security--ai-grid-tables).
 
 ---
 
@@ -154,8 +151,8 @@ Each tenant gets a dedicated PostgreSQL schema. Connection-level `search_path` i
 
 ```
 HTTP Request
-  → TenantResolutionFilter (servlet filter, HIGHEST_PRECEDENCE + 10; populate TenantContext from JWT or X-Tenant-ID header)
-  → ApiKeyAuthenticationFilter (API key or JWT Bearer)
+  → TenantResolutionFilter (servlet filter, HIGHEST_PRECEDENCE + 10; explicit local header/default compatibility only; no unverified JWT authority)
+  → ApiKeyAuthenticationFilter (JWT validates current authority and installs tenant ID/schema; local API-key compatibility)
   → RequestCorrelationFilter (X-Request-ID into MDC)
   → TenantStatusFilter (block deleted or non-ACTIVE tenants)
   → Controller → Service → Repository (correct schema via HikariCP connection)
@@ -167,13 +164,13 @@ HTTP Request
 
 ### Tenant Schema Control Plane
 
-Per-tenant DDL is no longer applied by the application's own startup Flyway run. A second, independent Flyway migration line lives under `backend/src/main/resources/db/migration/tenant/` (its own `<schema>.tenant_schema_history` table per tenant), separate from the platform-only `postgres_reset/` line (each file there must start with a `-- migration-guard: platform-only` comment, enforced by `PostgresResetMigrationGuardTest`). Both lines have append-only migrations after their reset V1 baselines: the platform line is currently at `V1` only, and the tenant line is at `V2` (`V2__ai_bom_correlation_evidence.sql`, the AI-BOM correlation evidence/lifecycle storage — see `docs/business-logic-guide.md#ai-bom--ai-grid-integration` and `docs/database.md`). `MigrationCatalogTest` asserts platform target 1 and tenant target 2.
+Per-tenant DDL is no longer applied by the application's own startup Flyway run. A second, independent Flyway migration line lives under `backend/src/main/resources/db/migration/tenant/` (its own `<schema>.tenant_schema_history` table per tenant), separate from the platform-only `postgres_reset/` line (each file there must start with a `-- migration-guard: platform-only` comment, enforced by `PostgresResetMigrationGuardTest`). Both lines are append-only after their independent reset V1 baselines. Current packaged targets are platform V6 and tenant V5 (`MigrationCatalogTest`); the next versions are platform V7 and tenant V6. Every applied migration remains immutable.
 
 `TenantSchemaMigrationService` drives the rollout: hold a Postgres advisory lock → migrate the `tenant_default` template and compute a SHA-256 **structural fingerprint** (normalized dump of every column/constraint/index/sequence/RLS policy) → migrate one canary tenant → migrate the rest in batches of 10, comparing each tenant's post-migration fingerprint against the template and failing (`DRIFTED`) rather than silently diverging. Every step is recorded in `platform.tenant_schema_versions`, surfaced by `TenantSchemaStatusService`/`TenantSchemaStatusController` (`GET /api/platform/tenant-schema-status`, shown in the Platform Console) and by `TenantSchemaReadinessHealthIndicator` (an actuator health contributor gated behind `app.tenancy.enforce-schema-version=true`).
 
-Tenant V2 is therefore a control-plane rollout, not an application deploy side effect. Callers should report an unready tenant as not assessed with a schema-readiness blocker rather than treating it as a policy failure. The packaged tenant target is 2, while the configured minimum-compatible floor remains 1 during the controlled rollout.
+The required/supported tenant range is V5–V5; a lower configured floor cannot bypass it. With schema enforcement enabled, startup/readiness fail on missing required platform work structures/SELECT grants, V6 waiting-state constraint or schedule-occurrence index. Individual incompatible tenants are blocked at entry while compatible tenants remain usable; readiness reports their count. These are read-only checks, not startup migration ownership. The last observed deployed backend predates the development history reset; actual histories and upgrade/rollback compatibility remain unverified. See [release qualification](AWS/PHASE_3_RELEASE_QUALIFICATION.md).
 
-For production, the same rollout runs from `ProductionBootstrapCli` — a standalone `main()` that skips Spring/JPA entirely — invoked by a temporary Render "migrator" web service (`backend/scripts/run-render-migration.sh`) rather than the long-running API service. See [Deployment](#deployment) below; there is no committed operational runbook right now (a prior reference to `docs/p0-production-runbook.md` pointed at a file that has since been deleted).
+For production, the same rollout runs from `ProductionBootstrapCli` — a standalone `main()` that skips Spring/JPA entirely — invoked by a temporary Render "migrator" web service (`backend/scripts/run-render-migration.sh`) rather than the long-running API service. See [Deployment](#deployment) below; see [bootstrap wrapper](../backend/scripts/run-render-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [release qualification](AWS/PHASE_3_RELEASE_QUALIFICATION.md).
 
 **RLS rollout status:** row-level security policies are created on every provisioned tenant schema at provisioning time, and the mechanism that retroactively backfills a `tenant_id` column (if missing) and turns on `FORCE ROW LEVEL SECURITY` per table is now baked directly into `tenant/V1__tenant_schema.sql` rather than a later numbered migration, applied per tenant schema as each tenant is carried through the control-plane rollout above. `ProductionSafetyValidator.validateRuntimeRoleCannotBypassRls()` (platform line) remains the pre-flight gate confirming the production/preprod runtime role is non-superuser and lacks `BYPASSRLS` before this enforcement is allowed to proceed.
 
@@ -183,17 +180,17 @@ For production, the same rollout runs from `ProductionBootstrapCli` — a standa
 
 ### Authentication Paths
 
-**API Key** (local/ops): `X-API-Key` header → `ApiKeyAuthenticationFilter` → injects OPERATOR + ANALYST roles. `X-Creator-Key` additionally grants PLATFORM_OWNER, TENANT_ADMIN, INVENTORY_ADMIN, CREATOR. Only active when `APP_ALLOW_API_KEY_AUTH=true`.
+`APP_JWT_AUTH_MODE=LOCAL` uses the local issuer and a configured ≥32-byte HMAC secret; EXTERNAL requires an issuer URI without a local HMAC secret, with optional JWK URI. Both validate issuer, audience and access-token use. LOCAL login uses current ACTIVE DB users and bcrypt password hashes; shared localhost login is explicitly configured and disabled by default. EXTERNAL disables local issuance.
 
-**JWT Bearer** (production): OIDC token validated against `APP_JWT_ISSUER_URI`. Tenant and roles resolved from claims by `JwtTenantAuthenticationService`.
+`JwtTenantAuthenticationService` revalidates current stored global grants and tenant membership/support. Human claims cannot create grants or memberships; stale owner claims are rejected after revocation. Machine JWTs require SERVICE_ACCOUNT-only roles, explicit tenant and an active same-tenant registry entry matching the verified subject. A key ID alone is not a credential. API-key/creator-key role escalation remains local compatibility only and is rejected by deployed validation. See [backend authentication](backend.md#authentication).
 
-**Credential login** (validation/preprod): `POST /api/auth/login` validates against bcrypt hash in config. Issues HS256 JWT signed with `APP_JWT_HMAC_SECRET`.
+`SecurityConfig` exposes only the listed public health/info, login/setup/CSRF and invitation/demo exchanges. Other API/actuator routes require authentication plus their route/service authorization. Fix Intelligence is denyAll and directly unavailable. Setup-cookie password submission requires CSRF; header CSRF bypass is granted only after verified authentication. See [public/protected endpoints](backend.md#public-and-protected-endpoints).
 
 ### Role Hierarchy
 
 | Role | Access |
 |------|--------|
-| `PLATFORM_OWNER` | `/api/platform/**`, `/api/operations/**`, all tenant data via support grants |
+| `PLATFORM_OWNER` | Platform APIs; tenant entry requires current authorized membership or support mode/reference |
 | `TENANT_ADMIN` | Full tenant admin — users, connectors, all settings |
 | `INVENTORY_ADMIN` | Connector configuration, CMDB/SBOM management |
 | `SECURITY_ANALYST` | Finding triage, investigation workflow, CVE workbench |
@@ -202,7 +199,7 @@ For production, the same rollout runs from `ProductionBootstrapCli` — a standa
 | `CREATOR` | Creator key default — includes all platform-level operations |
 | `SERVICE_ACCOUNT` | Trusted external evidence producers only — required by `AiGridEvidenceIngestionController` (`POST /api/internal/ai-grid/evidence/{producerId}`); the authenticated principal must equal `producerId` |
 
-These are role string constants checked across `SecurityConfig` authorization rules and various filters — there is no single formal role-hierarchy enum/service enforcing precedence between them; treat this table as the authoritative reference, not a class in the codebase.
+This is a route-level summary, not an inheritance hierarchy. `TenantRolePolicy` restricts membership to the four customer roles; stored global grants and service-account authority are separate. Controller/service checks and sensitive support-action restrictions further constrain access. [Entitlements](backend.md#authorization-rules) share one resolver with the browser snapshot and never override independent containment.
 
 ### Security Filters (in order)
 
@@ -216,17 +213,18 @@ These are role string constants checked across `SecurityConfig` authorization ru
 `ProductionSafetyValidator` runs at startup and fails if (when `require-production-secrets=true`):
 - `APP_ALLOW_API_KEY_AUTH=true`
 - `APP_CREATOR_KEY` is set
-- No JWT issuer or JWK URI configured
+- Invalid LOCAL/EXTERNAL JWT settings; deployed LOCAL also requires explicit HMAC permission and strong signing material
 - `APP_ALLOW_HEADER_TENANT_SELECTION=true`
 - `APP_REQUIRE_TENANT_CONTEXT=false`
 - `APP_CREDENTIAL_ENCRYPTION_KEY` is weak/default
 - `APP_CORS_ALLOWED_ORIGINS` is `*`
 - `APP_TEST_PERSONAS_ENABLED=true`
-- `APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED=true` with no bootstrap users
-- A production platform-owner bootstrap user omits email
-- A production platform-owner bootstrap user uses a localhost email
+- Runtime bootstrap/platform-owner seeding, Spring Flyway, schema migration, mock/persona/header fallback or demo synchronous provisioning enabled in a deployed runtime
+- Missing/invalid APP_ENVIRONMENT or APP_RUNTIME_ROLE, non-FAIL transaction tenant guard, missing explicit entitlement cohort/ENFORCE, or pilot generative enablement
 
 ---
+
+The deployed application uses the restricted non-owner/non-superuser/non-BYPASSRLS role with no DDL. Privileged migrations/grants run separately. Source/defaults do not certify the effective deployed identity or configuration. Durable work/attempt fencing, shutdown and encrypted delivery are described in [backend operations](backend.md#durable-work-scheduling-and-delivery).
 
 ## Projection Tables
 
@@ -283,7 +281,7 @@ All routes defined in `src/App.tsx` with typed helpers in `src/app/routes.ts`. L
 
 ### API Layer
 
-All API calls go through `src/api/client.ts`. Base URL: `VITE_API_BASE` (defaults to `http://localhost:8080/api`). Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
+All API calls go through `src/api/client.ts`. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or production `https://api.scoutgrid.io/api`. Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
 
 ---
 
@@ -292,7 +290,7 @@ All API calls go through `src/api/client.ts`. Base URL: `VITE_API_BASE` (default
 - **Backend container:** `eclipse-temurin:17-jre`, non-root user, port 8080, JVM flags: `-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=10.0 -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError`
 - **Frontend (production):** Vercel deploys `prototype-app/frontend` using `frontend/vercel.json`; `https://scoutgrid.io` is the sole public frontend origin. The Vercel configuration provides SPA rewrites and browser security headers. `frontend/Dockerfile.ci` builds the same static bundle only for CI image-security checks; it is not a deployment artifact.
 - **AWS (validation environment):** ECS Fargate (public subnet, assign_public_ip=true), ALB, RDS PostgreSQL db.t4g.small (private subnet), S3 + CloudFront OAC for frontend
-- **Render (preprod / customer-validation environment):** `render.yaml` (repo root) defines `scout-backend` only; no Render frontend is supported. The Docker web service is built from `prototype-app/backend`, running `SPRING_PROFILES_ACTIVE=preprod` (which enables `require-production-secrets`, disables API-key auth, and — atypically — allows HMAC JWT signing in production via `APP_ALLOW_HMAC_IN_PRODUCTION=true`, for the credential-login flow used before full OIDC is wired up). The permanent web service is only ever given the restricted `scout_runtime` Postgres role (`DB_URL`/`DB_USERNAME`/`DB_PASSWORD` are `sync: false` — set manually in the Render dashboard) and never the owner/migration role. Schema bootstrap and migration run separately: see "Tenant Schema Control Plane" above for the mechanics; the temporary-migrator-service procedure is `backend/scripts/run-render-migration.sh` running `ProductionBootstrapCli`, and the least-privilege role grants are automated by `backend/scripts/provision-runtime-role.sql`. (Prior references here to `docs/p0-production-runbook.md` and `docs/production-database-roles.sql` pointed at files that don't exist in this repository — read the two scripts directly.) After a successful run the migrator service is held open in a completion-only maintenance state rather than exiting, so Render's process supervisor doesn't restart it and re-run the privileged bootstrap.
+- **Render (preprod / customer-validation environment):** `render.yaml` (repo root) defines `scout-backend` only; no Render frontend is supported. The Docker web service is built from `prototype-app/backend`, running `SPRING_PROFILES_ACTIVE=preprod` (which enables `require-production-secrets`, disables API-key auth, and — atypically — allows HMAC JWT signing in production via `APP_ALLOW_HMAC_IN_PRODUCTION=true`, for the credential-login flow used before full OIDC is wired up). The permanent web service is only ever given the restricted `scout_runtime` Postgres role (`DB_URL`/`DB_USERNAME`/`DB_PASSWORD` are `sync: false` — set manually in the Render dashboard) and never the owner/migration role. Schema bootstrap and migration run separately: see "Tenant Schema Control Plane" above for the mechanics; the temporary-migrator-service procedure is `backend/scripts/run-render-migration.sh` running `ProductionBootstrapCli`, and the least-privilege role grants are automated by `backend/scripts/provision-runtime-role.sql`. See [bootstrap wrapper](../backend/scripts/run-render-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [qualification](AWS/PHASE_3_RELEASE_QUALIFICATION.md). After a successful run the migrator service is held open in a completion-only maintenance state rather than exiting, so Render's process supervisor doesn't restart it and re-run the privileged bootstrap.
 
 For deployment-facing environment variables and operational endpoints, see [Backend](backend.md).
 
@@ -302,7 +300,7 @@ For deployment-facing environment variables and operational endpoints, see [Back
 
 1. **CPE-based correlation only** — matching uses normalized CPE strings. No fuzzy name matching. This makes false positives rare but requires good CPE coverage in the vulnerability feeds.
 
-2. **Deterministic correlation** — `ApplicabilityDecisionService` applies version constraints mechanically. The system does not use AI for correlation — AI is used only for EOL slug suggestion and investigation summaries.
+2. **Deterministic correlation** — `ApplicabilityDecisionService` applies version constraints mechanically. Correlation and EOL slug resolution are deterministic. Retained generative-assistance paths default off and remain hard off for the deployed pilot.
 
 3. **Schema-per-tenant as the primary isolation boundary** — row-level security alone (a `tenant_id` column with no schema separation) was rejected as the *sole* mechanism because it requires every query to include a filter, which is easy to miss. Schema-level isolation via `search_path` enforces isolation at the database connection level; RLS is additionally enforced per tenant schema as defense-in-depth (see "Tenant Schema Control Plane" above), not as a replacement for it.
 

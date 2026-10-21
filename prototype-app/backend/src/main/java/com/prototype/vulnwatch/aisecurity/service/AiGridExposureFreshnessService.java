@@ -46,8 +46,14 @@ public class AiGridExposureFreshnessService {
     public void demoteExpiredEvidence() {
         if (!backgroundPolicy.allowsBackgroundTask("demoteExpiredEvidence")) return;
         for (Tenant tenant : tenants.findAll()) {
+            if (!backgroundPolicy.allowsBackgroundTask("demoteExpiredEvidence.tenant")) return;
+            if (!"ACTIVE".equalsIgnoreCase(tenant.getStatus())) continue;
             try {
                 tenantExecution.run(tenant, () -> transactions.execute(status -> {
+                    // Same lock as coverage.refreshCurrent, before reading the
+                    // stale predicate and epoch that decide whether to derive.
+                    jdbc.query("select pg_advisory_xact_lock(hashtextextended(cast(:tenantId as text), 0))",
+                            Map.of("tenantId", tenant.getId()), rs -> null);
                     Integer stale = jdbc.queryForObject("""
                             select count(*) from ai_grid_exposure_paths p where p.state='VALIDATED_EXPOSURE'
                               and exists (select 1 from ai_grid_exposure_observations o

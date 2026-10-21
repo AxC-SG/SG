@@ -29,6 +29,10 @@ public class FindingListProjectionService {
         return findingProjectionRefreshService.refreshTenant(tenant);
     }
 
+    public int refreshTenantWithSource(Tenant tenant) {
+        return findingProjectionRefreshService.refreshTenantWithSource(tenant);
+    }
+
     public void ensureTenantProjection(Tenant tenant) {
         findingProjectionQueryService.ensureTenantProjection(tenant);
     }

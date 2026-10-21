@@ -348,6 +348,33 @@ describe('App test persona switcher', () => {
     expect(screen.queryByText('End-of-Life')).not.toBeInTheDocument();
   });
 
+  it.each([
+    '/connect/sources?connectSource=sccm-patch',
+    '/connect/sources?connectSource=bigfix-patch',
+    '/connect/sources?connectSource=tanium-patch',
+    '/connect/sccm-patch',
+    '/connect/bigfix-patch',
+    '/connect/tanium-patch',
+  ])('contains retired patch connector navigation through the app router: %s', async (route) => {
+    const auth = await import('./features/auth/api');
+    const { api } = await import('./api/client');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, entitlements: { 'ai.security': true } });
+    vi.spyOn(api, 'getServiceNowCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getServiceNowCmdbConfig>>);
+    vi.spyOn(api, 'getSccmCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getSccmCmdbConfig>>);
+    vi.spyOn(api, 'getAwsDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAwsDiscoveryConfig>>);
+    vi.spyOn(api, 'getAzureDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAzureDiscoveryConfig>>);
+    vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
+    vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const { default: App } = await import('./App');
+    const { container } = renderWithProviders(<App />, { route });
+    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /BigFix|Tanium|Test Connection|Save Configuration/ })).not.toBeInTheDocument();
+    expect(container.querySelector('input[type="password"]')).toBeNull();
+    expect(log).not.toHaveBeenCalled();
+  });
+
   it('removes synthetic Fix Intelligence navigation while retained workflows remain reachable', async () => {
     const auth = await import('./features/auth/api');
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);

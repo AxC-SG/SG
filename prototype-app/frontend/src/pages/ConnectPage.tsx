@@ -24,9 +24,6 @@ import { BomManagementPage } from './BomManagementPage';
 import { AiSecurityConnectorPage } from './AiSecurityConnectorPage';
 import { AiSecurityAzureConnectorPage } from './AiSecurityAzureConnectorPage';
 import { CopilotStudioConnectorPage } from './CopilotStudioConnectorPage';
-import { SccmPatchConnectorPage } from './SccmPatchConnectorPage';
-import { BigFixPatchConnectorPage } from './BigFixPatchConnectorPage';
-import { TaniumPatchConnectorPage } from './TaniumPatchConnectorPage';
 import { canUseEntitlement } from '../features/auth/entitlements';
 
 type ConnectorId =
@@ -48,10 +45,7 @@ type ConnectorId =
   | 'advisory-feed'
   | 'endoflife-date'
   | 'euvd-feed'
-  | 'jvn-feed'
-  | 'sccm-patch'
-  | 'bigfix-patch'
-  | 'tanium-patch';
+  | 'jvn-feed';
 
 type ConnectView = 'sources' | 'run-history';
 
@@ -119,37 +113,6 @@ const IconServiceNowBrand = (
     <rect x="2" y="2" width="36" height="36" rx="7" fill="#12263A" />
     <text x="20" y="25.5" textAnchor="middle" fontSize="12.6" fontWeight="700"
           fontFamily="Helvetica, Arial, sans-serif" fill="#ffffff">NOW</text>
-  </svg>
-);
-
-// BigFix: the lowercase "b" bowl in slate blue with an olive dot at its centre.
-const IconBigFix = (
-  <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-    <path
-      d="M13.2 24.4V6.5"
-      fill="none"
-      stroke="#7B9BC4"
-      strokeWidth="6.4"
-      strokeLinecap="round"
-    />
-    <path
-      d="M31.8 22.6a12.8 12.8 0 1 1-8.6-12.1"
-      fill="none"
-      stroke="#7B9BC4"
-      strokeWidth="6.4"
-      strokeLinecap="round"
-    />
-    <circle cx="19.6" cy="23.4" r="5.4" fill="#A8C63F" />
-  </svg>
-);
-
-// Tanium: white "T" knocked out of a red disc, with the disc's upper-left squared off as
-// in the brand mark.
-const IconTanium = (
-  <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-    <path d="M20 5.6A14.4 14.4 0 1 1 5.6 20V5.6Z" fill="#E4002B" />
-    <path d="M10.4 15.2h19.2" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="butt" />
-    <path d="M20 15.2v14.2" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="butt" />
   </svg>
 );
 
@@ -344,24 +307,6 @@ const CONNECTORS: ConnectorDefinition[] = [
     name: 'JVN Vulnerability Database',
     summary: 'Ingest Japan Vulnerability Notes (JVNdb) records via the MyJVN API and sync JVNDB-to-CVE correlations.',
     icon: IconJvn
-  },
-  {
-    id: 'sccm-patch',
-    name: 'SCCM/MECM',
-    summary: 'Microsoft Configuration Manager patch deployment tracking.',
-    icon: IconMicrosoft
-  },
-  {
-    id: 'bigfix-patch',
-    name: 'BigFix',
-    summary: 'IBM BigFix patch and endpoint management integration.',
-    icon: IconBigFix
-  },
-  {
-    id: 'tanium-patch',
-    name: 'Tanium',
-    summary: 'Tanium endpoint platform patch management integration.',
-    icon: IconTanium
   }
 ];
 
@@ -387,8 +332,6 @@ const INVENTORY_CONNECTOR_IDS: ConnectorId[] = [
 ];
 
 const BOM_CONNECTOR_IDS: ConnectorId[] = ['sbom-endpoint', 'bom-management'];
-
-const PATCH_CONNECTOR_IDS: ConnectorId[] = ['sccm-patch', 'bigfix-patch', 'tanium-patch'];
 
 // The AI connectors are entitlement-gated, so they drop out of Inventory rather than
 // leaving an empty section behind.
@@ -605,15 +548,6 @@ type ConnectorDetailsProps = {
 };
 
 function ConnectorDetailContent({ connectorId }: ConnectorDetailsProps) {
-  if (connectorId === 'sccm-patch') {
-    return <SccmPatchConnectorPage />;
-  }
-  if (connectorId === 'bigfix-patch') {
-    return <BigFixPatchConnectorPage />;
-  }
-  if (connectorId === 'tanium-patch') {
-    return <TaniumPatchConnectorPage />;
-  }
   if (connectorId === 'sbom-endpoint') {
     return (
       <IngestionPage
@@ -761,7 +695,14 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
   const inventoryConnectorsDisabledForDemo = actor?.demoCapabilities?.liveConnectors === false;
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeView, setActiveView] = React.useState<ConnectView>(initialView);
-  const [activeConnector, setActiveConnector] = React.useState<ConnectorId | null>(() => readConnectorFromSearch(searchParams));
+  // The catalog is also the allowlist for bookmarks and browser navigation.
+  const activeConnector = readConnectorFromSearch(searchParams);
+  const setActiveConnector = React.useCallback((connectorId: ConnectorId | null) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete(CONNECT_SOURCE_QUERY_KEY);
+    if (connectorId) nextParams.set(CONNECT_SOURCE_QUERY_KEY, connectorId);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [vulnIntelCollapsed, setVulnIntelCollapsed] = React.useState(false);
   const serviceNowConfigQuery = useServiceNowCmdbConfigQuery();
   const sccmConfigQuery = useSccmCmdbConfigQuery();
@@ -777,20 +718,10 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
   }, [initialView]);
 
   React.useEffect(() => {
-    setActiveConnector(readConnectorFromSearch(searchParams));
-  }, [searchParams]);
-
-  React.useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams);
-    if (activeConnector) {
-      nextParams.set(CONNECT_SOURCE_QUERY_KEY, activeConnector);
-    } else {
-      nextParams.delete(CONNECT_SOURCE_QUERY_KEY);
+    if (searchParams.has(CONNECT_SOURCE_QUERY_KEY) && !activeConnector) {
+      setActiveConnector(null);
     }
-    if (nextParams.toString() !== searchParams.toString()) {
-      setSearchParams(nextParams, { replace: true });
-    }
-  }, [activeConnector, searchParams, setSearchParams]);
+  }, [activeConnector, searchParams, setActiveConnector]);
 
   const selectedConnector = activeConnector ? CONNECTORS.find((connector) => connector.id === activeConnector) ?? null : null;
   const selectedConnectorAllowed = selectedConnector != null
@@ -803,7 +734,7 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeConnector]);
+  }, [activeConnector, setActiveConnector]);
 
   const aiEntitled = canUseEntitlement(actor, 'ai.security');
   const inventoryConnectors = INVENTORY_CONNECTOR_IDS
@@ -811,9 +742,6 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
     .map((id) => CONNECTORS.find((connector) => connector.id === id))
     .filter((connector): connector is ConnectorDefinition => Boolean(connector));
   const bomConnectors = BOM_CONNECTOR_IDS
-    .map((id) => CONNECTORS.find((connector) => connector.id === id))
-    .filter((connector): connector is ConnectorDefinition => Boolean(connector));
-  const patchConnectors = PATCH_CONNECTOR_IDS
     .map((id) => CONNECTORS.find((connector) => connector.id === id))
     .filter((connector): connector is ConnectorDefinition => Boolean(connector));
 
@@ -829,12 +757,6 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
       title: 'BOM Management',
       connectors: bomConnectors,
       caption: 'Ingest and manage Bill of Materials files.',
-    },
-    {
-      key: 'patch-management' as const,
-      title: 'Patch Management',
-      connectors: patchConnectors,
-      caption: 'Patch deployment tracking from SCCM, BigFix, and Tanium for vulnerability remediation.',
     }
   ];
 
@@ -848,10 +770,10 @@ export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPa
             className={`connect-filter-btn${activeView === view ? ' active' : ''}`}
             onClick={() => {
               setActiveView(view);
-              onViewChange?.(view);
               if (view !== 'sources') {
                 setActiveConnector(null);
               }
+              onViewChange?.(view);
             }}
           >
             {view === 'sources' && 'Sources'}

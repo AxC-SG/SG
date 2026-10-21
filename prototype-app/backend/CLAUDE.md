@@ -1,16 +1,20 @@
 # CLAUDE.md
 
+> **Current prerequisite contract (October 21, 2026):** [implementation closure](../docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md) and [release qualification](../docs/AWS/PHASE_3_RELEASE_QUALIFICATION.md). Generic Azure, SCCM JDBC, local archive operations, Fix Intelligence/tenant OSV, runtime evidence and destructive tenant purge remain contained; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](../docs/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md). Documentation completion is not release qualification.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > The root `../CLAUDE.md` contains full project conventions, architecture, scheduling, and the never-touch list. This file adds backend-specific runtime detail.
 
 ## Commands
 
+See [local setup](../README.md#backend). The base configuration does not supply APP_ENVIRONMENT or APP_RUNTIME_ROLE; both must be explicit. Copy the ignored local profile from its committed example before using it, and configure private signing/encryption material for browser flows.
+
 ```bash
 # Run the API server (port 8080, default profile)
 mvn spring-boot:run
 
-# Run with local profile (enables header-based tenant selection, JWT auth, no prod-secret check)
+# Run with configured local example profile and local secrets
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 # Unit tests only (Surefire; excludes *PostgresIntegrationTest.java)
@@ -31,29 +35,23 @@ mvn clean
 
 ## Authentication and request auth model
 
-Every `/api/**` request goes through `ApiKeyAuthenticationFilter` (runs before `UsernamePasswordAuthenticationFilter`) before reaching a controller. Two auth paths:
+### JWT modes and current authority
 
-**API key auth** (`X-API-Key` header, enabled when `app.security.allow-api-key-auth=true`):
-- Grants `ROLE_OPERATOR`, `ROLE_SECURITY_ANALYST` to all callers.
-- `X-Creator-Key` (or an unconfigured creator key) additionally grants `ROLE_CREATOR`, `ROLE_PLATFORM_OWNER`, `ROLE_TENANT_ADMIN`, `ROLE_INVENTORY_ADMIN`.
-- `X-User-ID` header sets the user identity; defaults to `APP_DEFAULT_USER_ID` (`local-analyst`).
-- Defaults: `APP_API_KEY` is empty, so API-key requests are rejected ("API key is not configured") until it is set; with no creator key configured, every valid API-key caller gets creator-level access. `change-me-in-prod` is only the frontend dev-mode fallback.
+`APP_JWT_AUTH_MODE` selects `LOCAL` or `EXTERNAL` in `JwtDecoderConfig`. LOCAL uses a configured local issuer and at least 32 bytes of HMAC secret, without external issuer/JWK settings. EXTERNAL requires an issuer URI and no local HMAC secret; its JWK URI is optional. Both validate issuer, audience and `token_use=access`. Local login, setup and context-token issuance require LOCAL mode; EXTERNAL does not issue local tokens.
 
-**JWT Bearer auth** (`Authorization: Bearer <token>`):
-- `APP_JWT_AUTH_MODE` selects `LOCAL` or `EXTERNAL`. `LOCAL` requires a 32-byte HMAC secret and local issuer, without external issuer/JWK settings. `EXTERNAL` requires an issuer URI and no local HMAC secret; a JWK URI is optional. Ambiguous combinations fail startup. See `JwtDecoderConfig` and `RuntimeConfigurationValidator`.
-- Both modes validate issuer, audience and `token_use=access`. Local login/token issuance is available only in `LOCAL` mode.
-- Decoded JWT is passed to `JwtTenantAuthenticationService.authenticate()`, which: resolves or creates the `platform.app_users` record, extracts roles from `APP_JWT_ROLES_CLAIM` (default `roles`), also handles namespaced claims ending in `/roles`, sets `TenantContext` from JWT tenant claims.
-- The resulting `AuthenticatedTenantActor` is stored as a `TenantAuthenticationDetails` on the `SecurityContext`.
+`JwtTenantAuthenticationService` checks the current ACTIVE user, stored global grants (including supported owner aliases/compatibility state), and current membership or support grant on each authentication. Human role claims do not create global grants or tenant membership. A stale PLATFORM_OWNER claim without current stored ownership is rejected. `TenantRolePolicy` allows only `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST` and `READ_ONLY_AUDITOR` for membership assignment and consumption; platform, compatibility and machine roles cannot be assigned as tenant roles.
 
-**Authorization rules** (from `SecurityConfig`):
-- `/api/platform/**` and `/api/operations/**` → `ROLE_PLATFORM_OWNER` required
-- `/api/operations/quality/**` and `GET /api/operations/software-identities/search` → also permit `ROLE_TENANT_ADMIN`, `ROLE_INVENTORY_ADMIN`, `ROLE_SECURITY_ANALYST`, `ROLE_READ_ONLY_AUDITOR`
-- All other `/api/**` → authenticated
-- `/api/fix-intelligence/**` → `permitAll()` unconditionally — a carve-out added with the Fix Intelligence MVP (`FixIntelligenceController`), not gated by profile/env. This is a real hole against the pattern above, not a documented exception; see root `CLAUDE.md` Known Limitations before adding real data behind it.
-- `/actuator/**` beyond health/info → authenticated (not public)
-- Public: OPTIONS, `/actuator/health` (+ `/health/readiness`, `/health/liveness`), `/actuator/info`, `POST /api/auth/login`, `POST /api/auth/setup-password`, `POST /api/auth/setup-session`, `POST /api/demo-requests`, `/api/demo-invites/**`, `/api/tenant-invites/**`
-- `GET /api/auth/context` and `GET /api/me` → authenticated (no longer `permitAll()`), but still CSRF-ignored as read-only endpoints
-- `POST /api/internal/ai-grid/evidence/{producerId}` requires `ROLE_SERVICE_ACCOUNT` and that the authenticated principal equals `producerId` — used by trusted external evidence producers (CIEM/DSPM/ASM/runtime tools) feeding the AI Grid pipeline
+Tenant claims select a registered workspace; they do not authorize it. A platform owner entering a tenant must carry an explicit current membership or support mode/reference. Revoked/expired support or membership and inactive users fail on revalidation. SERVICE_ACCOUNT tokens must claim only that role and select an explicit tenant; `ServiceAccountJwtAuthorizationService` requires an ACTIVE, same-tenant registry entry keyed by the verified JWT subject. The registry key ID alone is not a credential.
+
+### Local API-key compatibility
+
+`ApiKeyAuthenticationFilter` still supports `X-API-Key` only when `APP_ALLOW_API_KEY_AUTH=true` and an actual `APP_API_KEY` is configured (empty by default). It grants OPERATOR/SECURITY_ANALYST; a matching `X-Creator-Key`, or an unconfigured creator key, additionally grants CREATOR/PLATFORM_OWNER/TENANT_ADMIN/INVENTORY_ADMIN. `X-User-ID` selects the local identity, default `local-analyst`. These are local compatibility authorities, not the deployed JWT authority model. Deployed validation rejects API-key auth and creator-key configuration. A Bearer failure never falls back to API-key authentication.
+
+### Public and protected endpoints
+
+`SecurityConfig` permits OPTIONS, health/readiness/liveness/info, POST login/setup-password/setup-session and demo-requests, GET `/api/auth/csrf`, and GET/POST demo-invite and tenant-invite exchange routes. Public exchange does not bypass token/lifecycle checks. Setup-password uses its setup cookie plus CSRF; verified header authentication bypasses CSRF only after successful authentication, with setup-password explicitly excluded.
+
+Other actuator routes and `/api/**` require authentication, with additional route/controller/service checks. `/api/platform/**` and `/api/operations/**` require PLATFORM_OWNER; GET operations quality and software-identity search also admit the listed tenant reader/admin roles in `SecurityConfig`. `/api/auth/context` and `/api/me` require authentication. `/api/fix-intelligence` and descendants are **denyAll**; the controller also returns `FIX_INTELLIGENCE_UNAVAILABLE` if invoked directly. Static host-context evidence requires SERVICE_ACCOUNT plus producer/principal binding; runtime ingestion/read paths remain HTTP 410 / `RUNTIME_OUT_OF_SCOPE`.
 
 ## Multi-tenancy
 
@@ -62,11 +60,11 @@ Every `/api/**` request goes through `ApiKeyAuthenticationFilter` (runs before `
 SELECT set_config('app.current_tenant_id', '<uuid>', FALSE);
 SELECT set_config('search_path', '<tenant_schema>,platform', FALSE);
 ```
-On connection close it resets both. This means all JPA queries automatically hit the correct schema without any application-layer schema prefix on queries.
+On connection close it resets both; a failed reset or unfinished transaction causes physical connection eviction/abort. Platform work uses `platform,public`; required but absent tenant context gets a sentinel UUID that cannot match tenant rows. Search path chooses the schema; forced RLS and the restricted role enforce row isolation. `TenantSchemaExecutionService` rejects tenant/schema switches through its scoped runner inside an active transaction (FAIL is the only accepted mode). Establish platform scope before starting its transaction as well.
 
 `TenantContext` (thread-local) carries the current tenant UUID and schema name. `ApiKeyAuthenticationFilter` calls `TenantContext.clear()` in a `finally` block. JWT auth sets `TenantContext.setCurrentTenantId(actor.tenantId())` inside the filter.
 
-`APP_ALLOW_HEADER_TENANT_SELECTION=true` (local profile default) lets clients override the tenant via `X-Tenant-ID` header. Must be disabled in production.
+`TenantResolutionFilter` is a servlet filter before the security chain; JWT authentication then installs the revalidated tenant ID **and schema** before downstream transactions. Header selection requires explicit `APP_ALLOW_HEADER_TENANT_SELECTION=true`; it is disabled in the base and deployed profiles and is not enabled by the committed local example. It cannot override JWT details installed by the auth filter. Deployed requests never fall back to a default workspace.
 
 ### Tenant context must be set BEFORE the transaction begins (critical invariant)
 
@@ -83,7 +81,7 @@ public X doWork(Tenant tenant) {
 }
 ```
 
-silently runs against `tenant_default` for **every** tenant when called from a thread with no pre-set context — the `search_path` was pinned (to the default schema) before `run()` switched `TenantContext`. No error; it just queries the wrong schema. This caused the async ingestion worker and the finding-delta drain to process only the default tenant.
+historically ran with a connection pinned before context selection. The current `TenantSchemaExecutionService` rejects the tenant/schema switch in an active transaction, so this pattern now fails explicitly. Missing context also fails closed under required-tenant RLS. Always establish context first rather than relying on a mid-transaction switch.
 
 Correct pattern — context first, transaction inside:
 
@@ -96,7 +94,7 @@ public X doWork(Tenant tenant) {                 // no method-level @Transaction
 
 Equivalently, wrap the call at the background call site in `tenantSchemaExecutionService.run(tenant, () -> service.theTransactionalMethod(...))`. Audit any `@Transactional` method that calls `tenantSchemaExecutionService.run(...)` internally and is reachable from a scheduled/async path.
 
-A scheduled poller/drain over a **per-tenant** table (`ingestion_jobs`, `finding_delta_queue`, etc.) must iterate `tenantService.listTenants()` and run each tenant's claim+process inside `run(tenant, …)` — the scheduler thread carries no context, so a bare drain only ever touches `tenant_default`.
+A scheduled poller/drain over a **per-tenant** table (`ingestion_jobs`, `finding_delta_queue`, etc.) must iterate `tenantService.listActiveTenants()` and run each tenant's claim+process inside `run(tenant, …)` — the scheduler thread carries no tenant context. A bare drain cannot safely select customer work.
 
 ### AI Grid reporting boundaries
 
@@ -117,13 +115,13 @@ There are **two independent Flyway migration lines**, each restarted at a fresh 
 
 - **Platform/public:** `src/main/resources/db/migration/postgres_reset/V1__platform_schema.sql` owns public/platform DDL, migration-owned reference seeds, and the empty `tenant_default` schema. Every file starts with `-- migration-guard: platform-only`. No AGCF-RT distributions are seeded; any catalog distributions with runtime evaluation modes are unavailable, DISABLED, PAUSED, and unpinned.
 - **Tenant:** `src/main/resources/db/migration/tenant/V1__tenant_schema.sql` owns the complete tenant DDL, RLS, constraints, and budget seed. Each tenant has its own `tenant_schema_history`, applied by the tenant control plane or `ProductionBootstrapCli`; application startup Flyway does not apply this line. The baseline uses `${tenantSchema}` and `${tenantId}` and starts without customer/runtime data.
-- Current packaged targets are platform **V5** and tenant **V5**, independently resolved by `PackagedMigrationCatalog`. The next platform migration is V6 and the next tenant migration is V6; each must update `MigrationCatalogTest`. This binary requires tenant V5, including bounded retention progress; a configured lower minimum cannot bypass that floor. Additive-schema rollback compatibility still requires qualification before release.
+- Current packaged targets are platform **V6** and tenant **V5**, independently resolved by `PackagedMigrationCatalog`. The next platform migration is V7 and the next tenant migration is V6; each must update `MigrationCatalogTest`. This binary requires tenant V5, including bounded retention progress; a configured lower minimum cannot bypass that floor. The last observed deployed backend predates the development history reset; actual deployed histories remain unverified. Fresh reset-history V5→V6 tests do not prove deployed upgrade or rollback compatibility. See [release qualification](../docs/AWS/PHASE_3_RELEASE_QUALIFICATION.md).
 - This explicitly authorized development reset includes all changes from the former platform V1–V10 and tenant V1–V17 histories. Use a fresh database and `mvn clean` to remove stale packaged migration resources. Baselines are not idempotent repair scripts: do not replay them against existing tables or use `flyway:repair` to adopt the reset. `baseline-on-migrate` stays false.
 - Outside this one-time reset, never edit an already-applied migration; add the next version instead.
 
 ## Key env vars for local dev
 
-Set in `application-local.yml` or as env vars:
+Copy `src/main/resources/application-local.example.yml` to the ignored `application-local.yml` when using the local profile. `application.yml` imports `backend/.env.local`; generate secrets locally from `.env.example`. Set APP_ENVIRONMENT=local explicitly if not using the example. The example does not enable header selection or disable required tenant context. Configure LOCAL signing before using browser login.
 
 | Env var | Purpose | Local default |
 |---|---|---|
@@ -133,15 +131,15 @@ Set in `application-local.yml` or as env vars:
 | `APP_JWT_HMAC_SECRET` | Local signing/verification secret, at least 32 bytes | (empty; must be configured for local tokens) |
 | `APP_JWT_ISSUER_URI` | Required issuer for `EXTERNAL` mode | (empty) |
 | `APP_SECURITY_JWT_AUDIENCE` | Required expected access-token audience | `scoutgrid-api` |
-| `APP_JWT_ROLES_CLAIM` | Claim name for roles in JWT | `roles` |
-| `APP_ALLOW_HEADER_TENANT_SELECTION` | Trust `X-Tenant-ID` header | `false` (local: `true`) |
-| `APP_REQUIRE_TENANT_CONTEXT` | Enforce tenant context on every request | `true` (local: `false`) |
+| `APP_JWT_ROLES_CLAIM` | Role claim name (not human grant authority) | `roles` |
+| `APP_ALLOW_HEADER_TENANT_SELECTION` | Trust `X-Tenant-ID` header | `false` (explicit opt-in only) |
+| `APP_REQUIRE_TENANT_CONTEXT` | Enforce tenant context on every request | `true` |
 | `APP_ALLOW_API_KEY_AUTH` | Enable X-API-Key auth path | `true` |
-| `OPENAI_API_KEY` | OpenAI key for AI-assist features | (empty = AI features off) |
+| `OPENAI_API_KEY` | Optional credential for explicitly enabled local assistance | empty; key alone never enables it |
 | `NVD_API_KEY` | NVD rate-limited API key | (empty = unauthenticated) |
 | `GITHUB_API_TOKEN` | GitHub token for SBOM/GHSA | resolved from `backend/secrets/github-api-token` |
 
-`OPENAI_API_KEY`/`OPENAI_ENABLED` gate VulnWatch's own AI-assist features (EOL slug suggestion, CVE investigation summaries) — unrelated to the AI Security / AI Grid module, which discovers *other systems'* AI resources and is gated per-tenant by the `ai.security` entitlement, not an env var.
+`GenerativeAssistancePolicy` defaults assistance off (`OPENAI_ENABLED=false`) and refuses deployed production/preproduction assistance before resolving any key alias. Startup rejects pilot enablement. Deterministic recommendations/fallbacks remain available with truthful source/time metadata. EOL slug resolution is deterministic. Static AI Security / AI Grid discovery uses its separate capability/entitlement and provider controls; it does not require an OpenAI key.
 
 AWS AI discovery uses one bounded provider-call ceiling (`APP_AI_SECURITY_PROVIDER_CALL_CEILING`) plus connector enablement, provider kill switch, retries, semaphores, and scan budgets. The former per-layer AWS maturity flags were removed; Macie remains separately opt-in because it is cost-sensitive. A real `APP_AI_SECURITY_IDENTITY_HMAC_KEY` remains required in production because prompt evidence is stored only as tenant-keyed digests.
 
@@ -198,9 +196,9 @@ com.prototype.vulnwatch.aisecurity/   # separate top-level package, NOT under th
   model/, policy/, aws/, azure/, copilot/  # contracts, predicate engine, AWS/Azure/Copilot Studio discovery clients
 ```
 
-`aisecurity/**` tables have **no JPA entity or Spring Data repository** — every read/write goes through `JdbcTemplate`/`NamedParameterJdbcTemplate` directly in the service classes. Full module map: `docs/business-logic-guide.md#ai-security--ai-grid-pipeline`, schema: `docs/database.md#ai-security--ai-grid-tables`.
+`aisecurity/**` tables have **no JPA entity or Spring Data repository** — every read/write goes through `JdbcTemplate`/`NamedParameterJdbcTemplate` directly in the service classes. Full module map: [business-logic-guide.md](../docs/business-logic-guide.md#ai-security--ai-grid-pipeline), schema: [database.md](../docs/database.md#ai-security--ai-grid-tables).
 
-`FixIntelligenceController` (`/api/fix-intelligence/**`, `permitAll()`) is entirely demo-data-backed — it calls `FixDemoDataSeeder.generateDemoFixes()` on every request and touches no repository. The domain entities added alongside it for a real implementation (`Fix`, `FixApplicabilityDecision`, `AssetFixStatus`, `CveFixMap`, plus the unrelated `PatchConnectorCredential`/`JiraIssueBacklog` patch-management entities) have JPA mappings and repositories but **no backing Flyway migration** for `asset_fix_status`, `cve_fix_map`, `patch_connector_credentials`, or `jira_issue_backlog` in either migration line — do not wire a service to these repos without adding the migration first. `FixApplicabilityService` and `dto/patch/*` are similarly unwired (no caller). See root `CLAUDE.md` Known Limitations for the full list, including the `.disabled` patch-management config/scheduling classes excluded from the build.
+`FixIntelligenceController` (`/api/fix-intelligence/**`) is denied in `SecurityConfig` and independently returns HTTP 410 if directly called. Historical demo classes remain as scaffolding; the synthetic UI routes redirect away. The domain entities added alongside it for a real implementation (`Fix`, `FixApplicabilityDecision`, `AssetFixStatus`, `CveFixMap`, plus the unrelated `PatchConnectorCredential`/`JiraIssueBacklog` patch-management entities) have JPA mappings and repositories but **no backing Flyway migration** for `asset_fix_status`, `cve_fix_map`, `patch_connector_credentials`, or `jira_issue_backlog` in either migration line — do not wire a service to these repos without adding the migration first. `FixApplicabilityService` and `dto/patch/*` are similarly unwired (no caller). See root `CLAUDE.md` Known Limitations for the full list, including the `.disabled` patch-management config/scheduling classes excluded from the build.
 
 Newer, less-obvious controllers worth knowing about: `CampaignController` (`/api/campaigns` — remediation campaigns), `CbomController` (`/api/bom/cbom` — cloud BOM posture), `BomController` (`/api/bom`), `AzureDiscoveryController` (`/api/connectors/azure-discovery`), `IngestionJobController` (`/api/ingestion-jobs`), `TenantSchemaStatusController` (`/api/platform/tenant-schema-status` — per-tenant schema migration status), `DemoDatasetController` (`POST /api/platform/tenants/{tenantId}/demo-data`, `PLATFORM_OWNER` — manual demo dataset provisioning), `TenantSupportAccessController` (`/api/tenants/{tenantId}/support-grants` + `/api/auth/support-grants/**` — tenant-initiated break-glass support access, distinct from the platform-owner-initiated `tenant_support_grants` flow).
 
@@ -208,14 +206,14 @@ Newer, less-obvious controllers worth knowing about: `CampaignController` (`/api
 
 ```bash
 docker build -t vulnwatch-backend .
-docker run -e DB_URL=... -e APP_JWT_ISSUER_URI=... -p 8080:8080 vulnwatch-backend
+docker run --env-file /path/to/private/local-runtime.env -p 8080:8080 vulnwatch-backend
 ```
 
 JVM flags in the image: `-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=10.0 -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError`.
 
 ## Production bootstrap (Render)
 
-The permanent `scout-backend` web service (`render.yaml`, repo root) never runs schema migrations itself (`APP_SCHEMA_MIGRATION_ENABLED=false`) and is only ever given the restricted `scout_runtime` Postgres role — never the owner/migration role. Schema bootstrap (platform + tenant migrations, runtime-role provisioning, control-plane verification, optional platform-owner setup-link email) runs from a **separate, temporary** Render web service via `backend/scripts/run-render-migration.sh`, which execs `com.prototype.vulnwatch.migration.ProductionBootstrapCli` (a standalone `main()`, no Spring context) and then holds the container open in a completion-only maintenance state so Render's process supervisor doesn't restart it and re-run the privileged bootstrap. The SQL-level role provisioning is `backend/scripts/provision-runtime-role.sql` (automated, self-verifying). There is no committed operational runbook or manual-DBA reference doc right now — prior references to `docs/p0-production-runbook.md` and `docs/production-database-roles.sql` pointed at files that don't exist in this repository; read `run-render-migration.sh` and `provision-runtime-role.sql` directly, or author replacement docs if this needs to be written down.
+The permanent `scout-backend` web service (`render.yaml`, repo root) never runs schema migrations itself (`APP_SCHEMA_MIGRATION_ENABLED=false`) and is only ever given the restricted `scout_runtime` Postgres role — never the owner/migration role. Schema bootstrap (platform + tenant migrations, runtime-role provisioning, control-plane verification, optional platform-owner setup-link email) runs from a **separate, temporary** Render web service via `backend/scripts/run-render-migration.sh`, which execs `com.prototype.vulnwatch.migration.ProductionBootstrapCli` (a standalone `main()`, no Spring context) and then holds the container open in a completion-only maintenance state so Render's process supervisor doesn't restart it and re-run the privileged bootstrap. The SQL-level role provisioning is `backend/scripts/provision-runtime-role.sql` (automated, self-verifying). Operational entrypoints are [bootstrap wrapper](scripts/run-render-migration.sh) and [runtime grants](scripts/provision-runtime-role.sql). Follow [release qualification](../docs/AWS/PHASE_3_RELEASE_QUALIFICATION.md) before any separately authorized environment operation.
 
 
 ## AI-BOM correlation boundary

@@ -84,21 +84,37 @@ public class AiGridPolicyRolloutService {
     }
 
     private ClaimedTask claim() {
-        return TenantContext.runAsPlatform(() -> transactions.execute(status -> jdbc.query("""
+        return TenantContext.runAsPlatform(() -> transactions.execute(status -> {
+            // A process can die on its final attempt before persisting an assessment request.
+            // Terminalize one expired exhausted claim per admission; leave explicit retry available.
+            jdbc.update("""
+                    update platform.ai_grid_policy_rollout_tasks set status='FAILED',
+                        failure_detail='Policy rollout attempts exhausted before assessment admission',
+                        claim_token=null,lease_expires_at=null,next_retry_at=null,updated_at=now()
+                     where id in (select t.id from platform.ai_grid_policy_rollout_tasks t
+                         join platform.ai_grid_policy_rollouts r on r.id=t.rollout_id
+                         where r.status='PENDING' and t.status='PROCESSING' and t.attempts>=5
+                           and t.assessment_request_id is null and t.lease_expires_at<=clock_timestamp()
+                         order by t.created_at,t.id for update of t skip locked limit 1)
+                    """, Map.of());
+            return jdbc.query("""
                 select t.id,t.tenant_id,t.rollout_id,t.assessment_request_id,t.source_snapshot_run_id
                  from platform.ai_grid_policy_rollout_tasks t
                   join platform.ai_grid_policy_rollouts r on r.id=t.rollout_id
-                 where r.status='PENDING' and (t.status in ('PENDING','FAILED','WAITING_FOR_ASSESSMENT','WAITING_FOR_SNAPSHOT') or (t.status='PROCESSING' and t.lease_expires_at<=now())) and (t.attempts<5 or t.assessment_request_id is not null)
+                 where r.status='PENDING' and (t.status in ('PENDING','FAILED','WAITING_FOR_ASSESSMENT','WAITING_FOR_SNAPSHOT') or (t.status='PROCESSING' and t.lease_expires_at<=now()))
+                   and (t.attempts<5 or (t.assessment_request_id is not null and t.status in ('WAITING_FOR_ASSESSMENT','PROCESSING')))
                    and (t.next_retry_at is null or t.next_retry_at <= now())
                  order by t.created_at for update of t skip locked limit 1
                 """, rs -> {
             if (!rs.next()) return null;
             ClaimedTask task = new ClaimedTask(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
                     rs.getObject(3, UUID.class), UUID.randomUUID(), rs.getObject(4,UUID.class), rs.getObject(5,UUID.class));
-            jdbc.update("update platform.ai_grid_policy_rollout_tasks set status='PROCESSING', attempts=attempts+case when assessment_request_id is null then 1 else 0 end, claim_token=:token,lease_expires_at=now()+interval '2 minutes', "
+            // Waiting polls are observations; retries of a failed exact request consume the existing attempt budget.
+            jdbc.update("update platform.ai_grid_policy_rollout_tasks set status='PROCESSING', attempts=attempts+case when assessment_request_id is null or status='FAILED' then 1 else 0 end, claim_token=:token,lease_expires_at=now()+interval '2 minutes', "
                     + "started_at=coalesce(started_at,now()), updated_at=now() where id=:id", Map.of("id", task.id(),"token",task.token()));
             return task;
-        })));
+        });
+        }));
     }
 
     private void process(ClaimedTask task) {

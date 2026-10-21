@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -50,8 +51,11 @@ public class DemoTenantPurgeService {
         this.demoTenantPurgePlanner = demoTenantPurgePlanner;
     }
 
+    @Transactional
     public void processExpiredTenant(UUID tenantId, Instant now) {
-        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+        // Re-read eligibility under the registry lock. Competing sweeps and
+        // expiry extensions serialize here; the transition and audit commit together.
+        Tenant tenant = tenantRepository.findByIdForUpdate(tenantId).orElse(null);
         if (!demoTenantPurgePlanner.isEligibleForAutomaticPurge(tenant, now)) {
             return;
         }

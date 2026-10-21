@@ -728,9 +728,10 @@ public class AiGridValidationGovernanceService {
             if (changed == 0) throw notFound("Active release binding not found");
             jdbc.update("""
                     update platform.ai_grid_policy_rollout_tasks set status='CANCELLED',
-                        failure_detail='Cancelled: release binding revoked', completed_at=now(), updated_at=now()
+                        failure_detail='Cancelled: release binding revoked', completed_at=now(), updated_at=now(),
+                        claim_token=null, lease_expires_at=null
                      where rollout_id in (select id from platform.ai_grid_policy_rollouts where release_id=:binding)
-                       and status in ('PENDING','FAILED','WAITING_FOR_SNAPSHOT')
+                       and status in ('PENDING','FAILED','WAITING_FOR_SNAPSHOT','WAITING_FOR_ASSESSMENT','PROCESSING')
                     """, Map.of("binding", bindingId.toString()));
             return null;
         }));

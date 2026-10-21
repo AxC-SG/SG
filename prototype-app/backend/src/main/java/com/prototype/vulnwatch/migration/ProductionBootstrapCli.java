@@ -997,13 +997,32 @@ public final class ProductionBootstrapCli {
     }
 
     private static String boundedJdbcUrl(String jdbcUrl) {
+        java.util.Set<String> configuredTimeouts = new java.util.HashSet<>();
+        int query = jdbcUrl.indexOf('?');
+        if (query >= 0) {
+            for (String parameter : jdbcUrl.substring(query + 1).split("&")) {
+                String[] pair = parameter.split("=", 2);
+                String name = java.net.URLDecoder.decode(pair[0], java.nio.charset.StandardCharsets.UTF_8);
+                if (!name.equalsIgnoreCase("connectTimeout") && !name.equalsIgnoreCase("socketTimeout")) continue;
+                if (!java.util.Set.of("connectTimeout", "socketTimeout").contains(name)
+                        || !configuredTimeouts.add(name) || pair.length != 2) {
+                    throw new IllegalArgumentException("JDBC timeouts require unique canonical parameter names");
+                }
+                String value = java.net.URLDecoder.decode(pair[1], java.nio.charset.StandardCharsets.UTF_8);
+                try {
+                    if (!value.matches("[0-9]+") || Integer.parseInt(value) <= 0) throw new NumberFormatException();
+                } catch (NumberFormatException invalid) {
+                    throw new IllegalArgumentException("JDBC connect/socket timeouts must be positive integer seconds");
+                }
+            }
+        }
         String bounded = jdbcUrl;
         String separator = jdbcUrl.contains("?") ? "&" : "?";
-        if (!jdbcUrl.matches("(?i).*([?&])connectTimeout=.*")) {
+        if (!configuredTimeouts.contains("connectTimeout")) {
             bounded += separator + "connectTimeout=10";
             separator = "&";
         }
-        if (!bounded.matches("(?i).*([?&])socketTimeout=.*")) {
+        if (!configuredTimeouts.contains("socketTimeout")) {
             bounded += separator + "socketTimeout=30";
         }
         return bounded;

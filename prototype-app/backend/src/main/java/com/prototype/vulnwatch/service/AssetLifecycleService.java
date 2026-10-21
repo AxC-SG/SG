@@ -161,7 +161,7 @@ public class AssetLifecycleService {
             return;
         }
         List<Finding> openFindings = new ArrayList<>();
-        openFindings.addAll(findingRepository.findByAssetAndStatus(asset, FindingStatus.OPEN));
+        openFindings.addAll(findingRepository.findForMaintenance(FindingStatus.OPEN, asset.getId()));
         for (Finding finding : openFindings) {
             Map<String, Object> details = new LinkedHashMap<>();
             details.put("assetStateFrom", from == null ? null : from.name());

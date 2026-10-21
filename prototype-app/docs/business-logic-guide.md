@@ -1,6 +1,6 @@
 # VulnWatch — End-to-End Business Logic Guide
 
-Last updated: 2026-10-18
+Last updated: 2026-10-21
 
 **Audience:** Engineers and product stakeholders who need to understand how the platform works end-to-end.
 
@@ -30,22 +30,24 @@ Inventory IN          →   Vulnerability Intel IN    →   Correlation
 
 Every tenant gets its own PostgreSQL schema. The `TenantAwareDataSource` wraps HikariCP and sets `search_path = <tenant_schema>,platform` on every connection checkout (platform-context work uses `platform,public`). This means:
 
-- Tenant A cannot query Tenant B's data even with a crafted query — the schema isn't in the search path.
+- Search path routes ordinary reads; isolation additionally requires forced RLS and a restricted non-owner/non-superuser/non-BYPASSRLS role. Search path alone does not prevent explicitly qualified cross-schema SQL.
 - Platform-level tables (`tenants`, `app_users`, `tenant_memberships`, etc.) live in the `platform` schema.
 - Per-tenant operational tables (`findings`, `assets`, `inventory_components`, `org_cve_records`, etc.) live in each tenant's schema.
 
 ### Tenant Context Flow
 
-1. `TenantResolutionFilter` runs on every request, takes the tenant ID from the authenticated principal's `TenantAuthenticationDetails` (JWT/API-key path) or, only when `app.tenancy.allow-header-tenant-selection` is true, the `X-Tenant-ID` header, and stores it in thread-local `TenantContext`.
-2. `TenantStatusFilter` follows — for `/api/**` outside `/api/platform/`, `/api/auth/`, and `/api/me`, it returns HTTP 410 (`TENANT_DELETED`) for a missing tenant and HTTP 423 (`TENANT_SUSPENDED`) for any tenant that is deleted or not `ACTIVE`.
-3. All repository calls execute within the correct schema automatically via connection-level search path.
-4. `TenantSchemaService` creates new tenant schemas by cloning `tenant_default`.
+1. The servlet `TenantResolutionFilter` supplies explicitly enabled local header/default compatibility before the security chain. `ApiKeyAuthenticationFilter` then validates JWT mode/issuer/audience/access use and installs the revalidated tenant ID/schema before any tenant transaction. Deployed header/default fallback is disabled.
+2. Human authority comes from the current ACTIVE user, stored global grants and current membership/support access, not JWT role escalation. `TenantRolePolicy` accepts only TENANT_ADMIN, INVENTORY_ADMIN, SECURITY_ANALYST and READ_ONLY_AUDITOR as membership roles. Tenant claims select a workspace; they cannot authorize it. Machine JWTs additionally require an ACTIVE same-tenant registry entry for the verified subject; the key ID alone cannot authenticate.
+3. `TenantStatusFilter`, `TenantLifecycleGuardService` and schema compatibility checks reject unavailable workspaces. Background paths establish context before their transaction (`TenantWorkRunner`); `TenantSchemaExecutionService` rejects tenant/schema switches through its scoped runner during an active transaction; establish platform context before the transaction as well.
+4. `TenantAwareDataSource` sets search path and RLS context on acquisition. Platform work uses explicit platform context; missing required tenant context receives a nonmatching sentinel. Physical connections with unfinished transactions or failed reset are discarded.
+
+See [backend authentication and capability rules](backend.md#authentication) for LOCAL/EXTERNAL, public exchanges, CSRF and independent containment.
 
 ### Tenant Lifecycle
 
-`Tenant.status` values used by the code: `PROVISIONING` (set on creation; the schema control plane moves it on), `PROVISIONING_FAILED` (retryable), `ACTIVE`, `SUSPENDED`, `EXPIRED`, `PURGING`, `DELETED`. Demo tenants are identified by `demoExpiresAt`/`demoSource` or the `DEMO` plan code rather than a status value.
+Tenant creation returns 202/PROVISIONING. The separate schema control plane migrates, grants and verifies before activation; failure leaves PROVISIONING_FAILED and explicit retry is required. The development example can opt into synchronous provisioning on a disposable local database, not a deployed runtime.
 
-Demo tenants auto-expire after 7 days. `DemoLifecycleService.expireDemoTenants` runs hourly (`app.demo.expiration-cron`, default minute 10) and hands expired demos to `DemoTenantPurgeService`, which marks them `EXPIRED` and handles schema cleanup. `DemoDatasetProvisioningService` (polls every 30s by default) seeds or repairs a requested tenant's demo dataset once it reaches `ACTIVE`; `DemoDatasetController` (`POST /api/platform/tenants/{tenantId}/demo-data`, `PLATFORM_OWNER`) can trigger this manually.
+`DemoLifecycleService.expireDemoTenants` checks the stored `demoExpiresAt` under a tenant-row lock and commits EXPIRED plus its audit together. It retains schema/data/shared history. Manual destructive deletion remains hard-disabled by `ManualTenantDeletionPolicy`; expiry does not authorize purge. `DemoDatasetProvisioningService` serializes requested seed data and completion markers in one tenant transaction after ACTIVE; it does not promise a new retention period or capacity. Existing TTL/policy values are configuration, not commitments made by this guide.
 
 ### Tenant-Authorized Support Access
 
@@ -84,13 +86,7 @@ SBOMs arrive via three paths:
 
 ### CMDB Sync (SCCM/MECM)
 
-`SccmCmdbSyncService` performs a full sweep against the SCCM/MECM database via JDBC (MSSQL). Each run is a full sweep — no delta sync.
-
-**Flow:**
-1. Connect to SCCM DB using configured credentials (`SccmCmdbConfig`)
-2. Query device inventory tables
-3. Map device records to `Asset` + `SoftwareInstance` records via the shared `CmdbIngestionService.ingestRows` path (same as ServiceNow)
-4. Write `SyncRun` with outcome metrics
+SCCM live JDBC is contained by `SccmPilotPolicy` at save/test, admission, scheduling, queued execution and query boundaries. The frontend exposes retained status without live controls. No mock inventory substitutes for customer ingestion. Historical full-sweep implementation remains in source but is unavailable; re-enablement requires separate backend/product review and network/credential/completeness qualification.
 
 ### AWS Discovery
 
@@ -107,13 +103,7 @@ SBOMs arrive via three paths:
 
 ### Azure Discovery
 
-`AzureDiscoveryController` (`/api/connectors/azure-discovery`) mirrors the AWS Discovery architecture for Azure subscriptions (newer and less battle-tested than AWS Discovery).
-
-**Flow:**
-1. Resolve credentials via `CLIENT_SECRET` or `MANAGED_IDENTITY` auth
-2. For each configured `AzureDiscoveryTarget` (per-subscription scope):
-   - Discover compute/platform resources within the subscription
-   - Map resource metadata to Scout `Asset` records
+Generic Azure discovery is contained by `GenericAzureDiscoveryPolicy` at configuration/test/admission/worker/client boundaries. Saved configurations, subscriptions and inventory are retained; customer settings or entitlements cannot enable collection. The retained static Azure AI/Foundry connector belongs to the separate AI Security pipeline, with its own availability, role, entitlement, kill-switch and evidence-completeness controls.
 
 ---
 
@@ -263,7 +253,9 @@ Checks for components that have crossed their EOL date (or entered the near-EOL 
 
 ## AI Integration (OpenAI)
 
-Gated by `OPENAI_ENABLED` (`app.openai.enabled`, default `true`). Results are persisted in `OrgCveAiArtifact` after first generation — subsequent reads return the cached result without calling OpenAI again.
+`OPENAI_ENABLED` (`app.openai.enabled`) defaults **false**. `GenerativeAssistancePolicy` refuses production/preproduction before resolving all four credential aliases; deployed pilot startup rejects enablement. Direct investigation summaries use the same shared gate. Setting a key, entitlement or provider alias cannot bypass containment. The features below describe retained contracts, not pilot enablement.
+
+Deterministic investigation/remediation/upgrade paths remain available with explicit fallback, source and generation-time metadata. Outage or malformed provider output cannot fabricate verified versions/vendor attribution. Historical persisted `OrgCveAiArtifact` results are cached artifacts, not proof of a fresh model call or verified vendor advice. Local generative experiments require explicit local enablement and a key; deployed re-enablement remains separately controlled.
 
 **AI features:**
 
@@ -314,7 +306,7 @@ A **Campaign** groups findings/CVEs into a tracked remediation effort:
 - **Notify groups:** teams/individuals subscribed to campaign status changes.
 - **Watchlist:** entries tracked for visibility without being formally part of the remediation scope.
 - **Notes:** free-form campaign annotations.
-- The frontend detail page includes AI-assisted insights (OpenAI-backed, same `OPENAI_ENABLED` gate as CVE investigation summaries) and can bulk-add assets, CVEs, or software to a campaign.
+- The frontend detail page retains insight UI backed by deterministic/generative policy; deployed generative assistance stays off and can bulk-add assets, CVEs, or software to a campaign.
 
 ## Cloud/Container BOM (CBOM)
 
@@ -322,7 +314,7 @@ A **Campaign** groups findings/CVEs into a tracked remediation effort:
 
 ## AI-BOM → AI Grid Integration
 
-Lets customers upload AI-BOMs and see declared AI resources and their software vulnerabilities in AI Grid *even without a cloud connector*. Reuses existing software identity resolution, vulnerability correlation, and the canonical `findings` table rather than building a parallel evaluator; deliberately excludes model scanning, new exposure rules, CBOM findings consolidation, and broader package identity normalization. Shipped across three milestones — see `docs/database.md#bom-common-lifecycle-tenant-v4-v6` and `#ai-bom-declared-resources-tenant-v7v11-platform-v5` for the schema.
+Lets customers upload AI-BOMs and see declared AI resources and their software vulnerabilities in AI Grid *even without a cloud connector*. Reuses existing software identity resolution, vulnerability correlation, and the canonical `findings` table rather than building a parallel evaluator; deliberately excludes model scanning, new exposure rules, CBOM findings consolidation, and broader package identity normalization. Shipped across three milestones — see [database.md](database.md#bom-common-lifecycle-tenant-v4-v6) and `#ai-bom-declared-resources-tenant-v7v11-platform-v5` for the schema.
 
 ### Milestone 1: common BOM lifecycle
 
@@ -380,7 +372,7 @@ AI Grid is the sole policy and findings generation. It evaluates governed, versi
 
 `AiSecurityJobWorkerService` polls `ingestion_jobs` for `AI_SECURITY_AWS_BEDROCK` / `AI_SECURITY_AZURE_DISCOVERY` job types (every 3s by default) and dispatches to a provider:
 
-- **AWS** (`AwsBedrockDiscoveryService`) — via AWS SDK v2, discovers Bedrock agents/action-groups/knowledge bases/guardrails/models/inference profiles/prompts/flows, AgentCore gateways/targets, and SageMaker domains/endpoints/pipelines; checks IAM policies for wildcard actions, Lambda function-URL auth, and S3 bucket public-access status. Optionally reads *existing* AWS Macie PII classification findings for referenced S3 buckets (`AwsMaciePiiLookupService` — never triggers a new Macie scan). Gated by `AiSecurityAwsAdmissionService` (per account/region semaphores) and the budget service below. A set of default-off flags additionally builds a version-rooted definition graph, an IAM identity graph and AgentCore execution-surface inventory — see [AWS deployed-agent graph](#aws-deployed-agent-graph) below.
+- **AWS** (`AwsBedrockDiscoveryService`) — via AWS SDK v2, discovers Bedrock agents/action-groups/knowledge bases/guardrails/models/inference profiles/prompts/flows, AgentCore gateways/targets, and SageMaker domains/endpoints/pipelines; checks IAM policies for wildcard actions, Lambda function-URL auth, and S3 bucket public-access status. Optionally reads *existing* AWS Macie PII classification findings for referenced S3 buckets (`AwsMaciePiiLookupService` — never triggers a new Macie scan). Gated by `AiSecurityAwsAdmissionService` (per account/region semaphores) and the budget service below. One bounded provider-call ceiling plus connector enablement, provider kill switch, retries/semaphores and scan budgets controls the version-rooted definition graph, IAM identity graph and AgentCore static surface inventory — see [AWS deployed-agent graph](#aws-deployed-agent-graph) below.
 - **Azure** (`AzureAiDiscoveryService` / `AzureAiManagementClient`) — raw ARM API calls discovering Cognitive Services/AI accounts, Foundry projects/deployments/RAI policies/agents, ML workspaces/endpoints, AI Search services/indexers/knowledge sources, Bot Service, diagnostic settings, RBAC assignments, Storage accounts. `AzureRaiPolicyAnalyzer` conservatively parses RAI content-filter configs. Optionally reads *existing* Microsoft Purview Data Map classification results for Storage accounts (`AzurePurviewClassificationClient` — read-only). Gated by `AiSecurityAzureAdmissionService` and a config-driven kill switch (`AiSecurityAzureKillSwitchService`).
 
 Microsoft Copilot Studio discovery uses the same durable ingestion path as AWS and Azure. `POST /{connectorId}/run` and scheduled discovery both enqueue an `AI_SECURITY_COPILOT_STUDIO` job; `AiSecurityJobWorkerService` claims it under the provider concurrency limit and dispatches `CopilotStudioDiscoveryProvider`. The worker—not the request thread—starts and completes the `SyncRun`, applies the connector kill switch immediately before collection, and records terminal job state for queue visibility. The discovery service also records a tenant budget admission before its Dataverse metadata sweep. It emits the same `ObservationEnvelopeV1` (`provider = MICROSOFT_COPILOT`) into `AiSecurityObservationService` as the other providers.
@@ -434,7 +426,7 @@ Collection of execution events, logs, and curated activity summaries is deferred
 6. **Coverage & setup** (`AiGridReconciliationService`, `AiGridCoverageService`, `AiGridReadinessService`) — surfaces coverage gaps (unknown technology, no policy coverage, missing assessment, unresolved owner), materializes a deletion-safe "current epoch" view of the latest complete scan per scope, and generates a prioritized tenant setup-action queue. Framework reporting distinguishes breadth from effective coverage, reports PREVIEW separately, emits PARTIAL when only part of a control is decision-ready, and uses the shared platform tenant-visibility function rather than duplicating rollout SQL.
 7. **Finding bridge** (`AiGridFindingService` / `AiGridExposureFindingService`) — promotes qualifying policy failures and validated exposures into the canonical `findings` table (`finding_kind = AI_POSTURE` / `AI_EXPOSURE`, `creation_source = AI_SECURITY`), reusing the same `FindingWorkflowService`, SLA logic, and ServiceNow incident creation as CVE findings — there is no separate AI finding table.
 
-Host-context evidence (from external CIEM/DSPM/ASM/runtime tools, or analyst attestation) can be ingested via `AiGridEvidenceIngestionController` (`ROLE_SERVICE_ACCOUNT` only) and is tracked with confidence/evidence-class rules in `AiGridHostContextService` — it can promote a fact to "validating" status only under those rules, never unconditionally.
+Static host-context evidence (from external CIEM/DSPM/ASM tools, or analyst attestation; runtime/activity families remain rejected) can be ingested via `AiGridEvidenceIngestionController` (`ROLE_SERVICE_ACCOUNT` only) and is tracked with confidence/evidence-class rules in `AiGridHostContextService` — it can promote a fact to "validating" status only under those rules, never unconditionally.
 
 ### Governance & Release Certification (platform-scoped)
 
@@ -463,7 +455,7 @@ Program 1 exit also requires tenant schema rollout completion for Wave A tenants
 
 `AiGridBudgetService` enforces per-tenant daily scan/API-call/byte/processing-time budgets and scan-cadence throttling (new tenants start in an `OBSERVE`-only mode), raising `ai_grid_budget_alerts` on breach. `AiGridRetentionService` classifies evidence into HOT / ARCHIVE / RESTRICTED_EVIDENCE retention tiers, supports legal holds, and runs a purge sweep that leaves a durable audit trail (`ai_grid_retention_purge_audit`) even after the underlying snapshot bodies are deleted. Both are exposed to tenant admins via `AiGridOperationsGovernanceController` (`/api/ai-governance`).
 
-Runtime history is disposable in development. The tenant V1 baseline carries no runtime execution data; `AiAgentExecutionRetentionService` keeps its `app.ai-security.runtime.retention-cron` trigger but returns immediately while `AiRuntimeScope` excludes runtime.
+Fresh disposable local fixtures contain no runtime history; preserve historical/shared evidence pending an authorized transition. The tenant V1 baseline carries no runtime execution data; `AiAgentExecutionRetentionService` keeps its `app.ai-security.runtime.retention-cron` trigger but returns immediately while `AiRuntimeScope` excludes runtime.
 
 ### Runtime detection deferred
 
@@ -500,12 +492,22 @@ Runtime collection, adapter admission, evaluation, readiness, execution APIs, gr
 ## Known Limitations
 
 - GHCR attestation ingestion does not perform cryptographic signature verification.
-- SCCM sync is a full sweep on every run — no incremental delta sync.
+- SCCM JDBC remains unavailable, including stale queued/manual/test paths; historical sweep code does not authorize collection.
 - AWS Discovery is scoped to EC2 instances via SSM only.
-- Azure Discovery mirrors the AWS Discovery architecture but is newer and less exercised in production.
+- Generic Azure remains unavailable independently of the retained static Azure AI connector.
 - S.AI Risk Score and S.AI Priority are computed entirely in the browser — not stored in the database.
 - ServiceNow integration is read-heavy (finding → incident creation, then status polling) but not event-driven.
-- Multi-tenant schema-per-tenant isolation is implemented (`TenantAwareDataSource`, `TenantSchemaService`, `ProductionSafetyValidator`) and `TenantService.getDefaultTenant()` is no longer used by controllers or services. Row-level security policies are created on every provisioned tenant schema, but full RLS *enforcement* across existing production tenants remains gated behind `ProductionSafetyValidator.validateRuntimeRoleCannotBypassRls()` pending verification that the production/preprod database runtime role is non-superuser and lacks `BYPASSRLS`.
+- Multi-tenant schema-per-tenant isolation is implemented (`TenantAwareDataSource`, `TenantSchemaService`, `ProductionSafetyValidator`) and default-tenant fallback does not authorize customer operations. `AiGridPolicyDeprecationService` uses the default tenant only as a platform deprecation audit destination. Row-level security policies are created on every provisioned tenant schema, but full RLS *enforcement* across existing production tenants remains gated behind `ProductionSafetyValidator.validateRuntimeRoleCannotBypassRls()` pending verification that the production/preprod database runtime role is non-superuser and lacks `BYPASSRLS`.
 - AI Security / AI Grid (see above) — see its own "Known Limitations" subsection for module-specific caveats (JdbcTemplate-only data access, Azure kill switch, read-only Macie/Purview integration).
-- `EntitlementShadowSweepService` (every 30 min by default) computes corrected-vs-legacy entitlement decisions for every active tenant/key so shadow-mode coverage doesn't depend on the feature being exercised live — a sign that at least one entitlement migration is still running in shadow/compare mode rather than fully cut over.
+- `EntitlementShadowSweepService` computes comparison telemetry in SHADOW and ENFORCE; its existence does not establish the effective deployed mode. Deployed pilot startup requires ENFORCE plus an explicit cohort; corrected decisions use active override → plan → disabled default, with the same effective resolver in the UI snapshot. Outside the cohort legacy allow behavior remains. Wildcards are rejected.
 - `FindingDeltaQueueService` has a second scheduled method (`recoverStaleProcessingEntriesOnSchedule`, 1 min by default) beyond the documented 2-second drain — it recovers queue entries stuck in `PROCESSING` after a worker dies mid-batch.
+
+## Current workflow and qualification boundary
+
+See [durable work and delivery](backend.md#durable-work-scheduling-and-delivery) for committed queue intent, attempt ownership/fencing, UTC role guards, bounded recovery and shutdown, and separate encrypted invitation/campaign outboxes. Automatic retry ends at the existing attempt/idempotency limits; UNKNOWN requires operator reconciliation. Provider acceptance is not inbox delivery. Fragment links/POST exchange, hashed invite storage, serialized rotation/acceptance and late-result checks retain current token/lifecycle authority.
+
+Local archives remain unavailable before file access; canonical descriptions and raw payloads stay in PostgreSQL and historical files/references remain untouched. Bounded retention observes existing holds/references and progress/audit rules from the [cleanup matrix](AWS/PHASE_3_CLEANUP_MATRIX.md); no additional period or destructive tenant purge is authorized.
+
+**P30 containment:** unsupported Patch Management cards, detail mounts and mock form modules have been retired, removing their input/credential logging. Old query IDs/direct paths cannot mount them. Fix Intelligence routes/API and unfinished tenant OSV/runtime paths retain their independent containment. See [repair evidence](AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair).
+
+Packaged migration heads are platform V6 / tenant V5, with required tenant range V5–V5; next versions are platform V7 / tenant V6. Preserve every applied migration. The last observed deployed backend predates the reset baselines; actual deployed history and a data-preserving upgrade/rollback remain unverified. [Release qualification](AWS/PHASE_3_RELEASE_QUALIFICATION.md) requires exact candidate/environment/result/date/reviewer evidence; local tests and reconciled prose do not close the formal register.

@@ -177,7 +177,7 @@ public class NvdSyncService {
             Instant intervalEnd = start.plus(120, ChronoUnit.DAYS);
             if (intervalEnd.isAfter(end)) intervalEnd = end;
             IngestionResult result = executeNvdSyncInternal(run, start, intervalEnd, null,
-                    "NVD interval complete", false);
+                    "NVD interval complete", false, filters);
             fetched += result.fetched(); inserted += result.inserted(); updated += result.updated();
             if (!"ok".equals(result.status())) {
                 syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, result.message());
@@ -196,7 +196,8 @@ public class NvdSyncService {
             syncRunService.completeRun(run, "failed", 0, 0, 0, 0, message);
             return new IngestionResult("failed", 0, 0, 0, message);
         }
-        return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true);
+        return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true,
+                vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters());
     }
 
     private Map<String, Object> queuedIncrementalMetadata(int lookbackHours) {
@@ -253,7 +254,8 @@ public class NvdSyncService {
             Instant endExclusive,
             String apiKeyOverride,
             String successMessage,
-            boolean terminal
+            boolean terminal,
+            VulnerabilitySourceFilterConfigService.NvdFilters filters
     ) {
         int fetched = 0;
         int inserted = 0;
@@ -261,8 +263,6 @@ public class NvdSyncService {
         int pagesProcessed = 0;
         int recomputeInterval = Math.max(1, cveDeltaRecomputePageInterval);
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
-        VulnerabilitySourceFilterConfigService.NvdFilters filters =
-                vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters();
         syncRunService.applyRunMetadata(
                 run,
                 "nvd",
@@ -285,6 +285,10 @@ public class NvdSyncService {
                         apiKeyOverride
                 );
                 List<NvdApiClient.NvdRecord> records = page.records();
+                if (page.resultsPerPage() < 0 || page.totalResults() < startIndex
+                        || records.size() != Math.min(page.resultsPerPage(), page.totalResults() - startIndex)) {
+                    throw new IllegalStateException("NVD returned an incomplete interval page");
+                }
                 if (page.startIndex() != startIndex) {
                     throw new IllegalStateException("NVD pagination did not match the requested interval page");
                 }

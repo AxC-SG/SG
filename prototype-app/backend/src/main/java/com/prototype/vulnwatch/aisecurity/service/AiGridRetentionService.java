@@ -73,6 +73,7 @@ public class AiGridRetentionService {
         if (!List.of("ACTIVE_FINDING", "EXCEPTION", "LEGAL_HOLD", "REPLAY_COMMITMENT")
                 .contains(command.holdType())) throw badRequest("Invalid evidence hold type");
         return tenantExecution.run(tenant, () -> transactions.execute(status -> {
+            lockHoldBody(command.snapshotBodyId());
             UUID id = UUID.randomUUID();
             int inserted = jdbc.update("""
                     insert into ai_grid_evidence_holds
@@ -92,6 +93,11 @@ public class AiGridRetentionService {
                           and hold_type = :type and reference_id = :referenceId
                         """, Map.of("bodyId", command.snapshotBodyId(), "type", command.holdType(),
                         "referenceId", command.referenceId()), UUID.class);
+                EvidenceHold existing = hold(id);
+                if (existing.releasedAt() != null || (existing.expiresAt() != null && !existing.expiresAt().isAfter(Instant.now()))) {
+                    throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                            "Released or expired holds require a new referenceId; historical provenance is retained");
+                }
             }
             if ("LEGAL_HOLD".equals(command.holdType())) {
                 jdbc.update("update ai_grid_snapshot_bodies set legal_hold = true where id = :id",
@@ -111,6 +117,7 @@ public class AiGridRetentionService {
     public EvidenceHold releaseHold(Tenant tenant, UUID holdId, String actor) {
         return tenantExecution.run(tenant, () -> transactions.execute(status -> {
             EvidenceHold existing = hold(holdId);
+            lockHoldBody(existing.snapshotBodyId());
             jdbc.update("""
                     update ai_grid_evidence_holds set released_at = now(), released_by = :actor
                      where id = :id and released_at is null
@@ -125,6 +132,10 @@ public class AiGridRetentionService {
             }
             return hold(holdId);
         }));
+    }
+
+    private void lockHoldBody(UUID bodyId) {
+        jdbc.query("select id from ai_grid_snapshot_bodies where id=:id for update", Map.of("id",bodyId), rs -> null);
     }
 
     public SweepResult sweep(Tenant tenant) {

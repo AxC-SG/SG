@@ -102,7 +102,7 @@ public class FindingWorkflowService {
         finding.touch();
         audit("finding.workflow.updated", "finding", finding.getId().toString(), null);
         Finding saved = findingRepository.save(finding);
-        findingListProjectionService.refreshTenant(saved.getTenant());
+        findingListProjectionService.refreshTenantWithSource(saved.getTenant());
         return saved;
     }
 
@@ -116,7 +116,7 @@ public class FindingWorkflowService {
         }
         if (!findings.isEmpty()) {
             findingRepository.saveAll(findings);
-            findingListProjectionService.refreshTenant(findings.get(0).getTenant());
+            findingListProjectionService.refreshTenantWithSource(findings.get(0).getTenant());
             audit("finding.workflow.bulk_updated", "finding", null,
                     "{\"updated\":" + updated + "}");
         }
@@ -143,7 +143,7 @@ public class FindingWorkflowService {
             findingEventRepository.deleteAll(findingEventRepository.findByFindingOrderByCreatedAtAsc(finding));
         }
         findingRepository.deleteAll(findings);
-        findingListProjectionService.refreshTenant(findings.get(0).getTenant());
+        findingListProjectionService.refreshTenantWithSource(findings.get(0).getTenant());
         audit("finding.bulk_deleted", "finding", null,
                 "{\"deleted\":" + findings.size() + "}");
         return findings.size();
@@ -396,7 +396,7 @@ public class FindingWorkflowService {
     }
 
     private void reopenExpiredSuppressionsInTenant(Instant now) {
-        List<Finding> expired = findingRepository.findByStatusAndSuppressedUntilBefore(FindingStatus.SUPPRESSED, now);
+        List<Finding> expired = findingRepository.findByStatusAndSuppressedUntilBeforeOrderById(FindingStatus.SUPPRESSED, now);
         for (Finding finding : expired) {
             finding.setStatus(FindingStatus.OPEN);
             finding.setDecisionState(FindingDecisionState.AFFECTED);
@@ -414,7 +414,7 @@ public class FindingWorkflowService {
         }
         if (!expired.isEmpty()) {
             findingRepository.saveAll(expired);
-            findingListProjectionService.refreshTenant(expired.get(0).getTenant());
+            findingListProjectionService.refreshTenantWithSource(expired.get(0).getTenant());
         }
     }
 
@@ -425,7 +425,7 @@ public class FindingWorkflowService {
         }
         Instant now = Instant.now();
         tenantWorkRunner.forEachActiveTenant(tenant -> {
-            List<RiskPolicy> policies = riskPolicyRepository.findAll();
+            List<RiskPolicy> policies = riskPolicyRepository.findAllForUpdate();
             runAutoCloseForPolicies(policies, now, false);
         });
     }
@@ -470,7 +470,7 @@ public class FindingWorkflowService {
             if (asset == null) {
                 return 0;
             }
-            findings = findingRepository.findByAssetAndStatus(asset, FindingStatus.OPEN).stream()
+            findings = findingRepository.findForMaintenance(FindingStatus.OPEN, asset.getId()).stream()
                     .filter(finding -> finding.getAutoCloseEligibleAt() != null
                             && !finding.getAutoCloseEligibleAt().isAfter(now))
                     .toList();
@@ -497,7 +497,7 @@ public class FindingWorkflowService {
         }
         if (!toPersist.isEmpty()) {
             findingRepository.saveAll(toPersist);
-            findingListProjectionService.refreshTenant(policy.getTenant());
+            findingListProjectionService.refreshTenantWithSource(policy.getTenant());
         }
         policy.setAutoCloseLastRunAt(now);
         riskPolicyRepository.save(policy);

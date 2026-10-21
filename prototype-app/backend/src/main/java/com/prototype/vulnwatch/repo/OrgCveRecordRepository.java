@@ -30,6 +30,9 @@ public interface OrgCveRecordRepository extends JpaRepository<OrgCveRecord, UUID
 
     List<OrgCveRecord> findBySuppressedByRuleIdIsNull();
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    List<OrgCveRecord> findBySuppressedByRuleIdIsNullOrderById();
+
     long countBySuppressedByRuleId(UUID suppressedByRuleId);
 
     List<OrgCveRecord> findBySuppressedByRuleId(UUID suppressedByRuleId);

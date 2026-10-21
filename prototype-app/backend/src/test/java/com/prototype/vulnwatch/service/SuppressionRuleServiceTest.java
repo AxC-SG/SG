@@ -221,7 +221,7 @@ class SuppressionRuleServiceTest {
         SuppressionRule rule = approvedFindingRule(tenant);
 
         when(repo.findById(ruleId)).thenReturn(Optional.of(rule));
-        when(findingRepository.findByStatusOrderByUpdatedAtDesc(any())).thenReturn(List.of());
+        when(findingRepository.findForMaintenance(any(), org.mockito.ArgumentMatchers.isNull())).thenReturn(List.of());
 
         int suppressed = service.execute(tenant, ruleId);
 

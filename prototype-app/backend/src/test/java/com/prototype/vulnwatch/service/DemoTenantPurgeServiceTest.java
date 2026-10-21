@@ -69,7 +69,7 @@ class DemoTenantPurgeServiceTest {
         tenant.setDemoExpiresAt(Instant.parse("2026-05-20T00:00:00Z"));
 
         Instant now = Instant.parse("2026-05-21T00:00:00Z");
-        when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
+        when(tenantRepository.findByIdForUpdate(tenant.getId())).thenReturn(Optional.of(tenant));
         when(demoTenantPurgePlanner.isEligibleForAutomaticPurge(eq(tenant), any())).thenReturn(true);
 
         service.processExpiredTenant(tenant.getId(), now);
@@ -90,7 +90,7 @@ class DemoTenantPurgeServiceTest {
         Tenant tenant = new Tenant();
         tenant.setId(tenantId);
 
-        when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.findByIdForUpdate(tenantId)).thenReturn(Optional.of(tenant));
         when(demoTenantPurgePlanner.isEligibleForAutomaticPurge(eq(tenant), any())).thenReturn(false);
 
         service.processExpiredTenant(tenantId, Instant.now());
