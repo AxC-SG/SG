@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> **Current prerequisite contract (October 21, 2026):** [implementation closure](../docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md) and [release qualification](../docs/AWS/PHASE_3_RELEASE_QUALIFICATION.md). Generic Azure, SCCM JDBC, local archive operations, Fix Intelligence/tenant OSV, runtime evidence and destructive tenant purge remain contained; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](../docs/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md). Documentation completion is not release qualification.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > The root `../CLAUDE.md` contains full project conventions, route table, feature descriptions, and the never-touch list. This file adds frontend-specific runtime detail.
@@ -22,14 +24,14 @@ CI gates in order: `lint` → `typecheck` → `build` → `test:coverage`.
 
 ## Environment variables
 
-All variables are prefixed `VITE_`. Copy `.env.example` to `.env.local` to start.
+Public browser configuration uses `VITE_` variables in an ignored `.env.local`; no frontend `.env.example` is committed. Never place provider/server secrets in frontend inputs. Production builds reject nonempty static auth inputs (`VITE_API_KEY`, `VITE_CREATOR_KEY`, `VITE_AUTH_TOKEN`, `VITE_USER_ID`, `VITE_TENANT_ID`) before bundling and scan the bundle afterward.
 
 | Variable | Purpose | Default / notes |
 |---|---|---|
-| `VITE_API_BASE` | Backend API base URL | `http://localhost:8080/api` |
+| `VITE_API_BASE` | Backend API base URL | development `/api` via Vite proxy to localhost:8080; production `https://api.scoutgrid.io/api` |
 | `VITE_API_KEY` | `X-API-Key` header value | `change-me-in-prod` |
 | `VITE_CREATOR_KEY` | `X-Creator-Key` for PLATFORM_OWNER endpoints | `local-creator` |
-| `VITE_AUTH_TOKEN` | Static bearer token (overrides stored token) | (empty) |
+| `VITE_AUTH_TOKEN` | Development-only bearer fallback after stored token | (empty) |
 | `VITE_SENTRY_DSN` | Sentry error reporting | (empty = disabled) |
 | `VITE_ENABLE_TEST_PERSONAS` | Enable impersonation switcher | `false` |
 
@@ -37,9 +39,9 @@ All variables are prefixed `VITE_`. Copy `.env.example` to `.env.local` to start
 
 Authentication state flows through a single read path:
 
-1. `getStoredAuthToken()` reads `vulnwatch.authToken` from `localStorage` (or falls back to `VITE_AUTH_TOKEN`).
+1. `getStoredAuthToken()` reads only `vulnwatch.authToken` from `localStorage`; it returns an empty string if absent. `applyAuthHeaders()` separately falls back to development-only `VITE_AUTH_TOKEN`. A stored token wins.
 2. `api/client.ts` attaches this as `Authorization: Bearer <token>` on every request. When no token is present it falls back to `X-API-Key` / `X-Creator-Key` headers (local dev only).
-3. `useActorQuery()` calls `GET /api/auth/context` and returns an `ActorContext`. The query key includes the raw token so it busts automatically on login/logout.
+3. `useActorQuery()` calls `GET /api/me` and returns an `ActorContext`. The query key is `[...AUTH_CONTEXT_QUERY_ROOT, rawStoredTokenOrAnonymous]`, with a 60-second stale time. The current code still uses the raw stored token; do not describe it as an opaque epoch or sessionStorage design. Logout clears the shared query cache. Keep tokens out of logs, telemetry and review evidence.
 4. `AuthSessionBoundary` in `App.tsx` wraps all authenticated routes. If the query fails or returns no data it redirects to `/login`.
 5. The loaded `ActorContext` is published via `ActorContextState` (React context). Read it with `useActor()` from `src/features/auth/context.ts`.
 
@@ -47,7 +49,11 @@ Role checks **must** go through the helper functions in `src/features/auth/roles
 
 **Entitlements are a separate mechanism from roles**: `src/features/auth/entitlements.ts`'s `canUseEntitlement(actor, key)` checks a per-tenant, plan-based feature flag (currently `ai.security`, gating the entire AI Security / AI Grid feature surface) and fails closed. Roles answer "can this user do X"; entitlements answer "does this tenant's plan include feature X at all". Both can gate the same route.
 
-`ActorContext.platformScope = true` means the user is a platform owner who has not yet entered a tenant. In this state, tenant-scoped routes redirect to `/platform/tenants`. After selecting a tenant, `actingAsPlatformOwner = true`.
+Backend decisions use current stored authority; decoded browser claims and UI checks never grant access. Tenant membership accepts only the four customer roles; selecting a tenant requires a current membership/support reference.
+
+`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables SCCM JDBC, generic Azure, runtime evidence or pilot generative assistance.
+
+`ActorContext.platformScope = true` means the user is a platform owner who has not yet entered a tenant. In this state, tenant-scoped routes redirect to `/platform/tenants`. After authorized tenant selection, `actingAsPlatformOwner = true`; selection is not an unrestricted owner bypass.
 
 AI Grid follows that boundary explicitly. Platform policy pages use global APIs; `/policies` reads tenant static policies, framework coverage, and assessment-state totals. Runtime telemetry, activity summaries, execution timelines, graph overlays, and runtime findings are deferred. No customer page calls their APIs. Legacy `/inventory/ai/executions` bookmarks redirect to `/inventory/ai` without loading runtime data.
 

@@ -10,6 +10,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface FindingDeltaQueueEntryRepository extends JpaRepository<FindingDeltaQueueEntry, Long> {
+    boolean existsByDedupeKeyAndStatus(String dedupeKey,String status);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from FindingDeltaQueueEntry e where e.id=:id and e.status='PROCESSING' and e.attemptCount=:attempt")
+    java.util.Optional<FindingDeltaQueueEntry> lockProcessingAttempt(@Param("id") Long id, @Param("attempt") int attempt);
 
     interface EventTypeCountRow {
         String getEventType();
@@ -72,13 +76,11 @@ public interface FindingDeltaQueueEntryRepository extends JpaRepository<FindingD
     @Query("SELECT COUNT(e) FROM FindingDeltaQueueEntry e WHERE e.status = 'PROCESSING'")
     long countProcessing();
 
-    @Query("""
-            select e
-            from FindingDeltaQueueEntry e
-            where upper(e.status) = 'PROCESSING'
-              and (e.processingStartedAt is null or e.processingStartedAt <= :cutoff)
-            order by e.processingStartedAt asc, e.id asc
-            """)
+    @Query(value = """
+            select * from finding_delta_queue where status='PROCESSING'
+              and (processing_started_at is null or processing_started_at<=:cutoff)
+             order by id limit 100 for update skip locked
+            """, nativeQuery = true)
     List<FindingDeltaQueueEntry> findStaleProcessingEntries(@Param("cutoff") Instant cutoff);
 
     @Query(value = """

@@ -51,5 +51,42 @@ class PerformanceTelemetryValidityTest {
             assertEquals(1,gauge(registry,"observed_tenants"));assertEquals(1,gauge(registry,"failed_tenants"));assertEquals(0,gauge(registry,"refresh_valid"));
         } finally {registry.close();}
     }
+    @Test void workerPublishesKnownPendingAgeAndProjectionLagWhileApiRemainsUnknown() {
+        var registry = new SimpleMeterRegistry(); var apiRegistry = new SimpleMeterRegistry();
+        try {
+            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meters = mock(ObjectProvider.class);
+            when(meters.getIfAvailable()).thenReturn(registry);
+            var tenants = mock(TenantService.class); var execution = mock(TenantSchemaExecutionService.class);
+            var projections = mock(FindingProjectionStatusService.class); var jdbc = mock(JdbcTemplate.class);
+            Instant now = Instant.parse("2026-10-21T00:00:00Z");
+            var tenant = new com.prototype.vulnwatch.domain.Tenant(); tenant.setId(UUID.randomUUID()); tenant.setStatus("ACTIVE");
+            when(tenants.listTenants()).thenReturn(List.of(tenant));
+            when(execution.run(eq(tenant), org.mockito.ArgumentMatchers.<Supplier<?>>any()))
+                    .thenAnswer(call -> ((Supplier<?>) call.getArgument(1)).get());
+            when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(7L);
+            when(jdbc.query(anyString(), org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.ResultSetExtractor<java.sql.Timestamp>>any()))
+                    .thenReturn(java.sql.Timestamp.from(now.minusSeconds(125)));
+            when(projections.inspectProjectionStatus(tenant)).thenReturn(
+                    new FindingListProjectionService.ProjectionStatus(now.minusSeconds(960), 1, 1, 10L, true, 0));
+            var worker = new PerformanceTelemetryService(meters, tenants, execution, projections, jdbc, 15, 1000,
+                    BackgroundTaskExecutionPolicy.forRole("worker"), Clock.fixed(now, ZoneOffset.UTC));
+            worker.refreshFreshnessSnapshot();
+            assertEquals(7, registry.get("scoutgrid.finding_delta_queue.pending").gauge().value());
+            assertEquals(125, registry.get("scoutgrid.finding_delta_queue.oldest_age_seconds").gauge().value());
+            assertEquals(960, registry.get("scoutgrid.finding_projection.max_lag_seconds").gauge().value());
+            assertEquals(1, registry.get("scoutgrid.finding_projection.stale_tenants").gauge().value());
+            assertEquals(1, gauge(registry, "refresh_valid")); // A valid observation may report unhealthy lag.
+            ObjectProvider<io.micrometer.core.instrument.MeterRegistry> apiMeters = mock(ObjectProvider.class);
+            when(apiMeters.getIfAvailable()).thenReturn(apiRegistry);
+            var api = new PerformanceTelemetryService(apiMeters, tenants, execution, projections, jdbc, 15, 1000,
+                    BackgroundTaskExecutionPolicy.forRole("api"), Clock.fixed(now, ZoneOffset.UTC));
+            clearInvocations(tenants, execution, projections, jdbc);
+            api.refreshFreshnessSnapshot();
+            verifyNoInteractions(tenants, execution, projections, jdbc);
+            assertEquals(0, gauge(apiRegistry, "refresh_owner"));
+            assertEquals(0, gauge(apiRegistry, "refresh_valid"));
+            assertTrue(Double.isNaN(apiRegistry.get("scoutgrid.finding_delta_queue.pending").gauge().value()));
+        } finally { registry.close(); apiRegistry.close(); }
+    }
     private double gauge(SimpleMeterRegistry registry,String suffix) {return registry.get("scoutgrid.performance."+suffix).gauge().value();}
 }

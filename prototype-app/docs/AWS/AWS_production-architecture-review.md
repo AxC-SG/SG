@@ -149,7 +149,7 @@ The components imply roughly $373–593 before contingency; **$375–650** is th
 
 The biggest early cost mistakes would be an oversized database, unbounded retained evidence/logs, frequent redundant scans, provider retries without fleet-wide limits, and buying infrastructure before fixing durable work. Track cost per tenant, completed scan, imported component volume, retained GB, and AI action. Set budget alerts at 50/80/100%; AWS budget alerts alone do not stop spend. Enforce actual usage/admission caps in the app, and give customers visible limits and upgrade paths.
 
-Keep Resend initially because integration already exists. SES is worth revisiting at meaningful email volume or an AWS-only procurement requirement, including domain verification, production-access approval, bounce/complaint handling, and operational ownership. Keep the current AI provider unless customer data policy or a measured quality/cost requirement favors Bedrock; evaluate with representative outputs and data-processing terms before switching.
+Keep Resend initially because integration already exists. SES is worth revisiting at meaningful email volume or an AWS-only procurement requirement, Account for domain verification and approval for production use. Assign an operational owner to handle bounced messages and complaints. Keep the current AI provider unless customer data policy or a measured quality/cost requirement favors Bedrock; evaluate with representative outputs and data-processing terms before switching.
 
 ### What to postpone
 

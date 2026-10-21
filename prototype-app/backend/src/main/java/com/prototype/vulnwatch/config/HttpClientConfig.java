@@ -16,6 +16,13 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class HttpClientConfig {
+    @Value("${app.executors.shutdown-wait-seconds:20}")
+    private int shutdownWaitSeconds = 20;
+
+    private void configureShutdown(ThreadPoolTaskExecutor executor) {
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(Math.max(1, shutdownWaitSeconds));
+    }
 
     @Bean
     public CheckedOutboundRequestFactory checkedOutboundRequestFactory(OutboundHostPolicy policy,
@@ -84,6 +91,7 @@ public class HttpClientConfig {
     }
 
     @Bean(name = {"ingestionExecutor", "sbomJobExecutor"})
+    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor ingestionExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
@@ -91,11 +99,13 @@ public class HttpClientConfig {
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("sbom-job-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
         executor.initialize();
         return executor;
     }
 
     @Bean(name = {"integrationQueueExecutor", "feedSyncExecutor"})
+    @org.springframework.context.annotation.DependsOn({"dataSource", "vulnerabilityAttemptService"})
     public ThreadPoolTaskExecutor integrationQueueExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);
@@ -103,11 +113,13 @@ public class HttpClientConfig {
         executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("integration-queue-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
         executor.initialize();
         return executor;
     }
 
     @Bean(name = "connectorSyncExecutor")
+    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor connectorSyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
@@ -115,11 +127,13 @@ public class HttpClientConfig {
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("connector-sync-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
         executor.initialize();
         return executor;
     }
 
     @Bean(name = "aiSecurityJobExecutor")
+    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor aiSecurityJobExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);
@@ -127,6 +141,7 @@ public class HttpClientConfig {
         executor.setQueueCapacity(20);
         executor.setThreadNamePrefix("ai-security-job-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
         executor.initialize();
         return executor;
     }

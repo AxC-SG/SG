@@ -294,6 +294,7 @@ public class FindingDeltaQueueService {
                             int batchesProcessed = 0;
                             int maxBatches = Math.max(1, maxBatchesPerTenantPerPoll);
                             while (batchesProcessed < maxBatches) {
+                                if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-delta-queue.claim")) break;
                                 List<FindingDeltaQueueEntry> claimed = claimBatch();
                                 if (claimed.isEmpty()) {
                                     break;
@@ -329,6 +330,7 @@ public class FindingDeltaQueueService {
 
     List<FindingDeltaQueueEntry> claimBatch() {
         return executeWrite(() -> {
+            if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-delta-queue.claim")) return List.of();
             List<FindingDeltaQueueEntry> entries = repository.pollPending(POLL_BATCH_SIZE);
             if (entries.isEmpty()) {
                 return entries;
@@ -346,6 +348,26 @@ public class FindingDeltaQueueService {
 
     // Not @Transactional — manages its own sub-transactions via findingRecomputeService
     void processClaimedBatch(List<FindingDeltaQueueEntry> claimed) {
+        if (writeTransactionTemplate == null) { processOwnedBatch(claimed); return; }
+        try {
+            executeWrite(() -> {
+                List<FindingDeltaQueueEntry> owned = claimed.stream()
+                        .sorted(java.util.Comparator.comparing(FindingDeltaQueueEntry::getId))
+                        .map(entry -> repository.lockProcessingAttempt(entry.getId(),entry.getAttemptCount()))
+                        .flatMap(java.util.Optional::stream).toList();
+                // Locks fence both domain effects and acknowledgments. Recovery
+                // skips these healthy owners even after the stale-time threshold.
+                processOwnedBatch(owned);
+                return null;
+            });
+        } catch (RuntimeException failure) {
+            // A joined domain transaction may mark the batch rollback-only.
+            // Record retry only after its effects and row locks have rolled back.
+            markFailedOrRetry(claimed,failure.getMessage());
+        }
+    }
+
+    private void processOwnedBatch(List<FindingDeltaQueueEntry> claimed) {
         Map<String, List<FindingDeltaQueueEntry>> byType = claimed.stream()
                 .collect(Collectors.groupingBy(FindingDeltaQueueEntry::getEventType, java.util.LinkedHashMap::new, Collectors.toList()));
         byType.forEach((eventType, entries) -> {
@@ -531,7 +553,7 @@ public class FindingDeltaQueueService {
     }
 
     void markDone(Collection<Long> ids, int affected) {
-        executeWrite(() -> {
+        executeEnqueue(() -> {
             Instant completedAt = Instant.now();
             for (Long id : ids) {
                 repository.findById(id).ifPresent(e -> {
@@ -546,12 +568,14 @@ public class FindingDeltaQueueService {
     }
 
     void markFailedOrRetry(Long id, int attemptCount, int maxAttempts, String errorMessage) {
-        executeWrite(() -> {
-            repository.findById(id).ifPresent(e -> {
+        executeEnqueue(() -> {
+            (writeTransactionTemplate == null ? repository.findById(id)
+                    : repository.lockProcessingAttempt(id,attemptCount)).ifPresent(e -> {
                 e.setErrorMessage(errorMessage);
                 e.setProcessingStartedAt(null);
-                if (attemptCount >= maxAttempts) {
+                if (attemptCount >= maxAttempts || repository.existsByDedupeKeyAndStatus(e.getDedupeKey(),"PENDING")) {
                     e.setStatus("FAILED");
+                    e.setCompletedAt(Instant.now());
                     LOG.error("Delta entry id={} type={} FAILED after {} attempts: {}",
                             id, e.getEventType(), attemptCount, errorMessage);
                 } else {
@@ -615,7 +639,8 @@ public class FindingDeltaQueueService {
                 if (entry.getErrorMessage() == null || entry.getErrorMessage().isBlank()) {
                     entry.setErrorMessage(INTERRUPTED_PROCESSING_MESSAGE);
                 }
-                if (entry.getAttemptCount() >= entry.getMaxAttempts()) {
+                if (entry.getAttemptCount() >= entry.getMaxAttempts()
+                        || repository.existsByDedupeKeyAndStatus(entry.getDedupeKey(),"PENDING")) {
                     entry.setStatus("FAILED");
                     if (entry.getCompletedAt() == null) {
                         entry.setCompletedAt(recoveredAt);

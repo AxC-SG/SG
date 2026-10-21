@@ -1,6 +1,7 @@
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
@@ -16,15 +17,139 @@ const TENANT_ADMIN: ActorContext = {
   roles: ['TENANT_ADMIN']
 };
 
-function renderConnectPage(actor: ActorContext) {
+function NavigationProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return <>
+    <output aria-label="Current path">{location.pathname}</output>
+    <output aria-label="Current search">{location.search}</output>
+    <button onClick={() => navigate('?connectSource=tanium-patch&keep=1')}>Open retired bookmark</button>
+  </>;
+}
+
+function RoutedConnectPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return <ConnectPage
+    initialView={location.pathname.endsWith('/run-history') ? 'run-history' : 'sources'}
+    onViewChange={(view) => navigate(`/connect/${view}`, { replace: true })}
+  />;
+}
+
+function renderConnectPage(actor: ActorContext, route = '/connect/sources') {
   return renderWithProviders(
     <ActorContextState.Provider value={actor}>
-      <ConnectPage />
-    </ActorContextState.Provider>
+      <RoutedConnectPage />
+      <NavigationProbe />
+    </ActorContextState.Provider>,
+    { route }
   );
 }
 
 describe('ConnectPage', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getServiceNowCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getServiceNowCmdbConfig>>);
+    vi.spyOn(api, 'getSccmCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getSccmCmdbConfig>>);
+    vi.spyOn(api, 'getAwsDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAwsDiscoveryConfig>>);
+    vi.spyOn(api, 'getAzureDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAzureDiscoveryConfig>>);
+    vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
+    vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
+  });
+
+  it.each([{ roles: ['TENANT_ADMIN'] }, { roles: ['TENANT_ADMIN', 'PLATFORM_OWNER'] }])('omits unsupported patch connectors for roles $roles while retaining inventory, BOM and static AI cards', ({ roles }) => {
+    renderConnectPage({ ...TENANT_ADMIN, roles, entitlements: { 'ai.security': true } });
+    expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /BigFix|Tanium/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /SCCM\/MECM/ })).toHaveLength(1);
+    for (const name of ['GitHub', 'ServiceNow', 'SCCM/MECM', 'AWS', 'Azure', 'SBOM API Endpoint', 'BOM Management', 'AWS Bedrock', 'Azure AI', 'Copilot Studio']) {
+      expect(screen.getAllByText(name).some((element) => element.closest('button') != null)).toBe(true);
+    }
+    const intelligence = screen.getByRole('button', { name: 'Vulnerability Intelligence' });
+    fireEvent.click(intelligence);
+    expect(intelligence).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(intelligence);
+    expect(intelligence).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it.each(['sccm-patch', 'bigfix-patch', 'tanium-patch'])('rejects the %s query bookmark before mounting credential inputs', async (id) => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    const { container } = renderConnectPage(TENANT_ADMIN, `/connect/sources?connectSource=${id}&keep=1`);
+    expect(screen.getByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(container.querySelector('input[type="password"]')).toBeNull();
+    expect(screen.queryByText(/Patch Connector/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Test Connection|Save Configuration/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Current search')).toHaveTextContent(/^\?keep=1$/));
+    expect(log).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a retired bookmark during navigation from a retained connector', async () => {
+    renderConnectPage(TENANT_ADMIN, '/connect/sources?connectSource=sccm-cmdb');
+    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open retired bookmark' }));
+    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Current search')).toHaveTextContent(/^\?keep=1$/));
+    expect(screen.queryByRole('button', { name: /Test Connection|Save Configuration/ })).not.toBeInTheDocument();
+  });
+
+  it('opens a retained status card and closes it with Escape without dropping other query parameters', async () => {
+    renderConnectPage(TENANT_ADMIN, '/connect/sources?keep=1');
+    fireEvent.click(screen.getByText('SCCM/MECM').closest('button')!);
+    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Current search')).toHaveTextContent('connectSource=sccm-cmdb');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current search')).toHaveTextContent(/^\?keep=1$/);
+  });
+
+  it('navigates to Run History from a selected retained connector without restoring its old path', async () => {
+    vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
+    vi.spyOn(api, 'listIngestionJobs').mockResolvedValue({ items: [], totalItems: 0, totalPages: 0, page: 0, size: 100 });
+    renderConnectPage(TENANT_ADMIN, '/connect/sources?connectSource=sccm-cmdb');
+    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Run History' }));
+    await waitFor(() => expect(screen.getByLabelText('Current path')).toHaveTextContent('/connect/run-history'));
+    expect(screen.getByLabelText('Current search')).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByRole('button', { name: 'Sources' }));
+    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current path')).toHaveTextContent('/connect/sources');
+  });
+
+  it('retains generic Azure read-only details and the Back to Sources action', async () => {
+    const save = vi.spyOn(api, 'saveAzureDiscoveryConfig');
+    const test = vi.spyOn(api, 'testAzureDiscoveryConnection');
+    const sync = vi.spyOn(api, 'triggerAzureDiscoverySync');
+    renderConnectPage(TENANT_ADMIN, '/connect/sources?keep=1');
+    fireEvent.click(screen.getByText('Azure').closest('button')!);
+    expect(await screen.findByText(/Disabled for the pilot/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Save|Test Connection|Sync now/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Back to Sources/ }));
+    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current search')).toHaveTextContent(/^\?keep=1$/);
+    expect(save).not.toHaveBeenCalled();
+    expect(test).not.toHaveBeenCalled();
+    expect(sync).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { card: 'BOM Management', title: 'BOM Management' },
+    { card: 'GitHub', title: 'GitHub BOM Connector' },
+  ])('retains the supported $card workflow and validates input before backend submission', async ({ card, title }) => {
+    vi.spyOn(api, 'listBomSources').mockResolvedValue([]);
+    vi.spyOn(api, 'listGithubSbomSources').mockResolvedValue([]);
+    const submit = vi.spyOn(api, 'bomFetch');
+    renderConnectPage(TENANT_ADMIN);
+    fireEvent.click(screen.getAllByText(card).find((element) => element.closest('button'))!.closest('button')!);
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'GitHub Auto-Pipeline' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'URL Fetch' }));
+    fireEvent.change(screen.getByPlaceholderText('https://example.com/bom.json'), { target: { value: 'https://fixture.example/bom.json' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ingest SBOM' }));
+    expect(await screen.findByText('Asset Name is required')).toBeInTheDocument();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });

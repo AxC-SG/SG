@@ -211,7 +211,7 @@ public class SuppressionRuleService {
         }
         tenantWorkRunner.forEachActiveTenant(tenant ->
                 tenantSchemaExecutionService.run(tenant, () -> executeWrite(() -> {
-                    for (SuppressionRule rule : repo.findAllByOrderByCreatedAtAsc()) {
+                    for (SuppressionRule rule : repo.findAllForUpdate()) {
                         if (rule.getState() == SuppressionRule.State.APPROVED) {
                             if (rule.getRecordType() == SuppressionRule.RecordType.CVE) {
                                 executeCveRuleInCurrentTenantSchema(rule);
@@ -228,7 +228,7 @@ public class SuppressionRuleService {
     // ── private helpers ──────────────────────────────────────────────────────
 
     private int executeFindingRuleInCurrentTenantSchema(SuppressionRule rule) {
-        List<Finding> openFindings = findingRepository.findByStatusOrderByUpdatedAtDesc(FindingStatus.OPEN);
+        List<Finding> openFindings = findingRepository.findForMaintenance(FindingStatus.OPEN, null);
 
         List<Finding> toSuppress = new ArrayList<>();
         for (Finding finding : openFindings) {
@@ -256,7 +256,7 @@ public class SuppressionRuleService {
 
     private int executeCveRuleInCurrentTenantSchema(SuppressionRule rule) {
         // Only process records not yet suppressed by any rule
-        List<OrgCveRecord> candidates = orgCveRecordRepository.findBySuppressedByRuleIdIsNull();
+        List<OrgCveRecord> candidates = orgCveRecordRepository.findBySuppressedByRuleIdIsNullOrderById();
 
         if (candidates.isEmpty()) {
             return 0;

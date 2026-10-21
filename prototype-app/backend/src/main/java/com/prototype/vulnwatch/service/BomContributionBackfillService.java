@@ -156,6 +156,9 @@ public class BomContributionBackfillService {
      * neither duplicates sources nor disturbs live evidence.
      */
     public AssetBackfillResult backfillAsset(UUID tenantId, UUID assetId) {
+        // Select progress only after locking the document chain, so another
+        // sweep cannot reconstruct a second source from an old source_id view.
+        recordRepository.lockAssetRecords(assetId);
         BomAssetBackfillState state = backfillStateRepository.findByAssetId(assetId)
                 .orElseGet(() -> {
                     BomAssetBackfillState fresh = new BomAssetBackfillState();

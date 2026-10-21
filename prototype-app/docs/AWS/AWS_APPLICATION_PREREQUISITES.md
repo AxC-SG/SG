@@ -1,6 +1,8 @@
 # ScoutGrid application prerequisites: existing inconsistencies and remediation plan
 
 
+Current source/documentation checkpoint (October 21): [documentation reconciliation and local P30 UI repair](DOCUMENTATION_RECONCILIATION.md). Original defect descriptions and day-zero instructions below record the October 17–18 assessment; use current reconciled runtime guidance for operational behavior. The formal register remains Open/Pending.
+
 Local implementation checkpoint: [Phase 3 status and remaining qualification](PHASE_3_IMPLEMENTATION_STATUS.md). The original completion criteria below remain authoritative; a source change alone does not mark an item complete.
 **Prepared:** October 17, 2026. **Scope revised:** October 18, 2026. **Reviewed source:** bd8ecf60cf21cbc56ed7de29fa23237e04d89bbc and the current workspace. **Status:** repair plan; Phase 1 and Phase 2 implementations are in the local workspace, with verification and release boundaries recorded below. No live deployment or configuration changes are recorded.
 
@@ -875,7 +877,7 @@ Operational read samples cover only a JVM's recent window. Four freshness gauges
 
 Existing CI, restricted-role tests and scanners do not establish that proposed repairs have passed. This gate covers the current application and documented configuration. Cloud deployment, new identity/storage services, production-scale load, recovery objectives and customer cutover remain separate.
 
-**Fix:** add targeted regressions for repaired behavior and run the relevant existing frontend, backend, PostgreSQL, migration and script gates. Reconcile any remaining catalog/version instructions and moved-document links with source: platform V1 and tenant V2 are independent current heads, later migrations are append-only, and historical development reset authorization does not permit resetting the shared database. The integrity guard's historical all-V1 exception is already inapplicable with tenant V2; do not invent a current failure caused solely by the moved archive record.
+**Fix:** add targeted regressions for repaired behavior and run the relevant existing frontend, backend, PostgreSQL, migration and script gates. Reconcile any remaining catalog/version instructions and moved-document links with source: current packaged heads are independently resolved (now platform V6 and tenant V5), later migrations are append-only, and historical development reset authorization does not permit resetting the shared database. The integrity guard's historical all-V1 exception is already inapplicable with tenant V2; do not invent a current failure caused solely by the moved archive record.
 
 **Done when:** the identified source revision passes applicable CI without weakened coverage thresholds. Evidence includes frontend lint/typecheck/build/tests and credential-bundle checks; backend verification; restricted-role PostgreSQL bootstrap and tenant lifecycle cases; authorization, rollback, concurrency, failure and disabled-capability regressions relevant to each fix; and migration/script checks. Disposable fixtures test destructive cleanup safely. Record configuration assumptions, exclusions, test outputs and reviewer. Update remaining stale guidance as a scoped documentation fix; preserve already corrected guidance. Remaining live Render configuration checks are explicitly listed, and no result is labeled AWS-qualified or production-ready merely because these application checks pass.
 
@@ -915,7 +917,7 @@ These establish policy classification, not network reachability or credential re
 
 ## Appendix B — Catalog and source guidance
 
-Current packaged heads are platform V1 and tenant V2. Tenant V2 makes the historical all-V1 reset exception inapplicable regardless of the archived record's location. Moving that record does not change this branch of the check; it does not prove all CI passes. Future migrations stay append-only and tests use disposable databases.
+Current packaged heads are platform V6 and tenant V5, as asserted by `MigrationCatalogTest`. Platform V6 is the additive rollout-waiting repair from the implementation closure audit. The presence of post-V1 migrations makes the historical all-V1 reset exception inapplicable regardless of the archived record's location. Moving that record does not change this branch of the check; it does not prove all CI passes. Future migrations stay append-only and tests use disposable databases.
 
 Checking remaining current-version and moved-file references in CLAUDE guidance is a documentation consistency task under P36; preserve corrections already made in the workspace. Preserve the user's archived files; do not restore/move them to satisfy stale links. P30 cites the checked-in runtime exclusion rather than relying on an untracked archive.
 

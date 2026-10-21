@@ -2,7 +2,7 @@
 
 This document describes the React/TypeScript frontend for VulnWatch (package name `vulnwatch-frontend`). It is derived entirely from reading the source code in `frontend/src/`.
 
-Last updated: 2026-10-18
+Last updated: 2026-10-21
 
 ---
 
@@ -101,8 +101,8 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 | `/exposure` | `ExposureDashboardPage` | Risk-focused exec overview (Overview tab) |
 | `/findings` | `FindingsPage` | Active findings list with server+client-side filters |
 | `/findings/:displayId` | `FindingDetailPage` | Single finding detail, workflow, and AI remediation |
-| `/fix-intelligence/:view?` | `FixIntelligenceRoute` (`FixIntelligencePage`) | Fix Intelligence MVP — default `all`; also `patches`, `workarounds`, `compensating-controls`. Demo-data only, see `backend.md`'s Fix Intelligence section |
-| `/fix-intelligence/details/:fixId` | `FixDetailPage` | Single fix detail |
+| `/fix-intelligence/*` | Redirect to `/findings` | Synthetic Fix Intelligence is unavailable |
+
 | `/operations/:operationsView?` | `OperationalDashboardPage` | Default `pipeline`; also `platform-health` (the `quality` view now redirects to `/inventory` with quality-tab search params instead of rendering here — see note below) |
 | `/vuln-repo` | `VulnRepoDashboardPage` | Vulnerability Repository dashboard |
 | `/vuln-repo/org-cves/:cveId?` | `VulnRepoWorkbenchRoute` (`VulnRepoOrgCvePage`) | Unified Vulnerability Records — CVE Assessment Workbench |
@@ -160,12 +160,16 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 ---
 
+Generic Azure and SCCM pages show disabled/read-only status; their APIs independently refuse changes/tests/runs. `/fix-intelligence/*` redirects to `/findings`. Unsupported patch cards/forms have been retired as documented [in the connector inventory](#connect-srcfeaturesconnect); old query IDs and direct paths cannot mount them.
+
 ## 3. Authentication and Auth Flow
+
+JWT authority is revalidated server-side against current users, global grants, memberships/support and machine registry. Claims select a tenant; they do not grant membership or ownership. Browser role/entitlement gates are presentation controls alongside server checks.
 
 ### Token storage
 
-- Primary: `localStorage` key `vulnwatch.authToken` — a JWT Bearer token.
-- Fallback (local dev only): `VITE_AUTH_TOKEN` env var.
+- `getStoredAuthToken()` reads only the `localStorage` key `vulnwatch.authToken` (empty string if absent). It does not read an environment fallback.
+- `applyAuthHeaders()` separately uses development-only `VITE_AUTH_TOKEN` after the stored token. The stored token takes precedence; production static-auth inputs are rejected at build time.
 - Managed by `getStoredAuthToken()`, `setStoredAuthToken()`, `clearStoredAuthToken()` exported from `src/api/client.ts`.
 
 ### Request auth header injection
@@ -177,7 +181,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 ### Session lifecycle
 
-1. `useActorQuery()` in `src/features/auth/queries.tsx` calls `GET /api/me` (via `authApi.getActorContext`). The React Query key includes the raw token value so the cache auto-invalidates when the token changes (login / logout).
+1. `useActorQuery()` in `src/features/auth/queries.tsx` calls `GET /api/me` (via `authApi.getActorContext`). The React Query key includes the raw token value with a 60-second stale time. This remains a raw-token key in current source, not an opaque epoch; logout also clears the shared query cache. Do not log/export query keys or token-bearing state.
    - `staleTime`: 60 seconds.
    - `AUTH_CONTEXT_QUERY_ROOT = ['auth-context']`.
 2. `AuthSessionBoundary` in `App.tsx` wraps all authenticated routes. It renders a redirect to `/login` when the query fails or returns no actor data.
@@ -217,12 +221,14 @@ All role checks must go through these helpers — never read `actor.roles` direc
 
 ### Entitlements (distinct from roles)
 
+`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables SCCM JDBC, generic Azure, runtime evidence or pilot generative assistance.
+
 `src/features/auth/entitlements.ts` introduces a second, orthogonal access concept alongside roles: **entitlements** are per-tenant, plan-based feature flags (e.g. `ai.security`) rather than per-user permissions. `canUseEntitlement(actor, key)` checks the actor's entitlement snapshot from the backend and **fails closed** — an entitlement not explicitly present/enabled is treated as disabled. `AI_ENTITLEMENT_KEYS` currently gates the entire AI Security / AI Grid feature surface (routes, nav items, `AiInventoryOverviewStrip`). Role helpers (`hasRole`, etc.) still govern *what an authenticated user with access can do*; entitlements govern *whether the tenant's plan includes the feature at all*.
 
 ### Multi-tenant switching
 
-- `api.selectTenantContext(tenantId)` — sets acting tenant; returns an `AuthTokenResponse` (new token).
-- `api.clearTenantContext()` — returns platform-scope mode (also an `AuthTokenResponse`).
+- `api.selectTenantContext(tenantId)` — LOCAL-mode authorized membership/support selection; returns an `AuthTokenResponse` with an explicit access mode/reference, revalidated on later requests. EXTERNAL disables local token issuance.
+- `api.clearTenantContext()` — LOCAL-mode return to platform scope (also an `AuthTokenResponse`).
 - Both are used in `PlatformConsolePage` and the `AppShell` tenant switcher.
 - `setStoredAuthToken()` is also called on login to store the returned token.
 
@@ -316,7 +322,7 @@ Files: `types.ts`, `queries.ts`
 
 **Connector catalog card-grid rework (`ConnectPage`, `/connect/sources`):** the catalog no longer stacks connectors in a fixed two-column list; cards center in an auto-fill grid (`connect.css` steps the column count from five down to one as the viewport narrows — this ladder has to live in `connect.css`, not `base.css`, because `cve-workbench.css` loads later and would otherwise collapse the grid to one column below 1220px). Cards show each connector's real vendor mark as inline SVG (Microsoft's four squares, the `aws` wordmark, Azure's triangle, ServiceNow's `NOW` tile, BigFix's slate-blue "b", Tanium's red-disc "T") rather than a generic icon-well glyph, so no third-party logo files are committed to the repo. There's no room in the card for a stacked "Last sync · 2h ago" / "Failed · …" line, so connector health now lives on the status dot's `title`/`aria-label` — assert against the accessible label in tests, not card body text, when checking a failed-connector state.
 
-Three catalog sections render under `sources` (replacing the old CMDB/Cloud/AI split): **Inventory** (CMDB, cloud, and — entitlement-gated — AI sources together), **BOM Management** (`sbom-endpoint`, `bom-management`), and **Patch Management** (`sccm-patch`, `bigfix-patch`, `tanium-patch` — SCCM/MECM, IBM BigFix, and Tanium patch-deployment tracking). The Patch Management cards open `SccmPatchConnectorPage`/`BigFixPatchConnectorPage`/`TaniumPatchConnectorPage`, which are mock config forms only (no backend call on save or test-connection) — see `backend.md`'s Fix Intelligence section for the unwired backend scaffolding behind this category.
+Two connector-card sections render under `sources`: **Inventory** (CMDB, cloud, and entitlement-gated static AI sources) and **BOM Management** (`sbom-endpoint`, `bom-management`). Unsupported Patch Management IDs/cards and detail branches were removed; `SccmPatchConnectorPage`, `BigFixPatchConnectorPage`, `TaniumPatchConnectorPage` and the unused `PatchConnectorPage` mock catalog were retired, removing all their input/credential logging. The URL is the single selection source: only catalog IDs are accepted, invalid IDs are removed without dropping other query parameters, and direct unsupported `/connect/:connectView` paths normalize to Sources. Catalog, query, app-route and in-page navigation regressions cover this containment. See [repair evidence](AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair). Backend patch scaffolding remains unwired.
 
 ### operations (`src/features/operations/`)
 
@@ -379,7 +385,7 @@ Files: `types.ts`, `CampaignDetailPage.tsx` — undocumented until now; a fully 
 
 **No separate `queries.ts`** — API calls are inlined directly via `api.getCampaign()`, etc., calling `/campaigns`, `/campaigns/{campaignId}`, `/campaigns/{campaignId}/status`, `/campaigns/{campaignId}/exceptions/{exceptionId}/status`, `/campaigns/{campaignId}/notes`, `/campaigns/{campaignId}/notify-groups`, `/campaigns/{campaignId}/watchlist`, and bulk-add endpoints for assets/CVEs/software.
 
-`CampaignDetailPage.tsx` is large (2000+ lines) — lifecycle stage UI, KPI tiles, severity/team accountability breakdowns, AI-powered insights (OpenAI-gated), advisory fetch, and add-assets/add-CVE modals. Routed at `/vuln-repo/campaigns` and `/vuln-repo/campaigns/:id`.
+`CampaignDetailPage.tsx` is large (2000+ lines) — lifecycle stage UI, KPI tiles, severity/team accountability breakdowns, insight UI (generative assistance hard off for deployed pilot; deterministic paths retained), advisory fetch, and add-assets/add-CVE modals. Routed at `/vuln-repo/campaigns` and `/vuln-repo/campaigns/:id`.
 
 ### ai-security (`src/features/ai-security/`)
 
@@ -400,7 +406,7 @@ Backs the AI Security / AI Grid posture-management surface (14 pages under `src/
 
 **Activity evidence.** `api.getAiActivityEvidence(artifactId)` (`GET /ai-security/artifacts/{id}/activity-evidence`) and the `AiActivityEvidence` type remain, but `AiAssetDetailPage` no longer renders an Activity evidence panel, runtime-activity toggle, or "View executions" button (asserted absent in `AiAssetDetailPage.test.tsx`). If it is reintroduced, absence of evidence must not be worded as "Not used".
 
-**Tenant policy reporting (`AiPoliciesPage`).** Reads tenant-visible static policies, global framework definitions/tenant coverage, and latest static assessment-state totals. Runtime policies, readiness, findings, activity summaries, and graph overlays are excluded. Legacy execution bookmarks redirect to inventory. See `docs/business-logic-guide.md#ai-security--ai-grid-pipeline` (runtime scope doc archived).
+**Tenant policy reporting (`AiPoliciesPage`).** Reads tenant-visible static policies, global framework definitions/tenant coverage, and latest static assessment-state totals. Runtime policies, readiness, findings, activity summaries, and graph overlays are excluded. Legacy execution bookmarks redirect to inventory. See [business-logic-guide.md](business-logic-guide.md#ai-security--ai-grid-pipeline) (runtime scope doc archived).
 
 **Platform policy distribution (`PlatformAiPolicyStudio`).** This page runs without tenant context and uses only global/platform APIs: catalog, shipping status, rollout queue, and `/ai-frameworks` for labels/control filters. The framework endpoint is intentionally platform-reference scoped. Do not add `/ai-framework-coverage`, `/ai-runtime-telemetry-readiness`, or `/ai-assessment-states/latest` calls to this page.
 
@@ -545,7 +551,8 @@ All backend calls go through the single `api` export object in `src/api/client.t
 ```
 applyAuthHeaders(headers):
   if getStoredAuthToken() -> Authorization: Bearer <token>
-  else -> X-API-Key: <VITE_API_KEY>  +  X-Creator-Key: <VITE_CREATOR_KEY>
+  else if development STATIC_AUTH_TOKEN -> Authorization: Bearer <token>
+  else -> development-only API/creator/tenant/user headers (empty in production)
 ```
 
 ### Base URL
@@ -884,11 +891,11 @@ npm install
 npm run dev          # http://localhost:5173 (strictly)
 ```
 
-Backend must be running on port 8080 (or configure `VITE_API_BASE`).
+Backend must be configured with an explicit environment/runtime role and supported JWT mode; see [backend startup](../README.md#backend). Development proxies `/api` to port 8080 unless `VITE_API_BASE` overrides it.
 
 ### Environment variables
 
-Set these in `.env.local` (no `.env.example` is committed). All variables use the `VITE_` prefix.
+Set public inputs in `.env.local` (no frontend `.env.example` is committed). Provider secrets belong only on the backend. Production builds reject nonempty `VITE_API_KEY`, `VITE_CREATOR_KEY`, `VITE_AUTH_TOKEN`, `VITE_USER_ID` and `VITE_TENANT_ID`; these are dev-only, and the bundle guard also checks for leakage.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -896,7 +903,7 @@ Set these in `.env.local` (no `.env.example` is committed). All variables use th
 | `VITE_TURNSTILE_SITE_KEY` | Cloudflare test key in development | Public Turnstile site key used by the demo-request CAPTCHA |
 | `VITE_API_KEY` | `change-me-in-prod` | `X-API-Key` header (local dev fallback) |
 | `VITE_CREATOR_KEY` | `local-creator` | `X-Creator-Key` for PLATFORM_OWNER endpoints (local dev) |
-| `VITE_AUTH_TOKEN` | (empty) | Static bearer token override |
+| `VITE_AUTH_TOKEN` | (empty) | Development-only bearer fallback after stored token |
 | `VITE_SENTRY_DSN` | (empty) | Sentry DSN — leave empty to disable |
 | `VITE_ENABLE_TEST_PERSONAS` | `false` | Enables impersonation persona switcher in dev |
 
@@ -926,10 +933,10 @@ These are different pages backed by different API endpoints — do not confuse t
 
 1. Add the connector ID to the `ConnectorId` union in `ConnectPage.tsx`.
 2. Add to the `CONNECTORS` array with `id`, `name`, `summary`, `icon`.
-3. Add to the appropriate category list — `INVENTORY_CONNECTOR_IDS`, `BOM_CONNECTOR_IDS`, or `PATCH_CONNECTOR_IDS` in `ConnectPage.tsx` (AI connectors are in `INVENTORY_CONNECTOR_IDS` and also listed in `AI_CONNECTOR_IDS` for entitlement gating) (there is no rendered "Vulnerability Intelligence" connector-card category anymore — see below).
+3. Add to the appropriate category list — `INVENTORY_CONNECTOR_IDS` or `BOM_CONNECTOR_IDS` in `ConnectPage.tsx` (AI connectors are in `INVENTORY_CONNECTOR_IDS` and also listed in `AI_CONNECTOR_IDS` for entitlement gating) (there is no rendered "Vulnerability Intelligence" connector-card category anymore — see below).
 4. Add a `case` in `ConnectorDetailContent` that renders the connector's config component.
 
-Note: `endoflife-date`, `euvd-feed`, `jvn-feed`, and `sbom-github` are declared in the `ConnectorId` union and `CONNECTORS` array (with `ConnectorDetailContent` cases) but are not in any of the three category lists above, so they currently render no clickable card anywhere in the UI — likely a gap worth a follow-up ticket.
+Note: `endoflife-date`, `euvd-feed`, and `jvn-feed` are declared in the `ConnectorId` union and `CONNECTORS` array (with `ConnectorDetailContent` cases) but are not in either of the two connector-card category lists above, so they currently render no clickable card anywhere in the UI — likely a gap worth a follow-up ticket.
 
 ### Configurations page sections
 
@@ -964,7 +971,7 @@ Available test fixtures in `src/test/fixtures.ts`:
 
 ### Platform owner flow
 
-`ActorContext.platformScope = true` means the user is a platform owner who has not selected a tenant. In this state, all tenant-scoped routes (`/exposure`, `/findings`, `/vuln-repo`, `/inventory`, etc.) redirect to `/platform/tenants`. After calling `api.selectTenantContext(tenantId)`, `actingAsPlatformOwner = true` and tenant-scoped routes become accessible.
+`ActorContext.platformScope = true` means the user is a platform owner who has not selected a tenant. In this state, all tenant-scoped routes (`/exposure`, `/findings`, `/vuln-repo`, `/inventory`, etc.) redirect to `/platform/tenants`. After authorized LOCAL-mode `api.selectTenantContext(tenantId)`, `actingAsPlatformOwner = true`. The backend requires current membership or support access; a tenant ID or platform-owner claim alone does not authorize entry.
 
 ### Exposure Dashboard layout
 

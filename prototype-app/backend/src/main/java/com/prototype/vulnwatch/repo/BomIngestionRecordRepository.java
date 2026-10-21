@@ -11,6 +11,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface BomIngestionRecordRepository extends JpaRepository<BomIngestionRecord, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from BomIngestionRecord r where r.assetId = :assetId order by r.id")
+    List<BomIngestionRecord> lockAssetRecords(@org.springframework.data.repository.query.Param("assetId") UUID assetId);
 
     List<BomIngestionRecord> findByTenant_IdOrderByIngestedAtDesc(UUID tenantId, Pageable pageable);
 

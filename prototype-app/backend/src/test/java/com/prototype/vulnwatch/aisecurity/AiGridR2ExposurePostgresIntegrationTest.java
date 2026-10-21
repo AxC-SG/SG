@@ -53,6 +53,7 @@ class AiGridR2ExposurePostgresIntegrationTest {
     @Autowired private AiGridApiService api;
     @Autowired private AiGridHostContextService hostContext;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private com.prototype.vulnwatch.aisecurity.service.AiGridExposureFreshnessService freshness;
     @Autowired private com.prototype.vulnwatch.aisecurity.service.AiSecurityApiService customerApi;
 
     @Test
@@ -393,6 +394,35 @@ class AiGridR2ExposurePostgresIntegrationTest {
             assertEquals("SUPPRESSED",jdbc.queryForObject("select status from findings where id=:id",Map.of("id",finding),String.class));
             assertEquals(overdue,deadline(finding));
             assertEquals(1,count("select count(*) from finding_list_projection where finding_id='"+finding+"' and status='SUPPRESSED'"),"Committed evidence paths refresh the canonical projection");
+        });
+    }
+
+    @Test void overlappingFreshnessSweepsDeriveOneReplacementEpoch() throws Exception {
+        Tenant tenant=tenants.createTenant("R2 freshness "+UUID.randomUUID(),"r2-fresh-"+UUID.randomUUID(),"pilot",null);
+        migrations.provisionNewTenant(tenant);
+        tenantExecution.run(tenant, () -> {
+            UUID agent=UUID.randomUUID(), kb=UUID.randomUUID();
+            seedArtifact(tenant,agent,"AI_AGENT","AWS_BEDROCK_AGENT","agent");
+            seedArtifact(tenant,kb,"KNOWLEDGE_BASE","AWS_BEDROCK_KNOWLEDGE_BASE","kb");
+            UUID run=seedRun(tenant,agent,kb,true,false);
+            seedCompleteScope(tenant,run,"AWS","AWS:test",Instant.now());
+            addValidatingFacts(tenant,agent,kb,Instant.now().plusSeconds(3600));
+            UUID epoch=coverage.refreshCurrent(tenant,run); systems.deriveForCurrentEpoch(tenant,epoch,run);
+            assertEquals(1,exposures.correlateCurrentEpoch(tenant,epoch,run).validated());
+            jdbc.update("update ai_grid_relationship_snapshots set valid_until=now()-interval '1 second' where run_id=:id",Map.of("id",run));
+            jdbc.update("update ai_grid_exposure_observations set temporal_valid_until=now()-interval '1 second'",Map.of());
+        });
+        int before=tenantExecution.run(tenant, () -> count("select count(*) from ai_grid_exposure_executions"));
+        var start=new java.util.concurrent.CyclicBarrier(2);
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Callable<Void> task=() -> { start.await(10,java.util.concurrent.TimeUnit.SECONDS); freshness.demoteExpiredEvidence();return null; };
+            var first=pool.submit(task);var second=pool.submit(task);
+            first.get(30,java.util.concurrent.TimeUnit.SECONDS);second.get(30,java.util.concurrent.TimeUnit.SECONDS);
+        } finally { pool.shutdownNow(); }
+        tenantExecution.run(tenant, () -> {
+            assertEquals(before+1,count("select count(*) from ai_grid_exposure_executions"));
+            assertEquals("NEEDS_EVIDENCE",jdbc.queryForObject("select workflow_class from findings where finding_kind='AI_EXPOSURE'",Map.of(),String.class));
         });
     }
 
