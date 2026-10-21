@@ -75,6 +75,8 @@ if [ "$validation_only" = true ]; then
 fi
 
 if [ "$run_once" = true ]; then
+  # JVM option variables intentionally expand into separate arguments, as below.
+  # shellcheck disable=SC2086
   exec java ${JAVA_TOOL_OPTIONS:-} ${JAVA_OPTS:-} -Dloader.main=com.prototype.vulnwatch.migration.ProductionBootstrapCli -cp /app/vulnwatch-backend.jar org.springframework.boot.loader.launch.PropertiesLauncher
 fi
 
