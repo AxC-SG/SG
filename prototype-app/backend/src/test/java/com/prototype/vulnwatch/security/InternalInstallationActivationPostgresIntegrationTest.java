@@ -20,11 +20,12 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties={"app.runtime.role=api","app.security.allow-api-key-auth=false","app.correlation.backfill-targets-on-startup=false"})
+@SpringBootTest(properties={"spring.config.import=","app.runtime.role=api","app.security.allow-api-key-auth=false","app.correlation.backfill-targets-on-startup=false"})
 @AutoConfigureMockMvc
 @ActiveProfiles("postgres")
 @EnabledIfSystemProperty(named="run.postgres.it",matches="true")
 class InternalInstallationActivationPostgresIntegrationTest {
+    private static final String JWT_SECRET=UUID.randomUUID()+":"+UUID.randomUUID();
     private static final LocalPostgresTestDatabase.DatabaseConfig DATABASE=installation();
     private static LocalPostgresTestDatabase.DatabaseConfig installation() {
         var database=LocalPostgresTestDatabase.provision("internal_installation_activation");
@@ -42,6 +43,8 @@ class InternalInstallationActivationPostgresIntegrationTest {
         return database;
     }
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
+        // Exercise real token issuance and validation with an ephemeral test key.
+        registry.add("app.security.jwt.hmac-secret",()->JWT_SECRET);
         registry.add("DB_URL",DATABASE::url);registry.add("DB_USERNAME",DATABASE::username);registry.add("DB_PASSWORD",DATABASE::password);
     }
     @Autowired JdbcTemplate jdbc;
