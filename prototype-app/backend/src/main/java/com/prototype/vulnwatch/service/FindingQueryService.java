@@ -62,6 +62,17 @@ public class FindingQueryService {
         this.affectedResourceSummaryService = affectedResourceSummaryService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate intelligenceJdbc;
+
+    @org.springframework.transaction.annotation.Transactional(readOnly=true)
+    public java.util.Optional<FindingResponse> history(Tenant tenant,UUID id) {
+        return tenantSchemaExecutionService.run(tenant,() -> {
+            intelligenceJdbc.queryForObject("select set_config('app.include_ineligible_intelligence','true',true)",String.class);
+            return findingRepository.findById(id).filter(finding -> tenant.getId().equals(finding.getTenant().getId())).map(this::toResponse);
+        });
+    }
+
     public FindingPageResponse listByTenantPage(
             Tenant tenant,
             int page,
@@ -262,9 +273,9 @@ public class FindingQueryService {
                 finding.getCreationSource(),
                 finding.getSeverityOverride() != null
                         ? finding.getSeverityOverride()
-                        : vulnerability != null ? vulnerability.getSeverity() : null,
-                vulnerability != null && vulnerability.isInKev(),
-                vulnerability != null ? vulnerability.getEpssScore() : null,
+                        : finding.getIntelligenceSeverity() != null ? finding.getIntelligenceSeverity() : vulnerability != null ? vulnerability.getSeverity() : null,
+                finding.getIntelligenceInKev() != null ? finding.getIntelligenceInKev() : vulnerability != null && vulnerability.isInKev(),
+                finding.getIntelligenceRevision() > 0 ? finding.getIntelligenceEpss() : vulnerability != null ? vulnerability.getEpssScore() : null,
                 finding.getRiskScore(),
                 finding.getConfidenceScore(),
                 finding.getMatchedBy(),
@@ -307,10 +318,12 @@ public class FindingQueryService {
                         "displayName", hasText(asset.getOwnerTeam()) ? asset.getOwnerTeam().trim()
                                 : hasText(asset.getOwnerEmail()) ? asset.getOwnerEmail().trim() : "Unassigned",
                         "supportGroup", asset.getSupportGroup() == null ? "" : asset.getSupportGroup()),
-                affectedAiResources == null ? List.of() : affectedAiResources);
+                affectedAiResources == null ? List.of() : affectedAiResources,
+                finding.getIntelligenceEligibility(),finding.getIntelligenceReleaseId(),finding.getIntelligenceRevision(),finding.getIntelligenceMergedIntoId());
     }
 
     private Double safeFindingsScore(String scoreConfig, Finding finding) {
+        if (finding.getIntelligenceRevision() > 0) return finding.getRiskScore();
         try {
             return findingsScoreService.compute(scoreConfig, finding);
         } catch (RuntimeException ignored) {

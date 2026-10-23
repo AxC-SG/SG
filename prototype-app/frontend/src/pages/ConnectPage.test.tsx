@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { intelligenceApi } from '../features/intelligence/api';
 import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
 import { renderWithProviders } from '../test/test-utils';
@@ -48,6 +49,7 @@ function renderConnectPage(actor: ActorContext, route = '/connect/sources') {
 
 describe('ConnectPage', () => {
   beforeEach(() => {
+    vi.spyOn(intelligenceApi, 'tenantStatus').mockResolvedValue({ tenant_id: 'tenant-1', status: 'COMPLETED', required_revision: 1, completed_revision: 1, completed_generation: 1, last_completed_at: null, last_error: null });
     vi.spyOn(api, 'getServiceNowCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getServiceNowCmdbConfig>>);
     vi.spyOn(api, 'getSccmCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getSccmCmdbConfig>>);
     vi.spyOn(api, 'getAwsDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAwsDiscoveryConfig>>);

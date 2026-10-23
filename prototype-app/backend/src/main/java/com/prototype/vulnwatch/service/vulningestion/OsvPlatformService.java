@@ -49,6 +49,9 @@ public class OsvPlatformService {
     this.objectMapper = new ObjectMapper().findAndRegisterModules();
   }
 
+  private com.prototype.vulnwatch.service.IntelligenceStagingService staging;
+  @Autowired void configureStaging(com.prototype.vulnwatch.service.IntelligenceStagingService staging) { this.staging=staging; }
+
   @Transactional
   public void syncOsvAdvisories() {
     log.info("Starting OSV advisory sync");
@@ -64,7 +67,7 @@ public class OsvPlatformService {
         }
       }
 
-      buildEquivalenceMappings();
+      // Structured aliases are staged with each fetched record below.
 
       log.info("OSV advisory sync completed successfully");
 
@@ -142,11 +145,6 @@ public class OsvPlatformService {
 
   private void saveOsvAdvisory(String ecosystem, String packageName, OsvVulnerability vuln) {
     try {
-      if (osvAdvisoryRepository.findByOsvId(vuln.getId()).isPresent()) {
-        log.debug("OSV record already exists: {}", vuln.getId());
-        return;
-      }
-
       String severity = extractSeverity(vuln.getSeverity());
       BigDecimal cvssScore = extractCvssScore(vuln.getSeverity());
 
@@ -168,50 +166,25 @@ public class OsvPlatformService {
           .syncedAt(Instant.now())
           .build();
 
-      osvAdvisoryRepository.save(entity);
+      entity.setId(java.util.UUID.nameUUIDFromBytes(("sg-osv:"+vuln.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+      entity.setCreatedAt(Instant.now());entity.setUpdatedAt(Instant.now());
+      var row=com.prototype.vulnwatch.service.IntelligenceEntityCodec.row(entity);
+      for(String field:List.of("affected_ranges","osv_data","reference_data")) {
+          Object value=row.get(field);if(value instanceof String text) row.put(field,objectMapper.readTree(text));
+      }
+      staging.append("OSV",vuln.getId(),null,"osv",row,"VALID");
+      if(vuln.getAliases()!=null) {
+        var cves=vuln.getAliases().stream().filter(alias -> alias.matches("CVE-[0-9]{4}-[0-9]{4,}")).toList();
+        var ghsas=vuln.getAliases().stream().filter(alias -> alias.startsWith("GHSA-")).toList();
+        for(String cve:cves) {
+          if(ghsas.isEmpty()) createEquivalence(cve,null,vuln.getId(),"structured_alias");
+          else for(String ghsa:ghsas) createEquivalence(cve,ghsa,vuln.getId(),"structured_alias");
+        }
+      }
       log.debug("Saved OSV advisory: {}", vuln.getId());
 
     } catch (Exception e) {
       throw new IllegalStateException("OSV advisory persistence failed", e);
-    }
-  }
-
-  void buildEquivalenceMappings() {
-    log.debug("Building advisory equivalence mappings");
-
-    try {
-      List<OsvAdvisoryEntity> osvRecords = osvAdvisoryRepository.findAll();
-
-      for (OsvAdvisoryEntity osv : osvRecords) {
-        try {
-          OsvVulnerability vuln = objectMapper.readValue(osv.getOsvData(), OsvVulnerability.class);
-
-          if (vuln.getAliases() == null || vuln.getAliases().isEmpty()) {
-            continue;
-          }
-
-          String cveId = null;
-          String ghsaId = null;
-
-          for (String alias : vuln.getAliases()) {
-            if (alias.startsWith("CVE-")) {
-              cveId = alias;
-            } else if (alias.startsWith("GHSA-")) {
-              ghsaId = alias;
-            }
-          }
-
-          if (cveId != null || ghsaId != null) {
-            createEquivalence(cveId, ghsaId, osv.getOsvId(), "same_advisory");
-          }
-
-        } catch (Exception e) {
-          log.debug("Failed to process OSV record aliases: {}", osv.getOsvId(), e);
-        }
-      }
-
-    } catch (Exception e) {
-      log.error("Failed to build equivalence mappings", e);
     }
   }
 
@@ -230,11 +203,12 @@ public class OsvPlatformService {
           .discoveredAt(Instant.now())
           .build();
 
-      equivalenceRepository.save(eq);
+      eq.setId(java.util.UUID.nameUUIDFromBytes(("sg-equivalence:"+cveId+":"+ghsaId+":"+osvId).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+      staging.append("EQUIVALENCE",osvId,null,"osv",com.prototype.vulnwatch.service.IntelligenceEntityCodec.row(eq),"VALID");
       log.debug("Created equivalence: {} -> {} -> {}", cveId, ghsaId, osvId);
 
     } catch (Exception e) {
-      log.debug("Failed to create equivalence", e);
+      throw new IllegalStateException("Structured alias normalization failed",e);
     }
   }
 

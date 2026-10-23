@@ -65,6 +65,10 @@ public record FindingResponse(
          * {@code ai_bom_resource_vulnerability_links}. Empty for the vast majority of findings;
          * batch-loaded per page, never per-row.
          */
-        java.util.List<AffectedAiResourceSummary> affectedAiResources
+        java.util.List<AffectedAiResourceSummary> affectedAiResources,
+        String intelligenceEligibility,
+        UUID intelligenceReleaseId,
+        long intelligenceRevision,
+        UUID intelligenceMergedIntoId
 ) {
 }

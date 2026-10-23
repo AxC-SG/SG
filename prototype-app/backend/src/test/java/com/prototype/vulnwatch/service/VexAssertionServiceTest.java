@@ -28,6 +28,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class VexAssertionServiceTest {
+    private IntelligenceWriteContext.Scope publication;
+    @org.junit.jupiter.api.BeforeEach void publicationScope() { publication=IntelligenceWriteContext.publication(); }
+    @org.junit.jupiter.api.AfterEach void closePublicationScope() { publication.close(); }
+
 
     @Mock
     private VexAssertionRepository vexAssertionRepository;

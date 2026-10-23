@@ -111,9 +111,9 @@ class InvestigationAgentControllerPostgresIntegrationTest {
     }
 
     @Test
-    void proTenantCanRunAgent() throws Exception {
+    void internalTenantCanRunAgent() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
 
         mockMvc.perform(authedPost("/api/cve-detail/CVE-2024-99104/investigation/run-agent")

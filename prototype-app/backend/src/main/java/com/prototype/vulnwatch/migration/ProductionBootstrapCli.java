@@ -23,7 +23,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 public final class ProductionBootstrapCli {
 
     private static final PackagedMigrationCatalog.Targets MIGRATION_TARGETS = PackagedMigrationCatalog.resolve();
-    private static final String DEFAULT_TENANT_NAME = "Default Workspace";
+    private static final String DEFAULT_TENANT_NAME = "SG Internal";
     private static final String DEFAULT_TENANT_SLUG = "default-workspace";
     private static final String DEFAULT_TENANT_SCHEMA = "tenant_default";
     private static final String LOCK_NAME = "scout-production-bootstrap";
@@ -54,10 +54,6 @@ public final class ProductionBootstrapCli {
                         int platformVersion = runPlatformMigrations(config);
                         provisionRuntimeRole(connection, config.runtimeDbUsername(), config.runtimeDbPassword());
                         phases.add(Phase.success("platform_migrations", "version=" + platformVersion));
-                        if (config.platformOwnerBootstrapEnabled()) {
-                            reconcilePlatformOwner(connection, config);
-                            phases.add(Phase.success("platform_owner_identity", "configured"));
-                        }
                         TenantSchema defaultTenant = ensureDefaultTenant(connection);
                         phases.add(Phase.success("default_tenant_registration", defaultTenant.schemaName()));
                         migrateTenant(config, defaultTenant);
@@ -76,18 +72,9 @@ public final class ProductionBootstrapCli {
                         phases.add(Phase.success("runtime_role_provisioning", config.runtimeDbUsername()));
                         verifyControlPlane(connection, config.runtimeDbUsername());
                         phases.add(Phase.success("owner_verification", "complete"));
-                        if (config.platformOwnerSetupLinkEnabled()) {
-                            PlatformOwnerSetupLinkIssuer.DeliverySummary delivery =
-                                    platformOwnerSetupLinkIssuer(config).issue(
-                                            connection,
-                                            config.platformOwnerSetupEmail(),
-                                            config.platformOwnerSetupAppBaseUrl(),
-                                            config.platformOwnerSetupTokenTtlMinutes(),
-                                            config.platformOwnerSetupAllowReissue(),
-                                            runId);
-                            phases.add(Phase.success(
-                                    "platform_owner_setup_email",
-                                    "delivered; expiresAt=" + delivery.expiresAt()));
+                        if (config.platformOwnerBootstrapEnabled()) {
+                            bootstrapInstallationIdentities(connection, config, defaultTenant.tenantId());
+                            phases.add(Phase.success("installation_identities", "verified; setup delivery intents committed"));
                         }
                     }
                 } finally {
@@ -188,67 +175,84 @@ public final class ProductionBootstrapCli {
                 config.resendApiKey(),
                 config.resendFromEmail(),
                 config.resendFromDomain());
-        return new PlatformOwnerSetupLinkIssuer(emailClient);
+        return new PlatformOwnerSetupLinkIssuer(emailClient,
+                new com.prototype.vulnwatch.service.CredentialEncryptionService(
+                        config.credentialEncryptionKey(), config.credentialEncryptionKeyId(), ""));
     }
 
-    private static void reconcilePlatformOwner(Connection connection, Config config) throws SQLException {
-        String email = config.platformOwnerBootstrapEmail().trim().toLowerCase();
-        String externalSubject = config.platformOwnerBootstrapExternalSubject().isBlank()
-                ? email
-                : config.platformOwnerBootstrapExternalSubject().trim();
-        UUID subjectMatch = findUserBySubject(connection, externalSubject);
-        UUID emailMatch = findUserByEmail(connection, email);
-        if (subjectMatch != null && emailMatch != null && !subjectMatch.equals(emailMatch)) {
-            throw new BootstrapFailure(
-                    "platform_owner_identity_conflict",
-                    "Platform owner subject and email match different users");
-        }
-        UUID userId = subjectMatch != null ? subjectMatch : emailMatch;
-        if (userId == null) {
-            userId = UUID.randomUUID();
-            try (PreparedStatement insert = connection.prepareStatement("""
-                    insert into platform.app_users (
-                        id, created_at, display_name, email, external_subject,
-                        platform_owner, status, updated_at
-                    ) values (?, now(), ?, ?, ?, true, 'ACTIVE', now())
-                    """)) {
-                insert.setObject(1, userId);
-                insert.setString(2, config.platformOwnerBootstrapDisplayName());
-                insert.setString(3, email);
-                insert.setString(4, externalSubject);
-                insert.executeUpdate();
+    private static void bootstrapInstallationIdentities(Connection connection, Config config, UUID tenantId) throws SQLException {
+        boolean original = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            String ownerEmail = config.platformOwnerBootstrapEmail().trim().toLowerCase(java.util.Locale.ROOT);
+            String adminEmail = config.internalAdminEmail().trim().toLowerCase(java.util.Locale.ROOT);
+            if (ownerEmail.equals(adminEmail)) throw new IllegalArgumentException("Owner and internal administrator require distinct email aliases");
+            UUID owner = reconcileIdentity(connection, ownerEmail, config.platformOwnerBootstrapExternalSubject(), true, tenantId);
+            UUID admin = reconcileIdentity(connection, adminEmail, adminEmail, false, tenantId);
+            PlatformOwnerSetupLinkIssuer issuer = platformOwnerSetupLinkIssuer(config);
+            issuer.enqueue(connection, owner, null, "PLATFORM_OWNER_SETUP", ownerEmail,
+                    config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.platformOwnerSetupAllowReissue());
+            issuer.enqueue(connection, admin, tenantId, "INTERNAL_ADMIN_SETUP", adminEmail,
+                    config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.internalAdminSetupAllowReissue());
+            try(var audit=connection.prepareStatement("insert into platform.intelligence_audit_events(id,action,actor,detail) values(?,'INSTALLATION_VERIFIED','system:installation',jsonb_build_object('ownerId',?::text,'internalAdminId',?::text,'tenantId',?::text))")) {
+                audit.setObject(1,UUID.randomUUID());audit.setString(2,owner.toString());audit.setString(3,admin.toString());audit.setString(4,tenantId.toString());audit.executeUpdate();
             }
-        } else {
-            try (PreparedStatement update = connection.prepareStatement("""
-                    update platform.app_users
-                    set display_name = ?,
-                        email = ?,
-                        external_subject = ?,
-                        platform_owner = true,
-                        status = 'ACTIVE',
-                        updated_at = now()
-                    where id = ?
-                    """)) {
-                update.setString(1, config.platformOwnerBootstrapDisplayName());
-                update.setString(2, email);
-                update.setString(3, externalSubject);
-                update.setObject(4, userId);
-                if (update.executeUpdate() != 1) {
-                    throw new BootstrapFailure(
-                            "platform_owner_identity_update_failed",
-                            "Platform owner identity update did not affect one row");
+            connection.commit();
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback(); throw failure;
+        } finally { connection.setAutoCommit(original); }
+    }
+
+    private static UUID reconcileIdentity(Connection connection, String email, String subject, boolean owner, UUID tenantId) throws SQLException {
+        if (subject == null || subject.isBlank()) subject = email;
+        UUID bySubject = findUserBySubject(connection, subject);
+        UUID byEmail = findUserByEmail(connection, email);
+        if (bySubject != null && byEmail != null && !bySubject.equals(byEmail))
+            throw new IllegalStateException("Configured subject and email match different identities");
+        UUID id = bySubject != null ? bySubject : byEmail;
+        if (id != null) {
+            try (var select = connection.prepareStatement("select email,external_subject,platform_owner,status from platform.app_users where id=? for update")) {
+                select.setObject(1,id);
+                try (var row=select.executeQuery()) {
+                    if (!row.next() || !email.equalsIgnoreCase(row.getString(1)) || !subject.equals(row.getString(2))
+                            || owner != row.getBoolean(3) || !"ACTIVE".equals(row.getString(4)))
+                        throw new IllegalStateException("Existing identity conflicts with installation authority");
                 }
             }
+            try (var select=connection.prepareStatement("select tenant_id,role,status,provenance from platform.tenant_memberships where user_id=?")) {
+                select.setObject(1,id);
+                try (var rows=select.executeQuery()) {
+                    while(rows.next()) {
+                        boolean retiredBridge="PLAYGROUND_BOOTSTRAP".equals(rows.getString(4)) && !"ACTIVE".equals(rows.getString(3));
+                        boolean validAdmin=!owner && tenantId.equals(rows.getObject(1,UUID.class)) && "TENANT_ADMIN".equals(rows.getString(2))
+                                && "ACTIVE".equals(rows.getString(3)) && "INSTALLATION_BOOTSTRAP".equals(rows.getString(4));
+                        if (!retiredBridge && !validAdmin) throw new IllegalStateException("Existing identity has conflicting tenant membership");
+                    }
+                }
+            }
+            try(var select=connection.prepareStatement("select role from platform.app_user_global_roles where app_user_id=?")) {
+                select.setObject(1,id);
+                try(var rows=select.executeQuery()) {
+                    while(rows.next()) if(!owner || !"PLATFORM_OWNER".equals(rows.getString(1)))
+                        throw new IllegalStateException("Existing identity has conflicting global authority");
+                }
+            }
+        } else {
+            id=UUID.randomUUID();
+            try(var insert=connection.prepareStatement("insert into platform.app_users(id,created_at,updated_at,display_name,email,external_subject,platform_owner,status) values(?,now(),now(),?,?,?,?, 'ACTIVE')")) {
+                insert.setObject(1,id); insert.setString(2,email); insert.setString(3,email); insert.setString(4,subject); insert.setBoolean(5,owner); insert.executeUpdate();
+            }
         }
-        try (PreparedStatement role = connection.prepareStatement("""
-                insert into platform.app_user_global_roles (id, app_user_id, role, created_at)
-                values (?, ?, 'PLATFORM_OWNER', now())
-                on conflict (app_user_id, role) do nothing
-                """)) {
-            role.setObject(1, UUID.randomUUID());
-            role.setObject(2, userId);
-            role.executeUpdate();
+        if(owner) {
+            try(var insert=connection.prepareStatement("insert into platform.app_user_global_roles(id,app_user_id,role,created_at) values(?,?,'PLATFORM_OWNER',now()) on conflict(app_user_id,role) do nothing")) {
+                insert.setObject(1,UUID.randomUUID());insert.setObject(2,id);insert.executeUpdate();
+            }
+        } else {
+            try(var insert=connection.prepareStatement("insert into platform.tenant_memberships(id,user_id,tenant_id,role,status,provenance,created_at,updated_at) values(?,?,?,'TENANT_ADMIN','ACTIVE','INSTALLATION_BOOTSTRAP',now(),now()) on conflict do nothing")) {
+                insert.setObject(1,UUID.randomUUID());insert.setObject(2,id);insert.setObject(3,tenantId);insert.executeUpdate();
+            }
         }
+        return id;
     }
 
     private static UUID findUserBySubject(Connection connection, String externalSubject) throws SQLException {
@@ -293,49 +297,26 @@ public final class ProductionBootstrapCli {
     }
 
     private static TenantSchema ensureDefaultTenant(Connection connection) throws SQLException {
-        try (PreparedStatement select = connection.prepareStatement("""
-                select id, schema_name
-                from platform.tenants
-                where lower(name) = lower(?) or schema_name = ?
-                order by case when schema_name = ? then 0 else 1 end, created_at
-                limit 1
-                """)) {
-            select.setString(1, DEFAULT_TENANT_NAME);
-            select.setString(2, DEFAULT_TENANT_SCHEMA);
-            select.setString(3, DEFAULT_TENANT_SCHEMA);
-            try (ResultSet result = select.executeQuery()) {
-                if (result.next()) {
-                    UUID tenantId = result.getObject("id", UUID.class);
-                    try (PreparedStatement update = connection.prepareStatement("""
-                            update platform.tenants
-                            set name = ?, slug = ?, schema_name = ?, status = 'ACTIVE', updated_at = now()
-                            where id = ?
-                            """)) {
-                        update.setString(1, DEFAULT_TENANT_NAME);
-                        update.setString(2, DEFAULT_TENANT_SLUG);
-                        update.setString(3, DEFAULT_TENANT_SCHEMA);
-                        update.setObject(4, tenantId);
-                        update.executeUpdate();
-                    }
-                    return new TenantSchema(tenantId, DEFAULT_TENANT_SCHEMA, "ACTIVE");
+        try (var select=connection.prepareStatement("select id,schema_name,classification from platform.tenants where schema_name=? or classification='INTERNAL'")) {
+            select.setString(1,DEFAULT_TENANT_SCHEMA);
+            try(var row=select.executeQuery()) {
+                if(row.next()) {
+                    UUID id=row.getObject(1,UUID.class);
+                    if(!DEFAULT_TENANT_SCHEMA.equals(row.getString(2)) || !"INTERNAL".equals(row.getString(3)) || row.next())
+                        throw new IllegalStateException("Conflicting SG Internal schema mapping");
+                    return new TenantSchema(id,DEFAULT_TENANT_SCHEMA,"ACTIVE");
                 }
             }
         }
-        try (PreparedStatement insert = connection.prepareStatement("""
-                insert into platform.tenants (
-                    id, name, slug, schema_name, status, plan_code,
-                    created_at, updated_at, max_connector_count,
-                    max_service_account_count, max_daily_sbom_uploads,
-                    max_export_rows, max_daily_exposure_refreshes
-                ) values (?, ?, ?, ?, 'ACTIVE', 'ENTERPRISE', now(), now(), 10, 25, 100, 50000, 25)
+        try(var insert=connection.prepareStatement("""
+                insert into platform.tenants(id,name,slug,schema_name,classification,status,plan_code,created_at,updated_at,
+                    max_connector_count,max_service_account_count,max_daily_sbom_uploads,max_export_rows,max_daily_exposure_refreshes)
+                values(?,?,?,?,'INTERNAL','ACTIVE','ENTERPRISE',now(),now(),1000,1000,10000,1000000,10000)
                 """)) {
-            insert.setObject(1, DEFAULT_TENANT_ID);
-            insert.setString(2, DEFAULT_TENANT_NAME);
-            insert.setString(3, DEFAULT_TENANT_SLUG);
-            insert.setString(4, DEFAULT_TENANT_SCHEMA);
-            insert.executeUpdate();
+            insert.setObject(1,DEFAULT_TENANT_ID);insert.setString(2,DEFAULT_TENANT_NAME);insert.setString(3,DEFAULT_TENANT_SLUG);
+            insert.setString(4,DEFAULT_TENANT_SCHEMA);insert.executeUpdate();
         }
-        return new TenantSchema(DEFAULT_TENANT_ID, DEFAULT_TENANT_SCHEMA, "ACTIVE");
+        return new TenantSchema(DEFAULT_TENANT_ID,DEFAULT_TENANT_SCHEMA,"ACTIVE");
     }
 
     private static BootstrapResult migrateExistingAndProvisioningTenants(
@@ -944,6 +925,10 @@ public final class ProductionBootstrapCli {
             String platformOwnerSetupAppBaseUrl,
             int platformOwnerSetupTokenTtlMinutes,
             boolean platformOwnerSetupAllowReissue,
+            String internalAdminEmail,
+            boolean internalAdminSetupAllowReissue,
+            String credentialEncryptionKey,
+            String credentialEncryptionKeyId,
             String resendBaseUrl,
             String resendApiKey,
             String resendFromEmail,
@@ -959,6 +944,12 @@ public final class ProductionBootstrapCli {
                             "PLATFORM_OWNER_SETUP_EMAIL",
                             "APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_EMAIL")
                     : "";
+            String internalAdminEmail = ownerBootstrapEnabled ? required("SG_INTERNAL_ADMIN_EMAIL") : "";
+            if (ownerBootstrapEnabled && (ownerBootstrapEmail.equalsIgnoreCase(internalAdminEmail)
+                    || !ownerBootstrapEmail.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")
+                    || !internalAdminEmail.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))) {
+                throw new IllegalArgumentException("Bootstrap requires two distinct valid email aliases");
+            }
             int setupTokenTtlMinutes = integerEnv("PLATFORM_OWNER_SETUP_TOKEN_TTL_MINUTES", 30, 5, 1440);
             return new Config(
                     dbUrl,
@@ -979,10 +970,14 @@ public final class ProductionBootstrapCli {
                     env("PLATFORM_OWNER_SETUP_APP_BASE_URL", env("APP_DEMO_APP_BASE_URL", "https://scoutgrid.io")),
                     setupTokenTtlMinutes,
                     Boolean.parseBoolean(env("PLATFORM_OWNER_SETUP_ALLOW_REISSUE", "false")),
+                    internalAdminEmail,
+                    Boolean.parseBoolean(env("SG_INTERNAL_ADMIN_SETUP_ALLOW_REISSUE","false")),
+                    ownerBootstrapEnabled ? required("APP_CREDENTIAL_ENCRYPTION_KEY") : "",
+                    env("APP_CREDENTIAL_ENCRYPTION_KEY_ID", "primary"),
                     env("RESEND_BASE_URL", "https://api.resend.com"),
-                    setupLinkEnabled ? required("RESEND_API_KEY") : "",
-                    setupLinkEnabled ? required("RESEND_FROM_EMAIL") : "",
-                    setupLinkEnabled ? required("RESEND_FROM_DOMAIN") : "");
+                    env("RESEND_API_KEY", ""),
+                    env("RESEND_FROM_EMAIL", ""),
+                    env("RESEND_FROM_DOMAIN", "hossstore.in"));
         }
     }
 

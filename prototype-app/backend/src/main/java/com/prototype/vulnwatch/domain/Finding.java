@@ -197,6 +197,37 @@ public class Finding {
     @Column(nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(name="intelligence_merged_into_id")
+    private UUID intelligenceMergedIntoId;
+    public UUID getIntelligenceMergedIntoId() { return intelligenceMergedIntoId; }
+    public void setIntelligenceMergedIntoId(UUID value) { intelligenceMergedIntoId=value; }
+
+    @Column(name="intelligence_eligibility",nullable=false)
+    private String intelligenceEligibility="ELIGIBLE";
+    @Column(name="intelligence_release_id")
+    private UUID intelligenceReleaseId;
+    @Column(name="intelligence_revision",nullable=false)
+    private long intelligenceRevision;
+    @Column(name="intelligence_severity")
+    private String intelligenceSeverity;
+    @Column(name="intelligence_epss")
+    private Double intelligenceEpss;
+    @Column(name="intelligence_in_kev")
+    private Boolean intelligenceInKev;
+
+    public String getIntelligenceEligibility() { return intelligenceEligibility; }
+    public void setIntelligenceEligibility(String value) { intelligenceEligibility=value; }
+    public UUID getIntelligenceReleaseId() { return intelligenceReleaseId; }
+    public void setIntelligenceReleaseId(UUID value) { intelligenceReleaseId=value; }
+    public long getIntelligenceRevision() { return intelligenceRevision; }
+    public void setIntelligenceRevision(long value) { intelligenceRevision=value; }
+    public String getIntelligenceSeverity() { return intelligenceSeverity; }
+    public void setIntelligenceSeverity(String value) { intelligenceSeverity=value; }
+    public Double getIntelligenceEpss() { return intelligenceEpss; }
+    public void setIntelligenceEpss(Double value) { intelligenceEpss=value; }
+    public Boolean getIntelligenceInKev() { return intelligenceInKev; }
+    public void setIntelligenceInKev(Boolean value) { intelligenceInKev=value; }
+
     public UUID getId() {
         return id;
     }

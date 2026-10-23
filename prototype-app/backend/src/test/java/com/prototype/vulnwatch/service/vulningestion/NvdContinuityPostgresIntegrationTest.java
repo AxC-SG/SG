@@ -24,6 +24,8 @@ class NvdContinuityPostgresIntegrationTest {
     @Autowired NvdSyncService nvd;
     @Autowired FeedWatermarkService watermarks;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.prototype.vulnwatch.repo.VulnerabilityRepository vulnerabilities;
+    @Autowired com.prototype.vulnwatch.repo.VulnerabilityRuleRepository rules;
     @MockitoBean NvdApiClient provider;
     @MockitoBean VulnerabilitySourceFilterConfigService filters;
     private final NvdFilters original = new NvdFilters(null, false, false, null, null);
@@ -59,7 +61,8 @@ class NvdContinuityPostgresIntegrationTest {
     }
 
     @Test void failedSecondIntervalDoesNotCertifyGapAndReplayResumesAtLastCompletedBoundary() {
-        watermarks.complete(key(original), Instant.now().minus(Duration.ofDays(250)));
+        Instant originalCheckpoint=Instant.now().minus(Duration.ofDays(250));
+        watermarks.complete(key(original), originalCheckpoint);
         AtomicInteger calls = new AtomicInteger();
         List<Instant> ends = new ArrayList<>();
         when(provider.fetchPage(anyInt(), any(), any(), any(), any())).thenAnswer(call -> {
@@ -69,7 +72,7 @@ class NvdContinuityPostgresIntegrationTest {
         });
         assertEquals("failed", nvd.syncNvd(24).status());
         Instant checkpoint = watermarks.completedUntil(key(original)).orElseThrow();
-        assertEquals(ends.get(0).toEpochMilli(), checkpoint.toEpochMilli());
+        assertEquals(originalCheckpoint.toEpochMilli(), checkpoint.toEpochMilli());
         assertTrue(checkpoint.isBefore(ends.get(1)));
         List<Instant> replay = new ArrayList<>();
         when(provider.fetchPage(anyInt(), any(), any(), any(), any())).thenAnswer(call -> {
@@ -95,6 +98,22 @@ class NvdContinuityPostgresIntegrationTest {
         });
         assertEquals("ok", nvd.syncNvd(48).status());
         assertTrue(watermarks.completedUntil(key(changed)).isPresent());
+    }
+
+    @Test void optionalTargetRepairStagesAnExplicitRunWithoutChangingApprovedTargets() {
+        var vulnerability=new com.prototype.vulnwatch.domain.Vulnerability();
+        vulnerability.setExternalId("CVE-2099-89999");vulnerability.setTitle("Approved rule repair fixture");
+        vulnerability.setSource(com.prototype.vulnwatch.domain.VulnerabilitySource.NVD);
+        vulnerability=vulnerabilities.save(vulnerability);
+        var rule=new com.prototype.vulnwatch.domain.VulnerabilityRule();rule.setVulnerability(vulnerability);
+        rule.setEcosystem("npm");rule.setPackageName("repair-fixture");rule.setVersionExact("1.0.0");rules.save(rule);
+        org.springframework.test.util.ReflectionTestUtils.setField(nvd,"backfillTargetsOnStartup",true);
+        try {
+            nvd.backfillTargetsFromExistingRulesIfEnabled();
+            assertEquals(0,jdbc.queryForObject("select count(*) from platform.vulnerability_targets where vulnerability_id=?",Integer.class,vulnerability.getId()));
+            assertTrue(jdbc.queryForObject("select count(*) from platform.intelligence_staged_records s join platform.sync_runs r on r.id=s.sync_run_id where r.sync_type='NVD_TARGET_REPAIR' and r.status='completed' and s.kind='TARGET'",Integer.class)>0);
+            assertNull(com.prototype.vulnwatch.service.IntelligenceWriteContext.runId());
+        } finally { org.springframework.test.util.ReflectionTestUtils.setField(nvd,"backfillTargetsOnStartup",false); }
     }
 
     private static String key(NvdFilters value) {

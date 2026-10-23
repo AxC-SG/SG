@@ -30,7 +30,7 @@ class PlaygroundMembershipBootstrapServiceTest {
     }
 
     @Test
-    void createsAndAuditsMembershipInsidePlaygroundTenantScope() {
+    void revokesAndAuditsAutomaticOwnerMembershipInsideTenantScope() {
         PlaygroundMembershipProperties properties = new PlaygroundMembershipProperties();
         properties.setEnabled(true);
         properties.setSubjects(List.of("owner-subject"));
@@ -54,16 +54,10 @@ class PlaygroundMembershipBootstrapServiceTest {
         AuditEventService auditEventService = mock(AuditEventService.class);
         TenantWorkRunner tenantWorkRunner = mock(TenantWorkRunner.class);
 
-        when(tenantRepository.findBySlugIgnoreCase(TenantAccessResolutionService.PLAYGROUND_SLUG))
-                .thenReturn(Optional.of(playground));
-        when(userRepository.findByExternalSubject("owner-subject")).thenReturn(Optional.of(owner));
-        when(globalRoleService.rolesForUser(owner.getId())).thenReturn(Set.of("PLATFORM_OWNER"));
-        when(membershipRepository.findFirstByUserExternalSubjectAndTenantId("owner-subject", playground.getId()))
-                .thenReturn(Optional.empty());
-        when(membershipRepository.save(any(TenantMembership.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        when(membershipRepository.findByProvenance(TenantAccessResolutionService.PLAYGROUND_PROVENANCE))
-                .thenReturn(List.of());
+        TenantMembership automatic=new TenantMembership();automatic.setId(UUID.randomUUID());automatic.setTenant(playground);
+        automatic.setUser(owner);automatic.setRole("TENANT_ADMIN");automatic.setStatus("ACTIVE");automatic.setProvenance("PLAYGROUND_BOOTSTRAP");
+        when(membershipRepository.save(any(TenantMembership.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(membershipRepository.findByProvenance(TenantAccessResolutionService.PLAYGROUND_PROVENANCE)).thenReturn(List.of(automatic));
 
         doAnswer(invocation -> {
             Tenant tenant = invocation.getArgument(0);
@@ -97,6 +91,7 @@ class PlaygroundMembershipBootstrapServiceTest {
 
         service.reconcile();
 
+        assertThat(automatic.getStatus()).isEqualTo("SUSPENDED");
         assertThat(auditTenantContext.get()).isEqualTo(playground.getId());
         verify(tenantWorkRunner).runScoped(any(Tenant.class), any(Runnable.class));
         assertThat(TenantContext.getCurrentTenantId()).isNull();

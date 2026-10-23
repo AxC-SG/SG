@@ -53,9 +53,18 @@ class CustomerDemoDatasetPostgresIntegrationTest {
 
     @Autowired private DemoDatasetProvisioningService provisioning;
 
+    @Autowired TenantSchemaMigrationService migrations;
+
+    @org.junit.jupiter.api.BeforeEach void approvedDemoFixture() {
+        for(String external:CustomerDemoDatasetService.requiredApprovedIdentifiers()) jdbcTemplate.update("insert into platform.vulnerabilities(id,external_id,source,title,severity,in_kev,created_at,updated_at) values (gen_random_uuid(),?,'NVD',?,'HIGH',false,now(),now()) on conflict(external_id) do nothing",external,external);
+    }
+
     @Test
     void provisioningCommitsRealSeedDataAndCompletionInsideTheSelectedTenant() {
-        Tenant tenant=tenantService.getDefaultTenant();
+        String slug="demo-fixture-"+UUID.randomUUID().toString().substring(0,8);
+        Tenant tenant=tenantService.createTenant(slug,slug,"ENTERPRISE",null);
+        migrations.provisionNewTenant(tenant);
+        tenant=tenantService.resolveTenantUuid(tenant.getId());
         jdbcTemplate.update("update platform.tenants set demo_source=? where id=?",
                 DemoDatasetProvisioningService.SEEDING_MARKER,tenant.getId());
         var first=provisioning.seedIfReady(tenant.getId());
@@ -63,7 +72,8 @@ class CustomerDemoDatasetPostgresIntegrationTest {
         assertEquals(first,second);
         assertEquals(DemoDatasetProvisioningService.SEEDED_MARKER,
                 jdbcTemplate.queryForObject("select demo_source from platform.tenants where id=?",String.class,tenant.getId()));
-        tenantSchemaExecutionService.run(tenant,() -> assertEquals(10,count("assets")));
+        Tenant ready=tenant;
+        tenantSchemaExecutionService.run(ready,() -> assertEquals(10,count("assets")));
     }
 
     @Test

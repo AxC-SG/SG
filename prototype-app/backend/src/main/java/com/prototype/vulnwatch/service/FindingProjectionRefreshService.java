@@ -116,7 +116,7 @@ public class FindingProjectionRefreshService {
                         finding.id,
                         finding.tenant_id,
                         finding.display_id,
-                        upper(coalesce(finding.severity_override, vulnerability.severity,
+                        upper(coalesce(finding.severity_override, finding.intelligence_severity, vulnerability.severity,
                             case when finding.risk_score >= 9 then 'CRITICAL'
                                  when finding.risk_score >= 7 then 'HIGH'
                                  when finding.risk_score >= 4 then 'MEDIUM' else 'LOW' end)),

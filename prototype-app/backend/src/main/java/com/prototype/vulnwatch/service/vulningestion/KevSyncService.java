@@ -147,7 +147,7 @@ public class KevSyncService {
                     if (requiredAction != null && !requiredAction.isBlank()) {
                         vuln.setKevRequiredAction(requiredAction.trim());
                     }
-                    vulnerabilityRepository.save(vuln);
+                    support.saveMetadata(vuln,"kev");
                 }
                 if (result.vulnerabilityCreated()) {
                     inserted++;

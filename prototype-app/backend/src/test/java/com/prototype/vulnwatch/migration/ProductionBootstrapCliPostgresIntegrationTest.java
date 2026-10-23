@@ -48,7 +48,7 @@ class ProductionBootstrapCliPostgresIntegrationTest {
         assertEquals(1, queryInt("""
                 select count(*)
                 from platform.tenants
-                where name = 'Default Workspace'
+                where name = 'SG Internal'
                   and schema_name = 'tenant_default'
                   and status = 'ACTIVE'
                 """));
@@ -142,6 +142,8 @@ class ProductionBootstrapCliPostgresIntegrationTest {
         set("RUNTIME_DB_USERNAME", RUNTIME_USERNAME);
         set("RUNTIME_DB_PASSWORD", RUNTIME_PASSWORD);
         set("APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED", "true");
+        set("SG_INTERNAL_ADMIN_EMAIL", "internal-admin@example.test");
+        set("APP_CREDENTIAL_ENCRYPTION_KEY", java.util.Base64.getEncoder().encodeToString(new byte[32]));
         set("APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_EMAIL", PLATFORM_OWNER_EMAIL);
         set("APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_DISPLAY_NAME", "Bootstrap Owner");
         try {
@@ -153,6 +155,8 @@ class ProductionBootstrapCliPostgresIntegrationTest {
             clear("RUNTIME_DB_USERNAME");
             clear("RUNTIME_DB_PASSWORD");
             clear("APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED");
+            clear("SG_INTERNAL_ADMIN_EMAIL");
+            clear("APP_CREDENTIAL_ENCRYPTION_KEY");
             clear("APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_EMAIL");
             clear("APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_DISPLAY_NAME");
             clear("BOOTSTRAP_REPORT_ONLY");

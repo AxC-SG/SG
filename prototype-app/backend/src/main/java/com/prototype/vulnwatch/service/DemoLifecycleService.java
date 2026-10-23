@@ -418,7 +418,7 @@ public class DemoLifecycleService {
     }
 
     public boolean isDemoTenant(Tenant tenant) {
-        return tenant != null
+        return tenant != null && !tenant.isInternal()
                 && ((tenant.getDemoExpiresAt() != null)
                 || (tenant.getDemoSource() != null && !tenant.getDemoSource().isBlank())
                 || DEMO_PLAN_CODE.equalsIgnoreCase(tenant.getPlanCode()));

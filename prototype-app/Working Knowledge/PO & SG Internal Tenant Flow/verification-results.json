@@ -1,0 +1,68 @@
+{
+  "surefire": {
+    "tests": 1308,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 252,
+    "result": "PASS"
+  },
+  "failsafe": {
+    "tests": 494,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 110,
+    "result": "PASS"
+  },
+  "frontend": {
+    "result": "PASS",
+    "testFiles": 75,
+    "tests": 674,
+    "typecheck": "PASS",
+    "lint": {
+      "errors": 0,
+      "existingWarnings": 3
+    },
+    "productionBuild": "PASS",
+    "coverageThresholds": "PASS"
+  },
+  "verificationCompletedAt": "2026-10-22T04:10:54.186384+00:00",
+  "databaseScope": "Disposable loopback PostgreSQL instance, isolated databases; no production operations",
+  "migrationHeads": {
+    "platform": 8,
+    "tenant": 6,
+    "compatibleTenantRange": [
+      6,
+      6
+    ]
+  },
+  "migrationSha256": {
+    "db/migration/postgres_reset/V7__reserved_internal_tenant_and_setup_delivery.sql": "e3b867415e65f337e0da1f0177deee295cdb090570b39ebdb83b506e43140b70",
+    "db/migration/postgres_reset/V8__reviewed_intelligence_publication.sql": "9091ea574a11d9af0f4bd13c78f42b4a96e2c02c378aa186119e65f3e4b3c84b",
+    "db/migration/tenant/V6__intelligence_revision_and_finding_eligibility.sql": "089952eb7a7fa20e4a082c3f3fda474d51de5fc930b90c947aabc745b272baae"
+  },
+  "qa": {
+    "result": "PASS",
+    "restrictedRuntimeRole": true,
+    "independentSetupAndLogins": true,
+    "prepublicationFindings": 0,
+    "postpublicationFindings": 1,
+    "releaseGeneration": 1,
+    "sourceDisableActionableFindings": 0,
+    "reEnablePreservedFindingIdentity": true,
+    "crossScopeRequests": "403",
+    "providerCallsDisabled": true,
+    "syntheticPublicationFixtureRecords": 1000,
+    "observedPublicationSecondsRange": [
+      2.5,
+      6.1
+    ]
+  },
+  "operations": {
+    "productionDeployment": false,
+    "productionMigrations": false,
+    "realEmailDelivery": false,
+    "commitOrPush": false
+  }
+}

@@ -13,7 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
+@org.springframework.security.access.prepost.PreAuthorize("hasRole('PLATFORM_OWNER')")
 public class GithubAdvisoryPlatformService {
+    @org.springframework.beans.factory.annotation.Autowired private com.prototype.vulnwatch.repo.SyncRunRepository runs;
+    @org.springframework.beans.factory.annotation.Autowired private com.prototype.vulnwatch.service.vulningestion.GhsaSyncService ghsa;
+    private GithubAdvisorySyncStatusResponse liveStatus() {
+        var latest=runs.findTopBySyncTypeIgnoreCaseOrderByStartedAtDesc("GHSA");
+        if(latest.isEmpty()) return GithubAdvisorySyncStatusResponse.builder().syncType("GHSA").status("IDLE").syncComplete(false).advisoriesSynced(0).build();
+        var run=latest.get();
+        return GithubAdvisorySyncStatusResponse.builder().id(run.getId()).syncType("GHSA")
+                .status(java.util.Set.of("queued","running").contains(run.getStatus().toLowerCase()) ? "SYNCING" : "failed".equalsIgnoreCase(run.getStatus()) ? "ERROR" : "IDLE")
+                .syncComplete("completed".equalsIgnoreCase(run.getStatus())).lastFullSyncAt(run.getCompletedAt())
+                .advisoriesSynced(run.getRecordsFetched()).advisoriesNewlyFound(run.getRecordsInserted()).advisoriesUpdated(run.getRecordsUpdated())
+                .lastError(run.getErrorMessage()).createdAt(run.getStartedAt()).updatedAt(run.getCompletedAt()).build();
+    }
 
     private static final String SYNC_TYPE_GITHUB_GHSA = "GITHUB_GHSA";
 
@@ -25,32 +38,13 @@ public class GithubAdvisoryPlatformService {
 
     @Transactional
     public GithubAdvisorySyncStatusResponse getPlatformSyncStatus() {
-        log.debug("Fetching platform GHSA sync status");
-        GithubAdvisorySyncStateEntity syncState = syncStateRepository
-                .findBySyncType(SYNC_TYPE_GITHUB_GHSA)
-                .orElseGet(() -> createNewSyncState());
-
-        return toSyncStatusResponse(syncState);
+        return liveStatus();
     }
 
     @Transactional
     public GithubAdvisorySyncStatusResponse initiatePlatformSync() {
-        log.info("Initiating platform GHSA sync");
-        GithubAdvisorySyncStateEntity syncState = syncStateRepository
-                .findBySyncType(SYNC_TYPE_GITHUB_GHSA)
-                .orElseGet(this::createNewSyncState);
-
-        if ("SYNCING".equals(syncState.getStatus())) {
-            log.warn("GHSA sync already in progress");
-            return toSyncStatusResponse(syncState);
-        }
-
-        syncState.setStatus("SYNCING");
-        syncState.setUpdatedAt(Instant.now());
-        syncStateRepository.save(syncState);
-
-        log.info("Platform GHSA sync initiated with ID: {}", syncState.getId());
-        return toSyncStatusResponse(syncState);
+        ghsa.triggerGhsaSync();
+        return liveStatus();
     }
 
     @Transactional
@@ -95,17 +89,12 @@ public class GithubAdvisoryPlatformService {
 
     @Transactional(readOnly = true)
     public Optional<GithubAdvisorySyncStatusResponse> getLatestSyncStatus() {
-        return syncStateRepository
-                .findBySyncType(SYNC_TYPE_GITHUB_GHSA)
-                .map(this::toSyncStatusResponse);
+        return Optional.of(liveStatus());
     }
 
     @Transactional(readOnly = true)
     public boolean isSyncInProgress() {
-        return syncStateRepository
-                .findBySyncType(SYNC_TYPE_GITHUB_GHSA)
-                .map(state -> "SYNCING".equals(state.getStatus()))
-                .orElse(false);
+        return "SYNCING".equals(liveStatus().getStatus());
     }
 
     private GithubAdvisorySyncStatusResponse toSyncStatusResponse(GithubAdvisorySyncStateEntity entity) {

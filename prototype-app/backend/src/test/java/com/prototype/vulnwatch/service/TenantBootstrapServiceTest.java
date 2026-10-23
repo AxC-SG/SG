@@ -33,48 +33,20 @@ class TenantBootstrapServiceTest {
     }
 
     @Test
-    void ensureBootstrapTenantNormalizesMalformedStoredSchemaNames() {
-        Tenant defaultTenant = new Tenant();
-        defaultTenant.setId(UUID.randomUUID());
-        defaultTenant.setName(TenantService.DEFAULT_TENANT_NAME);
-        defaultTenant.setSlug("default-workspace");
-        defaultTenant.setSchemaName("tenant_default,platform");
-
-        Tenant customerTenant = new Tenant();
-        customerTenant.setId(UUID.randomUUID());
-        customerTenant.setName("GM Test");
-        customerTenant.setSlug("gm-test");
-        customerTenant.setSchemaName("tenant_gm_test,platform");
-        customerTenant.setStatus("PROVISIONING");
-
-        when(tenantSchemaService.defaultSchemaName()).thenReturn("tenant_default");
-        when(tenantSchemaService.normalizeSchemaName(anyString())).thenAnswer(invocation -> {
-            String schemaName = invocation.getArgument(0, String.class);
-            return switch (schemaName) {
-                case "tenant_default" -> "tenant_default";
-                case "tenant_gm_test,platform" -> "tenant_gm_test_platform";
-                default -> schemaName;
-            };
-        });
-        when(tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)).thenReturn(Optional.of(defaultTenant));
-        when(tenantRepository.findAll()).thenReturn(List.of(defaultTenant, customerTenant));
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        service.ensureBootstrapTenant();
-
-        verify(tenantSchemaService, times(2)).assertSchemaReady("tenant_default");
-        verify(tenantRepository, times(2)).save(any(Tenant.class));
-        verify(tenantSchemaService, times(0)).assertSchemaReady("tenant_gm_test_platform");
+    void startupRequiresExplicitReservedIdentityRatherThanRepairingCustomerMappings() {
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.empty());
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,service::ensureBootstrapTenant);
+        org.mockito.Mockito.verify(tenantRepository,org.mockito.Mockito.never()).save(any());
     }
 
     @Test
     void readinessFailureDoesNotEscapeStartupOrPreventLaterTenants() {
         Tenant defaultTenant = tenant("Default Workspace", "default-workspace", "tenant_default", "ACTIVE");
+        defaultTenant.setClassification("INTERNAL");
         Tenant broken = tenant("Broken", "broken", "tenant_broken", "ACTIVE");
         Tenant healthy = tenant("Healthy", "healthy", "tenant_healthy", "ACTIVE");
-        when(tenantSchemaService.defaultSchemaName()).thenReturn("tenant_default");
         when(tenantSchemaService.normalizeSchemaName(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME))
+        when(tenantRepository.findBySchemaName("tenant_default"))
                 .thenReturn(Optional.of(defaultTenant));
         when(tenantRepository.findAll()).thenReturn(List.of(defaultTenant, broken, healthy));
         org.mockito.Mockito.doAnswer(invocation -> {

@@ -39,9 +39,9 @@ class UpgradeRecommendationControllerPostgresIntegrationTest {
     private TenantRepository tenantRepository;
 
     @Test
-    void proTenantCanRequestUpgradeRecommendation() throws Exception {
+    void internalTenantCanRequestUpgradeRecommendation() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
 
         mockMvc.perform(asAnalyst(authedPost("/api/upgrade-recommendation")

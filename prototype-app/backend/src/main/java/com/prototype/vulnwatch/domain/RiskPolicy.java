@@ -97,7 +97,7 @@ public class RiskPolicy {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "finding_generation_mode", nullable = false, length = 20)
-    private FindingGenerationMode findingGenerationMode = FindingGenerationMode.MANUAL;
+    private FindingGenerationMode findingGenerationMode = FindingGenerationMode.AUTO;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "findings_score_config", columnDefinition = "jsonb")

@@ -158,10 +158,7 @@ public class GhsaSyncService {
 
             Instant now = Instant.now();
             Instant modifiedStart = now.minus(Math.max(1, ghsaDefaultLookbackDays), ChronoUnit.DAYS);
-            Optional<Instant> watermark = vulnerabilityIntelObservationRepository
-                    .findTopBySourceSystemOrderByLastModifiedAtDesc("ghsa")
-                    .map(observation -> observation.getLastModifiedAt() == null ? null : observation.getLastModifiedAt())
-                    .filter(instant -> instant != null);
+            Optional<Instant> watermark=support.latestSuccessfulModified("ghsa");
             if (watermark.isPresent()) {
                 modifiedStart = watermark.get().minus(1, ChronoUnit.DAYS);
             }
@@ -215,6 +212,7 @@ public class GhsaSyncService {
                 nextUrl = parseLinkNext(response.getHeaders().getFirst(HttpHeaders.LINK));
             }
 
+            if(support.hasText(nextUrl)) throw new IllegalStateException("GHSA page limit reached before the full checkpoint was staged");
             effectsService.recomputeCveDeltas(changedVulnerabilityIds);
             syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
             return new IngestionResult("ok", fetched, inserted, updated, "GHSA sync complete");
@@ -225,20 +223,34 @@ public class GhsaSyncService {
     }
 
     private GhsaIngestionCounters upsertGhsaAdvisory(JsonNode advisoryNode) {
+        Set<String> cves=new java.util.TreeSet<>();
+        if(advisoryNode.path("cve_id").asText("").matches("CVE-[0-9]{4}-[0-9]{4,}")) cves.add(advisoryNode.path("cve_id").asText());
+        for(JsonNode identifier:advisoryNode.path("identifiers")) {
+            if("CVE".equalsIgnoreCase(identifier.path("type").asText()) && identifier.path("value").asText().matches("CVE-[0-9]{4}-[0-9]{4,}")) cves.add(identifier.path("value").asText());
+        }
+        if(cves.isEmpty()) return upsertGhsaSingle(advisoryNode);
+        int inserted=0,updated=0;
+        for(String cve:cves) {
+            var copy=(com.fasterxml.jackson.databind.node.ObjectNode)advisoryNode.deepCopy();copy.put("cve_id",cve);
+            var result=upsertGhsaSingle(copy);inserted+=result.inserted();updated+=result.updated();
+        }
+        return new GhsaIngestionCounters(inserted,updated);
+    }
+    private GhsaIngestionCounters upsertGhsaSingle(JsonNode advisoryNode) {
         String ghsaId = support.textValue(advisoryNode.path("ghsa_id"));
         String cveId = support.firstNonBlank(
                 support.textValue(advisoryNode.path("cve_id")),
-                firstCveIdentifier(advisoryNode.path("identifiers"))
+                firstCveIdentifier(advisoryNode.path("identifiers")), ghsaId
         );
         if (!support.hasText(cveId)) {
             return new GhsaIngestionCounters(0, 0);
         }
         cveId = cveId.trim().toUpperCase(Locale.ROOT);
-        if (!cveId.startsWith("CVE-")) {
+        if (!cveId.matches("CVE-[0-9]{4}-[0-9]{4,}|GHSA-[A-Z0-9-]+")) {
             return new GhsaIngestionCounters(0, 0);
         }
 
-        String sourceRecordId = support.hasText(ghsaId) ? ghsaId.trim() : cveId;
+        String sourceRecordId = support.hasText(ghsaId) ? ghsaId.trim().toUpperCase(Locale.ROOT) : cveId;
         String severity = support.normalizeUpper(support.textValue(advisoryNode.path("severity")));
         if (!support.hasText(severity)) {
             severity = support.severityFromCvss(support.numericValue(advisoryNode.path("cvss").path("score")));
@@ -276,7 +288,11 @@ public class GhsaSyncService {
                 )
         );
         Vulnerability vulnerability = upsertResult.vulnerability();
-        vulnerabilityTargetRepository.deleteByVulnerabilityAndSourceIn(vulnerability, List.of("ghsa"));
+        if(!advisoryNode.path("withdrawn_at").isNull() && !advisoryNode.path("withdrawn_at").isMissingNode()) {
+            support.withdrawSource(vulnerability,"ghsa",sourceRecordId);
+            return new GhsaIngestionCounters(0,1);
+        }
+        support.replaceTargetsForRecord(vulnerability, List.of("ghsa"),sourceRecordId);
 
         JsonNode packageRules = advisoryNode.path("vulnerabilities");
         Set<String> dedupe = new HashSet<>();

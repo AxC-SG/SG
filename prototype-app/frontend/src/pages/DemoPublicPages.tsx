@@ -1294,7 +1294,7 @@ export function LoginPage() {
         <h1>Log in to ScoutGrid</h1>
         <p>
           {setupMode
-            ? 'Set a password for your tenant workspace. After saving it, return to the login screen and sign in with your email and new password.'
+            ? 'Set a password for your SG account. After saving it, return to the login screen and sign in with your email and new password.'
             : 'Use your email and password to access your tenant workspace or the platform console.'}
         </p>
         {!setupMode && activationComplete && (

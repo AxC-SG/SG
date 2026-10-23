@@ -66,6 +66,7 @@ class DemoExpiryDeliveryPostgresIntegrationTest {
         jdbc.execute("grant usage on schema platform,tenant_default to " + role);
         jdbc.execute("grant select,update on platform.tenants to " + role);
         jdbc.execute("grant select on platform.app_users to " + role);
+        jdbc.execute("grant select,insert,update on platform.tenant_intelligence_processing to " + role);
         jdbc.execute("grant select,insert,update on platform.invitation_email_outbox to " + role);
         jdbc.execute("grant select,update on tenant_default.demo_invites,tenant_default.demo_requests to " + role);
         jdbc.execute("grant select,insert on tenant_default.audit_events to " + role);

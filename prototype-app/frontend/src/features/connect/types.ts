@@ -230,7 +230,7 @@ export type SccmConnectionTestResponse = {
   testedAt: string;
 };
 
-export type VulnerabilitySourceSystem = 'nvd' | 'kev' | 'ghsa' | 'redhat' | 'microsoft' | 'euvd' | 'jvn';
+export type VulnerabilitySourceSystem = 'nvd' | 'kev' | 'ghsa' | 'redhat' | 'microsoft' | 'euvd' | 'jvn' | 'advisory' | 'epss';
 
 export type VulnerabilitySourceFilterConfig = {
   sourceSystem: VulnerabilitySourceSystem;

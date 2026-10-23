@@ -19,6 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ObservationIngestionServiceTest {
+    private IntelligenceWriteContext.Scope publication;
+    @org.junit.jupiter.api.BeforeEach void publicationScope() { publication=IntelligenceWriteContext.publication(); }
+    @org.junit.jupiter.api.AfterEach void closePublicationScope() { publication.close(); }
+
 
     @Mock
     private VulnerabilityRepository vulnerabilityRepository;

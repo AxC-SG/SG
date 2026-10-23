@@ -68,6 +68,8 @@ class ApiContractGoldenPostgresIntegrationTest {
         PostgresITSupport.registerDatabaseProperties(registry, DATABASE);
     }
 
+    @Autowired org.springframework.context.ApplicationContext reviewContext;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -89,6 +91,7 @@ class ApiContractGoldenPostgresIntegrationTest {
     void setUpDeterministicBaselineData() throws Exception {
         server = MockRestServiceServer.bindTo(restTemplate).ignoreExpectOrder(true).build();
         ingestCveAdvisories();
+        com.prototype.vulnwatch.support.ReviewedIntelligenceTestSupport.publishAll(reviewContext);
         mockMvc.perform(post("/api/demo/seed").header("X-API-Key", API_KEY))
                 .andExpect(status().isOk());
 

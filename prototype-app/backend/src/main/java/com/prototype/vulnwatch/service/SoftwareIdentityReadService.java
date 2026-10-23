@@ -38,7 +38,7 @@ public class SoftwareIdentityReadService {
      * out by severity here agree with the findings list elsewhere in the product. Assumes the query
      * aliases the findings row as "f" and its (optionally) joined vulnerabilities row as "v". */
     private static final String RESOLVED_SEVERITY_SQL = """
-            upper(coalesce(f.severity_override, v.severity,
+            upper(coalesce(f.severity_override, f.intelligence_severity, v.severity,
                 case when f.risk_score >= 9 then 'CRITICAL'
                      when f.risk_score >= 7 then 'HIGH'
                      when f.risk_score >= 4 then 'MEDIUM' else 'LOW' end))

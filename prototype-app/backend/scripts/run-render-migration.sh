@@ -51,13 +51,16 @@ if [ "$MIGRATION_DB_PORT" -lt 1 ] || [ "$MIGRATION_DB_PORT" -gt 65535 ]; then
   exit 2
 fi
 
-if [ "${PLATFORM_OWNER_SETUP_LINK_ENABLED:-false}" = "true" ]; then
+if [ "${PLATFORM_OWNER_SETUP_LINK_ENABLED:-false}" = "true" ] || [ "${APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED:-false}" = "true" ]; then
   : "${PLATFORM_OWNER_SETUP_EMAIL:=${APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_EMAIL:-}}"
-  : "${PLATFORM_OWNER_SETUP_EMAIL:?PLATFORM_OWNER_SETUP_EMAIL is required when setup-link delivery is enabled}"
-  : "${RESEND_API_KEY:?RESEND_API_KEY is required when setup-link delivery is enabled}"
-  : "${RESEND_FROM_EMAIL:?RESEND_FROM_EMAIL is required when setup-link delivery is enabled}"
-  : "${RESEND_FROM_DOMAIN:?RESEND_FROM_DOMAIN is required when setup-link delivery is enabled}"
-  export PLATFORM_OWNER_SETUP_EMAIL
+  : "${PLATFORM_OWNER_SETUP_EMAIL:?A platform-owner email alias is required for installation bootstrap}"
+  : "${SG_INTERNAL_ADMIN_EMAIL:?A distinct SG Internal administrator email alias is required for installation bootstrap}"
+  if [ "$(printf '%s' "$PLATFORM_OWNER_SETUP_EMAIL" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$SG_INTERNAL_ADMIN_EMAIL" | tr '[:upper:]' '[:lower:]')" ]; then
+    echo "migration_env_validation=failed reason=identical_account_aliases" >&2
+    exit 2
+  fi
+  # The migrator encrypts intent only. The runtime owns provider submission.
+  export PLATFORM_OWNER_SETUP_EMAIL SG_INTERNAL_ADMIN_EMAIL
 fi
 
 # Preserve explicitly supplied TLS/transport options. The CLI validates identity.

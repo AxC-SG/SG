@@ -140,7 +140,8 @@ public class LocalCredentialAuthService {
     }
 
     private AuthTokenResponse loginSharedLocalhostTenantAdmin(String normalizedEmail, String passwordHash) {
-        Tenant tenant = tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)
+        Tenant tenant = tenantRepository.findBySchemaName(TenantService.DEFAULT_TENANT_SCHEMA)
+                .filter(Tenant::isInternal)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Default workspace is not bootstrapped"));
         tenantLifecycleGuardService.assertTenantAccessible(tenant);
 
@@ -295,7 +296,7 @@ public class LocalCredentialAuthService {
         if (!hasText(setupToken)) {
             throw invalidSetupToken();
         }
-        AppUser user = userRepository.findByPasswordSetupTokenHash(hashToken(setupToken.trim()))
+        AppUser user = userRepository.findByPasswordSetupTokenHashForUpdate(hashToken(setupToken.trim()))
                 .orElseThrow(this::invalidSetupToken);
         if (user.getPasswordSetupTokenExpiresAt() == null || !user.getPasswordSetupTokenExpiresAt().isAfter(Instant.now())) {
             clearSetupToken(user);
@@ -303,7 +304,6 @@ public class LocalCredentialAuthService {
         }
         String sessionToken = UUID.randomUUID() + "-" + UUID.randomUUID();
         user.setPasswordSetupTokenHash(hashToken(sessionToken));
-        user.setPasswordSetupTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
         return sessionToken;

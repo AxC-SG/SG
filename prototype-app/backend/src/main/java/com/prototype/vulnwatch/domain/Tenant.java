@@ -26,6 +26,9 @@ public class Tenant {
     @Column(name = "schema_name", nullable = false, unique = true, length = 120)
     private String schemaName = "tenant_default";
 
+    @Column(nullable = false, length = 16)
+    private String classification = "CUSTOMER";
+
     @Column(nullable = false, length = 32)
     private String status = "ACTIVE";
 
@@ -88,6 +91,12 @@ public class Tenant {
     private Integer maxSbomJobsPerRateLimitWindow;
 
     private Integer maxActiveSbomJobs;
+
+    public String getClassification() { return classification; }
+
+    public void setClassification(String classification) { this.classification = classification; }
+
+    public boolean isInternal() { return "INTERNAL".equals(classification); }
 
     public UUID getId() {
         return id;

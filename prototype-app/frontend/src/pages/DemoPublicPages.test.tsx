@@ -319,7 +319,7 @@ describe('Demo public pages', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Activate your workspace/i }));
 
-    expect(await screen.findByText(/Set a password for your tenant workspace/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Set a password for your SG account/i)).toBeInTheDocument();
   });
 
   it('completes password setup and returns to login with a success message', async () => {
@@ -355,7 +355,7 @@ describe('Demo public pages', () => {
       { route: '/setup#token=one-time-secret&email=alex%40example.com' }
     );
 
-    expect(await screen.findByText(/Set a password for your tenant workspace/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Set a password for your SG account/i)).toBeInTheDocument();
     expect(screen.getByText(/Account: alex@example.com/i)).toBeInTheDocument();
     expect(exchangeSpy).toHaveBeenCalledWith('one-time-secret');
     expect(window.location.href).not.toContain('one-time-secret');

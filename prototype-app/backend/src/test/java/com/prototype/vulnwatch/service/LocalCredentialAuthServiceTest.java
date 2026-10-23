@@ -323,10 +323,11 @@ class LocalCredentialAuthServiceTest {
         platformOwner.setExternalSubject("owner@example.com");
         platformOwner.setEmail("owner@example.com");
         platformOwner.setPlatformOwner(true);
-        Tenant tenant = tenant("Default Workspace");
+        Tenant tenant = tenant("SG Internal");
+        tenant.setClassification("INTERNAL");
         tenant.setSlug(TenantAccessResolutionService.PLAYGROUND_SLUG);
         TenantMembership membership = membership(platformOwner, tenant, "TENANT_ADMIN");
-        membership.setProvenance(TenantAccessResolutionService.PLAYGROUND_PROVENANCE);
+        membership.setProvenance("MANUAL");
 
         when(userRepository.findByExternalSubject("owner@example.com")).thenReturn(Optional.of(platformOwner));
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
@@ -371,7 +372,7 @@ class LocalCredentialAuthServiceTest {
                 eq("tenant.context.entered"),
                 eq("tenant_access"),
                 eq(membership.getId().toString()),
-                eq("{\"mode\":\"DIRECT_PLAYGROUND_MEMBERSHIP\"}"),
+                eq("{\"mode\":\"TENANT_MEMBERSHIP\"}"),
                 eq("SUCCESS"));
         verifyNoInteractions(tenantSupportGrantService);
     }
@@ -480,12 +481,13 @@ class LocalCredentialAuthServiceTest {
     @Test
     void localhostSharedTenantAdminLoginBootstrapsDefaultWorkspaceMembership() {
         String configuredPasswordHash = BCrypt.hashpw("LocalDevTenant123!", BCrypt.gensalt(10));
-        Tenant tenant = tenant("Default Workspace");
+        Tenant tenant = tenant("SG Internal");
+        tenant.setClassification("INTERNAL");
         AppUser user = new AppUser();
         user.setExternalSubject("tenant.admin@localhost");
         user.setEmail("tenant.admin@localhost");
 
-        when(tenantRepository.findByNameIgnoreCase("Default Workspace")).thenReturn(Optional.of(tenant));
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.of(tenant));
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(userRepository.findByEmailIgnoreCaseForUpdate("tenant.admin@localhost")).thenReturn(Optional.empty());
         when(userRepository.findByExternalSubjectForUpdate("tenant.admin@localhost")).thenReturn(Optional.of(user));
@@ -579,10 +581,11 @@ class LocalCredentialAuthServiceTest {
         user.setExternalSubject(email);
         user.setEmail("previous-email@example.test");
         user.setStatus("INACTIVE");
-        Tenant tenant = tenant("Default Workspace");
+        Tenant tenant = tenant("SG Internal");
+        tenant.setClassification("INTERNAL");
         when(userRepository.findByEmailIgnoreCaseForUpdate(email)).thenReturn(Optional.empty());
         when(userRepository.findByExternalSubjectForUpdate(email)).thenReturn(Optional.of(user));
-        when(tenantRepository.findByNameIgnoreCase("Default Workspace")).thenReturn(Optional.of(tenant));
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.of(tenant));
         LocalCredentialAuthService service = new LocalCredentialAuthService(userRepository, tenantRepository,
                 membershipRepository, authTokenService(), tenantSupportGrantService, tenantLifecycleGuardService,
                 appUserGlobalRoleService, auditEventService, tenantWorkRunner, false, true, email,

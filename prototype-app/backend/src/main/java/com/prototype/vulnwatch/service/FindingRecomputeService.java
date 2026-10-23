@@ -62,12 +62,15 @@ public class FindingRecomputeService {
 
     @Transactional
     public int recomputeForAsset(Tenant tenant, Asset asset) {
-        return findingAssetRecomputeService.recomputeForAsset(tenant, asset);
+        return findingComponentRecomputeService.recomputeOnSoftwareDeltaBatch(tenant.getId(),
+                inventoryComponentRepository.findByAsset(asset).stream().map(com.prototype.vulnwatch.domain.InventoryComponent::getId).toList());
     }
 
     @Transactional
     public int recomputeForAssets(List<Asset> assets) {
-        return findingAssetRecomputeService.recomputeForAssets(assets);
+        int count=0;
+        for(Asset asset:assets) count+=recomputeForAsset(asset.getTenant(),asset);
+        return count;
     }
 
     public int recomputeOnSoftwareDelta(UUID tenantId, UUID componentId) {

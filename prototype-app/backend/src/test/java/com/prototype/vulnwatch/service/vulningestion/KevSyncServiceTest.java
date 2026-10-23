@@ -103,7 +103,6 @@ class KevSyncServiceTest {
         when(observationIngestionService.upsertObservation(any())).thenReturn(
                 new VulnerabilityIntelligenceService.ObservationUpsertResult(vulnerability, true, true)
         );
-        when(vulnerabilityRepository.save(vulnerability)).thenReturn(vulnerability);
         when(support.parseLocalDateOrNull("2026-06-01")).thenReturn(java.time.LocalDate.parse("2026-06-01"));
         when(support.parseLocalDateOrNull("2026-06-15")).thenReturn(java.time.LocalDate.parse("2026-06-15"));
         doAnswer(invocation -> {
@@ -137,6 +136,8 @@ class KevSyncServiceTest {
         assertEquals(java.time.LocalDate.parse("2026-06-01"), vulnerability.getKevDateAdded());
         assertEquals(java.time.LocalDate.parse("2026-06-15"), vulnerability.getKevDueDate());
         assertEquals("Patch now", vulnerability.getKevRequiredAction());
+        verify(support).saveMetadata(vulnerability,"kev");
+        verify(vulnerabilityRepository,never()).save(any());
         verify(effectsService).enqueueCveMetadataDeltas(any());
         verify(syncRunService).completeRun(run, "completed", 1, 1, 0, 0, null);
         verify(syncRunService, never()).completeRun(run, "failed", 1, 1, 0, 0, null);

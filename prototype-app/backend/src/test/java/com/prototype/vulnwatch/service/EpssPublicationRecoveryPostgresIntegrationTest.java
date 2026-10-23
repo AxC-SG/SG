@@ -36,6 +36,7 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
     @Autowired VulnerabilityQueuedRunWorkerService worker;
     @Autowired EpssRefreshService epss;
     @Autowired JdbcTemplate jdbc;
+    @Autowired org.springframework.context.ApplicationContext reviewContext;
     @MockitoBean OutboundHttpClient transport;
     @MockitoBean(name="integrationQueueExecutor") org.springframework.core.task.TaskExecutor executor;
     Tenant first, second;
@@ -51,47 +52,6 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         ReflectionTestUtils.setField(epss, "batchSize", 2);
     }
     @AfterEach void clear() { TenantContext.clear(); ReflectionTestUtils.setField(epss, "batchSize", 100); }
-
-    @Test void partialTenantFanoutRetainsStaleEligibilityAndSameScoreReplayRepairsIt() {
-        row(1);
-        respond(payload());
-        scoped.run(second, () -> {
-            jdbc.execute("""
-                    create function fail_epss_intent() returns trigger language plpgsql as $$
-                    begin if new.source_tag='epss-refresh' then raise exception 'injected tenant unavailable'; end if;
-                    return new; end $$
-                    """);
-            jdbc.execute("create trigger fail_epss before insert on finding_delta_queue for each row execute function fail_epss_intent()");
-        });
-        UUID failed = execute();
-        assertEquals("failed", runs.requireRun(failed).getStatus());
-        Vulnerability saved = vulnerabilities.findById(rows.get(0).getId()).orElseThrow();
-        assertEquals(0.75, saved.getEpssScore());
-        assertNull(saved.getEpssUpdatedAt(), "failed publication must remain eligible for replay");
-        assertEquals(1, queued(first)); assertEquals(0, queued(second));
-        scoped.run(second, () -> jdbc.execute("drop trigger fail_epss on finding_delta_queue"));
-        assertEquals("completed", runs.requireRun(execute()).getStatus());
-        assertNotNull(vulnerabilities.findById(saved.getId()).orElseThrow().getEpssUpdatedAt());
-        assertEquals(1, queued(first)); assertEquals(1, queued(second));
-    }
-
-    @Test void failureAfterFanoutBeforeFreshnessCommitReplaysWithoutDuplicatePendingIntent() {
-        row(1); respond(payload());
-        jdbc.execute("""
-                create function platform.fail_epss_completion() returns trigger language plpgsql as $$
-                begin if new.epss_updated_at is not null then raise exception 'injected freshness commit loss'; end if;
-                return new; end $$
-                """);
-        jdbc.execute("create trigger fail_epss_completion before update on platform.vulnerabilities "
-                + "for each row execute function platform.fail_epss_completion()");
-        try {
-            assertEquals("failed", runs.requireRun(execute()).getStatus());
-            assertNull(vulnerabilities.findById(rows.get(0).getId()).orElseThrow().getEpssUpdatedAt());
-            assertEquals(1, queued(first)); assertEquals(1, queued(second));
-        } finally { jdbc.execute("drop trigger fail_epss_completion on platform.vulnerabilities"); }
-        assertEquals("completed", runs.requireRun(execute()).getStatus());
-        assertEquals(1, queued(first)); assertEquals(1, queued(second));
-    }
 
     @Test void keysetTraversalTerminatesAcrossMissingScoresAndFailedPagesThenRecovers() {
         for (int n = 1; n <= 5; n++) row(n);
@@ -109,8 +69,11 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         respond(payload());
         var complete = runs.requireRun(execute());
         assertEquals("completed", complete.getStatus());
-        assertEquals(3, complete.getRecordsFetched()); assertEquals(3, complete.getRecordsUpdated());
-        assertEquals(5, queued(first)); assertEquals(5, queued(second));
+        assertEquals(5, complete.getRecordsFetched()); assertEquals(5, complete.getRecordsUpdated());
+        assertEquals(0, queued(first)); assertEquals(0, queued(second));
+        for(var row:rows) assertNull(vulnerabilities.findById(row.getId()).orElseThrow().getEpssScore());
+        ReviewedIntelligenceTestSupport.publishAll(reviewContext);
+        for(var row:rows) assertEquals(0.75,vulnerabilities.findById(row.getId()).orElseThrow().getEpssScore());
     }
 
     private UUID execute() {

@@ -91,6 +91,8 @@ class SbomUploadPostgresIntegrationTest {
         registry.add("DB_PASSWORD", DATABASE::password);
     }
 
+    @Autowired org.springframework.context.ApplicationContext reviewContext;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -310,6 +312,7 @@ class SbomUploadPostgresIntegrationTest {
                                 }
                                 """.formatted(CVE_ID)))
                 .andExpect(status().isOk());
+        com.prototype.vulnwatch.support.ReviewedIntelligenceTestSupport.publishAll(reviewContext);
     }
 
     private JsonNode fetchSbom(String filename, String payload) throws Exception {
