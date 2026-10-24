@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { api } from '../api/client';
@@ -45,10 +45,57 @@ function renderPage() {
   );
 }
 
+async function openFindingConfig() {
+  vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockResolvedValue(buildCveDetail({
+    matchedSoftware: [{ componentId: 'cmp-1', assetId: 'asset-1', assetName: 'web-prod-01', assetIdentifier: 'web-prod-01.example.com',
+      assetType: 'HOST', ecosystem: 'npm', packageName: 'lodash', version: '4.17.15', applicabilityState: 'APPLICABLE',
+      computedImpactState: 'IMPACTED', impactState: 'IMPACTED', eligibleForFinding: true, supportGroup: 'Platform Team' }],
+  }));
+  vi.spyOn(api, 'listFindings').mockResolvedValue(EMPTY_FINDINGS_PAGE);
+  renderPage();
+  await screen.findByText('web-prod-01');
+  fireEvent.click(screen.getAllByRole('checkbox')[0]);
+  fireEvent.click(screen.getByRole('button', { name: /^Create Findings$/ }));
+}
+
 describe('VulnRepoCveAssetsPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  it('creates findings with the chosen severity, due date and metadata', async () => {
+    const create = vi.spyOn(cveWorkbenchApi, 'createManualFindings').mockResolvedValue({ cveId: CVE_ID, eligibleComponentCount: 1, createdCount: 1, reopenedCount: 0, alreadyOpenCount: 0, message: 'Created' });
+    const ticket = vi.spyOn(cveWorkbenchApi, 'createServiceNowIncident');
+    await openFindingConfig();
+    fireEvent.change(screen.getByLabelText('Finding severity'), { target: { value: 'Critical' } });
+    fireEvent.change(screen.getByLabelText('Finding due date'), { target: { value: '2026-11-01' } });
+    fireEvent.change(screen.getByLabelText('Finding tags'), { target: { value: 'patch-now' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Findings (1)' }));
+    expect(await screen.findByText('Created 1 finding(s).')).toBeVisible();
+    expect(create).toHaveBeenCalledWith(CVE_ID, expect.objectContaining({ componentIds: ['cmp-1'], severity: 'CRITICAL', dueDate: '2026-11-01', justification: expect.stringContaining('Tags: patch-now') }));
+    expect(ticket).not.toHaveBeenCalled();
+  });
+
+  it('creates the requested ServiceNow ticket and keeps finding success visible if ticketing fails', async () => {
+    vi.spyOn(cveWorkbenchApi, 'createManualFindings').mockResolvedValue({ cveId: CVE_ID, eligibleComponentCount: 1, createdCount: 1, reopenedCount: 0, alreadyOpenCount: 0, message: 'Created' });
+    const ticket = vi.spyOn(cveWorkbenchApi, 'createServiceNowIncident').mockRejectedValue(new Error('ServiceNow is not configured'));
+    await openFindingConfig();
+    fireEvent.change(screen.getByLabelText('Finding ownership'), { target: { value: 'Assign by support group' } });
+    fireEvent.click(screen.getByLabelText('Create tickets in ServiceNow'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Findings (1)' }));
+    expect(await screen.findByText(/Created 1 finding\(s\).*ServiceNow ticket failed: ServiceNow is not configured/)).toBeVisible();
+    expect(ticket).toHaveBeenCalledWith(CVE_ID, expect.objectContaining({ affectedAssets: [expect.objectContaining({ componentId: 'cmp-1', assignmentGroup: 'Platform Team' })] }));
+  });
+
+  it('preserves a grouped creation error instead of silently creating a different finding type', async () => {
+    const create = vi.spyOn(cveWorkbenchApi, 'createManualFindings').mockRejectedValue(new Error('Grouped finding unavailable'));
+    await openFindingConfig();
+    fireEvent.click(screen.getByRole('radio', { name: /CVE \+ Fix/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Findings (1)' }));
+    expect(await screen.findByText('Failed to create findings: Grouped finding unavailable')).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith(CVE_ID, expect.objectContaining({ findingCreationMode: 'CVE_FIX' }));
   });
 
   it('shows loading state while data is fetching', () => {

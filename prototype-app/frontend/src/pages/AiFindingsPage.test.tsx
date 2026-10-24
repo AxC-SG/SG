@@ -42,6 +42,38 @@ describe('AiFindingsPage', () => {
     navigateMock.mockReset();
   });
 
+  it('combines provider, state and trimmed subscription with existing deep-link scope', async () => {
+    const list = vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [buildFinding()], page: 0, size: 100, total: 1 });
+    vi.spyOn(api, 'listAiActionQueue').mockResolvedValue([]);
+    const route = '/findings/ai?policyId=policy-1&severity=HIGH&nativeKind=AZURE_RAI_POLICY';
+    renderWithProviders(<AiFindingsPage />, { route });
+    await screen.findByText('AIF-101B8AF0');
+    fireEvent.change(screen.getByLabelText('Cloud provider'), { target: { value: 'AZURE' } });
+    fireEvent.change(screen.getByLabelText('Finding status'), { target: { value: 'SUPPRESSED_BY_POLICY' } });
+    fireEvent.change(screen.getByLabelText('Azure subscription'), { target: { value: '  subscription-123  ' } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith('policy-1', 'SUPPRESSED_BY_POLICY', 0, 100, 'AZURE', 'subscription-123', 'HIGH', 'AZURE_RAI_POLICY'));
+    fireEvent.click(await screen.findByText('AIF-101B8AF0'));
+    expect(navigateMock).toHaveBeenCalledWith(`/findings/ai/finding-1?returnTo=${encodeURIComponent(route)}`);
+  });
+
+  it('uses undefined for All states and All providers without clearing URL scope', async () => {
+    const list = vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [], page: 0, size: 100, total: 0 });
+    vi.spyOn(api, 'listAiActionQueue').mockResolvedValue([]);
+    renderWithProviders(<AiFindingsPage />, { route: '/findings/ai?policyId=policy-1' });
+    await screen.findByText('No matching AI findings');
+    fireEvent.change(screen.getByLabelText('Finding status'), { target: { value: '' } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith('policy-1', undefined, 0, 100, undefined, undefined, undefined, undefined));
+  });
+
+  it('retains the vulnerability kind and AI-resource constraint when selecting All states', async () => {
+    const list = vi.spyOn(api, 'listFindings').mockResolvedValue(findingPageOf([]));
+    renderWithProviders(<AiFindingsPage />, { route: '/findings/ai/vulnerabilities' });
+    await screen.findByText('No matching software vulnerabilities');
+    fireEvent.change(screen.getByLabelText('Finding status'), { target: { value: '' } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith({ findingKind: ['VULNERABILITY'], hasAffectedAiResource: true, status: undefined, size: 100 }));
+    expect(screen.queryByLabelText('Cloud provider')).not.toBeInTheDocument();
+  });
+
   it('navigates to the AI finding detail page when a row is clicked', async () => {
     vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({
       items: [buildFinding()],

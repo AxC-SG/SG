@@ -1,0 +1,404 @@
+{
+  "schemaVersion": 1,
+  "created": "2026-10-24",
+  "status": "planned",
+  "implementationStarted": false,
+  "scheduledAutomationCreated": false,
+  "strategy": "Small gated implementation slices by shared components and complete workflows; cohesive tenant release after qualification",
+  "plan": "IMPLEMENTATION_PLAN.md",
+  "behaviorContract": "BEHAVIOR_PARITY_AND_IMPLEMENTATION.md",
+  "baselineHashes": "BEHAVIOR_BASELINE_2026-10-24.json",
+  "verificationEvidence": "VERIFICATION_RESULTS_2026-10-24.md",
+  "baseline": {
+    "liveTestCases": 715,
+    "liveTestFiles": 79,
+    "referenceTestCases": 35,
+    "coverageFloors": {
+      "lines": 49.4,
+      "statements": 46.7,
+      "functions": 38.9,
+      "branches": 38.1
+    },
+    "authenticatedBrowserQualification": "pending_access",
+    "existingUncommittedWorkMustBePreserved": true
+  },
+  "policy": {
+    "advanceAutomaticallyAfterVerifiedPhase": true,
+    "pauseAfterEveryNavigationItem": false,
+    "domainBehaviorChangesIncluded": false,
+    "weakenExistingTestsAllowed": false,
+    "lowerCoverageAllowed": false,
+    "productionDeploymentAuthorizedByPlan": false,
+    "parallelSharedFileWritersAllowed": false
+  },
+  "phaseStates": [
+    "planned",
+    "in_progress",
+    "needs_access",
+    "failed_gate",
+    "verified"
+  ],
+  "phases": [
+    {
+      "id": "P0",
+      "title": "Preserve baseline and establish gates",
+      "status": "planned",
+      "dependsOn": [],
+      "units": [
+        {
+          "title": "Snapshot relevant current tracked and untracked work",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Reconcile changed behavior source against the existing hash manifest",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Resolve active route/view inventory, including direct links",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Run current baseline checks",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Prepare reproducible browser fixtures/checks and record any missing approved access separately as a pending release gate",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P1",
+      "title": "Shared foundation and application shell",
+      "status": "planned",
+      "dependsOn": [
+        "P0"
+      ],
+      "units": [
+        {
+          "title": "Scoped token and theme bridge",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Shared buttons, forms, status, table and evidence primitives",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Accessible overlays and state panels",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Tenant/platform shell with unchanged navigation and authority",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P2",
+      "title": "Findings family",
+      "status": "planned",
+      "dependsOn": [
+        "P1"
+      ],
+      "units": [
+        {
+          "title": "Vulnerability Findings list and detail",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "AI Policy Violations list and detail",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "AI software vulnerabilities tab",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "AI exposure list and detail",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "All filter, queue, widget, group, cursor and row interaction regression checks",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P3",
+      "title": "Complete CVE workflow",
+      "status": "planned",
+      "dependsOn": [
+        "P2"
+      ],
+      "units": [
+        {
+          "title": "Intelligence and organization CVE entry routes",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "CVE overview and full investigation canvas",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Separate applicability and analyst impact",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Main impacted-assets step and dedicated assets/software routes",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Finding configuration, duplicates and partial ticket failure",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Fixes, notification drafts and dirty guards",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P4",
+      "title": "Inventory and lifecycle",
+      "status": "planned",
+      "dependsOn": [
+        "P3"
+      ],
+      "units": [
+        {
+          "title": "Hosts, software identities and detail",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "EOL flows",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "All active AI inventory categories",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "AI assets, declared resources and relationship graphs",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P5",
+      "title": "Governance and platform administration",
+      "status": "planned",
+      "dependsOn": [
+        "P4"
+      ],
+      "units": [
+        {
+          "title": "Tenant policies and framework coverage",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Platform policy studio and distribution",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Tenant management and authorized workspace selection",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Users, service accounts, invites, audit, schema and entitlements",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P6",
+      "title": "Connectors and configuration",
+      "status": "planned",
+      "dependsOn": [
+        "P5"
+      ],
+      "units": [
+        {
+          "title": "Supported connector catalog and provider-specific forms",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Sync/run history and retry flows",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "SLA, risk, ownership and suppression configuration",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Contained and retired feature checks",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P7",
+      "title": "Remaining experience and consistency sweep",
+      "status": "planned",
+      "dependsOn": [
+        "P6"
+      ],
+      "units": [
+        {
+          "title": "Exposure and remaining dashboards",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Campaigns and detail",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Operations views",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Login, setup, invitations and authentication entry states",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "All active navigation and direct-link routes; legacy redirects",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    },
+    {
+      "id": "P8",
+      "title": "Integrated qualification and release handoff",
+      "status": "planned",
+      "dependsOn": [
+        "P7"
+      ],
+      "units": [
+        {
+          "title": "Full frontend and affected backend/PostgreSQL checks",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Authenticated critical browser journeys",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Theme, responsive, keyboard, visual and performance qualification",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Current-data rollback rehearsal",
+          "status": "planned",
+          "evidence": []
+        },
+        {
+          "title": "Reviewable release evidence; release authorization resolved",
+          "status": "planned",
+          "evidence": []
+        }
+      ],
+      "checkpoint": null,
+      "testResults": [],
+      "screenshots": [],
+      "openIssues": []
+    }
+  ],
+  "phaseVerificationScope": "Code, deterministic fixtures and phase-specific checks; separate pending release gates are not implied passed.",
+  "releaseGates": {
+    "authenticatedStagingJourneys": {
+      "status": "pending_access",
+      "evidence": []
+    },
+    "completeRouteVisualAcceptance": {
+      "status": "planned",
+      "evidence": []
+    },
+    "integratedFrontendChecks": {
+      "status": "planned_for_release_candidate",
+      "evidence": []
+    },
+    "affectedBackendAndPostgresQualification": {
+      "status": "planned_for_release_candidate",
+      "evidence": []
+    },
+    "rollbackRehearsal": {
+      "status": "planned",
+      "evidence": []
+    },
+    "productionReleaseAuthorization": {
+      "status": "not_requested",
+      "evidence": []
+    }
+  }
+}

@@ -467,6 +467,7 @@ export function VulnRepoOrgCvePage({
   if (selectedRecord) {
     return (
       <VulnRepoCveAssessmentWorkbench
+        key={selectedRecord.externalId}
         item={selectedRecord}
         detail={selectedDetail}
         loading={detailLoading}

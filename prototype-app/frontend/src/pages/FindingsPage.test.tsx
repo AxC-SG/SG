@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { ActorContextState } from '../features/auth/context';
@@ -181,6 +181,114 @@ describe('FindingsPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  it('preserves repeated deep-link filters and an explicit queue in the server request', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings&severity=HIGH&severity=CRITICAL&status=OPEN&creationSource=MANUAL&creationSource=invalid&vulnerabilityId=CVE-2026&packageName=openssl&assetName=web-prod&assetType=HOST&assetType=CONTAINER' });
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({
+      queueKey: 'all-findings', severity: ['HIGH', 'CRITICAL'], status: ['OPEN'], creationSource: ['MANUAL'],
+      vulnerabilityId: 'CVE-2026', packageName: 'openssl', assetName: 'web-prod', assetType: ['HOST', 'CONTAINER'], limit: 25,
+    })));
+  });
+
+  it('combines column selections and removes only the chosen filter chip', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    await screen.findByText('F-001');
+    fireEvent.click(screen.getByTitle('Filter Severity'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'HIGH' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'CRITICAL' }));
+    fireEvent.mouseDown(document.body);
+    fireEvent.click(screen.getByTitle('Filter Status'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Open' }));
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: ['HIGH', 'CRITICAL'], status: ['OPEN'] })));
+    fireEvent.mouseDown(document.body);
+    const chip = screen.getByText('Severity: HIGH, CRITICAL').closest('.fpl-chip')!;
+    fireEvent.click(within(chip as HTMLElement).getByRole('button', { name: 'Remove filter' }));
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined, status: ['OPEN'] })));
+  });
+
+  it('toggles a severity widget and clears status and SLA narrowing without changing queue totals', async () => {
+    const spies = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings&status=OPEN' });
+    await screen.findByText('F-001');
+    const severityWidget = screen.getByText('Exposure by Severity').closest('.fpl-widget')!;
+    const critical = (await within(severityWidget as HTMLElement).findByText('CRITICAL')).closest('.fpl-legend-row')!;
+    fireEvent.click(critical);
+    await waitFor(() => expect(spies.listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: ['CRITICAL'], status: undefined, dueDateBand: undefined })));
+    fireEvent.click(critical);
+    await waitFor(() => expect(spies.listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined, status: undefined })));
+    for (const spy of [spies.summary, spies.distributions, spies.backlog]) {
+      expect(spy.mock.calls.every(([params]) => Object.keys(params ?? {}).every(key => key === 'queueKey'))).toBe(true);
+    }
+  });
+
+  it('keeps finding ID and minimum risk filters local to the fetched page', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />);
+    await screen.findByText('F-001');
+    fireEvent.click(screen.getByTitle('Filter Finding ID'));
+    fireEvent.change(screen.getByPlaceholderText('Search Finding ID…'), { target: { value: 'missing-id' } });
+    expect(screen.queryByText('F-001')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Search Finding ID…'), { target: { value: 'f-001' } });
+    expect(screen.getByText('F-001')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    fireEvent.click(screen.getByTitle('Filter Risk'));
+    fireEvent.change(screen.getByPlaceholderText('Min risk score'), { target: { value: '9.5' } });
+    expect(screen.queryByText('F-001')).not.toBeInTheDocument();
+    expect(listFindings.mock.calls.every(([params]) => !('findingId' in (params ?? {})) && !('risk' in (params ?? {})))).toBe(true);
+  });
+
+  it('resets cursor paging when a server filter changes and keeps existing rows during refresh', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    vi.mocked(api.listFindingQueues).mockResolvedValue(FINDING_QUEUES.map(queue => ({ ...queue, isDefault: false })));
+    listFindings.mockResolvedValue({ ...pageOf([buildFinding()]), totalItems: 50, totalPages: 2, nextCursor: 'cursor-page-2' });
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    await screen.findByText('F-001');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next →' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Next →' }));
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'cursor-page-2' })));
+    let finish!: (value: FindingPage) => void;
+    listFindings.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    fireEvent.click(screen.getByTitle('Filter CVE ID'));
+    fireEvent.change(screen.getByPlaceholderText('Search CVE ID…'), { target: { value: 'CVE-2026' } });
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ vulnerabilityId: 'CVE-2026', cursor: undefined })));
+    expect(screen.getByText('F-001')).toBeInTheDocument();
+    finish(pageOf([buildFinding()]));
+    await waitFor(() => expect(screen.getByRole('button', { name: '← Prev' })).toBeDisabled());
+  });
+
+  it('selects rows without navigating and leaves finding/CVE links outside selection', async () => {
+    mockFindingsWorkspace();
+    const openCve = vi.fn();
+    renderWithProviders(<ActorContextState.Provider value={ACTOR}><FindingsPage onOpenCveWorkbench={openCve} /></ActorContextState.Provider>);
+    const link = await screen.findByRole('link', { name: 'F-001' });
+    fireEvent.click(link.closest('tr')!);
+    expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'CVE-2026-1234' }));
+    expect(openCve).toHaveBeenCalledWith('CVE-2026-1234');
+    expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
+    expect(link).toHaveAttribute('href', '/findings/F-001');
+    expect(screen.getByRole('button', { name: 'Resolve' })).toBeEnabled();
+  });
+
+  it('clears all ad-hoc filters while preserving the selected queue', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=critical-open&severity=CRITICAL&status=OPEN&assetType=HOST' });
+    await screen.findByText('F-001');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ queueKey: 'critical-open', severity: undefined, status: undefined, assetType: undefined })));
+  });
+
+  it('preserves stored column preferences and read-only workflow gates', async () => {
+    mockFindingsWorkspace();
+    localStorage.setItem('findings-col-vis-v2', JSON.stringify(['findingId', 'cveId', 'severity']));
+    renderWithProviders(<ActorContextState.Provider value={{ ...ACTOR, roles: ['ROLE_READ_ONLY_AUDITOR'] }}><FindingsPage /></ActorContextState.Provider>);
+    await screen.findByText('F-001');
+    expect(screen.queryByRole('columnheader', { name: 'Asset' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    expect(screen.getByRole('button', { name: 'Resolve' })).toBeDisabled();
   });
 
   it('renders the findings table with mocked data', async () => {

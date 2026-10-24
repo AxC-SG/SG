@@ -1,4 +1,5 @@
 import React from 'react';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PerformanceInstrumentation } from './lib/performanceMonitoring';
@@ -1243,6 +1244,7 @@ function AppShell() {
             </div>
           )}
 
+          <RouteErrorBoundary resetKey={location.pathname}>
           <React.Suspense fallback={routeLoadingFallback()}>
             <Routes>
               <Route path="/exposure" element={<ExposureDashboardRoute />} />
@@ -1296,6 +1298,7 @@ function AppShell() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </React.Suspense>
+          </RouteErrorBoundary>
         </main>
 
         {navOpen && <button type="button" className="mobile-nav-backdrop" onClick={() => setNavOpen(false)} aria-label="Close navigation" />}

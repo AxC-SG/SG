@@ -11,6 +11,8 @@ import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import { useFindingsQuery } from '../features/findings/queries';
 import type { Finding } from '../features/findings/types';
 import type { ExistingFindingBehavior, FindingCreationMode } from '../features/cve-workbench/types';
+import { ownershipAssignedTo, ownershipSupportGroup } from '../features/cve-workbench/vendor-helpers';
+import { useActor } from '../features/auth/context';
 
 const PRIORITY_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   CRITICAL: { bg: '#9b233522', color: '#9b2335', border: '#9b233544' },
@@ -50,6 +52,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 export function VulnRepoCveAssetsPage() {
   const navigate = useNavigate();
+  const actor = useActor();
   const params = useParams<{ cveId?: string }>();
   const cveId = params.cveId ?? null;
 
@@ -68,7 +71,7 @@ export function VulnRepoCveAssetsPage() {
   const [cfgDueDate, setCfgDueDate] = React.useState('');
   const [cfgTags, setCfgTags] = React.useState('');
   const [cfgAssignment, setCfgAssignment] = React.useState('Assign to lead analyst');
-  const [cfgServiceNow, setCfgServiceNow] = React.useState(true);
+  const [cfgServiceNow, setCfgServiceNow] = React.useState(false);
   const [cfgNotes, setCfgNotes] = React.useState('');
   const [existingFindingBehavior, setExistingFindingBehavior] = React.useState<ExistingFindingBehavior>('ADD_TO_EXISTING');
 
@@ -243,6 +246,8 @@ export function VulnRepoCveAssetsPage() {
       return;
     }
     setCfgTitle(cveId ?? '');
+    const defaultSeverity = severity.toLowerCase();
+    setCfgPriority(defaultSeverity.charAt(0).toUpperCase() + defaultSeverity.slice(1));
     setCfgDueDate('');
     setCfgTags('');
     setCfgNotes('');
@@ -299,41 +304,66 @@ export function VulnRepoCveAssetsPage() {
     setCreating(true);
     setCreateMsg(null);
     setShowConfigModal(false);
+    const justification = [
+      cfgNotes.trim(),
+      cfgTitle.trim() ? `Title: ${cfgTitle.trim()}` : '',
+      cfgTags.trim() ? `Tags: ${cfgTags.trim()}` : '',
+      `Ownership: ${cfgAssignment}`,
+    ].filter(Boolean).join('\n');
     try {
       const result = await cveWorkbenchApi.createManualFindings(cveId, {
-        justification: cfgNotes.trim(),
+        justification,
         componentIds,
         componentApplicabilityDecisions: applicability,
         componentAnalystDispositions: dispositions,
+        severity: cfgPriority.toUpperCase(),
+        dueDate: cfgDueDate || undefined,
         findingCreationMode: cfgCreationMode,
         existingFindingBehavior: cfgCreationMode === 'CVE_FIX' ? existingFindingBehavior : 'ADD_TO_EXISTING',
-      }).catch(async () => {
-        // CVE_FIX may fail when the primary component already has a non-grouped finding.
-        // Fall back to ASSET_CVE so existing findings are reopened/counted correctly.
-        if (cfgCreationMode === 'CVE_FIX') {
-          return cveWorkbenchApi.createManualFindings(cveId, {
-            justification: cfgNotes.trim(),
-            componentIds,
-            componentApplicabilityDecisions: applicability,
-            componentAnalystDispositions: dispositions,
-            findingCreationMode: 'ASSET_CVE',
-            existingFindingBehavior: 'ADD_TO_EXISTING',
-          });
-        }
-        throw new Error('server-error');
       });
       await findingsQuery.refetch();
       const parts: string[] = [];
       if (result.createdCount > 0) parts.push(`Created ${result.createdCount} finding(s).`);
       if (result.reopenedCount > 0) parts.push(`Reopened ${result.reopenedCount}.`);
       if (result.alreadyOpenCount > 0) parts.push(`${result.alreadyOpenCount} already open.`);
+      if (cfgServiceNow && result.createdCount + result.reopenedCount > 0) {
+        try {
+          const response = await cveWorkbenchApi.createServiceNowIncident(cveId, {
+            findingTitle: cfgTitle.trim() || cveId,
+            severity: cfgPriority.toUpperCase(),
+            priority: cfgPriority.toUpperCase(),
+            inKev: detailQuery.data?.summary.inKev ?? false,
+            cvssScore: detailQuery.data?.summary.cvssScore,
+            epssScore: detailQuery.data?.summary.epssScore,
+            dueDate: cfgDueDate || undefined,
+            taskSlaDueDate: cfgDueDate || undefined,
+            notes: justification,
+            solutionInfo: detailQuery.data?.fixes?.map((fix) => fix.summary).join('\n'),
+            assignedTo: cfgAssignment === 'Assign to lead analyst' ? persistedRunbookState?.leadAnalyst || actor?.userId || undefined : undefined,
+            affectedAssets: (detailQuery.data?.matchedSoftware ?? []).filter((sw) => seenComponentIds.has(sw.componentId)).map((sw) => ({
+              componentId: sw.componentId,
+              assetName: sw.assetName,
+              assetIdentifier: sw.assetIdentifier,
+              assetType: sw.assetType,
+              packageName: sw.packageName,
+              packageVersion: sw.version ?? undefined,
+              assignmentGroup: cfgAssignment === 'Assign by support group' ? ownershipSupportGroup(sw) : undefined,
+              assignedTo: cfgAssignment === 'Assign by asset owner' ? ownershipAssignedTo(sw) : undefined,
+            })),
+          });
+          const incidents = Array.isArray(response) ? response : [response];
+          parts.push(...incidents.map((incident) => incident.status === 'error'
+            ? `ServiceNow ticket failed: ${incident.message}`
+            : `ServiceNow incident ${incident.incidentNumber} created.`));
+          await findingsQuery.refetch();
+        } catch (error) {
+          parts.push(`ServiceNow ticket failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
       setCreateMsg(parts.length > 0 ? parts.join(' ') : 'No eligible components found for the selected assets.');
-    } catch {
+    } catch (error) {
       await findingsQuery.refetch();
-      const existingCount = findingsQuery.data?.items.length ?? 0;
-      setCreateMsg(existingCount > 0
-        ? `Could not create new findings — ${existingCount} finding(s) already exist for this CVE.`
-        : 'Failed to create findings. Please try again.');
+      setCreateMsg(`Failed to create findings: ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setCreating(false);
     }
@@ -534,6 +564,7 @@ export function VulnRepoCveAssetsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>FINDING TITLE</label>
               <input
+                aria-label="Finding title"
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', boxSizing: 'border-box' }}
                 value={cfgTitle}
                 onChange={(e) => setCfgTitle(e.target.value)}
@@ -545,6 +576,7 @@ export function VulnRepoCveAssetsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>SEVERITY</label>
                 <select
+                  aria-label="Finding severity"
                   style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
                   value={cfgPriority}
                   onChange={(e) => setCfgPriority(e.target.value)}
@@ -558,6 +590,7 @@ export function VulnRepoCveAssetsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>DUE DATE</label>
                 <input
+                  aria-label="Finding due date"
                   type="date"
                   style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
                   value={cfgDueDate}
@@ -570,6 +603,7 @@ export function VulnRepoCveAssetsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>TAGS</label>
               <input
+                aria-label="Finding tags"
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', boxSizing: 'border-box' }}
                 placeholder="e.g. internet-facing, zero-day, patching"
                 value={cfgTags}
@@ -588,6 +622,7 @@ export function VulnRepoCveAssetsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>ASSIGNMENT / OWNERSHIP LOGIC</label>
               <select
+                aria-label="Finding ownership"
                 style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
                 value={cfgAssignment}
                 onChange={(e) => setCfgAssignment(e.target.value)}
