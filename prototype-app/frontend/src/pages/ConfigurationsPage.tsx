@@ -1,10 +1,11 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { normalizeConfigurationsRouteView, type ConfigurationsRouteView } from '../app/routes';
 import { api } from '../api/client';
+import { intelligenceApi } from '../features/intelligence/api';
 import { useActor } from '../features/auth/context';
-import { canManageRiskPolicy, canManageSourceFilters } from '../features/auth/roles';
+import { canManageRiskPolicy } from '../features/auth/roles';
 import type { OwnershipRuleResponse, RiskPolicy, SuppressionCondition, SuppressionRule, SuppressionRuleRequest } from '../features/configurations/types';
 import {
   DEFAULT_AUTO_FINDING_RULES,
@@ -382,7 +383,7 @@ const DEFAULT_RISK_POLICY: RiskPolicy = applyTriageDefaults({
   autoCloseSourceDisabledEnabled: false,
   autoCloseDuplicateEnabled: true,
   autoCloseRunIntervalDays: 1,
-  findingGenerationMode: 'MANUAL',
+  findingGenerationMode: 'AUTO',
   findingsScoreConfig: DEFAULT_FINDINGS_SCORE_CONFIG_JSON,
   triageExploitabilityWeight: 1.0,
   triageBlastRadiusWeight: 1.0,
@@ -2101,9 +2102,11 @@ export function ConfigurationsPage() {
 
 // ── SuppressionSection — standalone component (hoisted) ─────────────────────
 
-const ALL_VULN_SOURCES: VulnerabilitySourceSystem[] = ['nvd', 'kev', 'ghsa', 'redhat', 'microsoft', 'euvd', 'jvn'];
+const ALL_VULN_SOURCES: VulnerabilitySourceSystem[] = ['nvd', 'kev', 'ghsa', 'redhat', 'microsoft', 'euvd', 'jvn', 'advisory', 'epss'];
 
 const VULNERABILITY_SOURCE_COPY: Record<VulnerabilitySourceSystem, { label: string; description: string; badge: string }> = {
+  advisory: { label: 'Manual advisories', description: 'Approved advisory imports and their affected product rules.', badge: 'SG' },
+  epss: { label: 'EPSS', description: 'Approved exploitation probability enrichment; does not establish applicability.', badge: 'FIRST' },
   nvd: {
     label: 'NVD',
     description: 'National Vulnerability Database — baseline national feed providing broad CVE coverage with CVSS scoring.',
@@ -2141,26 +2144,6 @@ const VULNERABILITY_SOURCE_COPY: Record<VulnerabilitySourceSystem, { label: stri
   },
 };
 
-const SOURCE_SUMMARY_KEY: Record<VulnerabilitySourceSystem, string> = {
-  nvd: 'NVD',
-  kev: 'KEV',
-  ghsa: 'GHSA',
-  redhat: 'CSAF_REDHAT',
-  microsoft: 'CSAF_MICROSOFT',
-  euvd: 'EUVD',
-  jvn: 'JVN',
-};
-
-const SOURCE_SYNC_FN: Record<VulnerabilitySourceSystem, () => Promise<unknown>> = {
-  nvd: () => api.syncNvd(),
-  kev: () => api.syncKev(),
-  ghsa: () => api.syncGhsa(),
-  redhat: () => api.syncRedhatCsaf(),
-  microsoft: () => api.syncMicrosoftCsaf(),
-  euvd: () => api.syncEuvd(),
-  jvn: () => api.syncJvn(),
-};
-
 function toSourceFilterRequest(config: VulnerabilitySourceFilterConfig): VulnerabilitySourceFilterConfigRequest {
   return {
     enabledForCorrelation: config.enabledForCorrelation ?? true,
@@ -2183,247 +2166,23 @@ function toSourceFilterRequest(config: VulnerabilitySourceFilterConfig): Vulnera
 }
 
 export function VulnerabilitySourcesSection({ canEdit }: { canEdit: boolean }) {
-  const actor = useActor();
-  const canRunSync = canManageSourceFilters(actor);
-  const [configs, setConfigs] = React.useState<VulnerabilitySourceFilterConfig[]>([]);
-  const [syncSummary, setSyncSummary] = React.useState<Record<string, { status: string; completedAt?: string; recordsInserted: number; recordsUpdated: number; errorMessage?: string }>>({});
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState('');
-  const [message, setMessage] = React.useState('');
-  const [savingSource, setSavingSource] = React.useState<VulnerabilitySourceSystem | null>(null);
-  const [syncingSource, setSyncingSource] = React.useState<VulnerabilitySourceSystem | null>(null);
-  const [failureDetails, setFailureDetails] = React.useState<{ label: string; error: string } | null>(null);
-
-  const loadConfigs = React.useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.listVulnerabilitySourceFilterConfigs();
-      setConfigs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load vulnerability sources');
-    } finally {
-      setLoading(false);
-    }
-    // Load sync summary independently — silently ignore permission errors
-    try {
-      const summary = await api.getVulnIntelSourcesSummary();
-      setSyncSummary(summary.sources as Record<string, { status: string; completedAt?: string; recordsInserted: number; recordsUpdated: number }>);
-    } catch {
-      // not a blocking error — stats will show as unavailable
-    }
-  }, []);
-
-  React.useEffect(() => {
-    void loadConfigs();
-  }, [loadConfigs]);
-
-  const toggleSource = async (source: VulnerabilitySourceSystem, currentEnabled: boolean) => {
-    setSavingSource(source);
-    setError('');
-    setMessage('');
-    const existingConfig = configs.find((c) => c.sourceSystem === source);
-    const request = existingConfig ? toSourceFilterRequest(existingConfig) : { enabledForCorrelation: !currentEnabled };
-    try {
-      const saved = await api.saveVulnerabilitySourceFilterConfig(source, {
-        ...request,
-        enabledForCorrelation: !currentEnabled,
-      });
-      setConfigs((current) => {
-        const exists = current.some((c) => c.sourceSystem === source);
-        return exists ? current.map((c) => c.sourceSystem === source ? saved : c) : [...current, saved];
-      });
-      setMessage(`${VULNERABILITY_SOURCE_COPY[source].label} ${!currentEnabled ? 'opted in' : 'opted out'}.`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save source setting');
-    } finally {
-      setSavingSource(null);
-    }
-  };
-
-  const triggerSync = async (source: VulnerabilitySourceSystem) => {
-    setSyncingSource(source);
-    setError('');
-    setMessage('');
-    try {
-      await SOURCE_SYNC_FN[source]();
-      setMessage(`${VULNERABILITY_SOURCE_COPY[source].label} sync triggered. Stats will update automatically…`);
-      // Poll summary until source completes or fails (max 90s)
-      const summaryKey = SOURCE_SUMMARY_KEY[source];
-      let attempts = 0;
-      const poll = async () => {
-        attempts++;
-        try {
-          const summary = await api.getVulnIntelSourcesSummary();
-          setSyncSummary(summary.sources as Record<string, { status: string; completedAt?: string; recordsInserted: number; recordsUpdated: number }>);
-          const status = (summary.sources as Record<string, { status: string }>)[summaryKey]?.status;
-          if ((status === 'completed' || status === 'failed') || attempts >= 18) {
-            if (status === 'completed') setMessage(`${VULNERABILITY_SOURCE_COPY[source].label} sync complete.`);
-            return;
-          }
-        } catch { /* ignore */ }
-        setTimeout(() => void poll(), 5000);
-      };
-      setTimeout(() => void poll(), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger sync');
-    } finally {
-      setSyncingSource(null);
-    }
-  };
-
-  return (
-    <div className="config-section-body">
-      {/* Failure details popup */}
-      {failureDetails && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setFailureDetails(null)}
-        >
-          <div
-            className="panel"
-            style={{ padding: 24, maxWidth: 480, width: '90%' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h4 style={{ margin: 0 }}>{failureDetails.label} — Sync Failure</h4>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFailureDetails(null)}>✕</button>
-            </div>
-            <div className="notice error" style={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {failureDetails.error}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {message ? <div className="notice" role="status">{message}</div> : null}
-      {error ? <div className="notice error" role="alert">{error}</div> : null}
-      {loading ? (
-        <p>Loading vulnerability sources…</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginTop: 16 }}>
-          {ALL_VULN_SOURCES.map((source) => {
-            const config = configs.find((c) => c.sourceSystem === source);
-            const enabled = config?.enabledForCorrelation ?? true;
-            const copy = VULNERABILITY_SOURCE_COPY[source];
-            const summaryKey = SOURCE_SUMMARY_KEY[source];
-            const syncStatus = syncSummary[summaryKey];
-            const isSaving = savingSource === source;
-            const isSyncing = syncingSource === source;
-            const isFailed = syncStatus?.status === 'failed';
-
-            return (
-              <article
-                key={source}
-                className="um-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 0 }}
-              >
-                {/* Header row */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <h4 style={{ margin: 0 }}>{copy.label}</h4>
-                      <span className="panel-caption" style={{ fontSize: 11, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px' }}>
-                        {copy.badge}
-                      </span>
-                    </div>
-                    <p className="panel-caption" style={{ margin: 0, fontSize: 12, lineHeight: 1.4 }}>{copy.description}</p>
-                  </div>
-                  {/* Toggle */}
-                  <button
-                    type="button"
-                    title={enabled ? 'Disable this source' : 'Enable this source'}
-                    disabled={!canEdit || isSaving}
-                    onClick={() => void toggleSource(source, enabled)}
-                    style={{
-                      flexShrink: 0,
-                      width: 30,
-                      height: 17,
-                      borderRadius: 9,
-                      border: 'none',
-                      cursor: canEdit ? 'pointer' : 'default',
-                      background: enabled ? 'var(--accent)' : 'var(--border)',
-                      position: 'relative',
-                      transition: 'background 0.15s',
-                    }}
-                    aria-label={enabled ? `Disable ${copy.label}` : `Enable ${copy.label}`}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      top: 2,
-                      left: enabled ? 15 : 2,
-                      width: 13,
-                      height: 13,
-                      borderRadius: '50%',
-                      background: '#fff',
-                      transition: 'left 0.15s',
-                    }} />
-                  </button>
-                </div>
-
-                {/* Sync stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 12, padding: '10px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                  <div>
-                    <div className="panel-caption" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Last Imported</div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>
-                      {syncStatus?.completedAt ? new Date(syncStatus.completedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      {syncStatus?.status && (
-                        <span style={{ fontSize: 10, color: isFailed ? 'var(--severity-critical, #ef4444)' : syncStatus.status === 'completed' ? '#21d07a' : 'var(--text-secondary)' }}>
-                          {syncStatus.status}
-                        </span>
-                      )}
-                      {isFailed && syncStatus?.errorMessage && (
-                        <button
-                          type="button"
-                          onClick={() => setFailureDetails({ label: copy.label, error: syncStatus.errorMessage! })}
-                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10, color: 'var(--accent)', textDecoration: 'underline' }}
-                        >
-                          Details
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="panel-caption" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>New Records</div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{syncStatus ? syncStatus.recordsInserted.toLocaleString() : '—'}</div>
-                  </div>
-                  <div>
-                    <div className="panel-caption" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Updated</div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{syncStatus ? syncStatus.recordsUpdated.toLocaleString() : '—'}</div>
-                  </div>
-                </div>
-
-                {/* Action row */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  {canRunSync ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{ fontSize: 11, padding: '4px 10px' }}
-                      disabled={isSyncing}
-                      onClick={() => void triggerSync(source)}
-                    >
-                      {isSyncing ? 'Syncing…' : '↻ Update Now'}
-                    </button>
-                  ) : (
-                    <span
-                      className="btn btn-secondary"
-                      title="Platform administrator access required to trigger a sync"
-                      style={{ fontSize: 11, padding: '4px 10px', opacity: 0.5, cursor: 'not-allowed' }}
-                    >
-                      ↻ Update Now
-                    </span>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  const client = useQueryClient();
+  const configs = useQuery({ queryKey: ['tenant-intelligence-sources'], queryFn: api.listVulnerabilitySourceFilterConfigs });
+  const processing = useQuery({ queryKey: ['tenant-intelligence-processing'], queryFn: intelligenceApi.tenantStatus, refetchInterval: 5000 });
+  const toggle = useMutation({ mutationFn: ({ source, enabled }: { source: VulnerabilitySourceSystem; enabled: boolean }) => {
+    const config = configs.data?.find((item) => item.sourceSystem === source);
+    return api.saveVulnerabilitySourceFilterConfig(source, { ...(config ? toSourceFilterRequest(config) : {}), enabledForCorrelation: enabled });
+  }, onSuccess: () => { void client.invalidateQueries({ queryKey: ['tenant-intelligence-sources'] }); void client.invalidateQueries({ queryKey: ['tenant-intelligence-processing'] }); } });
+  return <section className="config-section-body">
+    <p>Enabled sources automatically evaluate your inventory after publication. Disabling a source retains finding history and analyst decisions.</p>
+    {processing.data && <p role="status">Processing: {processing.data.status} · revision {processing.data.completed_revision}/{processing.data.required_revision} · release {processing.data.current_release_id ?? 'Awaiting first publication'}{processing.data.last_error ? ` · ${processing.data.last_error}` : ''}</p>}
+    {[configs.error, processing.error, toggle.error].filter(Boolean).map((error, index) => <p role="alert" className="notice error" key={index}>{error instanceof Error ? error.message : 'Request failed'}</p>)}
+    {configs.isLoading ? <p>Loading vulnerability sources…</p> : ALL_VULN_SOURCES.map((source) => {
+      const enabled = configs.data?.find((config) => config.sourceSystem === source)?.enabledForCorrelation ?? true;
+      const copy = VULNERABILITY_SOURCE_COPY[source];
+      return <article className="panel" key={source}><h4>{copy.label}</h4><p>{copy.description}</p><button type="button" className="btn btn-secondary" role="switch" aria-checked={enabled} aria-label={`${copy.label} source`} disabled={!canEdit || toggle.isPending} onClick={() => toggle.mutate({ source, enabled: !enabled })}>{enabled ? 'Enabled' : 'Disabled'}</button></article>;
+    })}
+  </section>;
 }
 
 const BLANK_CONDITION: SuppressionCondition = { table: 'VULNERABILITY', column: 'severity', operator: '=', value: '' };

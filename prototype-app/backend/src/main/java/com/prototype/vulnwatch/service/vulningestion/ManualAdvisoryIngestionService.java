@@ -51,8 +51,14 @@ public class ManualAdvisoryIngestionService {
         this.support = support;
     }
 
+    private VulnerabilitySyncRunService runs;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureRuns(VulnerabilitySyncRunService runs) { this.runs=runs; }
+
     @Transactional
     public IngestionResult ingestAdvisories(AdvisoryBatchRequest request) {
+        var stagingRun=runs.createRunningRun("ADVISORY");
+        try {
         List<AdvisoryRequest> advisories = request.advisories() == null ? List.of() : request.advisories();
         int fetched = advisories.size();
         int inserted = 0;
@@ -87,8 +93,9 @@ public class ManualAdvisoryIngestionService {
             );
             Vulnerability vuln = upsertResult.vulnerability();
             boolean vulnerabilityCreated = upsertResult.vulnerabilityCreated();
-            vulnerabilityRuleRepository.deleteByVulnerability(vuln);
-            vulnerabilityTargetRepository.deleteByVulnerabilityAndSourceIn(vuln, List.of("advisory"));
+            if(Boolean.TRUE.equals(advisory.withdrawn())) { support.withdrawSource(vuln,"advisory",externalId);updated++;continue; }
+            support.replaceRules(vuln);
+            support.replaceTargets(vuln, List.of("advisory"));
 
             List<AdvisoryRuleRequest> rules = advisory.rules() == null ? List.of() : advisory.rules();
             for (AdvisoryRuleRequest ruleRequest : rules) {
@@ -108,7 +115,7 @@ public class ManualAdvisoryIngestionService {
                     rule.setCpeVendor(parsedRuleCpe.vendor());
                     rule.setCpeProduct(parsedRuleCpe.product());
                 }
-                vulnerabilityRuleRepository.save(rule);
+                support.saveRule(rule);
 
                 SoftwareIdentity identity = identityGraphService.resolveFromTarget(
                         rule.getEcosystem(),
@@ -119,7 +126,7 @@ public class ManualAdvisoryIngestionService {
                         null,
                         "advisory"
                 );
-                vulnerabilityTargetRepository.save(support.createTarget(
+                support.saveTarget(support.createTarget(
                         vuln,
                         identity,
                         VulnerabilityTargetType.ADVISORY_PACKAGE,
@@ -145,7 +152,7 @@ public class ManualAdvisoryIngestionService {
                 ));
 
                 if (support.hasText(normalizedRuleCpe)) {
-                    vulnerabilityTargetRepository.save(support.createTarget(
+                    support.saveTarget(support.createTarget(
                             vuln,
                             identity,
                             VulnerabilityTargetType.CPE,
@@ -173,7 +180,7 @@ public class ManualAdvisoryIngestionService {
 
                 String digest = support.normalizeDigestToken(ruleRequest.digest());
                 if (support.hasText(digest)) {
-                    vulnerabilityTargetRepository.save(support.createTarget(
+                    support.saveTarget(support.createTarget(
                             vuln,
                             identity,
                             VulnerabilityTargetType.DIGEST,
@@ -212,6 +219,8 @@ public class ManualAdvisoryIngestionService {
 
         effectsService.recomputeCveDeltas(changedVulnerabilityIds);
 
+        runs.completeRun(stagingRun,"completed",fetched,inserted,updated,0,null);
         return new IngestionResult("ok", fetched, inserted, updated, "Advisories ingested");
+        } finally { com.prototype.vulnwatch.service.IntelligenceWriteContext.endRun(stagingRun.getId()); }
     }
 }

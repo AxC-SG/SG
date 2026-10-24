@@ -80,27 +80,15 @@ class FindingRecomputeServiceDeltaRefreshTest {
     }
 
     @Test
-    void recomputeForAssetDelegatesToAssetService() {
-        Tenant tenant = new Tenant();
-        Asset asset = new Asset();
-        when(findingAssetRecomputeService.recomputeForAsset(tenant, asset)).thenReturn(5);
-
-        int total = findingRecomputeService.recomputeForAsset(tenant, asset);
-
-        assertEquals(5, total);
-        verify(findingAssetRecomputeService).recomputeForAsset(tenant, asset);
-    }
-
-    @Test
-    void recomputeForAssetsDelegatesToAssetService() {
-        Asset asset = new Asset();
-        List<Asset> assets = List.of(asset);
-        when(findingAssetRecomputeService.recomputeForAssets(assets)).thenReturn(2);
-
-        int total = findingRecomputeService.recomputeForAssets(assets);
-
-        assertEquals(2, total);
-        verify(findingAssetRecomputeService).recomputeForAssets(assets);
+    void assetRecomputeUsesTheSameFencedComponentEvaluationAsQueuedWork() {
+        Tenant tenant=new Tenant();tenant.setId(UUID.randomUUID());
+        Asset asset=new Asset();asset.setTenant(tenant);
+        var component=mock(com.prototype.vulnwatch.domain.InventoryComponent.class);UUID id=UUID.randomUUID();when(component.getId()).thenReturn(id);
+        when(inventoryComponentRepository.findByAsset(asset)).thenReturn(List.of(component));
+        when(findingComponentRecomputeService.recomputeOnSoftwareDeltaBatch(tenant.getId(),List.of(id))).thenReturn(2);
+        assertEquals(2,findingRecomputeService.recomputeForAsset(tenant,asset));
+        assertEquals(2,findingRecomputeService.recomputeForAssets(List.of(asset)));
+        verify(findingAssetRecomputeService,never()).recomputeForAsset(tenant,asset);
     }
 
     @Test

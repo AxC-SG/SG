@@ -17,7 +17,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 public class TenantService {
 
-    public static final String DEFAULT_TENANT_NAME = "Default Workspace";
+    public static final String DEFAULT_TENANT_NAME = "SG Internal";
     public static final String DEFAULT_TENANT_SCHEMA = "tenant_default";
     public static final String DEFAULT_PLAN_CODE = "ENTERPRISE";
 
@@ -34,12 +34,9 @@ public class TenantService {
 
     @Transactional
     public Tenant getDefaultTenant() {
-        return tenantRepository.findByNameIgnoreCase(DEFAULT_TENANT_NAME)
-                .or(() -> tenantRepository.findBySchemaName(DEFAULT_TENANT_SCHEMA))
-                .or(() -> tenantRepository.findAllByOrderByCreatedAtAsc().stream()
-                        .filter(this::isUsableDefaultTenantCandidate)
-                        .findFirst())
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Default workspace not found"));
+        return tenantRepository.findBySchemaName(DEFAULT_TENANT_SCHEMA)
+                .filter(Tenant::isInternal)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Reserved SG Internal tenant not found"));
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +84,12 @@ public class TenantService {
         tenant.setName(requireText(name, "name"));
         tenant.setSlug(normalizeSlug(slug == null || slug.isBlank() ? name : slug));
         tenant.setSchemaName(tenantSchemaService.deriveSchemaName(tenant.getSlug()));
+        if ("SG Internal".equalsIgnoreCase(tenant.getName())
+                || java.util.Set.of("default-workspace", "sg-internal").contains(tenant.getSlug())
+                || DEFAULT_TENANT_SCHEMA.equals(tenant.getSchemaName())) {
+            throw new IllegalArgumentException("Reserved internal tenant identity");
+        }
+        tenant.setClassification("CUSTOMER");
         tenant.setPlanCode(normalizePlanCode(planCode));
         tenant.setBillingRef(billingRef == null || billingRef.isBlank() ? null : billingRef.trim());
         tenant.setStatus("PROVISIONING");
@@ -115,6 +118,9 @@ public class TenantService {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + tenantId));
         String normalizedStatus = requireText(status, "status").toUpperCase();
+        if (tenant.isInternal() && java.util.Set.of("DELETED", "EXPIRED", "PURGING", "PURGED").contains(normalizedStatus)) {
+            throw new IllegalArgumentException("SG Internal cannot expire or be deleted");
+        }
         if ("ACTIVE".equals(normalizedStatus)
                 && tenant.getDemoExpiresAt() != null
                 && !tenant.getDemoExpiresAt().isAfter(Instant.now())) {
@@ -227,16 +233,10 @@ public class TenantService {
     }
 
     private boolean isDemoTenant(Tenant tenant) {
-        return tenant != null
+        return tenant != null && !tenant.isInternal()
                 && (tenant.getDemoExpiresAt() != null
                 || (tenant.getDemoSource() != null && !tenant.getDemoSource().isBlank())
                 || DemoLifecycleService.DEMO_PLAN_CODE.equalsIgnoreCase(tenant.getPlanCode()));
-    }
-
-    private boolean isUsableDefaultTenantCandidate(Tenant tenant) {
-        return tenant.getDeletedAt() == null
-                && tenant.getPurgedAt() == null
-                && "ACTIVE".equalsIgnoreCase(tenant.getStatus());
     }
 
     private boolean isActiveTenantForBackgroundWork(Tenant tenant) {

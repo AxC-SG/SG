@@ -49,6 +49,7 @@ class SchedulerOverlapPostgresIntegrationTest {
 
     @BeforeEach void setup() {
         TenantContext.clear();
+        for(String type:VulnerabilitySyncRunService.SUPPORTED_TYPES) jdbc.update("insert into platform.intelligence_feed_schedules(sync_type,enabled,next_due_at) values (?,true,now()-interval '1 hour') on conflict(sync_type) do update set enabled=true,next_due_at=now()-interval '1 hour'",type);
         jdbc.update("delete from platform.sync_runs where tenant_id is null and run_scope='PLATFORM_VULNERABILITY'");
         String slug = "schedule-" + UUID.randomUUID().toString().substring(0,8);
         tenant = tenants.createTenant(slug,slug,"ENTERPRISE",null);
@@ -63,6 +64,7 @@ class SchedulerOverlapPostgresIntegrationTest {
         jdbc.update("update platform.sync_runs set status='completed' where id=?",ids.get(0));
         assertEquals(ids.get(0), runs.prepareScheduledRun("OSV",DUE).run().getId());
         assertEquals(1, jdbc.queryForObject("select count(*) from platform.sync_runs where sync_type='OSV'",Integer.class));
+        jdbc.update("update platform.intelligence_feed_schedules set next_due_at=now()-interval '1 hour' where sync_type='OSV'");
         assertNotEquals(ids.get(0),runs.prepareScheduledRun("OSV",DUE.plusSeconds(86400)).run().getId());
         assertNotEquals(ids.get(0),runs.prepareScheduledRun("EPSS",DUE).run().getId());
     }

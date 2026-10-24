@@ -60,6 +60,7 @@ class InvitationTokenPostgresIntegrationTest {
     @Autowired DemoRequestRepository requests;
     @Autowired DemoLifecycleService demos;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.prototype.vulnwatch.service.TenantSchemaMigrationService migrations;
     @MockitoBean TenantInviteEmailService tenantEmail;
     @MockitoBean DemoInviteEmailService demoEmail;
 
@@ -109,7 +110,10 @@ class InvitationTokenPostgresIntegrationTest {
     }
 
     private Tenant activeTenant() {
-        Tenant tenant = tenantService.getDefaultTenant();
+        String slug="invite-"+UUID.randomUUID().toString().substring(0,8);
+        Tenant tenant = tenantService.createTenant(slug,slug,"ENTERPRISE",null);
+        migrations.provisionNewTenant(tenant);
+        tenant=tenantService.resolveTenantUuid(tenant.getId());
         tenant.setStatus("ACTIVE");
         tenant.setDemoExpiresAt(Instant.now().plusSeconds(86400));
         return tenants.saveAndFlush(tenant);

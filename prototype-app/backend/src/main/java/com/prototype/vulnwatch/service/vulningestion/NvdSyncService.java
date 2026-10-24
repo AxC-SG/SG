@@ -110,7 +110,11 @@ public class NvdSyncService {
         if (!backfillTargetsOnStartup) {
             return;
         }
-        backfillTargetsFromRulesInternal(true);
+        SyncRun run=syncRunService.createRunningRun("NVD_TARGET_REPAIR");
+        try {
+            int prepared=Math.toIntExact(backfillTargetsFromRulesInternal(true));
+            syncRunService.completeRun(run,"completed",prepared,0,prepared,0,null);
+        } finally { com.prototype.vulnwatch.service.IntelligenceWriteContext.endRun(run.getId()); }
     }
 
     public SyncTriggerResponse triggerNvdSync(int lookbackHours) {
@@ -155,12 +159,19 @@ public class NvdSyncService {
      * Uses the cveId query parameter which bypasses the 120-day rolling window.
      */
     public IngestionResult refreshSingleCveFromNvd(String cveId) {
-        NvdApiClient.NvdRecord record = nvdApiClient.fetchSingleCve(cveId);
-        if (record == null) {
-            return new IngestionResult("not_found", 0, 0, 0, "CVE not found in NVD: " + cveId);
-        }
-        boolean created = upsertNvdRecord(record);
-        return new IngestionResult("ok", 1, created ? 1 : 0, created ? 0 : 1, "Refreshed " + cveId + " from NVD");
+        SyncRun run=syncRunService.createRunningRun("NVD_SINGLE");
+        try {
+            NvdApiClient.NvdRecord record=nvdApiClient.fetchSingleCve(cveId);
+            if (record==null) {
+                syncRunService.completeRun(run,"failed",0,0,0,1,"CVE not found");
+                return new IngestionResult("not_found",0,0,0,"CVE not found in NVD: "+cveId);
+            }
+            upsertNvdRecord(record);
+            syncRunService.completeRun(run,"completed",1,0,1,0,null);
+            return new IngestionResult("ok",1,0,1,"CVE staged for review: "+cveId);
+        } catch(RuntimeException failure) {
+            syncRunService.completeRun(run,"failed",0,0,0,1,"NVD refresh failed");throw failure;
+        } finally { com.prototype.vulnwatch.service.IntelligenceWriteContext.endRun(run.getId()); }
     }
 
     private IngestionResult executeNvdIncrementalSync(SyncRun run, int lookbackHours) {
@@ -183,10 +194,10 @@ public class NvdSyncService {
                 syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, result.message());
                 return new IngestionResult("failed", fetched, inserted, updated, result.message());
             }
-            feedWatermarks.complete(key, intervalEnd);
             start = intervalEnd;
         }
         syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
+        feedWatermarks.complete(key,end);
         return new IngestionResult("ok", fetched, inserted, updated, "NVD incremental coverage complete");
     }
 
@@ -358,7 +369,7 @@ public class NvdSyncService {
             for (VulnerabilityRule rule : rules.getContent()) {
                 appendTargetsForRule(targets, rule, "backfill", Instant.now().toString());
             }
-            vulnerabilityTargetRepository.saveAll(targets);
+            targets.forEach(support::saveTarget);
             createdTargets += targets.size();
             if (!rules.hasNext()) {
                 break;
@@ -459,6 +470,9 @@ public class NvdSyncService {
                 )
         );
         Vulnerability vuln = upsertResult.vulnerability();
+        if("REJECTED".equalsIgnoreCase(record.vulnStatus())) {
+            support.withdrawSource(vuln,"nvd",record.cveId());return false;
+        }
 
         vuln.setVulnStatus(record.vulnStatus());
         vuln.setCvssVersion(record.cvssVersion());
@@ -471,10 +485,10 @@ public class NvdSyncService {
         vuln.setExploitabilityScore(record.exploitabilityScore());
         vuln.setImpactScore(record.impactScore());
         vuln.touch();
-        vulnerabilityRepository.save(vuln);
+        support.saveMetadata(vuln,"nvd");
 
-        vulnerabilityRuleRepository.deleteByVulnerability(vuln);
-        vulnerabilityTargetRepository.deleteByVulnerabilityAndSourceIn(vuln, List.of("nvd", "backfill", "backfill-inventory"));
+        support.replaceRules(vuln);
+        support.replaceTargets(vuln, List.of("nvd", "backfill", "backfill-inventory"));
         for (NvdApiClient.NvdRule ruleData : record.rules()) {
             VulnerabilityRule rule = new VulnerabilityRule();
             rule.setVulnerability(vuln);
@@ -488,7 +502,7 @@ public class NvdSyncService {
             rule.setCpe(ruleData.cpe());
             rule.setCpeVendor(ruleData.cpeVendor());
             rule.setCpeProduct(ruleData.cpeProduct());
-            vulnerabilityRuleRepository.save(rule);
+            support.saveRule(rule);
 
             SoftwareIdentity identity = identityGraphService.resolveFromTarget(
                     ruleData.ecosystem(),
@@ -500,7 +514,7 @@ public class NvdSyncService {
                     "nvd"
             );
 
-            vulnerabilityTargetRepository.save(support.createTarget(
+            support.saveTarget(support.createTarget(
                     vuln,
                     identity,
                     VulnerabilityTargetType.COORD,
@@ -526,7 +540,7 @@ public class NvdSyncService {
             ));
 
             if (ruleData.cpe() != null && !ruleData.cpe().isBlank()) {
-                vulnerabilityTargetRepository.save(support.createTarget(
+                support.saveTarget(support.createTarget(
                         vuln,
                         identity,
                         VulnerabilityTargetType.CPE,

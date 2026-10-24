@@ -42,7 +42,7 @@ class ResetLineBootstrapPostgresIntegrationTest {
 
     @Test
     void freshDatabaseBootstrapsPlatformAndDefaultTenantSchemas() {
-        Tenant defaultTenant = tenantRepository.findByNameIgnoreCase("Default Workspace").orElseThrow();
+        Tenant defaultTenant = tenantRepository.findBySchemaName("tenant_default").orElseThrow();
         assertNotNull(defaultTenant.getId());
         assertEquals("tenant_default", defaultTenant.getSchemaName());
 

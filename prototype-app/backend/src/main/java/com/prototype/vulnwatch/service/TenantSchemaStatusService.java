@@ -69,17 +69,17 @@ public class TenantSchemaStatusService {
         return new TenantSchemaStatusResponse(items, page, size, total == null ? 0 : total);
     }
 
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:5}")
-    private int compatibleMinimum=5;
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:5}")
-    private int compatibleMaximum=5;
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:6}")
+    private int compatibleMinimum=6;
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:6}")
+    private int compatibleMaximum=6;
 
     public long readinessFailures(int ignoredPackagedTarget) {
         assertPlatformDependencies();
         Long count=jdbc.queryForObject("""
                 select count(*) from platform.tenants t left join platform.tenant_schema_versions v on v.tenant_id=t.id
                  where t.status='ACTIVE' and (v.tenant_id is null or v.status<>'CURRENT' or v.current_version<? or v.current_version>?)
-                """,Long.class,Math.max(5,compatibleMinimum),Math.min(5,compatibleMaximum));
+                """,Long.class,Math.max(TenantSchemaCompatibility.REQUIRED_MINIMUM,compatibleMinimum),Math.min(TenantSchemaCompatibility.SUPPORTED_MAXIMUM,compatibleMaximum));
         return count==null ? 0 : count;
     }
 
@@ -98,6 +98,13 @@ public class TenantSchemaStatusService {
                        platform.ai_grid_policy_deprecation_tasks deprecation,public.github_security_advisories advisory
                  where false
                 """, (org.springframework.jdbc.core.ResultSetExtractor<Void>) rs -> null);
+        jdbc.query("""
+                select t.classification,s.payload,c.digest,a.generation,o.status,p.required_revision,f.enabled,r.canonical_id
+                  from platform.tenants t,platform.intelligence_staged_records s,platform.intelligence_candidates c,
+                       platform.intelligence_active_state a,platform.intelligence_publication_outbox o,
+                       platform.tenant_intelligence_processing p,platform.intelligence_feed_schedules f,platform.intelligence_canonical_redirects r
+                 where false
+                """,(org.springframework.jdbc.core.ResultSetExtractor<Void>) rs -> null);
         Boolean coordinated = jdbc.queryForObject("""
                 select exists (select 1 from pg_constraint
                          where conrelid='platform.ai_grid_policy_rollout_tasks'::regclass

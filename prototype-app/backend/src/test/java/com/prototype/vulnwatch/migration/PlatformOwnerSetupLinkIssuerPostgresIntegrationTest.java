@@ -39,63 +39,32 @@ class PlatformOwnerSetupLinkIssuerPostgresIntegrationTest {
     private static final Pattern SETUP_TOKEN = Pattern.compile("/setup#token=([0-9a-f-]+)");
 
     @Test
-    void deliversHashedOneTimeTokenAndRollsBackFailedDelivery() throws Exception {
+    void commitsEncryptedDeliveryIntentWithoutProviderCallAndPreservesExistingSetupAuthority() throws Exception {
         bootstrapDatabase();
-        UUID userId = insertPlatformOwner();
-        ResendEmailClient emailClient = mock(ResendEmailClient.class);
-        PlatformOwnerSetupLinkIssuer issuer = new PlatformOwnerSetupLinkIssuer(emailClient);
-
-        when(emailClient.send(any())).thenReturn(ResendEmailClient.DeliveryResult.sent("resend-message"));
-        try (Connection connection = ownerConnection()) {
-            PlatformOwnerSetupLinkIssuer.DeliverySummary summary = issuer.issue(
-                    connection,
-                    OWNER_EMAIL,
-                    "https://scoutgrid.io",
-                    30,
-                    false,
-                    UUID.randomUUID());
+        UUID userId=insertPlatformOwner();
+        var encryption=new com.prototype.vulnwatch.service.CredentialEncryptionService(java.util.Base64.getEncoder().encodeToString(new byte[32]));
+        ResendEmailClient emailClient=new ResendEmailClient(new com.fasterxml.jackson.databind.ObjectMapper(),"https://api.resend.com","","SG <setup@example.test>","example.test");
+        PlatformOwnerSetupLinkIssuer issuer=new PlatformOwnerSetupLinkIssuer(emailClient,encryption);
+        try(Connection connection=ownerConnection()) {
+            var summary=issuer.issue(connection,OWNER_EMAIL,"https://scoutgrid.io",30,false,UUID.randomUUID());
             assertTrue(summary.expiresAt().isAfter(Instant.now()));
         }
-
-        ArgumentCaptor<ResendEmailClient.EmailMessage> messageCaptor =
-                ArgumentCaptor.forClass(ResendEmailClient.EmailMessage.class);
-        verify(emailClient).send(messageCaptor.capture());
-        ResendEmailClient.EmailMessage message = messageCaptor.getValue();
-        assertEquals(OWNER_EMAIL, message.to());
-        assertTrue(message.text().contains("https://scoutgrid.io/setup#token="));
-        String token = extractToken(message.text());
-        assertEquals(hashToken(token), queryString(
-                "select password_setup_token_hash from platform.app_users where id = ?", userId));
-        assertNotNull(queryString(
-                "select password_setup_token_expires_at::text from platform.app_users where id = ?", userId));
-
-        reset(emailClient);
-        clearToken(userId);
-        when(emailClient.send(any())).thenReturn(ResendEmailClient.DeliveryResult.failed("rejected"));
-        try (Connection connection = ownerConnection()) {
-            assertThrows(IllegalStateException.class, () -> issuer.issue(
-                    connection,
-                    OWNER_EMAIL,
-                    "https://scoutgrid.io",
-                    30,
-                    false,
-                    UUID.randomUUID()));
-        }
-        assertNull(queryString(
-                "select password_setup_token_hash from platform.app_users where id = ?", userId));
-
-        reset(emailClient);
+        String digest=queryString("select password_setup_token_hash from platform.app_users where id=?",userId);
+        String encrypted=queryString("select encrypted_payload from platform.invitation_email_outbox where related_id=?",userId);
+        assertTrue(encrypted.startsWith("enc:v2:"));
+        String payload=encryption.decrypt(encrypted);
+        var message=new com.fasterxml.jackson.databind.ObjectMapper().readValue(payload,ResendEmailClient.EmailMessage.class);
+        assertEquals("Complete your SG account setup",message.subject());
+        assertEquals(hashToken(extractToken(message.text())),digest);
+        assertTrue(message.tags().isEmpty());
+        org.junit.jupiter.api.Assertions.assertFalse(message.text().contains("platform-owner"));
+        try(Connection connection=ownerConnection()) { issuer.issue(connection,OWNER_EMAIL,"https://scoutgrid.io",30,false,UUID.randomUUID()); }
+        assertEquals(digest,queryString("select password_setup_token_hash from platform.app_users where id=?",userId));
         setPasswordHash(userId);
-        try (Connection connection = ownerConnection()) {
-            assertThrows(IllegalStateException.class, () -> issuer.issue(
-                    connection,
-                    OWNER_EMAIL,
-                    "https://scoutgrid.io",
-                    30,
-                    false,
-                    UUID.randomUUID()));
-        }
-        verify(emailClient, never()).send(any());
+        try(Connection connection=ownerConnection()) { issuer.issue(connection,OWNER_EMAIL,"https://scoutgrid.io",30,false,UUID.randomUUID()); }
+        assertEquals(digest,queryString("select password_setup_token_hash from platform.app_users where id=?",userId));
+        try(Connection connection=ownerConnection()) { issuer.issue(connection,OWNER_EMAIL,"https://scoutgrid.io",30,true,UUID.randomUUID()); }
+        org.junit.jupiter.api.Assertions.assertNotEquals(digest,queryString("select password_setup_token_hash from platform.app_users where id=?",userId));
     }
 
     private void bootstrapDatabase() throws Exception {

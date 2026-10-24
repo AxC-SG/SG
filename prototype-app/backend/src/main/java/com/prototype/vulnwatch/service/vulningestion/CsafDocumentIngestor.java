@@ -134,6 +134,7 @@ public class CsafDocumentIngestor {
                     updated++;
                 }
 
+                support.replaceTargetsForRecord(vulnerability,List.of(sourceTag),sourceRecordId);
                 if (!productStatusGroups.isEmpty()) {
                     Map<String, VulnerabilityTarget> existingByKey = support.loadCsafTargetIndex(vulnerability, sourceTag);
                     for (Map.Entry<String, Set<String>> statusEntry : productStatusGroups.entrySet()) {

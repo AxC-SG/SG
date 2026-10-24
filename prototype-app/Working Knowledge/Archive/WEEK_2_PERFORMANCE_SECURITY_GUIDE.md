@@ -1,5 +1,7 @@
 # Week 2: Performance & Security Hardening
 
+> Historical archive: endpoint, role and migration descriptions below may be obsolete. See [current implementation closure](../../prototype-app/docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md). API-key examples require explicitly configured local development authentication; deployed environments use the current authentication contract.
+
 **Timeline:** Oct 7 - Oct 11, 2026  
 **Owner:** Backend Engineer + Security Engineer  
 **Goal:** Achieve performance baseline + security audit pass
@@ -399,7 +401,7 @@ curl -s http://localhost:8080/api/connectors/patches
 
 # Request with invalid API key
 curl -s http://localhost:8080/api/connectors/patches \
-  -H "X-API-Key: invalid-key"
+  -H "X-API-Key: ${INVALID_API_KEY:-invalid-key}"
 # Expected: 401 Unauthorized
 ```
 
@@ -409,12 +411,12 @@ curl -s http://localhost:8080/api/connectors/patches \
 
 # Request with valid API key
 curl -s http://localhost:8080/api/connectors/patches \
-  -H "X-API-Key: change-me-in-prod"
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
 # Expected: 200 OK
 
 # Request to protected admin endpoint without PLATFORM_OWNER role
 curl -s http://localhost:8080/api/platform/status \
-  -H "X-API-Key: change-me-in-prod"
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
 # Expected: 403 Forbidden (unless role granted)
 ```
 

@@ -64,19 +64,9 @@ public class VexAssertionService {
         this.objectMapper = objectMapper;
     }
 
-    @PostConstruct
-    @Transactional
-    public void backfillExistingAssertionsIfMissing() {
-        if (vexAssertionRepository.count() > 0) {
-            return;
-        }
-        List<VulnerabilityTarget> targets = vulnerabilityTargetRepository.findAllVexLikeTargets();
-        if (targets.isEmpty()) {
-            return;
-        }
-        int refreshed = synchronizeAssertions(targets);
-        LOG.info("Backfilled {} persisted VEX assertions from existing targets", refreshed);
-    }
+    private IntelligenceStagingService staging;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureStaging(IntelligenceStagingService staging) { this.staging=staging; }
 
     @Transactional
     public int refreshAssertionsForVulnerabilityIds(Collection<UUID> vulnerabilityIds) {
@@ -85,6 +75,10 @@ public class VexAssertionService {
 
     @Transactional
     public RefreshResult refreshAssertionsForVulnerabilityIdsDetailed(Collection<UUID> vulnerabilityIds) {
+        if (!IntelligenceWriteContext.publishing()) {
+            staging.append("VEX_REBUILD","*",null,"vex",java.util.Map.of(),"VALID");
+            return new RefreshResult(0,Set.of());
+        }
         if (vulnerabilityIds == null || vulnerabilityIds.isEmpty()) {
             return new RefreshResult(0, Set.of());
         }
@@ -121,6 +115,10 @@ public class VexAssertionService {
 
     @Transactional
     public RefreshResult refreshAllAssertionsDetailed() {
+        if (!IntelligenceWriteContext.publishing()) {
+            staging.append("VEX_REBUILD","*",null,"vex",java.util.Map.of(),"VALID");
+            return new RefreshResult(0,Set.of());
+        }
         List<VulnerabilityTarget> targets = vulnerabilityTargetRepository.findAllVexLikeTargets();
         if (targets.isEmpty()) {
             List<VexAssertion> existingAssertions = vexAssertionRepository.findAll();

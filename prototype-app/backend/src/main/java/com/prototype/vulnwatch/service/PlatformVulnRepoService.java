@@ -59,7 +59,7 @@ public class PlatformVulnRepoService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PlatformVulnRepoPageResponse listVulnerabilities(
             int page,
             int size,
@@ -197,7 +197,7 @@ public class PlatformVulnRepoService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public VulnRepoDashboardResponse getDashboard() {
         Instant now = Instant.now();
         Instant weekAgo = now.minus(7, ChronoUnit.DAYS);
@@ -244,7 +244,7 @@ public class PlatformVulnRepoService {
                 """
                 select count(*)
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                   and coalesce(v.updated_at, v.last_modified_at, v.published_at) >= :start
                 """,
                 new MapSqlParameterSource()
@@ -272,7 +272,7 @@ public class PlatformVulnRepoService {
                 """
                 select count(*)
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                   and upper(coalesce(v.severity, 'UNKNOWN')) = :severity
                 """,
                 new MapSqlParameterSource()
@@ -288,7 +288,7 @@ public class PlatformVulnRepoService {
                 """
                 select count(*)
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                   and (v.in_kev = true or coalesce(v.epss_score, 0) >= 0.9)
                 """,
                 new MapSqlParameterSource().addValue("prefix", EXTERNAL_ID_PREFIX + "%"),
@@ -302,7 +302,7 @@ public class PlatformVulnRepoService {
                 """
                 select count(*)
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                   and v.in_kev = true
                 """,
                 new MapSqlParameterSource().addValue("prefix", EXTERNAL_ID_PREFIX + "%"),
@@ -316,7 +316,7 @@ public class PlatformVulnRepoService {
                 """
                 select count(*)
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                   and v.in_kev = true
                   and coalesce(v.updated_at, v.last_modified_at, v.published_at) >= :start
                 """,
@@ -337,7 +337,7 @@ public class PlatformVulnRepoService {
                 """
                 select upper(coalesce(v.severity, 'UNKNOWN')) as severity, count(*) as total
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                 group by upper(coalesce(v.severity, 'UNKNOWN'))
                 """,
                 new MapSqlParameterSource().addValue("prefix", EXTERNAL_ID_PREFIX + "%"),
@@ -365,7 +365,7 @@ public class PlatformVulnRepoService {
                   v.published_at,
                   v.last_modified_at
                 from vulnerabilities v
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                 order by coalesce(v.updated_at, v.last_modified_at, v.published_at) desc, v.external_id asc
                 limit 5
                 """,
@@ -382,7 +382,7 @@ public class PlatformVulnRepoService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Map<String, Object> getSourceStats() {
         Map<String, Map<String, Long>> bySourceSeverity = new LinkedHashMap<>();
         jdbcTemplate.query(
@@ -392,7 +392,7 @@ public class PlatformVulnRepoService {
                        count(*) as total
                 from vulnerability_intel_summary_sources s
                 join vulnerabilities v on v.id = s.vulnerability_id
-                where v.external_id like :prefix
+                where not v.intelligence_withdrawn and v.external_id like :prefix
                 group by s.source_system, upper(coalesce(v.severity, 'UNKNOWN'))
                 order by s.source_system, severity
                 """,
@@ -423,7 +423,7 @@ public class PlatformVulnRepoService {
         return Map.of("sources", sources);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PlatformVulnIntelDetailResponse getIntelDetail(String externalId) {
         Vulnerability v = vulnerabilityRepository.findByExternalId(externalId.trim().toUpperCase(Locale.ROOT))
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(

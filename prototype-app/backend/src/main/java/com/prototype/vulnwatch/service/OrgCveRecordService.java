@@ -74,6 +74,13 @@ public class OrgCveRecordService {
         this.tenantWorkRunner = tenantWorkRunner;
     }
 
+    private TenantApprovedIntelligenceService approvedIntelligence;
+    private VulnerabilitySourceFilterConfigService sourceSettings;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureIntelligence(TenantApprovedIntelligenceService approvedIntelligence,VulnerabilitySourceFilterConfigService sourceSettings) {
+        this.approvedIntelligence=approvedIntelligence;this.sourceSettings=sourceSettings;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public void setTransactionManager(PlatformTransactionManager transactionManager) {
         if (transactionManager == null) {
@@ -188,11 +195,12 @@ public class OrgCveRecordService {
         Instant now = Instant.now();
         List<OrgCveRecord> toSave = new ArrayList<>();
         for (UUID vulnerabilityId : existingVulnerabilityIds) {
-            Vulnerability vulnerability = vulnerabilitiesById.get(vulnerabilityId);
-            if (vulnerability == null) {
+            Vulnerability canonical = vulnerabilitiesById.get(vulnerabilityId);
+            if (canonical == null) {
                 continue;
             }
 
+            Vulnerability vulnerability=approvedIntelligence.resolve(canonical,sourceSettings.enabledSourcesForCorrelation(tenant));
             ComponentVulnerabilityStateRepository.ApplicableExposureAggregateRow applicabilityAggregate =
                     applicabilityByVulnerability.get(vulnerabilityId);
             boolean applicable = applicabilityAggregate != null && applicabilityAggregate.getApplicableComponentCount() > 0;
@@ -256,7 +264,7 @@ public class OrgCveRecordService {
             if (record == null) {
                 record = new OrgCveRecord();
                 record.setTenant(tenant);
-                record.setVulnerability(vulnerability);
+                record.setVulnerability(canonical);
                 created = true;
             }
 

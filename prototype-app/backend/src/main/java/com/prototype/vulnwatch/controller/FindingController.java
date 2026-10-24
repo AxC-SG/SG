@@ -189,8 +189,9 @@ public class FindingController {
     }
 
     @GetMapping("/{findingId}")
-    public ResponseEntity<FindingResponse> getById(@PathVariable UUID findingId) {
+    public ResponseEntity<FindingResponse> getById(@PathVariable UUID findingId,@RequestParam(defaultValue="false") boolean includeInactive) {
         Tenant tenant = workspaceService.getWorkspace();
+        if (includeInactive) return findingQueryService.history(tenant,findingId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
         return findingQueryService.listEntitiesByTenantAndIds(tenant, List.of(findingId))
                 .stream()
                 .findFirst()

@@ -46,7 +46,7 @@ public class TenantAccessResolutionService {
         TenantMembership membership = membershipRepository
                 .findFirstByUserExternalSubjectAndTenantIdAndStatus(subject, tenantId, "ACTIVE")
                 .orElse(null);
-        if (membership != null) {
+        if (membership != null && !PLAYGROUND_PROVENANCE.equalsIgnoreCase(membership.getProvenance())) {
             boolean playground = PLAYGROUND_SLUG.equalsIgnoreCase(tenant.getSlug())
                     && PLAYGROUND_PROVENANCE.equalsIgnoreCase(membership.getProvenance());
             return new TenantAccessResolution(
@@ -88,6 +88,7 @@ public class TenantAccessResolutionService {
     public List<TenantAccessResolution> listAuthorized(String subject) {
         java.util.LinkedHashMap<UUID, TenantAccessResolution> results = new java.util.LinkedHashMap<>();
         membershipRepository.findByUserExternalSubjectAndStatusOrderByCreatedAtAsc(subject, "ACTIVE").stream()
+                .filter(membership -> !PLAYGROUND_PROVENANCE.equalsIgnoreCase(membership.getProvenance()))
                 .filter(membership -> lifecycleGuardService.isTenantAccessible(membership.getTenant()))
                 .forEach(membership -> {
                     Tenant tenant = membership.getTenant();

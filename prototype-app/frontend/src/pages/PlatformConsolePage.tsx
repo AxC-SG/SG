@@ -10,6 +10,7 @@ import { MetricInfoIcon } from '../components/MetricInfoIcon';
 import { EolPage } from './EolPage';
 import { VulnIntelConfigPage } from './VulnIntelConfigPage';
 import { IntegrationRunQueuePage } from './IntegrationRunQueuePage';
+import { IntelligenceReviewPanel } from './IntelligenceReviewPanel';
 import { PlatformAiPolicyStudio } from './PlatformAiPolicyStudio';
 
 const PLATFORM_TABS: Array<{ key: PlatformRouteView; label: string; helper: string }> = [
@@ -24,7 +25,8 @@ const PLATFORM_TABS: Array<{ key: PlatformRouteView; label: string; helper: stri
 ];
 
 function PlatformVulnIntelSection() {
-  const [subView, setSubView] = React.useState<'feeds' | 'run-history'>('feeds');
+  const [params] = useSearchParams();
+  const [subView, setSubView] = React.useState<'feeds' | 'run-history' | 'review'>(() => params.has('candidate') ? 'review' : 'feeds');
   const vulnSummaryQuery = useQuery({
     queryKey: ['vuln-intel-sources-summary'],
     queryFn: api.getVulnIntelSourcesSummary
@@ -47,11 +49,14 @@ function PlatformVulnIntelSection() {
         >
           Run History
         </button>
+        <button type="button" className={`connect-filter-btn${subView === 'review' ? ' active' : ''}`} onClick={() => setSubView('review')}>Review and releases</button>
       </div>
-      {subView === 'feeds' ? (
-        <section className="panel">
-          <VulnIntelConfigPage vulnSummary={vulnSummaryQuery.data ?? null} />
-        </section>
+      {subView === 'review' ? <IntelligenceReviewPanel /> : subView === 'feeds' ? (
+        <VulnIntelConfigPage
+          vulnSummary={vulnSummaryQuery.data ?? null}
+          isLoading={vulnSummaryQuery.isLoading}
+          loadError={vulnSummaryQuery.isError ? 'Unable to load source status. Refresh the page to try again.' : undefined}
+        />
       ) : (
         <IntegrationRunQueuePage
           title="Vulnerability Integration Run History"
@@ -142,7 +147,7 @@ export function PlatformConsolePage({ selectedView }: PlatformConsolePageProps) 
   };
 
   return (
-    <div className="page-grid platform-console-page">
+    <div className={`page-grid platform-console-page${selectedView === 'vuln-intel' ? ' platform-console-page--feeds' : ''}`}>
       <section className={`panel platform-console-shell${hideSidebar ? ' platform-console-shell--no-sidebar' : ''}`}>
         {!hideSidebar && (
           <aside className="platform-console-sidebar" aria-label="Platform views">

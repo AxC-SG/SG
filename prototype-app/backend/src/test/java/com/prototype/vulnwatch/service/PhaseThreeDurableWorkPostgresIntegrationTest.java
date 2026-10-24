@@ -193,7 +193,7 @@ class PhaseThreeDurableWorkPostgresIntegrationTest {
         assertEquals(1,jobs.claimPendingJobs(tenant,1,1).size());
     }
 
-    @Test void queuedNonemptyPlatformFeedPublishesToIndependentTenantQueues() throws Exception {
+    @Test void queuedNonemptyPlatformFeedStagesWithoutTenantFanout() throws Exception {
         String slug="feed-peer-"+UUID.randomUUID().toString().substring(0,8);
         Tenant peer=tenants.createTenant(slug,slug,"ENTERPRISE",null);migrations.provisionNewTenant(peer);peer=tenants.resolveTenantUuid(peer.getId());
         String feed="{\"vulnerabilities\":[{\"cveID\":\"CVE-2099-99991\",\"vulnerabilityName\":\"offline regression\"}]}";
@@ -202,7 +202,8 @@ class PhaseThreeDurableWorkPostgresIntegrationTest {
         var accepted=TenantContext.runAsPlatform(() -> kev.triggerKevSync());
         feedWorker.pollQueuedRuns();
         assertEquals("completed",syncRuns.findById(accepted.runId()).orElseThrow().getStatus());
-        for (Tenant target:List.of(tenant,peer)) scoped.run(target,() -> assertTrue(jdbc.queryForObject("select count(*) from finding_delta_queue where event_type='CVE_METADATA_DELTA' and source_tag='vulnerability-ingestion'",Integer.class)>0));
+        assertTrue(jdbc.queryForObject("select count(*) from platform.intelligence_staged_records where sync_run_id=?",Integer.class,accepted.runId())>0);
+        for (Tenant target:List.of(tenant,peer)) scoped.run(target,() -> assertEquals(0,jdbc.queryForObject("select count(*) from finding_delta_queue where event_type='CVE_METADATA_DELTA' and source_tag='vulnerability-ingestion'",Integer.class)));
     }
 
 }

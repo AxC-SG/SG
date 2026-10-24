@@ -29,7 +29,7 @@ class FeedFanoutReplayPostgresIntegrationTest {
     @AfterEach void clear(){TenantContext.clear();}
 
     @ParameterizedTest @ValueSource(strings={"CVE","METADATA","VEX"})
-    void failedTenantPublicationReplaysCommittedIdsWithoutDuplicatePendingIntent(String type){
+    void normalizationCannotFanOutBeforeReviewedPublication(String type){
         Tenant first=tenant(),second=tenant();
         Vulnerability vulnerability=new Vulnerability();vulnerability.setExternalId("CVE-2099-"+UUID.randomUUID());
         vulnerability.setSource(VulnerabilitySource.NVD);vulnerability.setTitle("Offline fanout fixture");
@@ -38,13 +38,12 @@ class FeedFanoutReplayPostgresIntegrationTest {
             jdbc.execute("create function fail_publication() returns trigger language plpgsql as $$ begin raise exception 'offline tenant unavailable';end $$");
             jdbc.execute("create trigger fail_publication before insert on finding_delta_queue for each row execute function fail_publication()");
         });
-        assertThrows(IllegalStateException.class,()->TenantContext.runAsPlatform(()->publish(type,id)));
-        assertEquals(1,queued(first));assertEquals(0,queued(second));
+        TenantContext.runAsPlatform(()->publish(type,id));
+        assertEquals(0,queued(first));assertEquals(0,queued(second));
         assertTrue(vulnerabilities.findById(id).isPresent());
         scoped.run(second,()->jdbc.execute("drop trigger fail_publication on finding_delta_queue"));
         TenantContext.runAsPlatform(()->publish(type,id));
-        TenantContext.runAsPlatform(()->publish(type,id));
-        assertEquals(1,queued(first));assertEquals(1,queued(second));
+        assertEquals(0,queued(first));assertEquals(0,queued(second));
     }
     private int publish(String type,UUID id){return switch(type){case "CVE"->effects.recomputeCveDeltas(List.of(id));case "METADATA"->effects.enqueueCveMetadataDeltas(List.of(id));case "VEX"->effects.applyVexDeltas(List.of(id),"offline-provider");default->throw new IllegalArgumentException(type);};}
     private int queued(Tenant tenant){return scoped.run(tenant,()->jdbc.queryForObject("select count(*) from finding_delta_queue",Integer.class));}

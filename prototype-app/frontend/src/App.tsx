@@ -941,10 +941,16 @@ function AppShell() {
     if (activeTab === 'admin') return 'Tenant Administration';
     if (activeTab === 'connect') return 'Connectors';
     if (activeTab === 'configurations') return 'Configurations';
-    if (activeTab === 'platform') return 'Tenant Management';
+    if (activeTab === 'platform') {
+      const view = normalizePlatformRouteView(location.pathname.split('/')[2]);
+      if (view === 'vuln-intel') return 'Vulnerability Intelligence';
+      if (view === 'eol') return 'End-of-Life';
+      if (view === 'operations') return 'Operations';
+      return 'Tenant Management';
+    }
     if (activeTab === 'platform-policies') return 'Policy Distribution';
     return titleForTab(activeTab);
-  }, [activeTab]);
+  }, [activeTab, location.pathname]);
 
   const tenantScopedTabs = new Set<AppTab>(['exposure', 'findings', 'policies', 'inventory', 'admin', 'configurations']);
   if (actor && isPlatformScope && tenantScopedTabs.has(activeTab)) {

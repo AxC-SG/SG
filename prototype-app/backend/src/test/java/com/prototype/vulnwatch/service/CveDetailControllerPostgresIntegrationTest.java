@@ -127,9 +127,9 @@ class CveDetailControllerPostgresIntegrationTest {
     private TransactionTemplate transactionTemplate;
 
     @Test
-    void proTenantCanGenerateAiSolution() throws Exception {
+    void internalTenantCanGenerateAiSolution() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
         String cveId = "CVE-2099-9910";
         createVulnerability(cveId);
@@ -165,13 +165,13 @@ class CveDetailControllerPostgresIntegrationTest {
     }
 
     @Test
-    void proTenantCanReadSavedAiSolution() throws Exception {
+    void internalTenantCanReadSavedAiSolution() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
         String cveId = "CVE-2099-9912";
         Vulnerability vulnerability = createVulnerability(cveId);
         createSavedAiArtifacts(tenant, vulnerability, true, false, false);
 
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
 
         mockMvc.perform(get("/api/cve-detail/{cveId}/ai-solution", cveId)
@@ -182,13 +182,13 @@ class CveDetailControllerPostgresIntegrationTest {
     }
 
     @Test
-    void proTenantCanReadSavedAiActions() throws Exception {
+    void internalTenantCanReadSavedAiActions() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
         String cveId = "CVE-2099-9913";
         Vulnerability vulnerability = createVulnerability(cveId);
         createSavedAiArtifacts(tenant, vulnerability, false, true, false);
 
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
 
         mockMvc.perform(get("/api/cve-detail/{cveId}/ai-actions", cveId)
@@ -198,13 +198,13 @@ class CveDetailControllerPostgresIntegrationTest {
     }
 
     @Test
-    void proTenantCanReadSavedAiInvestigationSummary() throws Exception {
+    void internalTenantCanReadSavedAiInvestigationSummary() throws Exception {
         Tenant tenant = tenantService.getDefaultTenant();
         String cveId = "CVE-2099-9914";
         Vulnerability vulnerability = createVulnerability(cveId);
         createSavedAiArtifacts(tenant, vulnerability, false, false, true);
 
-        tenant.setPlanCode("PRO");
+        tenant.setPlanCode("ENTERPRISE");
         tenantRepository.save(tenant);
 
         mockMvc.perform(get("/api/cve-detail/{cveId}/saved-investigation-summary", cveId)

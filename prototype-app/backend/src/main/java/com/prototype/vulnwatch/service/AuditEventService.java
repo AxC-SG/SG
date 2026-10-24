@@ -39,6 +39,7 @@ public class AuditEventService {
     private final TenantRepository tenantRepository;
     private final RequestActorService requestActorService;
     private final TransactionTemplate platformAuditTransactions;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate platformJdbc;
 
     /** Constructor used by focused unit tests that do not start Spring transactions. */
     public AuditEventService(
@@ -72,6 +73,12 @@ public class AuditEventService {
 
     public void record(String action, String targetType, String targetId, String detailsJson, String outcome) {
         RequestActor actor = requestActorService.currentActor();
+        if(platformJdbc!=null && action.startsWith("platform.vulnerability_feed.")) {
+            TenantContext.runAsPlatform(() -> executePlatformAudit(() -> platformJdbc.update(
+                    "insert into platform.intelligence_audit_events(id,action,actor,detail) values(?,'FEED_ACTION',?,jsonb_build_object('action',?::text,'targetType',?::text,'targetId',?::text,'outcome',?::text,'details',?::jsonb))",
+                    UUID.randomUUID(),actor.userId(),action,targetType,targetId,outcome,detailsJson==null ? "{}" : detailsJson)));
+            return;
+        }
         Runnable persist = () -> persistEvent(
                 resolveTenantId(actor, action),
                 actor.userId(),

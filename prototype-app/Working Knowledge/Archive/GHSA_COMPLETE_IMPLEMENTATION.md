@@ -1,5 +1,7 @@
 # GHSA Integration - Complete Implementation Summary
 
+> Historical archive: endpoint, role and migration descriptions below may be obsolete. See [current implementation closure](../../prototype-app/docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md). API-key examples require explicitly configured local development authentication; deployed environments use the current authentication contract.
+
 **Status:** ✅ **COMPLETE - Ready for Testing**  
 **Branch:** `feat/ghsa-integration`  
 **Total Files Created:** 26  
@@ -226,21 +228,21 @@ d7f6ba2 Add GHSA integration services, controllers, and DTOs - Phase 2
 3. **Platform Sync**
    ```bash
    curl -X POST http://localhost:8080/api/platform/ghsa/sync/trigger \
-     -H "X-API-Key: change-me-in-prod"
+     -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
    # Should sync 5k+ advisories and return SyncStatusResponse
    ```
 
 4. **Tenant Opt-In**
    ```bash
    curl -X POST http://localhost:8080/api/tenants/{id}/ghsa/enable \
-     -H "X-API-Key: change-me-in-prod"
+     -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
    # Should enable GHSA for tenant
    ```
 
 5. **Component Correlation**
    ```bash
    curl -X GET http://localhost:8080/api/tenants/{id}/ghsa/component-advisories/{sourceId} \
-     -H "X-API-Key: change-me-in-prod"
+     -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
    # Should return affected components with vulnerabilities
    ```
 

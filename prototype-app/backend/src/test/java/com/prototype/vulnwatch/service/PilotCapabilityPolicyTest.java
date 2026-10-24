@@ -13,7 +13,8 @@ class PilotCapabilityPolicyTest {
     }
     @Test void schemaFloorCannotBeLoweredBelowRequiredRetentionTables() {
         assertFalse(TenantSchemaCompatibility.supports(4,1,5));
-        assertTrue(TenantSchemaCompatibility.supports(5,1,5));
+        assertFalse(TenantSchemaCompatibility.supports(5,1,6));
+        assertTrue(TenantSchemaCompatibility.supports(6,1,6));
     }
     @Test void generativePilotContainmentPrecedesCredentialResolution() {
         var environment=new MockEnvironment().withProperty("app.environment","production").withProperty("app.openai.enabled","true").withProperty("OPENAI_API_KEY","test-only");

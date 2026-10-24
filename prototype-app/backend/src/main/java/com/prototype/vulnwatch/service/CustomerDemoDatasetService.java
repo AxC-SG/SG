@@ -709,25 +709,20 @@ public class CustomerDemoDatasetService {
                 critical, high, medium, low, quantum, weak, expiring, score, ts(now));
     }
 
+    /** Intelligence must already be approved; demo generation never publishes central data. */
+    public static List<String> requiredApprovedIdentifiers() {
+        return VULNERABILITIES.stream().map(DemoVulnerability::externalId).toList();
+    }
+
     private List<UUID> seedVulnerabilities(Instant now) {
         List<UUID> ids = new ArrayList<>();
         for (int i = 0; i < VULNERABILITIES.size(); i++) {
             DemoVulnerability vulnerability = VULNERABILITIES.get(i);
-            UUID proposedId = stableId(null, "vulnerability:" + vulnerability.externalId());
-            jdbcTemplate.update("""
-                    INSERT INTO platform.vulnerabilities
-                        (id, external_id, source, title, description_snippet, cvss_score, severity,
-                         epss_score, in_kev, vuln_status, published_at, last_modified_at, created_at, updated_at)
-                    VALUES (?, ?, 'NVD', ?, ?, ?, ?, ?, ?, 'Analyzed', ?, ?, ?, ?)
-                    ON CONFLICT (external_id) DO NOTHING
-                    """, proposedId, vulnerability.externalId(), vulnerability.title(),
-                    "Fictionalized customer-demo exposure based on the public " + vulnerability.externalId() + " record.",
-                    vulnerability.cvss(), vulnerability.severity(), vulnerability.epss(), vulnerability.inKev(),
-                    ts(now.minus(500L + i * 40L, ChronoUnit.DAYS)), ts(now.minus(3L + i, ChronoUnit.DAYS)),
-                    ts(now), ts(now));
-            UUID actualId = jdbcTemplate.queryForObject(
-                    "SELECT id FROM platform.vulnerabilities WHERE external_id = ?",
-                    UUID.class, vulnerability.externalId());
+            List<UUID> approved=jdbcTemplate.queryForList(
+                    "SELECT id FROM platform.vulnerabilities WHERE external_id=? AND NOT intelligence_withdrawn",
+                    UUID.class,vulnerability.externalId());
+            if(approved.isEmpty()) throw new IllegalStateException("Publish the reviewed demo intelligence dataset before generating demo findings");
+            UUID actualId=approved.get(0);
             ids.add(actualId);
         }
         return ids;

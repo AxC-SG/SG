@@ -36,18 +36,14 @@ class TenantAccessResolutionServiceTest {
     }
 
     @Test
-    void bootstrapMembershipOnDefaultWorkspaceResolvesAsDirectPlaygroundAndPrecedesGrant() {
+    void automaticOwnerPlaygroundMembershipDoesNotAuthorizeTenantAccess() {
         Tenant tenant = tenant("default-workspace");
         TenantMembership membership = membership(tenant, "TENANT_ADMIN", "PLAYGROUND_BOOTSTRAP");
         when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
         when(membershipRepository.findFirstByUserExternalSubjectAndTenantIdAndStatus(
                 "owner@example.com", tenant.getId(), "ACTIVE")).thenReturn(Optional.of(membership));
 
-        TenantAccessResolution result = service.resolve("owner@example.com", tenant.getId());
-
-        assertEquals(TenantAccessMode.DIRECT_PLAYGROUND_MEMBERSHIP, result.mode());
-        assertEquals("TENANT_ADMIN", result.role());
-        assertEquals(membership.getId(), result.referenceId());
+        assertThrows(ResponseStatusException.class,() -> service.resolve("owner@example.com",tenant.getId()));
     }
 
     @Test

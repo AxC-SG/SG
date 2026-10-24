@@ -39,6 +39,14 @@ public class GithubAdvisoryTenantService {
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate approvedJdbc;
+    private VulnerabilitySourceFilterConfigService sourceSettings;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureSourceSettings(VulnerabilitySourceFilterConfigService sourceSettings) { this.sourceSettings=sourceSettings; }
+    private void setSourceEnabled(Tenant tenant,boolean enabled) {
+        sourceSettings.save(tenant,"ghsa",new com.prototype.vulnwatch.dto.VulnerabilitySourceFilterConfigRequest(enabled,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null));
+    }
+
     @Transactional
     public GithubAdvisoryIntegrationStatusResponse getTenantIntegrationStatus(UUID tenantId) {
         log.debug("Fetching GHSA integration status for tenant: {}", tenantId);
@@ -54,6 +62,7 @@ public class GithubAdvisoryTenantService {
                 .filter(GithubRepositoryComponentAdvisoryEntity::getIsAffected)
                 .count();
 
+        integration.setIsEnabled(sourceSettings.get(tenant,"ghsa").enabledForCorrelation());
         return toIntegrationStatusResponse(integration, affectedComponentCount);
     }
 
@@ -66,6 +75,7 @@ public class GithubAdvisoryTenantService {
                 .findByTenant_Id(tenantId)
                 .orElseGet(() -> createNewIntegration(tenant));
 
+        setSourceEnabled(tenant,true);
         integration.setIsEnabled(true);
         integration.setEnabledAt(Instant.now());
         integration.setReasonEnabled(reason);
@@ -86,6 +96,7 @@ public class GithubAdvisoryTenantService {
                 .findByTenant_Id(tenantId)
                 .orElseGet(() -> createNewIntegration(tenant));
 
+        setSourceEnabled(tenant,false);
         integration.setIsEnabled(false);
         integration.setDisabledAt(Instant.now());
         integration.setUpdatedAt(Instant.now());
@@ -125,14 +136,32 @@ public class GithubAdvisoryTenantService {
         return getTenantIntegrationStatus(tenantId);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<GithubSecurityAdvisoryEntity> getApplicableAdvisoriesForComponent(
             UUID tenantId,
             String ecosystem,
             String packageName) {
         log.debug("Fetching applicable GHSA advisories for tenant: {}, ecosystem: {}, package: {}",
                 tenantId, ecosystem, packageName);
-        return securityAdvisoryRepository.findApplicableByEcosystemAndPackageName(ecosystem, packageName);
+        if(!isIntegrationEnabled(tenantId)) return List.of();
+        return approvedJdbc.query("""
+                select o.*,v.external_id,t.id target_id,t.ecosystem,t.package_name,t.version_start,t.version_end,t.version_exact,t.qualifiers_json
+                from platform.vulnerability_intel_observations o join platform.vulnerabilities v on v.id=o.vulnerability_id
+                join platform.vulnerability_targets t on t.vulnerability_id=v.id and t.source='ghsa' and t.source_record_id=o.source_record_id
+                where o.source_system='ghsa' and not v.intelligence_withdrawn and lower(t.ecosystem)=lower(?) and lower(t.package_name)=lower(?)
+                order by o.source_record_id,v.external_id,t.id limit 1000
+                """,(rs,row) -> {
+            GithubSecurityAdvisoryEntity advisory=new GithubSecurityAdvisoryEntity();
+            advisory.setId(UUID.nameUUIDFromBytes((rs.getString("id")+rs.getString("target_id")).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            advisory.setGhsaId(rs.getString("source_record_id"));
+            String external=rs.getString("external_id");advisory.setCveId(external.startsWith("CVE-") ? external : null);
+            advisory.setTitle(rs.getString("title"));advisory.setDescription(rs.getString("description"));advisory.setSeverity(rs.getString("severity"));advisory.setCvssScore(rs.getObject("cvss_score",Double.class));
+            advisory.setCvssVector(rs.getString("cvss_vector"));advisory.setEcosystem(rs.getString("ecosystem"));advisory.setPackageName(rs.getString("package_name"));
+            advisory.setAffectedVersionsStart(rs.getString("version_start"));advisory.setAffectedVersionsEnd(rs.getString("version_end"));
+            advisory.setGithubAdvisoryUrl(rs.getString("source_url"));
+            var published=rs.getTimestamp("published_at");if(published!=null) advisory.setPublishedAt(published.toInstant());
+            return advisory;
+        },ecosystem,packageName);
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +179,7 @@ public class GithubAdvisoryTenantService {
                 .findByTenant_Id(tenantId)
                 .orElse(null);
 
-        if (integration == null || !integration.getIsEnabled() || !integration.getAutoCorrelateComponents()) {
+        if (!isIntegrationEnabled(tenantId) || (integration != null && !integration.getAutoCorrelateComponents())) {
             log.debug("GHSA correlation disabled or not enabled for tenant: {}", tenantId);
             return;
         }
@@ -177,10 +206,7 @@ public class GithubAdvisoryTenantService {
 
     @Transactional(readOnly = true)
     public boolean isIntegrationEnabled(UUID tenantId) {
-        return integrationRepository
-                .findByTenant_Id(tenantId)
-                .map(GithubAdvisoryIntegrationEntity::getIsEnabled)
-                .orElse(false);
+        return sourceSettings.get(tenantService.resolveTenantUuid(tenantId),"ghsa").enabledForCorrelation();
     }
 
     private GithubAdvisoryIntegrationStatusResponse toIntegrationStatusResponse(
@@ -209,6 +235,7 @@ public class GithubAdvisoryTenantService {
         GithubAdvisoryIntegrationEntity integration = new GithubAdvisoryIntegrationEntity();
         integration.setId(UUID.randomUUID());
         integration.setTenant(tenant);
+        setSourceEnabled(tenant,false);
         integration.setIsEnabled(false);
         integration.setAutoCreateFindings(true);
         integration.setAutoCorrelateComponents(true);

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> **Current prerequisite contract (October 21, 2026):** [implementation closure](../docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md) and [release qualification](../docs/AWS/PHASE_3_RELEASE_QUALIFICATION.md). Generic Azure, SCCM JDBC, local archive operations, Fix Intelligence/tenant OSV, runtime evidence and destructive tenant purge remain contained; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](../docs/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md). Documentation completion is not release qualification.
+> **Current prerequisite contract (October 21, 2026):** [implementation closure](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>). Generic Azure, SCCM JDBC, local archive operations, Fix Intelligence/tenant OSV, runtime evidence and destructive tenant purge remain contained; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>). Documentation completion is not release qualification.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 

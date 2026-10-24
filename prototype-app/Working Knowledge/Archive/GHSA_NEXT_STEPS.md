@@ -1,5 +1,7 @@
 # GHSA Integration - Next Steps Roadmap
 
+> Historical archive: endpoint, role and migration descriptions below may be obsolete. See [current implementation closure](../../prototype-app/docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md). API-key examples require explicitly configured local development authentication; deployed environments use the current authentication contract.
+
 **Current Status:** Phase 1-4 Complete | Servers Running | Ready for Testing  
 **Branch:** `feat/ghsa-integration`  
 **Timeline:** Week 2-4 (Deployment & Validation)
@@ -79,20 +81,20 @@ export GITHUB_TOKEN="ghp_xxx..."
 
 # 3. Trigger platform sync
 curl -X POST http://localhost:8080/api/platform/ghsa/sync/trigger \
-  -H "X-API-Key: change-me-in-prod" \
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}" \
   -H "Authorization: Bearer $GITHUB_TOKEN"
 
 # 4. Check sync status
 curl http://localhost:8080/api/platform/ghsa/sync-status \
-  -H "X-API-Key: change-me-in-prod"
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
 
 # 5. Enable for tenant
 curl -X POST http://localhost:8080/api/tenants/{tenant-id}/ghsa/enable \
-  -H "X-API-Key: change-me-in-prod"
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
 
 # 6. View advisories for source
 curl http://localhost:8080/api/tenants/{tenant-id}/ghsa/component-advisories/{source-id} \
-  -H "X-API-Key: change-me-in-prod"
+  -H "X-API-Key: ${APP_API_KEY:?Set a local development API key}"
 
 # 7. Check in browser
 # http://localhost:5173 → Look for GitHub Advisory Status panel

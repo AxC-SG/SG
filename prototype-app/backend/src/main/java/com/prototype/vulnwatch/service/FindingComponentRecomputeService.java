@@ -100,6 +100,13 @@ public class FindingComponentRecomputeService {
         this.findingUpsertService = findingUpsertService;
     }
 
+    private TenantApprovedIntelligenceService approvedIntelligence;
+    private IntelligenceEvaluationFence evaluationFence;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureIntelligence(TenantApprovedIntelligenceService approvedIntelligence,IntelligenceEvaluationFence evaluationFence) {
+        this.approvedIntelligence=approvedIntelligence;this.evaluationFence=evaluationFence;
+    }
+
     @Transactional
     public int recomputeOnSoftwareDelta(UUID tenantId, UUID componentId) {
         if (tenantId == null || componentId == null) {
@@ -113,6 +120,7 @@ public class FindingComponentRecomputeService {
         if (tenantId == null || componentIds == null || componentIds.isEmpty()) {
             return 0;
         }
+        var intelligenceScope=evaluationFence.open(tenantId);
         FlushModeType previousFlushMode = entityManager.getFlushMode();
         // Flush any pending writes from the caller's transaction before switching to COMMIT mode,
         // otherwise queries inside this method won't observe entities that the caller just persisted
@@ -179,6 +187,7 @@ public class FindingComponentRecomputeService {
             return total;
         } finally {
             entityManager.setFlushMode(previousFlushMode);
+            intelligenceScope.close();
         }
     }
 
@@ -207,17 +216,21 @@ public class FindingComponentRecomputeService {
         CorrelationCandidateService.CandidateBundle bundle = candidateBundle == null
                 ? correlationCandidateService.buildCandidateBundle(List.of(component))
                 : candidateBundle;
-        List<CorrelationCandidateService.CandidateMatch> candidates = correlationCandidateService.candidatesForComponent(component, bundle);
+        Set<String> enabledSources=vulnerabilitySourceFilterConfigService.enabledSourcesForCorrelation(tenant);
+        List<CorrelationCandidateService.CandidateMatch> allCandidates=correlationCandidateService.candidatesForComponent(component,bundle);
+        List<CorrelationCandidateService.CandidateMatch> candidates=allCandidates.stream()
+                .filter(match -> IntelligenceSourceRegistry.enabled(match.target().getSource(),enabledSources)).toList();
         Map<UUID, List<PrecedenceResolverService.CandidateDecision>> decisionsByVulnerability =
-                findingCorrelationAnalysisService.buildCandidateDecisionsByVulnerability(component, candidates, policy);
+                findingCorrelationAnalysisService.buildCandidateDecisionsByVulnerability(component, allCandidates, policy);
         Set<UUID> candidateVulnerabilityIdsBeforeSourceFilter = new HashSet<>(decisionsByVulnerability.keySet());
         decisionsByVulnerability = filterByEnabledSources(tenant, decisionsByVulnerability);
         Set<UUID> sourceDisabledVulnerabilityIds = new HashSet<>(candidateVulnerabilityIdsBeforeSourceFilter);
         sourceDisabledVulnerabilityIds.removeAll(decisionsByVulnerability.keySet());
 
+        consolidateFindingIdentities(existing);
         Map<UUID, Finding> existingByVulnerability = new HashMap<>();
         for (Finding finding : existing) {
-            if (finding.getVulnerability() != null && finding.getVulnerability().getId() != null) {
+            if (finding.getIntelligenceMergedIntoId()==null && finding.getVulnerability() != null && finding.getVulnerability().getId() != null) {
                 existingByVulnerability.put(finding.getVulnerability().getId(), finding);
             }
         }
@@ -285,13 +298,14 @@ public class FindingComponentRecomputeService {
                 }
             }
 
+            Vulnerability effective=approvedIntelligence.resolve(vulnerability,enabledSources);
             String existingSeverityOverride = finding != null ? finding.getSeverityOverride() : null;
             double riskScore = findingsScoreService.computeFromParts(
-                    policy.getFindingsScoreConfig(), vulnerability, component.getAsset(), component, existingSeverityOverride);
+                    policy.getFindingsScoreConfig(), effective, component.getAsset(), component, existingSeverityOverride);
             VulnerabilityTarget target = findingSelected.target();
             String evidence = findingEvidenceService.buildEvidence(
                     component,
-                    vulnerability,
+                    effective,
                     target,
                     findingSelected,
                     resolution,
@@ -301,10 +315,6 @@ public class FindingComponentRecomputeService {
             final PrecedenceResolverService.CandidateDecision selectedForUpsert = findingSelected;
             final String evidenceForUpsert = evidence;
             final double riskScoreForUpsert = riskScore;
-
-            if (finding == null && !isAutomaticFindingGenerationEnabled(policy)) {
-                continue;
-            }
 
             Finding candidate = findingCorrelationMutationService.createFinding(
                     tenant,
@@ -318,11 +328,21 @@ public class FindingComponentRecomputeService {
                     now,
                     policy
             );
+            candidate.setIntelligenceSeverity(effective.getSeverity());
+            candidate.setIntelligenceEpss(effective.getEpssScore());
+            candidate.setIntelligenceInKev(effective.isInKev());
+            evaluationFence.stamp(candidate);
             String nextPrecedenceTrace = toJson(resolution.precedenceTrace());
             FindingUpsertService.UpsertResult upsertResult = findingUpsertService.upsert(candidate, existingFinding -> {
-                boolean reopened = existingFinding.getStatus() == FindingStatus.RESOLVED
-                        || existingFinding.getStatus() == FindingStatus.AUTO_CLOSED;
-                boolean changed = reopened;
+                boolean returningToEligibility=!"ELIGIBLE".equals(existingFinding.getIntelligenceEligibility());
+                boolean reopened = !returningToEligibility && (existingFinding.getStatus() == FindingStatus.RESOLVED
+                        || existingFinding.getStatus() == FindingStatus.AUTO_CLOSED);
+                boolean changed = reopened || returningToEligibility;
+                existingFinding.setIntelligenceEligibility("ELIGIBLE");
+                existingFinding.setIntelligenceSeverity(effective.getSeverity());
+                existingFinding.setIntelligenceEpss(effective.getEpssScore());
+                existingFinding.setIntelligenceInKev(effective.isInKev());
+                evaluationFence.stamp(existingFinding);
                 if (reopened) {
                     findingWorkflowService.reopenByObservation(existingFinding, now, null);
                 } else {
@@ -379,7 +399,16 @@ public class FindingComponentRecomputeService {
         }
 
         for (Finding finding : existing) {
+            if(finding.getIntelligenceMergedIntoId()!=null) continue;
             UUID vulnerabilityId = finding.getVulnerability() == null ? null : finding.getVulnerability().getId();
+            if (vulnerabilityId!=null && !activeVulnerabilityIds.contains(vulnerabilityId)) {
+                String eligibility=sourceDisabledVulnerabilityIds.contains(vulnerabilityId) ? "SOURCE_DISABLED"
+                        : evaluationFence.hasApprovedApplicability(vulnerabilityId) ? "ELIGIBLE" : "INTELLIGENCE_WITHDRAWN";
+                finding.setIntelligenceEligibility(eligibility);
+                evaluationFence.stamp(finding);
+                toPersist.add(finding);
+                if(!"ELIGIBLE".equals(eligibility)) continue;
+            }
             if (vulnerabilityId != null
                     && !activeVulnerabilityIds.contains(vulnerabilityId)
                     && finding.getStatus() != FindingStatus.RESOLVED
@@ -588,6 +617,32 @@ public class FindingComponentRecomputeService {
         return vulnerabilityIds;
     }
 
+    private void consolidateFindingIdentities(List<Finding> findings) {
+        Map<UUID,List<Finding>> groups=new HashMap<>();
+        for(Finding finding:findings) {
+            if(finding.getVulnerability()==null || finding.getIntelligenceMergedIntoId()!=null) continue;
+            UUID canonical=evaluationFence.canonical(finding.getVulnerability().getId());
+            groups.computeIfAbsent(canonical,ignored -> new ArrayList<>()).add(finding);
+        }
+        groups.forEach((canonical,group) -> {
+            Finding master=group.stream().filter(finding -> canonical.equals(finding.getVulnerability().getId())).findFirst()
+                    .orElseGet(() -> group.stream().min(Comparator.comparing(Finding::getId)).orElseThrow());
+            boolean identityChanged=group.size()>1 || !canonical.equals(master.getVulnerability().getId());
+            if(identityChanged) master.setIntelligenceEligibility("INTELLIGENCE_WITHDRAWN");
+            for(Finding duplicate:group) {
+                if(duplicate==master) continue;
+                duplicate.setIntelligenceMergedIntoId(master.getId());duplicate.setIntelligenceEligibility("INTELLIGENCE_WITHDRAWN");
+                evaluationFence.stamp(duplicate);
+                if(duplicate.getStatus()==FindingStatus.SUPPRESSED && master.getStatus()==FindingStatus.OPEN) {
+                    master.setStatus(FindingStatus.SUPPRESSED);master.setSuppressionReason(duplicate.getSuppressionReason());master.setSuppressedUntil(duplicate.getSuppressedUntil());
+                } else if(duplicate.getStatus()==FindingStatus.RESOLVED && master.getStatus()==FindingStatus.OPEN) {
+                    master.setStatus(FindingStatus.RESOLVED);master.setClosedAt(duplicate.getClosedAt());master.setClosedBy(duplicate.getClosedBy());master.setClosedReason(duplicate.getClosedReason());
+                }
+            }
+            if(!canonical.equals(master.getVulnerability().getId())) master.setVulnerability(entityManager.getReference(Vulnerability.class,canonical));
+        });
+    }
+
     private Map<UUID, List<PrecedenceResolverService.CandidateDecision>> filterByEnabledSources(
             Tenant tenant,
             Map<UUID, List<PrecedenceResolverService.CandidateDecision>> decisionsByVulnerability
@@ -602,21 +657,13 @@ public class FindingComponentRecomputeService {
             return Map.of();
         }
 
-        Map<UUID, List<String>> sourcesByVulnerability = new HashMap<>();
-        vulnerabilityIntelSummarySourceRepository.findByVulnerabilityIdIn(decisionsByVulnerability.keySet())
-                .forEach(row -> sourcesByVulnerability
-                        .computeIfAbsent(row.getVulnerabilityId(), ignored -> new ArrayList<>())
-                        .add(row.getSourceSystem()));
-
-        Map<UUID, List<PrecedenceResolverService.CandidateDecision>> filtered = new HashMap<>();
-        for (Map.Entry<UUID, List<PrecedenceResolverService.CandidateDecision>> entry : decisionsByVulnerability.entrySet()) {
-            List<String> sources = sourcesByVulnerability.getOrDefault(entry.getKey(), List.of());
-            boolean include = sources.isEmpty()
-                    || sources.stream().anyMatch(source -> enabledSources.contains(source.toLowerCase(java.util.Locale.ROOT)));
-            if (include) {
-                filtered.put(entry.getKey(), entry.getValue());
-            }
-        }
+        Map<UUID,List<PrecedenceResolverService.CandidateDecision>> filtered=new HashMap<>();
+        decisionsByVulnerability.forEach((id,decisions) -> {
+            var eligible=decisions.stream().filter(decision -> decision.target()!=null
+                    && IntelligenceSourceRegistry.applicable(decision.target().getSource())
+                    && IntelligenceSourceRegistry.enabled(decision.target().getSource(),enabledSources)).toList();
+            if(!eligible.isEmpty()) filtered.put(id,eligible);
+        });
         return filtered;
     }
 

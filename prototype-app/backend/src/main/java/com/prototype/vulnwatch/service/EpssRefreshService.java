@@ -97,6 +97,10 @@ public class EpssRefreshService {
         mutations = new org.springframework.transaction.support.TransactionTemplate(manager);
     }
 
+    private IntelligenceStagingService staging;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureStaging(IntelligenceStagingService staging) { this.staging=staging; }
+
     public void executeQueuedRun(UUID id) {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("epss.execute")) return;
         var run = durableRuns.markRunning(id);
@@ -139,12 +143,11 @@ public class EpssRefreshService {
         LOG.info("Starting daily EPSS refresh");
         int updated = 0, attempted = 0, incomplete = 0;
         Instant staleBefore = Instant.now().minus(25, ChronoUnit.HOURS);
-        UUID upperId = vulnerabilityRepository.findTopByOrderByIdDesc().map(Vulnerability::getId).orElse(null);
+        UUID upperId = staging.epssUpperId();
         UUID afterId = null;
         if (upperId != null) {
             while (true) {
-                List<Vulnerability> stale = vulnerabilityRepository.findStaleEpssRowsAfter(
-                        staleBefore, afterId, upperId, PageRequest.of(0, Math.max(1, Math.min(100, batchSize))));
+                List<Vulnerability> stale = staging.epssCandidates(staleBefore,afterId,upperId,Math.max(1,Math.min(100,batchSize)));
                 if (stale.isEmpty()) break;
                 int batchUpdated = refreshBatch(stale);
                 updated += batchUpdated;
@@ -221,27 +224,15 @@ public class EpssRefreshService {
             return 0;
         }
 
-        Instant now = Instant.now();
-        int updated = 0;
-        List<Vulnerability> toSave = new ArrayList<>();
-        for (Vulnerability vuln : vulnerabilities) {
-            Double score = epssMap.get(vuln.getExternalId().toUpperCase(Locale.ROOT));
-            if (score != null) {
-                vuln.setEpssScore(score);
-                vuln.touch();
-                toSave.add(vuln);
+        int updated=0;
+        for(Vulnerability vulnerability:vulnerabilities) {
+            Double score=epssMap.get(vulnerability.getExternalId().toUpperCase(Locale.ROOT));
+            if(score!=null) {
+                staging.observation(new VulnerabilityIntelligenceService.ObservationUpsertRequest(
+                        vulnerability.getExternalId(),"epss",vulnerability.getExternalId(),null,null,null,null,null,null,
+                        score,null,null,null,null,null,null,Instant.now(),null));
                 updated++;
             }
-        }
-        mutations.executeWithoutResult(status -> {
-            if (!toSave.isEmpty()) vulnerabilityRepository.saveAll(toSave);
-        });
-        if (!toSave.isEmpty()) {
-            List<UUID> scoredIds = toSave.stream().map(Vulnerability::getId).toList();
-            // Keep rows stale until every tenant has committed its recomputation intent.
-            // A crash or failed fanout then replays even when the provider returns the same score.
-            findingDeltaQueueService.enqueueCveMetadataDeltas(scoredIds, "epss-refresh");
-            mutations.executeWithoutResult(status -> vulnerabilityRepository.markEpssRefreshed(scoredIds, now));
         }
         return updated;
     }

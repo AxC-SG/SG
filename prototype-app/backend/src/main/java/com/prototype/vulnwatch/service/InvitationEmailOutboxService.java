@@ -31,6 +31,11 @@ public class InvitationEmailOutboxService {
     }
     @org.springframework.transaction.annotation.Transactional
     public ResendEmailClient.DeliveryResult enqueue(UUID tenantId,String type,UUID relatedId,String tokenHash,ResendEmailClient.EmailMessage message) {
+        boolean platformSetup = "PLATFORM_OWNER_SETUP".equals(type);
+        if (platformSetup != (tenantId == null)
+                || !java.util.Set.of("PLATFORM_OWNER_SETUP", "INTERNAL_ADMIN_SETUP", "TENANT_INVITE", "DEMO_INVITE").contains(type)) {
+            throw new IllegalArgumentException("Invalid invitation delivery scope");
+        }
         UUID deliveryId=UUID.randomUUID();
         jdbc.update("""
                 update platform.invitation_email_outbox
@@ -86,20 +91,29 @@ public class InvitationEmailOutboxService {
             Instant first=rs.getTimestamp(4)==null ? Instant.now() : rs.getTimestamp(4).toInstant();
             int count=rs.getInt(5)+1;
             UUID tenantId=rs.getObject(6,UUID.class);
-            jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,tenantId.toString());
-            var tenant=jdbc.queryForMap("select status, expired_at, demo_expires_at from platform.tenants where id=?",tenantId);
-            String lifecycle=(String) tenant.get("status");
-            java.sql.Timestamp demoExpiry=(java.sql.Timestamp) tenant.get("demo_expires_at");
-            boolean expired=tenant.get("expired_at")!=null || (demoExpiry!=null && !demoExpiry.toInstant().isAfter(Instant.now()));
-            if (!"ACTIVE".equals(lifecycle) || expired) {
-                if (expired || java.util.Set.of("DELETED","PURGED","EXPIRED").contains(lifecycle)) retire(id,rs.getTimestamp(4)!=null,"TENANT_UNAVAILABLE");
-                else jdbc.update("update platform.invitation_email_outbox set visible_at=now()+interval '1 minute' where id=?",id);
-                return null;
+            String type=jdbc.queryForObject("select delivery_type from platform.invitation_email_outbox where id=?",String.class,id);
+            if (tenantId != null) {
+                jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,tenantId.toString());
+                var tenant=jdbc.queryForMap("select status, expired_at, demo_expires_at from platform.tenants where id=?",tenantId);
+                String lifecycle=(String) tenant.get("status");
+                java.sql.Timestamp demoExpiry=(java.sql.Timestamp) tenant.get("demo_expires_at");
+                boolean expired=tenant.get("expired_at")!=null || (demoExpiry!=null && !demoExpiry.toInstant().isAfter(Instant.now()));
+                if (!"ACTIVE".equals(lifecycle) || expired) {
+                    if (expired || java.util.Set.of("DELETED","PURGED","EXPIRED").contains(lifecycle)) retire(id,rs.getTimestamp(4)!=null,"TENANT_UNAVAILABLE");
+                    else jdbc.update("update platform.invitation_email_outbox set visible_at=now()+interval '1 minute' where id=?",id);
+                    return null;
+                }
+            } else if (!"PLATFORM_OWNER_SETUP".equals(type)) {
+                retire(id,rs.getTimestamp(4)!=null,"INVALID_SCOPE"); return null;
             }
-                String type=jdbc.queryForObject("select delivery_type from platform.invitation_email_outbox where id=?",String.class,id);
+            Boolean valid;
+            if (isSetup(type)) {
+                valid=jdbc.queryForObject("select exists(select 1 from platform.app_users where id=? and status='ACTIVE' and password_setup_token_hash=(select token_hash from platform.invitation_email_outbox where id=?) and password_setup_token_expires_at>clock_timestamp())",Boolean.class,related,id);
+            } else {
                 String source="TENANT_INVITE".equals(type) ? "platform.tenant_user_invites" : sharedSchema+".demo_invites";
-                Boolean valid=jdbc.queryForObject("select exists(select 1 from "+source+" where id=? and token_hash=(select token_hash from platform.invitation_email_outbox where id=?) and expires_at>clock_timestamp() and accepted_at is null and status not in ('CANCELLED','EXPIRED','ACCEPTED'))",Boolean.class,related,id);
-                if (!Boolean.TRUE.equals(valid)) { retire(id,rs.getTimestamp(4)!=null,"INVITATION_UNAVAILABLE");return null; }
+                valid=jdbc.queryForObject("select exists(select 1 from "+source+" where id=? and token_hash=(select token_hash from platform.invitation_email_outbox where id=?) and expires_at>clock_timestamp() and accepted_at is null and status not in ('CANCELLED','EXPIRED','ACCEPTED'))",Boolean.class,related,id);
+            }
+            if (!Boolean.TRUE.equals(valid)) { retire(id,rs.getTimestamp(4)!=null,"INVITATION_UNAVAILABLE");return null; }
             jdbc.update("update platform.invitation_email_outbox set status='PROCESSING',claim_token=?,lease_expires_at=clock_timestamp()+interval '60 seconds',first_attempt_at=coalesce(first_attempt_at,clock_timestamp()),last_attempt_at=clock_timestamp(),attempt_count=attempt_count+1 where id=?",token,id);
             return new Claim(id,related,token,payload,first,count);
         });
@@ -133,8 +147,10 @@ public class InvitationEmailOutboxService {
         var rows=jdbc.queryForList("select tenant_id,delivery_type from platform.invitation_email_outbox where id=?",deliveryId);
         if (rows.isEmpty()) return;
         var row=rows.get(0);
-        jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,row.get("tenant_id").toString());
-        if ("DEMO_INVITE".equals(row.get("delivery_type"))) {
+        jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,row.get("tenant_id")==null ? "" : row.get("tenant_id").toString());
+        if (isSetup((String) row.get("delivery_type"))) {
+            jdbc.queryForList("select id from platform.app_users where id=? for update",UUID.class,relatedId);
+        } else if ("DEMO_INVITE".equals(row.get("delivery_type"))) {
             // Match demo resend/accept: request -> invite -> delivery. Never
             // hold an outbox lock while waiting on one of its source locks.
             var requests=jdbc.queryForList("select request_id from "+sharedSchema+".demo_invites where id=?",UUID.class,relatedId);
@@ -148,8 +164,9 @@ public class InvitationEmailOutboxService {
     private void publish(Claim claim,String state,ResendEmailClient.DeliveryResult result) {
 
                 String tenantId=jdbc.queryForObject("select tenant_id::text from platform.invitation_email_outbox where id=?",String.class,claim.id());
-                jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,tenantId);
+                jdbc.queryForObject("select set_config('app.current_tenant_id',?,true)",String.class,tenantId==null ? "" : tenantId);
                 String type=jdbc.queryForObject("select delivery_type from platform.invitation_email_outbox where id=?",String.class,claim.id());
+                if (isSetup(type)) return;
                 String source="TENANT_INVITE".equals(type) ? "platform.tenant_user_invites" : sharedSchema+".demo_invites";
                 String inviteStatus=switch(state) { case "ACCEPTED" -> "SENT";case "PENDING" -> "QUEUED";case "UNKNOWN" -> "DELIVERY_UNKNOWN";default -> "DELIVERY_ERROR"; };
                 int changed=jdbc.update("update "+source+" set status=?,last_sent_at=case when ?='ACCEPTED' then now() else last_sent_at end where id=? and token_hash=(select token_hash from platform.invitation_email_outbox where id=?) and expires_at>clock_timestamp() and accepted_at is null and status not in ('ACCEPTED','CANCELLED','EXPIRED')",inviteStatus,state,claim.related(),claim.id());
@@ -158,7 +175,7 @@ public class InvitationEmailOutboxService {
     }
 
     public java.util.List<java.util.Map<String,Object>> status(UUID tenantId) {
-        return jdbc.queryForList("select id,status,attempt_count,created_at,first_attempt_at,last_attempt_at,provider_message_id,last_error_code,reconciled_at,reconciled_by from platform.invitation_email_outbox where tenant_id=? order by created_at desc,id desc limit 100",tenantId);
+        return jdbc.queryForList("select id,status,attempt_count,created_at,first_attempt_at,last_attempt_at,provider_message_id,last_error_code,reconciled_at,reconciled_by from platform.invitation_email_outbox where tenant_id is not distinct from ? order by created_at desc,id desc limit 100",tenantId);
     }
 
     public void reconcile(UUID tenantId,UUID deliveryId,String outcome,String providerId,String actor,String note) {
@@ -166,14 +183,16 @@ public class InvitationEmailOutboxService {
                 || actor==null || actor.isBlank() || actor.length()>255 || (providerId!=null && providerId.length()>255) || ("ACCEPTED".equals(outcome) && (providerId==null || providerId.isBlank() || providerId.length()>255)))
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,"Reconciliation requires an accepted/failed outcome, provider ID for acceptance, and an operator note");
         transactions.executeWithoutResult(status -> {
-            var source=jdbc.queryForList("select related_id from platform.invitation_email_outbox where id=? and tenant_id=?",UUID.class,deliveryId,tenantId);
+            var source=jdbc.queryForList("select related_id from platform.invitation_email_outbox where id=? and tenant_id is not distinct from ?",UUID.class,deliveryId,tenantId);
             if (!source.isEmpty()) lockPublicationSource(deliveryId,source.get(0));
-            var related=jdbc.query("select related_id from platform.invitation_email_outbox where id=? and tenant_id=? and status='UNKNOWN' and (lease_expires_at is null or lease_expires_at<=clock_timestamp()) for update",(rs,row) -> rs.getObject(1,UUID.class),deliveryId,tenantId);
+            var related=jdbc.query("select related_id from platform.invitation_email_outbox where id=? and tenant_id is not distinct from ? and status='UNKNOWN' and (lease_expires_at is null or lease_expires_at<=clock_timestamp()) for update",(rs,row) -> rs.getObject(1,UUID.class),deliveryId,tenantId);
             if (related.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"Delivery is not awaiting reconciliation");
-            jdbc.update("update platform.invitation_email_outbox set status=?,provider_message_id=?,last_error_code='OPERATOR_RECONCILED',encrypted_payload='',reconciled_at=now(),reconciled_by=?,reconciliation_note=? where id=? and tenant_id=? and status='UNKNOWN'",outcome,providerId,actor,note,deliveryId,tenantId);
+            jdbc.update("update platform.invitation_email_outbox set status=?,provider_message_id=?,last_error_code='OPERATOR_RECONCILED',encrypted_payload='',reconciled_at=now(),reconciled_by=?,reconciliation_note=? where id=? and tenant_id is not distinct from ? and status='UNKNOWN'",outcome,providerId,actor,note,deliveryId,tenantId);
             publish(new Claim(deliveryId,related.get(0),null,null,null,0),outcome,new ResendEmailClient.DeliveryResult("ACCEPTED".equals(outcome) ? ResendEmailClient.DeliveryState.SENT : ResendEmailClient.DeliveryState.FAILED,providerId,"OPERATOR_RECONCILED"));
         });
     }
+
+    private static boolean isSetup(String type) { return "PLATFORM_OWNER_SETUP".equals(type) || "INTERNAL_ADMIN_SETUP".equals(type); }
 
     private record Claim(UUID id,UUID related,UUID token,String payload,Instant first,int attempts) { }
 }

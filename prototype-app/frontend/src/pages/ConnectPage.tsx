@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { IngestionPage } from './IngestionPage';
 import { SourcesPage } from './SourcesPage';
 import { AssetsPage } from './AssetsPage';
@@ -24,6 +24,7 @@ import { BomManagementPage } from './BomManagementPage';
 import { AiSecurityConnectorPage } from './AiSecurityConnectorPage';
 import { AiSecurityAzureConnectorPage } from './AiSecurityAzureConnectorPage';
 import { CopilotStudioConnectorPage } from './CopilotStudioConnectorPage';
+import { pathForPlatformView } from '../app/routes';
 import { canUseEntitlement } from '../features/auth/entitlements';
 
 type ConnectorId =
@@ -690,7 +691,13 @@ type ConnectPageProps = {
   onViewChange?: (view: ConnectView) => void;
 };
 
-export function ConnectPage({ initialView = 'sources', onViewChange }: ConnectPageProps = {}) {
+export function ConnectPage(props: ConnectPageProps = {}) {
+  const actor = useActor();
+  if (hasRole(actor, 'PLATFORM_OWNER') && !actor?.tenantId) return <Navigate to={pathForPlatformView('vuln-intel')} replace />;
+  return <TenantConnectPage {...props} />;
+}
+
+function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPageProps) {
   const actor = useActor();
   const inventoryConnectorsDisabledForDemo = actor?.demoCapabilities?.liveConnectors === false;
   const [searchParams, setSearchParams] = useSearchParams();

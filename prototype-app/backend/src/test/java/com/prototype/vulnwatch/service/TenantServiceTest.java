@@ -219,52 +219,20 @@ class TenantServiceTest {
     }
 
     @Test
-    void getDefaultTenantFallsBackToSchemaName() {
-        Tenant tenant = new Tenant();
-        tenant.setName("Platform Workspace");
-        tenant.setSchemaName(TenantService.DEFAULT_TENANT_SCHEMA);
-        when(tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)).thenReturn(Optional.empty());
-        when(tenantRepository.findBySchemaName(TenantService.DEFAULT_TENANT_SCHEMA)).thenReturn(Optional.of(tenant));
-
-        Tenant resolved = tenantService.getDefaultTenant();
-
-        assertSame(tenant, resolved);
+    void resolvesOnlyReservedInternalSchema() {
+        Tenant internal=new Tenant();internal.setClassification("INTERNAL");internal.setSchemaName("tenant_default");
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.of(internal));
+        assertSame(internal,tenantService.getDefaultTenant());
     }
-
     @Test
-    void getDefaultTenantFallsBackToFirstActiveTenant() {
-        Tenant suspended = new Tenant();
-        suspended.setName("Suspended");
-        suspended.setStatus("SUSPENDED");
-        suspended.setDeletedAt(null);
-        Tenant active = new Tenant();
-        active.setName("Customer A");
-        active.setStatus("ACTIVE");
-        when(tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)).thenReturn(Optional.empty());
-        when(tenantRepository.findBySchemaName(TenantService.DEFAULT_TENANT_SCHEMA)).thenReturn(Optional.empty());
-        when(tenantRepository.findAllByOrderByCreatedAtAsc()).thenReturn(List.of(suspended, active));
-
-        Tenant resolved = tenantService.getDefaultTenant();
-
-        assertSame(active, resolved);
+    void neverFallsBackToCustomerTenant() {
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.empty());
+        assertThrows(ResponseStatusException.class,tenantService::getDefaultTenant);
+        org.mockito.Mockito.verify(tenantRepository,org.mockito.Mockito.never()).findAllByOrderByCreatedAtAsc();
     }
-
     @Test
-    void getDefaultTenantIgnoresDeletedOrPurgedTenantsWhenFallingBack() {
-        Tenant deleted = new Tenant();
-        deleted.setName("Deleted");
-        deleted.setStatus("ACTIVE");
-        deleted.setDeletedAt(Instant.now());
-        Tenant purged = new Tenant();
-        purged.setName("Purged");
-        purged.setStatus("ACTIVE");
-        purged.setPurgedAt(Instant.now());
-        when(tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)).thenReturn(Optional.empty());
-        when(tenantRepository.findBySchemaName(TenantService.DEFAULT_TENANT_SCHEMA)).thenReturn(Optional.empty());
-        when(tenantRepository.findAllByOrderByCreatedAtAsc()).thenReturn(List.of(deleted, purged));
-
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, tenantService::getDefaultTenant);
-
-        assertEquals("404 NOT_FOUND \"Default workspace not found\"", ex.getMessage());
+    void rejectsMisclassifiedReservedSchema() {
+        when(tenantRepository.findBySchemaName("tenant_default")).thenReturn(Optional.of(new Tenant()));
+        assertThrows(ResponseStatusException.class,tenantService::getDefaultTenant);
     }
 }

@@ -35,10 +35,15 @@ public class ObservationIngestionService {
         this.sourceNormalizationService = sourceNormalizationService;
     }
 
+    private IntelligenceStagingService staging;
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureStaging(IntelligenceStagingService staging) { this.staging=staging; }
+
     @Transactional
     public VulnerabilityIntelligenceService.ObservationUpsertResult upsertObservation(
             VulnerabilityIntelligenceService.ObservationUpsertRequest request
     ) {
+        if (!IntelligenceWriteContext.publishing()) return staging.observation(request);
         String externalId = sourceNormalizationService.normalizeExternalId(request.externalId());
         String sourceSystem = sourceNormalizationService.normalizeSourceSystem(request.sourceSystem());
         String sourceRecordId = hasText(request.sourceRecordId()) ? request.sourceRecordId().trim() : externalId;
@@ -48,7 +53,7 @@ public class ObservationIngestionService {
         boolean vulnerabilityCreated = vulnerability != null && !vulnerabilityAlreadyExisted;
 
         Optional<VulnerabilityIntelObservation> existingObservation = vulnerabilityIntelObservationRepository
-                .findBySourceSystemAndSourceRecordId(sourceSystem, sourceRecordId);
+                .findByVulnerabilityAndSourceSystemAndSourceRecordId(vulnerability, sourceSystem, sourceRecordId);
         if (existingObservation.isEmpty() && vulnerability != null) {
             existingObservation = vulnerabilityIntelObservationRepository.findByVulnerabilityOrderByLastSeenAtDesc(vulnerability)
                     .stream()

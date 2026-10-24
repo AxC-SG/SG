@@ -69,7 +69,7 @@ public class DemoTenantPurgeService {
         ManualTenantDeletionPolicy.requirePermitted();
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Unknown tenant: " + tenantId));
-        if (TenantService.DEFAULT_TENANT_NAME.equalsIgnoreCase(tenant.getName())) {
+        if (tenant.isInternal()) {
             throw new ResponseStatusException(BAD_REQUEST, "Default workspace cannot be deleted");
         }
         if (tenant.getPurgedAt() != null || "DELETED".equalsIgnoreCase(tenant.getStatus())) {

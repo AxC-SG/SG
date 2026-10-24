@@ -44,25 +44,10 @@ public class TenantBootstrapService {
     @Order(0)
     public void ensureBootstrapTenant() {
         TenantContext.runAsPlatform(() -> {
-            Tenant defaultTenant = tenantRepository.findByNameIgnoreCase(TenantService.DEFAULT_TENANT_NAME)
-                    .orElseGet(() -> {
-                        Tenant tenant = new Tenant();
-                        tenant.setName(TenantService.DEFAULT_TENANT_NAME);
-                        tenant.setSlug("default-workspace");
-                        tenant.setSchemaName(tenantSchemaService.defaultSchemaName());
-                        return tenantRepository.save(tenant);
-                    });
-
-            boolean changed = false;
-            String normalizedDefaultSchema = tenantSchemaService.defaultSchemaName();
-            if (!normalizedDefaultSchema.equals(defaultTenant.getSchemaName())) {
-                defaultTenant.setSchemaName(normalizedDefaultSchema);
-                defaultTenant.setUpdatedAt(Instant.now());
-                changed = true;
-            }
-            if (changed) {
-                tenantRepository.save(defaultTenant);
-            }
+            Tenant defaultTenant = tenantRepository.findBySchemaName(TenantService.DEFAULT_TENANT_SCHEMA)
+                    .filter(Tenant::isInternal)
+                    .orElseThrow(() -> new IllegalStateException("Run the installation bootstrap to register SG Internal"));
+            String normalizedDefaultSchema = TenantService.DEFAULT_TENANT_SCHEMA;
             warnIfNotReady(defaultTenant, normalizedDefaultSchema);
 
             for (Tenant tenant : tenantRepository.findAll()) {

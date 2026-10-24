@@ -1,365 +1,19 @@
 import React from 'react';
+import './platform-feed-catalog.css';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, ArrowUpRight, CalendarDays, BookOpen, FileText, Globe, Monitor, PackageSearch, Search, Shield, TrendingUp } from 'lucide-react';
 import { api } from '../api/client';
 import { EolSourcePanel } from '../components/EolSourcePanel';
+import { FeedScheduleControl } from './FeedScheduleControl';
+import { intelligenceApi } from '../features/intelligence/api';
 import type { VulnIntelSourceStatus, VulnIntelSourcesSummary } from '../api/client';
-import type {
-  SyncTriggerResponse,
-  VulnerabilitySourceFilterConfig,
-  VulnerabilitySourceFilterConfigRequest,
-  VulnerabilitySourceSystem
-} from '../features/connect/types';
-import { useSourceFilterConfigQuery } from '../features/connect/queries';
-import { useActor } from '../features/auth/context';
-import { canManageSourceFilters } from '../features/auth/roles';
+import type { SyncTriggerResponse } from '../features/connect/types';
 import { formatTimestamp, timeAgo } from '../lib/time';
 
-const SEVERITY_OPTIONS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
-
-function isNotFoundError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return error.message.includes('[NOT_FOUND]') || error.message.includes('(404)');
-}
-
-type SourceFilterForm = VulnerabilitySourceFilterConfigRequest;
-
-function defaultSourceFilterForm(sourceSystem: VulnerabilitySourceSystem): SourceFilterForm {
-  switch (sourceSystem) {
-    case 'nvd':
-      return { hasKev: false, cvssV3Severity: '', cvssV4Severity: '' };
-    case 'kev':
-      return { dateAddedFrom: '', dateAddedTo: '', knownRansomwareCampaignUse: false };
-    case 'ghsa':
-      return { severity: '' };
-    case 'redhat':
-      return { severity: '', cvssScore: undefined, cvss3Score: undefined };
-    default:
-      return {};
-  }
-}
-
-function sourceFilterFormFromConfig(
-  sourceSystem: VulnerabilitySourceSystem,
-  config: VulnerabilitySourceFilterConfig | null
-): SourceFilterForm {
-  if (!config) return defaultSourceFilterForm(sourceSystem);
-  switch (config.sourceSystem) {
-    case 'nvd':
-      return {
-        hasKev: config.hasKev,
-        cvssV3Severity: config.cvssV3Severity ?? '',
-        cvssV4Severity: config.cvssV4Severity ?? ''
-      };
-    case 'kev':
-      return {
-        dateAddedFrom: config.dateAddedFrom ?? '',
-        dateAddedTo: config.dateAddedTo ?? '',
-        knownRansomwareCampaignUse: config.knownRansomwareCampaignUse
-      };
-    case 'ghsa':
-      return { severity: config.severity ?? '' };
-    case 'redhat':
-      return {
-        severity: config.severity ?? '',
-        cvssScore: config.cvssScore,
-        cvss3Score: config.cvss3Score
-      };
-    default:
-      return {};
-  }
-}
-
-function normalizeSourceFilterForm(
-  sourceSystem: VulnerabilitySourceSystem,
-  form: SourceFilterForm
-): VulnerabilitySourceFilterConfigRequest {
-  const trim = (value?: string): string | undefined => {
-    if (value == null) return undefined;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  };
-  const numberOrUndefined = (value?: number): number | undefined => (
-    typeof value === 'number' && !Number.isNaN(value) ? value : undefined
-  );
-  switch (sourceSystem) {
-    case 'nvd':
-      return {
-        hasKev: form.hasKev === true,
-        cvssV3Severity: trim(form.cvssV3Severity),
-        cvssV4Severity: trim(form.cvssV4Severity)
-      };
-    case 'kev':
-      return {
-        dateAddedFrom: trim(form.dateAddedFrom),
-        dateAddedTo: trim(form.dateAddedTo),
-        knownRansomwareCampaignUse: form.knownRansomwareCampaignUse === true
-      };
-    case 'ghsa':
-      return { severity: trim(form.severity) };
-    case 'redhat':
-      return {
-        severity: trim(form.severity),
-        cvssScore: numberOrUndefined(form.cvssScore),
-        cvss3Score: numberOrUndefined(form.cvss3Score)
-      };
-    default:
-      return {};
-  }
-}
-
-function SourceFilterControls({ sourceSystem }: { sourceSystem: VulnerabilitySourceSystem }) {
-  const actor = useActor();
-  const queryClient = useQueryClient();
-  const canEdit = canManageSourceFilters(actor);
-  const filterQuery = useSourceFilterConfigQuery(sourceSystem, true);
-  const [form, setForm] = React.useState<SourceFilterForm>(() => defaultSourceFilterForm(sourceSystem));
-  const [config, setConfig] = React.useState<VulnerabilitySourceFilterConfig | null>(null);
-  const [isDirty, setIsDirty] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-
-  React.useEffect(() => {
-    if (filterQuery.data) {
-      setConfig(filterQuery.data);
-      setForm(sourceFilterFormFromConfig(sourceSystem, filterQuery.data));
-      setIsDirty(false);
-      return;
-    }
-    if (filterQuery.error && isNotFoundError(filterQuery.error)) {
-      setConfig(null);
-      setForm(defaultSourceFilterForm(sourceSystem));
-      setIsDirty(false);
-    }
-  }, [filterQuery.data, filterQuery.error, sourceSystem]);
-
-  const updateField = <K extends keyof SourceFilterForm>(key: K, value: SourceFilterForm[K]) => {
-    setIsDirty(true);
-    setForm((current) => {
-      const next = { ...current, [key]: value };
-      if (key === 'cvssV3Severity' && typeof value === 'string' && value.trim().length > 0) {
-        next.cvssV4Severity = '';
-      }
-      if (key === 'cvssV4Severity' && typeof value === 'string' && value.trim().length > 0) {
-        next.cvssV3Severity = '';
-      }
-      return next;
-    });
-  };
-
-  const save = async () => {
-    if (!canEdit) {
-      setMessage('Your role can view tenant source filters, but cannot update them.');
-      return;
-    }
-    setSaving(true);
-    setMessage('');
-    try {
-      const saved = await api.saveVulnerabilitySourceFilterConfig(
-        sourceSystem,
-        normalizeSourceFilterForm(sourceSystem, form)
-      );
-      queryClient.setQueryData(['source-filter-config', sourceSystem], saved);
-      setConfig(saved);
-      setForm(sourceFilterFormFromConfig(sourceSystem, saved));
-      setIsDirty(false);
-      setMessage(`${saved.sourceSystem.toUpperCase()} filters saved.`);
-    } catch (e) {
-      if (isNotFoundError(e)) {
-        setMessage('Source filters are not available until the backend is refreshed.');
-      } else {
-        setMessage(e instanceof Error ? e.message : String(e));
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (filterQuery.isLoading && config == null) {
-    return <div className="panel-caption">Loading saved filters...</div>;
-  }
-
-  return (
-    <div className="vi-source-filters">
-      <div className="vi-source-filters-header">
-        <span className="vi-source-filters-title">Ingestion Filters</span>
-        {config?.updatedAt && (
-          <span className="panel-caption">Last saved {new Date(config.updatedAt).toLocaleString()}</span>
-        )}
-      </div>
-
-      {sourceSystem === 'nvd' && (
-        <>
-          <p className="field-hint" style={{ marginBottom: 8 }}>
-            Select CVSS v3 <em>or</em> CVSS v4 severity — choosing one automatically clears the other.
-          </p>
-          <div className="source-filter-grid">
-            <label className="source-filter-field">
-              <span>CVSS v3 Severity</span>
-              <select
-                value={form.cvssV3Severity ?? ''}
-                onChange={(e) => updateField('cvssV3Severity', e.target.value)}
-                disabled={!canEdit}
-              >
-                <option value="">Any</option>
-                {SEVERITY_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-            <label className="source-filter-field">
-              <span>CVSS v4 Severity</span>
-              <select
-                value={form.cvssV4Severity ?? ''}
-                onChange={(e) => updateField('cvssV4Severity', e.target.value)}
-                disabled={!canEdit}
-              >
-                <option value="">Any</option>
-                {SEVERITY_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-            <label className="source-filter-field">
-              <span>Known Exploitation</span>
-              <select
-                value={form.hasKev === true ? 'KEV_ONLY' : ''}
-                onChange={(e) => updateField('hasKev', e.target.value === 'KEV_ONLY')}
-                disabled={!canEdit}
-              >
-                <option value="">Any</option>
-                <option value="KEV_ONLY">Known exploited only</option>
-              </select>
-              <span className="field-hint">Only ingest CVEs already linked to CISA KEV.</span>
-            </label>
-          </div>
-        </>
-      )}
-
-      {sourceSystem === 'kev' && (
-        <div className="source-filter-grid">
-          <label className="source-filter-field">
-            <span>Date Added From</span>
-            <input
-              type="date"
-              value={form.dateAddedFrom ?? ''}
-              onChange={(e) => updateField('dateAddedFrom', e.target.value)}
-              disabled={!canEdit}
-            />
-          </label>
-          <label className="source-filter-field">
-            <span>Date Added To</span>
-            <input
-              type="date"
-              value={form.dateAddedTo ?? ''}
-              onChange={(e) => updateField('dateAddedTo', e.target.value)}
-              disabled={!canEdit}
-            />
-          </label>
-          <label className="source-filter-field">
-            <span>Known Ransomware Campaign Use</span>
-            <select
-              value={form.knownRansomwareCampaignUse === true ? 'KNOWN' : ''}
-              onChange={(e) => updateField('knownRansomwareCampaignUse', e.target.value === 'KNOWN')}
-              disabled={!canEdit}
-            >
-              <option value="">Any</option>
-              <option value="KNOWN">Known ransomware campaign use</option>
-            </select>
-          </label>
-        </div>
-      )}
-
-      {sourceSystem === 'ghsa' && (
-        <div className="source-filter-grid">
-          <label className="source-filter-field">
-            <span>Severity</span>
-            <select
-              value={form.severity ?? ''}
-              onChange={(e) => updateField('severity', e.target.value)}
-              disabled={!canEdit}
-            >
-              <option value="">Any</option>
-              {SEVERITY_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-
-      {sourceSystem === 'redhat' && (
-        <div className="source-filter-grid">
-          <label className="source-filter-field">
-            <span>Severity</span>
-            <select
-              value={form.severity ?? ''}
-              onChange={(e) => updateField('severity', e.target.value)}
-              disabled={!canEdit}
-            >
-              <option value="">Any</option>
-              {SEVERITY_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-          <label className="source-filter-field">
-            <span>CVSS Score ≥</span>
-            <input
-              type="number"
-              min="0"
-              max="10"
-              step="0.1"
-              value={form.cvssScore ?? ''}
-              onChange={(e) => updateField(
-                'cvssScore',
-                e.target.value === '' ? undefined : Number(e.target.value)
-              )}
-              placeholder="7.0"
-              disabled={!canEdit}
-            />
-          </label>
-          <label className="source-filter-field">
-            <span>CVSS v3 Score ≥</span>
-            <input
-              type="number"
-              min="0"
-              max="10"
-              step="0.1"
-              value={form.cvss3Score ?? ''}
-              onChange={(e) => updateField(
-                'cvss3Score',
-                e.target.value === '' ? undefined : Number(e.target.value)
-              )}
-              placeholder="7.0"
-              disabled={!canEdit}
-            />
-          </label>
-        </div>
-      )}
-
-      <div className="source-filter-actions">
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          disabled={saving || !canEdit || !isDirty}
-          onClick={() => void save()}
-        >
-          {saving ? 'Saving...' : 'Save Filters'}
-        </button>
-        {!canEdit && (
-          <span className="filter-unsaved-indicator">Read-only for your role</span>
-        )}
-        {canEdit && isDirty && (
-          <span className="filter-unsaved-indicator">Unsaved changes</span>
-        )}
-        {message && <span className="panel-caption">{message}</span>}
-      </div>
-    </div>
-  );
-}
-
 type SourceSectionProps = {
-  icon: string;
+  icon: React.ReactNode;
+  syncType?: string;
   name: string;
   lastRun?: VulnIntelSourceStatus;
   configFields?: React.ReactNode;
@@ -367,13 +21,11 @@ type SourceSectionProps = {
   note?: string;
 };
 
-const RUN_EVERY_OPTIONS = [1, 2, 4, 6, 12, 24, 48, 72, 168];
-
-function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }: SourceSectionProps) {
+function SourceSection({ lastRun, configFields, triggerSync, note, syncType }: SourceSectionProps) {
+  const client = useQueryClient();
   const [running, setRunning] = React.useState(false);
   const [result, setResult] = React.useState<SyncTriggerResponse | null>(null);
   const [error, setError] = React.useState('');
-  const [runEveryHours, setRunEveryHours] = React.useState(24);
 
   const trigger = async () => {
     if (!triggerSync) return;
@@ -383,6 +35,7 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
     try {
       const res = await triggerSync();
       setResult(res);
+      void client.invalidateQueries({ queryKey: ['vuln-intel-sources-summary'] });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -390,7 +43,7 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
     }
   };
 
-  const hasLastRun = lastRun && lastRun.status !== 'never';
+  const hasLastRun = lastRun?.status === 'completed';
   const isFailed = lastRun?.status === 'failed';
   const totalRecords = (lastRun?.recordsInserted ?? 0) + (lastRun?.recordsUpdated ?? 0);
   const lastRunAgo = timeAgo(lastRun?.completedAt);
@@ -404,9 +57,9 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
   return (
     <div className="vi-source-section">
       <div className="vi-source-header">
-        <span className="vi-source-icon" aria-hidden="true">{icon}</span>
-        <span className="vi-source-name">{name}</span>
-        <span className={`connect-source-dot ${dotClass}`} />
+        <span className="vi-source-name">Sync status</span>
+        <span className={`connect-source-dot ${dotClass}`} aria-hidden="true" />
+        <span className="vi-source-meta">{lastRun?.status === 'running' ? 'Syncing' : isFailed ? 'Sync failed' : hasLastRun ? 'Synced' : lastRun ? 'No sync run recorded yet' : 'Status unavailable'}</span>
         {hasLastRun && !isFailed && lastRunAgo && (
           <span className="vi-source-meta">
             Last run · {lastRunAgo}
@@ -435,40 +88,11 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
       {note && <p className="vi-source-note">{note}</p>}
       {configFields && <div className="vi-source-config">{configFields}</div>}
 
-      {triggerSync && (
-        <div className="vi-source-config">
-          <div className="vi-run-every-row">
-            <label className="vi-run-every-label">
-              <span>Run every</span>
-              <select
-                className="vi-run-every-select"
-                value={runEveryHours}
-                onChange={(e) => setRunEveryHours(Number(e.target.value))}
-              >
-                {RUN_EVERY_OPTIONS.map((h) => (
-                  <option key={h} value={h}>
-                    {h === 1 ? '1 hour' : h === 168 ? '7 days' : `${h} hours`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {(() => {
-              const base = lastRun?.completedAt ? new Date(lastRun.completedAt) : null;
-              if (!base || Number.isNaN(base.getTime())) return null;
-              const next = new Date(base.getTime() + runEveryHours * 3600 * 1000);
-              return (
-                <span className="vi-run-every-next">
-                  Next run · {next.toLocaleString()}
-                </span>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+      {syncType && <FeedScheduleControl syncType={syncType} />}
 
-      {error && <div className="notice error">{error}</div>}
+      {error && <div className="notice error" role="alert">{error}</div>}
       {result && (
-        <div className="notice">
+        <div className="notice" role="status">
           <strong>Integration queued.</strong>{result.message ? ` ${result.message}` : ''}
         </div>
       )}
@@ -477,11 +101,11 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
         <div className="vi-source-actions">
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn btn-primary"
             onClick={() => void trigger()}
             disabled={running}
           >
-            {running ? 'Running…' : 'Run Integration now'}
+            {running ? 'Queueing…' : 'Run integration now'}
           </button>
         </div>
       )}
@@ -491,9 +115,38 @@ function SourceSection({ icon, name, lastRun, configFields, triggerSync, note }:
 
 type Props = {
   vulnSummary?: VulnIntelSourcesSummary | null;
+  isLoading?: boolean;
+  loadError?: string;
 };
 
-export function VulnIntelConfigPage({ vulnSummary }: Props) {
+type CatalogSource = SourceSectionProps & {
+  id: string;
+  group: string;
+  summary: string;
+};
+
+const SOURCE_GROUPS = [
+  { id: 'vulnerabilities', title: 'Vulnerability intelligence', caption: 'Core vulnerability and package advisory feeds.' },
+  { id: 'vendors', title: 'Vendor & regional advisories', caption: 'Vendor applicability and regional vulnerability coverage.' },
+  { id: 'enrichment', title: 'Enrichment & imports', caption: 'Exploit likelihood, product lifecycles, and curated advisories.' },
+];
+
+function sourceHealth(source: CatalogSource, unavailable: boolean) {
+  if (unavailable) return { label: 'Status unavailable', tone: 'neutral' };
+  if (source.lastRun?.status === 'failed') return { label: 'Sync failed', tone: 'fail' };
+  if (source.lastRun?.status === 'running') return { label: 'Syncing', tone: 'running' };
+  if (source.lastRun?.status === 'completed') return { label: 'Synced', tone: 'ok' };
+  if (source.id === 'advisory') return { label: 'On demand', tone: 'neutral' };
+  if (!source.lastRun) return { label: 'Status unavailable', tone: 'neutral' };
+  return { label: 'Never synced', tone: 'neutral' };
+}
+
+export function VulnIntelConfigPage({ vulnSummary, isLoading = false, loadError }: Props) {
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = React.useState('');
+  const detailHeading = React.useRef<HTMLHeadingElement>(null);
+  const cardRefs = React.useRef(new Map<string, HTMLButtonElement>());
+  const previousSource = React.useRef<string | null>(null);
   const [nvdApiKey, setNvdApiKey] = React.useState('');
   const [showNvdKey, setShowNvdKey] = React.useState(false);
 
@@ -530,90 +183,166 @@ export function VulnIntelConfigPage({ vulnSummary }: Props) {
           </div>
         </label>
       </div>
-      <SourceFilterControls sourceSystem="nvd" />
+
     </>
   );
 
-  const SOURCES: SourceSectionProps[] = [
+  const sources: CatalogSource[] = [
     {
-      icon: '🛡️',
+      id: 'nvd', group: 'vulnerabilities', summary: 'CVE records, severity scores, and affected products.',
+      icon: <Shield />,
       name: 'NVD Vulnerability Feed',
       lastRun: s?.['NVD'],
       configFields: nvdConfigFields,
       triggerSync: () => api.syncNvd(),
+      syncType: 'NVD',
     },
     {
-      icon: '⚠️',
+      id: 'kev', group: 'vulnerabilities', summary: 'CISA’s catalog of vulnerabilities exploited in the wild.',
+      icon: <AlertTriangle />,
       name: 'CISA KEV Feed',
       lastRun: s?.['KEV'],
       note: 'Known-exploited vulnerabilities catalog from CISA. No credentials required — publicly accessible.',
-      configFields: <SourceFilterControls sourceSystem="kev" />,
+
       triggerSync: () => api.syncKev(),
+      syncType: 'KEV',
     },
     {
-      icon: '🐙',
+      id: 'ghsa', group: 'vulnerabilities', summary: 'GitHub security advisories and affected package versions.',
+      icon: <BookOpen />,
       name: 'GitHub Advisory Database (GHSA)',
       lastRun: s?.['GHSA'],
-      note: 'Advisories with package-version applicability for correlation. GitHub token is configured server-side in backend/secrets/github-api-token or via GITHUB_API_TOKEN.',
-      configFields: <SourceFilterControls sourceSystem="ghsa" />,
+      note: 'Advisories with package-version applicability for correlation. GitHub credentials are managed by your platform administrator.',
+
       triggerSync: () => api.syncGhsa(),
+      syncType: 'GHSA',
     },
     {
-      icon: '🪟',
+      id: 'microsoft', group: 'vendors', summary: 'Microsoft security advisories and VEX applicability.',
+      icon: <Monitor />,
       name: 'Microsoft CSAF + VEX',
       lastRun: s?.['CSAF_MICROSOFT'],
       note: 'Microsoft CSAF advisories and VEX applicability data from the MSRC public feed. No credentials required.',
       triggerSync: () => api.syncMicrosoftCsaf(),
+      syncType: 'CSAF_MICROSOFT',
     },
     {
-      icon: '🎩',
+      id: 'redhat', group: 'vendors', summary: 'Red Hat security advisories and VEX applicability.',
+      icon: <Shield />,
       name: 'Red Hat CSAF + VEX',
       lastRun: s?.['CSAF_REDHAT'],
       note: 'Red Hat CSAF advisories and VEX applicability data from the Red Hat Security Data API. No credentials required.',
-      configFields: <SourceFilterControls sourceSystem="redhat" />,
+
       triggerSync: () => api.syncRedhatCsaf(),
+      syncType: 'CSAF_REDHAT',
     },
     {
-      icon: '🧠',
+      id: 'advisory', group: 'enrichment', summary: 'Curated vendor advisories imported on demand.',
+      icon: <FileText />,
       name: 'Advisory Imports',
       lastRun: s?.['ADVISORY'],
       note: 'Curated vendor advisories imported via API (POST /api/ingestion/advisories). No scheduled sync — imports are triggered on demand.',
     },
     {
-      icon: '🇪🇺',
+      id: 'euvd', group: 'vendors', summary: 'European Union vulnerability intelligence from ENISA.',
+      icon: <Globe />,
       name: 'EUVD Feed',
       lastRun: s?.['EUVD'],
       note: 'European Union Vulnerability Database ingestion for supplemental regional vulnerability intelligence.',
       triggerSync: () => api.syncEuvd(),
+      syncType: 'EUVD',
     },
     {
-      icon: '🇯🇵',
+      id: 'jvn', group: 'vendors', summary: 'Japanese vulnerability notes and JVNDB mappings.',
+      icon: <Globe />,
       name: 'JVN Feed',
       lastRun: s?.['JVN'],
       note: 'Japan Vulnerability Notes Database ingestion for regional advisories and JVNDB mappings.',
       triggerSync: () => api.syncJvn(),
+      syncType: 'JVN',
     },
+    { id: 'epss', group: 'enrichment', summary: 'FIRST.org scores for the likelihood of exploitation.', icon: <TrendingUp />, lastRun: s?.['EPSS'], name: 'EPSS enrichment', syncType: 'EPSS', triggerSync: () => intelligenceApi.trigger('EPSS'),
+      note: 'Stage FIRST.org exploitation probability scores for review. Enrichment never establishes applicability by itself.' },
+    { id: 'osv', group: 'vulnerabilities', summary: 'Open-source package advisories and verified identifiers.', icon: <PackageSearch />, lastRun: s?.['OSV'], name: 'OSV advisories', syncType: 'OSV', triggerSync: () => intelligenceApi.trigger('OSV'),
+      note: 'Stage package advisory records and verified identifier equivalences for review.' },
+    { id: 'eol', group: 'enrichment', summary: 'Product release cycles and end-of-life dates.', icon: <CalendarDays />, name: 'endoflife.date EOL Feed', lastRun: s?.['EOL_FULL_REFRESH'] },
   ];
 
+  const selected = sources.find((source) => source.id === params.get('feed'));
+  const activeId = selected?.id;
+  const query = search.trim().toLowerCase();
+  const visibleSources = sources.filter((source) => `${source.name} ${source.summary}`.toLowerCase().includes(query));
+  const selectSource = (id: string | null) => {
+    const next = new URLSearchParams(params);
+    if (id) next.set('feed', id);
+    else next.delete('feed');
+    setParams(next);
+  };
+
+  React.useEffect(() => {
+    if (activeId) detailHeading.current?.focus();
+    else if (previousSource.current) cardRefs.current.get(previousSource.current)?.focus();
+    previousSource.current = activeId ?? null;
+  }, [activeId]);
+
+  if (selected) {
+    return (
+      <section className="panel platform-feed-detail">
+        <button type="button" className="btn-link platform-feed-back" onClick={() => selectSource(null)}><ArrowLeft size={16} aria-hidden="true" /> Back to sources</button>
+        <div className="platform-feed-detail-header">
+          <span className={`platform-feed-icon platform-feed-icon--${selected.id}`} aria-hidden="true">{selected.icon}</span>
+          <div><h3 ref={detailHeading} tabIndex={-1}>{selected.name}</h3><p className="panel-caption">{selected.summary}</p></div>
+        </div>
+        {selected.id === 'eol' ? (
+          <>
+            <div className="platform-feed-schedules">
+              <section><h4>Full refresh schedule</h4><FeedScheduleControl syncType="EOL_FULL_REFRESH" /></section>
+              <section><h4>Date sweep schedule</h4><FeedScheduleControl syncType="EOL_DATE_SWEEP" /></section>
+            </div>
+            <EolSourcePanel title="endoflife.date EOL Feed" caption="Refresh the shared catalog, release lifecycle data, inventory mappings, and EOL status." />
+          </>
+        ) : <SourceSection key={selected.id} {...selected} />}
+      </section>
+    );
+  }
+
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <h3>Vulnerability Intelligence Sources</h3>
-        <span className="panel-caption">
-          Configure ingestion filters and run NVD, KEV, GHSA, CSAF/VEX, advisory, EOL, EUVD, and JVN feeds.
-        </span>
+    <section className="panel platform-feed-catalog">
+      <div className="platform-feed-toolbar">
+        <div>
+          <div className="platform-feed-title-row"><h3>Vulnerability Intelligence Sources</h3><span className="platform-feed-count">{sources.length} integrations</span></div>
+          <p className="panel-caption">Select a source to manage its schedule and run an integration.</p>
+        </div>
+        <label className="platform-feed-search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search integrations" placeholder="Search integrations…" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
       </div>
-      {SOURCES.map((src, i) => (
-        <React.Fragment key={src.name}>
-          {i > 0 && <div className="vi-source-divider" />}
-          <SourceSection {...src} />
-        </React.Fragment>
-      ))}
-      <div className="vi-source-divider" />
-      <EolSourcePanel
-        title="endoflife.date EOL Feed"
-        caption="Refresh the shared endoflife.date catalog, release lifecycle data, inventory mappings, and denormalized EOL status."
-      />
+      {isLoading && <div className="notice" role="status">Loading source status…</div>}
+      {loadError && <div className="notice error" role="alert">{loadError}</div>}
+      <div className="platform-feed-groups">
+        {SOURCE_GROUPS.map((group) => {
+          const members = visibleSources.filter((source) => source.group === group.id);
+          if (members.length === 0) return null;
+          return (
+            <section key={group.id} className="platform-feed-group" aria-labelledby={`feed-group-${group.id}`}>
+              <div className="platform-feed-group-header"><h4 id={`feed-group-${group.id}`}>{group.title}</h4><span className="panel-caption">{group.caption}</span></div>
+              <div className="platform-feed-grid">
+                {members.map((source) => {
+                  const health = sourceHealth(source, !vulnSummary);
+                  const lastSync = source.lastRun?.status !== 'never' ? timeAgo(source.lastRun?.completedAt) : null;
+                  return (
+                    <button key={source.id} ref={(node) => { if (node) cardRefs.current.set(source.id, node); else cardRefs.current.delete(source.id); }} type="button" className="platform-feed-card" onClick={() => selectSource(source.id)}>
+                      <span className="platform-feed-card-top"><span className={`platform-feed-icon platform-feed-icon--${source.id}`} aria-hidden="true">{source.icon}</span><ArrowUpRight className="platform-feed-card-arrow" size={16} aria-hidden="true" /></span>
+                      <span className="platform-feed-card-name">{source.name}</span>
+                      <span className="platform-feed-card-summary">{source.summary}</span>
+                      <span className="platform-feed-card-footer"><span className={`platform-feed-health platform-feed-health--${health.tone}`}><span aria-hidden="true" />{isLoading ? 'Loading status…' : health.label}</span>{lastSync && <span title={formatTimestamp(source.lastRun?.completedAt)}>{lastSync}</span>}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+        {visibleSources.length === 0 && <div className="empty-state" role="status"><p>No integrations match “{search}”.</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => setSearch('')}>Clear search</button></div>}
+      </div>
     </section>
   );
 }

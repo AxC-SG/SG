@@ -79,7 +79,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/nvd-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncNvd(@RequestParam(defaultValue = "24") int lookbackHours) {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerNvdSync(lookbackHours);
         auditEventService.record("platform.vulnerability_feed.nvd_sync", "sync_run", response.runId() == null ? null : response.runId().toString(),
@@ -104,7 +104,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/kev-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncKev() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerKevSync();
         auditEventService.record("platform.vulnerability_feed.kev_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
@@ -112,7 +112,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/ghsa-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncGhsa() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerGhsaSync();
         auditEventService.record("platform.vulnerability_feed.ghsa_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
@@ -120,7 +120,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/euvd-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncEuvd() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerEuvdSync();
         auditEventService.record("platform.vulnerability_feed.euvd_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
@@ -128,7 +128,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/jvn-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncJvn() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerJvnSync();
         auditEventService.record("platform.vulnerability_feed.jvn_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
@@ -136,7 +136,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/csaf/microsoft-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncMicrosoftCsaf() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerMicrosoftCsafSync();
         auditEventService.record("platform.vulnerability_feed.microsoft_csaf_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
@@ -144,7 +144,7 @@ public class IngestionController {
     }
 
     @PostMapping("/ingestion/csaf/redhat-sync")
-    @PreAuthorize("hasRole('PLATFORM_OWNER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public SyncTriggerResponse syncRedhatCsaf() {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerRedhatCsafSync();
         auditEventService.record("platform.vulnerability_feed.redhat_csaf_sync", "sync_run", response.runId() == null ? null : response.runId().toString(), null);
