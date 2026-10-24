@@ -1,0 +1,142 @@
+[
+  {
+    "route": "/vuln-repo/org-cves",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/vulnerabilities",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/vulnerabilities",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-vulnerabilities_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337-assets_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/software",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337/software",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337-software_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-software-assets-softwareIdentityId-sw-1-software-log4j-core_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/intel/CVE-2026-31337",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/intel/CVE-2026-31337",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-intel-CVE-2026-31337_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/vulnerabilities",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/vulnerabilities",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-vulnerabilities_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337-assets_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/software",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/org-cves/CVE-2026-31337/software",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-org-cves-CVE-2026-31337-software_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-software-assets-softwareIdentityId-sw-1-software-log4j-core_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/intel/CVE-2026-31337",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5175/vuln-repo/intel/CVE-2026-31337",
+    "dataUi": "2",
+    "horizontalOverflow": false,
+    "file": "ui2p2_vuln-repo-intel-CVE-2026-31337_light_1440.png",
+    "pageErrors": []
+  }
+]

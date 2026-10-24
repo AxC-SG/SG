@@ -85,7 +85,7 @@ export function PlatformVulnIntelDetailPage() {
   const bestDescription = detail?.fullDescription || detail?.description;
 
   return (
-    <div className="page-grid">
+    <div className="page-grid ui2-cve-family">
       <div style={{ marginBottom: 8 }}>
         <button
           type="button"

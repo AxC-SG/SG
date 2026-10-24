@@ -482,7 +482,7 @@ export function VulnRepoOrgCvePage({
   }
 
   return (
-    <section className="panel">
+    <section className="panel ui2-cve-family">
         <PageFreshnessStatus
           updatedAt={latestDataUpdate}
           isRefreshing={refreshing}

@@ -1,6 +1,8 @@
-// Shared /api fixture routing for the UI 2.0 browser scripts (capture.mjs, findings-journey.mjs).
+// Shared /api fixture routing for the UI 2.0 browser scripts (capture.mjs, findings-journey.mjs,
+// cve-journey.mjs).
 // Every response is synthetic; no backend, token or customer data is involved.
 import { NOT_FOUND, findingsFixtureFor } from './findings-fixtures.mjs';
+import { createCveFixtureState, cveFixtureFor } from './cve-fixtures.mjs';
 
 export const actor = {
   creator: false,
@@ -41,11 +43,13 @@ export function fixtureFor(url, actorOverride = actor) {
   return emptyPage;
 }
 
-/** Answers every /api request on the context from fixtures; `onRequest` sees each request URL. */
-export async function routeFixtures(context, { actorOverride = actor, onRequest } = {}) {
+/** Answers every /api request on the context from fixtures; `onRequest` sees each request. */
+export async function routeFixtures(context, { actorOverride = actor, onRequest, cveState = createCveFixtureState() } = {}) {
   await context.route((url) => url.pathname.startsWith('/api/'), (route) => {
     const request = route.request();
     onRequest?.(request);
+    const cve = cveFixtureFor(request.url(), request.method(), cveState);
+    if (cve !== undefined) return route.fulfill(cve);
     const body = fixtureFor(request.url(), actorOverride);
     return body === NOT_FOUND
       ? route.fulfill({ status: 404, json: { message: 'Not found (fixture)' } })

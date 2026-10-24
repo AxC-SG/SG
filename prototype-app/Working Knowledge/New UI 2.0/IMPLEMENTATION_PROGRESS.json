@@ -245,46 +245,94 @@
   {
    "id": "P3",
    "title": "Complete CVE workflow",
-   "status": "planned",
+   "status": "verified",
    "dependsOn": [
     "P2"
    ],
    "units": [
     {
      "title": "Intelligence and organization CVE entry routes",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Org records list (/vuln-repo/org-cves) root gains presentation-only class ui2-cve-family: no page card, 5-cell KPI strip, unboxed labelled filters, DataTable in one card with sentence-case headers and wrapping long ids. Intelligence list (.vuln-repo-vulnerabilities-shell): CVE-id buttons wrap inside their column (legacy painted them over the Description column). Intel detail (/vuln-repo/intel/:externalId, page-grid += ui2-cve-family): flat card headers.",
+      "Journey: KEV filter sends inKev=true&page=0 and narrows to 2 rows; Apply sends trimmed query with KEV kept; Clear restores 6 rows (served from React Query cache); row click opens the workbench with /vuln-repo/org-cves/CVE-2026-31337; Intelligence list and intel detail render."
+     ]
     },
     {
      "title": "CVE overview and full investigation canvas",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Overview (.cvd2-page) drops the legacy 120% type scale and tinted surface; tabs, panels, workflow cards and sentence-case labels follow the reference; light-only hex badges (done/progress/report, AI tags, warnings) retinted with tokens. Investigation canvas restyled in place (InvestigationCanvas unchanged).",
+      "Journey: Save Investigation fails once (alert) then retries: runbook PUT x2 then investigation/submit x1, 'Investigation saved.' shown."
+     ]
     },
     {
      "title": "Separate applicability and analyst impact",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Applicability and Impact remain two sections; impact gets a distinct left accent. Decision summary sidebar, VEX evidence card and segmented controls restyled.",
+      "Journey: 4 applicability groups and separate impact groups; Not Applicable removes one impact control and restoring Applicable initialises Unknown; VEX read fails once in place, reopen retries and shows the document, third open served from cache (2 requests, componentId-scoped); Save Assessment fails once with rationale retained, retry via Proceed succeeds (2 submits) with finalResult AFFECTED, separate componentImpactDecisions/componentAnalystDispositions and trimmed justification."
+     ]
     },
     {
      "title": "Main impacted-assets step and dedicated assets/software routes",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Workbench impacted-assets table and dedicated .vuln-repo-assets-shell routes (/org-cves/:id/assets, /software, /software-assets) restyled; priority pills no longer break mid-word ('CRITICA / L').",
+      "Journey: Proceed to Findings reaches Impacted Assets; overview 'Create Findings' card navigates to /vuln-repo/org-cves/CVE-2026-31337/assets (second entry path); software and software-assets routes render."
+     ]
     },
     {
      "title": "Finding configuration, duplicates and partial ticket failure",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Inline styles read undefined variables with light fallbacks (--surface-bg, --primary-subtle, --border-color, --input-bg, --text-1, --badge-info-*), which rendered white creation-mode cards in the dark theme (also in legacy). They are now defined on the CVE roots under UI 2.0 only; no markup change.",
+      "Journey: CVE + Fix mode with ServiceNow opt-in: one manual-finding POST (findingCreationMode=CVE_FIX, existingFindingBehavior=ADD_TO_EXISTING), one ServiceNow POST that fails; status keeps 'Created 2 findings' plus 'ServiceNow ticket failed'; no duplicate creation. Existing WorkbenchMain vitest cases (failure retention/no fallback) pass unmodified."
+     ]
     },
     {
      "title": "Fixes, notification drafts and dirty guards",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Notify Groups panel, chips and compose fields restyled; 'Email delivery is not connected' copy unchanged.",
+      "Journey: Back with unsaved rationale opens 'Unsaved Changes'; Stay keeps the draft; Notify Groups has no send action, Download notification drafts produces a file and no delivery claim; Fixes tab renders. Fix generation failure/retry covered by the existing WorkbenchMain test (unmodified)."
+     ]
     }
    ],
-   "checkpoint": null,
-   "testResults": [],
-   "screenshots": [],
-   "openIssues": []
+   "checkpoint": "2026-10-25 P3",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings (unchanged)",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 722/722 in 81 files (721 after P2 + 1 new CVE scope test)",
+    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 — floors unchanged",
+    "browser-fixtures/cve-journey.mjs (2 themes): UI 2.0 80/80; legacy 74/80 — only failures are pre-existing legacy page overflow at 390px on org-cves list, workbench and assets routes, fixed under UI 2.0. Results: checkpoints/P3-screenshots/{ui2,legacy}_journey.json",
+    "findings-journey.mjs re-run after shared fixture routing change: 67/67",
+    "verify-baseline.py: CVE critical source hashes unchanged; only the two known P2 className edits differ"
+   ],
+   "screenshots": [
+    "checkpoints/P3-screenshots/ui2_*_{dark,light}.png (org list, workbench overview/affected entities/fixes, applicability, VEX, save failure, dirty guard, impacted assets, finding configuration, ticket failure, notify groups, investigation, CVE assets/software, software assets, intelligence, intel detail) and *_390.png; legacy_* and ui2p2_* before-captures. Fixture-backed only."
+   ],
+   "openIssues": [
+    "Mocked-fixture evidence only; authenticated staging journeys and real ServiceNow/VEX providers remain pending_access.",
+    "Inline styles are not overridden (no !important): VulnRepoCveAssetsPage config drawer and FindingsTab mode cards keep inline layout; literal uppercase DOM text ('ASSET / CI', 'FINDING TITLE', 'SEVERITY') stays uppercase; Impact pill and Suppressed/Reopen controls keep inline colours. Needs a markup pass.",
+    "DataTable (shared component) still fits columns to the container, so org-records/Intelligence titles wrap to many lines; long ids now wrap instead of overlapping. A no-wrap + horizontal-scroll treatment like Findings needs a DataTable change and is deferred.",
+    "/vuln-repo/host-assets/:assetId renders HostAssetDetailPage, shared with /inventory/hosts/:assetId; restyled with the inventory family in P4 to avoid a split look.",
+    "Generative assistance (AI solution/actions) answered 503 by fixtures; only the honest-fallback path was observed.",
+    "Fixtures do not reproduce backend eligibility/derivation; result derivation and eligibility are covered by existing vitest assessment-helpers/WorkbenchMain tests."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/cve.css (new)",
+    "frontend/src/styles/ui2/index.css (+1 import line)",
+    "frontend/src/styles/ui2/scope.test.ts (+1 test: CVE rules anchored on CVE roots)",
+    "frontend/src/pages/VulnRepoOrgCvePage.tsx (list root className += ui2-cve-family)",
+    "frontend/src/pages/PlatformVulnIntelDetailPage.tsx (root className += ui2-cve-family)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/cve-fixtures.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/cve-journey.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/fixtures.mjs (routes CVE requests first; passes method and per-context fail-once state)"
+   ],
+   "rollback": "Presentation rollback: build without VITE_UI_VERSION (default). Code rollback: delete frontend/src/styles/ui2/cve.css, remove its import from styles/ui2/index.css and the CVE test from scope.test.ts, and remove ' ui2-cve-family' from the root classNames in VulnRepoOrgCvePage.tsx and PlatformVulnIntelDetailPage.tsx; or revert the P3 commit. No data, API, route or URL impact.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort; journey: PLAYWRIGHT_DIR=<playwright> CHROMIUM_PATH=<chromium-1243> node 'Working Knowledge/New UI 2.0/browser-fixtures/cve-journey.mjs' --base http://127.0.0.1:5175 --out <dir> --label ui2"
   },
   {
    "id": "P4",
@@ -497,8 +545,8 @@
  "environment": {
   "node": "v22.16.0",
   "npm": "10.9.2",
-  "repoIsGitCheckout": false,
-  "note": "Local copy is not a git repository; rollback uses checkpoints/P0-baseline-frontend-src and the file list below. .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
+  "repoIsGitCheckout": true,
+  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P3 — Complete CVE workflow (start with Intelligence/organization record list fixtures; .fpl-col-filter-popover already carries UI 2.0 styling on /vuln-repo/vulnerabilities)."
+ "nextUnit": "P4 — Inventory and lifecycle (start with hosts/software identities; HostAssetDetailPage also serves /vuln-repo/host-assets/:assetId)."
 }

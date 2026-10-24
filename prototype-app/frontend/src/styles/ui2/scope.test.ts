@@ -38,4 +38,11 @@ describe('UI 2.0 stylesheet scope', () => {
     const unanchored = selectors(sheets['./findings.css']).filter((selector) => !anchor.test(selector));
     expect(unanchored).toEqual([]);
   });
+
+  it('anchors CVE-workflow rules on the CVE page roots', () => {
+    expect(selectors(sheets['./cve.css']).length).toBeGreaterThan(100);
+    const anchor = /^html\[data-ui='2'\] (\.cve-assessment-page|\.ui2-cve-family|\.vuln-repo-vulnerabilities-shell|\.vuln-repo-assets-shell)\b/;
+    const unanchored = selectors(sheets['./cve.css']).filter((selector) => !anchor.test(selector));
+    expect(unanchored).toEqual([]);
+  });
 });

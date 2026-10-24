@@ -140,16 +140,16 @@
   {
    "path": "/vuln-repo/intel/:externalId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/vulnerabilities",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/campaigns",
@@ -168,37 +168,37 @@
   {
    "path": "/vuln-repo/software-assets",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/host-assets/:assetId",
    "scope": "application",
    "status": "inventoried",
    "phase": "P3",
-   "note": ""
+   "note": "Renders HostAssetDetailPage (shared with /inventory/hosts/:assetId); restyle deferred to P4 inventory family."
   },
   {
    "path": "/vuln-repo/org-cves/:cveId/assets",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/org-cves/:cveId/software",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/org-cves/:cveId?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": ""
+   "note": "P3: UI 2.0 restyle + fixture journey (checkpoints/P3-screenshots); authenticated check pending."
   },
   {
    "path": "/inventory/hosts/:assetId",
