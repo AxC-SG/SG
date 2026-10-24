@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@sentry/react": "^10.51.0",
-    "resend": "^6.12.2"
+    "resend": "^6.34.1"
   },
   "scripts": {
     "build:ai-grid-phase1": "node prototype-app/scripts/compile-ai-grid-phase1.mjs --write && node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs --write",
