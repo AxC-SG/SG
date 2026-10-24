@@ -203,7 +203,7 @@ export function AiFindingsPage() {
   const tab: AiFindingsTab = location.pathname.endsWith('/vulnerabilities') ? 'vulnerabilities' : 'violations';
 
   return (
-    <div className="ai-security-page">
+    <div className="ai-security-page ui2-findings-family">
       <AiFindingsTabBar tab={tab} />
       {tab === 'vulnerabilities' ? <SoftwareVulnerabilitiesTab /> : <PolicyViolationsTab />}
     </div>

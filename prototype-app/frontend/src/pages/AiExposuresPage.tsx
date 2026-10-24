@@ -28,7 +28,7 @@ function ExposureDetail({ exposureId }: { exposureId: string }) {
   if (detail.isError || !detail.data) return <section className="panel"><p>Exposure could not be loaded.</p></section>;
   const { exposure: summary, observations, associations } = detail.data;
   return (
-    <section className="ai-security-page ai-exposure-detail">
+    <section className="ai-security-page ai-exposure-detail ui2-findings-family">
       <button type="button" className="btn btn-secondary" onClick={() => navigate('/findings/ai/exposures')}>← All exposures</button>
       <header className="ai-security-hero findings">
         <div><span className="ai-security-kicker">{summary.correlationId} · v{summary.correlationVersion}</span>
@@ -64,7 +64,7 @@ export function AiExposuresPage() {
   const priorities = useQuery({ queryKey: ['ai-exposure-priorities'], queryFn: api.listAiExposurePriorities });
   if (exposureId) return <ExposureDetail exposureId={exposureId} />;
   const items: AiGridExposureSummary[] = exposures.data?.items ?? [];
-  return <section className="ai-security-page"><header className="ai-security-hero findings"><div>
+  return <section className="ai-security-page ui2-findings-family"><header className="ai-security-hero findings"><div>
     <span className="ai-security-kicker">Cross-system paths backed by temporal evidence</span><h2>AI Exposures</h2>
     <p>Hypotheses remain separate until trusted evidence validates the complete path.</p></div></header>
     {exposures.isLoading ? <section className="panel"><p>Loading exposures…</p></section> : exposures.isError ? <section className="panel"><p>Exposures could not be loaded.</p></section> :
