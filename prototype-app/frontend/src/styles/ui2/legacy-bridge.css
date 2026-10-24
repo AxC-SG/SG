@@ -1,0 +1,77 @@
+/* UI 2.0 legacy token bridge (from design-reference styles/legacy-bridge.css).
+ *
+ * Re-points the legacy custom properties consumed by the existing app CSS onto the
+ * UI 2.0 tokens, so every page adopts the palette, radii, type and elevation without
+ * markup or class-name changes. The html[data-ui='2'] qualifier outranks base.css's
+ * `:root` / `[data-theme]` blocks, so source order is not load-bearing. */
+html[data-ui='2'],
+html[data-ui='2'][data-theme='light'],
+html[data-ui='2'][data-theme='dark'] {
+  --font-display: var(--dp-font);
+  --font-body: var(--dp-font);
+  --font-mono: var(--dp-mono);
+
+  --control-sm: var(--dp-control-md);
+  --control-md: var(--dp-control-lg);
+  --control-lg: 40px;
+
+  --radius-sm: var(--dp-radius-sm);
+  --radius-md: var(--dp-radius);
+  --radius-lg: var(--dp-radius-lg);
+  --radius-xl: 16px;
+
+  --bg: var(--dp-bg);
+  --bg-gradient: var(--dp-bg);
+  --shell-glow: none;
+  --sidebar-bg: var(--dp-sidebar);
+  --sidebar-border: var(--dp-border);
+  --sidebar-muted: var(--dp-text-3);
+  --panel: var(--dp-surface);
+  --panel-solid: var(--dp-surface);
+  --panel-muted: var(--dp-surface-2);
+  --surface: var(--dp-surface-2);
+  --surface-raised: var(--dp-surface);
+  --surface-hover: var(--dp-hover);
+  --track: var(--dp-hover);
+  --table-row: var(--dp-surface-2);
+
+  --text: var(--dp-text);
+  --title: var(--dp-text);
+  --muted: var(--dp-text-2);
+  --text-primary: var(--dp-text);
+  --text-secondary: var(--dp-text-2);
+  --text-muted: var(--dp-text-3);
+
+  --border: var(--dp-border);
+  --border-strong: var(--dp-border-strong);
+
+  --accent: var(--dp-accent);
+  --accent-strong: color-mix(in srgb, var(--dp-accent) 85%, var(--dp-text));
+
+  --critical: var(--dp-critical);
+  --high: var(--dp-high);
+  --medium: var(--dp-medium);
+  --low: var(--dp-low);
+  --success: var(--dp-success);
+  --danger: var(--dp-critical);
+  --warn: var(--dp-warning);
+  --warning: var(--dp-warning);
+  --warning-strong: color-mix(in srgb, var(--dp-warning) 70%, var(--dp-text));
+
+  --shadow-sm: var(--dp-shadow-sm);
+  --shadow-md: var(--dp-shadow-sm);
+  --shadow-lg: var(--dp-shadow-lg);
+  --focus-ring: var(--dp-ring);
+
+  /* Older sidebar.css / component fallbacks */
+  --color-bg-sidebar: var(--dp-sidebar);
+  --color-border: var(--dp-border);
+  --color-border-subtle: var(--dp-border);
+  --color-text-primary: var(--dp-text);
+  --color-text-secondary: var(--dp-text-2);
+  --color-text-tertiary: var(--dp-text-3);
+  --color-bg-hover: var(--dp-hover);
+  --color-bg-active: var(--dp-hover);
+  --color-primary: var(--dp-accent);
+  --color-critical: var(--dp-critical);
+}

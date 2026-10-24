@@ -1,0 +1,6 @@
+/* UI 2.0 presentation layer. Every rule is scoped to html[data-ui='2'];
+ * without that attribute (the default) the legacy UI renders unchanged. */
+@import "./tokens.css";
+@import "./legacy-bridge.css";
+@import "./shell.css";
+@import "./primitives.css";
