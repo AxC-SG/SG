@@ -175,9 +175,9 @@
   {
    "path": "/vuln-repo/host-assets/:assetId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P3",
-   "note": "Renders HostAssetDetailPage (shared with /inventory/hosts/:assetId); restyle deferred to P4 inventory family."
+   "note": "Renders HostAssetDetailPage (shared with /inventory/hosts/:assetId); restyled with the inventory family in P4."
   },
   {
    "path": "/vuln-repo/org-cves/:cveId/assets",
@@ -203,49 +203,49 @@
   {
    "path": "/inventory/hosts/:assetId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": ""
   },
   {
    "path": "/inventory/ai/overview",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/agent-versions",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/agents",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/assets",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/knowledge-data",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/mcp",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
@@ -259,14 +259,14 @@
   {
    "path": "/inventory/ai/declared-resources",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/inventory/ai/declared-resources/:resourceId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": ""
   },
@@ -280,21 +280,21 @@
   {
    "path": "/inventory/ai/:assetId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": ""
   },
   {
    "path": "/inventory/software-identities/:softwareIdentityId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": ""
   },
   {
    "path": "/inventory/:inventoryView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P4",
    "note": ""
   },

@@ -1,0 +1,532 @@
+[
+  {
+    "name": "overview renders funnel and lifecycle_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hosts list renders 12 hosts_dark",
+    "ok": true,
+    "detail": "12"
+  },
+  {
+    "name": "host search narrows rows locally_dark",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "host row opens detail with returnTo_dark",
+    "ok": true,
+    "detail": "/inventory/hosts/host-prod-api-gw-01?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "upgrade suggestion posts once_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "host tabs switch_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "close host detail returns to hosts_dark",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "vuln-repo host asset route renders host detail_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "lifecycle facet serialised as lifecycle=eol_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "lifecycle facet narrows identities_dark",
+    "ok": true,
+    "detail": "13"
+  },
+  {
+    "name": "software identities list renders 29 rows_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row expands 4 version rows_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "expansion fetches identity detail once_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "identity link opens detail_dark",
+    "ok": true,
+    "detail": "/inventory/software-identities/si-log4j-core"
+  },
+  {
+    "name": "identity detail shows versions_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "identity tabs switch_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "back returns to software identities_dark",
+    "ok": true,
+    "detail": "/inventory/software-identities"
+  },
+  {
+    "name": "container images paginate_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sbom application cards render_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "BOM inventory Next requests page=1&size=50_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/bom/inventory?page=1&size=50"
+  },
+  {
+    "name": "AI overview renders severity grid_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "provider filter sends provider=AZURE page=0_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=0&size=50&provider=AZURE"
+  },
+  {
+    "name": "AI assets Next requests page=1_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=1&size=50"
+  },
+  {
+    "name": "AI assets shows Page 2 of 2_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "agents search sends search + inventoryView=AGENTS_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=0&size=50&inventoryView=AGENTS&search=claims"
+  },
+  {
+    "name": "/inventory/ai/mcp renders table_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "/inventory/ai/knowledge-data renders table_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "AI row opens detail with returnTo_dark",
+    "ok": true,
+    "detail": "/inventory/ai/ai-agent-claims-triage?returnTo=%2Finventory%2Fai%2Fassets"
+  },
+  {
+    "name": "relationship graph renders nodes_dark",
+    "ok": true,
+    "detail": "11"
+  },
+  {
+    "name": "close AI asset detail returns to list_dark",
+    "ok": true,
+    "detail": "/inventory/ai/assets"
+  },
+  {
+    "name": "declared resource row opens detail_dark",
+    "ok": true,
+    "detail": "/inventory/ai/declared-resources/dr-claims-model"
+  },
+  {
+    "name": "retired history requests history=true_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/bom/declared-resources/dr-claims-model/correlation?history=true&page=0&size=50"
+  },
+  {
+    "name": "back returns to declared resources_dark",
+    "ok": true,
+    "detail": "/inventory/ai/declared-resources"
+  },
+  {
+    "name": "no page errors_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai to /exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/ai-agent-claims-triage to /exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/declared-resources to /exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/declared-resources/dr-claims-model to /exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false keeps host inventory_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/hosts_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/software-identities_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/container-images_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/bom-components_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/bom-inventory_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/assets_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/mcp_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/declared-resources_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/declared-resources/dr-claims-model_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/ai-agent-claims-triage_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/hosts/host-prod-api-gw-01_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/software-identities/si-log4j-core_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "overview renders funnel and lifecycle_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hosts list renders 12 hosts_light",
+    "ok": true,
+    "detail": "12"
+  },
+  {
+    "name": "host search narrows rows locally_light",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "host row opens detail with returnTo_light",
+    "ok": true,
+    "detail": "/inventory/hosts/host-prod-api-gw-01?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "upgrade suggestion posts once_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "host tabs switch_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "close host detail returns to hosts_light",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "vuln-repo host asset route renders host detail_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "lifecycle facet serialised as lifecycle=eol_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "lifecycle facet narrows identities_light",
+    "ok": true,
+    "detail": "13"
+  },
+  {
+    "name": "software identities list renders 29 rows_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row expands 4 version rows_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "expansion fetches identity detail once_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "identity link opens detail_light",
+    "ok": true,
+    "detail": "/inventory/software-identities/si-log4j-core"
+  },
+  {
+    "name": "identity detail shows versions_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "identity tabs switch_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "back returns to software identities_light",
+    "ok": true,
+    "detail": "/inventory/software-identities"
+  },
+  {
+    "name": "container images paginate_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sbom application cards render_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "BOM inventory Next requests page=1&size=50_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/bom/inventory?page=1&size=50"
+  },
+  {
+    "name": "AI overview renders severity grid_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "provider filter sends provider=AZURE page=0_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=0&size=50&provider=AZURE"
+  },
+  {
+    "name": "AI assets Next requests page=1_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=1&size=50"
+  },
+  {
+    "name": "AI assets shows Page 2 of 2_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "agents search sends search + inventoryView=AGENTS_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/ai-security/artifact-summaries?page=0&size=50&inventoryView=AGENTS&search=claims"
+  },
+  {
+    "name": "/inventory/ai/mcp renders table_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "/inventory/ai/knowledge-data renders table_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "AI row opens detail with returnTo_light",
+    "ok": true,
+    "detail": "/inventory/ai/ai-agent-claims-triage?returnTo=%2Finventory%2Fai%2Fassets"
+  },
+  {
+    "name": "relationship graph renders nodes_light",
+    "ok": true,
+    "detail": "11"
+  },
+  {
+    "name": "close AI asset detail returns to list_light",
+    "ok": true,
+    "detail": "/inventory/ai/assets"
+  },
+  {
+    "name": "declared resource row opens detail_light",
+    "ok": true,
+    "detail": "/inventory/ai/declared-resources/dr-claims-model"
+  },
+  {
+    "name": "retired history requests history=true_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/api/bom/declared-resources/dr-claims-model/correlation?history=true&page=0&size=50"
+  },
+  {
+    "name": "back returns to declared resources_light",
+    "ok": true,
+    "detail": "/inventory/ai/declared-resources"
+  },
+  {
+    "name": "no page errors_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai to /exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/ai-agent-claims-triage to /exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/declared-resources to /exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false redirects /inventory/ai/declared-resources/dr-claims-model to /exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "ai.security=false keeps host inventory_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/hosts_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/software-identities_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/container-images_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/bom-components_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/bom-inventory_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/assets_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/mcp_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/declared-resources_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/declared-resources/dr-claims-model_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/ai/ai-agent-claims-triage_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/hosts/host-prod-api-gw-01_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /inventory/software-identities/si-log4j-core_light",
+    "ok": false,
+    "detail": ""
+  }
+]

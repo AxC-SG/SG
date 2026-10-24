@@ -1185,7 +1185,7 @@ export function InventoryOverviewPage() {
   );
 
   return (
-    <section className="inventory-overview-shell vuln-repo-dashboard-page">
+    <section className="inventory-overview-shell vuln-repo-dashboard-page ui2-inventory-family">
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={overviewRefreshing}

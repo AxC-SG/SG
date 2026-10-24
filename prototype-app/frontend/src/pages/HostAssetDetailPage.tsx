@@ -926,7 +926,7 @@ export function HostAssetDetailPage({ assetId, onClose }: HostAssetDetailPagePro
   }, [navigate, onClose, returnTo]);
 
   return (
-    <section className="host-detail-page">
+    <section className="host-detail-page ui2-inventory-family">
       {(onClose || returnTo) && (
         <div className="button-row host-detail-close-row">
           <button

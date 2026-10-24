@@ -263,7 +263,7 @@ function AllApplicationsListView({
   });
 
   return (
-    <div className="page-grid" style={{ gap: 16 }}>
+    <div className="page-grid ui2-inventory-family" style={{ gap: 16 }}>
       {/* Back nav */}
       <div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={onBack} style={{ fontSize: 12 }}>
@@ -438,7 +438,7 @@ export function ApplicationsDashboard() {
   const top10 = [...apps].sort((a, b) => b.riskScore - a.riskScore).slice(0, 10);
 
   return (
-    <div className="page-grid" style={{ gap: 0 }}>
+    <div className="page-grid ui2-inventory-family" style={{ gap: 0 }}>
       <SummaryWidgets apps={apps} />
 
       <div className="panel">

@@ -337,36 +337,82 @@
   {
    "id": "P4",
    "title": "Inventory and lifecycle",
-   "status": "planned",
+   "status": "verified",
    "dependsOn": [
     "P3"
    ],
    "units": [
     {
      "title": "Hosts, software identities and detail",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "New frontend/src/styles/ui2/inventory.css anchored on the presentation-only root class ui2-inventory-family, added to InventoryShell (every hosts/software identities/container images/AI inventory/MCP/knowledge & data/declared resources page and declared-resource detail), the inventory overview, BOM inventory, the sbom/BOM components page roots and the host, software identity and AI asset detail roots. No outer page card, sentence-case shell header, unboxed labelled filters, flat cards/tables, sentence-case key indicators.",
+      "Findings toolbar/group-by, widget, key-indicator, chip, AI table/severity/empty-state and fd3 record-detail rules are shared via :is(.fpl-root|.fd3-page|.ui2-findings-family, .ui2-inventory-family) instead of duplicated. Findings pixel diff against the committed findings.css: only timestamp/top-bar icon noise, which also differs between two same-CSS control runs.",
+      "The global th/td rule broke ordinary words mid-word in legacy ('productio n'); inventory tables now wrap whole words while monospace/secondary identifiers (CPE, PURL, ARN, digests) still break anywhere. Detail columns keep the legacy 340px/flexible split and shrink at narrow widths.",
+      "Journey: hosts list 12 rows, local search narrows; host row opens /inventory/hosts/host-prod-api-gw-01?returnTo=%2Finventory%2Fhosts; Suggest posts one /upgrade-recommendation; tabs switch; Close returns to /inventory/hosts; /vuln-repo/host-assets/:id renders the same detail. Software identities: 29 rows, row expands 4 version rows with one detail fetch, identity link opens detail, tabs switch, Back returns."
+     ]
     },
     {
      "title": "EOL flows",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Lifecycle surfaces inside inventory restyled with the family: overview lifecycle breakdown and software with EOS/EOL, software identity lifecycle widget/EOL column and version lifecycle pills, host 'Update EOL software' attention item.",
+      "Journey: ?lifecycle=eol is serialised as lifecycle=eol and narrows identities to 13. /end-of-life still redirects (platform scope → /platform/eol, otherwise /exposure); the platform EOL console belongs to P5."
+     ]
     },
     {
      "title": "All active AI inventory categories",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "AI overview (severity grid, by provider, coverage gaps), AI assets, agents, other artifacts, MCP and knowledge & data share the AI table/empty-state treatment with AI Findings.",
+      "Journey: provider filter sends provider=AZURE&page=0; Next sends page=1 and shows 'Page 2 of 2'; agents search sends search=claims&inventoryView=AGENTS; MCP and knowledge & data render tables; ai.security=false redirects /inventory/ai, /inventory/ai/:id, declared resources list and detail to /exposure while /inventory/hosts stays."
+     ]
     },
     {
      "title": "AI assets, declared resources and relationship graphs",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "AI asset detail and declared-resource detail use the shared fd3 record-detail treatment; .ai-severity-grid--compact and .react-flow__pane selectors unchanged.",
+      "Journey: AI row opens /inventory/ai/ai-agent-claims-triage with returnTo=/inventory/ai/assets; Relationships tab renders the graph (>=5 nodes); Close returns to the list; declared resource row opens detail, Retired history requests correlation?history=true, Back returns."
+     ]
     }
    ],
-   "checkpoint": null,
-   "testResults": [],
-   "screenshots": [],
-   "openIssues": []
+   "checkpoint": "2026-10-25 P4",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings (unchanged)",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 723/723 in 81 files (722 after P3 + 1 new inventory scope test; scope test selector parser now keeps :is() groups whole)",
+    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 — floors unchanged",
+    "browser-fixtures/inventory-journey.mjs (2 themes): UI 2.0 106/106; legacy 92/106 — only failures are pre-existing legacy page overflow at 390px on hosts, software identities, container images, AI assets, AI asset detail, host detail and software identity detail, fixed under UI 2.0. Results: checkpoints/P4-screenshots/{ui2,legacy}_journey.json",
+    "findings-journey.mjs 67/67 and cve-journey.mjs 80/80 re-run after the shared fixture routing and findings.css changes",
+    "verify-baseline.py: 16 critical source hashes matched; only the two known P2 className edits differ"
+   ],
+   "screenshots": [
+    "checkpoints/P4-screenshots/ui2_*_{dark,light}.png (overview, hosts, host detail and CVEs tab, software identities expanded, identity detail, container images, sbom, BOM components, BOM inventory, AI overview/assets/agents/MCP/knowledge & data, AI asset detail and relationships, declared resources and detail) and *_390.png; legacy_* journey captures and legacy_*_dark_1440.png route captures. Fixture-backed only."
+   ],
+   "openIssues": [
+    "Mocked-fixture evidence only; authenticated staging journeys remain pending_access.",
+    "/inventory/sbom keeps page overflow at 390px (also in legacy): its summary strip is an inline fixed 4-column grid that CSS cannot override without !important. Needs a markup change.",
+    "sbom/BOM components loading/error/empty early returns and their ApplicationDetailPanel/BomComponentDetailPanel views have no family root and keep the P1 look.",
+    "Resizable DataTable (host detail software, software identity versions, container images) has fixed column widths, so headers and cells still break mid-word; whole-word wrapping needs a DataTable change (same deferral as P3).",
+    "Host detail Applicable CVEs pills overlap the EOL column (pre-existing in legacy; fixed column width).",
+    "Status pills (app-wide P1 primitive) and literal uppercase DOM text (e.g. 'BEDROCK KNOWLEDGE BASE', setup-action priority/category, 'UPDATED · 21 OCT') stay uppercase.",
+    "AI asset detail Findings/Policies tabs show 0 in fixtures: findings fixtures use artifact-1..5 ids and MODEL policy types; populating them needs a findings-fixtures change.",
+    "Hosts and software identities lists page client-side (50/200); fixture sizes do not exercise their pagination. BOM inventory, container images and AI assets pagination are exercised."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/inventory.css (new)",
+    "frontend/src/styles/ui2/index.css (+1 import line)",
+    "frontend/src/styles/ui2/findings.css (shared sections anchored with :is(..., .ui2-inventory-family); tab selectors merged; header comment)",
+    "frontend/src/styles/ui2/scope.test.ts (paren-aware selector split, :is()-aware anchor check, +1 inventory test)",
+    "frontend/src/features/inventory/InventoryShell.tsx, ApplicationsDashboard.tsx, BomComponents.tsx and pages/InventoryOverviewPage.tsx, BomInventoryPage.tsx, HostAssetDetailPage.tsx, SoftwareIdentityDetailPage.tsx, AiAssetDetailPage.tsx (root className += ui2-inventory-family)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/inventory-fixtures.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/inventory-journey.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/fixtures.mjs (routes CVE, then inventory, then findings)"
+   ],
+   "rollback": "Presentation rollback: build without VITE_UI_VERSION (default). Code rollback: delete frontend/src/styles/ui2/inventory.css and its import, restore findings.css and scope.test.ts from the P3 commit, and remove ' ui2-inventory-family' / 'ui2-inventory-family' from the nine root classNames; or revert the P4 commit. No data, API, route or URL impact.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort; journey: PLAYWRIGHT_DIR=<playwright> CHROMIUM_PATH=<chromium-1243> node 'Working Knowledge/New UI 2.0/browser-fixtures/inventory-journey.mjs' --base http://127.0.0.1:5175 --out <dir> --label ui2"
   },
   {
    "id": "P5",
@@ -546,7 +592,7 @@
   "node": "v22.16.0",
   "npm": "10.9.2",
   "repoIsGitCheckout": true,
-  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
+  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P4 — Inventory and lifecycle (start with hosts/software identities; HostAssetDetailPage also serves /vuln-repo/host-assets/:assetId)."
+ "nextUnit": "P5 — Governance and platform administration (start with tenant policies and framework coverage; the platform EOL console /platform/eol is part of the platform console)."
 }

@@ -4,9 +4,10 @@
  * AiFindingDetailPage (.fd3-page), and AiFindingsPage / AiExposuresPage
  * (.ui2-findings-family). The fpl-, fd3- and ai-security- classes are shared with Inventory,
  * Campaigns and AI asset pages, so every rule is anchored on one of those three page roots;
- * those other families keep their P1 presentation until their own phase. The one exception
- * is the column-filter popover, which is portaled to <body> and is a shared filter primitive
- * (also used by /vuln-repo/vulnerabilities).
+ * the toolbar, widget, chip and record-detail rules also match the Inventory family
+ * (.ui2-inventory-family, see inventory.css), and Campaigns keep their P1 presentation until
+ * their own phase. The one exception is the column-filter popover, which is portaled to
+ * <body> and is a shared filter primitive (also used by /vuln-repo/vulnerabilities).
  *
  * Presentation only: no element, label, handler, selector or row interaction changes. */
 
@@ -19,7 +20,7 @@ html[data-ui='2'] .fpl-root {
   gap: 0;
 }
 
-html[data-ui='2'] .fpl-root .page-freshness,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .page-freshness,
 html[data-ui='2'] .fpl-root > .panel-caption {
   margin-bottom: 12px;
 }
@@ -32,7 +33,7 @@ html[data-ui='2'] .fpl-root .fpl-toolbar {
 }
 
 /* GROUP BY keeps its DOM text; it renders in sentence case like the reference. */
-html[data-ui='2'] .fpl-root .multi-groupby-label {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-label {
   padding: 0;
   border: 0;
   background: transparent;
@@ -47,11 +48,11 @@ html[data-ui='2'] .fpl-root .multi-groupby-label {
   line-height: var(--dp-control-md);
 }
 
-html[data-ui='2'] .fpl-root .multi-groupby-label::first-letter {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-label::first-letter {
   text-transform: uppercase;
 }
 
-html[data-ui='2'] .fpl-root .multi-groupby-trigger {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-trigger {
   min-height: var(--dp-control-md);
   border-radius: var(--dp-radius);
   border-color: var(--dp-border);
@@ -60,7 +61,7 @@ html[data-ui='2'] .fpl-root .multi-groupby-trigger {
 }
 
 /* Widgets (reference `.dp-widgets`) */
-html[data-ui='2'] .fpl-root .fpl-widgets {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
@@ -72,14 +73,14 @@ html[data-ui='2'] .fpl-root .fpl-widgets {
 }
 
 @media (max-width: 1360px) {
-  html[data-ui='2'] .fpl-root .fpl-widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 800px) {
-  html[data-ui='2'] .fpl-root .fpl-widgets { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets { grid-template-columns: minmax(0, 1fr); }
 }
 
-html[data-ui='2'] .fpl-root .fpl-widget {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget {
   padding: 12px;
   gap: 10px;
   border-color: var(--dp-border);
@@ -88,16 +89,16 @@ html[data-ui='2'] .fpl-root .fpl-widget {
   box-shadow: var(--dp-shadow-sm);
 }
 
-html[data-ui='2'] .fpl-root .fpl-widget:hover {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget:hover {
   box-shadow: var(--dp-shadow-sm);
 }
 
-html[data-ui='2'] .fpl-root .fpl-widget--active {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget--active {
   border-color: var(--dp-accent);
   box-shadow: 0 0 0 1px var(--dp-accent);
 }
 
-html[data-ui='2'] .fpl-root .fpl-widget-title {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-title {
   color: var(--dp-text-2);
   font-size: 12px;
   font-weight: 600;
@@ -106,58 +107,58 @@ html[data-ui='2'] .fpl-root .fpl-widget-title {
 }
 
 /* Severity legend sits under the donut so its labels are not truncated (reference layout). */
-html[data-ui='2'] .fpl-root .fpl-widget-donut-layout {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-donut-layout {
   flex-direction: column;
   align-items: flex-start;
 }
 
-html[data-ui='2'] .fpl-root .fpl-widget-donut-layout .fpl-widget-legend {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-donut-layout .fpl-widget-legend {
   align-self: stretch;
 }
 
-html[data-ui='2'] .fpl-root .fpl-legend-row,
-html[data-ui='2'] .fpl-root .fpl-hbar-row {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row {
   min-height: 22px;
   padding: 0 6px;
   border-radius: 4px;
   font-size: 11.5px;
 }
 
-html[data-ui='2'] .fpl-root .fpl-legend-row:hover,
-html[data-ui='2'] .fpl-root .fpl-hbar-row:hover,
-html[data-ui='2'] .fpl-root .fpl-legend-row--active,
-html[data-ui='2'] .fpl-root .fpl-hbar-row--active {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row--active,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row--active {
   background: var(--dp-hover);
 }
 
-html[data-ui='2'] .fpl-root .fpl-legend-row--active .fpl-legend-label,
-html[data-ui='2'] .fpl-root .fpl-hbar-row--active .fpl-hbar-label {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row--active .fpl-legend-label,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row--active .fpl-hbar-label {
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .fpl-root .fpl-legend-label,
-html[data-ui='2'] .fpl-root .fpl-hbar-label {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-label,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-label {
   color: var(--dp-text-2);
 }
 
-html[data-ui='2'] .fpl-root .fpl-legend-val,
-html[data-ui='2'] .fpl-root .fpl-hbar-val {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-val,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-val {
   color: var(--dp-text);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-html[data-ui='2'] .fpl-root .fpl-hbar-track {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-track {
   height: 5px;
   background: var(--dp-hover);
 }
 
 /* Key indicators (reference `.dp-mini-kpi`); tone comes from the existing inline --kpi-color. */
-html[data-ui='2'] .fpl-root .fpl-kpi-grid {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-grid {
   gap: 6px;
 }
 
-html[data-ui='2'] .fpl-root .fpl-kpi-card {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-card {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 1px;
@@ -168,19 +169,19 @@ html[data-ui='2'] .fpl-root .fpl-kpi-card {
   box-shadow: inset 2px 0 0 var(--kpi-color);
 }
 
-html[data-ui='2'] .fpl-root .fpl-kpi-card:hover {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-card:hover {
   background: color-mix(in srgb, var(--kpi-color) 14%, var(--dp-surface-2));
   box-shadow: inset 2px 0 0 var(--kpi-color);
 }
 
-html[data-ui='2'] .fpl-root .fpl-kpi-num {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-num {
   color: var(--dp-text);
   font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-html[data-ui='2'] .fpl-root .fpl-kpi-label {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-label {
   margin-top: 0;
   color: var(--dp-text-2);
   font-size: 10.5px;
@@ -249,7 +250,7 @@ html[data-ui='2'] .fpl-root .fpl-group-item[aria-pressed='true'] {
 }
 
 /* Filter chips (reference `.dp-filter-chip`) */
-html[data-ui='2'] .fpl-root .fpl-chip {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip {
   height: 26px;
   padding: 0 4px 0 10px;
   border: 0;
@@ -260,7 +261,7 @@ html[data-ui='2'] .fpl-root .fpl-chip {
   font-size: 12px;
 }
 
-html[data-ui='2'] .fpl-root .fpl-chip button {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip button {
   display: grid;
   place-items: center;
   width: 18px;
@@ -270,20 +271,20 @@ html[data-ui='2'] .fpl-root .fpl-chip button {
   opacity: 1;
 }
 
-html[data-ui='2'] .fpl-root .fpl-chip button:hover {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip button:hover {
   background: color-mix(in srgb, var(--dp-accent) 18%, transparent);
 }
 
-html[data-ui='2'] .fpl-root .fpl-chip-clear,
-html[data-ui='2'] .fpl-root .fpl-link-btn {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip-clear,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-link-btn {
   color: var(--dp-accent);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;
 }
 
-html[data-ui='2'] .fpl-root .fpl-chip-clear:hover,
-html[data-ui='2'] .fpl-root .fpl-link-btn:hover {
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip-clear:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-link-btn:hover {
   color: var(--dp-accent);
   text-decoration: underline;
 }
@@ -660,14 +661,14 @@ html[data-ui='2'] .fd3-page > nav a {
   font-weight: 500;
 }
 
-html[data-ui='2'] .fd3-page .fd3-topbar {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-topbar {
   gap: 10px;
   padding: 0;
   border: 0;
   background: transparent;
 }
 
-html[data-ui='2'] .fd3-page .fd3-back-btn {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-back-btn {
   height: var(--dp-control-md);
   padding: 0 10px;
   border: 0;
@@ -677,12 +678,12 @@ html[data-ui='2'] .fd3-page .fd3-back-btn {
   font-weight: 500;
 }
 
-html[data-ui='2'] .fd3-page .fd3-back-btn:hover {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-back-btn:hover {
   background: var(--dp-hover);
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .fd3-page .fd3-finding-id {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-finding-id {
   padding: 0;
   border: 0;
   background: transparent;
@@ -693,7 +694,7 @@ html[data-ui='2'] .fd3-page .fd3-finding-id {
   letter-spacing: -0.01em;
 }
 
-html[data-ui='2'] .fd3-page .fd3-target-missed {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-target-missed {
   min-height: 20px;
   padding: 0 8px;
   border: 0;
@@ -705,12 +706,12 @@ html[data-ui='2'] .fd3-page .fd3-target-missed {
   font-weight: 500;
 }
 
-html[data-ui='2'] .fd3-page .fd3-actions {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-actions {
   flex-wrap: wrap;
   gap: 6px;
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn {
   height: var(--dp-control-md);
   padding: 0 12px;
   border: 1px solid var(--dp-border);
@@ -722,51 +723,50 @@ html[data-ui='2'] .fd3-page .fd3-action-btn {
   box-shadow: var(--dp-shadow-xs);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn:hover:not(:disabled) {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn:hover:not(:disabled) {
   border-color: var(--dp-border-strong);
   background: var(--dp-hover);
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn:disabled {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--incident,
-html[data-ui='2'] .fd3-page .fd3-action-btn--incident:hover:not(:disabled) {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident:hover:not(:disabled) {
   border-color: transparent;
   background: var(--dp-accent);
   color: var(--dp-accent-fg);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--incident:hover:not(:disabled) {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident:hover:not(:disabled) {
   background: color-mix(in srgb, var(--dp-accent) 88%, var(--dp-text));
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--fp {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--fp {
   color: var(--dp-critical);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--fp:hover:not(:disabled) {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--fp:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--dp-critical) 35%, var(--dp-border));
   background: color-mix(in srgb, var(--dp-critical) 8%, transparent);
   color: var(--dp-critical);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--reopen {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--reopen {
   color: var(--dp-success);
 }
 
-html[data-ui='2'] .fd3-page .fd3-action-btn--reopen:hover:not(:disabled) {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--reopen:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--dp-success) 35%, var(--dp-border));
   background: color-mix(in srgb, var(--dp-success) 8%, transparent);
   color: var(--dp-success);
 }
 
-/* Tabs (reference `.dp-tabs`), shared by both detail pages and the AI Findings tab bar. */
-html[data-ui='2'] .fd3-page .fd3-tab-bar,
-html[data-ui='2'] .ui2-findings-family .fd3-tab-bar {
+/* Tabs (reference `.dp-tabs`), shared by the detail pages and the AI Findings tab bar. */
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab-bar {
   gap: 2px;
   padding: 0;
   border-bottom: 1px solid var(--dp-border);
@@ -774,8 +774,7 @@ html[data-ui='2'] .ui2-findings-family .fd3-tab-bar {
   overflow-x: auto;
 }
 
-html[data-ui='2'] .fd3-page .fd3-tab,
-html[data-ui='2'] .ui2-findings-family .fd3-tab {
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab {
   position: relative;
   height: 36px;
   padding: 0 10px;
@@ -787,15 +786,12 @@ html[data-ui='2'] .ui2-findings-family .fd3-tab {
   white-space: nowrap;
 }
 
-html[data-ui='2'] .fd3-page .fd3-tab:hover,
-html[data-ui='2'] .ui2-findings-family .fd3-tab:hover,
-html[data-ui='2'] .fd3-page .fd3-tab--active,
-html[data-ui='2'] .ui2-findings-family .fd3-tab--active {
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab--active {
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .fd3-page .fd3-tab--active::after,
-html[data-ui='2'] .ui2-findings-family .fd3-tab--active::after {
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab--active::after {
   content: '';
   position: absolute;
   left: 6px;
@@ -806,7 +802,7 @@ html[data-ui='2'] .ui2-findings-family .fd3-tab--active::after {
   background: var(--dp-accent);
 }
 
-html[data-ui='2'] .fd3-page .fd3-tab-count {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-tab-count {
   height: 18px;
   padding: 0 6px;
   border: 0;
@@ -818,18 +814,18 @@ html[data-ui='2'] .fd3-page .fd3-tab-count {
   font-variant-numeric: tabular-nums;
 }
 
-html[data-ui='2'] .fd3-page .fd3-tab--active .fd3-tab-count {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-tab--active .fd3-tab-count {
   background: color-mix(in srgb, var(--dp-accent) 14%, transparent);
   color: var(--dp-accent);
 }
 
-html[data-ui='2'] .fd3-page .fd3-body {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-body {
   gap: 16px;
   padding: 0;
   align-items: flex-start;
 }
 
-html[data-ui='2'] .fd3-page .fd3-col {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-col {
   gap: 16px;
 }
 
@@ -839,15 +835,15 @@ html[data-ui='2'] .fd3-page .fd3-col-right {
   min-width: 0;
 }
 
-html[data-ui='2'] .fd3-page .fd3-panel,
-html[data-ui='2'] .fd3-page .iov-panel {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .iov-panel {
   border-color: var(--dp-border);
   border-radius: var(--dp-radius-lg);
   background: var(--dp-surface);
   box-shadow: var(--dp-shadow-sm);
 }
 
-html[data-ui='2'] .fd3-page .fd3-panel-title {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-title {
   padding: 16px 16px 4px;
   border-bottom: 0;
   background: transparent;
@@ -858,12 +854,12 @@ html[data-ui='2'] .fd3-page .fd3-panel-title {
   text-transform: none;
 }
 
-html[data-ui='2'] .fd3-page .fd3-panel-body {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-body {
   padding: 4px 16px 12px;
 }
 
 /* Sub-titles are literal upper-case strings; render them in sentence case without changing text. */
-html[data-ui='2'] .fd3-page .fd3-panel-sub-title {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-sub-title {
   padding: 12px 0 2px;
   color: var(--dp-text-2);
   font-size: var(--dp-text-sm);
@@ -872,11 +868,11 @@ html[data-ui='2'] .fd3-page .fd3-panel-sub-title {
   text-transform: lowercase;
 }
 
-html[data-ui='2'] .fd3-page .fd3-panel-sub-title::first-letter {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-sub-title::first-letter {
   text-transform: uppercase;
 }
 
-html[data-ui='2'] .fd3-page .fd3-kv-row {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-row {
   align-items: baseline;
   gap: 12px;
   padding: 9px 0;
@@ -884,7 +880,7 @@ html[data-ui='2'] .fd3-page .fd3-kv-row {
   font-size: var(--dp-text-md);
 }
 
-html[data-ui='2'] .fd3-page .fd3-kv-key {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-key {
   flex: 0 0 38%;
   color: var(--dp-text-3);
   font-size: var(--dp-text-md);
@@ -894,42 +890,42 @@ html[data-ui='2'] .fd3-page .fd3-kv-key {
   white-space: normal;
 }
 
-html[data-ui='2'] .fd3-page .fd3-kv-val {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-val {
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .fd3-page .fd3-muted {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-muted {
   color: var(--dp-text-3);
 }
 
-html[data-ui='2'] .fd3-page .fd3-overdue {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-overdue {
   color: var(--dp-critical);
 }
 
-html[data-ui='2'] .fd3-page .fd3-cve-link,
-html[data-ui='2'] .fd3-page .fd3-asset-link,
-html[data-ui='2'] .fd3-page .fd3-incident-link {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-cve-link,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-asset-link,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-link {
   color: var(--dp-accent);
   font-weight: 500;
   text-decoration: none;
 }
 
-html[data-ui='2'] .fd3-page .fd3-cve-link:hover,
-html[data-ui='2'] .fd3-page .fd3-asset-link:hover,
-html[data-ui='2'] .fd3-page .fd3-incident-link:hover {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-cve-link:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-asset-link:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-link:hover {
   text-decoration: underline;
 }
 
-html[data-ui='2'] .fd3-page .fd3-assign-display {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-assign-display {
   border-radius: var(--dp-radius-sm);
 }
 
-html[data-ui='2'] .fd3-page .fd3-assign-display:hover {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-assign-display:hover {
   background: var(--dp-hover);
 }
 
-html[data-ui='2'] .fd3-page .fd3-ci-cell-label,
-html[data-ui='2'] .fd3-page .fd3-ci-id-label {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-cell-label,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-id-label {
   color: var(--dp-text-3);
   font-size: var(--dp-text-sm);
   font-weight: 400;
@@ -937,13 +933,13 @@ html[data-ui='2'] .fd3-page .fd3-ci-id-label {
   text-transform: none;
 }
 
-html[data-ui='2'] .fd3-page .fd3-ci-cell-value {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-cell-value {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
-html[data-ui='2'] .fd3-page .fd3-solution-summary,
-html[data-ui='2'] .fd3-page .fd3-incident-card {
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-solution-summary,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-card {
   border-color: var(--dp-border);
   border-radius: var(--dp-radius);
   background: var(--dp-surface-2);
@@ -1030,83 +1026,84 @@ html[data-ui='2'] .ui2-findings-family .ai-security-hero > .status-pill {
   align-self: center;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-table-panel {
+/* AI tables, severity badges and empty states; shared with the AI Inventory lists. */
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel {
   padding: 0;
   overflow-x: auto;
   border-radius: var(--dp-radius-lg);
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-table-panel .panel-header {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-header {
   padding: 16px 16px 12px;
   margin: 0;
   border: 0;
   background: transparent;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-table-panel .panel-header h3 {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-header h3 {
   margin: 0;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-table-panel .panel-caption {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-caption {
   margin: 2px 0 0;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table th {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table th {
   height: 36px;
   padding: 0 12px;
   border-bottom: 1px solid var(--dp-border);
   white-space: nowrap;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table td {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--dp-border);
   vertical-align: middle;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table tbody tr {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table tbody tr {
   cursor: pointer;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table tbody tr:last-child td {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table td strong {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td strong {
   font-weight: 500;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table td small {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td small {
   display: block;
   margin-top: 2px;
   color: var(--dp-text-3);
   font-size: 11.5px;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table td a {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td a {
   color: var(--dp-accent);
   text-decoration: none;
 }
 
-html[data-ui='2'] .ui2-findings-family .data-table td a:hover {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td a:hover {
   text-decoration: underline;
 }
 
 /* Finding display IDs (badge + ID, no secondary line); exposure titles carry a <small> and stay text. */
-html[data-ui='2'] .ui2-findings-family .data-table td:not(:has(small)) > .severity-badge + strong {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td:not(:has(small)) > .severity-badge + strong {
   font-family: var(--dp-mono);
   font-size: 12px;
   color: var(--dp-accent);
 }
 
 /* .severity-badge previously had no styles; render it like the shared severity pill. */
-html[data-ui='2'] .ui2-findings-family .severity-badge {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge {
   --ui2-tone: var(--dp-text-3);
   display: inline-flex;
   align-items: center;
@@ -1123,12 +1120,12 @@ html[data-ui='2'] .ui2-findings-family .severity-badge {
   vertical-align: middle;
 }
 
-html[data-ui='2'] .ui2-findings-family .severity-badge.critical { --ui2-tone: var(--dp-critical); }
-html[data-ui='2'] .ui2-findings-family .severity-badge.high { --ui2-tone: var(--dp-high); }
-html[data-ui='2'] .ui2-findings-family .severity-badge.medium { --ui2-tone: var(--dp-medium); }
-html[data-ui='2'] .ui2-findings-family .severity-badge.low { --ui2-tone: var(--dp-low); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.critical { --ui2-tone: var(--dp-critical); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.high { --ui2-tone: var(--dp-high); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.medium { --ui2-tone: var(--dp-medium); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.low { --ui2-tone: var(--dp-low); }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-empty {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty {
   padding: 32px 16px;
   border: 1px dashed var(--dp-border-strong);
   border-radius: var(--dp-radius-lg);
@@ -1137,13 +1134,13 @@ html[data-ui='2'] .ui2-findings-family .ai-security-empty {
   color: var(--dp-text-2);
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-empty h3 {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty h3 {
   color: var(--dp-text);
   font-size: var(--dp-text-lg);
   font-weight: 600;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-empty-mark {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty-mark {
   width: 40px;
   height: 40px;
   border: 1px solid var(--dp-border);

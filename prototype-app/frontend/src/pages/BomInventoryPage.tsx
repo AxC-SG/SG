@@ -502,7 +502,7 @@ export function BomInventoryPage() {
   }
 
   return (
-    <div className="bom-inventory-page">
+    <div className="bom-inventory-page ui2-inventory-family">
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={refreshing}

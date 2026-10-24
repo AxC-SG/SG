@@ -1,0 +1,253 @@
+/* UI 2.0 Inventory and lifecycle (reference `#/inventory`, `#/inventory/ai/support-agent`).
+ *
+ * Restyles the existing classes of the Inventory family: every InventoryShell page (hosts,
+ * software identities, container images, AI inventory categories, MCP, knowledge & data,
+ * declared resources and their detail), the inventory overview, BOM inventory, and the host,
+ * software identity and AI asset detail pages. Each of those roots carries the
+ * presentation-only class .ui2-inventory-family; HostAssetDetailPage also renders
+ * /vuln-repo/host-assets/:assetId. Widget, chip, AI table and record-detail (fd3-) rules are
+ * shared with the Findings family in findings.css; this sheet holds what only Inventory uses.
+ *
+ * Presentation only: no element, label, handler, selector, row interaction or query change.
+ * Inline styles in the inventory components are left as they are. */
+
+/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
+html[data-ui='2'] .ui2-inventory-family {
+  --surface-bg: var(--dp-surface);
+  --input-bg: var(--dp-surface);
+  --border-color: var(--dp-border);
+  --primary-subtle: color-mix(in srgb, var(--dp-accent) 10%, var(--dp-surface));
+  --text-1: var(--dp-text);
+  /* Key-indicator tint (shared rule in findings.css); cards with an inline --kpi-color keep it. */
+  --kpi-color: var(--dp-accent);
+}
+
+/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
+html[data-ui='2'] .ui2-inventory-family {
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Page header (reference `.dp-page-header`): eyebrow, title and description in sentence case. */
+html[data-ui='2'] .ui2-inventory-family .inventory-shell-header {
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-shell-eyebrow {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-shell-title {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-shell-description {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-inventory-family .page-freshness {
+  margin-bottom: 0;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+/* ── Toolbar (reference `.dp-toolbar`): labelled fields on the page background ── */
+html[data-ui='2'] .ui2-inventory-family .inventory-fpl-toolbar {
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-inventory-family .findings-filter-chip {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-inventory-family .findings-filter-chip .panel-caption {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-inventory-family input,
+html[data-ui='2'] .ui2-inventory-family select {
+  min-height: var(--dp-control-md);
+  padding: 0 10px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  box-shadow: var(--dp-shadow-xs);
+}
+
+html[data-ui='2'] .ui2-inventory-family input[type='checkbox'],
+html[data-ui='2'] .ui2-inventory-family input[type='radio'] {
+  min-height: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-inventory-family .btn {
+  min-height: var(--dp-control-md);
+  padding: 0 12px;
+  font-size: var(--dp-text-md);
+}
+
+/* ── Cards and tables ─────────────────────────────────────────────────── */
+html[data-ui='2'] .ui2-inventory-family .inventory-section-card,
+html[data-ui='2'] .ui2-inventory-family .inventory-detail-card {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-table-shell {
+  overflow-x: auto;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-section-header h2 {
+  color: var(--dp-text);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-table th,
+html[data-ui='2'] .ui2-inventory-family .data-table th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-table td {
+  padding: 10px 14px;
+  border-color: var(--dp-border);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+/* The global th/td rule (shared.css) breaks ordinary words mid-word ("productio n"). Words
+ * wrap whole here; long CPEs, PURLs, ARNs and digests (monospace or secondary lines) may break
+ * anywhere so they stay inside their column or card (reference `.dp-long-identifier`). */
+html[data-ui='2'] .ui2-inventory-family th,
+html[data-ui='2'] .ui2-inventory-family td {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* The resizable DataTable has fixed column widths, so it keeps breaking anywhere rather than
+ * spilling text into the next column (whole-word wrapping there needs a DataTable change). */
+html[data-ui='2'] .ui2-inventory-family .resizable-table th,
+html[data-ui='2'] .ui2-inventory-family .resizable-table td {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-inventory-family td small,
+html[data-ui='2'] .ui2-inventory-family td code,
+html[data-ui='2'] .ui2-inventory-family .mono {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-inventory-family .inventory-table-row-clickable:hover,
+html[data-ui='2'] .ui2-inventory-family .inventory-table-row-clickable.active {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-inventory-family .panel:not(.ai-security-table-panel) > .panel-header {
+  border-bottom: 1px solid var(--dp-border);
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-inventory-family .pagination-row {
+  padding: 10px 12px;
+  border: 0;
+  border-top: 1px solid var(--dp-border);
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-inventory-family .empty-state {
+  border: 1px dashed var(--dp-border-strong);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  color: var(--dp-text-2);
+}
+
+/* ── Literal labels rendered in sentence case (DOM text unchanged) ───── */
+html[data-ui='2'] .ui2-inventory-family .stat-card-label,
+html[data-ui='2'] .ui2-inventory-family .ai-security-kicker,
+html[data-ui='2'] .ui2-inventory-family .sdi-briefing-meta,
+html[data-ui='2'] .ui2-inventory-family .inventory-donut span {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-inventory-family .stat-card-label,
+html[data-ui='2'] .ui2-inventory-family .ai-security-kicker {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 600;
+}
+
+/* Key indicators are grid cards here (flex in Findings): left-align like the reference. */
+html[data-ui='2'] .ui2-inventory-family .fpl-kpi-card {
+  justify-items: start;
+  min-height: 0;
+}
+
+/* Software identity title: vendor in the body face, product keeps the mono identifier. */
+html[data-ui='2'] .ui2-inventory-family .sdi-title-vendor,
+html[data-ui='2'] .ui2-inventory-family .sdi-title-sep {
+  color: var(--dp-text-2);
+  font-family: var(--dp-font);
+  font-weight: 400;
+}
+
+/* Detail columns keep the legacy 340px / flexible split (the equal split in findings.css is
+ * Findings-only) but may shrink, so wide tables scroll inside their card at narrow widths.
+ * max-width matters when the body stacks: the shared align-items: flex-start stops stretch. */
+html[data-ui='2'] .ui2-inventory-family .fd3-col-left,
+html[data-ui='2'] .ui2-inventory-family .fd3-col-right {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-ui='2'] .ui2-inventory-family .fd3-finding-id,
+html[data-ui='2'] .ui2-inventory-family .sdi-title-product {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -364,7 +364,7 @@ export function BomComponents() {
   }
 
   return (
-    <div className="page-grid" style={{ gap: 0 }}>
+    <div className="page-grid ui2-inventory-family" style={{ gap: 0 }}>
       <WidgetRow
         items={items}
         activeFilter={widgetFilter}
