@@ -134,3 +134,9 @@ e5fee07bece0bda99f8031c462fed2c0aa8d1655:prototype-app/docs/AWS/AWS_production-a
 # original commit.
 182ab75818b2452dc47ebe79b97d319865dc2944:plan.md:curl-auth-header:136
 182ab75818b2452dc47ebe79b97d319865dc2944:plan.md:generic-api-key:62
+
+# UI 2.0 behavior-baseline SHA-256 checksum of frontend
+# src/features/cve-workbench/api.ts, verified against the source at the recorded
+# baseline commit 67742e15cdba322b4df50042e38bfb9ec3fe16c6. No credential;
+# keep this exception scoped to the original commit, path, rule, and line.
+576deb07ff654d0bad70f9781fc83e2115ec494c:prototype-app/Working Knowledge/New UI 2.0/BEHAVIOR_BASELINE_2026-10-24.json:generic-api-key:23

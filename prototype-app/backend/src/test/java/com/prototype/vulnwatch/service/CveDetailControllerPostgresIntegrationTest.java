@@ -6,6 +6,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static com.prototype.vulnwatch.support.AuthRequest.authedGet;
+import static com.prototype.vulnwatch.support.AuthRequest.authedPost;
+import static com.prototype.vulnwatch.support.AuthRequest.authedPut;
 
 import com.prototype.vulnwatch.domain.Asset;
 import com.prototype.vulnwatch.domain.AssetType;
@@ -125,6 +128,90 @@ class CveDetailControllerPostgresIntegrationTest {
 
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+    @Test
+    void workbenchPersistsInvestigationAssessmentFindingAndAnalystFixEndToEnd() throws Exception {
+        String cveId = "CVE-2099-9920";
+        Vulnerability vulnerability = createVulnerability(cveId);
+        Tenant tenant = tenantService.getDefaultTenant();
+        InventoryComponent component = createComponent(tenant, "workbench-end-to-end");
+        ComponentVulnerabilityState state = new ComponentVulnerabilityState();
+        state.setTenant(tenant);
+        state.setComponent(component);
+        state.setVulnerability(vulnerability);
+        state.setApplicabilityState(ApplicabilityState.APPLICABLE);
+        state.setImpactState(ImpactState.IMPACTED);
+        state.setEligibleForFinding(true);
+        state.touch();
+        componentVulnerabilityStateRepository.save(state);
+
+        mockMvc.perform(authedGet("/api/cve-detail/{cveId}", cveId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchedSoftware[0].componentId").value(component.getId().toString()));
+
+        mockMvc.perform(authedPut("/api/cve-detail/{cveId}/investigation/runbook", cveId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"leadAnalyst":"workbench-analyst","agentConfidence":{},"logEntries":[],
+                                 "taskStates":[{"taskId":"review-asset-inventory","state":"DONE","producedBy":"ANALYST"}]}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(authedPost("/api/cve-detail/{cveId}/investigation/submit", cveId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"IN_PROGRESS","assignedTo":"workbench-analyst","notes":"Inventory verified"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(authedPost("/api/cve-detail/{cveId}/assessment/submit", cveId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"softwareDetected":true,"finalResult":"AFFECTED","confidenceLevel":"HIGH",
+                                 "justification":"Verified affected software","componentAnalystDispositions":{"%s":"IMPACTED"}}
+                                """.formatted(component.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.finalResult").value("AFFECTED"));
+
+        String findingRequest = """
+                {"componentIds":["%s"],"justification":"Patch approved","severity":"CRITICAL",
+                 "dueDate":"2099-11-01","findingCreationMode":"ASSET_CVE","existingFindingBehavior":"ADD_TO_EXISTING"}
+                """.formatted(component.getId());
+        mockMvc.perform(authedPost("/api/cve-detail/{cveId}/manual-finding", cveId)
+                        .contentType(MediaType.APPLICATION_JSON).content(findingRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdCount").value(1));
+        mockMvc.perform(authedPost("/api/cve-detail/{cveId}/manual-finding", cveId)
+                        .contentType(MediaType.APPLICATION_JSON).content(findingRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdCount").value(0))
+                .andExpect(jsonPath("$.alreadyOpenCount").value(1));
+        var findings = findingRepository.findByTenant_IdAndVulnerability_Id(tenant.getId(), vulnerability.getId());
+        assertEquals(1, findings.size());
+        assertEquals("CRITICAL", findings.get(0).getSeverityOverride());
+        assertEquals(Instant.parse("2099-11-01T00:00:00Z"), findings.get(0).getDueAt());
+
+        mockMvc.perform(authedPost("/api/cve-detail/{cveId}/analyst-fixes", cveId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"solutions":[{"software":"log4j-core","version":"2.17.1","vendor":"Apache",
+                                  "fixType":"UPGRADE","solutionText":"Upgrade to the supported version","assetCount":1}]}
+                                """))
+                .andExpect(status().isOk());
+
+        // Re-read independently of the write responses, as after a browser reload.
+        mockMvc.perform(authedGet("/api/cve-detail/{cveId}/investigation/runbook", cveId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.leadAnalyst").value("workbench-analyst"))
+                .andExpect(jsonPath("$.taskStates[0].state").value("DONE"));
+        mockMvc.perform(authedGet("/api/cve-detail/{cveId}", cveId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.investigations[0].notes").value("Inventory verified"))
+                .andExpect(jsonPath("$.assessments[0].finalResult").value("AFFECTED"));
+        mockMvc.perform(authedGet("/api/cve-detail/{cveId}/fixes", cveId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].summary").value("Upgrade to the supported version"))
+                .andExpect(jsonPath("$[0].softwareEntities[0].name").value("log4j-core"));
+    }
 
     @Test
     void internalTenantCanGenerateAiSolution() throws Exception {

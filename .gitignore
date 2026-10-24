@@ -12,6 +12,7 @@ prototype-app/frontend/.env
 prototype-app/frontend/.env.*
 
 # Build artifacts
+/output/
 prototype-app/backend/target/
 prototype-app/frontend/dist/
 prototype-app/frontend/coverage/
