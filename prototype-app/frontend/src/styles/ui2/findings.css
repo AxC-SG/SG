@@ -5,8 +5,9 @@
  * (.ui2-findings-family). The fpl-, fd3- and ai-security- classes are shared with Inventory,
  * Campaigns and AI asset pages, so every rule is anchored on one of those three page roots;
  * the toolbar, widget, chip and record-detail rules also match the Inventory family
- * (.ui2-inventory-family, see inventory.css), and Campaigns keep their P1 presentation until
- * their own phase. The one exception is the column-filter popover, which is portaled to
+ * (.ui2-inventory-family, see inventory.css), the AI page header also matches the Governance
+ * family (.ui2-governance-family, see governance.css), and Campaigns keep their P1 presentation
+ * until their own phase. The one exception is the column-filter popover, which is portaled to
  * <body> and is a shared filter primitive (also used by /vuln-repo/vulnerabilities).
  *
  * Presentation only: no element, label, handler, selector or row interaction changes. */
@@ -955,7 +956,7 @@ html[data-ui='2'] .ui2-findings-family {
 }
 
 /* The hero becomes a plain page header with labelled filter controls. */
-html[data-ui='2'] .ui2-findings-family .ai-security-hero {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -970,18 +971,18 @@ html[data-ui='2'] .ui2-findings-family .ai-security-hero {
   overflow: visible;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero::after {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero::after {
   display: none;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero > div:first-child {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > div:first-child {
   flex: 1 1 100%;
   display: grid;
   justify-items: start;
   gap: 4px;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-kicker {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-kicker {
   color: var(--dp-text-3);
   font-size: 12px;
   font-weight: 500;
@@ -989,26 +990,26 @@ html[data-ui='2'] .ui2-findings-family .ai-security-kicker {
   text-transform: none;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero h2 {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero h2 {
   margin: 0;
   color: var(--dp-text);
   font: 600 var(--dp-text-2xl) / 1.2 var(--dp-font);
   letter-spacing: -0.02em;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero p {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero p {
   max-width: 720px;
   color: var(--dp-text-2);
   font-size: var(--dp-text-md);
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero .btn {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero .btn {
   margin-top: 6px;
   min-height: var(--dp-control-sm);
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero select,
-html[data-ui='2'] .ui2-findings-family .ai-security-hero input {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero select,
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero input {
   height: var(--dp-control-md);
   min-width: min(160px, 100%);
   max-width: 100%;
@@ -1016,13 +1017,13 @@ html[data-ui='2'] .ui2-findings-family .ai-security-hero input {
   border: 1px solid var(--dp-border);
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero label {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero label {
   display: inline-flex;
   max-width: 100%;
 }
 
-html[data-ui='2'] .ui2-findings-family .ai-security-hero > .severity-badge,
-html[data-ui='2'] .ui2-findings-family .ai-security-hero > .status-pill {
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > .severity-badge,
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > .status-pill {
   align-self: center;
 }
 

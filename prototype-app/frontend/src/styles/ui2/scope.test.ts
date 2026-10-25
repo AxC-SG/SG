@@ -62,16 +62,25 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(unscoped).toEqual([]);
   });
 
-  it('anchors Findings-family rules on the Findings page roots, the shared Inventory family or the portaled column filter', () => {
-    const roots = ['.fpl-root', '.fd3-page', '.ui2-findings-family', '.ui2-inventory-family', '.fpl-col-filter-'];
+  it('anchors Findings-family rules on the Findings page roots, the shared Inventory or Governance family or the portaled column filter', () => {
+    const roots = ['.fpl-root', '.fd3-page', '.ui2-findings-family', '.ui2-inventory-family', '.ui2-governance-family', '.fpl-col-filter-'];
     const unanchored = selectors(sheets['./findings.css']).filter((selector) => !anchoredOn(selector, roots));
     expect(unanchored).toEqual([]);
   });
 
-  it('anchors CVE-workflow rules on the CVE page roots', () => {
+  it('anchors CVE-workflow rules on the CVE page roots or the shared Governance record detail', () => {
     expect(selectors(sheets['./cve.css']).length).toBeGreaterThan(100);
-    const anchor = /^html\[data-ui='2'\] (\.cve-assessment-page|\.ui2-cve-family|\.vuln-repo-vulnerabilities-shell|\.vuln-repo-assets-shell)\b/;
-    const unanchored = selectors(sheets['./cve.css']).filter((selector) => !anchor.test(selector));
+    const roots = ['.cve-assessment-page', '.ui2-cve-family', '.vuln-repo-vulnerabilities-shell', '.vuln-repo-assets-shell', '.ui2-governance-family'];
+    const unanchored = selectors(sheets['./cve.css']).filter((selector) => !anchoredOn(selector, roots));
+    expect(unanchored).toEqual([]);
+    // Only :is() groups that include a CVE root may mention the Governance family.
+    const governanceOnly = selectors(sheets['./cve.css']).filter((selector) => anchoredOn(selector, ['.ui2-governance-family']));
+    expect(governanceOnly).toEqual([]);
+  });
+
+  it('anchors Governance-family rules on the Governance page roots', () => {
+    expect(selectors(sheets['./governance.css']).length).toBeGreaterThan(50);
+    const unanchored = selectors(sheets['./governance.css']).filter((selector) => !anchoredOn(selector, ['.ui2-governance-family']));
     expect(unanchored).toEqual([]);
   });
 

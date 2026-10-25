@@ -1,0 +1,741 @@
+/* UI 2.0 Governance and platform administration (reference `#/platform/tenants`,
+ * `#/platform/ai-policies`, `#/platform/ai-policies/tool-access`).
+ *
+ * Restyles the existing classes of the tenant AI policy catalog and detail, the platform policy
+ * studio and detail, the platform console (tenants, users, platform audit, demo requests, EOL and
+ * policy distribution; its vuln-intel and operations views belong to later phases), tenant
+ * administration (users, invites, roles, service accounts, audit) and authorized workspaces.
+ * Each of those roots carries the presentation-only class .ui2-governance-family. The AI page
+ * header is shared with AI Findings (findings.css) and the record-detail tab/panel rules with the
+ * CVE workbench (cve.css); this sheet holds what only Governance uses.
+ *
+ * Presentation only: no element, label, handler, selector, role gate or query change. Inline
+ * styles in these components are left as they are. */
+
+/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
+html[data-ui='2'] .ui2-governance-family {
+  --surface-bg: var(--dp-surface);
+  --input-bg: var(--dp-surface);
+  --border-color: var(--dp-border);
+  --text-1: var(--dp-text);
+  --title: var(--dp-text);
+}
+
+/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
+html[data-ui='2'] .ui2-governance-family {
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-governance-family.cvd2-page {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--dp-font);
+  font-size: 100%;
+}
+
+/* The console shell and the tenant-administration frame are the outer card in legacy. */
+html[data-ui='2'] .ui2-governance-family > .platform-console-shell,
+html[data-ui='2'] .ui2-governance-family.user-management-page > .panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ── Console rail (reference `.dp-console-rail`) ─────────────────────── */
+html[data-ui='2'] .ui2-governance-family .platform-console-shell {
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-shell--no-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-sidebar {
+  position: sticky;
+  top: 0;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-sidebar-header h3 {
+  margin: 0;
+  padding: 2px 8px 4px;
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-groups,
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-group,
+html[data-ui='2'] .ui2-governance-family .platform-console-nav {
+  gap: 2px;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-group-title {
+  padding: 6px 8px 4px;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn {
+  gap: 1px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--dp-radius);
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn span {
+  color: var(--dp-text);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn small {
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn:hover {
+  transform: none;
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn.active {
+  background: color-mix(in srgb, var(--dp-accent) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--dp-accent);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-nav-btn.active span {
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-content,
+html[data-ui='2'] .ui2-governance-family .section-block {
+  gap: 16px;
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-console-section {
+  display: grid;
+  gap: 32px;
+}
+
+html[data-ui='2'] .ui2-governance-family .section-block {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ── Section heads (reference `.dp-section-head`) ────────────────────── */
+html[data-ui='2'] .ui2-governance-family .section-title-row {
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .section-title,
+html[data-ui='2'] .ui2-governance-family .section-title-row h2,
+html[data-ui='2'] .ui2-governance-family.user-management-page > .panel > .panel-header h3 {
+  margin: 0;
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] .ui2-governance-family .section-title-row h2 {
+  font-size: var(--dp-text-2xl);
+}
+
+html[data-ui='2'] .ui2-governance-family .text-muted,
+html[data-ui='2'] .ui2-governance-family .muted-small {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-governance-family.user-management-page > .panel > .panel-header {
+  margin: 0 0 16px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--dp-border);
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-governance-family .panel > .panel-header {
+  border: 0;
+  background: transparent;
+}
+
+/* ── Key indicators (reference `.dp-mini-kpi`) ───────────────────────── */
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-grid {
+  gap: 12px;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-card {
+  --tone: var(--dp-accent);
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: color-mix(in srgb, var(--tone) 6%, var(--dp-surface));
+  box-shadow: inset 2px 0 0 var(--tone);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-card-positive { --tone: var(--dp-success); }
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-card-warn { --tone: var(--dp-warning); }
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-card-critical { --tone: var(--dp-critical); }
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-label,
+html[data-ui='2'] .ui2-governance-family .noise-summary-label,
+html[data-ui='2'] .ui2-governance-family .summary-card > span:first-child {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-value {
+  color: var(--dp-text);
+  font: 600 22px / 1.25 var(--dp-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-card:is(.ai-policy-insight-card-warn, .ai-policy-insight-card-critical) .ai-policy-insight-value {
+  color: color-mix(in srgb, var(--tone) 85%, var(--dp-text));
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-insight-detail {
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+}
+
+/* ── Summary strip (reference `.dp-summary-strip`): the shipping summary spans ran together ── */
+html[data-ui='2'] .ui2-governance-family .summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-governance-family .summary-strip strong {
+  margin-right: 4px;
+  color: var(--dp-text);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-studio-hero > div:first-child {
+  flex: 1 1 320px;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-shipping-state {
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-shipping-state span {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-shipping-state strong {
+  color: var(--dp-text);
+  font: 600 var(--dp-text-lg) / 1.3 var(--dp-font);
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-shipping-state--blocked {
+  border-color: color-mix(in srgb, var(--dp-critical) 40%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-critical) 8%, var(--dp-surface));
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-shipping-state--blocked strong {
+  color: var(--dp-critical);
+}
+
+/* ── Toolbars: labelled fields on the page or card (reference `.dp-toolbar`) ── */
+html[data-ui='2'] .ui2-governance-family .ai-policy-toolbar,
+html[data-ui='2'] .ui2-governance-family .policy-filter-bar {
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-filter-bar label {
+  gap: 6px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .policy-filter-bar select,
+html[data-ui='2'] .ui2-governance-family .policy-filter-bar input,
+html[data-ui='2'] .ui2-governance-family .ai-policy-search input {
+  height: var(--dp-control-md);
+  min-height: 0;
+  padding: 0 10px;
+  border: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pills {
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pills-label,
+html[data-ui='2'] .ui2-governance-family .policy-results-count {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Severity filter (reference segmented `.dp-tabs--pills`). */
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pills-row {
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pill {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--dp-radius-sm);
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pill:hover {
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-severity-pill.is-active {
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-xs), inset 0 0 0 1px var(--dp-border);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-selection-status {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+/* Tenant-administration search: icon and field on one line (legacy stacked them). */
+html[data-ui='2'] .ui2-governance-family .um-section-head-actions {
+  align-items: flex-end;
+  gap: 12px;
+}
+
+html[data-ui='2'] .ui2-governance-family .um-search {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  height: var(--dp-control-md);
+  min-height: 0;
+  padding: 0 10px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-xs);
+  color: var(--dp-text-3);
+}
+
+/* Outranks the P1 text-input rule so the field sits flush inside the search frame. */
+html[data-ui='2'] .ui2-governance-family .um-search input:not([type='checkbox']):not([type='radio']) {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-governance-family .um-inline-filter {
+  gap: 6px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .um-section-head {
+  padding: 0 0 12px;
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .um-section-head h3 {
+  margin: 0;
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-governance-family .um-section-head p {
+  color: var(--dp-text-3);
+  font-size: 12.5px;
+}
+
+/* Inline create form (reference `.dp-inline-form`). */
+html[data-ui='2'] .ui2-governance-family .platform-create-tenant-form {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-governance-family .platform-create-tenant-form input:not([type='checkbox']) {
+  height: var(--dp-control-md);
+  padding: 0 10px;
+  border: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-governance-family .checkbox-row {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+/* Governance form fields (platform policy governance, policy configuration). */
+html[data-ui='2'] .ui2-governance-family .cvd2-panel > label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 16px 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-panel > label :is(input, textarea, select) {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-panel > :is(.button-row, .panel-caption, .notice, p) {
+  margin: 12px 16px 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-panel > :last-child {
+  margin-bottom: 16px;
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-panel > .cvd2-panel-hdr:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Tables (reference `.dp-table-card`) ─────────────────────────────── */
+html[data-ui='2'] .ui2-governance-family .table-scroll,
+html[data-ui='2'] .ui2-governance-family .um-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-security-table-panel {
+  padding: 0;
+  overflow-x: auto;
+  border-radius: var(--dp-radius-lg);
+}
+
+/* Legacy .data-table is fixed-layout and the global th/td rule breaks words mid-word
+ * ("Corporati on", "PROVISIO NING"), clipping row actions. Columns size to content and wrap
+ * whole words; the scroll container takes any extra width. */
+html[data-ui='2'] .ui2-governance-family .data-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table th {
+  height: 36px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--dp-border);
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: bottom;
+  line-height: 1.3;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table :is(th, td) {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table td strong {
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table td small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+}
+
+/* Slugs and subjects wrap at their hyphens and dots; digests and decision IDs (td.mono) may
+ * break anywhere but keep a readable minimum width (anywhere alone collapses an auto column). */
+html[data-ui='2'] .ui2-governance-family .data-table td :is(code, .mono),
+html[data-ui='2'] .ui2-governance-family .data-table td.mono {
+  font-family: var(--dp-mono);
+  font-size: 12px;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table td.mono {
+  min-width: 20ch;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-governance-family .data-table td code {
+  padding: 1px 6px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface-2);
+}
+
+/* Row actions stay on one line, wrapping only between buttons (reference `.dp-cell-actions`). */
+html[data-ui='2'] .ui2-governance-family .data-table td:last-child .btn {
+  white-space: nowrap;
+}
+
+/* The tenant lifecycle table is wider than the console column; its Actions column stays in
+ * view at the right edge while the other columns scroll beneath it. */
+html[data-ui='2'] .ui2-governance-family .platform-console-section .data-table :is(th, td):last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--dp-surface);
+  box-shadow: inset 1px 0 0 var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-governance-family .text-danger {
+  color: var(--dp-critical);
+}
+
+/* Tenant policy rows open the policy; other governance tables are static. */
+html[data-ui='2'] .ui2-governance-family .ai-security-table-panel .data-table tbody tr {
+  cursor: pointer;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-security-table-panel .data-table th:first-child,
+html[data-ui='2'] .ui2-governance-family .ai-security-table-panel .data-table td:first-child {
+  width: 1%;
+  padding-right: 4px;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-framework-list span,
+html[data-ui='2'] .ui2-governance-family .ai-policy-artifact-list span {
+  color: var(--dp-text-2);
+  font-weight: 400;
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-capability-flag {
+  color: var(--dp-warning);
+  font-size: 11.5px;
+}
+
+/* ── Status badges: tone plus text (reference `.dp-badge`) ───────────── */
+html[data-ui='2'] .ui2-governance-family .policy-status,
+html[data-ui='2'] .ui2-governance-family .status-badge {
+  --ui2-tone: var(--dp-text-3);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui2-tone) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui2-tone) 22%, transparent);
+  color: color-mix(in srgb, var(--ui2-tone) 85%, var(--dp-text));
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] .ui2-governance-family :is(.policy-status--available, .policy-status--general-availability, .policy-status--completed, .policy-status--effective, .policy-status--pass, .policy-status--published) { --ui2-tone: var(--dp-success); }
+html[data-ui='2'] .ui2-governance-family :is(.policy-status--unavailable, .policy-status--retired, .policy-status--failed, .policy-status--critical, .policy-status--fail, .policy-status--not-covered) { --ui2-tone: var(--dp-critical); }
+html[data-ui='2'] .ui2-governance-family :is(.policy-status--canary, .policy-status--pending, .policy-status--high, .policy-status--partial, .policy-status--unknown) { --ui2-tone: var(--dp-warning); }
+html[data-ui='2'] .ui2-governance-family :is(.policy-status--required, .policy-status--approved, .policy-status--validated, .policy-status--preview) { --ui2-tone: var(--dp-accent); }
+html[data-ui='2'] .ui2-governance-family .status-badge { --ui2-tone: var(--dp-accent); }
+
+/* ── Policy detail topbar and switch ─────────────────────────────────── */
+html[data-ui='2'] .ui2-governance-family .ai-policy-detail-topbar {
+  align-items: center;
+  padding: 0 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-governance-family .ai-policy-switch {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-panel-hdr {
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd-tech-attr-value,
+html[data-ui='2'] .ui2-governance-family .cvd-ov-description,
+html[data-ui='2'] .ui2-governance-family .platform-policy-copy {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd-ov-cve-id {
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd-ov-first-seen,
+html[data-ui='2'] .ui2-governance-family .cvd-src-tag {
+  font-family: var(--dp-mono);
+  font-size: 12px;
+}
+
+/* ── Platform EOL console ────────────────────────────────────────────── */
+html[data-ui='2'] .ui2-governance-family .summary-card {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+/* ── Tenant administration cards and dialogs ─────────────────────────── */
+html[data-ui='2'] .ui2-governance-family .um-card,
+html[data-ui='2'] .ui2-governance-family .um-role-button {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-governance-family .um-modal {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+/* Auto-layout tables report their full min-content width; grid items must still shrink so
+ * the table's scroll container, not the page, takes the overflow. */
+html[data-ui='2'] .ui2-governance-family,
+html[data-ui='2'] .ui2-governance-family > *,
+html[data-ui='2'] .ui2-governance-family :is(.panel, .section-block, .platform-console-content, .platform-console-section, .cvd2-panel, .um-content) {
+  min-width: 0;
+}
+
+html[data-ui='2'] .ui2-governance-family .cvd2-tab-bar {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+html[data-ui='2'] .ui2-governance-family :is(.button-row, .eol-catalog-toolbar) {
+  flex-wrap: wrap;
+}
+
+/* ── Narrow viewports ────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  html[data-ui='2'] .ui2-governance-family .platform-console-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-ui='2'] .ui2-governance-family .platform-console-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-ui='2'] .ui2-governance-family .ai-policy-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-ui='2'] .ui2-governance-family .ai-policy-toolbar,
+  html[data-ui='2'] .ui2-governance-family .policy-filter-bar,
+  html[data-ui='2'] .ui2-governance-family .um-section-head,
+  html[data-ui='2'] .ui2-governance-family .um-section-head-actions {
+    flex-wrap: wrap;
+  }
+
+  html[data-ui='2'] .ui2-governance-family :is(.ai-policy-search, .um-search, .policy-search, .eol-catalog-search) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

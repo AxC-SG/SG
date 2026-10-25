@@ -436,7 +436,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
   }
 
   return (
-    <div className="cvd2-page ai-policy-detail-page">
+    <div className="cvd2-page ai-policy-detail-page ui2-governance-family">
       {configuration?.assessmentStatus ? <p role="status" className="notice">{assessmentMessage(configuration)}</p> : null}
       <div className="ai-policy-detail-topbar">
         <button type="button" className="cvd-ov-link" onClick={() => navigate('/policies')}>← Back to Policies</button>

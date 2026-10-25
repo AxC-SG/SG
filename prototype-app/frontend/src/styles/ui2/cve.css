@@ -7,6 +7,8 @@
  * CVE assets/software and software-assets routes (.vuln-repo-assets-shell). The cve-, cvd-,
  * notify- and investigation- classes only render inside these roots, and shared classes
  * (.panel, .resizable-table, .findings-filter-chip) are anchored so other pages keep their look.
+ * The record-detail tab, panel, signal-pill, link, label and badge rules also match the tenant
+ * and platform AI policy detail pages (.ui2-governance-family, see governance.css).
  *
  * Presentation only: no element, label, handler, selector, row interaction or persistence
  * change. Inline styles in the CVE components are left as they are. */
@@ -275,7 +277,7 @@ html[data-ui='2'] .cve-assessment-page .cvd-headline-step {
   font-weight: 500;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-signal-pill {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-signal-pill {
   min-height: 22px;
   padding: 0 8px;
   border: 1px solid var(--dp-border);
@@ -287,7 +289,7 @@ html[data-ui='2'] .cve-assessment-page .cvd-signal-pill {
   letter-spacing: 0;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-signal-pill--kev {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-signal-pill--kev {
   border-color: color-mix(in srgb, var(--dp-high) 40%, transparent);
   background: color-mix(in srgb, var(--dp-high) 12%, transparent);
   color: var(--dp-high);
@@ -316,14 +318,14 @@ html[data-ui='2'] .cve-assessment-page .cvd2-page {
   font-size: 100%;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-tab-bar {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab-bar {
   gap: 4px;
   padding: 0;
   background: transparent;
   border-bottom: 1px solid var(--dp-border);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-tab {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab {
   margin-bottom: -1px;
   padding: 10px 12px;
   border-bottom-width: 2px;
@@ -332,35 +334,35 @@ html[data-ui='2'] .cve-assessment-page .cvd2-tab {
   font-weight: 500;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-tab:hover {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab:hover {
   color: var(--dp-text);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-tab.active {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab.active {
   border-bottom-color: var(--dp-accent);
   color: var(--dp-text);
   font-weight: 600;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-tab-content {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab-content {
   padding: 16px 0 0;
   background: transparent;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-overview-body {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-body {
   padding: 16px 0 0;
   gap: 16px;
   background: transparent;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-panel {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-panel {
   border-color: var(--dp-border);
   border-radius: var(--dp-radius-lg);
   background: var(--dp-surface);
   box-shadow: var(--dp-shadow-sm);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-panel-hdr {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-panel-hdr {
   padding: 12px 16px;
   background: transparent;
   border-bottom-color: var(--dp-border);
@@ -378,7 +380,7 @@ html[data-ui='2'] .cve-assessment-page .cvd-meta-label,
 html[data-ui='2'] .cve-assessment-page .cvd-cvss-cell-label,
 html[data-ui='2'] .cve-assessment-page .cvd-metric-label,
 html[data-ui='2'] .cve-assessment-page .cvd-date-label,
-html[data-ui='2'] .cve-assessment-page .cvd-tech-attr-label,
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-tech-attr-label,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-section-hdr,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-primary-rec-label,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-conf-label,
@@ -404,57 +406,57 @@ html[data-ui='2'] .cve-assessment-page .investigation-software-bar-col-header {
   text-transform: none;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-ov-link {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-ov-link {
   font-size: var(--dp-text-md);
   font-weight: 500;
 }
 
 /* Workflow cards ("Need your attention"). */
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card {
   border-radius: 0;
   background: transparent;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card:hover {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card:hover {
   background: var(--dp-hover);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card:focus-visible {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card:focus-visible {
   outline: none;
   box-shadow: inset var(--dp-ring);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card-num {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-num {
   background: color-mix(in srgb, var(--dp-accent) 16%, transparent);
   color: var(--dp-accent);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card-title {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-title {
   color: var(--dp-text);
   font-size: var(--dp-text-lg);
   font-weight: 600;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd2-wf-card-sub {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-sub {
   color: var(--dp-text-2);
   font-size: var(--dp-text-md);
 }
 
 /* Status badges: tokens instead of light-only hex tints. */
-html[data-ui='2'] .cve-assessment-page .cvd-wf-badge {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge {
   min-height: 20px;
   font-size: var(--dp-text-xs);
   font-weight: 500;
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-wf-badge--done,
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--done,
 html[data-ui='2'] .cve-assessment-page .cve-fp-yes-badge {
   border-color: color-mix(in srgb, var(--dp-success) 35%, transparent);
   background: color-mix(in srgb, var(--dp-success) 12%, transparent);
   color: var(--dp-success);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-wf-badge--progress,
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--progress,
 html[data-ui='2'] .cve-assessment-page .cvd-wf-insight,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-gaps,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-lifecycle-warn,
@@ -464,13 +466,13 @@ html[data-ui='2'] .cve-assessment-page .investigation-unsaved-warning {
   color: var(--dp-warning);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-wf-badge--pending {
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--pending {
   border-color: var(--dp-border);
   background: var(--dp-surface-2);
   color: var(--dp-text-2);
 }
 
-html[data-ui='2'] .cve-assessment-page .cvd-wf-badge--report,
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--report,
 html[data-ui='2'] .cve-assessment-page .cvd-src-tag-ai,
 html[data-ui='2'] .cve-assessment-page .cvd-ai-dep-badge {
   border-color: color-mix(in srgb, var(--dp-accent) 35%, transparent);
@@ -808,7 +810,7 @@ html[data-ui='2'] .vuln-repo-assets-shell td .status-pill {
 
 /* Narrow viewports: the legacy stack keeps the overview's main column at 60% width. */
 @media (max-width: 960px) {
-  html[data-ui='2'] .cve-assessment-page .cvd2-overview-body { flex-direction: column; align-items: stretch; }
-  html[data-ui='2'] .cve-assessment-page .cvd2-overview-main,
-  html[data-ui='2'] .cve-assessment-page .cvd2-overview-sidebar { flex: none; width: 100%; min-width: 0; }
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-body { flex-direction: column; align-items: stretch; }
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-main,
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-sidebar { flex: none; width: 100%; min-width: 0; }
 }

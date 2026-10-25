@@ -417,36 +417,86 @@
   {
    "id": "P5",
    "title": "Governance and platform administration",
-   "status": "planned",
+   "status": "verified",
    "dependsOn": [
     "P4"
    ],
    "units": [
     {
      "title": "Tenant policies and framework coverage",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "New frontend/src/styles/ui2/governance.css anchored on the presentation-only root class ui2-governance-family, added to AiPoliciesPage, AiPolicyDetailPage, PlatformAiPolicyDetailPage (both roots), PlatformConsolePage (every view except vuln-intel and operations), AuthorizedWorkspacesPage and UserManagementPage. No outer page card, plain page header, sentence-case mini key indicators, segmented severity filter, unboxed labelled toolbars, tone-plus-text status badges.",
+      "The AI page header rules in findings.css and the record-detail tab/panel/label/badge rules in cve.css now also match the governance family via :is() instead of being copied. A same-session control (P4 findings.css/cve.css vs P5) of the Findings and CVE journeys shows zero changed pixels on AI Findings, AI Exposures and every workbench cvd2 view; the only differences are 10-12px single-line bands, consistent with relative timestamps.",
+      "Legacy .data-table is table-layout: fixed and the global th/td rule breaks words mid-word ('Corporati on', 'PROVISIO NING') and clipped row actions (also in legacy). Governance tables use auto layout with whole-word wrapping inside their scroll containers; slugs wrap at hyphens, digests break anywhere with a 20ch minimum.",
+      "Journey: 8 policies; Critical severity narrows locally to 1 and search to 2 with no refetch; Execute now posts the two selected policyIds and clears the selection; the enable toggle sends selection DISABLED; row opens /policies/policy.aws.2; Overview/Governance/Findings tabs switch; Back returns to /policies. READ_ONLY_AUDITOR: all 8 toggles and Execute disabled. ai.security=false redirects /policies and /policies/:id to /exposure while /admin/users stays."
+     ]
     },
     {
      "title": "Platform policy studio and distribution",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Policy studio: 6 catalog rows, shipping blocker shown, Provider=AZURE narrows locally to 2 of 6 with no refetch, Clear filters restores 6, Retry posts /platform/ai-grid/policy-rollouts/rollout-1/retry, Open policy navigates to /platform/ai-policies/aws.bedrock.agent-tool-scope.",
+      "Platform detail (VALIDATED): Approve disabled until an evidence note; Deploy to dev/test posts {targetTenantIds:[Acme], testNote}; Approve posts tenantTestNote and shows 'Policy approved successfully.'; Publish stays disabled. APPROVED policy: Publish to all active tenants posts {targetTenantIds:[], publishAll:true}; the suspended tenant is not a canary option. Back returns to /platform/ai-policies.",
+      "New PlatformAiPolicyDetailPage.test.tsx (4 tests; the page had none): definition/mappings/governance render, note+cohort gating, dev/test deploy and blocked approval, publish-all and failed deprecation retention."
+     ]
     },
     {
      "title": "Tenant management and authorized workspace selection",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Platform console rail restyled as the reference console rail. Tenant lifecycle: 5 tenants, provisioning failure shows the schema-status message, Create Tenant posts name/slug/billingRef/addDemoData=false, a taken slug surfaces the server 409 message, Block access opens the confirm dialog and Block Access sends PATCH status SUSPENDED. The lifecycle table's Actions column is sticky so row actions stay visible while other columns scroll.",
+      "Rail opens /platform/users, /platform/platform-audit and /platform/demo-requests with fixture rows; Set Password posts one setup-link request and opens the returned setup link in the same tab (the setup page then strips the token, leaving /setup). /platform/eol renders the 10-product catalog.",
+      "Authorized workspaces: 2 workspaces; Accept posts the pending support grant; Open workspace posts {tenantId: Acme}, stores the returned context token and leaves the page. Tenant users are redirected from /authorized-workspaces to /exposure and see 'Platform console access requires the Platform Owner role.' on /platform/tenants."
+     ]
     },
     {
      "title": "Users, service accounts, invites, audit, schema and entitlements",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Tenant administration: 5 members load for the actor tenant; search and status filter narrow locally; Invite user dialog posts email, display name and default role SECURITY_ANALYST to /tenants/{tenantId}/invites; invites, roles, service accounts and audit views render. The search icon and field sit on one line (legacy stacked them) and Member since no longer collides with row actions (legacy fixed layout). Non-admins are redirected from /admin to /exposure.",
+      "Schema status is shown per tenant in the lifecycle table; entitlements gate routes only (no dedicated view), verified through the ai.security=false redirects."
+     ]
     }
    ],
-   "checkpoint": null,
-   "testResults": [],
-   "screenshots": [],
-   "openIssues": []
+   "checkpoint": "2026-10-25 P5",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings (unchanged)",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 728/728 in 82 files (724 after P4 + 1 governance scope test + 4 PlatformAiPolicyDetailPage tests; the CVE scope test now uses the :is()-aware anchor check)",
+    "coverage: lines 49.55 / statements 47.03 / functions 39.35 / branches 38.51 - floors unchanged. Before the new tests, HEAD (P4 commit, unmodified) measured lines 49.37 / functions 38.85 on 2026-10-25, below the 49.4 / 38.9 floors, versus 49.43 / 38.96 recorded for P4 on 2026-10-24: some covered path is date-dependent. Floors were not ratcheted to the new values because of that drift.",
+    "browser-fixtures/governance-journey.mjs (2 themes): UI 2.0 166/166; legacy 160/166 - only failures are pre-existing legacy page overflow at 390px on /policies/:policyId, /platform/eol and /platform/ai-policies/:policyId, fixed under UI 2.0. Results: checkpoints/P5-screenshots/{ui2,legacy}_journey.json",
+    "findings-journey.mjs 67/67, cve-journey.mjs 80/80 and inventory-journey.mjs 106/106 re-run after the shared findings.css/cve.css and fixture routing changes",
+    "verify-baseline.py: critical source hashes matched; only the two known P2 className edits differ"
+   ],
+   "screenshots": [
+    "checkpoints/P5-screenshots/{ui2,legacy}_*_{dark,light}.png (policies, policy detail and governance tab, admin users/invite dialog/invites/roles/service accounts/audit, platform tenants, create error, block dialog, platform users/audit/demo requests, platform EOL, policy distribution, platform policy detail and governance, authorized workspaces) and *_390.png. Fixture-backed only."
+   ],
+   "openIssues": [
+    "Mocked-fixture evidence only; authenticated staging journeys remain pending_access.",
+    "/platform/vuln-intel (feeds, run history, review) is assigned to P6 and /platform/operations to P7; PlatformConsolePage omits ui2-governance-family on those two views so they keep the P1 look.",
+    "AiPolicyDetailPage loading/error/not-found early returns have no family root and keep the P1 look.",
+    "Existing behaviour recorded, not changed: the create-tenant form resets on submit before the request resolves, so a rejected slug clears the typed values; the 'Tenant-authorized access' eyebrow is display:none in legacy and stays hidden.",
+    "Wide tables (tenant lifecycle, policy catalog) scroll horizontally inside their cards at 1440px; only the tenant lifecycle Actions column is pinned.",
+    "The platform EOL catalog's resizable DataTable keeps fixed column widths (same DataTable deferral as P3/P4).",
+    "Routes that redirect to /exposure log an ExposureDashboardPage error against the generic {} dashboard fixture; Exposure fixtures belong to P7.",
+    "Fixture journeys write screenshots to a scratch directory first; two runs writing directly into checkpoints/ on the Desktop timed out on navigation (likely file-sync contention, not verified)."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/governance.css (new)",
+    "frontend/src/styles/ui2/index.css (+1 import line)",
+    "frontend/src/styles/ui2/findings.css (AI page header selectors anchored with :is(.ui2-findings-family, .ui2-governance-family); header comment)",
+    "frontend/src/styles/ui2/cve.css (record-detail tab/panel/signal-pill/link/label/badge selectors anchored with :is(.cve-assessment-page, .ui2-governance-family); header comment)",
+    "frontend/src/styles/ui2/scope.test.ts (+1 governance test; Findings roots include governance; CVE test uses anchoredOn)",
+    "frontend/src/pages/PlatformAiPolicyDetailPage.test.tsx (new)",
+    "frontend/src/pages/AiPoliciesPage.tsx, AiPolicyDetailPage.tsx, PlatformAiPolicyDetailPage.tsx, PlatformConsolePage.tsx, AuthorizedWorkspacesPage.tsx, UserManagementPage.tsx (root className += ui2-governance-family; conditional on the platform console)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/governance-fixtures.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/governance-journey.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/fixtures.mjs (routes CVE, inventory, governance, then findings; passes request bodies)"
+   ],
+   "rollback": "Presentation rollback: build without VITE_UI_VERSION (default). Code rollback: delete frontend/src/styles/ui2/governance.css and its import, restore findings.css, cve.css and scope.test.ts from the P4 commit, and remove ui2-governance-family from the seven root classNames; or revert the P5 commit. No data, API, route or URL impact.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort; journey: PLAYWRIGHT_DIR=<playwright> CHROMIUM_PATH=<chromium-1243> node 'Working Knowledge/New UI 2.0/browser-fixtures/governance-journey.mjs' --base http://127.0.0.1:5175 --out <scratch dir> --label ui2"
   },
   {
    "id": "P6",
@@ -480,7 +530,9 @@
    "checkpoint": null,
    "testResults": [],
    "screenshots": [],
-   "openIssues": []
+   "openIssues": [
+    "Carried from P5: the platform console vuln-intel view (/platform/vuln-intel: feeds, run history, review and releases) is part of P6; it has no ui2-governance-family root."
+   ]
   },
   {
    "id": "P7",
@@ -519,7 +571,9 @@
    "checkpoint": null,
    "testResults": [],
    "screenshots": [],
-   "openIssues": []
+   "openIssues": [
+    "Carried from P5: the platform console operations view (/platform/operations) is part of P7; it has no ui2-governance-family root. Exposure dashboard fixtures are also needed (redirect targets currently log an error against the generic {} fixture)."
+   ]
   },
   {
    "id": "P8",
@@ -592,7 +646,7 @@
   "node": "v22.16.0",
   "npm": "10.9.2",
   "repoIsGitCheckout": true,
-  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
+  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P5 — Governance and platform administration (start with tenant policies and framework coverage; the platform EOL console /platform/eol is part of the platform console)."
+ "nextUnit": "P6 - Connectors and configuration (start with the connector catalog and provider-specific forms; the platform console vuln-intel view /platform/vuln-intel is part of P6)."
 }

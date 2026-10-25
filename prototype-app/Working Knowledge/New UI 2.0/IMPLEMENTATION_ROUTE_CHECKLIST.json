@@ -77,21 +77,21 @@
   {
    "path": "/policies",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/policies/:policyId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
    "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
   },
   {
    "path": "/platform/ai-policies/:policyId",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
    "note": ""
   },
@@ -315,21 +315,21 @@
   {
    "path": "/admin/:adminView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
-   "note": ""
+   "note": "users, invites, roles, service-accounts and audit restyled in P5."
   },
   {
    "path": "/platform/:platformView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
-   "note": ""
+   "note": "tenants, users, platform-audit, demo-requests, eol and ai-policies restyled in P5; vuln-intel belongs to P6 and operations to P7 (no family root on those views)."
   },
   {
    "path": "/authorized-workspaces",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P5",
    "note": ""
   },

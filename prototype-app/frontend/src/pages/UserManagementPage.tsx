@@ -507,7 +507,7 @@ export function UserManagementPage() {
   const tenantBlocked = !authQuery.isLoading && !tenantId;
 
   return (
-    <div className="page-grid user-management-page">
+    <div className="page-grid user-management-page ui2-governance-family">
       <section className="panel">
         <div className="panel-header">
           <div>

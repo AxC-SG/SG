@@ -166,7 +166,7 @@ export function AiPoliciesPage() {
   const assessmentStates = React.useMemo(() => new Map((assessmentStatesQuery.data ?? [])
     .map((summary) => [assessmentKey(summary.policyId, summary.policyVersion), summary])), [assessmentStatesQuery.data]);
   return (
-    <div className="ai-security-page">
+    <div className="ai-security-page ui2-governance-family">
       <section className="ai-security-hero policies">
         <div>
           <span className="ai-security-kicker">Built-in, versioned controls</span>

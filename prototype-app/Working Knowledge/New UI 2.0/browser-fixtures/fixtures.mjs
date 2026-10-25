@@ -1,9 +1,11 @@
 // Shared /api fixture routing for the UI 2.0 browser scripts (capture.mjs, findings-journey.mjs,
-// cve-journey.mjs). Resolution order: CVE workflow, Inventory, Findings, then generic fallbacks.
+// cve-journey.mjs, inventory-journey.mjs, governance-journey.mjs). Resolution order: CVE workflow,
+// Inventory, Governance, Findings, then generic fallbacks.
 // Every response is synthetic; no backend, token or customer data is involved.
 import { NOT_FOUND, findingsFixtureFor } from './findings-fixtures.mjs';
 import { createCveFixtureState, cveFixtureFor } from './cve-fixtures.mjs';
 import { inventoryFixtureFor } from './inventory-fixtures.mjs';
+import { governanceFixtureFor } from './governance-fixtures.mjs';
 
 export const actor = {
   creator: false,
@@ -53,6 +55,8 @@ export async function routeFixtures(context, { actorOverride = actor, onRequest,
     if (cve !== undefined) return route.fulfill(cve);
     const inventory = inventoryFixtureFor(request.url(), request.method());
     if (inventory !== undefined) return route.fulfill(inventory);
+    const governance = governanceFixtureFor(request.url(), request.method(), request.postData());
+    if (governance !== undefined) return route.fulfill(governance);
     const body = fixtureFor(request.url(), actorOverride);
     return body === NOT_FOUND
       ? route.fulfill({ status: 404, json: { message: 'Not found (fixture)' } })
