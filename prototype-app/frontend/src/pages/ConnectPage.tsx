@@ -768,7 +768,7 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
   ];
 
   return (
-    <div className="page-grid">
+    <div className="page-grid ui2-connect-family">
       <div className="connect-filter-bar connect-filter-bar--standalone">
         {CONNECT_VIEW_ORDER.map((view) => (
           <button

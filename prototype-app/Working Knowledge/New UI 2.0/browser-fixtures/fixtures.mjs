@@ -1,11 +1,14 @@
 // Shared /api fixture routing for the UI 2.0 browser scripts (capture.mjs, findings-journey.mjs,
-// cve-journey.mjs, inventory-journey.mjs, governance-journey.mjs). Resolution order: CVE workflow,
-// Inventory, Governance, Findings, then generic fallbacks.
+// cve-journey.mjs, inventory-journey.mjs, governance-journey.mjs, connect-journey.mjs). Resolution order: CVE workflow,
+// Connectors and configuration (connect-fixtures.mjs), Inventory, Governance, Findings, then
+// generic fallbacks. Connect runs before Inventory so /bom/sources and provider-scoped
+// /ai-security/runs get connector data; unscoped /ai-security/runs falls through to Inventory.
 // Every response is synthetic; no backend, token or customer data is involved.
 import { NOT_FOUND, findingsFixtureFor } from './findings-fixtures.mjs';
 import { createCveFixtureState, cveFixtureFor } from './cve-fixtures.mjs';
 import { inventoryFixtureFor } from './inventory-fixtures.mjs';
 import { governanceFixtureFor } from './governance-fixtures.mjs';
+import { connectFixtureFor } from './connect-fixtures.mjs';
 
 export const actor = {
   creator: false,
@@ -40,7 +43,6 @@ export function fixtureFor(url, actorOverride = actor) {
   if (findingsFixture !== undefined) return findingsFixture;
   if (pathname.endsWith('/api/me')) return actorOverride;
   if (pathname.endsWith('/api/auth/csrf')) return { token: 'fixture' };
-  if (pathname.includes('/risk-policy')) return {};
   if (pathname.endsWith('/vuln-repo/dashboard')) return vulnRepoDashboard;
   if (/summary|distribution|stats|dashboard|health|overview|count/i.test(pathname)) return {};
   return emptyPage;
@@ -53,6 +55,8 @@ export async function routeFixtures(context, { actorOverride = actor, onRequest,
     onRequest?.(request);
     const cve = cveFixtureFor(request.url(), request.method(), cveState);
     if (cve !== undefined) return route.fulfill(cve);
+    const connect = connectFixtureFor(request.url(), request.method(), request.postData());
+    if (connect !== undefined) return route.fulfill(connect);
     const inventory = inventoryFixtureFor(request.url(), request.method());
     if (inventory !== undefined) return route.fulfill(inventory);
     const governance = governanceFixtureFor(request.url(), request.method(), request.postData());

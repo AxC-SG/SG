@@ -84,6 +84,12 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(unanchored).toEqual([]);
   });
 
+  it('anchors Connect-family rules on the Connectors and Configurations page roots', () => {
+    expect(selectors(sheets['./connect.css']).length).toBeGreaterThan(50);
+    const unanchored = selectors(sheets['./connect.css']).filter((selector) => !anchoredOn(selector, ['.ui2-connect-family']));
+    expect(unanchored).toEqual([]);
+  });
+
   it('anchors Inventory-family rules on the Inventory page roots', () => {
     expect(selectors(sheets['./inventory.css']).length).toBeGreaterThan(20);
     const unanchored = selectors(sheets['./inventory.css']).filter((selector) => !anchoredOn(selector, ['.ui2-inventory-family']));

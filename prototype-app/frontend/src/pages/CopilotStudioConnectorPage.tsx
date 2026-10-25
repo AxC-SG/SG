@@ -19,7 +19,7 @@ export function CopilotStudioConnectorPage() {
     },
   });
   const updateFlag = useMutation({ mutationFn: ({ featureKey, enabled, killSwitch: flagKillSwitch }: { featureKey: string; enabled: boolean; killSwitch: boolean }) => api.updateAiSecurityConnectorFeatureFlag(featureKey, { enabled, killSwitch: flagKillSwitch }), onSuccess: () => void client.invalidateQueries({ queryKey: ['ai-security-feature-flags'] }) });
-  return <main className="page ai-security-page"><header><h1>Copilot Studio</h1><p>Dataverse definition and configuration discovery.</p></header>
+  return <main className="page ai-security-page ui2-connect-family"><header><h1>Copilot Studio</h1><p>Dataverse definition and configuration discovery.</p></header>
     <section className="panel"><label>Organization URL<input value={organizationUrl} onChange={e => setOrganizationUrl(e.target.value)} placeholder="https://org.crm.dynamics.com" /></label>
       <label>Azure credential profile ID<input value={credentialProfileId} onChange={e => setCredentialProfileId(e.target.value)} /></label>
       <label><input type="checkbox" checked={discoveryEnabled} onChange={e => setDiscoveryEnabled(e.target.checked)} /> Enable discovery</label>

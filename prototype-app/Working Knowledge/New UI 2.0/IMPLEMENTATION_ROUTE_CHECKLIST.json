@@ -273,9 +273,9 @@
   {
    "path": "/connect/copilot-studio",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P6",
-   "note": "Wrapped in AiSecurityRoute (ai.security entitlement)."
+   "note": "Wrapped in AiSecurityRoute (ai.security entitlement). P6: UI 2.0 restyle + fixture journey (checkpoints/P6-screenshots); authenticated check pending."
   },
   {
    "path": "/inventory/ai/:assetId",
@@ -308,9 +308,9 @@
   {
    "path": "/connect/:connectView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P6",
-   "note": ""
+   "note": "P6: UI 2.0 restyle + fixture journey (checkpoints/P6-screenshots); authenticated check pending."
   },
   {
    "path": "/admin/:adminView?",
@@ -324,7 +324,7 @@
    "scope": "application",
    "status": "restyled_fixture_verified",
    "phase": "P5",
-   "note": "tenants, users, platform-audit, demo-requests, eol and ai-policies restyled in P5; vuln-intel belongs to P6 and operations to P7 (no family root on those views)."
+   "note": "tenants, users, platform-audit, demo-requests, eol and ai-policies restyled in P5; vuln-intel restyled in P6 (ui2-connect-family); operations belongs to P7 (no family root)."
   },
   {
    "path": "/authorized-workspaces",
@@ -336,9 +336,9 @@
   {
    "path": "/configurations/:configView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P6",
-   "note": ""
+   "note": "P6: UI 2.0 restyle + fixture journey (checkpoints/P6-screenshots); authenticated check pending."
   },
   {
    "path": "*",

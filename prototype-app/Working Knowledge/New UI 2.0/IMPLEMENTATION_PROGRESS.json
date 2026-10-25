@@ -501,38 +501,80 @@
   {
    "id": "P6",
    "title": "Connectors and configuration",
-   "status": "planned",
+   "status": "verified",
    "dependsOn": [
     "P5"
    ],
    "units": [
     {
      "title": "Supported connector catalog and provider-specific forms",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "New frontend/src/styles/ui2/connect.css anchored on the presentation-only root class ui2-connect-family, added to ConnectPage (tenant catalog and every ?connectSource= page it frames), ConfigurationsPage, CopilotStudioConnectorPage and PlatformConsolePage's vuln-intel view. Reference `.dp-tabs` view tabs, `.dp-section` heads, `.dp-connector-card` cards with vendor-mark wells, `.dp-status-dot` health (title/aria-label unchanged), connector hero title, form sections as cards with sentence-case titles, checkbox labels beside their control.",
+      "Journey: 10 catalog cards (Inventory then BOM Management); ServiceNow dot 'Last sync · …', SCCM 'Last sync failed…', Azure 'Not configured'; no patch cards. ServiceNow: an http:// base URL save sends the typed baseUrl without a blank credentialSecret, shows the server VALIDATION_FAILED message and keeps the rejected value; the https:// save succeeds; Test Connection posts once; Escape returns to /connect. AI connectors (AWS Bedrock, Azure AI, Copilot) restyled; Copilot Run discovery posts and reports the queued job."
+     ]
     },
     {
      "title": "Sync/run history and retry flows",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Run History tab routes to /connect/run-history; the queue lists 8 sync runs + ingestion jobs (RUNNING, QUEUED, COMPLETED, FAILED, PARTIAL_SUCCESS) in a table card; Refresh Queue refetches /sync-runs. AWS Multi-Account: Test on the sandbox target posts /connectors/aws-discovery/targets/aws-target-sandbox/test and shows the AccessDenied failure message. READ_ONLY_AUDITOR: AWS target Test disabled.",
+      "Platform owner: /connect redirects to /platform/vuln-intel; feed catalog shows the GHSA 'Sync failed' state; a feed card opens its ?feed= detail."
+     ]
     },
     {
      "title": "SLA, risk, ownership and suppression configuration",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Configurations: no outer card; section title as page header; intro callout; rule tables as table cards with whole-word wrapping (legacy split 'FINDIN G', 'APPROVE D'); triage cards and simulator on tokens. SLA save posts /risk-policy with criticalThreshold 8.5 (the client uses POST; root CLAUDE.md says PUT). Ownership lists 3 rules; suppression lists 3, Execute Now posts the approved rule and stays disabled for the IN_REVIEW rule.",
+      "Tenant vulnerability-source switches render as list rows with tone plus Enabled/Disabled text; 9 switches, 3 disabled sources; NVD switch PUTs enabledForCorrelation=false; the accordion collapses and expands."
+     ]
     },
     {
      "title": "Contained and retired feature checks",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "SCCM and generic Azure detail pages remain contained read-only (status copy shown, no Save/Test/Sync/Run inside the connector frame); tenant ?connectSource=nvd-api shows the platform-owned notice; ?connectSource=sccm-patch is dropped while other params are kept; without ai.security the 3 AI cards are absent (7 cards) and /connect/copilot-studio redirects to /exposure."
+     ]
     }
    ],
-   "checkpoint": null,
-   "testResults": [],
-   "screenshots": [],
+   "checkpoint": "2026-10-25 P6",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings (unchanged)",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 729/729 in 82 files (728 after P5 + 1 connect scope test)",
+    "coverage: lines 49.55 / statements 47.05 / functions 39.38 / branches 38.51 - above every floor; floors unchanged (date-dependent drift noted in P5)",
+    "browser-fixtures/connect-journey.mjs (2 themes): UI 2.0 116/116; legacy 116/116 (identical behaviour incl. 390px no-overflow on the listed routes). Results: checkpoints/P6-screenshots/{ui2,legacy}_journey.json",
+    "findings-journey 67/67, cve-journey 80/80, inventory-journey 106/106, governance-journey 166/166 re-run on UI 2.0 after the fixture routing change",
+    "verify-baseline.py: critical source hashes matched; only the two known P2 className edits differ"
+   ],
+   "screenshots": [
+    "checkpoints/P6-screenshots/{ui2,legacy}_*_{dark,light}.png (catalog, ServiceNow and its validation error, AWS multi-account failure, run history, SLA, suppression, triage, Copilot Studio, platform feeds and feed detail) and *_390.png. Fixture-backed only."
+   ],
    "openIssues": [
-    "Carried from P5: the platform console vuln-intel view (/platform/vuln-intel: feeds, run history, review and releases) is part of P6; it has no ui2-governance-family root."
-   ]
+    "Mocked-fixture evidence only; authenticated staging journeys remain pending_access.",
+    "Auto-finding rules have no API (AutoFindingRulesSection reads/writes localStorage auto_finding_rules_v1); the tab is styled and checked for overflow only.",
+    "SCCM test-failure fixture is API-only: the contained SCCM page has no Test control in the pilot (unchanged).",
+    "endoflife-date, euvd-feed and jvn-feed tenant connector ids still have no catalog card (existing gap recorded in root CLAUDE.md; not changed).",
+    "The SBOM endpoint wizard step strip overflows at 390px in legacy; under UI 2.0 it scrolls inside its card.",
+    "Inline fixed-width Configurations grids (SLA matrix, findings score) scroll inside the section at narrow widths, as the legacy scrolling content area did.",
+    "Root CLAUDE.md documents PUT /api/risk-policy; the client sends POST. Documentation drift recorded, not changed.",
+    "On /platform/vuln-intel the platform nav highlights 'Tenant Management' (existing behaviour, not changed).",
+    "Inventory run queue DataTable keeps resizable fixed column widths (same DataTable deferral as P3-P5).",
+    "Run status pills keep their uppercase API values (text comes from data, not CSS)."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/connect.css (new)",
+    "frontend/src/styles/ui2/index.css (+1 import line)",
+    "frontend/src/styles/ui2/scope.test.ts (+1 Connect-family anchoring test)",
+    "frontend/src/pages/ConnectPage.tsx, ConfigurationsPage.tsx, CopilotStudioConnectorPage.tsx (root className += ui2-connect-family); PlatformConsolePage.tsx (ui2-connect-family on the vuln-intel view)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/connect-fixtures.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/connect-journey.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/fixtures.mjs (routes CVE, connect, inventory, governance, then findings; generic /risk-policy {} fallback removed)"
+   ],
+   "rollback": "Presentation rollback: build without VITE_UI_VERSION (default). Code rollback: delete frontend/src/styles/ui2/connect.css and its import, remove the Connect-family scope test, and remove ui2-connect-family from the four root classNames; or revert the P6 commit. No data, API, route or URL impact.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort; journey: PLAYWRIGHT_DIR=<playwright> CHROMIUM_PATH=<chromium-1243> node 'Working Knowledge/New UI 2.0/browser-fixtures/connect-journey.mjs' --base http://127.0.0.1:5175 --out <scratch dir> --label ui2"
   },
   {
    "id": "P7",
@@ -572,7 +614,8 @@
    "testResults": [],
    "screenshots": [],
    "openIssues": [
-    "Carried from P5: the platform console operations view (/platform/operations) is part of P7; it has no ui2-governance-family root. Exposure dashboard fixtures are also needed (redirect targets currently log an error against the generic {} fixture)."
+    "Carried from P5: the platform console operations view (/platform/operations) is part of P7; it has no ui2-governance-family root. Exposure dashboard fixtures are also needed (redirect targets currently log an error against the generic {} fixture).",
+    "Carried from P6: /platform/operations still has no family root (PlatformConsolePage omits both families on that view)."
    ]
   },
   {
@@ -646,7 +689,7 @@
   "node": "v22.16.0",
   "npm": "10.9.2",
   "repoIsGitCheckout": true,
-  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
+  "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance, feat/ui2-phase-6-connectors). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P6 - Connectors and configuration (start with the connector catalog and provider-specific forms; the platform console vuln-intel view /platform/vuln-intel is part of P6)."
+ "nextUnit": "P7 - Remaining experience and consistency sweep (exposure/dashboard, campaigns/detail, operations incl. /platform/operations, login/setup/invites/auth entry points, legacy redirects; sweep every active left-nav destination and direct-link route)."
 }
