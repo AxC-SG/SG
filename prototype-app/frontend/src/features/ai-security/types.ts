@@ -201,7 +201,8 @@ export type AiGridPolicy = {
   workflowClass: string;
   selection: AiGridPolicySelection;
   controlObjectiveId: string;
-  provider: string;
+  /** Null for legacy catalog policies that predate provider tagging. */
+  provider: string | null;
   evaluationMode: string;
   artifactTypesJson: string;
   nativeKindsJson?: string;
