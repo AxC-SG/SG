@@ -1,0 +1,188 @@
+[
+  {
+    "route": "/exposure",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/exposure",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_exposure_dark_1440.png",
+    "pageErrors": [
+      "Cannot read properties of undefined (reading 'length')",
+      "Cannot read properties of undefined (reading 'length')"
+    ]
+  },
+  {
+    "route": "/findings",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/findings",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_findings_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/findings/ai",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/findings/ai",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_findings-ai_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/vulnerabilities",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/vulnerabilities",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-vulnerabilities_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/inventory",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/inventory",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_inventory_dark_1440.png",
+    "pageErrors": [
+      "assets.filter is not a function",
+      "assets.filter is not a function",
+      "assets.filter is not a function"
+    ]
+  },
+  {
+    "route": "/connect",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/connect",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_connect_dark_1440.png",
+    "pageErrors": [
+      "configs.data?.find is not a function",
+      "configs.data?.find is not a function"
+    ]
+  },
+  {
+    "route": "/configurations",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/configurations",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_configurations_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/admin",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/admin",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_admin_dark_1440.png",
+    "pageErrors": [
+      "members.filter is not a function",
+      "members.filter is not a function"
+    ]
+  },
+  {
+    "route": "/exposure",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/exposure",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_exposure_light_1440.png",
+    "pageErrors": [
+      "Cannot read properties of undefined (reading 'length')",
+      "Cannot read properties of undefined (reading 'length')"
+    ]
+  },
+  {
+    "route": "/findings",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/findings",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_findings_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/findings/ai",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/findings/ai",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_findings-ai_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/vulnerabilities",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/vulnerabilities",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-vulnerabilities_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/inventory",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/inventory",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_inventory_light_1440.png",
+    "pageErrors": [
+      "assets.filter is not a function",
+      "assets.filter is not a function",
+      "assets.filter is not a function"
+    ]
+  },
+  {
+    "route": "/connect",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/connect",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_connect_light_1440.png",
+    "pageErrors": [
+      "configs.data?.find is not a function",
+      "configs.data?.find is not a function"
+    ]
+  },
+  {
+    "route": "/configurations",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/configurations",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_configurations_light_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/admin",
+    "theme": "light",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/admin",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_admin_light_1440.png",
+    "pageErrors": [
+      "members.filter is not a function",
+      "members.filter is not a function"
+    ]
+  }
+]

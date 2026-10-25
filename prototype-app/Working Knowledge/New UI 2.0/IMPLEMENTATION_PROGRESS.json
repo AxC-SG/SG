@@ -1,404 +1,504 @@
 {
-  "schemaVersion": 1,
-  "created": "2026-10-24",
-  "status": "planned",
-  "implementationStarted": false,
-  "scheduledAutomationCreated": false,
-  "strategy": "Small gated implementation slices by shared components and complete workflows; cohesive tenant release after qualification",
-  "plan": "IMPLEMENTATION_PLAN.md",
-  "behaviorContract": "BEHAVIOR_PARITY_AND_IMPLEMENTATION.md",
-  "baselineHashes": "BEHAVIOR_BASELINE_2026-10-24.json",
-  "verificationEvidence": "VERIFICATION_RESULTS_2026-10-24.md",
-  "baseline": {
-    "liveTestCases": 715,
-    "liveTestFiles": 79,
-    "referenceTestCases": 35,
-    "coverageFloors": {
-      "lines": 49.4,
-      "statements": 46.7,
-      "functions": 38.9,
-      "branches": 38.1
-    },
-    "authenticatedBrowserQualification": "pending_access",
-    "existingUncommittedWorkMustBePreserved": true
+ "schemaVersion": 1,
+ "created": "2026-10-24",
+ "status": "in_progress",
+ "implementationStarted": true,
+ "scheduledAutomationCreated": false,
+ "strategy": "Small gated implementation slices by shared components and complete workflows; cohesive tenant release after qualification",
+ "plan": "IMPLEMENTATION_PLAN.md",
+ "behaviorContract": "BEHAVIOR_PARITY_AND_IMPLEMENTATION.md",
+ "baselineHashes": "BEHAVIOR_BASELINE_2026-10-24.json",
+ "verificationEvidence": "VERIFICATION_RESULTS_2026-10-24.md",
+ "baseline": {
+  "liveTestCases": 715,
+  "liveTestFiles": 79,
+  "referenceTestCases": 35,
+  "coverageFloors": {
+   "lines": 49.4,
+   "statements": 46.7,
+   "functions": 38.9,
+   "branches": 38.1
   },
-  "policy": {
-    "advanceAutomaticallyAfterVerifiedPhase": true,
-    "pauseAfterEveryNavigationItem": false,
-    "domainBehaviorChangesIncluded": false,
-    "weakenExistingTestsAllowed": false,
-    "lowerCoverageAllowed": false,
-    "productionDeploymentAuthorizedByPlan": false,
-    "parallelSharedFileWritersAllowed": false
+  "authenticatedBrowserQualification": "pending_access",
+  "existingUncommittedWorkMustBePreserved": true
+ },
+ "policy": {
+  "advanceAutomaticallyAfterVerifiedPhase": true,
+  "pauseAfterEveryNavigationItem": false,
+  "domainBehaviorChangesIncluded": false,
+  "weakenExistingTestsAllowed": false,
+  "lowerCoverageAllowed": false,
+  "productionDeploymentAuthorizedByPlan": false,
+  "parallelSharedFileWritersAllowed": false
+ },
+ "phaseStates": [
+  "planned",
+  "in_progress",
+  "needs_access",
+  "failed_gate",
+  "verified"
+ ],
+ "phases": [
+  {
+   "id": "P0",
+   "title": "Preserve baseline and establish gates",
+   "status": "verified",
+   "dependsOn": [],
+   "units": [
+    {
+     "title": "Snapshot relevant current tracked and untracked work",
+     "status": "verified",
+     "evidence": [
+      "checkpoints/P0-baseline-frontend-src/ (rsync of prototype-app/frontend excluding node_modules/dist/coverage); checkpoints/P0-baseline-src.sha256 (297 src files)"
+     ]
+    },
+    {
+     "title": "Reconcile changed behavior source against the existing hash manifest",
+     "status": "verified",
+     "evidence": [
+      "verify-baseline.py: 18/18 critical source hashes matched; 0 changed; 0 missing; additional_missing: .github/workflows/quality.yml (not present in this non-git copy)"
+     ]
+    },
+    {
+     "title": "Resolve active route/view inventory, including direct links",
+     "status": "verified",
+     "evidence": [
+      "IMPLEMENTATION_ROUTE_CHECKLIST.json: all 65 patterns classified by scope and owning phase (initial copy kept in checkpoints/)"
+     ]
+    },
+    {
+     "title": "Run current baseline checks",
+     "status": "verified",
+     "evidence": [
+      "npm ci; lint 0 errors/3 existing warnings; typecheck pass; build pass incl. bundle policy; vitest 715/715 in 79 files; coverage lines 49.41 / statements 46.76 / functions 38.91 / branches 38.18 (Node 22, no webstorage flag needed)"
+     ]
+    },
+    {
+     "title": "Prepare reproducible browser fixtures/checks and record any missing approved access separately as a pending release gate",
+     "status": "verified",
+     "evidence": [
+      "browser-fixtures/capture.mjs: Playwright (npx cache) + cached chromium-headless-shell-1243; all /api/* answered by deterministic fixtures; no backend, token or customer data. Mocked-fixture visual evidence only."
+     ]
+    }
+   ],
+   "checkpoint": "2026-10-24 P0",
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": [
+    "Backend (8080) not running; authenticated staging journeys remain pending_access (release gate).",
+    "Generic fixtures produce render errors on /exposure, /inventory, /connect, /admin (shape mismatch); richer per-route fixtures are needed for P2+ visual review.",
+    "Harness is not in CI: production package.json/lockfile unchanged deliberately."
+   ]
   },
-  "phaseStates": [
-    "planned",
-    "in_progress",
-    "needs_access",
-    "failed_gate",
-    "verified"
-  ],
-  "phases": [
+  {
+   "id": "P1",
+   "title": "Shared foundation and application shell",
+   "status": "verified",
+   "dependsOn": [
+    "P0"
+   ],
+   "units": [
     {
-      "id": "P0",
-      "title": "Preserve baseline and establish gates",
-      "status": "planned",
-      "dependsOn": [],
-      "units": [
-        {
-          "title": "Snapshot relevant current tracked and untracked work",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Reconcile changed behavior source against the existing hash manifest",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Resolve active route/view inventory, including direct links",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Run current baseline checks",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Prepare reproducible browser fixtures/checks and record any missing approved access separately as a pending release gate",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
+     "title": "Scoped token and theme bridge",
+     "status": "verified",
+     "evidence": [
+      "Tokens + legacy bridge scoped to html[data-ui=2]; activated only by VITE_UI_VERSION=2 (default off = legacy UI unchanged). Scope audit: 0 unscoped selectors in src/styles/ui2."
+     ]
     },
     {
-      "id": "P1",
-      "title": "Shared foundation and application shell",
-      "status": "planned",
-      "dependsOn": [
-        "P0"
-      ],
-      "units": [
-        {
-          "title": "Scoped token and theme bridge",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Shared buttons, forms, status, table and evidence primitives",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Accessible overlays and state panels",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Tenant/platform shell with unchanged navigation and authority",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
+     "title": "Shared buttons, forms, status, table and evidence primitives",
+     "status": "verified",
+     "evidence": [
+      "Buttons, native controls, panels, badges (severity/status), table frame colours/headers, empty states restyled in place; no class, element, label or selector changed. Table cell padding intentionally kept legacy to avoid column reflow."
+     ]
     },
     {
-      "id": "P2",
-      "title": "Findings family",
-      "status": "planned",
-      "dependsOn": [
-        "P1"
-      ],
-      "units": [
-        {
-          "title": "Vulnerability Findings list and detail",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "AI Policy Violations list and detail",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "AI software vulnerabilities tab",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "AI exposure list and detail",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "All filter, queue, widget, group, cursor and row interaction regression checks",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
+     "title": "Accessible overlays and state panels",
+     "status": "verified",
+     "evidence": [
+      ".fd3-modal, .modal-backdrop, .test-persona-dialog, .confirm-dialog, notices restyled; no overlay behaviour changed."
+     ]
     },
     {
-      "id": "P3",
-      "title": "Complete CVE workflow",
-      "status": "planned",
-      "dependsOn": [
-        "P2"
-      ],
-      "units": [
-        {
-          "title": "Intelligence and organization CVE entry routes",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "CVE overview and full investigation canvas",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Separate applicability and analyst impact",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Main impacted-assets step and dedicated assets/software routes",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Finding configuration, duplicates and partial ticket failure",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Fixes, notification drafts and dirty guards",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
-    },
-    {
-      "id": "P4",
-      "title": "Inventory and lifecycle",
-      "status": "planned",
-      "dependsOn": [
-        "P3"
-      ],
-      "units": [
-        {
-          "title": "Hosts, software identities and detail",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "EOL flows",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "All active AI inventory categories",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "AI assets, declared resources and relationship graphs",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
-    },
-    {
-      "id": "P5",
-      "title": "Governance and platform administration",
-      "status": "planned",
-      "dependsOn": [
-        "P4"
-      ],
-      "units": [
-        {
-          "title": "Tenant policies and framework coverage",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Platform policy studio and distribution",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Tenant management and authorized workspace selection",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Users, service accounts, invites, audit, schema and entitlements",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
-    },
-    {
-      "id": "P6",
-      "title": "Connectors and configuration",
-      "status": "planned",
-      "dependsOn": [
-        "P5"
-      ],
-      "units": [
-        {
-          "title": "Supported connector catalog and provider-specific forms",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Sync/run history and retry flows",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "SLA, risk, ownership and suppression configuration",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Contained and retired feature checks",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
-    },
-    {
-      "id": "P7",
-      "title": "Remaining experience and consistency sweep",
-      "status": "planned",
-      "dependsOn": [
-        "P6"
-      ],
-      "units": [
-        {
-          "title": "Exposure and remaining dashboards",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Campaigns and detail",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Operations views",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Login, setup, invitations and authentication entry states",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "All active navigation and direct-link routes; legacy redirects",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
-    },
-    {
-      "id": "P8",
-      "title": "Integrated qualification and release handoff",
-      "status": "planned",
-      "dependsOn": [
-        "P7"
-      ],
-      "units": [
-        {
-          "title": "Full frontend and affected backend/PostgreSQL checks",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Authenticated critical browser journeys",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Theme, responsive, keyboard, visual and performance qualification",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Current-data rollback rehearsal",
-          "status": "planned",
-          "evidence": []
-        },
-        {
-          "title": "Reviewable release evidence; release authorization resolved",
-          "status": "planned",
-          "evidence": []
-        }
-      ],
-      "checkpoint": null,
-      "testResults": [],
-      "screenshots": [],
-      "openIssues": []
+     "title": "Tenant/platform shell with unchanged navigation and authority",
+     "status": "verified",
+     "evidence": [
+      "Sidebar/topbar/settings menu/section tabs restyled via existing classes; App.tsx unchanged (hash still matches baseline), so navigation, workspace, role and entitlement logic untouched."
+     ]
     }
-  ],
-  "phaseVerificationScope": "Code, deterministic fixtures and phase-specific checks; separate pending release gates are not implied passed.",
-  "releaseGates": {
-    "authenticatedStagingJourneys": {
-      "status": "pending_access",
-      "evidence": []
+   ],
+   "checkpoint": "2026-10-24 P1",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 718/718 in 80 files (715 baseline + 3 new)",
+    "coverage (2 consecutive runs): lines 49.43 / statements >=46.7 / functions >=38.9 / branches >=38.1 — floors unchanged. One earlier run measured lines 49.37 (7848 covered) with identical code: nondeterministic coverage in existing tests, recorded not masked."
+   ],
+   "screenshots": [
+    "checkpoints/P1-screenshots/ui2_*_{dark,light}_{1440,390}.png (8 routes) and legacy_*_{dark,light}_1440.png for comparison; capture logs ui2_log.json / legacy_log.json. data-ui=2 confirmed on every UI2 capture; no page-level horizontal overflow at 390px."
+   ],
+   "openIssues": [
+    "Mocked-fixture screenshots only; not authenticated evidence.",
+    "Inter/JetBrains Mono not bundled (CSP font-src self); system font fallback. Decide whether to self-host fonts.",
+    "Configurations SLA matrix overflows its container at 390px (inner scroll) — evaluate in P6.",
+    "Page-specific CSS (findings-list, ai-security, cve-workbench, etc.) still carries legacy uppercase headers/gradients; addressed per family from P2."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/index.css (new)",
+    "frontend/src/styles/ui2/tokens.css (new)",
+    "frontend/src/styles/ui2/legacy-bridge.css (new)",
+    "frontend/src/styles/ui2/shell.css (new)",
+    "frontend/src/styles/ui2/primitives.css (new)",
+    "frontend/src/lib/uiVersion.ts (new)",
+    "frontend/src/lib/uiVersion.test.ts (new, 3 tests)",
+    "frontend/src/styles/index.css (+1 import line)",
+    "frontend/src/main.tsx (+2 lines: import, applyUiVersion call)",
+    "frontend/src/vite-env.d.ts (+1 line: VITE_UI_VERSION type)"
+   ],
+   "rollback": "Presentation rollback: build/serve without VITE_UI_VERSION (no data or URL impact). Code rollback: delete frontend/src/styles/ui2/ and frontend/src/lib/uiVersion*.ts, remove the ui2 import line from styles/index.css, the two uiVersion lines from main.tsx and the VITE_UI_VERSION line from vite-env.d.ts; or restore from checkpoints/P0-baseline-frontend-src.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort"
+  },
+  {
+   "id": "P2",
+   "title": "Findings family",
+   "status": "verified",
+   "dependsOn": [
+    "P1"
+   ],
+   "units": [
+    {
+     "title": "Vulnerability Findings list and detail",
+     "status": "verified",
+     "evidence": [
+      "frontend/src/styles/ui2/findings.css scoped to .fpl-root and .fd3-page: page card removed, sentence-case headers/labels, 5-column widget grid with legend under donut, mini-KPI key indicators, pill group cards, one table card (list bar + table + pagination), single-line cells with horizontal table scroll, dp-style detail header/actions/tabs/panels/kv rows. No markup, label, handler or selector change on these two pages.",
+      "browser-fixtures/findings-journey.mjs (fixture-backed, 2 themes): UI 2.0 67/67; legacy 65/67 — only failure is the pre-existing legacy /findings horizontal page overflow at 390px, fixed under UI 2.0. Results: checkpoints/P2-screenshots/{ui2,legacy}_journey.json"
+     ]
     },
-    "completeRouteVisualAcceptance": {
-      "status": "planned",
-      "evidence": []
+    {
+     "title": "AI Policy Violations list and detail",
+     "status": "verified",
+     "evidence": [
+      "AiFindingsPage root gains presentation-only class ui2-findings-family; hero rendered as a plain page header with the existing controls; .severity-badge (previously unstyled everywhere) styled inside the family; AI detail shares the .fd3-page treatment.",
+      "Journey: default status=OPEN, provider=AWS serialised with status, row → /findings/ai/:id?returnTo=/findings/ai, Back returns, exposure links unchanged."
+     ]
     },
-    "integratedFrontendChecks": {
-      "status": "planned_for_release_candidate",
-      "evidence": []
+    {
+     "title": "AI software vulnerabilities tab",
+     "status": "verified",
+     "evidence": [
+      "Journey: request keeps findingKind=VULNERABILITY & hasAffectedAiResource=true with status=OPEN and after switching to All states (status omitted)."
+     ]
     },
-    "affectedBackendAndPostgresQualification": {
-      "status": "planned_for_release_candidate",
-      "evidence": []
+    {
+     "title": "AI exposure list and detail",
+     "status": "verified",
+     "evidence": [
+      "AiExposuresPage list and detail roots gain ui2-findings-family; 3-card grid (1 column ≤1000px), evidence <details>/<pre> restyled; Accept/False-positive buttons unchanged.",
+      "Journey: exposure row → /findings/ai/exposures/exposure-1 detail renders."
+     ]
     },
-    "rollbackRehearsal": {
-      "status": "planned",
-      "evidence": []
-    },
-    "productionReleaseAuthorization": {
-      "status": "not_requested",
-      "evidence": []
+    {
+     "title": "All filter, queue, widget, group, cursor and row interaction regression checks",
+     "status": "verified",
+     "evidence": [
+      "Journey: severity widget narrows table (severity=CRITICAL) while summary/distributions/backlog-health are not re-requested with severity; same widget toggles off; Status column values accumulate (OPEN,RESOLVED); chip clear; Next sends cursor=c1, Prev returns; row click selects without navigating; group-by requests /findings/groups?field=severity without ad-hoc filters; Finding ID link opens detail and Back returns; ai.security=false redirects /findings/ai → /exposure; no page errors; no page overflow at 390px on all 5 family routes.",
+      "frontend/src/styles/ui2/scope.test.ts (3 tests): every ui2 selector is behind html[data-ui='2']; every findings.css selector is anchored on .fpl-root, .fd3-page, .ui2-findings-family or the portaled .fpl-col-filter- popover."
+     ]
     }
+   ],
+   "checkpoint": "2026-10-24 P2",
+   "testResults": [
+    "lint: 0 errors, 3 existing warnings (unchanged)",
+    "typecheck: pass",
+    "build: pass incl. verify-production-bundle",
+    "vitest: 721/721 in 81 files (718 after P1 + 3 new scope tests)",
+    "coverage: lines 49.42 / statements 46.79 / functions 38.95 / branches 38.19 — floors unchanged",
+    "existing FindingsPage/FindingDetailPage/AiFindingsPage/AiFindingDetailPage/AiExposuresPage tests pass unmodified"
+   ],
+   "screenshots": [
+    "checkpoints/P2-screenshots/ui2_*_{dark,light}.png (list, widget-active, column-filter, selected, grouped, detail, detail-assets, AI findings/detail/vulnerabilities/exposures/exposure-detail) and *_390.png; legacy_* and ui2p1_* before-captures; ref_* design-reference targets. Fixture-backed only."
+   ],
+   "openIssues": [
+    "Mocked-fixture evidence only; authenticated staging journeys remain pending_access.",
+    "Shared primitive spillover (intentional): .fpl-col-filter-popover is portaled and also used by /vuln-repo/vulnerabilities (P3) — it now has UI 2.0 styling there too.",
+    "FindingDetailPage 'Affected Assets' counters keep uppercase labels: they use an inline style (CAP) that CSS cannot override without !important; left for a markup change in a later pass.",
+    "AI Findings selects have only aria-labels (no visible labels, unlike the reference); adding visible labels is a markup change, not done.",
+    "Reference Vulnerability/AI Findings family tab strip not added: it would add new navigation links and duplicate accessible names; needs a product decision.",
+    "Pre-existing: .severity-badge is unstyled on Campaign detail and AI-BOM declared resource detail (outside the family) until their phases.",
+    "Fixtures do not reproduce backend semantics beyond what is needed to observe narrowing/paging/scope; local-only filters (finding ID, owner, incident ID, min risk) not exercised in the browser journey (covered by existing vitest page tests)."
+   ],
+   "files": [
+    "frontend/src/styles/ui2/findings.css (new)",
+    "frontend/src/styles/ui2/scope.test.ts (new, 3 tests)",
+    "frontend/src/styles/ui2/index.css (+1 import line)",
+    "frontend/src/pages/AiFindingsPage.tsx (root className += ui2-findings-family)",
+    "frontend/src/pages/AiExposuresPage.tsx (list and detail root className += ui2-findings-family)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/fixtures.mjs (new: shared /api fixture routing, extracted from capture.mjs)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/findings-fixtures.mjs (new: 62 findings, AI findings/policies/action queue/exposures)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/findings-journey.mjs (new)",
+    "Working Knowledge/New UI 2.0/browser-fixtures/capture.mjs (uses fixtures.mjs; findings routes now populated)"
+   ],
+   "rollback": "Presentation rollback: build without VITE_UI_VERSION (default). Code rollback: delete frontend/src/styles/ui2/findings.css and scope.test.ts, remove the findings.css import from styles/ui2/index.css, and remove ' ui2-findings-family' from the three root classNames in AiFindingsPage.tsx and AiExposuresPage.tsx. No data, API, route or URL impact.",
+   "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort; journey: PLAYWRIGHT_DIR=<playwright> CHROMIUM_PATH=<chromium-1243> node 'Working Knowledge/New UI 2.0/browser-fixtures/findings-journey.mjs' --base http://127.0.0.1:5175 --out <dir> --label ui2"
+  },
+  {
+   "id": "P3",
+   "title": "Complete CVE workflow",
+   "status": "planned",
+   "dependsOn": [
+    "P2"
+   ],
+   "units": [
+    {
+     "title": "Intelligence and organization CVE entry routes",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "CVE overview and full investigation canvas",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Separate applicability and analyst impact",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Main impacted-assets step and dedicated assets/software routes",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Finding configuration, duplicates and partial ticket failure",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Fixes, notification drafts and dirty guards",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
+  },
+  {
+   "id": "P4",
+   "title": "Inventory and lifecycle",
+   "status": "planned",
+   "dependsOn": [
+    "P3"
+   ],
+   "units": [
+    {
+     "title": "Hosts, software identities and detail",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "EOL flows",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "All active AI inventory categories",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "AI assets, declared resources and relationship graphs",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
+  },
+  {
+   "id": "P5",
+   "title": "Governance and platform administration",
+   "status": "planned",
+   "dependsOn": [
+    "P4"
+   ],
+   "units": [
+    {
+     "title": "Tenant policies and framework coverage",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Platform policy studio and distribution",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Tenant management and authorized workspace selection",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Users, service accounts, invites, audit, schema and entitlements",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
+  },
+  {
+   "id": "P6",
+   "title": "Connectors and configuration",
+   "status": "planned",
+   "dependsOn": [
+    "P5"
+   ],
+   "units": [
+    {
+     "title": "Supported connector catalog and provider-specific forms",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Sync/run history and retry flows",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "SLA, risk, ownership and suppression configuration",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Contained and retired feature checks",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
+  },
+  {
+   "id": "P7",
+   "title": "Remaining experience and consistency sweep",
+   "status": "planned",
+   "dependsOn": [
+    "P6"
+   ],
+   "units": [
+    {
+     "title": "Exposure and remaining dashboards",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Campaigns and detail",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Operations views",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Login, setup, invitations and authentication entry states",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "All active navigation and direct-link routes; legacy redirects",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
+  },
+  {
+   "id": "P8",
+   "title": "Integrated qualification and release handoff",
+   "status": "planned",
+   "dependsOn": [
+    "P7"
+   ],
+   "units": [
+    {
+     "title": "Full frontend and affected backend/PostgreSQL checks",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Authenticated critical browser journeys",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Theme, responsive, keyboard, visual and performance qualification",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Current-data rollback rehearsal",
+     "status": "planned",
+     "evidence": []
+    },
+    {
+     "title": "Reviewable release evidence; release authorization resolved",
+     "status": "planned",
+     "evidence": []
+    }
+   ],
+   "checkpoint": null,
+   "testResults": [],
+   "screenshots": [],
+   "openIssues": []
   }
+ ],
+ "phaseVerificationScope": "Code, deterministic fixtures and phase-specific checks; separate pending release gates are not implied passed.",
+ "releaseGates": {
+  "authenticatedStagingJourneys": {
+   "status": "pending_access",
+   "evidence": []
+  },
+  "completeRouteVisualAcceptance": {
+   "status": "planned",
+   "evidence": []
+  },
+  "integratedFrontendChecks": {
+   "status": "planned_for_release_candidate",
+   "evidence": []
+  },
+  "affectedBackendAndPostgresQualification": {
+   "status": "planned_for_release_candidate",
+   "evidence": []
+  },
+  "rollbackRehearsal": {
+   "status": "planned",
+   "evidence": []
+  },
+  "productionReleaseAuthorization": {
+   "status": "not_requested",
+   "evidence": []
+  }
+ },
+ "environment": {
+  "node": "v22.16.0",
+  "npm": "10.9.2",
+  "repoIsGitCheckout": false,
+  "note": "Local copy is not a git repository; rollback uses checkpoints/P0-baseline-frontend-src and the file list below. .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
+ },
+ "nextUnit": "P3 — Complete CVE workflow (start with Intelligence/organization record list fixtures; .fpl-col-filter-popover already carries UI 2.0 styling on /vuln-repo/vulnerabilities)."
 }
