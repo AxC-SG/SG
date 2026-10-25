@@ -21,12 +21,12 @@ html[data-ui='2'] {
   --dp-text-3: #686873;
   --dp-accent: #5b5bd6;
   --dp-accent-fg: #ffffff;
-  --dp-critical: #e5484d;
-  --dp-high: #f76b15;
-  --dp-medium: #e2a336;
-  --dp-low: #30a46c;
-  --dp-success: #30a46c;
-  --dp-warning: #d97706;
+  --dp-critical: #bb2329;
+  --dp-high: #a84300;
+  --dp-medium: #8d5a00;
+  --dp-low: #1d7449;
+  --dp-success: #1d7449;
+  --dp-warning: #a05100;
 
   --dp-radius-sm: 6px;
   --dp-radius: 8px;
