@@ -191,9 +191,9 @@ html[data-ui='2'] .severity-pill.severity-low {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui2-tone) 22%, transparent);
 }
 
-/* Light theme: legacy base.css sets black text on the medium fill, which fails on the darker light-theme tone. */
-html[data-ui='2']:not([data-theme='dark']) .risk-score-badge--medium {
-  color: #ffffff;
+/* Filled semantic badges need a dark foreground on the bright dark-theme tones. */
+html[data-ui='2'] :is(.risk-score-badge--critical, .risk-score-badge--high, .risk-score-badge--medium, .risk-score-badge--low) {
+  color: var(--dp-severity-fg);
 }
 
 html[data-ui='2'] .status-pill {

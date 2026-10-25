@@ -499,16 +499,14 @@ html[data-ui='2'] .fpl-root .fpl-tr--selected:hover td {
   background: color-mix(in srgb, var(--dp-accent) 7%, var(--dp-surface)) !important;
 }
 
-/* Cells stay on one line (reference `.dp-table td`); the table scrolls horizontally instead
- * of wrapping identifiers mid-word. Full values remain in the DOM. */
+/* Keep identifiers readable on one line. Let cells grow to their full content width;
+ * the existing table scroll container exposes every column and identifier suffix. */
 html[data-ui='2'] .fpl-root .fpl-td {
   padding: 10px 12px;
   border-right: 0;
   border-bottom: 1px solid var(--dp-border);
   color: var(--dp-text);
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
   white-space: nowrap;
 }
 
@@ -797,7 +795,7 @@ html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .f
   position: absolute;
   left: 6px;
   right: 6px;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   border-radius: 2px;
   background: var(--dp-accent);

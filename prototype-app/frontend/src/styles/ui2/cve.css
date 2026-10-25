@@ -30,6 +30,16 @@ html[data-ui='2'] .vuln-repo-assets-shell {
   --badge-info-bg: color-mix(in srgb, var(--dp-accent) 12%, transparent);
   --badge-info-border: color-mix(in srgb, var(--dp-accent) 30%, transparent);
   --badge-info-text: var(--dp-accent);
+  /* Keep the legacy inline impact palette as fallback outside the presentation scope. */
+  --cve-impact-high-bg: color-mix(in srgb, var(--dp-critical) 10%, var(--dp-surface));
+  --cve-impact-high-text: var(--dp-critical);
+  --cve-impact-high-border: color-mix(in srgb, var(--dp-critical) 30%, var(--dp-border));
+  --cve-impact-medium-bg: color-mix(in srgb, var(--dp-warning) 10%, var(--dp-surface));
+  --cve-impact-medium-text: var(--dp-warning);
+  --cve-impact-medium-border: color-mix(in srgb, var(--dp-warning) 30%, var(--dp-border));
+  --cve-impact-low-bg: color-mix(in srgb, var(--dp-success) 10%, var(--dp-surface));
+  --cve-impact-low-text: var(--dp-success);
+  --cve-impact-low-border: color-mix(in srgb, var(--dp-success) 30%, var(--dp-border));
 }
 
 /* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
@@ -294,6 +304,22 @@ html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-signal-
   background: color-mix(in srgb, var(--dp-high) 12%, transparent);
   color: var(--dp-high);
 }
+
+/* Use the same score foreground as Findings and theme-aware status tones. */
+html[data-ui='2'] .cve-assessment-page .cvd-score-badge {
+  color: var(--dp-severity-fg);
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-status-pill {
+  --ui2-status-tone: var(--dp-text-2);
+  background: color-mix(in srgb, var(--ui2-status-tone) 10%, var(--dp-surface));
+  color: var(--ui2-status-tone);
+  border-color: color-mix(in srgb, var(--ui2-status-tone) 30%, var(--dp-border));
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-status-impacted { --ui2-status-tone: var(--dp-critical); }
+html[data-ui='2'] .cve-assessment-page .cvd-status-ok { --ui2-status-tone: var(--dp-success); }
+html[data-ui='2'] .cve-assessment-page :is(.cvd-status-investigating, .cvd-status-warn, .cvd-status-suppressed) { --ui2-status-tone: var(--dp-warning); }
 
 html[data-ui='2'] .cve-assessment-page .cvd-score-tooltip {
   border: 1px solid var(--dp-border);

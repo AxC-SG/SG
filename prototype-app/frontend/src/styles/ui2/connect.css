@@ -88,7 +88,7 @@ html[data-ui='2'] .ui2-connect-family :is(.connect-filter-btn.active, .connector
   position: absolute;
   left: 6px;
   right: 6px;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   border-radius: 2px;
   background: var(--dp-accent);

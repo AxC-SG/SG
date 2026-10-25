@@ -21,6 +21,7 @@ html[data-ui='2'] {
   --dp-text-3: #686873;
   --dp-accent: #5b5bd6;
   --dp-accent-fg: #ffffff;
+  --dp-severity-fg: #ffffff;
   --dp-critical: #bb2329;
   --dp-high: #a84300;
   --dp-medium: #8d5a00;
@@ -73,6 +74,7 @@ html[data-ui='2'][data-theme='dark'] {
   --dp-text-3: #93939f;
   --dp-accent: #8b8cf8;
   --dp-accent-fg: #0b0b0e;
+  --dp-severity-fg: #0b0b0e;
   --dp-critical: #ff6369;
   --dp-high: #ff8b3e;
   --dp-medium: #f5c060;

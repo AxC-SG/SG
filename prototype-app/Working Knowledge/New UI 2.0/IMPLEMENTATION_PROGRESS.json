@@ -752,13 +752,15 @@
   "completeRouteVisualAcceptance": {
    "status": "planned",
    "evidence": [
-    "2026-10-25 P7 fixture sweep: every active route and left-nav destination renders under a UI 2.0 root with no overflow or page errors (checkpoints/P7-screenshots/ui2_route_sweep.json). Fixture-backed; human visual review and authenticated staging remain for P8."
+    "2026-10-25 P7 fixture sweep: every active route and left-nav destination renders under a UI 2.0 root with no overflow or page errors (checkpoints/P7-screenshots/ui2_route_sweep.json). Fixture-backed; human visual review and authenticated staging remain for P8.",
+    "2026-10-25 continuation: repaired 1px vertical tab-strip overflow; checked desktop/narrow AI Findings, connector navigation, shared CVE tabs and horizontally scrolled AI asset Relationships tabs. Fixture-only; complete route/state matrix and human visual acceptance remain pending."
    ]
   },
   "integratedFrontendChecks": {
    "status": "verified",
    "evidence": [
-    "2026-10-25 branch feat/ui2-phase-8-qualification (Node 22.16): lint 0 errors/3 existing warnings; typecheck pass; build pass incl. verify-production-bundle; vitest 731/731 in 82 files; coverage statements 47.06 / branches 38.55 / functions 39.36 / lines 49.61 (all at or above floors 46.7/38.1/38.9/49.4)."
+    "2026-10-25 branch feat/ui2-phase-8-qualification (Node 22.16): lint 0 errors/3 existing warnings; typecheck pass; build pass incl. verify-production-bundle; vitest 731/731 in 82 files; coverage statements 47.06 / branches 38.55 / functions 39.36 / lines 49.61 (all at or above floors 46.7/38.1/38.9/49.4).",
+    "2026-10-25 continuation on codex/ui2-review-fixes, uncommitted: lint 0 errors / 3 existing warnings; typecheck; UI2 + legacy build/bundle checks; 759 tests in 84 files pass with maxWorkers=2 and =4. Both coverage runs: lines49.71/statements47.22/functions39.52/branches38.67; floors raised to49.7/47.2/39.5/38.6 and verified. Earlier timeout and floor miss retained in original checkout output/UI2_REVIEW_2026-10-25/continuation/."
    ]
   },
   "affectedBackendAndPostgresQualification": {
@@ -772,6 +774,16 @@
   "productionReleaseAuthorization": {
    "status": "not_requested",
    "evidence": []
+  },
+  "accessibilityQualification": {
+   "status": "planned",
+   "evidence": [
+    "2026-10-25 targeted score and CVE status/impact contrast fixes: measured score/token pairs and representative CVE pills exceed 4.5:1 in both themes. Full post-change axe/screen-reader audit and other legacy hardcoded colors remain pending."
+   ]
+  },
+  "performanceQualification": {
+   "status": "planned",
+   "evidence": []
   }
  },
  "environment": {
@@ -780,5 +792,20 @@
   "repoIsGitCheckout": true,
   "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance, feat/ui2-phase-6-connectors, feat/ui2-phase-7-sweep). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P8: dev-runner PROVISIONING decision; perf profiling; human visual review (screenshots outside git, ignored); push + PR A (fix/pre-ui2-defects) and PR B (UI 2.0 RC) with backend+PostgreSQL CI after user approval; release decision. Do not deploy."
+ "nextUnit": "P8: complete approved authenticated staging/persistence journeys, remaining responsive/keyboard and full accessibility checks, performance profiling, human visual acceptance, separate pre-UI dependency/backend/PostgreSQL and remote candidate CI, and current-data rollback rehearsal. Keep release authorization pending. Do not merge, push or deploy.",
+ "reviewContinuation": {
+  "date": "2026-10-25",
+  "branch": "codex/ui2-review-fixes",
+  "base": "ea815ef97e73854a5583e866ab4f8cf121eaa01e",
+  "preservedSnapshot": "58b5e2c3",
+  "status": "local_checkpoint_only",
+  "report": "/Users/karthik/Desktop/SG/output/UI2_REVIEW_2026-10-25/continuation/REVIEW.md",
+  "changes": [
+   "Preserved both prior uncommitted fixes including untracked presentation components.",
+   "Kept active-tab underline inside scrolling strips across Findings, shell and connectors.",
+   "Aligned score/CVE status/impact colors with theme tokens while retaining legacy fallback colors.",
+   "Added six direct Findings HTTP contract checks; raised all four coverage floors."
+  ],
+  "limits": "No staging certification or complete accessibility/visual/performance/rollback/backend qualification; no merge, push or deployment."
+ }
 }

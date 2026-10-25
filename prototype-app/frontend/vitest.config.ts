@@ -19,12 +19,13 @@ export default mergeConfig(viteConfig, defineConfig({
         'src/**/*.d.ts',
       ],
       // Global line-coverage floor. Ratchet up as page/widget tests are added.
-      // Measured 2026-10-24 after UI parity regressions: lines 49.41%, statements 46.78%, functions 38.94%, branches 38.18%
+      // Ratcheted 2026-10-25 after direct Findings HTTP contract coverage.
+      // Two-worker run: lines 49.71%, statements 47.22%, functions 39.52%, branches 38.67%.
       thresholds: {
-        lines: 49.4,
-        statements: 46.7,
-        functions: 38.9,
-        branches: 38.1
+        lines: 49.7,
+        statements: 47.2,
+        functions: 39.5,
+        branches: 38.6
       }
     }
   }
