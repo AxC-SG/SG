@@ -2,7 +2,8 @@
 // UI 2.0 P8 — axe-core accessibility audit over representative tenant/platform/public routes, fixture-backed.
 // Compare a UI 2.0 run to a legacy run to separate regressions from pre-existing violations.
 // Usage: PLAYWRIGHT_DIR=<dir> AXE_PATH=<axe.min.js> [CHROMIUM_PATH=<chromium>] \
-//   node axe-audit.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--themes dark,light]
+//   node axe-audit.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--themes dark,light] [--inject-css <file>]
+// --inject-css appends a stylesheet after load, to measure a proposed token change without rebuilding.
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,7 @@ const out = args.out ?? 'axe';
 const label = args.label ?? 'axe';
 const themes = (args.themes ?? 'dark,light').split(',');
 const axeSource = readFileSync(process.env.AXE_PATH, 'utf8');
+const injectCss = args['inject-css'] ? readFileSync(args['inject-css'], 'utf8') : null;
 mkdirSync(out, { recursive: true });
 
 const tenant = ['/exposure', '/findings', '/findings/F-10420', '/findings/ai', '/policies', `/policies/${PRIMARY_POLICY_ID}`, '/vuln-repo/org-cves',
@@ -40,6 +42,7 @@ for (const theme of themes) {
     const page = await context.newPage();
     for (const route of routes) {
       await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+      if (injectCss) await page.addStyleTag({ content: injectCss });
       await page.waitForTimeout(600);
       await page.evaluate(axeSource);
       const result = await page.evaluate(() => window.axe.run(document, { resultTypes: ['violations'] }));
