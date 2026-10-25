@@ -77,6 +77,8 @@ npm run dev
 
 Open `http://127.0.0.1:5174/design-preview.html#/reference`. Reference checks: `npm run typecheck`, `npm test`, `npm run build`.
 
+The fixture-backed browser checks moved from `browser-fixtures/` in this folder to `prototype-app/frontend/e2e/`. Historical commands recorded in the ledgers keep the old path.
+
 Use browser tools available in Claude's environment; Codex-specific tool bindings and browser sessions do not transfer. Establish reproducible browser checks as planned. The fresh authenticated application check previously redirected to login. Continue independent code/fixture work while recording that release gate as pending. Do not inject tokens, bypass auth or claim authenticated verification from mocked fixtures. Request approved test access once when it becomes necessary. Never use customer records for destructive or external-delivery testing.
 
 Checkpoint phase progress, files, tests, screenshots, limitations and rollback after each verified slice. Resume from the ledger after interruption. Preserve unrelated local changes. Do not reset the repository, weaken tests, lower coverage or silently declare unresolved release checks complete.

@@ -216,7 +216,7 @@ async function findingsJourney(theme) {
 
 async function aiFindingsJourney(theme) {
   const tag = (name) => `ai-findings: ${name} [${theme}]`;
-  const { context, page, requests, failures, errors } = await signedInPage(theme);
+  const { context, page, failures, errors } = await signedInPage(theme);
   const list = await requestFrom(page, '/ai-security/findings', () => page.goto(`${base}/findings/ai`, { waitUntil: 'networkidle' }));
   check(tag('entitled tenant stays on /findings/ai'), new URL(page.url()).pathname === '/findings/ai', here(page));
   check(tag('default scope status=OPEN'), list?.url.searchParams.get('status') === 'OPEN' && list?.response?.status() === 200, list?.url.search);
