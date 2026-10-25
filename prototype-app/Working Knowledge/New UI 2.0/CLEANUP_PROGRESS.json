@@ -1,0 +1,118 @@
+{
+ "schemaVersion": 1,
+ "created": "2026-10-25",
+ "status": "in_progress",
+ "plan": "~/.claude/plans/recursive-coalescing-lighthouse.md (Steps 0-8)",
+ "branch": "feat/ui2-cleanup",
+ "base": "ea815ef97e73854a5583e866ab4f8cf121eaa01e",
+ "policy": {
+  "pushMergeDeployAuthorized": false,
+  "apiAuthTenantSchemaChangesAllowed": false,
+  "databaseResetsAllowed": false,
+  "lowerCoverageAllowed": false,
+  "removeAssertionsAllowed": false,
+  "oneLocalCommitPerSlice": true
+ },
+ "unitStates": [
+  "planned",
+  "in_progress",
+  "pending",
+  "needs_access",
+  "failed_gate",
+  "verified",
+  "documented_limitation"
+ ],
+ "unitFields": "Each unit records files, evidence, tests, screenshots, limitations, reversal, and separate fixture / localAuthenticated / staging / release statuses.",
+ "importedCandidate": {
+  "sourceBranch": "codex/ui2-review-fixes",
+  "patch": "combined-uncommitted.patch",
+  "patchSha256": "e35e1a226066f82ee6a301964743ece244e526d9ef3e5b68685dd6b15ac0dcf2",
+  "manifest": "working-tree-manifest.json",
+  "manifestSha256": "86c57d518e8576731aefd00d4ded546796ad8d71123ab3635d03eb7db1e799d4",
+  "archiveLocation": "~/Desktop/AI Projects/UI2_REVIEW_2026-10-25/ (patch, manifest, SHA256SUMS; outside the repo, not temporary, not git-ignored)",
+  "hashNote": "The manifest records per-file hashes only. Patch and manifest hashes were first recorded on import here; no independently recorded hash existed to compare against.",
+  "fileCount": 15,
+  "untrackedFileCount": 3,
+  "fileHashesAfterApply": "15/15 matched"
+ },
+ "startingNumbers": {
+  "commit": "32c3e91c",
+  "measured": "2026-10-25, Node 22.16.0",
+  "source": {
+   "scope": "git ls-files prototype-app/frontend/src",
+   "files": 315,
+   "lines": 121990,
+   "tsFiles": 94,
+   "tsxFiles": 191,
+   "cssFiles": 29
+  },
+  "directDependencies": {
+   "dependencies": 13,
+   "devDependencies": 15
+  },
+  "bundle": {
+   "method": "Sum over dist/**/*.{css,js}; gzip level 9 via Python gzip",
+   "ui2": {
+    "build": "VITE_UI_VERSION=2 npm run build",
+    "css": { "files": 5, "rawBytes": 645010, "gzipBytes": 95396 },
+    "js": { "files": 76, "rawBytes": 2519953, "gzipBytes": 690722 }
+   },
+   "legacy": {
+    "build": "VITE_UI_VERSION= npm run build",
+    "css": { "files": 5, "rawBytes": 645010, "gzipBytes": 95396 },
+    "js": { "files": 76, "rawBytes": 2519951, "gzipBytes": 690806 }
+   },
+   "note": "CSS is identical across versions: UI 2.0 styles always ship and activate only under html[data-ui='2']."
+  }
+ },
+ "steps": [
+  {
+   "id": "S0",
+   "title": "Import and protect the candidate",
+   "status": "verified",
+   "units": [
+    {
+     "title": "Create feat/ui2-cleanup from ea815ef9 and import the reviewed patch",
+     "files": "15 files listed in working-tree-manifest.json",
+     "evidence": [
+      "2026-10-25: git apply --check passed for all 15 files; applied; 15/15 manifest sha256 matched; committed 32c3e91c \"Import UI 2.0 review fixes\" (local only)."
+     ],
+     "tests": [
+      "2026-10-25 commit 32c3e91c (Node 22.16.0): lint 0 errors / 3 existing warnings; typecheck pass; build pass incl. verify-production-bundle; vitest 759 passed / 0 failed / 0 skipped in 84 files; coverage lines 49.71% (7912/15916), statements 47.26% (8887/18801), functions 39.58% (2561/6469), branches 38.67% (7844/20281); floors 49.7/47.2/39.5/38.6 met. Matches the expected 759 tests in 84 files."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Statements measured 47.26% vs 47.22% and functions 39.58% vs 39.52% recorded in the review checkout; both above floors."
+     ],
+     "reversal": "git switch feat/ui2-phase-8-qualification && git branch -D feat/ui2-cleanup; the patch remains archived.",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "pending",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    }
+   ]
+  },
+  {
+   "id": "S1",
+   "title": "Requalify against the real local backend",
+   "status": "needs_access",
+   "units": []
+  },
+  {
+   "id": "S2",
+   "title": "Turn the scripts into real gates",
+   "status": "planned",
+   "units": []
+  },
+  {
+   "id": "S3",
+   "title": "Remove proven unused code and dependencies",
+   "status": "planned",
+   "dependsOn": ["S1"],
+   "units": []
+  }
+ ],
+ "nextUnit": "S1 needs backend commit, disposable qualification database/tenant and test accounts from the user. S2 can proceed in parallel."
+}
