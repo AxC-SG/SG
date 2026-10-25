@@ -1,0 +1,706 @@
+[
+  {
+    "theme": "dark",
+    "route": "/exposure",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".page-grid > section > .panel-header > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/exposure",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/findings",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "dark",
+    "route": "/findings/F-10420",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "dark",
+    "route": "/findings/ai",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "dark",
+    "route": "/policies",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/policies/policy.aws.2",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/campaigns",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/hosts",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "dark",
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+  },
+  {
+    "theme": "dark",
+    "route": "/connect",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]"
+  },
+  {
+    "theme": "dark",
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/admin/users",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/admin/audit",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/sla",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/sla",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 6,
+    "sample": "input[value=\"9\"]"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/sla",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/suppress",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/configurations/suppress",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "dark",
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row"
+  },
+  {
+    "theme": "dark",
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "dark",
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]"
+  },
+  {
+    "theme": "dark",
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "landmark-complementary-is-top-level",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".cvd2-overview-sidebar"
+  },
+  {
+    "theme": "light",
+    "route": "/exposure",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".page-grid > section > .panel-header > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/exposure",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/findings",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "light",
+    "route": "/findings/F-10420",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "light",
+    "route": "/findings/ai",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".active"
+  },
+  {
+    "theme": "light",
+    "route": "/policies",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/policies/policy.aws.2",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/campaigns",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/hosts",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar"
+  },
+  {
+    "theme": "light",
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+  },
+  {
+    "theme": "light",
+    "route": "/connect",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]"
+  },
+  {
+    "theme": "light",
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/admin/users",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/admin/audit",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/sla",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/sla",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 6,
+    "sample": "input[value=\"9\"]"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/sla",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/suppress",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/configurations/suppress",
+    "rule": "nested-interactive",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".nav-main-section > .nav-btn:nth-child(2)"
+  },
+  {
+    "theme": "light",
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3"
+  },
+  {
+    "theme": "light",
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row"
+  },
+  {
+    "theme": "light",
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+  },
+  {
+    "theme": "light",
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]"
+  },
+  {
+    "theme": "light",
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "landmark-complementary-is-top-level",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".cvd2-overview-sidebar"
+  }
+]

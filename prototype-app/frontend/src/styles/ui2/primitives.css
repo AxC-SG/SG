@@ -191,6 +191,14 @@ html[data-ui='2'] .severity-pill.severity-low {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui2-tone) 22%, transparent);
 }
 
+/* Light theme: the bright severity tones fall below 4.5:1 on their own tint, so mix more text colour in. */
+html[data-ui='2']:not([data-theme='dark']) .severity-pill.severity-critical,
+html[data-ui='2']:not([data-theme='dark']) .severity-pill.severity-high,
+html[data-ui='2']:not([data-theme='dark']) .severity-pill.severity-medium,
+html[data-ui='2']:not([data-theme='dark']) .severity-pill.severity-low {
+  color: color-mix(in srgb, var(--ui2-tone) 50%, var(--dp-text));
+}
+
 html[data-ui='2'] .status-pill {
   border-color: transparent;
   box-shadow: inset 0 0 0 1px var(--dp-border-strong);

@@ -695,7 +695,8 @@
      "status": "in_progress",
      "evidence": [
       "Covered by fixtures: dark+light, 1440px and 390px (0 overflow on UI 2.0), keyboard/focus assertions inside journeys, UI 2.0 vs legacy bundle sizes identical (css 625kB raw/93kB gzip, js 2460kB/674kB gzip; flag only sets data-ui on html).",
-      "NOT done: dedicated axe/screen-reader accessibility audit, real-browser performance profiling, human visual review of screenshots."
+      "NOT done: dedicated axe/screen-reader accessibility audit, real-browser performance profiling, human visual review of screenshots.",
+      "2026-10-25 axe-core 4.10.2 over 26 routes x dark/light (browser-fixtures/axe-audit.mjs), UI 2.0 vs legacy: all violations identical to legacy (nested-interactive 200 nodes, heading-order, label, select-name, aria-required-children, empty-table-header) EXCEPT color-contrast, introduced by UI 2.0 (322 nodes). Fixed: legacy-bridge --bg-gradient was a bare colour making the body background declaration invalid (body painted nothing; dark only worked via canvas); light severity-pill text darkened. Result 146 nodes remain (light-theme semantic tones used directly as text: status/policy/campaign pills, risk-score badges white-on-bright; a few dark legacy inline colours). Needs a design decision on darker light-theme semantic text tokens."
      ]
     },
     {
@@ -720,7 +721,8 @@
     "Authenticated staging journeys pending approved test access",
     "Backend/PostgreSQL CI jobs to run on the release-candidate PR",
     "Axe accessibility audit, perf profiling and human visual review outstanding",
-    "Release authorization unresolved"
+    "Release authorization unresolved",
+    "color-contrast: 146 nodes remain after fixes (UI 2.0-introduced); pre-existing legacy a11y violations (nested-interactive etc.) are unchanged and out of restyle scope"
    ]
   }
  ],

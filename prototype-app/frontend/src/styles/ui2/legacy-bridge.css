@@ -21,7 +21,8 @@ html[data-ui='2'][data-theme='dark'] {
   --radius-xl: 16px;
 
   --bg: var(--dp-bg);
-  --bg-gradient: var(--dp-bg);
+  /* Legacy body paints `var(--bg-gradient), var(--bg)`; a bare colour is only valid in the last layer. */
+  --bg-gradient: linear-gradient(var(--dp-bg), var(--dp-bg));
   --shell-glow: none;
   --sidebar-bg: var(--dp-sidebar);
   --sidebar-border: var(--dp-border);
