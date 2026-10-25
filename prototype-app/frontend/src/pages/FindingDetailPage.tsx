@@ -274,7 +274,7 @@ export function FindingDetailPage() {
 
   if (!currentFinding) {
     return (
-      <div className="page-grid">
+      <div className="page-grid ui2-experience-family">
         <section className="panel">
           <div style={{ padding: 48, textAlign: 'center' }}>
             <h2 style={{ marginBottom: 12 }}>Finding not available</h2>

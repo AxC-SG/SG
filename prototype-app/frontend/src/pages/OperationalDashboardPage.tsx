@@ -557,7 +557,7 @@ function renderPipeline(payload: PipelinePayload) {
   const freshness = payload.freshness.data;
 
   return (
-    <div className="page-grid">
+    <div className="page-grid ui2-experience-family">
       {ingestion ? (
         <div className="stats-grid">
           <StatCard title="Sync Runs (24h)" value={ingestion.syncRunsLast24h ?? 0} description={METRIC_HELP['Sync Runs (24h)']} />
@@ -579,7 +579,7 @@ function renderPlatformHealth(payload: PlatformHealthPayload) {
   const performanceScorecard = payload.performanceScorecard;
 
   return (
-    <div className="page-grid">
+    <div className="page-grid ui2-experience-family">
       {readPath ? (
         <div className="stats-grid">
           <StatCard title="Summary Coverage" value={Math.round(readPath.summaryCoveragePercent)} caption="Percent" description={METRIC_HELP['Summary Coverage']} />
@@ -688,7 +688,7 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
 
       return (
         <OperationsSectionErrorBoundary viewKey={normalizedView}>
-          <div className="page-grid">
+          <div className="page-grid ui2-experience-family">
             <div className="panel">Operational data may be stale: {error}</div>
             {freshnessStrip}
             {content}
@@ -699,7 +699,7 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
 
     if (isCreatorAccessError(error)) {
       return (
-        <section className="panel">
+        <section className="panel ui2-experience-family">
           <div className="panel-header">
             <h3>Operations Workspace Access Required</h3>
             <span className="panel-caption">Platform owner access is required</span>
@@ -708,11 +708,11 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
         </section>
       );
     }
-    return <div className="panel">Failed to load operational section: {error}</div>;
+    return <div className="panel ui2-experience-family">Failed to load operational section: {error}</div>;
   }
 
   if (!payload) {
-    return <div className="panel">Loading operational section...</div>;
+    return <div className="panel ui2-experience-family">Loading operational section...</div>;
   }
 
   let content: React.ReactNode;
@@ -729,7 +729,7 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
 
   return (
     <OperationsSectionErrorBoundary viewKey={normalizedView}>
-      <div className="ops-context-bar">
+      <div className="ops-context-bar ui2-experience-family">
         <span className="ops-context-label">Operations</span>
         <span className="ops-context-view">{normalizedView === 'pipeline' ? 'Pipeline Analytics' : 'Platform Health'}</span>
       </div>

@@ -7,23 +7,23 @@
   {
    "path": "/exposure",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: UI 2.0 restyle + fixture journey and route sweep (checkpoints/P7-screenshots); authenticated check pending."
   },
   {
    "path": "/",
    "scope": "role_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/findings/:displayId",
    "scope": "application",
    "status": "restyled_fixture_verified",
    "phase": "P2",
-   "note": "P2: UI 2.0 restyle + fixture journey (checkpoints/P2-screenshots); authenticated check pending."
+   "note": "P2: UI 2.0 restyle + fixture journey (checkpoints/P2-screenshots); authenticated check pending. P7: direct-link 'Finding not available' state carries ui2-experience-family."
   },
   {
    "path": "/findings/ai/exposures",
@@ -70,9 +70,9 @@
   {
    "path": "/fix-intelligence/*",
    "scope": "contained_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/policies",
@@ -98,44 +98,44 @@
   {
    "path": "/operations/:operationsView?",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: UI 2.0 restyle + fixture journey and route sweep (checkpoints/P7-screenshots); authenticated check pending."
   },
   {
    "path": "/vulnerability-intelligence",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/vulnerability-intelligence/vulnerabilities",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/vulnerability-intelligence/org-cves/:cveId?",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/vuln-repo",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: UI 2.0 restyle + fixture journey and route sweep (checkpoints/P7-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/policies",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/vuln-repo/intel/:externalId",
@@ -154,16 +154,16 @@
   {
    "path": "/vuln-repo/campaigns",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: UI 2.0 restyle + fixture journey and route sweep (checkpoints/P7-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/campaigns/:id",
    "scope": "application",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: UI 2.0 restyle + fixture journey and route sweep (checkpoints/P7-screenshots); authenticated check pending."
   },
   {
    "path": "/vuln-repo/software-assets",
@@ -252,9 +252,9 @@
   {
    "path": "/inventory/ai/executions",
    "scope": "contained_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/inventory/ai/declared-resources",
@@ -301,9 +301,9 @@
   {
    "path": "/end-of-life",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/connect/:connectView?",
@@ -324,7 +324,7 @@
    "scope": "application",
    "status": "restyled_fixture_verified",
    "phase": "P5",
-   "note": "tenants, users, platform-audit, demo-requests, eol and ai-policies restyled in P5; vuln-intel restyled in P6 (ui2-connect-family); operations belongs to P7 (no family root)."
+   "note": "tenants, users, platform-audit, demo-requests, eol and ai-policies restyled in P5; vuln-intel restyled in P6 (ui2-connect-family); operations restyled in P7 (ui2-experience-family)."
   },
   {
    "path": "/authorized-workspaces",
@@ -343,9 +343,9 @@
   {
    "path": "*",
    "scope": "legacy_redirect",
-   "status": "inventoried",
+   "status": "redirect_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: redirect target verified by experience-journey on legacy and UI 2.0 builds."
   },
   {
    "path": "/demo",
@@ -406,58 +406,58 @@
   {
    "path": "/invite",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/tenant-invite",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/setup",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/invite/:token",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/tenant-invite/:token",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/setup/:token",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/login",
    "scope": "auth_entry",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P7",
-   "note": ""
+   "note": "P7: auth-entry restyle + fixture journey (login, setup, demo and workspace invites); authenticated check pending."
   },
   {
    "path": "/*",
    "scope": "authenticated_app_mount",
-   "status": "inventoried",
+   "status": "restyled_fixture_verified",
    "phase": "P1",
-   "note": "Catch-all that mounts AuthSessionBoundary + shell; unknown paths redirect to /."
+   "note": "Catch-all that mounts AuthSessionBoundary + shell; unknown paths redirect to /. P7: unknown paths verified to redirect to / and then the role home."
   }
  ],
  "p0Note": "P0 (2026-10-24, Claude Code): each declared pattern classified by scope and owning phase from App.tsx. Inventory only — no visual acceptance implied. Optional sub-views (:inventoryView?, :adminView?, :platformView?, :connectView?, :configView?, :operationsView?) are covered by their owning phase."

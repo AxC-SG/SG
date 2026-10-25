@@ -274,7 +274,7 @@ export function ExposureDashboardPage() {
   ]);
 
   if (!dash && dashQ.isPending) {
-    return <div className="panel" aria-busy="true" aria-label="Exposure dashboard" />;
+    return <div className="panel ui2-experience-family" aria-busy="true" aria-label="Exposure dashboard" />;
   }
 
   // ── Risk posture numbers ──────────────────────────────────────────
@@ -394,7 +394,7 @@ export function ExposureDashboardPage() {
   ];
 
   return (
-    <div className="page-grid exec-dashboard">
+    <div className="page-grid exec-dashboard ui2-experience-family">
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={refreshing}

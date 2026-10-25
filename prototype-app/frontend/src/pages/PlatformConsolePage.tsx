@@ -147,7 +147,7 @@ export function PlatformConsolePage({ selectedView }: PlatformConsolePageProps) 
   };
 
   return (
-    <div className={`page-grid platform-console-page${selectedView === 'vuln-intel' ? ' platform-console-page--feeds' : ''}${selectedView === 'vuln-intel' ? ' ui2-connect-family' : selectedView === 'operations' ? '' : ' ui2-governance-family'}`}>
+    <div className={`page-grid platform-console-page${selectedView === 'vuln-intel' ? ' platform-console-page--feeds' : ''}${selectedView === 'vuln-intel' ? ' ui2-connect-family' : selectedView === 'operations' ? ' ui2-experience-family' : ' ui2-governance-family'}`}>
       <section className={`panel platform-console-shell${hideSidebar ? ' platform-console-shell--no-sidebar' : ''}`}>
         {!hideSidebar && (
           <aside className="platform-console-sidebar" aria-label="Platform views">

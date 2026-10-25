@@ -1079,7 +1079,7 @@ export function DemoInvitePage() {
   const invite = inviteQuery.data;
   const deliveryFailed = invite?.status === 'DELIVERY_ERROR';
   return (
-    <PublicDemoShell compact>
+    <PublicDemoShell compact authEntry>
       <section className="public-form-panel">
         <h1>Demo invite</h1>
         {!token ? (
@@ -1147,7 +1147,7 @@ export function TenantInvitePage() {
   const deliveryFailed = invite?.status === 'DELIVERY_ERROR';
 
   return (
-    <PublicDemoShell compact>
+    <PublicDemoShell compact authEntry>
       <section className="public-form-panel">
         <h1>Workspace invite</h1>
         {!token ? (
@@ -1289,7 +1289,7 @@ export function LoginPage() {
   };
 
   return (
-    <PublicDemoShell compact>
+    <PublicDemoShell compact authEntry>
       <section className="public-form-panel">
         <h1>Log in to ScoutGrid</h1>
         <p>
@@ -1388,7 +1388,7 @@ export function SetupSessionPage() {
   }, [navigate, email, token]);
 
   return (
-    <PublicDemoShell compact>
+    <PublicDemoShell compact authEntry>
       <section className="public-form-panel">
         <h1>Preparing password setup</h1>
         {error ? <div className="notice error" role="alert">{error}</div> : <p>Securing your one-time setup session...</p>}
@@ -1409,7 +1409,7 @@ export function DemoExpiredPage() {
   );
 }
 
-function PublicDemoShell({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) {
+function PublicDemoShell({ children, compact = false, authEntry = false }: { children: React.ReactNode; compact?: boolean; authEntry?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [hasStoredToken, setHasStoredToken] = React.useState(() => getStoredAuthToken().trim().length > 0);
@@ -1425,7 +1425,7 @@ function PublicDemoShell({ children, compact = false }: { children: React.ReactN
   }, [navigate]);
 
   return (
-    <main className={compact ? 'public-demo-shell compact' : 'public-demo-shell'}>
+    <main className={`${compact ? 'public-demo-shell compact' : 'public-demo-shell'}${authEntry ? ' ui2-experience-family' : ''}`}>
       <nav className="public-demo-nav">
         <div className="public-demo-nav-inner">
           <Link to="/demo" className="public-demo-brand">

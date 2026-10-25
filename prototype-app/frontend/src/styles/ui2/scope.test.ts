@@ -90,6 +90,12 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(unanchored).toEqual([]);
   });
 
+  it('anchors remaining-experience rules on the dashboard, campaign, operations and auth-entry roots', () => {
+    expect(selectors(sheets['./experience.css']).length).toBeGreaterThan(50);
+    const unanchored = selectors(sheets['./experience.css']).filter((selector) => !anchoredOn(selector, ['.ui2-experience-family']));
+    expect(unanchored).toEqual([]);
+  });
+
   it('anchors Inventory-family rules on the Inventory page roots', () => {
     expect(selectors(sheets['./inventory.css']).length).toBeGreaterThan(20);
     const unanchored = selectors(sheets['./inventory.css']).filter((selector) => !anchoredOn(selector, ['.ui2-inventory-family']));

@@ -267,7 +267,7 @@ function PlatformDashboard() {
   const recentAdvisories: VulnRepoDashboardRecentAdvisoryItem[] = dashboardQuery.data?.recentAdvisories ?? [];
 
   return (
-    <div className="page-grid vuln-repo-dashboard-page">
+    <div className="page-grid vuln-repo-dashboard-page ui2-experience-family">
       <section className="panel vuln-repo-dashboard-panel">
         <div className="panel-header">
           <div className="vuln-repo-dashboard-section-copy">
@@ -418,7 +418,7 @@ function TenantDashboard() {
   ) : null;
 
   return (
-    <div className="page-grid vuln-repo-dashboard-page">
+    <div className="page-grid vuln-repo-dashboard-page ui2-experience-family">
       <PageFreshnessStatus
         updatedAt={dashboard?.generatedAt ?? dashboardQuery.dataUpdatedAt}
         isRefreshing={refreshing}

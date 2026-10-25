@@ -1,0 +1,1012 @@
+[
+  {
+    "name": "exposure loads /dashboard/exposure-summary_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /dashboard/grid-exposure_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /vuln-repo/dashboard_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /eol/status/summary_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "six KPI tiles in order_dark",
+    "ok": true,
+    "detail": "Critical Findings|Open Findings|Impacted CVEs|CISA KEV Exposure|Needs Attention|EOL Software"
+  },
+  {
+    "name": "KPI values from fixtures_dark",
+    "ok": true,
+    "detail": "84|1,223|286|12|58|14"
+  },
+  {
+    "name": "KPI tone classes kept_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "grid exposure 4 asset domains_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "grid exposure band classes kept_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "insights listed_dark",
+    "ok": true,
+    "detail": "6"
+  },
+  {
+    "name": "critical CVE rows_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "top asset by finding volume_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "freshness status shown_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "critical KPI opens open critical findings_dark",
+    "ok": true,
+    "detail": "/findings?severity=CRITICAL&status=OPEN"
+  },
+  {
+    "name": "grid cell opens host critical findings_dark",
+    "ok": true,
+    "detail": "/findings?severity=CRITICAL&status=OPEN&assetType=HOST"
+  },
+  {
+    "name": "needs-attention KPI opens unworked impacted CVEs_dark",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?impactedOnly=true&hasFindings=false"
+  },
+  {
+    "name": "critical CVE row opens the workbench_dark",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "asset row opens host detail_dark",
+    "ok": true,
+    "detail": "/vuln-repo/host-assets/asset-host-payments-01"
+  },
+  {
+    "name": "exploit callout opens KEV intelligence_dark",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?inKev=true&includeAll=true"
+  },
+  {
+    "name": "EOL insight redirects tenant to exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "no page errors on exposure_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "CVE dashboard lists critical unresolved_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "CVE dashboard lists impacted assets_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unresolved item opens the workbench_dark",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "campaigns list renders every campaign_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "campaigns list requests all statuses_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "search narrows to one campaign_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Blocked tab requests status=BLOCKED_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Blocked tab shows the blocked campaign_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "New Campaign opens the wizard_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "wizard closes_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row opens the campaign detail_dark",
+    "ok": true,
+    "detail": "/vuln-repo/campaigns/campaign-openssl-q4"
+  },
+  {
+    "name": "detail shows the campaign title_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "detail tab strip_dark",
+    "ok": true,
+    "detail": "7"
+  },
+  {
+    "name": "findings tab lists campaign findings_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings tab marks the active tab_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Move to Review posts IN_REVIEW_dark",
+    "ok": true,
+    "detail": "{\"status\":\"IN_REVIEW\"}"
+  },
+  {
+    "name": "breadcrumb returns to campaigns_dark",
+    "ok": true,
+    "detail": "/vuln-repo/campaigns"
+  },
+  {
+    "name": "unknown campaign shows not-found with back action_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "blocked campaign renders its status_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on tenant journey_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "/operations renders the pipeline view_dark",
+    "ok": true,
+    "detail": "/operations"
+  },
+  {
+    "name": "pipeline stale-source delay notice_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "pipeline source breakdown rows_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform health scorecard_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ops table rows carry one cell per header_dark",
+    "ok": true,
+    "detail": "[true,true,true,true,true]"
+  },
+  {
+    "name": "legacy ops alias renders pipeline_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "/operations/quality redirects to inventory quality tab_dark",
+    "ok": true,
+    "detail": "/inventory?inventoryTabs=quality-vex&inventoryActiveTab=quality-vex"
+  },
+  {
+    "name": "no page errors on operations_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "platform-scope /operations redirects to platform EOL_dark",
+    "ok": true,
+    "detail": "/platform/eol"
+  },
+  {
+    "name": "platform operations tenant attention rows_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform operations subnav tabs_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform operations subview in URL_dark",
+    "ok": true,
+    "detail": "/platform/operations?ops=tenant-health"
+  },
+  {
+    "name": "platform-scope /end-of-life redirects to platform EOL_dark",
+    "ok": true,
+    "detail": "/platform/eol"
+  },
+  {
+    "name": "platform owner home is tenants_dark",
+    "ok": true,
+    "detail": "/platform/tenants"
+  },
+  {
+    "name": "platform CVE dashboard renders_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on platform journey_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "redirect /_dark",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence?severity=CRITICAL_dark",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?severity=CRITICAL"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence/vulnerabilities_dark",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence/org-cves/CVE-2026-31337_dark",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "redirect /vuln-repo/policies_dark",
+    "ok": true,
+    "detail": "/platform/ai-policies"
+  },
+  {
+    "name": "redirect /fix-intelligence/details/fix-1_dark",
+    "ok": true,
+    "detail": "/findings"
+  },
+  {
+    "name": "redirect /end-of-life_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "redirect /no-such-route_dark",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "legacy /?tab= link resolves to the role home (recorded quirk)_dark",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "redirect /inventory/ai/executions stays in AI inventory_dark",
+    "ok": true,
+    "detail": "/inventory/ai"
+  },
+  {
+    "name": "analyst home is exposure_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "analyst /operations has no operations nav_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unauthenticated route redirects to login with next_dark",
+    "ok": true,
+    "detail": "/login?next=%2Fexposure"
+  },
+  {
+    "name": "sign in disabled until both fields are filled_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "test personas hidden without the flag_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "rejected login shows the server message_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "rejected login keeps the email_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "login posts email and password_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "activation notice and prefilled email_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "set password needs 8 characters_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "set password posts and returns to login_dark",
+    "ok": true,
+    "detail": "/login?activated=1&email=new.user%40example.test"
+  },
+  {
+    "name": "invite link token removed from the URL_dark",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/tenant-invite"
+  },
+  {
+    "name": "workspace invite details_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "accepted invite opens password setup_dark",
+    "ok": true,
+    "detail": "/login?setup=1&email=new.user%40example.test"
+  },
+  {
+    "name": "demo invite delivery error is truthful_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "expired invite shows the server message_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "invite without token reports an expired link_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "setup link exchanges and opens password setup_dark",
+    "ok": true,
+    "detail": "/login?setup=1&email=new.user%40example.test"
+  },
+  {
+    "name": "invalid setup link shows an error_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "public nav log-in link kept_dark",
+    "ok": true,
+    "detail": "/login"
+  },
+  {
+    "name": "no page errors on auth entry_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "successful login opens the role home_dark",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "no page overflow at 390px /exposure (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo/campaigns (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo/campaigns/campaign-openssl-q4 (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /operations/pipeline (PLATFORM_OWNER+TENANT_ADMIN)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /operations/platform-health (PLATFORM_OWNER+TENANT_ADMIN)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /platform/operations (PLATFORM_OWNER)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo (PLATFORM_OWNER)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /login (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /tenant-invite (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /invite (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /setup (TENANT_ADMIN+SECURITY_ANALYST)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /dashboard/exposure-summary_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /dashboard/grid-exposure_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /vuln-repo/dashboard_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "exposure loads /eol/status/summary_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "six KPI tiles in order_light",
+    "ok": true,
+    "detail": "Critical Findings|Open Findings|Impacted CVEs|CISA KEV Exposure|Needs Attention|EOL Software"
+  },
+  {
+    "name": "KPI values from fixtures_light",
+    "ok": true,
+    "detail": "84|1,223|286|12|58|14"
+  },
+  {
+    "name": "KPI tone classes kept_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "grid exposure 4 asset domains_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "grid exposure band classes kept_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "insights listed_light",
+    "ok": true,
+    "detail": "6"
+  },
+  {
+    "name": "critical CVE rows_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "top asset by finding volume_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "freshness status shown_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "critical KPI opens open critical findings_light",
+    "ok": true,
+    "detail": "/findings?severity=CRITICAL&status=OPEN"
+  },
+  {
+    "name": "grid cell opens host critical findings_light",
+    "ok": true,
+    "detail": "/findings?severity=CRITICAL&status=OPEN&assetType=HOST"
+  },
+  {
+    "name": "needs-attention KPI opens unworked impacted CVEs_light",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?impactedOnly=true&hasFindings=false"
+  },
+  {
+    "name": "critical CVE row opens the workbench_light",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "asset row opens host detail_light",
+    "ok": true,
+    "detail": "/vuln-repo/host-assets/asset-host-payments-01"
+  },
+  {
+    "name": "exploit callout opens KEV intelligence_light",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?inKev=true&includeAll=true"
+  },
+  {
+    "name": "EOL insight redirects tenant to exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "no page errors on exposure_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "CVE dashboard lists critical unresolved_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "CVE dashboard lists impacted assets_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unresolved item opens the workbench_light",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "campaigns list renders every campaign_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "campaigns list requests all statuses_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "search narrows to one campaign_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Blocked tab requests status=BLOCKED_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Blocked tab shows the blocked campaign_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "New Campaign opens the wizard_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "wizard closes_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row opens the campaign detail_light",
+    "ok": true,
+    "detail": "/vuln-repo/campaigns/campaign-openssl-q4"
+  },
+  {
+    "name": "detail shows the campaign title_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "detail tab strip_light",
+    "ok": true,
+    "detail": "7"
+  },
+  {
+    "name": "findings tab lists campaign findings_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings tab marks the active tab_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Move to Review posts IN_REVIEW_light",
+    "ok": true,
+    "detail": "{\"status\":\"IN_REVIEW\"}"
+  },
+  {
+    "name": "breadcrumb returns to campaigns_light",
+    "ok": true,
+    "detail": "/vuln-repo/campaigns"
+  },
+  {
+    "name": "unknown campaign shows not-found with back action_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "blocked campaign renders its status_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on tenant journey_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "/operations renders the pipeline view_light",
+    "ok": true,
+    "detail": "/operations"
+  },
+  {
+    "name": "pipeline stale-source delay notice_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "pipeline source breakdown rows_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform health scorecard_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ops table rows carry one cell per header_light",
+    "ok": true,
+    "detail": "[true,true,true,true,true]"
+  },
+  {
+    "name": "legacy ops alias renders pipeline_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "/operations/quality redirects to inventory quality tab_light",
+    "ok": true,
+    "detail": "/inventory?inventoryTabs=quality-vex&inventoryActiveTab=quality-vex"
+  },
+  {
+    "name": "no page errors on operations_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "platform-scope /operations redirects to platform EOL_light",
+    "ok": true,
+    "detail": "/platform/eol"
+  },
+  {
+    "name": "platform operations tenant attention rows_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform operations subnav tabs_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform operations subview in URL_light",
+    "ok": true,
+    "detail": "/platform/operations?ops=tenant-health"
+  },
+  {
+    "name": "platform-scope /end-of-life redirects to platform EOL_light",
+    "ok": true,
+    "detail": "/platform/eol"
+  },
+  {
+    "name": "platform owner home is tenants_light",
+    "ok": true,
+    "detail": "/platform/tenants"
+  },
+  {
+    "name": "platform CVE dashboard renders_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on platform journey_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "redirect /_light",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence?severity=CRITICAL_light",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities?severity=CRITICAL"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence/vulnerabilities_light",
+    "ok": true,
+    "detail": "/vuln-repo/vulnerabilities"
+  },
+  {
+    "name": "redirect /vulnerability-intelligence/org-cves/CVE-2026-31337_light",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2026-31337"
+  },
+  {
+    "name": "redirect /vuln-repo/policies_light",
+    "ok": true,
+    "detail": "/platform/ai-policies"
+  },
+  {
+    "name": "redirect /fix-intelligence/details/fix-1_light",
+    "ok": true,
+    "detail": "/findings"
+  },
+  {
+    "name": "redirect /end-of-life_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "redirect /no-such-route_light",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "legacy /?tab= link resolves to the role home (recorded quirk)_light",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "redirect /inventory/ai/executions stays in AI inventory_light",
+    "ok": true,
+    "detail": "/inventory/ai"
+  },
+  {
+    "name": "analyst home is exposure_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "analyst /operations has no operations nav_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unauthenticated route redirects to login with next_light",
+    "ok": true,
+    "detail": "/login?next=%2Fexposure"
+  },
+  {
+    "name": "sign in disabled until both fields are filled_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "test personas hidden without the flag_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "rejected login shows the server message_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "rejected login keeps the email_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "login posts email and password_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "activation notice and prefilled email_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "set password needs 8 characters_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "set password posts and returns to login_light",
+    "ok": true,
+    "detail": "/login?activated=1&email=new.user%40example.test"
+  },
+  {
+    "name": "invite link token removed from the URL_light",
+    "ok": true,
+    "detail": "http://127.0.0.1:5176/tenant-invite"
+  },
+  {
+    "name": "workspace invite details_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "accepted invite opens password setup_light",
+    "ok": true,
+    "detail": "/login?setup=1&email=new.user%40example.test"
+  },
+  {
+    "name": "demo invite delivery error is truthful_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "expired invite shows the server message_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "invite without token reports an expired link_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "setup link exchanges and opens password setup_light",
+    "ok": true,
+    "detail": "/login?setup=1&email=new.user%40example.test"
+  },
+  {
+    "name": "invalid setup link shows an error_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "public nav log-in link kept_light",
+    "ok": true,
+    "detail": "/login"
+  },
+  {
+    "name": "no page errors on auth entry_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "successful login opens the role home_light",
+    "ok": true,
+    "detail": "/configurations"
+  },
+  {
+    "name": "no page overflow at 390px /exposure (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo/campaigns (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo/campaigns/campaign-openssl-q4 (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /operations/pipeline (PLATFORM_OWNER+TENANT_ADMIN)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /operations/platform-health (PLATFORM_OWNER+TENANT_ADMIN)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /platform/operations (PLATFORM_OWNER)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /vuln-repo (PLATFORM_OWNER)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /login (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /tenant-invite (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /invite (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /setup (TENANT_ADMIN+SECURITY_ANALYST)_light",
+    "ok": true,
+    "detail": ""
+  }
+]
