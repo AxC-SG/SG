@@ -91,11 +91,20 @@ class CustomerDemoDatasetPostgresIntegrationTest {
                 UPDATE bom_component_workflows
                    SET workflow_status = 'IN_PROGRESS'
                 """));
+        assertEquals(java.util.List.of(9.0, 7.0), riskThresholds(tenant), "fresh seed uses the 0-10 risk score scale");
+        // Datasets seeded before the fix stored 0-100 values the SLA page rejects; repair corrects them.
+        tenantSchemaExecutionService.run(tenant, () -> jdbcTemplate.update(
+                "UPDATE risk_policies SET critical_threshold = 90, high_threshold = 70"));
         assertEquals(true, datasetService.needsRepair(tenant));
         var second = datasetService.seed(tenant);
         assertEquals(false, datasetService.needsRepair(tenant));
 
         assertEquals(first, second);
+        assertEquals(java.util.List.of(9.0, 7.0), riskThresholds(tenant), "repair corrects 0-100 seeded thresholds");
+        tenantSchemaExecutionService.run(tenant, () -> jdbcTemplate.update(
+                "UPDATE risk_policies SET critical_threshold = 8.5, high_threshold = 6.5"));
+        datasetService.seed(tenant);
+        assertEquals(java.util.List.of(8.5, 6.5), riskThresholds(tenant), "repair keeps valid administrator thresholds");
         assertEquals(10, first.assets());
         assertEquals(10, first.sboms());
         assertEquals(40, first.components());
@@ -237,5 +246,11 @@ class CustomerDemoDatasetPostgresIntegrationTest {
 
     private int count(String table) {
         return jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+    }
+
+    private java.util.List<Double> riskThresholds(Tenant tenant) {
+        return tenantSchemaExecutionService.run(tenant, () -> jdbcTemplate.queryForObject(
+                "SELECT critical_threshold, high_threshold FROM risk_policies",
+                (row, index) -> java.util.List.of(row.getDouble(1), row.getDouble(2))));
     }
 }
