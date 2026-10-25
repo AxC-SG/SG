@@ -78,6 +78,21 @@ describe('Enriched reference workflows', () => {
     expect(within(drawer).getByText(/not runtime execution/)).toBeInTheDocument();
   });
 
+  it('shows distinct loading, failed and empty relationship graph states', () => {
+    fixture(<AiAssetPage onNavigate={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: /Relationships/ }));
+    expect(screen.getByRole('region', { name: 'Static AI resource relationships' })).toBeInTheDocument();
+    expect(screen.queryByText(/finding-linked/)).not.toBeInTheDocument();
+    const graphFixture = screen.getByLabelText('Graph fixture');
+    fireEvent.change(graphFixture, { target: { value: 'loading' } });
+    expect(screen.getByText('Loading connected resources…')).toBeInTheDocument();
+    fireEvent.change(graphFixture, { target: { value: 'error' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Connected resources could not be loaded.');
+    expect(screen.queryByText('No active relationships observed')).not.toBeInTheDocument();
+    fireEvent.change(graphFixture, { target: { value: 'empty' } });
+    expect(screen.getByText('No active relationships observed')).toBeInTheDocument();
+  });
+
   it('gates policy publication on dev/test and approval, and excludes suspended tenants', async () => {
     fixture(<PolicyDistributionPage route="/platform/ai-policies/tool-access" onNavigate={vi.fn()} />, { scope: 'platform' });
     expect(screen.getByRole('button', { name: 'Publish policy' })).toBeDisabled();

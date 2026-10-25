@@ -57,9 +57,15 @@ type GraphNodeDetailsPopupProps = {
   findingsCount: number;
   policies: AiSecurityPolicy[];
   onViewDetails: (artifactId: string) => void;
+  onDismiss: () => void;
 };
 
-function GraphNodeDetailsPopup({ artifact, isRoot, findingsCount, policies, onViewDetails }: GraphNodeDetailsPopupProps) {
+function GraphNodeDetailsPopup({ artifact, isRoot, findingsCount, policies, onViewDetails, onDismiss }: GraphNodeDetailsPopupProps) {
+  const popupRef = React.useRef<HTMLDivElement>(null);
+  // Non-modal: move focus in so keyboard and screen-reader users land on the details; Escape returns.
+  React.useEffect(() => {
+    popupRef.current?.focus();
+  }, [artifact.id]);
   const postureQuery = useQuery({
     queryKey: ['ai-security-graph-node-posture', artifact.id],
     queryFn: () => api.getAiAssetPosture(artifact.id),
@@ -69,7 +75,16 @@ function GraphNodeDetailsPopup({ artifact, isRoot, findingsCount, policies, onVi
     : null;
 
   return (
-    <div className="ai-dependency-graph-popup" role="dialog" aria-label={`${artifact.name} details`}>
+    <div
+      ref={popupRef}
+      className="ai-dependency-graph-popup"
+      role="dialog"
+      aria-label={`${artifact.name} details`}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onDismiss();
+      }}
+    >
       <div className="ai-dependency-graph-popup-header">
         <span aria-hidden="true">{ARTIFACT_TYPE_ICON[artifact.artifactType] ?? '📦'}</span>
         <div className="ai-dependency-graph-popup-title">
@@ -115,7 +130,7 @@ function AiArtifactNode({ data }: { data: DependencyGraphNodeData }) {
       <span aria-hidden="true">{ARTIFACT_TYPE_ICON[data.artifactType] ?? '📦'}</span>
       <div className="ai-dependency-graph-node-text">
         <strong>{data.label}</strong>
-        <small>{data.nativeKind}</small>
+        <small>{formatLabel(data.nativeKind)}</small>
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
@@ -143,14 +158,37 @@ export function AiDependencyGraph({
     () => layoutDependencyGraph(graph, rootArtifactId),
     [graph, rootArtifactId],
   );
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [selectedArtifactId, setSelectedArtifactId] = React.useState<string | null>(null);
   const selectedArtifact = React.useMemo(
     () => graph.nodes.find((node) => node.id === selectedArtifactId) ?? null,
     [graph.nodes, selectedArtifactId],
   );
 
+  // React Flow nodes are focusable and Enter/Space selects them, but only a click reaches
+  // onNodeClick; open the same details popup from the keyboard.
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains('react-flow__node') || !target.dataset.id) return;
+    event.preventDefault();
+    setSelectedArtifactId(target.dataset.id);
+  };
+  const dismissPopup = () => {
+    const nodeId = selectedArtifactId;
+    setSelectedArtifactId(null);
+    const nodes = containerRef.current?.querySelectorAll<HTMLElement>('.react-flow__node') ?? [];
+    Array.from(nodes).find((node) => node.dataset.id === nodeId)?.focus();
+  };
+
   return (
-    <div className="ai-dependency-graph" role="img" aria-label="AI artifact dependency graph">
+    <div
+      ref={containerRef}
+      className="ai-dependency-graph"
+      role="region"
+      aria-label="AI artifact dependency graph"
+      onKeyDown={handleKeyDown}
+    >
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -173,6 +211,7 @@ export function AiDependencyGraph({
           isRoot={selectedArtifact.id === rootArtifactId}
           findingsCount={findingsCountByArtifactId[selectedArtifact.id] ?? 0}
           policies={policies}
+          onDismiss={dismissPopup}
           onViewDetails={(artifactId) => {
             setSelectedArtifactId(null);
             onNodeClick?.(artifactId);

@@ -260,3 +260,123 @@ html[data-ui='2'] .ui2-inventory-family .sdi-title-product {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* ── AI asset relationship graph (reference `.dp-graph`, `.dp-graph-node`) ──
+ * React Flow's default edge-label background and control buttons are light-only, which left
+ * pale labels on white boxes and blank control buttons in dark mode (legacy too). */
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__background {
+  color: var(--dp-border-strong);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__controls {
+  overflow: hidden;
+  border-radius: var(--dp-radius);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__controls-button {
+  border-color: var(--dp-border);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  fill: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__controls-button:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__edge-path {
+  stroke: var(--dp-border-strong);
+  stroke-width: 1.5;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__edge-text {
+  fill: var(--dp-text-2);
+  font-size: 10px;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__edge-textbg {
+  fill: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  border: 0;
+  background: var(--dp-border-strong);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-node {
+  --tone: var(--dp-text-3);
+  padding: 8px 12px 8px 10px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm), inset 3px 0 0 var(--tone);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-node--root {
+  --tone: var(--dp-accent);
+  border-color: color-mix(in srgb, var(--dp-accent) 45%, var(--dp-border));
+}
+
+html[data-ui='2'] .ui2-inventory-family .react-flow__node.selected .ai-dependency-graph-node {
+  box-shadow: var(--dp-ring);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-node-text {
+  line-height: 1.25;
+}
+
+/* Sans rather than the reference mono: layout fixes nodes at 220px and mono truncates names. */
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-node-text strong {
+  color: var(--dp-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-node-text small {
+  overflow: hidden;
+  color: var(--dp-text-3);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Node details side panel (reference "Selected resource" card). */
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup {
+  border-left-color: var(--dp-border);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-title strong {
+  color: var(--dp-text);
+  font-family: var(--dp-mono);
+  font-size: 13px;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-title small,
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-facts dt,
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-status.is-inactive {
+  color: var(--dp-text-3);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-facts {
+  gap: 8px 12px;
+  font-size: 12px;
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-facts dd {
+  color: var(--dp-text);
+}

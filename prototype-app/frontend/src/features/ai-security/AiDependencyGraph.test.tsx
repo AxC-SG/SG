@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api/client';
 import { renderWithProviders } from '../../test/test-utils';
@@ -86,8 +86,8 @@ describe('AiDependencyGraph', () => {
 
     fireEvent.click(await screen.findByText('depth-fn'));
 
-    expect(await screen.findByRole('dialog', { name: 'depth-fn details' })).toBeInTheDocument();
-    expect(screen.getByText('AWS_LAMBDA_FUNCTION')).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: 'depth-fn details' });
+    expect(within(dialog).getByText('Aws Lambda Function')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('Not classified')).toBeInTheDocument();
@@ -172,6 +172,36 @@ describe('AiDependencyGraph', () => {
 
     fireEvent.click(container.querySelector('.react-flow__pane')!);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows the native kind as a readable label on each node', async () => {
+    const { container } = renderWithProviders(<AiDependencyGraph graph={buildGraph()} rootArtifactId="artifact-1" />);
+    await screen.findByText('depth-fn');
+    const subtitles = Array.from(container.querySelectorAll('.ai-dependency-graph-node-text small')).map((node) => node.textContent);
+    expect(subtitles).toContain('Aws Lambda Function');
+    expect(subtitles).not.toContain('AWS_LAMBDA_FUNCTION');
+  });
+
+  it('exposes the graph as a labelled region rather than a single image', async () => {
+    renderWithProviders(<AiDependencyGraph graph={buildGraph()} rootArtifactId="artifact-1" />);
+    await screen.findByText('depth-fn');
+    expect(screen.getByRole('region', { name: 'AI artifact dependency graph' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'AI artifact dependency graph' })).not.toBeInTheDocument();
+  });
+
+  it('opens the details from the keyboard, focuses them, and returns focus to the node on Escape', async () => {
+    const { container } = renderWithProviders(<AiDependencyGraph graph={buildGraph()} rootArtifactId="artifact-1" />);
+    await screen.findByText('depth-fn');
+    const node = container.querySelector<HTMLElement>('.react-flow__node[data-id="artifact-2"]')!;
+    node.focus();
+    fireEvent.keyDown(node, { key: 'Enter' });
+
+    const dialog = await screen.findByRole('dialog', { name: 'depth-fn details' });
+    expect(dialog).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(node).toHaveFocus();
   });
 
   it('shows a truncation notice when the graph was capped', async () => {

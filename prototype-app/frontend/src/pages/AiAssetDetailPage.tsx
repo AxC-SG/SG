@@ -496,6 +496,8 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
             <>
             {graphQuery.isLoading ? (
               <div className="empty-state"><p>Loading connected resources…</p></div>
+            ) : graphQuery.isError && !graphQuery.data ? (
+              <div className="empty-state"><p role="alert">Connected resources could not be loaded.</p></div>
             ) : (graphQuery.data?.edges.length ?? 0) === 0 ? (
               <div className="empty-state"><p>No active relationships observed for this asset.</p></div>
             ) : (

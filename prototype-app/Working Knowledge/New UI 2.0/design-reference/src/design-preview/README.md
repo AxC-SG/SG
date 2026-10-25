@@ -41,7 +41,7 @@ Review hub button is available throughout the app.
 | `#/findings/ai/vulnerabilities` | AI-resource-scoped software vulnerabilities |
 | `#/reference` | Review hub and original pattern links |
 | `#/vuln-repo/org-cves/CVE-2026-31337` | Overview, investigation, separate applicability/impact, impacted assets/configuration, fixes, notification drafts, retained edits |
-| `#/inventory/ai/support-agent` | AI asset context, policies, static evidence, selectable relationship graph, dense/empty graph, provenance drawer |
+| `#/inventory/ai/support-agent` | AI asset context, policies, static evidence, selectable relationship graph, dense/empty/loading/failed graph, provenance drawer |
 | `#/platform/ai-policies` | Platform policy catalog |
 | `#/platform/ai-policies/tool-access` | Dev/test cohort → evidence approval → publication; selected/all-active scope; failed rollout and retry |
 | `#/inventory/overview` | Long identifiers, expandable versions, missing/zero values, right-edge filter, software/EOL drawer |
