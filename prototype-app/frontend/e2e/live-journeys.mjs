@@ -5,14 +5,14 @@
 // because live data is not the fixture data the *-journey.mjs scripts pin.
 //
 // Usage:
-//   PLAYWRIGHT_DIR=<dir with node_modules/playwright> [CHROMIUM_PATH=<chromium>] \
+//   [CHROMIUM_PATH=<chromium>] \
 //   LIVE_CREDENTIALS=<json file {email,password} of a disposable tenant admin, outside the repo> \
 //   LIVE_PLATFORM_CREDENTIALS=<json file {email,password} of a local platform owner, outside the repo> \
 //   node live-journeys.mjs --base http://127.0.0.1:5180 --out <dir> --label live \
 //     [--journeys findings,ai,cve,inventory,authority,connect] [--themes dark,light]
 // External delivery is never exercised: ServiceNow is left unconfigured or pointed at a reserved
 // example.test host, and the platform-create step only creates another disposable tenant.
-import { createRequire } from 'node:module';
+import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -22,8 +22,6 @@ const args = Object.fromEntries(
     return pairs;
   }, [])
 );
-const require = createRequire(path.join(process.env.PLAYWRIGHT_DIR ?? process.cwd(), 'noop.js'));
-const { chromium } = require('playwright');
 
 const base = args.base ?? 'http://127.0.0.1:5180';
 const out = args.out ?? 'live';

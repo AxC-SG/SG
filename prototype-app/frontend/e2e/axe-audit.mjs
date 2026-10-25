@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // UI 2.0 P8 — axe-core accessibility audit over representative tenant/platform/public routes, fixture-backed.
 // Compare a UI 2.0 run to a legacy run to separate regressions from pre-existing violations.
-// Usage: PLAYWRIGHT_DIR=<dir> AXE_PATH=<axe.min.js> [CHROMIUM_PATH=<chromium>] \
+// Usage: [CHROMIUM_PATH=<chromium>] \
 //   node axe-audit.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--themes dark,light] [--inject-css <file>]
 // --inject-css appends a stylesheet after load, to measure a proposed token change without rebuilding.
 import { createRequire } from 'node:module';
+import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { actor, routeFixtures } from './fixtures.mjs';
@@ -14,13 +15,11 @@ import { PRIMARY_AI_ASSET_ID, PRIMARY_HOST_ID, PRIMARY_SOFTWARE_IDENTITY_ID } fr
 import { PRIMARY_CAMPAIGN_ID } from './experience-fixtures.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, v, i, a) => (v.startsWith('--') && p.push([v.slice(2), a[i + 1]]), p), []));
-const require = createRequire(path.join(process.env.PLAYWRIGHT_DIR ?? process.cwd(), 'noop.js'));
-const { chromium } = require('playwright');
 const base = args.base ?? 'http://127.0.0.1:5175';
 const out = args.out ?? 'axe';
 const label = args.label ?? 'axe';
 const themes = (args.themes ?? 'dark,light').split(',');
-const axeSource = readFileSync(process.env.AXE_PATH, 'utf8');
+const axeSource = readFileSync(createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const injectCss = args['inject-css'] ? readFileSync(args['inject-css'], 'utf8') : null;
 mkdirSync(out, { recursive: true });
 

@@ -9,9 +9,9 @@
 // Fixture-backed only: this is NOT authenticated staging evidence, and no write is persisted.
 //
 // Usage:
-//   PLAYWRIGHT_DIR=<dir with node_modules/playwright> [CHROMIUM_PATH=<chromium>] \
+//   [CHROMIUM_PATH=<chromium>] \
 //   node connect-journey.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--themes dark,light]
-import { createRequire } from 'node:module';
+import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { actor, routeFixtures } from './fixtures.mjs';
@@ -31,8 +31,6 @@ const args = Object.fromEntries(
     return pairs;
   }, [])
 );
-const require = createRequire(path.join(process.env.PLAYWRIGHT_DIR ?? process.cwd(), 'noop.js'));
-const { chromium } = require('playwright');
 
 const base = args.base ?? 'http://127.0.0.1:5175';
 const out = args.out ?? 'screenshots';
