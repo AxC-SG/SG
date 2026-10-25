@@ -133,7 +133,7 @@
     "typecheck: pass",
     "build: pass incl. verify-production-bundle",
     "vitest: 718/718 in 80 files (715 baseline + 3 new)",
-    "coverage (2 consecutive runs): lines 49.43 / statements >=46.7 / functions >=38.9 / branches >=38.1 — floors unchanged. One earlier run measured lines 49.37 (7848 covered) with identical code: nondeterministic coverage in existing tests, recorded not masked."
+    "coverage (2 consecutive runs): lines 49.43 / statements >=46.7 / functions >=38.9 / branches >=38.1 \u2014 floors unchanged. One earlier run measured lines 49.37 (7848 covered) with identical code: nondeterministic coverage in existing tests, recorded not masked."
    ],
    "screenshots": [
     "checkpoints/P1-screenshots/ui2_*_{dark,light}_{1440,390}.png (8 routes) and legacy_*_{dark,light}_1440.png for comparison; capture logs ui2_log.json / legacy_log.json. data-ui=2 confirmed on every UI2 capture; no page-level horizontal overflow at 390px."
@@ -141,7 +141,7 @@
    "openIssues": [
     "Mocked-fixture screenshots only; not authenticated evidence.",
     "Inter/JetBrains Mono not bundled (CSP font-src self); system font fallback. Decide whether to self-host fonts.",
-    "Configurations SLA matrix overflows its container at 390px (inner scroll) — evaluate in P6.",
+    "Configurations SLA matrix overflows its container at 390px (inner scroll) \u2014 evaluate in P6.",
     "Page-specific CSS (findings-list, ai-security, cve-workbench, etc.) still carries legacy uppercase headers/gradients; addressed per family from P2."
    ],
    "files": [
@@ -172,7 +172,7 @@
      "status": "verified",
      "evidence": [
       "frontend/src/styles/ui2/findings.css scoped to .fpl-root and .fd3-page: page card removed, sentence-case headers/labels, 5-column widget grid with legend under donut, mini-KPI key indicators, pill group cards, one table card (list bar + table + pagination), single-line cells with horizontal table scroll, dp-style detail header/actions/tabs/panels/kv rows. No markup, label, handler or selector change on these two pages.",
-      "browser-fixtures/findings-journey.mjs (fixture-backed, 2 themes): UI 2.0 67/67; legacy 65/67 — only failure is the pre-existing legacy /findings horizontal page overflow at 390px, fixed under UI 2.0. Results: checkpoints/P2-screenshots/{ui2,legacy}_journey.json"
+      "browser-fixtures/findings-journey.mjs (fixture-backed, 2 themes): UI 2.0 67/67; legacy 65/67 \u2014 only failure is the pre-existing legacy /findings horizontal page overflow at 390px, fixed under UI 2.0. Results: checkpoints/P2-screenshots/{ui2,legacy}_journey.json"
      ]
     },
     {
@@ -180,7 +180,7 @@
      "status": "verified",
      "evidence": [
       "AiFindingsPage root gains presentation-only class ui2-findings-family; hero rendered as a plain page header with the existing controls; .severity-badge (previously unstyled everywhere) styled inside the family; AI detail shares the .fd3-page treatment.",
-      "Journey: default status=OPEN, provider=AWS serialised with status, row → /findings/ai/:id?returnTo=/findings/ai, Back returns, exposure links unchanged."
+      "Journey: default status=OPEN, provider=AWS serialised with status, row \u2192 /findings/ai/:id?returnTo=/findings/ai, Back returns, exposure links unchanged."
      ]
     },
     {
@@ -194,15 +194,15 @@
      "title": "AI exposure list and detail",
      "status": "verified",
      "evidence": [
-      "AiExposuresPage list and detail roots gain ui2-findings-family; 3-card grid (1 column ≤1000px), evidence <details>/<pre> restyled; Accept/False-positive buttons unchanged.",
-      "Journey: exposure row → /findings/ai/exposures/exposure-1 detail renders."
+      "AiExposuresPage list and detail roots gain ui2-findings-family; 3-card grid (1 column \u22641000px), evidence <details>/<pre> restyled; Accept/False-positive buttons unchanged.",
+      "Journey: exposure row \u2192 /findings/ai/exposures/exposure-1 detail renders."
      ]
     },
     {
      "title": "All filter, queue, widget, group, cursor and row interaction regression checks",
      "status": "verified",
      "evidence": [
-      "Journey: severity widget narrows table (severity=CRITICAL) while summary/distributions/backlog-health are not re-requested with severity; same widget toggles off; Status column values accumulate (OPEN,RESOLVED); chip clear; Next sends cursor=c1, Prev returns; row click selects without navigating; group-by requests /findings/groups?field=severity without ad-hoc filters; Finding ID link opens detail and Back returns; ai.security=false redirects /findings/ai → /exposure; no page errors; no page overflow at 390px on all 5 family routes.",
+      "Journey: severity widget narrows table (severity=CRITICAL) while summary/distributions/backlog-health are not re-requested with severity; same widget toggles off; Status column values accumulate (OPEN,RESOLVED); chip clear; Next sends cursor=c1, Prev returns; row click selects without navigating; group-by requests /findings/groups?field=severity without ad-hoc filters; Finding ID link opens detail and Back returns; ai.security=false redirects /findings/ai \u2192 /exposure; no page errors; no page overflow at 390px on all 5 family routes.",
       "frontend/src/styles/ui2/scope.test.ts (3 tests): every ui2 selector is behind html[data-ui='2']; every findings.css selector is anchored on .fpl-root, .fd3-page, .ui2-findings-family or the portaled .fpl-col-filter- popover."
      ]
     }
@@ -213,7 +213,7 @@
     "typecheck: pass",
     "build: pass incl. verify-production-bundle",
     "vitest: 721/721 in 81 files (718 after P1 + 3 new scope tests)",
-    "coverage: lines 49.42 / statements 46.79 / functions 38.95 / branches 38.19 — floors unchanged",
+    "coverage: lines 49.42 / statements 46.79 / functions 38.95 / branches 38.19 \u2014 floors unchanged",
     "existing FindingsPage/FindingDetailPage/AiFindingsPage/AiFindingDetailPage/AiExposuresPage tests pass unmodified"
    ],
    "screenshots": [
@@ -221,7 +221,7 @@
    ],
    "openIssues": [
     "Mocked-fixture evidence only; authenticated staging journeys remain pending_access.",
-    "Shared primitive spillover (intentional): .fpl-col-filter-popover is portaled and also used by /vuln-repo/vulnerabilities (P3) — it now has UI 2.0 styling there too.",
+    "Shared primitive spillover (intentional): .fpl-col-filter-popover is portaled and also used by /vuln-repo/vulnerabilities (P3) \u2014 it now has UI 2.0 styling there too.",
     "FindingDetailPage 'Affected Assets' counters keep uppercase labels: they use an inline style (CAP) that CSS cannot override without !important; left for a markup change in a later pass.",
     "AI Findings selects have only aria-labels (no visible labels, unlike the reference); adding visible labels is a markup change, not done.",
     "Reference Vulnerability/AI Findings family tab strip not added: it would add new navigation links and duplicate accessible names; needs a product decision.",
@@ -305,8 +305,8 @@
     "typecheck: pass",
     "build: pass incl. verify-production-bundle",
     "vitest: 722/722 in 81 files (721 after P2 + 1 new CVE scope test)",
-    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 — floors unchanged",
-    "browser-fixtures/cve-journey.mjs (2 themes): UI 2.0 80/80; legacy 74/80 — only failures are pre-existing legacy page overflow at 390px on org-cves list, workbench and assets routes, fixed under UI 2.0. Results: checkpoints/P3-screenshots/{ui2,legacy}_journey.json",
+    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 \u2014 floors unchanged",
+    "browser-fixtures/cve-journey.mjs (2 themes): UI 2.0 80/80; legacy 74/80 \u2014 only failures are pre-existing legacy page overflow at 390px on org-cves list, workbench and assets routes, fixed under UI 2.0. Results: checkpoints/P3-screenshots/{ui2,legacy}_journey.json",
     "findings-journey.mjs re-run after shared fixture routing change: 67/67",
     "verify-baseline.py: CVE critical source hashes unchanged; only the two known P2 className edits differ"
    ],
@@ -357,7 +357,7 @@
      "status": "verified",
      "evidence": [
       "Lifecycle surfaces inside inventory restyled with the family: overview lifecycle breakdown and software with EOS/EOL, software identity lifecycle widget/EOL column and version lifecycle pills, host 'Update EOL software' attention item.",
-      "Journey: ?lifecycle=eol is serialised as lifecycle=eol and narrows identities to 13. /end-of-life still redirects (platform scope → /platform/eol, otherwise /exposure); the platform EOL console belongs to P5."
+      "Journey: ?lifecycle=eol is serialised as lifecycle=eol and narrows identities to 13. /end-of-life still redirects (platform scope \u2192 /platform/eol, otherwise /exposure); the platform EOL console belongs to P5."
      ]
     },
     {
@@ -383,8 +383,8 @@
     "typecheck: pass",
     "build: pass incl. verify-production-bundle",
     "vitest: 723/723 in 81 files (722 after P3 + 1 new inventory scope test; scope test selector parser now keeps :is() groups whole)",
-    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 — floors unchanged",
-    "browser-fixtures/inventory-journey.mjs (2 themes): UI 2.0 106/106; legacy 92/106 — only failures are pre-existing legacy page overflow at 390px on hosts, software identities, container images, AI assets, AI asset detail, host detail and software identity detail, fixed under UI 2.0. Results: checkpoints/P4-screenshots/{ui2,legacy}_journey.json",
+    "coverage: lines 49.43 / statements 46.8 / functions 38.96 / branches 38.19 \u2014 floors unchanged",
+    "browser-fixtures/inventory-journey.mjs (2 themes): UI 2.0 106/106; legacy 92/106 \u2014 only failures are pre-existing legacy page overflow at 390px on hosts, software identities, container images, AI assets, AI asset detail, host detail and software identity detail, fixed under UI 2.0. Results: checkpoints/P4-screenshots/{ui2,legacy}_journey.json",
     "findings-journey.mjs 67/67 and cve-journey.mjs 80/80 re-run after the shared fixture routing and findings.css changes",
     "verify-baseline.py: 16 critical source hashes matched; only the two known P2 className edits differ"
    ],
@@ -397,7 +397,7 @@
     "sbom/BOM components loading/error/empty early returns and their ApplicationDetailPanel/BomComponentDetailPanel views have no family root and keep the P1 look.",
     "Resizable DataTable (host detail software, software identity versions, container images) has fixed column widths, so headers and cells still break mid-word; whole-word wrapping needs a DataTable change (same deferral as P3).",
     "Host detail Applicable CVEs pills overlap the EOL column (pre-existing in legacy; fixed column width).",
-    "Status pills (app-wide P1 primitive) and literal uppercase DOM text (e.g. 'BEDROCK KNOWLEDGE BASE', setup-action priority/category, 'UPDATED · 21 OCT') stay uppercase.",
+    "Status pills (app-wide P1 primitive) and literal uppercase DOM text (e.g. 'BEDROCK KNOWLEDGE BASE', setup-action priority/category, 'UPDATED \u00b7 21 OCT') stay uppercase.",
     "AI asset detail Findings/Policies tabs show 0 in fixtures: findings fixtures use artifact-1..5 ids and MODEL policy types; populating them needs a findings-fixtures change.",
     "Hosts and software identities lists page client-side (50/200); fixture sizes do not exercise their pagination. BOM inventory, container images and AI assets pagination are exercised."
    ],
@@ -511,7 +511,7 @@
      "status": "verified",
      "evidence": [
       "New frontend/src/styles/ui2/connect.css anchored on the presentation-only root class ui2-connect-family, added to ConnectPage (tenant catalog and every ?connectSource= page it frames), ConfigurationsPage, CopilotStudioConnectorPage and PlatformConsolePage's vuln-intel view. Reference `.dp-tabs` view tabs, `.dp-section` heads, `.dp-connector-card` cards with vendor-mark wells, `.dp-status-dot` health (title/aria-label unchanged), connector hero title, form sections as cards with sentence-case titles, checkbox labels beside their control.",
-      "Journey: 10 catalog cards (Inventory then BOM Management); ServiceNow dot 'Last sync · …', SCCM 'Last sync failed…', Azure 'Not configured'; no patch cards. ServiceNow: an http:// base URL save sends the typed baseUrl without a blank credentialSecret, shows the server VALIDATION_FAILED message and keeps the rejected value; the https:// save succeeds; Test Connection posts once; Escape returns to /connect. AI connectors (AWS Bedrock, Azure AI, Copilot) restyled; Copilot Run discovery posts and reports the queued job."
+      "Journey: 10 catalog cards (Inventory then BOM Management); ServiceNow dot 'Last sync \u00b7 \u2026', SCCM 'Last sync failed\u2026', Azure 'Not configured'; no patch cards. ServiceNow: an http:// base URL save sends the typed baseUrl without a blank credentialSecret, shows the server VALIDATION_FAILED message and keeps the rejected value; the https:// save succeeds; Test Connection posts once; Escape returns to /connect. AI connectors (AWS Bedrock, Azure AI, Copilot) restyled; Copilot Run discovery posts and reports the queued job."
      ]
     },
     {
@@ -590,14 +590,14 @@
      "evidence": [
       "New frontend/src/styles/ui2/experience.css anchored on the presentation-only root class ui2-experience-family, added to ExposureDashboardPage (page and loading state), VulnRepoDashboardPage (tenant and platform scope), CampaignsPage, CampaignDetailPage (page and loading/not-found state), OperationalDashboardPage (each top-level element it renders, incl. error/loading panels), PlatformConsolePage's operations view, the public shell of LoginPage/SetupSessionPage/DemoInvitePage/TenantInvitePage (new optional PublicDemoShell authEntry prop; marketing pages render without it) and FindingDetailPage's direct-link 'Finding not available' state.",
       "Exposure (reference #/exposure): no outer page card; KPI tiles with label first (CSS order only, DOM order unchanged), sentence case, 3px tone bar replacing the coloured left border; grid exposure as the reference heatmap (column hue from the severity column, intensity from the existing grid-exposure-cell--low/medium/high band; .grid-exposure-cell--high .grid-exposure-cell-btn kept); insights as tone dots without tinted boxes; known-exploit callout; list rows with hover and dividers.",
-      "Journey: 6 KPIs in order with fixture values; 4 grid domains; 6 insights; 4 critical CVEs; top asset by volume. Drill-downs unchanged: Critical KPI → /findings (CRITICAL, OPEN), host critical cell → /findings (HOST, CRITICAL), Needs Attention → /vuln-repo/vulnerabilities?impactedOnly=true&hasFindings=false, CVE row → /vuln-repo/org-cves/CVE-2026-31337, asset row → /vuln-repo/host-assets/<id>, exploit callout → KEV intelligence, View EOL → /end-of-life → /exposure for a tenant. CVE dashboard: 4 unresolved items and 4 impacted assets; CVE link opens the workbench; platform-scope /vuln-repo renders."
+      "Journey: 6 KPIs in order with fixture values; 4 grid domains; 6 insights; 4 critical CVEs; top asset by volume. Drill-downs unchanged: Critical KPI \u2192 /findings (CRITICAL, OPEN), host critical cell \u2192 /findings (HOST, CRITICAL), Needs Attention \u2192 /vuln-repo/vulnerabilities?impactedOnly=true&hasFindings=false, CVE row \u2192 /vuln-repo/org-cves/CVE-2026-31337, asset row \u2192 /vuln-repo/host-assets/<id>, exploit callout \u2192 KEV intelligence, View EOL \u2192 /end-of-life \u2192 /exposure for a tenant. CVE dashboard: 4 unresolved items and 4 impacted assets; CVE link opens the workbench; platform-scope /vuln-repo renders."
      ]
     },
     {
      "title": "Campaigns and detail",
      "status": "verified",
      "evidence": [
-      "Campaigns list: no outer card; table card with sentence-case headers and whole-word wrapping; status tabs, search and New Campaign wizard unchanged. Journey: 5 campaigns from an unfiltered /campaigns; search 'kubelet' → 1 row; Blocked tab requests ?status=BLOCKED and shows the blocked campaign; wizard opens and closes; row opens /vuln-repo/campaigns/<id>.",
+      "Campaigns list: no outer card; table card with sentence-case headers and whole-word wrapping; status tabs, search and New Campaign wizard unchanged. Journey: 5 campaigns from an unfiltered /campaigns; search 'kubelet' \u2192 1 row; Blocked tab requests ?status=BLOCKED and shows the blocked campaign; wizard opens and closes; row opens /vuln-repo/campaigns/<id>.",
       "Campaign detail (reference record-detail): breadcrumb/actions/tabs on the page background; hero, KPI, stage, progress and sidebar cards on tokens; class-styled labels in sentence case (literal uppercase DOM text such as 'CAMPAIGN STAGE' kept). Journey: 7 tabs; Findings tab lists F-1001 and marks the active tab; Move to Review POSTs {status: IN_REVIEW}; breadcrumb returns; unknown id shows 'Back to Campaigns'; blocked campaign renders BLOCKED."
      ]
     },
@@ -605,23 +605,23 @@
      "title": "Operations views",
      "status": "verified",
      "evidence": [
-      "Tenant operations (platform owner acting in a tenant): context bar as a page heading ('Operations / Pipeline Analytics'), stat cards and metric tiles in the KPI pattern with sentence-case labels, ops tables as table cards. Legacy fixed six-column header vs four-column wide rows made seven-cell tables wrap and wide rows drift; UI 2.0 derives columns from the cell count (header and rows always render the same count, asserted). Journey: /operations renders pipeline; stale-source delay notice; 3 source rows; platform-health scorecard, route budgets and resource ceilings; legacy alias /operations/ingestion-efficiency → pipeline; /operations/quality?domain=VEX → /inventory?inventoryTabs=quality-vex.",
-      "Platform console operations view: console frame without the outer card, hero/sections on tokens. Journey: platform-scope /operations/pipeline → /platform/eol; /platform/operations lists 2 tenant-attention rows and 3 sub-tabs; Freshness & Access writes ?ops=; /end-of-life → /platform/eol; / → /platform/tenants."
+      "Tenant operations (platform owner acting in a tenant): context bar as a page heading ('Operations / Pipeline Analytics'), stat cards and metric tiles in the KPI pattern with sentence-case labels, ops tables as table cards. Legacy fixed six-column header vs four-column wide rows made seven-cell tables wrap and wide rows drift; UI 2.0 derives columns from the cell count (header and rows always render the same count, asserted). Journey: /operations renders pipeline; stale-source delay notice; 3 source rows; platform-health scorecard, route budgets and resource ceilings; legacy alias /operations/ingestion-efficiency \u2192 pipeline; /operations/quality?domain=VEX \u2192 /inventory?inventoryTabs=quality-vex.",
+      "Platform console operations view: console frame without the outer card, hero/sections on tokens. Journey: platform-scope /operations/pipeline \u2192 /platform/eol; /platform/operations lists 2 tenant-attention rows and 3 sub-tabs; Freshness & Access writes ?ops=; /end-of-life \u2192 /platform/eol; / \u2192 /platform/tenants."
      ]
     },
     {
      "title": "Login, setup, invitations and authentication entry states",
      "status": "verified",
      "evidence": [
-      "Auth entry (reference #/login, .dp-auth): public nav unchanged; page background and centred 420px card on the UI 2.0 light tokens (public pages never set data-theme, as in legacy); fields, full-width primary button, invite details as a definition grid. Journey: signed-out /exposure → /login?next=%2Fexposure; Sign in disabled until both fields filled; no test personas without VITE_ENABLE_TEST_PERSONAS; rejected login shows the server message in role=alert and keeps the email; login POSTs email+password; successful login → /configurations (role home); activated notice + prefilled email; Set password disabled under 8 characters, POSTs /auth/setup-password and returns to /login?activated=1; invite token removed from the URL; tenant invite details incl. role; accept → /login?setup=1&email=…; demo invite delivery error stays truthful; expired invite shows the server message; tokenless invite shows the expired-link copy; setup link exchanges once and opens setup; invalid setup link shows the error; public nav Log in link kept."
+      "Auth entry (reference #/login, .dp-auth): public nav unchanged; page background and centred 420px card on the UI 2.0 light tokens (public pages never set data-theme, as in legacy); fields, full-width primary button, invite details as a definition grid. Journey: signed-out /exposure \u2192 /login?next=%2Fexposure; Sign in disabled until both fields filled; no test personas without VITE_ENABLE_TEST_PERSONAS; rejected login shows the server message in role=alert and keeps the email; login POSTs email+password; successful login \u2192 /configurations (role home); activated notice + prefilled email; Set password disabled under 8 characters, POSTs /auth/setup-password and returns to /login?activated=1; invite token removed from the URL; tenant invite details incl. role; accept \u2192 /login?setup=1&email=\u2026; demo invite delivery error stays truthful; expired invite shows the server message; tokenless invite shows the expired-link copy; setup link exchanges once and opens setup; invalid setup link shows the error; public nav Log in link kept."
      ]
     },
     {
      "title": "All active navigation and direct-link routes; legacy redirects",
      "status": "verified",
      "evidence": [
-      "Redirects verified (both builds): / → role home (/configurations tenant admin, /exposure analyst, /platform/tenants platform owner); /vulnerability-intelligence?severity=CRITICAL, /vulnerability-intelligence/vulnerabilities and /vulnerability-intelligence/org-cves/<id> → /vuln-repo equivalents with search kept; /vuln-repo/policies → /platform/ai-policies; /fix-intelligence/* → /findings; /end-of-life → /exposure (tenant) or /platform/eol (platform scope); unknown path → / → role home; /inventory/ai/executions stays in AI inventory.",
-      "Route sweep (browser-fixtures/route-sweep.mjs, UI 2.0 build): 174 page checks — 61 tenant, 2 ops, 12 platform and 4 public direct routes at 1440 and 390px plus all 26 left-navigation destinations for tenant admin, platform-owner-in-tenant and platform scope: 0 orphan legacy presentation, 0 page overflow, 0 page errors, data-ui=2 everywhere. It found and P7 fixed two gaps: the 'Finding not available' state (now ui2-experience-family) and the /inventory/sbom KPI row overflow at 390px (inventory.css narrow rule; legacy also overflows). Sub-group nav items are covered by the direct-route list."
+      "Redirects verified (both builds): / \u2192 role home (/configurations tenant admin, /exposure analyst, /platform/tenants platform owner); /vulnerability-intelligence?severity=CRITICAL, /vulnerability-intelligence/vulnerabilities and /vulnerability-intelligence/org-cves/<id> \u2192 /vuln-repo equivalents with search kept; /vuln-repo/policies \u2192 /platform/ai-policies; /fix-intelligence/* \u2192 /findings; /end-of-life \u2192 /exposure (tenant) or /platform/eol (platform scope); unknown path \u2192 / \u2192 role home; /inventory/ai/executions stays in AI inventory.",
+      "Route sweep (browser-fixtures/route-sweep.mjs, UI 2.0 build): 174 page checks \u2014 61 tenant, 2 ops, 12 platform and 4 public direct routes at 1440 and 390px plus all 26 left-navigation destinations for tenant admin, platform-owner-in-tenant and platform scope: 0 orphan legacy presentation, 0 page overflow, 0 page errors, data-ui=2 everywhere. It found and P7 fixed two gaps: the 'Finding not available' state (now ui2-experience-family) and the /inventory/sbom KPI row overflow at 390px (inventory.css narrow rule; legacy also overflows). Sub-group nav items are covered by the direct-route list."
      ]
     }
    ],
@@ -670,41 +670,58 @@
   {
    "id": "P8",
    "title": "Integrated qualification and release handoff",
-   "status": "planned",
+   "status": "needs_access",
    "dependsOn": [
     "P7"
    ],
    "units": [
     {
      "title": "Full frontend and affected backend/PostgreSQL checks",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "2026-10-25 branch feat/ui2-phase-8-qualification (Node 22.16): lint 0 errors/3 existing warnings; typecheck pass; build pass incl. verify-production-bundle; vitest 731/731 in 82 files; coverage statements 47.06 / branches 38.55 / functions 39.36 / lines 49.61 (all at or above floors 46.7/38.1/38.9/49.4).",
+      "Backend/PostgreSQL: git diff main touches no backend files, so no affected backend. Local psql/docker unavailable; full backend+PostgreSQL CI jobs are not re-run here and remain a CI/release-candidate gate. .github/workflows/quality.yml absent from this copy."
+     ]
     },
     {
      "title": "Authenticated critical browser journeys",
-     "status": "planned",
-     "evidence": []
+     "status": "needs_access",
+     "evidence": [
+      "Fixture-backed only (NOT authenticated staging): VITE_UI_VERSION=2 build served via vite preview, Playwright chromium-headless-shell-1243 (CHROMIUM_PATH). route-sweep 174 page checks, 0 orphan/overflow/page errors; findings 67/67; cve 80/80; inventory 106/106; governance 166/166; connect 116/116; experience 202/202. Logs in checkpoints/P8-evidence/. Authenticated staging journeys still require approved test access."
+     ]
     },
     {
      "title": "Theme, responsive, keyboard, visual and performance qualification",
-     "status": "planned",
-     "evidence": []
+     "status": "in_progress",
+     "evidence": [
+      "Covered by fixtures: dark+light, 1440px and 390px (0 overflow on UI 2.0), keyboard/focus assertions inside journeys, UI 2.0 vs legacy bundle sizes identical (css 625kB raw/93kB gzip, js 2460kB/674kB gzip; flag only sets data-ui on html).",
+      "NOT done: dedicated axe/screen-reader accessibility audit, real-browser performance profiling, human visual review of screenshots."
+     ]
     },
     {
      "title": "Current-data rollback rehearsal",
-     "status": "planned",
-     "evidence": []
+     "status": "verified",
+     "evidence": [
+      "Rehearsal: rebuild without VITE_UI_VERSION serves legacy presentation (route-sweep exit 0, no page errors, routes/redirects intact; findings 65/67 and cve journeys pass behavior checks, only failures are pre-existing legacy 390px overflow that UI 2.0 removes). No data migration; URLs/APIs untouched. Fixture data only, not current production data."
+     ]
     },
     {
      "title": "Reviewable release evidence; release authorization resolved",
-     "status": "planned",
-     "evidence": []
+     "status": "needs_access",
+     "evidence": [
+      "Release evidence assembled in this ledger and checkpoints/P8-evidence/. Production release NOT authorized; requires explicit user authorization with the candidate, evidence and rollback presented."
+     ]
     }
    ],
-   "checkpoint": null,
+   "checkpoint": "checkpoints/P8-evidence/",
    "testResults": [],
    "screenshots": [],
-   "openIssues": []
+   "openIssues": [
+    "Authenticated staging journeys pending approved test access",
+    "Backend/PostgreSQL CI jobs to run on the release-candidate PR",
+    "Axe accessibility audit, perf profiling and human visual review outstanding",
+    "Release authorization unresolved"
+   ]
   }
  ],
  "phaseVerificationScope": "Code, deterministic fixtures and phase-specific checks; separate pending release gates are not implied passed.",
@@ -720,8 +737,10 @@
    ]
   },
   "integratedFrontendChecks": {
-   "status": "planned_for_release_candidate",
-   "evidence": []
+   "status": "verified",
+   "evidence": [
+    "2026-10-25 branch feat/ui2-phase-8-qualification (Node 22.16): lint 0 errors/3 existing warnings; typecheck pass; build pass incl. verify-production-bundle; vitest 731/731 in 82 files; coverage statements 47.06 / branches 38.55 / functions 39.36 / lines 49.61 (all at or above floors 46.7/38.1/38.9/49.4)."
+   ]
   },
   "affectedBackendAndPostgresQualification": {
    "status": "planned_for_release_candidate",
@@ -742,5 +761,5 @@
   "repoIsGitCheckout": true,
   "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance, feat/ui2-phase-6-connectors, feat/ui2-phase-7-sweep). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P8 - Integrated qualification and release handoff (full frontend checks, affected backend/PostgreSQL checks, authenticated staging journeys - pending approved test access, visual/accessibility/responsive/performance review, rollback rehearsal, release evidence). Do not deploy under the current authorization."
+ "nextUnit": "P8 remaining: authenticated staging journeys (needs approved test access), axe/perf/human visual review, backend+PostgreSQL CI on the release-candidate PR, then release authorization. Do not deploy."
 }
