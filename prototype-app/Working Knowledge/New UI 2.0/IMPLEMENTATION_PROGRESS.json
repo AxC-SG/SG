@@ -711,7 +711,7 @@
       "NOT done: dedicated axe/screen-reader accessibility audit, real-browser performance profiling, human visual review of screenshots.",
       "2026-10-25 axe-core 4.10.2 over 26 routes x dark/light (browser-fixtures/axe-audit.mjs), UI 2.0 vs legacy: all violations identical to legacy (nested-interactive 200 nodes, heading-order, label, select-name, aria-required-children, empty-table-header) EXCEPT color-contrast, introduced by UI 2.0 (322 nodes). Fixed: legacy-bridge --bg-gradient was a bare colour making the body background declaration invalid (body painted nothing; dark only worked via canvas); light severity-pill text darkened. Result 146 nodes remain (light-theme semantic tones used directly as text: status/policy/campaign pills, risk-score badges white-on-bright; a few dark legacy inline colours). Needs a design decision on darker light-theme semantic text tokens.",
       "2026-10-25 color-contrast proposal (NOT applied, awaiting approval), measured by axe-audit.mjs --inject-css on the same UI 2.0 build: light-theme tokens --dp-critical #e5484d->#bb2329, --dp-high #f76b15->#b43c0b, --dp-medium #e2a336->#8d5a00, --dp-low/--dp-success #30a46c->#1d7449, --dp-warning #d97706->#a05100 (each >=4.59:1 on white, on 10-16% tints over #fafafa, and white-on-fill) plus light override .risk-score-badge--medium{color:#fff} (legacy base.css hardcodes #000). Result color-contrast 146 -> 55 nodes (light 119 -> 28, dark 27 unchanged); all remaining light nodes are hardcoded legacy hex colours (#21d07a, #16a34a, #dc2626, #ef4444, #f59e0b, #7b8aa6, #d88f3d, #d97706, #e0332a); dark nodes are hardcoded #9b2335/#2d6a4f/#dc2626 and white-on-bright risk-score/avatar badges. Before/after screenshots kept outside the repo.",
-      "2026-10-25 contrast fix APPLIED (user-approved, high kept orange): light tokens --dp-critical #bb2329, --dp-high #a84300 (same 24deg hue as #f76b15), --dp-medium #8d5a00, --dp-low/--dp-success #1d7449, --dp-warning #a05100; light .risk-score-badge--medium white text; removed the now-redundant 50%-text severity-pill override from 1b2468f. Rebuilt UI 2.0 bundle axe: color-contrast 146 -> 55 nodes (light 119 -> 28, all hardcoded legacy hex; dark 27 unchanged); no other rule changed. ui2 scope.test 8/8."
+      "2026-10-25 contrast fix APPLIED (user-approved, high kept orange): light tokens --dp-critical #bb2329, --dp-high #a84300 (same 24deg hue as #f76b15), --dp-medium #8d5a00, --dp-low/--dp-success #1d7449, --dp-warning #a05100; light .risk-score-badge--medium white text; removed the now-redundant 50%-text severity-pill override from the earlier axe-audit commit ('Fix UI 2.0 body background and light severity-pill contrast'). Rebuilt UI 2.0 bundle axe: color-contrast 146 -> 55 nodes (light 119 -> 28, all hardcoded legacy hex; dark 27 unchanged); no other rule changed. ui2 scope.test 8/8."
      ]
     },
     {
@@ -725,7 +725,8 @@
      "title": "Reviewable release evidence; release authorization resolved",
      "status": "needs_access",
      "evidence": [
-      "Release evidence assembled in this ledger and checkpoints/P8-evidence/. Production release NOT authorized; requires explicit user authorization with the candidate, evidence and rollback presented."
+      "Release evidence assembled in this ledger and checkpoints/P8-evidence/. Production release NOT authorized; requires explicit user authorization with the candidate, evidence and rollback presented.",
+      "2026-10-25 history prepared for review (user-approved, local only, nothing pushed): 557 checkpoint screenshots (checkpoints/P3-P7-screenshots, ~116 MB) stripped from every UI 2.0 commit with git filter-branch; files kept on disk and now ignored (checkpoints/**/*.png); the 91 P1/P2 screenshots are not committed either. The local main was a one-commit snapshot unrelated to github.com/AxonCyber-SG/SG main (same app code, but missing .github and scanner configs), so all work was replayed onto origin main 3a4ce34: pre-existing defect fixes on fix/pre-ui2-defects (/policies null provider, tenant-pinned RLS reconciliation, demo SLA thresholds) and the UI 2.0 stack on top of it, starting with a Phase 0-2 baseline-evidence commit carrying the snapshot's Working Knowledge files; phase branches moved. .gitignore keeps origin's rules and adds the snapshot's secret, build and log patterns. Verified: RC tree identical to the pre-rewrite tip except the screenshots; fix commits patch-identical (range-diff). Backup tags pre-strip-ui2-phase-* hold the old tips. Plan: PR A fix/pre-ui2-defects -> main, then PR B feat/ui2-phase-8-qualification stacked on it, merge commits (not squash) so phases stay individually revertable."
      ]
     }
    ],
@@ -735,7 +736,7 @@
    "openIssues": [
     "Local authenticated journeys done (238/242, 4 documented skips); still not staging evidence, and auditor/entitlement-unavailable states remain fixture-only",
     "Dev runner fails startup when any tenant is still PROVISIONING without a schema (async provisioning) - decision pending",
-    "Backend/PostgreSQL CI jobs (mvn -Ppostgres-it verify) to run on the release-candidate PR",
+    "Backend/PostgreSQL CI jobs (mvn -Ppostgres-it verify) to run on PR A (fix/pre-ui2-defects) and PR B (UI 2.0 RC); pushing and opening PRs awaits user approval",
     "Perf profiling and human visual review outstanding",
     "Release authorization unresolved",
     "color-contrast: token fix applied (146 -> 55); residual 55 are hardcoded legacy colours (light) and dark white-on-bright badges / legacy inline colours, needing a separate decision; pre-existing legacy a11y violations unchanged and out of restyle scope"
@@ -779,5 +780,5 @@
   "repoIsGitCheckout": true,
   "note": "Git repository at SG/ (branch per phase: feat/ui2-phase-1-2-findings, feat/ui2-phase-3-cve-workflow, feat/ui2-phase-4-inventory, feat/ui2-phase-5-governance, feat/ui2-phase-6-connectors, feat/ui2-phase-7-sweep). .github/workflows/quality.yml is absent from this copy (verify-baseline additional_missing)."
  },
- "nextUnit": "P8: perf profiling; human visual review (screenshots in scratchpad, not committed); backend+PostgreSQL CI on the RC PR; release decision. Do not deploy."
+ "nextUnit": "P8: dev-runner PROVISIONING decision; perf profiling; human visual review (screenshots outside git, ignored); push + PR A (fix/pre-ui2-defects) and PR B (UI 2.0 RC) with backend+PostgreSQL CI after user approval; release decision. Do not deploy."
 }
