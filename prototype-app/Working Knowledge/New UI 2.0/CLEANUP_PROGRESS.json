@@ -128,7 +128,8 @@
       "2026-10-26 fresh run on app source identical to 32c3e91c (git diff 32c3e91c -- src is empty): e2e:build exit 0, both builds pass verify-production-bundle, data-ui boundary 15/15 routes per version.",
       "e2e:journeys exit 0, 12/12 steps. UI 2: findings 67/67, cve 80/80, inventory 106/106, governance 166/166, connect 116/116, experience 202/202 = 737/737, 0 skipped. UI 1: 703/737 passed, 34 failed, all 34 in the reviewed journey baseline (390px page overflow on 17 pages x 2 themes), 0 new, 0 skipped.",
       "e2e:sweep exit 0, 8/8 steps, widths 390/768/1280/1440, both themes: 322 page checks per version per theme, 0 page errors, 0 console errors, 0 requests to other hosts, 0 orphans on UI 2. axe compare 0 new / 0 resolved for both versions on a second independent run (UI 2 630 entries, UI 1 538).",
-      "No unexpected /api requests after review: EXPECTED_FALLBACKS holds GET /api/operations/quality/issues and GET /api/platform/vuln-repo/vulnerabilities, each with its reason in fixtures.mjs."
+      "No unexpected /api requests after review: EXPECTED_FALLBACKS holds GET /api/operations/quality/issues and GET /api/platform/vuln-repo/vulnerabilities, each with its reason in fixtures.mjs.",
+      "2026-10-26 fresh-clone check at f20ad8fa: git clone --branch feat/ui2-cleanup into the session scratchpad, with PLAYWRIGHT_DIR, AXE_PATH, CHROMIUM_PATH, VITE_UI_VERSION and LIVE_CREDENTIALS unset. npm ci exit 0 (npm audit reports 3 moderate advisories, not changed here); e2e:build exit 0, data-ui boundary 15/15 routes per version; e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped. No personal paths found in e2e scripts, package.json or playwright.config.ts."
      ],
      "tests": [
       "2026-10-26 (Node 22.16.0): lint 0 errors / 3 existing warnings; typecheck pass; vitest 759 passed / 0 failed / 0 skipped in 84 files; coverage lines 49.71% (7912/15916), statements 47.26% (8887/18801), functions 39.58% (2561/6469), branches 38.67% (7844/20281); floors met. Earlier sessions measured statements 8879 vs 8887 and functions 2557 vs 2561 on the same source: small run-to-run variation, always above floors."
@@ -148,8 +149,7 @@
      "limitations": [
       "axe-baseline/{ui2,legacy}.json and journey-baseline/legacy.json were generated on the macOS host (Chromium from @playwright/test 1.63.0), not in the Playwright container.",
       "Visual baselines PENDING: Docker is not installed here, so they cannot be generated in mcr.microsoft.com/playwright:v1.63.0-noble. e2e:visual, e2e:affected and e2e:update stop at check-playwright-image.mjs on this host by design.",
-      "The .github/workflows changes (frontend-e2e job in quality.yml, new frontend-e2e-sweep.yml) are written but uncommitted: .github/workflows/ is on the never-touch list in prototype-app/CLAUDE.md and needs explicit approval.",
-      "A fresh-clone run of npm ci && e2e:build && e2e:journeys has not been done yet."
+      "The .github/workflows changes (frontend-e2e job in quality.yml, new frontend-e2e-sweep.yml) are written but uncommitted: .github/workflows/ is on the never-touch list in prototype-app/CLAUDE.md and needs explicit approval."
      ],
      "reversal": "git revert the Step 2 commits; the font devDependencies leave with the package.json/lockfile revert.",
      "statuses": {
@@ -171,5 +171,5 @@
    "units": []
   }
  ],
- "nextUnit": "S2 remaining: approval for .github/workflows, visual baselines in the Playwright container, fresh-clone check. S1 needs backend commit, disposable qualification database/tenant and test accounts from the user."
+ "nextUnit": "S2 remaining: approval for .github/workflows, visual baselines in the Playwright container (Podman 5.7.1 is installed; its machine is stopped). S1 needs backend commit, disposable qualification database/tenant and test accounts from the user."
 }
