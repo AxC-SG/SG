@@ -113,8 +113,55 @@
   {
    "id": "S1",
    "title": "Requalify against the real local backend",
-   "status": "needs_access",
-   "units": []
+   "status": "pending",
+   "units": [
+    {
+     "title": "Requalify UI 2 against the real local backend (live-journeys.mjs, both themes)",
+     "files": "prototype-app/frontend/e2e/live-journeys.mjs (wait fix, 87385e41)",
+     "candidateCommit": "87385e41",
+     "backendIdentity": [
+      "2026-10-26: backend started from this checkout (mvn spring-boot:run, profiles local,postgres) at be2e64fe/87385e41; git diff 587f4c78..HEAD -- prototype-app/backend is empty and backend tree is clean, so it runs fix/pre-ui2-defects (587f4c78).",
+      "PID 75155 on :8080, classpath prototype-app/backend/target/classes in this repo; all 9 pg_stat_activity connections are to scout_ui2_qual; Flyway validated 8 platform migrations, nothing to migrate; tenant_ui2_qual_2 tenant_schema_history at V6 (repo head V6); GET /api/me unauthenticated -> 401.",
+      "Frontend: VITE_UI_VERSION=2 vite dev server on 127.0.0.1:5180 (allowed CORS origin), proxy to :8080; restarted for this commit."
+     ],
+     "evidence": [
+      "Run 1 at be2e64fe: 241/244 passed, 3 failed, 4 skipped. CVE 'creation succeeds and ticket failure is reported' failed dark+light: the script read the still-visible 'Assessment saved successfully.' notice before the creation result replaced it (test defect; the app reloads the CVE detail before setting the notice). Findings 'status column values accumulate' failed dark only; passed both themes on rerun while the host was unloaded.",
+      "Fix 87385e41: wait until the status text differs from the pre-click text (assertion unchanged). CVE rerun 52/52, 0 skipped.",
+      "A full run at 87385e41 was invalid: the Mac slept (Hikari clock leaps of 26m, 29m, 55m), five journeys aborted on page.goto timeouts. Not counted.",
+      "2026-10-26 FRESH full run at 87385e41 under caffeinate, dark+light, login form, one session per account: 244/244 passed, 0 failed, 4 skipped. Per journey (checks incl. skips): findings 54, ai-findings 20, cve 52, inventory 34, authority 46, connect 42.",
+      "Backend errors during runs: two uk_tenants_schema_name violations, caused by the deliberate duplicate-slug conflict check (passed). New disposable tenants ui2-qual-live-* stay PROVISIONING because .env.local disables synchronous provisioning (approved 2026-10-25); the check expects 202 PROVISIONING."
+     ],
+     "skips": [
+      {
+       "scenario": "connect: successful save / test connection / sync run [dark, light]",
+       "class": "documented_limitation",
+       "reason": "needs a real ServiceNow endpoint; outbound delivery is not allowed. Fixture journey covers save/test/failure/retry."
+      },
+      {
+       "scenario": "inventory: declared resource detail / retired history [dark, light]",
+       "class": "pending",
+       "reason": "no AI-BOM declared resources projected in tenant ui2-qual-2. Blocks the gate for this scenario until data is provided through supported ingestion."
+      }
+     ],
+     "openItems": [
+      "CVE first-time creation branch ('creation succeeds and ticket failure is reported') was not exercised on this commit: tenant ui2-qual-2 already has open findings for the selected CVE from 2026-10-25, so both themes took the duplicate branch (passed). No findings were created during these runs. Needs a CVE without open findings, or the user's decision."
+     ],
+     "tests": [],
+     "screenshots": [
+      "session scratchpad live5/ (not in repo)"
+     ],
+     "limitations": [
+      "Credentials read from a 2026-10-25 session scratchpad under /private/tmp (outside repo, but temporary)."
+     ],
+     "reversal": "git revert 87385e41",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "pending",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    }
+   ]
   },
   {
    "id": "S2",
@@ -171,5 +218,5 @@
    "units": []
   }
  ],
- "nextUnit": "S2 remaining: approval for .github/workflows, visual baselines in the Playwright container (Podman 5.7.1 is installed; its machine is stopped). S1 needs backend commit, disposable qualification database/tenant and test accounts from the user."
+ "nextUnit": "S1 gate: pending on AI-BOM declared-resource data and the CVE first-time creation branch; user decision on a single PR feat/ui2-cleanup -> main. S2: visual baselines (x86 emulation crashed Chromium; trying native arm64 image)."
 }
