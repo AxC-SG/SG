@@ -117,8 +117,8 @@
    "units": [
     {
      "title": "Requalify UI 2 against the real local backend (live-journeys.mjs, both themes)",
-     "files": "prototype-app/frontend/e2e/live-journeys.mjs (wait fix, 87385e41)",
-     "candidateCommit": "87385e41",
+     "files": "prototype-app/frontend/e2e/live-journeys.mjs (wait fix 87385e41, declared-resource row fix f0c73634)",
+     "candidateCommit": "f0c73634",
      "backendIdentity": [
       "2026-10-26: backend started from this checkout (mvn spring-boot:run, profiles local,postgres) at be2e64fe/87385e41; git diff 587f4c78..HEAD -- prototype-app/backend is empty and backend tree is clean, so it runs fix/pre-ui2-defects (587f4c78).",
       "PID 75155 on :8080, classpath prototype-app/backend/target/classes in this repo; all 9 pg_stat_activity connections are to scout_ui2_qual; Flyway validated 8 platform migrations, nothing to migrate; tenant_ui2_qual_2 tenant_schema_history at V6 (repo head V6); GET /api/me unauthenticated -> 401.",
@@ -129,7 +129,9 @@
       "Fix 87385e41: wait until the status text differs from the pre-click text (assertion unchanged). CVE rerun 52/52, 0 skipped.",
       "A full run at 87385e41 was invalid: the Mac slept (Hikari clock leaps of 26m, 29m, 55m), five journeys aborted on page.goto timeouts. Not counted.",
       "2026-10-26 FRESH full run at 87385e41 under caffeinate, dark+light, login form, one session per account: 244/244 passed, 0 failed, 4 skipped. Per journey (checks incl. skips): findings 54, ai-findings 20, cve 52, inventory 34, authority 46, connect 42.",
-      "Backend errors during runs: two uk_tenants_schema_name violations, caused by the deliberate duplicate-slug conflict check (passed). New disposable tenants ui2-qual-live-* stay PROVISIONING because .env.local disables synchronous provisioning (approved 2026-10-25); the check expects 202 PROVISIONING."
+      "Backend errors during runs: two uk_tenants_schema_name violations, caused by the deliberate duplicate-slug conflict check (passed). New disposable tenants ui2-qual-live-* stay PROVISIONING because .env.local disables synchronous provisioning (approved 2026-10-25); the check expects 202 PROVISIONING.",
+      "2026-10-26 AI-BOM data for the pending declared-resource scenario: uploaded backend/src/main/resources/demo-data/checkout-ai-bom.cdx.json through POST /api/bom/upload (bomType=AI_BOM, assetType=APPLICATION, asset 'UI2 Qual Checkout AI') as the ui2-qual-2 tenant admin, after confirming /api/me tenantId 25029f35-fcef-4467-826e-42c7e0ca6fe7. Result 200 CREATED, 4 components; projection produced 1 declared resource (kanra-fraud-detector, MODEL, UNVERIFIED) and 1 setup action. The demo seeder writes BOM rows directly and never ran the AI-BOM projection, which is why the tenant had none.",
+      "With data present the step failed dark+light: it clicked a link in the first table row on the page, which is the setup-actions table, and declared-resource rows hold no link (tr onClick). Fix f0c73634 targets the Declared Resources table and clicks the row. Inventory rerun at f0c73634: 38/38 passed, 0 skipped (declared resource opens detail, retired history requests history=true, back returns, both themes)."
      ],
      "skips": [
       {
@@ -139,8 +141,8 @@
       },
       {
        "scenario": "inventory: declared resource detail / retired history [dark, light]",
-       "class": "pending",
-       "reason": "no AI-BOM declared resources projected in tenant ui2-qual-2. Blocks the gate for this scenario until data is provided through supported ingestion."
+       "class": "resolved",
+       "reason": "Was pending (no data). Data provided through supported ingestion; passes at f0c73634."
       }
      ],
      "openItems": [
@@ -159,7 +161,10 @@
       "localAuthenticated": "pending",
       "staging": "pending",
       "release": "not_requested"
-     }
+     },
+     "findingsForLaterSteps": [
+      "Declared-resource and setup-action rows (AiBomDeclaredResourcesPage) open the detail only on mouse click: tr onClick with no link, button or tabIndex, so they are not keyboard reachable. For the Step 5 keyboard review."
+     ]
     }
    ]
   },
@@ -218,5 +223,5 @@
    "units": []
   }
  ],
- "nextUnit": "S1 gate: pending on AI-BOM declared-resource data and the CVE first-time creation branch; user decision on a single PR feat/ui2-cleanup -> main. S2: visual baselines (x86 emulation crashed Chromium; trying native arm64 image)."
+ "nextUnit": "S1 gate: CVE first-time creation branch not exercised (needs a CVE without open findings, or user decision); full live rerun at the final candidate commit; user decision on a single PR feat/ui2-cleanup -> main. S2: visual baselines in the native arm64 image (x86 emulation crashed Chromium)."
 }
