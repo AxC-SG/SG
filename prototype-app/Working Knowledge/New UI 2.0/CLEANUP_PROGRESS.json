@@ -402,6 +402,29 @@
       "staging": "pending",
       "release": "not_requested"
      }
+    },
+    {
+     "title": "Batch G: remove src/lib/queryPolling.ts (user decision)",
+     "commit": "b850d3dd",
+     "files": "src/lib/queryPolling.ts, frontend/CLAUDE.md, docs/frontend.md",
+     "sourceRemoved": "1 file, 11 lines",
+     "evidence": [
+      "2026-10-26 gate on b850d3dd (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 2 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped."
+     ],
+     "tests": [
+      "vitest 763 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15202 (52.09%), statements 8897/17998 (49.43%), functions 2567/6208 (41.34%), branches 7852/19515 (40.23%); floors met."
+     ],
+     "bundle": "Unchanged (same bytes as Batch A).",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert b850d3dd",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
     }
    ],
    "inventory": {
@@ -585,9 +608,9 @@
      },
      {
       "file": "src/lib/queryPolling.ts",
-      "label": "defer",
-      "batch": null,
-      "reason": "unused helper, but documented in frontend/CLAUDE.md as the refetchInterval helper; small, and polling pages may want it. Decide with the user"
+      "label": "remove",
+      "batch": "G",
+      "reason": "unused; React Query refetchIntervalInBackground: false already pauses polling in hidden tabs. Removed on the user decision 2026-10-26; doc lines in frontend/CLAUDE.md and docs/frontend.md removed with it"
      },
      {
       "file": "src/features/auth/provider.tsx",
@@ -651,7 +674,7 @@
     "reverified": "2026-10-26 on 89a125f4: same 315 files, 186 reachable from main.tsx, same 41 unreached; no candidate newly reachable and no new unreached file."
    },
    "branch": "feat/ui2-step3-cleanup from AxG-SG main 89a125f4 (merge of PR #22, contains 0f7b1b6d); local only, not pushed",
-   "gateDecision": "Awaiting the user: Step 4 starts only after approval.",
+   "gateDecision": "User approved removing queryPolling.ts and opening a PR to AxG-SG/SG (2026-10-26). Step 4 starts only after the user approves it.",
    "reductions": {
     "source": {
      "scope": "git ls-files prototype-app/frontend/src (Step 0 method)",
@@ -663,14 +686,14 @@
       "cssFiles": 29
      },
      "afterStep3": {
-      "commit": "9331bd5e",
-      "files": 282,
-      "lines": 116160,
-      "tsFiles": 93,
+      "commit": "b850d3dd",
+      "files": 281,
+      "lines": 116150,
+      "tsFiles": 92,
       "tsxFiles": 163,
       "cssFiles": 25
      },
-     "note": "33 files removed. Net -5830 lines against Step 0; against main 89a125f4 the diff is 35 files, +22 / -5875 (Step 1/2 test fixes added lines after Step 0)."
+     "note": "34 files removed: 30 of the 33 candidates (3 retained) plus their 4 CSS files. Net -5840 lines against Step 0; Step 1/2 test fixes added lines after Step 0."
     },
     "dependencies": {
      "step0": {
@@ -744,15 +767,14 @@
     },
     "coverage": {
      "before": "lines 7912/15916, statements 8887/18801, functions 2561/6469, branches 7844/20281",
-     "after": "lines 7920/15206 (52.08%), statements 8893/18002 (49.40%), functions 2565/6210 (41.30%), branches 7852/19519 (40.22%)",
+     "after": "lines 7920/15202 (52.09%), statements 8897/17998 (49.43%), functions 2567/6208 (41.34%), branches 7852/19515 (40.23%)",
      "note": "Floors unchanged; not ratcheted in Step 3."
     }
    },
    "findingsForLaterSteps": [
-    "Coverage timing variation remains from 300ms search-debounce timers in CampaignsPage.tsx (217, 237) and CampaignDetailPage.tsx (270, 340): covered only when a test stays mounted past 300ms. Seen as statements 8883-8887 and functions 2559-2561 at the same source; no line-count effect. Functions margin over the floor is small (2559 vs 2556 needed at Batch A totals).",
-    "src/lib/queryPolling.ts deferred: unused but documented in frontend/CLAUDE.md. Needs the user decision."
+    "Coverage timing variation remains from 300ms search-debounce timers in CampaignsPage.tsx (217, 237) and CampaignDetailPage.tsx (270, 340): covered only when a test stays mounted past 300ms. Seen as statements 8883-8887 and functions 2559-2561 at the same source; no line-count effect. Functions margin over the floor is small (2559 vs 2556 needed at Batch A totals)."
    ]
   }
  ],
- "nextUnit": "S3 gate review by the user. Then Step 4 (foundation styles) after approval. Still open: S3 commits have not run in CI (not pushed); queryPolling.ts decision."
+ "nextUnit": "S3 PR CI on AxG-SG/SG, then the user approves Step 4 (foundation styles)."
 }
