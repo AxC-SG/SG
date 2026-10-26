@@ -62,7 +62,6 @@ frontend/src/
     riskScoring.ts          Pure TS: computeCveRiskScore, computeFindingPriorityScore
     queryClient.ts          createQueryClient factory (retry:1, staleTime:10s, no refetchOnWindowFocus)
     polling.ts              Refresh interval constants
-    queryPolling.ts         visibleInterval / isDocumentVisible helpers
     performanceMonitoring.tsx  API/render timing telemetry
     time.ts                 timeAgo, formatTimestamp helpers
   pages/                    One file per route; lazy-loaded in App.tsx
@@ -504,17 +503,9 @@ Slide-in drawer with full EOL release detail for a selected package.
 
 Panel for reviewing and resolving unresolved EOL slug mappings.
 
-### EolRiskWidget (`src/components/EolRiskWidget.tsx`)
-
-Summary widget card for EOL risk exposure.
-
 ### EolSourcePanel (`src/components/EolSourcePanel.tsx`)
 
 Configuration panel for the endoflife.date connector in the Connect page.
-
-### GithubPipelineManager (`src/components/GithubPipelineManager.tsx`)
-
-GitHub SBOM source management UI in the Connect page.
 
 ### InfoTooltip (`src/components/InfoTooltip.tsx`)
 
@@ -527,18 +518,6 @@ Panel for reviewing inventory data quality issues (missing versions, unmapped so
 ### MetricInfoIcon (`src/components/MetricInfoIcon.tsx`)
 
 Small info icon with tooltip; used by `StatCard` when `description` is provided.
-
-### SoftwareIdentityDetailDrawer (`src/components/SoftwareIdentityDetailDrawer.tsx`)
-
-Slide-in drawer with full software identity detail.
-
-### ColumnVisibilityToggle (`src/components/ColumnVisibilityToggle.tsx`)
-
-Toggle dropdown for DataTable column show/hide controls.
-
-### FilterValueSelectCard (`src/components/FilterValueSelectCard.tsx`)
-
-Dropdown card used by filter pills to select filter values.
 
 ---
 

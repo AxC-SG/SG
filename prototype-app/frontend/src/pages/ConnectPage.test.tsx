@@ -74,6 +74,8 @@ describe('ConnectPage', () => {
     // The source list renders only after its query resolves; wait so the test never ends mid-load.
     expect(await screen.findByRole('switch', { name: 'NVD source' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getAllByRole('switch', { name: / source$/ })).toHaveLength(9);
+    // The processing status comes from a second query that can resolve after the list.
+    expect(await screen.findByText('Processing: COMPLETED · revision 1/1 · release Awaiting first publication')).toHaveAttribute('role', 'status');
   });
 
   it.each(['sccm-patch', 'bigfix-patch', 'tanium-patch'])('rejects the %s query bookmark before mounting credential inputs', async (id) => {
