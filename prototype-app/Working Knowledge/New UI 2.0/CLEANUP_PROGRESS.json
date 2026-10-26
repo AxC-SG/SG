@@ -221,11 +221,189 @@
   {
    "id": "S3",
    "title": "Remove proven unused code and dependencies",
-   "status": "in_progress",
+   "status": "verified",
    "dependsOn": [
     "S1"
    ],
-   "units": [],
+   "units": [
+    {
+     "title": "Coverage flake: wait for the processing status in the Connect page test",
+     "commit": "d88a26e2",
+     "files": "src/pages/ConnectPage.test.tsx",
+     "sourceRemoved": "none (one assertion added)",
+     "evidence": [
+      "2026-10-26 gate on d88a26e2 (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 3 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped.",
+      "First Batch A gate on main failed only on coverage: lines 7910/15916 (49.69%) < 49.7%, while 760/760 tests passed. Five full runs with per-line JSON showed ConfigurationsPage.tsx:2179 (VulnerabilitySourcesSection processing status) covered in 4 of 5: the second query could resolve after the test ended. 53ab00bc had fixed the same test for the source list only.",
+      "After the fix: three full runs, lines 7912/15916 each time, line 2179 hit in all three."
+     ],
+     "tests": [
+      "vitest 760 passed / 0 failed / 0 skipped in 84 files; coverage lines 7912/15916, statements 8887/18801, functions 2561/6469, branches 7844/20281; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert d88a26e2",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Batch A: npm uninstall vike vike-react @resvg/resvg-js",
+     "commit": "9b99c83c",
+     "files": "frontend/package.json, frontend/package-lock.json",
+     "sourceRemoved": "none; direct dependencies 13 -> 10; lockfile -73 packages, no version changes",
+     "evidence": [
+      "2026-10-26 gate on 9b99c83c (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 3 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped.",
+      "Applied from stash@{0} \"step3-batchA-wip\" (applied cleanly, stash kept). npm 10.9.2 dropped libc on six @rolldown/binding-linux-* entries; restored by hand so only the removal remains. npm ci --dry-run passes."
+     ],
+     "tests": [
+      "vitest 760 passed / 0 failed / 0 skipped in 84 files; coverage lines 7912/15916, statements 8887/18801, functions 2561/6469, branches 7844/20281; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert 9b99c83c",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Batch B: mock data and inventory mocks",
+     "commit": "79d26798",
+     "files": "src/components/mockData.ts, src/features/inventory/{ApplicationsDashboardMock,BomComponentsMock,BomInventoryMock}.tsx",
+     "sourceRemoved": "4 files, 1163 lines",
+     "evidence": [
+      "2026-10-26 gate on 79d26798 (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 3 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped."
+     ],
+     "tests": [
+      "vitest 760 passed / 0 failed / 0 skipped in 84 files; coverage lines 7912/15793, statements 8887/18652, functions 2561/6395, branches 7844/20184; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert 79d26798",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Batch C: retired Fix Intelligence and Patch dashboard pages, plus redirect test",
+     "commit": "7cdc9ecd",
+     "files": "src/pages/{FixIntelligencePage,FixDetailPage,FixListPage,PatchDashboardPage}.tsx removed; src/App.test.tsx (redirect test); frontend/CLAUDE.md (\"since removed\")",
+     "sourceRemoved": "4 files, 1408 lines",
+     "evidence": [
+      "2026-10-26 gate on 7cdc9ecd (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 3 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped.",
+      "New App test: /fix-intelligence, pathForFixIntelligenceView('patches') and /fix-intelligence/details/fix-1 land on /findings. With the /fix-intelligence/* route deleted temporarily, all 3 cases failed; App.tsx restored from git. Redirect and routes.ts helpers kept."
+     ],
+     "tests": [
+      "vitest 763 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15665, statements 8893/18513, functions 2565/6360, branches 7852/20036; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert 7cdc9ecd",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Batch D: old dashboard, inventory filter panel and modal, column toggle, identity drawer",
+     "commit": "ccf3809f",
+     "files": "src/pages/DashboardPage.tsx, src/components/{EolRiskWidget,FilterValueSelectCard,ColumnVisibilityToggle,SoftwareIdentityDetailDrawer}.tsx, src/features/inventory/{InventoryFiltersPanel,HostInventoryDetailModal}.tsx",
+     "sourceRemoved": "7 files, 1083 lines",
+     "evidence": [
+      "2026-10-26 gate on ccf3809f (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 3 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped."
+     ],
+     "tests": [
+      "vitest 763 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15488, statements 8897/18307, functions 2567/6283, branches 7852/19810; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert ccf3809f",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Batch E: old sidebar, GitHub, OSV and equivalence components with their CSS",
+     "commit": "0289bee8",
+     "files": "src/components/Navigation/{Sidebar,PlatformNavigation,TenantNavigation}.tsx + sidebar.css, src/components/GithubPipelineManager.tsx, src/features/connect/{GithubAdvisoryStatus,OsvConnectorPage}.tsx + github-advisory-status.css + osv-connector.css, src/features/cve-workbench/components/CveEquivalencePanel.tsx + styles/equivalence-panel.css",
+     "sourceRemoved": "11 files (4 CSS), 1888 lines",
+     "evidence": [
+      "2026-10-26 gate on 0289bee8 (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 2 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped.",
+      "Lint warnings 3 -> 2: the exhaustive-deps warning in GithubPipelineManager went with the file."
+     ],
+     "tests": [
+      "vitest 763 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15249, statements 8897/18047, functions 2567/6230, branches 7852/19573; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [
+      "useAdvisoryEquivalencesQuery (src/features/connect/queries.ts) has no caller after CveEquivalencePanel; kept as data-access code under the keep-API-methods rule."
+     ],
+     "reversal": "git revert 0289bee8",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Docs: drop removed components",
+     "commit": "231e7993",
+     "files": "prototype-app/docs/frontend.md (5 component entries), prototype-app/CLAUDE.md (connector list)",
+     "evidence": [
+      "Docs only; no gate needed. The CI docs-check job only warns when source changes without docs."
+     ],
+     "reversal": "git revert 231e7993"
+    },
+    {
+     "title": "Batch F: vulnerability-intel connector wrapper pages",
+     "commit": "9331bd5e",
+     "files": "src/pages/{VulnIntelConnectorPage,AdvisoryConnectorPage,GhsaConnectorPage,KevConnectorPage,MicrosoftCsafConnectorPage,NvdConnectorPage,RedhatCsafConnectorPage}.tsx",
+     "sourceRemoved": "7 files, 333 lines",
+     "evidence": [
+      "2026-10-26 gate on 9331bd5e (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 2 warnings; typecheck pass; builds (UI 2 and UI 1) pass incl. verify-production-bundle; e2e:build data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped."
+     ],
+     "tests": [
+      "vitest 763 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15206, statements 8893/18002, functions 2565/6210, branches 7852/19519; floors 49.7/47.2/39.5/38.6 met."
+     ],
+     "bundle": "Bundle unchanged from Batch A: CSS 5 files 645010 raw / 95396 gzip both versions; JS 76 files, UI 2 2519909 raw / 690685 gzip, UI 1 2519907 raw / 690803 gzip. None of the removed files was in the build.",
+     "screenshots": [],
+     "limitations": [],
+     "reversal": "git revert 9331bd5e",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "not_required",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    }
+   ],
    "inventory": {
     "date": "2026-10-26",
     "commit": "fdd4aca1",
@@ -469,9 +647,112 @@
      "D": "old dashboard, inventory filter panel and modal, column toggle, identity drawer",
      "E": "old sidebar navigation, GitHub/OSV/equivalence components and their CSS",
      "F": "vulnerability-intel connector wrapper pages"
+    },
+    "reverified": "2026-10-26 on 89a125f4: same 315 files, 186 reachable from main.tsx, same 41 unreached; no candidate newly reachable and no new unreached file."
+   },
+   "branch": "feat/ui2-step3-cleanup from AxG-SG main 89a125f4 (merge of PR #22, contains 0f7b1b6d); local only, not pushed",
+   "gateDecision": "Awaiting the user: Step 4 starts only after approval.",
+   "reductions": {
+    "source": {
+     "scope": "git ls-files prototype-app/frontend/src (Step 0 method)",
+     "step0": {
+      "files": 315,
+      "lines": 121990,
+      "tsFiles": 94,
+      "tsxFiles": 191,
+      "cssFiles": 29
+     },
+     "afterStep3": {
+      "commit": "9331bd5e",
+      "files": 282,
+      "lines": 116160,
+      "tsFiles": 93,
+      "tsxFiles": 163,
+      "cssFiles": 25
+     },
+     "note": "33 files removed. Net -5830 lines against Step 0; against main 89a125f4 the diff is 35 files, +22 / -5875 (Step 1/2 test fixes added lines after Step 0)."
+    },
+    "dependencies": {
+     "step0": {
+      "dependencies": 13,
+      "devDependencies": 15
+     },
+     "afterStep3": {
+      "dependencies": 10,
+      "devDependencies": 20
+     },
+     "note": "Step 3 removed 3 runtime dependencies; the devDependency increase is from Step 2 (Playwright, axe-core, fonts)."
+    },
+    "bundle": {
+     "step0": {
+      "method": "Sum over dist/**/*.{css,js}; gzip level 9 via Python gzip",
+      "ui2": {
+       "build": "VITE_UI_VERSION=2 npm run build",
+       "css": {
+        "files": 5,
+        "rawBytes": 645010,
+        "gzipBytes": 95396
+       },
+       "js": {
+        "files": 76,
+        "rawBytes": 2519953,
+        "gzipBytes": 690722
+       }
+      },
+      "legacy": {
+       "build": "VITE_UI_VERSION= npm run build",
+       "css": {
+        "files": 5,
+        "rawBytes": 645010,
+        "gzipBytes": 95396
+       },
+       "js": {
+        "files": 76,
+        "rawBytes": 2519951,
+        "gzipBytes": 690806
+       }
+      },
+      "note": "CSS is identical across versions: UI 2.0 styles always ship and activate only under html[data-ui='2']."
+     },
+     "afterStep3": {
+      "ui2": {
+       "css": {
+        "files": 5,
+        "rawBytes": 645010,
+        "gzipBytes": 95396
+       },
+       "js": {
+        "files": 76,
+        "rawBytes": 2519909,
+        "gzipBytes": 690685
+       }
+      },
+      "legacy": {
+       "css": {
+        "files": 5,
+        "rawBytes": 645010,
+        "gzipBytes": 95396
+       },
+       "js": {
+        "files": 76,
+        "rawBytes": 2519907,
+        "gzipBytes": 690803
+       }
+      }
+     },
+     "note": "CSS identical. JS -44 raw bytes in both versions (gzip -37 UI 2, -3 UI 1), from app changes between Step 0 and main, not from Step 3: every removed file and package was already outside the build."
+    },
+    "coverage": {
+     "before": "lines 7912/15916, statements 8887/18801, functions 2561/6469, branches 7844/20281",
+     "after": "lines 7920/15206 (52.08%), statements 8893/18002 (49.40%), functions 2565/6210 (41.30%), branches 7852/19519 (40.22%)",
+     "note": "Floors unchanged; not ratcheted in Step 3."
     }
-   }
+   },
+   "findingsForLaterSteps": [
+    "Coverage timing variation remains from 300ms search-debounce timers in CampaignsPage.tsx (217, 237) and CampaignDetailPage.tsx (270, 340): covered only when a test stays mounted past 300ms. Seen as statements 8883-8887 and functions 2559-2561 at the same source; no line-count effect. Functions margin over the floor is small (2559 vs 2556 needed at Batch A totals).",
+    "src/lib/queryPolling.ts deferred: unused but documented in frontend/CLAUDE.md. Needs the user decision."
+   ]
   }
  ],
- "nextUnit": "Push feat/ui2-cleanup to AxG-SG/SG and open the single PR into main (user-approved 2026-10-26); merge with a merge commit once CI is green; then delete the merged stacked branches and handle PR #21. Step 3 resumes on a new branch from the updated main (Batch A WIP is in stash 'step3-batchA-wip')."
+ "nextUnit": "S3 gate review by the user. Then Step 4 (foundation styles) after approval. Still open: S3 commits have not run in CI (not pushed); queryPolling.ts decision."
 }
