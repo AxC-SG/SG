@@ -388,8 +388,13 @@ async function cveJourney(theme) {
       if ((await ticketBox.count()) && !(await ticketBox.isChecked())) await ticketBox.check();
       await page.getByRole('radio', { name: /CVE \+ Fix/ }).check();
       requests.length = 0;
+      // The assessment-save notice is still shown here; wait for the creation result to replace it.
+      const previousStatus = await page.getByRole('status').first().innerText().catch(() => '');
       await page.getByRole('button', { name: /^Create Findings \(\d+\)$/ }).click();
-      await page.getByRole('status').first().waitFor({ timeout: 15000 }).catch(() => null);
+      await page.waitForFunction((previous) => {
+        const text = document.querySelector('[role="status"]')?.textContent?.trim();
+        return Boolean(text) && text !== previous.trim();
+      }, previousStatus, { timeout: 30000 }).catch(() => null);
       await settle(page);
       const status = await page.getByRole('status').first().innerText().catch(() => '');
       const creates = calls(requests, cvePath('/manual-finding'), 'POST');
