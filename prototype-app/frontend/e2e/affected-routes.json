@@ -1,0 +1,58 @@
+{
+ "description": "Maps changed presentation files (paths relative to prototype-app/frontend) to route families in e2e/routes.mjs. Patterns are regular expressions. A foundation match runs every family plus the public-route isolation checks. A presentation file (src/**/*.css or a non-test src/**/*.tsx) that matches nothing runs the full e2e:sweep.",
+ "foundation": [
+  "^src/styles/ui2/(tokens|primitives|shell|legacy-bridge|index)\\.css$",
+  "^src/styles/(index|base|shared)\\.css$",
+  "^src/(App|main)\\.tsx$",
+  "^src/app/",
+  "^src/lib/uiVersion\\.ts$",
+  "^src/components/",
+  "^src/features/widgets/",
+  "^src/lib/.*\\.tsx$"
+ ],
+ "families": {
+  "findings": [
+   "^src/styles/ui2/findings\\.css$",
+   "^src/styles/(findings-list|finding-detail|ai-security)\\.css$",
+   "^src/features/(findings|ai-security)/",
+   "^src/pages/(Findings|FindingDetail|AiFinding|AiExposures)"
+  ],
+  "cve": [
+   "^src/styles/ui2/cve\\.css$",
+   "^src/styles/(cve-workbench|vuln-repo)\\.css$",
+   "^src/features/(cve-workbench|intelligence)/",
+   "^src/pages/(VulnRepoOrgCve|VulnRepoVulnerabilities|VulnRepoCve|PlatformVulnIntel|IntelligenceReview|CveDetail)"
+  ],
+  "inventory": [
+   "^src/styles/ui2/inventory\\.css$",
+   "^src/styles/(eol|ai-security)\\.css$",
+   "^src/features/(inventory|software-identities|eol|ai-security)/",
+   "^src/pages/(Inventory|Assets|HostAsset|SoftwareIdentit|Bom|AiInventory|AiAsset|AiKnowledge|AiBom|AiAgent|Eol|VulnRepoSoftwareAssets|VulnRepoHostAsset)"
+  ],
+  "governance": [
+   "^src/styles/ui2/governance\\.css$",
+   "^src/styles/ai-security\\.css$",
+   "^src/features/ai-security/",
+   "^src/pages/(AiPolic|PlatformAiPolicy)"
+  ],
+  "connect": [
+   "^src/styles/ui2/connect\\.css$",
+   "^src/styles/connect\\.css$",
+   "^src/features/connect/",
+   "^src/pages/(Connect|\\w*Connector|IntegrationRunQueue|InventoryRunQueue|Ingestion|GithubPipeline|VulnIntel|FeedSchedule|Sources|platform-feed-catalog)"
+  ],
+  "experience": [
+   "^src/styles/ui2/experience\\.css$",
+   "^src/styles/(exposure-dashboard|user-management|vuln-repo)\\.css$",
+   "^src/features/(admin|campaigns|configurations|dashboard|operations|vuln-repo-dashboard)/",
+   "^src/pages/(ExposureDashboard|Dashboard|Campaign|Configurations|UserManagement|PlatformConsole|Platform|Operational|AuthorizedWorkspaces|VulnRepoDashboard)"
+  ],
+  "auth": [
+   "^src/features/auth/",
+   "^src/pages/(Login|Setup|\\w*Invite)"
+  ],
+  "public": [
+   "^src/pages/Demo"
+  ]
+ }
+}

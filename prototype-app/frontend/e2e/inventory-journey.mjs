@@ -13,7 +13,9 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { actor, routeFixtures } from './fixtures.mjs';
+import { newContext } from './browser.mjs';
+import { unexpectedFailures } from './known-failures.mjs';
+import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 import {
   PRIMARY_AI_ASSET_ID,
   PRIMARY_DECLARED_RESOURCE_ID,
@@ -42,7 +44,7 @@ function check(name, ok, detail = '') {
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 
 async function newPage(theme, width, actorOverride = actor) {
-  const context = await browser.newContext({ viewport: { width, height: 1000 } });
+  const context = await newContext(browser, { viewport: { width, height: 1000 } });
   await context.addInitScript((value) => localStorage.setItem('scoutai-theme', value), theme);
   const requests = [];
   await routeFixtures(context, { actorOverride, onRequest: (request) => requests.push({ url: request.url(), method: request.method() }) });
@@ -262,3 +264,5 @@ writeFileSync(path.join(out, `${label}_journey.json`), JSON.stringify(results, n
 const failed = results.filter((result) => !result.ok);
 console.log(`${label}: ${results.length - failed.length}/${results.length} passed`);
 for (const failure of failed) console.log(`  FAIL ${failure.name} ${failure.detail}`);
+process.exitCode = unexpectedFailures(results).length ? 1 : 0;
+failOnUnexpectedApi();

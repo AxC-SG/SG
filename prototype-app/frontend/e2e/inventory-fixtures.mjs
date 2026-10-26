@@ -6,8 +6,9 @@
 // only as far as needed to make filters and pagination observable; writes return canned results
 // and nothing is persisted. Not authenticated evidence.
 import { findings as findingRecords } from './findings-fixtures.mjs';
+import { FIXED_TIME } from './time.mjs';
 
-const BASE = Date.parse('2026-10-24T12:00:00Z');
+const BASE = FIXED_TIME;
 const day = 86_400_000;
 const iso = (offsetDays) => new Date(BASE + offsetDays * day).toISOString();
 const isoDate = (offsetDays) => iso(offsetDays).slice(0, 10);

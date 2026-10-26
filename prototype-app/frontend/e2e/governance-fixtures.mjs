@@ -8,8 +8,9 @@
 // reuse the AI Findings fixture policy IDs so AI Findings and policy detail stay consistent.
 // Writes return canned results and nothing is persisted. Not authenticated evidence.
 import { aiFindings } from './findings-fixtures.mjs';
+import { FIXED_TIME } from './time.mjs';
 
-const BASE = Date.parse('2026-10-24T12:00:00Z');
+const BASE = FIXED_TIME;
 const day = 86_400_000;
 const iso = (offsetDays) => new Date(BASE + offsetDays * day).toISOString();
 

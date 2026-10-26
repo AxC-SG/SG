@@ -39,15 +39,47 @@ const vulnRepoDashboard = {
   criticalUnresolved: [],
 };
 
-export function fixtureFor(url, actorOverride = actor) {
+// Endpoints the generic fallbacks below answer on purpose: pages that render an empty state
+// from `{}` or an empty page. Any other request reaching the fallback has no fixture, so the
+// script's result would not reflect real data; it is recorded and fails the run.
+// Each entry was reviewed against a full journeys + sweep run.
+const EXPECTED_FALLBACKS = [
+  // experience-journey only checks that /operations/quality redirects to the inventory quality
+  // tab; that tab's issue list renders its empty state.
+  /^GET \/api\/operations\/quality\/issues$/,
+  // route-sweep renders /vuln-repo/vulnerabilities as the platform owner to check presentation
+  // only; the platform-wide list renders empty. Journeys cover the tenant list with fixtures.
+  /^GET \/api\/platform\/vuln-repo\/vulnerabilities$/,
+];
+
+const unexpectedApi = new Set();
+
+/** `METHOD /api/path` for each /api request that reached a fallback without being expected. */
+export function unexpectedApiRequests() {
+  return [...unexpectedApi].sort();
+}
+
+/** Prints unexpected /api requests and marks the process failed when there are any. */
+export function failOnUnexpectedApi() {
+  const unexpected = unexpectedApiRequests();
+  for (const request of unexpected) console.log(`UNEXPECTED API ${request}`);
+  if (unexpected.length) process.exitCode = 1;
+}
+
+function fallback(pathname, method, body) {
+  if (!EXPECTED_FALLBACKS.some((pattern) => pattern.test(`${method} ${pathname}`))) unexpectedApi.add(`${method} ${pathname}`);
+  return body;
+}
+
+export function fixtureFor(url, actorOverride = actor, method = 'GET') {
   const { pathname } = new URL(url);
   const findingsFixture = findingsFixtureFor(url);
   if (findingsFixture !== undefined) return findingsFixture;
   if (pathname.endsWith('/api/me')) return actorOverride;
   if (pathname.endsWith('/api/auth/csrf')) return { token: 'fixture' };
   if (pathname.endsWith('/vuln-repo/dashboard')) return vulnRepoDashboard;
-  if (/summary|distribution|stats|dashboard|health|overview|count/i.test(pathname)) return {};
-  return emptyPage;
+  if (/summary|distribution|stats|dashboard|health|overview|count/i.test(pathname)) return fallback(pathname, method, {});
+  return fallback(pathname, method, emptyPage);
 }
 
 /** Answers every /api request on the context from fixtures; `onRequest` sees each request. */
@@ -65,7 +97,7 @@ export async function routeFixtures(context, { actorOverride = actor, onRequest,
     if (governance !== undefined) return route.fulfill(governance);
     const experience = experienceFixtureFor(request.url(), request.method(), request.postData());
     if (experience !== undefined) return route.fulfill(experience);
-    const body = fixtureFor(request.url(), actorOverride);
+    const body = fixtureFor(request.url(), actorOverride, request.method());
     return body === NOT_FOUND
       ? route.fulfill({ status: 404, json: { message: 'Not found (fixture)' } })
       : route.fulfill({ json: body });

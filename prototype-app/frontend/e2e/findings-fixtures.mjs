@@ -5,7 +5,9 @@
 // /api requests only; they do not reproduce backend filtering semantics beyond what is
 // needed to make narrowing, paging and scope visibly observable. Not authenticated evidence.
 
-const BASE = Date.parse('2026-10-24T12:00:00Z');
+import { FIXED_TIME } from './time.mjs';
+
+const BASE = FIXED_TIME;
 const day = 86_400_000;
 const iso = (offsetDays) => new Date(BASE + offsetDays * day).toISOString();
 
@@ -68,7 +70,7 @@ const PAGE_SIZE = 25;
 function dueBand(finding) {
   if (finding.status !== 'OPEN') return null;
   if (!finding.dueAt) return 'no-sla';
-  const delta = Date.parse(finding.dueAt) - Date.now();
+  const delta = Date.parse(finding.dueAt) - BASE;
   if (delta < 0) return 'overdue';
   return delta < 7 * day ? 'due-soon' : 'on-track';
 }

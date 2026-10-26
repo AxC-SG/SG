@@ -9,7 +9,9 @@
 // Writes return canned results (saves echo the request body merged over the fixture record);
 // nothing is persisted. Not authenticated evidence.
 
-const BASE = Date.parse('2026-10-24T12:00:00Z');
+import { FIXED_TIME } from './time.mjs';
+
+const BASE = FIXED_TIME;
 const day = 86_400_000;
 const iso = (offsetDays) => new Date(BASE + offsetDays * day).toISOString();
 

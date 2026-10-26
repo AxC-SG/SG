@@ -10,7 +10,14 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test:unit": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e:build": "node e2e/build-artifacts.mjs",
+    "e2e:journeys": "node e2e/run.mjs journeys",
+    "e2e:sweep": "node e2e/run.mjs sweep",
+    "e2e:visual": "node e2e/run.mjs visual",
+    "e2e:update": "node e2e/run.mjs update",
+    "e2e:affected": "node e2e/run.mjs affected",
+    "e2e:live": "node e2e/live-journeys.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
@@ -29,6 +36,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/space-grotesk": "5.3.0",
     "@playwright/test": "1.63.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

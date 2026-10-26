@@ -11,7 +11,8 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { routeFixtures } from './fixtures.mjs';
+import { newContext } from './browser.mjs';
+import { failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, value, index, all) => {
@@ -32,7 +33,7 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const log = [];
 for (const theme of themes) {
   for (const width of widths) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const context = await newContext(browser, { viewport: { width, height: 900 } });
     await context.addInitScript((value) => localStorage.setItem('scoutai-theme', value), theme);
     await routeFixtures(context);
     const page = await context.newPage();
@@ -54,3 +55,5 @@ for (const theme of themes) {
 await browser.close();
 writeFileSync(path.join(out, `${label}_log.json`), JSON.stringify(log, null, 2));
 console.log(JSON.stringify(log.map(({ route, theme, width, finalUrl, dataUi, horizontalOverflow, pageErrors }) => ({ route, theme, width, finalUrl: finalUrl.replace(base, ''), dataUi, horizontalOverflow, errors: pageErrors.length })), null, 0));
+process.exitCode = log.some((entry) => entry.pageErrors.length) ? 1 : 0;
+failOnUnexpectedApi();

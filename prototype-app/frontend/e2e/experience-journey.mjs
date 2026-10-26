@@ -14,7 +14,9 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { actor, routeFixtures } from './fixtures.mjs';
+import { newContext } from './browser.mjs';
+import { unexpectedFailures } from './known-failures.mjs';
+import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 import { platformActor } from './governance-fixtures.mjs';
 import {
   BLOCKED_CAMPAIGN_ID,
@@ -56,7 +58,7 @@ const opsActor = { ...actor, roles: ['PLATFORM_OWNER', 'TENANT_ADMIN'], platform
 const analystActor = { ...actor, roles: ['SECURITY_ANALYST'] };
 
 async function newPage(theme, width, actorOverride = actor, { unauthenticated = false } = {}) {
-  const context = await browser.newContext({ viewport: { width, height: 1000 } });
+  const context = await newContext(browser, { viewport: { width, height: 1000 } });
   await context.addInitScript((value) => localStorage.setItem('scoutai-theme', value), theme);
   const requests = [];
   await routeFixtures(context, {
@@ -380,3 +382,5 @@ writeFileSync(path.join(out, `${label}_journey.json`), JSON.stringify(results, n
 const failed = results.filter((result) => !result.ok);
 console.log(`${label}: ${results.length - failed.length}/${results.length} passed`);
 for (const result of failed) console.log(`FAIL ${result.name} ${result.detail}`);
+process.exitCode = unexpectedFailures(results).length ? 1 : 0;
+failOnUnexpectedApi();

@@ -77,7 +77,19 @@ npm run dev
 
 Open `http://127.0.0.1:5174/design-preview.html#/reference`. Reference checks: `npm run typecheck`, `npm test`, `npm run build`.
 
-The fixture-backed browser checks moved from `browser-fixtures/` in this folder to `prototype-app/frontend/e2e/`. Historical commands recorded in the ledgers keep the old path.
+The fixture-backed browser checks moved from `browser-fixtures/` in this folder to `prototype-app/frontend/e2e/`. Historical commands recorded in the ledgers keep the old path. From `prototype-app/frontend`, after `npm ci`:
+
+```sh
+npm run e2e:build        # builds UI 2 and UI 1 into e2e/.artifacts/, checks the data-ui route boundary
+npm run e2e:journeys     # fixture journeys against both builds
+npm run e2e:sweep        # route sweep plus axe comparison with e2e/axe-baseline/
+npm run e2e:visual       # visual baselines; only inside mcr.microsoft.com/playwright:v<pinned version>
+npm run e2e:affected -- --routes /findings,/login
+npm run e2e:update       # rewrites visual and axe baselines; inspect e2e/.results/visual-report first
+npm run e2e:live         # real backend; needs LIVE_CREDENTIALS and is never part of default CI
+```
+
+Every script exits non-zero on a failed check, a page or console error, or an `/api` request with no fixture.
 
 Use browser tools available in Claude's environment; Codex-specific tool bindings and browser sessions do not transfer. Establish reproducible browser checks as planned. The fresh authenticated application check previously redirected to login. Continue independent code/fixture work while recording that release gate as pending. Do not inject tokens, bypass auth or claim authenticated verification from mocked fixtures. Request approved test access once when it becomes necessary. Never use customer records for destructive or external-delivery testing.
 

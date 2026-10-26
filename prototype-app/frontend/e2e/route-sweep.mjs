@@ -4,17 +4,19 @@
 //
 // For each page it records the final URL, whether the rendered content sits under a UI 2.0
 // presentation root (an orphan is legacy presentation on an active route), page errors and
-// horizontal overflow at 1440px and 390px. Run against the UI 2.0 build; on the legacy build
-// every route reports as orphan by design (no family roots are styled there).
+// horizontal overflow at each width (default 1440px and 390px). Run against the UI 2.0 build;
+// on the legacy build every route reports as orphan by design (no family roots are styled there).
 // Fixture-backed only: this is NOT authenticated staging evidence.
 //
 // Usage:
 //   [CHROMIUM_PATH=<chromium>] \
-//   node route-sweep.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--theme dark]
+//   node route-sweep.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--theme dark] [--widths 1440,390]
+// Left-navigation clicks run at the widest width only.
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { actor, routeFixtures } from './fixtures.mjs';
+import { newContext } from './browser.mjs';
+import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 import { APPROVED_PLATFORM_POLICY_ID, PRIMARY_POLICY_ID, platformActor } from './governance-fixtures.mjs';
 import { PRIMARY_CVE } from './cve-fixtures.mjs';
 import { PRIMARY_AI_ASSET_ID, PRIMARY_DECLARED_RESOURCE_ID, PRIMARY_HOST_ID, PRIMARY_SOFTWARE_IDENTITY_ID } from './inventory-fixtures.mjs';
@@ -31,6 +33,8 @@ const base = args.base ?? 'http://127.0.0.1:5175';
 const out = args.out ?? 'screenshots';
 const label = args.label ?? 'sweep';
 const theme = args.theme ?? 'dark';
+const widths = (args.widths ?? '1440,390').split(',').map(Number);
+const navWidth = Math.max(...widths);
 mkdirSync(out, { recursive: true });
 
 // Presentation roots of the UI 2.0 families (P2–P7). Auth entry pages carry theirs on the shell.
@@ -66,18 +70,28 @@ const platformRoutes = [
 ];
 const publicRoutes = ['/login', '/tenant-invite#token=fixture-invite-token', '/invite#token=fixture-invite-token', '/setup'];
 
+// Requests outside the served build: the Google Fonts import in base.css only (answered locally by browser.mjs).
+const EXPECTED_EXTERNAL_HOSTS = new Set(['fonts.googleapis.com', 'fonts.gstatic.com']);
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const rows = [];
 
 async function sweep(who, routes, { unauthenticated = false, navClicks = false } = {}) {
-  for (const width of [1440, 390]) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 } });
+  for (const width of widths) {
+    const context = await newContext(browser, { viewport: { width, height: 1000 } });
     await context.addInitScript((value) => localStorage.setItem('scoutai-theme', value), theme);
     await routeFixtures(context, { actorOverride: who });
     if (unauthenticated) await context.route((url) => url.pathname.endsWith('/api/me'), (route) => route.fulfill({ status: 401, json: { message: 'Unauthorized (fixture)' } }));
     const page = await context.newPage();
     let errors = [];
+    let consoleErrors = [];
+    let externalRequests = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.origin !== new URL(base).origin && !EXPECTED_EXTERNAL_HOSTS.has(url.hostname)) externalRequests.push(`${request.method()} ${url.origin}${url.pathname}`);
+    });
     const inspect = async (route, via) => {
       await page.waitForTimeout(700);
       const state = await page.evaluate((roots) => {
@@ -92,14 +106,16 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
         };
       }, FAMILY_ROOTS);
       const url = new URL(page.url());
-      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), width, via, route, final: url.pathname + url.search, ...state, errors });
+      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), width, via, route, final: url.pathname + url.search, ...state, errors, consoleErrors, externalRequests });
       errors = [];
+      consoleErrors = [];
+      externalRequests = [];
     };
     for (const route of routes) {
       await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
       await inspect(route.split('#')[0], 'direct');
     }
-    if (navClicks && width === 1440) {
+    if (navClicks && width === navWidth) {
       await page.goto(`${base}${routes[0]}`, { waitUntil: 'networkidle' });
       // Expand every collapsible nav group, then visit each destination it lists.
       const toggles = page.locator('aside.sidebar button[aria-expanded="false"]');
@@ -132,9 +148,17 @@ writeFileSync(path.join(out, `${label}_route_sweep.json`), JSON.stringify(rows, 
 const orphans = rows.filter((row) => !row.family);
 const overflowing = rows.filter((row) => row.overflow);
 const erroring = rows.filter((row) => row.errors.length > 0);
+const consoleErroring = rows.filter((row) => row.consoleErrors.length > 0);
+const external = rows.filter((row) => row.externalRequests.length > 0);
 const flagged = rows.filter((row) => row.ui !== '2');
 console.log(`${label}: ${rows.length} page checks (${rows.filter((row) => row.via === 'nav').length} via navigation); `
-  + `${orphans.length} orphan, ${overflowing.length} overflow, ${erroring.length} with page errors, ${flagged.length} without data-ui=2`);
+  + `${orphans.length} orphan, ${overflowing.length} overflow, ${erroring.length} with page errors, ${consoleErroring.length} with console errors, `
+  + `${external.length} with unexpected requests, ${flagged.length} without data-ui=2`);
 for (const row of orphans) console.log(`ORPHAN ${row.actor} ${row.width} ${row.via} ${row.route} -> ${row.final} :: ${row.text}`);
 for (const row of overflowing) console.log(`OVERFLOW ${row.actor} ${row.width} ${row.route} -> ${row.final}`);
 for (const row of erroring) console.log(`ERROR ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.errors.join(' | ')}`);
+for (const row of consoleErroring) console.log(`CONSOLE ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.consoleErrors.join(' | ')}`);
+for (const row of external) console.log(`REQUEST ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.externalRequests.join(' | ')}`);
+// Orphans and overflow are reported for review; legacy builds report every route as orphan by design.
+process.exitCode = erroring.length || consoleErroring.length || external.length ? 1 : 0;
+failOnUnexpectedApi();

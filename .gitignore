@@ -16,6 +16,10 @@ prototype-app/frontend/.env.*
 prototype-app/backend/target/
 prototype-app/frontend/dist/
 prototype-app/frontend/coverage/
+prototype-app/frontend/e2e/.artifacts/
+prototype-app/frontend/e2e/.results/
+prototype-app/frontend/test-results/
+prototype-app/frontend/playwright-report/
 
 # Dependency caches
 node_modules/
