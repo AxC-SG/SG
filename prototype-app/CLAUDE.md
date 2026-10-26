@@ -269,10 +269,8 @@ Key connector components:
 - `SccmConnectorPage` — retained code; live SCCM JDBC is contained at config/test/admission/worker/client boundaries
 - `AwsDiscoveryConnectorPage` — AWS EC2 discovery via SSM, multi-account via `aws_discovery_targets`
 - `AzureDiscoveryConnectorPage` — retained generic Azure code; unavailable under `GenericAzureDiscoveryPolicy`; distinct from retained static Azure AI discovery
-- `VulnIntelConnectorPage` / `VulnIntelConfigPage` — NVD, GHSA, KEV, CSAF source configuration
-- `NvdConnectorPage`, `KevConnectorPage`, `GhsaConnectorPage`, `MicrosoftCsafConnectorPage`, `RedhatCsafConnectorPage`, `AdvisoryConnectorPage` — per-feed configuration pages
+- `VulnIntelConfigPage` — NVD, GHSA, KEV, CSAF source configuration
 - `IntegrationRunQueuePage` / `InventoryRunQueuePage` — live run queue surfaces
-- `GithubPipelineManager` — GitHub SBOM source management
 - `IngestionPage` — SBOM endpoint / file upload
 
 ### Fix Intelligence (`/fix-intelligence`)
