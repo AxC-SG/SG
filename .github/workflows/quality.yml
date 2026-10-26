@@ -100,6 +100,54 @@ jobs:
       - run: npm run build
       - run: npm run test:coverage
 
+  # Fixture-backed browser checks for both presentation versions. The image tag must equal the
+  # pinned @playwright/test version; check-playwright-image.mjs fails the job otherwise.
+  frontend-e2e:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+      E2E_WORKERS: 2
+    defaults:
+      run:
+        working-directory: prototype-app/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prototype-app/frontend/package-lock.json
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: npm ci
+      - run: node e2e/check-playwright-image.mjs
+      - run: npm run e2e:build
+      - run: npm run e2e:journeys
+      - run: npm run e2e:visual
+      - name: Select routes affected by presentation changes
+        id: affected
+        if: github.event_name == 'pull_request'
+        run: echo "routes=$(node e2e/select-affected.mjs --base origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+      - name: Affected routes at 390 and 1280px
+        if: github.event_name == 'pull_request' && steps.affected.outputs.routes != 'NONE' && steps.affected.outputs.routes != 'FULL_SWEEP'
+        env:
+          ROUTES: ${{ steps.affected.outputs.routes }}
+        run: npm run e2e:affected -- --routes "$ROUTES"
+      - name: Full sweep for presentation files missing from the route map
+        if: github.event_name == 'pull_request' && steps.affected.outputs.routes == 'FULL_SWEEP'
+        run: npm run e2e:sweep
+      - name: Retain e2e results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e-${{ github.run_id }}
+          path: prototype-app/frontend/e2e/.results
+          if-no-files-found: warn
+          retention-days: 14
+
   backend:
     runs-on: ubuntu-latest
     defaults:

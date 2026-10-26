@@ -1,0 +1,38 @@
+name: Frontend E2E Sweep
+
+# Full route sweep and axe comparison at 390/768/1280/1440px in both themes and both UI
+# versions. Kept out of quality.yml so the schedule does not re-run the other quality jobs.
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+    defaults:
+      run:
+        working-directory: prototype-app/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prototype-app/frontend/package-lock.json
+      - run: npm ci
+      - run: node e2e/check-playwright-image.mjs
+      - run: npm run e2e:build
+      - run: npm run e2e:sweep -- --widths 390,768,1280,1440
+      - name: Retain sweep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e-sweep-${{ github.run_id }}
+          path: prototype-app/frontend/e2e/.results
+          if-no-files-found: warn
+          retention-days: 14
