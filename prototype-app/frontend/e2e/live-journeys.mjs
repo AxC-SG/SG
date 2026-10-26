@@ -9,7 +9,9 @@
 //   LIVE_CREDENTIALS=<json file {email,password} of a disposable tenant admin, outside the repo> \
 //   LIVE_PLATFORM_CREDENTIALS=<json file {email,password} of a local platform owner, outside the repo> \
 //   node live-journeys.mjs --base http://127.0.0.1:5180 --out <dir> --label live \
-//     [--journeys findings,ai,cve,inventory,authority,connect] [--themes dark,light]
+//     [--journeys findings,ai,cve,inventory,authority,connect] [--themes dark,light] [--cve CVE-YYYY-NNNN]
+// --cve picks the workbench CVE instead of the first org record. Use one with matched components
+// that have no finding yet to exercise first-time creation; later runs get the duplicate result.
 // External delivery is never exercised: ServiceNow is left unconfigured or pointed at a reserved
 // example.test host, and the platform-create step only creates another disposable tenant.
 import { chromium } from '@playwright/test';
@@ -28,6 +30,7 @@ const out = args.out ?? 'live';
 const label = args.label ?? 'live';
 const themes = (args.themes ?? 'dark,light').split(',');
 const journeys = new Set((args.journeys ?? 'findings,ai,cve,inventory,authority,connect').split(','));
+const chosenCve = args.cve ?? null;
 const tenantCredentials = JSON.parse(readFileSync(process.env.LIVE_CREDENTIALS, 'utf8'));
 const platformCredentials = process.env.LIVE_PLATFORM_CREDENTIALS ? JSON.parse(readFileSync(process.env.LIVE_PLATFORM_CREDENTIALS, 'utf8')) : null;
 mkdirSync(out, { recursive: true });
@@ -284,7 +287,7 @@ async function cveJourney(theme) {
   check(tag('KEV filter sends inKev=true&page=0'), kev && new URL(kev.url()).searchParams.get('inKev') === 'true' && new URL(kev.url()).searchParams.get('page') === '0', kev?.url());
   await page.getByLabel('KEV Status').selectOption({ index: 0 });
   await settle(page);
-  const firstCve = ((await rowsOf().first().innerText()).match(/CVE-\d{4}-\d+/) ?? [])[0];
+  const firstCve = chosenCve ?? ((await rowsOf().first().innerText()).match(/CVE-\d{4}-\d+/) ?? [])[0];
   await page.getByLabel('Search CVE / Title / Severity').fill(`  ${firstCve}  `);
   requests.length = 0;
   await page.getByRole('button', { name: 'Apply' }).click();
@@ -400,9 +403,10 @@ async function cveJourney(theme) {
       const creates = calls(requests, cvePath('/manual-finding'), 'POST');
       const tickets = calls(requests, cvePath('/servicenow-incident'), 'POST');
       // First run creates findings and reports the ServiceNow failure; re-runs get the duplicate result.
+      // The workbench appends its own 'Created N.' to the server message, whose wording varies.
       const duplicate = /already open .*No duplicates created/i.test(status);
       check(tag(duplicate ? 'duplicate result reported, nothing re-created' : 'creation succeeds and ticket failure is reported'),
-        duplicate ? creates.length === 1 && tickets.length === 0 : /Created \d+ finding/i.test(status) && /ServiceNow/i.test(status), status);
+        duplicate ? creates.length === 1 && tickets.length === 0 : /Created [1-9]\d*\b/.test(status) && /ServiceNow ticket failed/.test(status), status);
       check(tag('ticket failure does not duplicate creation'), creates.length === 1 && tickets.length <= 1, `${creates.length}/${tickets.length}`);
       check(tag('creation payload keeps CVE + Fix mode and existing-finding behaviour'), bodyOf(creates[0])?.findingCreationMode === 'CVE_FIX' && bodyOf(creates[0])?.existingFindingBehavior === 'ADD_TO_EXISTING', JSON.stringify(bodyOf(creates[0]))?.slice(0, 200));
       check(tag('ServiceNow ticket fails locally as not configured (no delivery)'), tickets.length === 0 || (await statusOf(tickets[0])) === 503, `${await statusOf(tickets[0])}`);
