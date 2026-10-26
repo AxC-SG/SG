@@ -519,9 +519,10 @@ async function inventoryJourney(theme) {
   await page.goto(`${base}/inventory/ai/declared-resources`, { waitUntil: 'networkidle' });
   await settle(page);
   await shot(page, `declared-resources_${theme}`);
-  const declared = page.locator('table tbody tr').filter({ hasNot: page.getByText(/No .*found/i) });
+  // Rows navigate on click and hold no link; the setup-actions table above has rows too.
+  const declared = page.locator('table', { has: page.getByRole('columnheader', { name: 'Last declared' }) }).locator('tbody tr');
   if (await declared.count()) {
-    await declared.first().locator('button, a').first().click();
+    await declared.first().locator('td').first().click();
     await page.waitForURL(/\/inventory\/ai\/declared-resources\/[^/]+/, { timeout: 10000 }).catch(() => null);
     check(tag('declared resource opens detail'), /\/inventory\/ai\/declared-resources\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
     await settle(page);
@@ -535,6 +536,7 @@ async function inventoryJourney(theme) {
       check(tag('retired history requests history=true'), call && new URL(call.url()).searchParams.get('history') === 'true', call?.url());
     }
     await page.getByRole('button', { name: 'Back to declared resources' }).click();
+    await page.waitForURL(/\/inventory\/ai\/declared-resources$/, { timeout: 10000 }).catch(() => null);
     check(tag('back returns to declared resources'), new URL(page.url()).pathname === '/inventory/ai/declared-resources', here(page));
   } else {
     skip(tag('declared resource detail / retired history'), 'no declared resources projected in this tenant (fixture journey covers it)');
