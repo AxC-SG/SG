@@ -1,8 +1,15 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { pathForFixIntelligenceView } from './app/routes';
 import type { ActorContext } from './features/auth/types';
 import { renderWithProviders } from './test/test-utils';
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}</output>;
+}
 
 const TENANT_ADMIN: ActorContext = {
   creator: false,
@@ -383,5 +390,18 @@ describe('App test persona switcher', () => {
     expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
     expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
+  });
+
+  it.each([
+    '/fix-intelligence',
+    pathForFixIntelligenceView('patches'),
+    '/fix-intelligence/details/fix-1',
+  ])('redirects retired Fix Intelligence URLs to findings: %s', async (route) => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    renderWithProviders(<><App /><LocationProbe /></>, { route });
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/findings$/));
+    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
   });
 });
