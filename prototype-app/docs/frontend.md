@@ -62,7 +62,6 @@ frontend/src/
     riskScoring.ts          Pure TS: computeCveRiskScore, computeFindingPriorityScore
     queryClient.ts          createQueryClient factory (retry:1, staleTime:10s, no refetchOnWindowFocus)
     polling.ts              Refresh interval constants
-    queryPolling.ts         visibleInterval / isDocumentVisible helpers
     performanceMonitoring.tsx  API/render timing telemetry
     time.ts                 timeAgo, formatTimestamp helpers
   pages/                    One file per route; lazy-loaded in App.tsx

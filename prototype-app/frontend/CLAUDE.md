@@ -91,7 +91,6 @@ src/
     queryClient.ts     # createQueryClient factory (shared between app and tests)
     time.ts            # timeAgo, formatTimestamp
     polling.ts         # Refresh-interval constants for run-queue and status polling
-    queryPolling.ts    # React Query refetchInterval helpers
     performanceMonitoring.tsx  # Client performance telemetry
   pages/               # One file per route; lazy-loaded via React.lazy in App.tsx
   components/          # Shared presentational components (≤ 300 lines each)
