@@ -54,13 +54,29 @@
    "method": "Sum over dist/**/*.{css,js}; gzip level 9 via Python gzip",
    "ui2": {
     "build": "VITE_UI_VERSION=2 npm run build",
-    "css": { "files": 5, "rawBytes": 645010, "gzipBytes": 95396 },
-    "js": { "files": 76, "rawBytes": 2519953, "gzipBytes": 690722 }
+    "css": {
+     "files": 5,
+     "rawBytes": 645010,
+     "gzipBytes": 95396
+    },
+    "js": {
+     "files": 76,
+     "rawBytes": 2519953,
+     "gzipBytes": 690722
+    }
    },
    "legacy": {
     "build": "VITE_UI_VERSION= npm run build",
-    "css": { "files": 5, "rawBytes": 645010, "gzipBytes": 95396 },
-    "js": { "files": 76, "rawBytes": 2519951, "gzipBytes": 690806 }
+    "css": {
+     "files": 5,
+     "rawBytes": 645010,
+     "gzipBytes": 95396
+    },
+    "js": {
+     "files": 76,
+     "rawBytes": 2519951,
+     "gzipBytes": 690806
+    }
    },
    "note": "CSS is identical across versions: UI 2.0 styles always ship and activate only under html[data-ui='2']."
   }
@@ -103,16 +119,57 @@
   {
    "id": "S2",
    "title": "Turn the scripts into real gates",
-   "status": "planned",
-   "units": []
+   "status": "in_progress",
+   "units": [
+    {
+     "title": "Fixture-backed e2e gates: failing exits, deterministic runs, two-version build, axe and journey baselines",
+     "files": "prototype-app/frontend/e2e/* (fixtures, journeys, route-sweep, axe-audit, capture, run, serve, serve-cli, build-artifacts, axe-compare, known-failures, routes, select-affected, affected-routes.json, check-playwright-image, time, browser, visual.spec.ts, axe-baseline/{ui2,legacy}.json, journey-baseline/legacy.json), frontend/playwright.config.ts, frontend/package.json + package-lock.json (@fontsource/space-grotesk 5.3.0, @fontsource/ibm-plex-sans 5.3.0, exact), .gitignore, CLAUDE_START_HERE.md",
+     "evidence": [
+      "2026-10-26 fresh run on app source identical to 32c3e91c (git diff 32c3e91c -- src is empty): e2e:build exit 0, both builds pass verify-production-bundle, data-ui boundary 15/15 routes per version.",
+      "e2e:journeys exit 0, 12/12 steps. UI 2: findings 67/67, cve 80/80, inventory 106/106, governance 166/166, connect 116/116, experience 202/202 = 737/737, 0 skipped. UI 1: 703/737 passed, 34 failed, all 34 in the reviewed journey baseline (390px page overflow on 17 pages x 2 themes), 0 new, 0 skipped.",
+      "e2e:sweep exit 0, 8/8 steps, widths 390/768/1280/1440, both themes: 322 page checks per version per theme, 0 page errors, 0 console errors, 0 requests to other hosts, 0 orphans on UI 2. axe compare 0 new / 0 resolved for both versions on a second independent run (UI 2 630 entries, UI 1 538).",
+      "No unexpected /api requests after review: EXPECTED_FALLBACKS holds GET /api/operations/quality/issues and GET /api/platform/vuln-repo/vulnerabilities, each with its reason in fixtures.mjs."
+     ],
+     "tests": [
+      "2026-10-26 (Node 22.16.0): lint 0 errors / 3 existing warnings; typecheck pass; vitest 759 passed / 0 failed / 0 skipped in 84 files; coverage lines 49.71% (7912/15916), statements 47.26% (8887/18801), functions 39.58% (2561/6469), branches 38.67% (7844/20281); floors met. Earlier sessions measured statements 8879 vs 8887 and functions 2557 vs 2561 on the same source: small run-to-run variation, always above floors."
+     ],
+     "screenshots": [],
+     "fixesDuringStep": [
+      "run.mjs used spawnSync while serving the artifact from its own process, so every page load hung; children now run asynchronously.",
+      "All six journeys wrote <version>_journey.json to one folder and overwrote each other; each journey now has its own results folder.",
+      "Production builds call https://api.scoutgrid.io/api when VITE_API_BASE is unset (src/api/base.ts). The e2e builds now set VITE_API_BASE=/api, and browser.mjs aborts every request to a host other than 127.0.0.1/localhost. Fixtures had answered all such calls before the fix; nothing was observed reaching the network.",
+      "The no-motion style removed animations, which dropped the rise-in fill transform on .ai-security-table-panel and made /policies overflow at 390px in a way no user sees. It now sets durations and delays to 0s instead."
+     ],
+     "findingsForLaterSteps": [
+      "UI 2 overflow at 768px on /configurations/sla and /configurations/suppress, both themes (route-sweep reports it; not a gate failure). Not fixed in Step 2.",
+      "UI 2 adds 80 serious color-contrast and 12 extra serious scrollable-region-focusable axe violations compared with UI 1. Recorded in the baseline as the starting point, not accepted as passing; for the Step 5 accessibility review.",
+      "Hidden toggle inputs in .ai-policy-toggle depend on an animation's leftover transform to stay clipped; fragile if the animation is ever removed."
+     ],
+     "limitations": [
+      "axe-baseline/{ui2,legacy}.json and journey-baseline/legacy.json were generated on the macOS host (Chromium from @playwright/test 1.63.0), not in the Playwright container.",
+      "Visual baselines PENDING: Docker is not installed here, so they cannot be generated in mcr.microsoft.com/playwright:v1.63.0-noble. e2e:visual, e2e:affected and e2e:update stop at check-playwright-image.mjs on this host by design.",
+      "The .github/workflows changes (frontend-e2e job in quality.yml, new frontend-e2e-sweep.yml) are written but uncommitted: .github/workflows/ is on the never-touch list in prototype-app/CLAUDE.md and needs explicit approval.",
+      "A fresh-clone run of npm ci && e2e:build && e2e:journeys has not been done yet."
+     ],
+     "reversal": "git revert the Step 2 commits; the font devDependencies leave with the package.json/lockfile revert.",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "pending",
+      "staging": "pending",
+      "release": "not_requested"
+     }
+    }
+   ]
   },
   {
    "id": "S3",
    "title": "Remove proven unused code and dependencies",
    "status": "planned",
-   "dependsOn": ["S1"],
+   "dependsOn": [
+    "S1"
+   ],
    "units": []
   }
  ],
- "nextUnit": "S1 needs backend commit, disposable qualification database/tenant and test accounts from the user. S2 can proceed in parallel."
+ "nextUnit": "S2 remaining: approval for .github/workflows, visual baselines in the Playwright container, fresh-clone check. S1 needs backend commit, disposable qualification database/tenant and test accounts from the user."
 }
