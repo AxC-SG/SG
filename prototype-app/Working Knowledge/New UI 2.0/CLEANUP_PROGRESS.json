@@ -113,12 +113,12 @@
   {
    "id": "S1",
    "title": "Requalify against the real local backend",
-   "status": "pending",
+   "status": "verified",
    "units": [
     {
      "title": "Requalify UI 2 against the real local backend (live-journeys.mjs, both themes)",
-     "files": "prototype-app/frontend/e2e/live-journeys.mjs (wait fix 87385e41, declared-resource row fix f0c73634)",
-     "candidateCommit": "f0c73634",
+     "files": "prototype-app/frontend/e2e/live-journeys.mjs (87385e41, f0c73634, fdd4aca1); prototype-app/frontend/src/pages/FindingsPage.tsx + FindingsPage.test.tsx (13d0132a)",
+     "candidateCommit": "13d0132a",
      "backendIdentity": [
       "2026-10-26: backend started from this checkout (mvn spring-boot:run, profiles local,postgres) at be2e64fe/87385e41; git diff 587f4c78..HEAD -- prototype-app/backend is empty and backend tree is clean, so it runs fix/pre-ui2-defects (587f4c78).",
       "PID 75155 on :8080, classpath prototype-app/backend/target/classes in this repo; all 9 pg_stat_activity connections are to scout_ui2_qual; Flyway validated 8 platform migrations, nothing to migrate; tenant_ui2_qual_2 tenant_schema_history at V6 (repo head V6); GET /api/me unauthenticated -> 401.",
@@ -131,7 +131,12 @@
       "2026-10-26 FRESH full run at 87385e41 under caffeinate, dark+light, login form, one session per account: 244/244 passed, 0 failed, 4 skipped. Per journey (checks incl. skips): findings 54, ai-findings 20, cve 52, inventory 34, authority 46, connect 42.",
       "Backend errors during runs: two uk_tenants_schema_name violations, caused by the deliberate duplicate-slug conflict check (passed). New disposable tenants ui2-qual-live-* stay PROVISIONING because .env.local disables synchronous provisioning (approved 2026-10-25); the check expects 202 PROVISIONING.",
       "2026-10-26 AI-BOM data for the pending declared-resource scenario: uploaded backend/src/main/resources/demo-data/checkout-ai-bom.cdx.json through POST /api/bom/upload (bomType=AI_BOM, assetType=APPLICATION, asset 'UI2 Qual Checkout AI') as the ui2-qual-2 tenant admin, after confirming /api/me tenantId 25029f35-fcef-4467-826e-42c7e0ca6fe7. Result 200 CREATED, 4 components; projection produced 1 declared resource (kanra-fraud-detector, MODEL, UNVERIFIED) and 1 setup action. The demo seeder writes BOM rows directly and never ran the AI-BOM projection, which is why the tenant had none.",
-      "With data present the step failed dark+light: it clicked a link in the first table row on the page, which is the setup-actions table, and declared-resource rows hold no link (tr onClick). Fix f0c73634 targets the Declared Resources table and clicks the row. Inventory rerun at f0c73634: 38/38 passed, 0 skipped (declared resource opens detail, retired history requests history=true, back returns, both themes)."
+      "With data present the step failed dark+light: it clicked a link in the first table row on the page, which is the setup-actions table, and declared-resource rows hold no link (tr onClick). Fix f0c73634 targets the Declared Resources table and clicks the row. Inventory rerun at f0c73634: 38/38 passed, 0 skipped (declared resource opens detail, retired history requests history=true, back returns, both themes).",
+      "2026-10-26 CVE first-time creation branch at fdd4aca1 (--cve CVE-2023-4863, the only correlated CVE with matched components lacking findings; tenant uses AUTO finding generation): dark 'Manual finding workflow completed. Created 2. 4 already open. ServiceNow ticket failed: [BAD_REQUEST] ServiceNow is not configured for this tenant', one create request, ServiceNow 503 locally, no delivery; light then 'No duplicates created. 6 already open.' The old check expected the fixture server's wording; it now requires a non-zero 'Created N' and 'ServiceNow ticket failed' (verified true on the real message, false on duplicate, Created 0 and no-failure messages).",
+      "Run at 6a9a3f5a: 248/249 passed, 2 skipped, 1 failed: findings 'status column values accumulate' [light] (also failed once [dark] in the first run). Diagnosed rather than rerun: a live repro lost the second Status click in 3 of 8 rounds; the popover DOM node was replaced on every render because ColHeader was a component declared inside FindingsPage (remount on each render drops clicks spanning a re-render and keyboard focus). Pre-existing since a3f1d2f3 (2026-04-22), affects UI 1 and UI 2.",
+      "Fix 13d0132a: header rendered by a function (same idiom as renderColFilterPopover), with regression test 'keeps the open column filter mounted and focused while its selection re-renders the page' (fails before: popover node replaced; passes after). Live repro 10/10 after the fix with the popover node preserved.",
+      "Gate at 13d0132a (Node 22.16.0): lint 0 errors / 3 existing warnings; typecheck pass; vitest 760 passed / 0 failed / 0 skipped in 84 files; coverage lines 49.71% (7912/15916), statements 47.26% (8887/18801), functions 39.58% (2561/6469), branches 38.67% (7844/20281). A first coverage run had 3 App.test.tsx timeouts that reproduced without the change (Podman VM load); with the VM stopped the suite passed fully. e2e:build exit 0, boundary 15/15 per version; e2e:journeys 12/12 steps: UI 2 737/737, UI 1 703/737 with 34 baseline failures, 0 new, 0 skipped.",
+      "STEP 1 GATE RUN at 13d0132a, dark+light, form sign-in, one session per account, caffeinate (no sleep gaps): 250/250 passed, 0 failed, 2 skipped. Per journey incl. skips: findings 54, ai-findings 20, cve 52, inventory 38, authority 46, connect 42. CVE took the duplicate branch (first-time branch evidenced above at fdd4aca1, same script and app code path)."
      ],
      "skips": [
       {
@@ -142,23 +147,21 @@
       {
        "scenario": "inventory: declared resource detail / retired history [dark, light]",
        "class": "resolved",
-       "reason": "Was pending (no data). Data provided through supported ingestion; passes at f0c73634."
+       "reason": "Data provided through supported AI-BOM upload; passes."
       }
      ],
-     "openItems": [
-      "CVE first-time creation branch ('creation succeeds and ticket failure is reported') was not exercised on this commit: tenant ui2-qual-2 already has open findings for the selected CVE from 2026-10-25, so both themes took the duplicate branch (passed). No findings were created during these runs. Needs a CVE without open findings, or the user's decision."
-     ],
+     "openItems": [],
      "tests": [],
      "screenshots": [
       "session scratchpad live5/ (not in repo)"
      ],
      "limitations": [
-      "Credentials read from a 2026-10-25 session scratchpad under /private/tmp (outside repo, but temporary)."
+      "Credentials now in ~/.config/scoutgrid-qual/ (0600, outside repo)."
      ],
-     "reversal": "git revert 87385e41",
+     "reversal": "git revert 13d0132a fdd4aca1 f0c73634 87385e41",
      "statuses": {
       "fixture": "verified",
-      "localAuthenticated": "pending",
+      "localAuthenticated": "verified",
       "staging": "pending",
       "release": "not_requested"
      },
@@ -181,7 +184,9 @@
       "e2e:journeys exit 0, 12/12 steps. UI 2: findings 67/67, cve 80/80, inventory 106/106, governance 166/166, connect 116/116, experience 202/202 = 737/737, 0 skipped. UI 1: 703/737 passed, 34 failed, all 34 in the reviewed journey baseline (390px page overflow on 17 pages x 2 themes), 0 new, 0 skipped.",
       "e2e:sweep exit 0, 8/8 steps, widths 390/768/1280/1440, both themes: 322 page checks per version per theme, 0 page errors, 0 console errors, 0 requests to other hosts, 0 orphans on UI 2. axe compare 0 new / 0 resolved for both versions on a second independent run (UI 2 630 entries, UI 1 538).",
       "No unexpected /api requests after review: EXPECTED_FALLBACKS holds GET /api/operations/quality/issues and GET /api/platform/vuln-repo/vulnerabilities, each with its reason in fixtures.mjs.",
-      "2026-10-26 fresh-clone check at f20ad8fa: git clone --branch feat/ui2-cleanup into the session scratchpad, with PLAYWRIGHT_DIR, AXE_PATH, CHROMIUM_PATH, VITE_UI_VERSION and LIVE_CREDENTIALS unset. npm ci exit 0 (npm audit reports 3 moderate advisories, not changed here); e2e:build exit 0, data-ui boundary 15/15 routes per version; e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped. No personal paths found in e2e scripts, package.json or playwright.config.ts."
+      "2026-10-26 fresh-clone check at f20ad8fa: git clone --branch feat/ui2-cleanup into the session scratchpad, with PLAYWRIGHT_DIR, AXE_PATH, CHROMIUM_PATH, VITE_UI_VERSION and LIVE_CREDENTIALS unset. npm ci exit 0 (npm audit reports 3 moderate advisories, not changed here); e2e:build exit 0, data-ui boundary 15/15 routes per version; e2e:journeys exit 0, 12/12 steps. UI 2 737/737 passed, 0 failed, 0 skipped. UI 1 703/737 passed, 34 failed, all 34 in the reviewed journey baseline, 0 new, 0 skipped. No personal paths found in e2e scripts, package.json or playwright.config.ts.",
+      "2026-10-26 visual baselines 6a9a3f5a: npm run e2e:update inside mcr.microsoft.com/playwright:v1.63.0-noble (native arm64 under Podman 5.7.1; x86 under qemu crashed Chromium's GPU process). 140 per version (35 routes x dark/light x 1280/390); compare pass then write pass 140/140 each. Axe baselines and journey-baseline/legacy.json regenerated unchanged in Linux; journey-baseline/ui2.json is []. Inspected ui2 findings dark 1280 and legacy exposure light 390 (shows the known 390px overflow).",
+      "Workflows committed be2e64fe with user approval (frontend-e2e job in quality.yml, frontend-e2e-sweep.yml)."
      ],
      "tests": [
       "2026-10-26 (Node 22.16.0): lint 0 errors / 3 existing warnings; typecheck pass; vitest 759 passed / 0 failed / 0 skipped in 84 files; coverage lines 49.71% (7912/15916), statements 47.26% (8887/18801), functions 39.58% (2561/6469), branches 38.67% (7844/20281); floors met. Earlier sessions measured statements 8879 vs 8887 and functions 2557 vs 2561 on the same source: small run-to-run variation, always above floors."
@@ -200,8 +205,7 @@
      ],
      "limitations": [
       "axe-baseline/{ui2,legacy}.json and journey-baseline/legacy.json were generated on the macOS host (Chromium from @playwright/test 1.63.0), not in the Playwright container.",
-      "Visual baselines PENDING: Docker is not installed here, so they cannot be generated in mcr.microsoft.com/playwright:v1.63.0-noble. e2e:visual, e2e:affected and e2e:update stop at check-playwright-image.mjs on this host by design.",
-      "The .github/workflows changes (frontend-e2e job in quality.yml, new frontend-e2e-sweep.yml) are written but uncommitted: .github/workflows/ is on the never-touch list in prototype-app/CLAUDE.md and needs explicit approval."
+      "Baselines are arm64; CI runs x86 (ubuntu-latest in the same image). First CI run decides whether they match within maxDiffPixelRatio 0.001; if not, regenerate from CI's x86 output with inspected diffs, never by loosening tolerance."
      ],
      "reversal": "git revert the Step 2 commits; the font devDependencies leave with the package.json/lockfile revert.",
      "statuses": {
@@ -468,5 +472,5 @@
    }
   }
  ],
- "nextUnit": "S3 Batch A: npm uninstall vike vike-react @resvg/resvg-js, then the frontend gate and e2e:journeys. Still open from earlier steps: S1 CVE first-time creation branch (fdd4aca1 adds --cve; result not yet recorded here); full live rerun at the final candidate commit; S2 visual baselines in the native arm64 image."
+ "nextUnit": "Push feat/ui2-cleanup to AxG-SG/SG and open the single PR into main (user-approved 2026-10-26); merge with a merge commit once CI is green; then delete the merged stacked branches and handle PR #21. Step 3 resumes on a new branch from the updated main (Batch A WIP is in stash 'step3-batchA-wip')."
 }
