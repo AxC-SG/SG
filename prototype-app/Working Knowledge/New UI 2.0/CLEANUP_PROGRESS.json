@@ -216,12 +216,257 @@
   {
    "id": "S3",
    "title": "Remove proven unused code and dependencies",
-   "status": "planned",
+   "status": "in_progress",
    "dependsOn": [
     "S1"
    ],
-   "units": []
+   "units": [],
+   "inventory": {
+    "date": "2026-10-26",
+    "commit": "fdd4aca1",
+    "method": "TypeScript import graph from src/main.tsx (static, type-only and dynamic imports, CSS @import and url(), import.meta.glob, new URL), then git grep of each file name across frontend/ and .github/ for routes, scripts, e2e and docs. 315 files in src; 186 reachable from main.tsx; 41 not reachable and not tests. The 33 candidates are those 41 minus 4 CSS files (each imported only by a candidate component, so they go with it) and 4 files used only by tests (kept: removing them would remove assertions).",
+    "candidates": [
+     {
+      "file": "src/components/mockData.ts",
+      "label": "remove",
+      "batch": "B",
+      "reason": "mock data; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/features/inventory/ApplicationsDashboardMock.tsx",
+      "label": "remove",
+      "batch": "B",
+      "reason": "mock page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/features/inventory/BomComponentsMock.tsx",
+      "label": "remove",
+      "batch": "B",
+      "reason": "mock page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/features/inventory/BomInventoryMock.tsx",
+      "label": "remove",
+      "batch": "B",
+      "reason": "mock page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/FixIntelligencePage.tsx",
+      "label": "remove",
+      "batch": "C",
+      "reason": "retired page; /fix-intelligence/* redirects to /findings (App.tsx); no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/FixDetailPage.tsx",
+      "label": "remove",
+      "batch": "C",
+      "reason": "retired page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/FixListPage.tsx",
+      "label": "remove",
+      "batch": "C",
+      "reason": "retired page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/PatchDashboardPage.tsx",
+      "label": "remove",
+      "batch": "C",
+      "reason": "retired Patch Management page; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/DashboardPage.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "not routed (App.tsx routes /exposure to ExposureDashboardPage); no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/components/EolRiskWidget.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "only importer is DashboardPage (removed in the same batch)"
+     },
+     {
+      "file": "src/features/inventory/InventoryFiltersPanel.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/components/FilterValueSelectCard.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "only importer is InventoryFiltersPanel (removed in the same batch)"
+     },
+     {
+      "file": "src/features/inventory/HostInventoryDetailModal.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/components/ColumnVisibilityToggle.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/components/SoftwareIdentityDetailDrawer.tsx",
+      "label": "remove",
+      "batch": "D",
+      "reason": "identity detail is the routed SoftwareIdentityDetailPage; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/components/Navigation/Sidebar.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "old sidebar; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference. Its sidebar.css is unbundled today and goes with it"
+     },
+     {
+      "file": "src/components/Navigation/PlatformNavigation.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "only importer is Sidebar (removed in the same batch)"
+     },
+     {
+      "file": "src/components/Navigation/TenantNavigation.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "only importer is Sidebar (removed in the same batch)"
+     },
+     {
+      "file": "src/components/GithubPipelineManager.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/features/connect/GithubAdvisoryStatus.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference; its github-advisory-status.css goes with it"
+     },
+     {
+      "file": "src/features/connect/OsvConnectorPage.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "tenant OSV is contained; no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference; its osv-connector.css goes with it"
+     },
+     {
+      "file": "src/features/cve-workbench/components/CveEquivalencePanel.tsx",
+      "label": "remove",
+      "batch": "E",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference; its styles/equivalence-panel.css goes with it"
+     },
+     {
+      "file": "src/pages/VulnIntelConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "only importers are the six connector wrappers below (removed in the same batch); API methods they call stay in api/client.ts"
+     },
+     {
+      "file": "src/pages/AdvisoryConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/GhsaConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/KevConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/MicrosoftCsafConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/NvdConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/pages/RedhatCsafConnectorPage.tsx",
+      "label": "remove",
+      "batch": "F",
+      "reason": "no importer outside the candidate set; no route, lazy import, CSS import, public asset, e2e or script reference"
+     },
+     {
+      "file": "src/lib/queryPolling.ts",
+      "label": "defer",
+      "batch": null,
+      "reason": "unused helper, but documented in frontend/CLAUDE.md as the refetchInterval helper; small, and polling pages may want it. Decide with the user"
+     },
+     {
+      "file": "src/features/auth/provider.tsx",
+      "label": "retain",
+      "batch": null,
+      "reason": "auth helper (ActorProvider); plan says keep auth helpers"
+     },
+     {
+      "file": "src/types/index.ts",
+      "label": "retain",
+      "batch": null,
+      "reason": "compatibility type barrel (export type *); plan says keep compatibility types"
+     },
+     {
+      "file": "src/features/cve-workbench/view-models.ts",
+      "label": "retain",
+      "batch": null,
+      "reason": "exported types only (VendorRow, OverallConfidence); compatibility types, documented in frontend/CLAUDE.md"
+     }
+    ],
+    "cssWithOwner": [
+     "src/components/Navigation/sidebar.css (Sidebar)",
+     "src/features/connect/github-advisory-status.css (GithubAdvisoryStatus)",
+     "src/features/connect/osv-connector.css (OsvConnectorPage)",
+     "src/features/cve-workbench/styles/equivalence-panel.css (CveEquivalencePanel)"
+    ],
+    "testOnlyRetained": [
+     "src/features/ai-security/test-support.ts (shared test helper)",
+     "src/features/cve-workbench/eol-helpers.ts (eol-helpers.test.ts)",
+     "src/features/cve-workbench/view-helpers.ts (view-helpers.test.ts)",
+     "src/pages/AiAgentExecutionsPage.tsx (AiAgentExecutionsPage.test.tsx)"
+    ],
+    "dependencies": [
+     {
+      "name": "vike",
+      "label": "remove",
+      "batch": "A",
+      "reason": "only in package.json; no import, config or script reference"
+     },
+     {
+      "name": "vike-react",
+      "label": "remove",
+      "batch": "A",
+      "reason": "only in package.json; no import, config or script reference"
+     },
+     {
+      "name": "@resvg/resvg-js",
+      "label": "remove",
+      "batch": "A",
+      "reason": "only in package.json; no import, config or script reference"
+     }
+    ],
+    "batches": {
+     "A": "npm uninstall vike vike-react @resvg/resvg-js",
+     "B": "mock data and inventory mocks",
+     "C": "retired Fix Intelligence and Patch pages, plus a redirect test",
+     "D": "old dashboard, inventory filter panel and modal, column toggle, identity drawer",
+     "E": "old sidebar navigation, GitHub/OSV/equivalence components and their CSS",
+     "F": "vulnerability-intel connector wrapper pages"
+    }
+   }
   }
  ],
- "nextUnit": "S1 gate: CVE first-time creation branch not exercised (needs a CVE without open findings, or user decision); full live rerun at the final candidate commit; user decision on a single PR feat/ui2-cleanup -> main. S2: visual baselines in the native arm64 image (x86 emulation crashed Chromium)."
+ "nextUnit": "S3 Batch A: npm uninstall vike vike-react @resvg/resvg-js, then the frontend gate and e2e:journeys. Still open from earlier steps: S1 CVE first-time creation branch (fdd4aca1 adds --cve; result not yet recorded here); full live rerun at the final candidate commit; S2 visual baselines in the native arm64 image."
 }
