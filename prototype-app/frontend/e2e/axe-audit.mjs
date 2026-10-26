@@ -4,7 +4,8 @@
 // Usage: [CHROMIUM_PATH=<chromium>] \
 //   node axe-audit.mjs --base http://127.0.0.1:5175 --out <dir> --label ui2 [--themes dark,light] [--widths 1280,390]
 //   [--routes /findings,/login] [--inject-css <file>]
-// --routes replaces the default route list; each path takes its actor from routes.mjs.
+// --routes replaces the default route list (every routes.mjs route plus AUDIT_ONLY); each path
+// takes its actor from routes.mjs.
 // --inject-css appends a stylesheet after load, to measure a proposed token change without rebuilding.
 import { createRequire } from 'node:module';
 import { chromium } from '@playwright/test';
@@ -12,11 +13,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { newContext } from './browser.mjs';
 import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
-import { APPROVED_PLATFORM_POLICY_ID, PRIMARY_POLICY_ID, platformActor } from './governance-fixtures.mjs';
-import { PRIMARY_CVE } from './cve-fixtures.mjs';
-import { PRIMARY_AI_ASSET_ID, PRIMARY_HOST_ID, PRIMARY_SOFTWARE_IDENTITY_ID } from './inventory-fixtures.mjs';
-import { PRIMARY_CAMPAIGN_ID } from './experience-fixtures.mjs';
-import { routeEntry } from './routes.mjs';
+import { platformActor } from './governance-fixtures.mjs';
+import { ALL_ROUTES, routeEntry } from './routes.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((p, v, i, a) => (v.startsWith('--') && p.push([v.slice(2), a[i + 1]]), p), []));
 const base = args.base ?? 'http://127.0.0.1:5175';
@@ -28,18 +26,13 @@ const axeSource = readFileSync(createRequire(import.meta.url).resolve('axe-core/
 const injectCss = args['inject-css'] ? readFileSync(args['inject-css'], 'utf8') : null;
 mkdirSync(out, { recursive: true });
 
-const tenant = ['/exposure', '/findings', '/findings/F-10420', '/findings/ai', '/policies', `/policies/${PRIMARY_POLICY_ID}`, '/vuln-repo/org-cves',
-  `/vuln-repo/org-cves/${PRIMARY_CVE}`, `/vuln-repo/org-cves/${PRIMARY_CVE}/assets`, '/vuln-repo/campaigns', `/vuln-repo/campaigns/${PRIMARY_CAMPAIGN_ID}`,
-  '/inventory/hosts', `/inventory/hosts/${PRIMARY_HOST_ID}`, `/inventory/software-identities/${PRIMARY_SOFTWARE_IDENTITY_ID}`, `/inventory/ai/${PRIMARY_AI_ASSET_ID}`,
-  '/connect', '/admin/users', '/admin/audit', '/configurations/sla', '/configurations/suppress'];
-const platform = ['/platform/tenants', '/platform/operations', '/platform/ai-policies', `/platform/ai-policies/${APPROVED_PLATFORM_POLICY_ID}`];
-const pub = ['/login', '/setup'];
-const selected = args.routes?.split(',').map(routeEntry);
-const groups = selected
-  ? [[actor, selected.filter(([, who]) => who === 'tenant').map(([route]) => route), false],
-    [platformActor, selected.filter(([, who]) => who === 'platform').map(([route]) => route), false],
-    [actor, selected.filter(([, who]) => who === 'signedOut').map(([route]) => route), true]]
-  : [[actor, tenant, false], [platformActor, platform, false], [actor, pub, true]];
+// The default audits every route in routes.mjs, so e2e:affected never meets a route the baseline
+// has not seen, plus routes audited here only.
+const AUDIT_ONLY = ['/admin/audit', '/configurations/suppress'];
+const selected = (args.routes?.split(',') ?? [...ALL_ROUTES.map(([route]) => route), ...AUDIT_ONLY]).map(routeEntry);
+const groups = [[actor, selected.filter(([, who]) => who === 'tenant').map(([route]) => route), false],
+  [platformActor, selected.filter(([, who]) => who === 'platform').map(([route]) => route), false],
+  [actor, selected.filter(([, who]) => who === 'signedOut').map(([route]) => route), true]];
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const rows = [];
