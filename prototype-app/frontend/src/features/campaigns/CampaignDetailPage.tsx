@@ -509,12 +509,12 @@ export function CampaignDetailPage() {
   }
 
   if (loading) {
-    return <div className="cd-loading">Loading campaign…</div>;
+    return <div className="cd-loading ui2-experience-family">Loading campaign…</div>;
   }
 
   if (error || !detail) {
     return (
-      <div className="cd-loading">
+      <div className="cd-loading ui2-experience-family">
         <p>{error ?? 'Campaign not found.'}</p>
         <button type="button" className="btn btn-secondary" onClick={() => navigate('/vuln-repo/campaigns')}>
           Back to Campaigns
@@ -662,7 +662,7 @@ export function CampaignDetailPage() {
   ];
 
   return (
-    <div className="cd-page">
+    <div className="cd-page ui2-experience-family">
       {/* ── Top bar ───────────────────────────────────────────────── */}
       <div className="cd-topbar">
         <div className="cd-breadcrumb">

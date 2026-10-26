@@ -6,8 +6,11 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { createQueryClient } from './lib/queryClient';
 import { privateTelemetryOptions } from './lib/telemetryPrivacy';
+import { applyUiVersion } from './lib/uiVersion';
+import { UiVersionPresentation } from './app/UiVersionPresentation';
 
 Sentry.init(privateTelemetryOptions(import.meta.env.VITE_SENTRY_DSN, import.meta.env.MODE));
+applyUiVersion(document.documentElement, import.meta.env.VITE_UI_VERSION, window.location.pathname);
 
 const queryClient = createQueryClient();
 
@@ -15,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <UiVersionPresentation />
         <App />
       </BrowserRouter>
     </QueryClientProvider>

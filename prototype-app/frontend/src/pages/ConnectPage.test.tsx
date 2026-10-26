@@ -58,7 +58,7 @@ describe('ConnectPage', () => {
     vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
   });
 
-  it.each([{ roles: ['TENANT_ADMIN'] }, { roles: ['TENANT_ADMIN', 'PLATFORM_OWNER'] }])('omits unsupported patch connectors for roles $roles while retaining inventory, BOM and static AI cards', ({ roles }) => {
+  it.each([{ roles: ['TENANT_ADMIN'] }, { roles: ['TENANT_ADMIN', 'PLATFORM_OWNER'] }])('omits unsupported patch connectors for roles $roles while retaining inventory, BOM and static AI cards', async ({ roles }) => {
     renderConnectPage({ ...TENANT_ADMIN, roles, entitlements: { 'ai.security': true } });
     expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /BigFix|Tanium/ })).not.toBeInTheDocument();
@@ -71,6 +71,9 @@ describe('ConnectPage', () => {
     expect(intelligence).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(intelligence);
     expect(intelligence).toHaveAttribute('aria-expanded', 'true');
+    // The source list renders only after its query resolves; wait so the test never ends mid-load.
+    expect(await screen.findByRole('switch', { name: 'NVD source' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getAllByRole('switch', { name: / source$/ })).toHaveLength(9);
   });
 
   it.each(['sccm-patch', 'bigfix-patch', 'tanium-patch'])('rejects the %s query bookmark before mounting credential inputs', async (id) => {

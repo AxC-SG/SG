@@ -1,0 +1,138 @@
+[
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves_dark"
+ },
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves_light"
+ },
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves/CVE-2026-31337_dark"
+ },
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves/CVE-2026-31337_light"
+ },
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves/CVE-2026-31337/assets_dark"
+ },
+ {
+  "journey": "cve-journey",
+  "check": "no page overflow at 390px /vuln-repo/org-cves/CVE-2026-31337/assets_light"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /exposure (TENANT_ADMIN+SECURITY_ANALYST)_dark"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /exposure (TENANT_ADMIN+SECURITY_ANALYST)_light"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /vuln-repo/campaigns (TENANT_ADMIN+SECURITY_ANALYST)_dark"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /vuln-repo/campaigns (TENANT_ADMIN+SECURITY_ANALYST)_light"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /vuln-repo/campaigns/campaign-openssl-q4 (TENANT_ADMIN+SECURITY_ANALYST)_dark"
+ },
+ {
+  "journey": "experience-journey",
+  "check": "no page overflow at 390px /vuln-repo/campaigns/campaign-openssl-q4 (TENANT_ADMIN+SECURITY_ANALYST)_light"
+ },
+ {
+  "journey": "findings-journey",
+  "check": "390px no page overflow /findings_dark"
+ },
+ {
+  "journey": "findings-journey",
+  "check": "390px no page overflow /findings_light"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /platform/ai-policies/aws.bedrock.agent-tool-scope_dark"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /platform/ai-policies/aws.bedrock.agent-tool-scope_light"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /platform/eol_dark"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /platform/eol_light"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /policies/policy.aws.2_dark"
+ },
+ {
+  "journey": "governance-journey",
+  "check": "no page overflow at 390px /policies/policy.aws.2_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/ai/ai-agent-claims-triage_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/ai/ai-agent-claims-triage_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/ai/assets_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/ai/assets_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/container-images_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/container-images_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/hosts_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/hosts_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/hosts/host-prod-api-gw-01_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/hosts/host-prod-api-gw-01_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/software-identities_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/software-identities_light"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/software-identities/si-log4j-core_dark"
+ },
+ {
+  "journey": "inventory-journey",
+  "check": "no page overflow at 390px /inventory/software-identities/si-log4j-core_light"
+ }
+]

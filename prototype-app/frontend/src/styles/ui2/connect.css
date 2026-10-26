@@ -1,0 +1,812 @@
+/* UI 2.0 Connectors and configuration (reference `#/connect`, `#/connect/run-history`,
+ * `#/connect/<connector>`, `#/configurations/<section>`).
+ *
+ * Restyles the existing classes of the tenant connector catalog, the provider-specific connector
+ * pages it opens (?connectSource=…), inventory run history, the standalone Copilot Studio route,
+ * tenant configurations (SLA, prioritization, automation, ownership, findings score, suppression
+ * and auto-findings) and the platform console's vulnerability-intelligence feeds view. Each of
+ * those roots carries the presentation-only class .ui2-connect-family.
+ *
+ * Presentation only: no element, label, handler, selector, role gate, entitlement, containment
+ * or query change. Inline styles in these components are left as they are. */
+
+/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
+html[data-ui='2'] .ui2-connect-family {
+  --surface-bg: var(--dp-surface);
+  --input-bg: var(--dp-surface);
+  --border-color: var(--dp-border);
+  --text-1: var(--dp-text);
+  --title: var(--dp-text);
+}
+
+/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
+html[data-ui='2'] .ui2-connect-family {
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The catalog, the connector frame and the console feeds shell are the outer card in legacy. */
+html[data-ui='2'] .ui2-connect-family > .connect-catalog-panel,
+html[data-ui='2'] .ui2-connect-family > .panel:has(> .connector-page-back-row),
+html[data-ui='2'] .ui2-connect-family > .platform-console-shell {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* ── View tabs (reference `.dp-tabs`) ────────────────────────────────── */
+html[data-ui='2'] .ui2-connect-family .connect-filter-bar,
+html[data-ui='2'] .ui2-connect-family .connector-tab-bar {
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--dp-border);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-connect-family .connector-tab-bar {
+  margin-bottom: 16px;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.connect-filter-btn, .connector-tab-btn) {
+  position: relative;
+  min-height: 0;
+  margin: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.connect-filter-btn, .connector-tab-btn):hover:not(.active, .connector-tab-btn--active) {
+  border: 0;
+  background: transparent;
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.connect-filter-btn.active, .connector-tab-btn--active) {
+  border: 0;
+  background: transparent;
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.connect-filter-btn.active, .connector-tab-btn--active)::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--dp-accent);
+}
+
+/* ── Catalog sections (reference `.dp-section`) ──────────────────────── */
+html[data-ui='2'] .ui2-connect-family .connect-sections-layout {
+  gap: 28px;
+  min-height: 0;
+  padding: 4px 0 0;
+  overflow: visible;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section-head {
+  gap: 2px;
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section-head h4 {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section-head .panel-caption {
+  color: var(--dp-text-3);
+  font-size: 12.5px;
+}
+
+/* ── Connector cards (reference `.dp-connector-card`) ────────────────── */
+html[data-ui='2'] .ui2-connect-family .connect-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  justify-items: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+  color: var(--dp-text);
+  text-align: left;
+  transition: border-color var(--dp-dur-fast), transform var(--dp-dur-fast), box-shadow var(--dp-dur-fast);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-card:hover {
+  border-color: var(--dp-border-strong);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+  transform: translateY(-1px);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-card:focus-visible {
+  outline: none;
+  border-color: var(--dp-accent);
+  box-shadow: var(--dp-ring);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-card--disabled {
+  opacity: 1;
+  background: var(--dp-surface-2);
+}
+
+/* Vendor mark well (reference `.dp-vendor-mark`). */
+html[data-ui='2'] .ui2-connect-family .connect-source-icon {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--dp-border);
+  border-radius: 10px;
+  background: var(--dp-surface-2);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-icon svg {
+  width: auto;
+  max-width: 28px;
+  height: 24px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-body {
+  align-items: stretch;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-name-row {
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-name {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-md);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-body .panel-caption {
+  color: var(--dp-text-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Health dot keeps its title/aria-label; colour plus ring (reference `.dp-status-dot`). */
+html[data-ui='2'] .ui2-connect-family .connect-source-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-dot--ok {
+  background: var(--dp-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dp-success) 18%, transparent);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-dot--fail {
+  background: var(--dp-critical);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dp-critical) 18%, transparent);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-dot--warn {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--dp-text-3);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-card--disabled .connect-source-dot {
+  background: var(--dp-border-strong);
+  box-shadow: none;
+}
+
+/* ── Vulnerability-intelligence disclosure (reference `.dp-accordion`) ── */
+html[data-ui='2'] .ui2-connect-family .connect-source-section:has(> .config-accordion-toggle) {
+  gap: 0;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section > .config-accordion-toggle {
+  padding: 12px 14px;
+  border-radius: var(--dp-radius-lg);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section > .config-accordion-toggle:hover {
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section > .config-accordion-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--dp-ring);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section:has(> .config-accordion-toggle) > :not(.config-accordion-toggle) {
+  margin-inline: 14px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section:has(> .config-accordion-toggle) > :last-child:not(.config-accordion-toggle) {
+  margin-bottom: 14px;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-chevron {
+  color: var(--dp-text-3);
+}
+
+/* ── Connector page frame (reference `.dp-connector-hero`) ───────────── */
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row .btn-link {
+  min-height: var(--dp-control-sm);
+  padding: 0 8px;
+  border-radius: var(--dp-radius);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row .btn-link:hover {
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-connect-family .connector-page-title {
+  flex-basis: 100%;
+  color: var(--dp-text);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* Provider pages render their own .panel inside the frame; it becomes the page body and its
+   form sections become the cards (reference `.dp-settings-main`). */
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .panel,
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ * > .panel:only-child {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ── Form sections as cards (reference `.dp-card` + `.dp-form`) ──────── */
+html[data-ui='2'] .ui2-connect-family .form-section {
+  gap: 14px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .form-section + .form-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-connect-family .form-section-title {
+  margin: 0;
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family label {
+  gap: 6px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.field-hint, .inline-note) {
+  color: var(--dp-text-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-ui='2'] .ui2-connect-family .sn-required {
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] .ui2-connect-family .sn-tooltip {
+  color: var(--dp-text-3);
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.button-row, .sn-action-bar, .section-actions, .form-actions-bar) {
+  gap: 8px;
+}
+
+html[data-ui='2'] .ui2-connect-family .form-actions-bar {
+  padding-top: 12px;
+  border-top: 1px solid var(--dp-border);
+}
+
+/* ── Configurations frame (reference `.dp-page--narrow` + section cards) ── */
+html[data-ui='2'] .ui2-connect-family.panel > .panel-header {
+  display: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-layout {
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 16px;
+  max-width: 980px;
+  padding: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-head {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-head-text h3 {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-head-text p {
+  margin-top: 4px;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-body {
+  gap: 16px;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-intro {
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--dp-accent) 22%, var(--dp-border));
+  border-radius: var(--dp-radius);
+  background: color-mix(in srgb, var(--dp-accent) 6%, var(--dp-surface));
+  color: var(--dp-text-2);
+  font-size: 12.5px;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-subsection-label {
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Tenant vulnerability-source switches (reference `.dp-list-row` + `.dp-switch`) ── */
+html[data-ui='2'] .ui2-connect-family .connect-source-section .config-section-body {
+  gap: 10px;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section .config-section-body > p {
+  margin: 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-section .config-section-body > p[role='status'] {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name toggle' 'copy toggle';
+  align-items: center;
+  gap: 2px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > h4 {
+  grid-area: name;
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > p {
+  grid-area: copy;
+  margin: 0;
+  color: var(--dp-text-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* The source toggle is a role="switch" button; its checked state drives the tone, the label
+   text ("Enabled"/"Disabled") still carries the state. */
+html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > button[role='switch'] {
+  grid-area: toggle;
+  min-width: 96px;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > button[role='switch'][aria-checked='true'] {
+  border-color: color-mix(in srgb, var(--dp-success) 40%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-success) 10%, var(--dp-surface));
+}
+
+/* ── Run history (reference `.dp-table-card` + `.dp-toolbar`) ────────── */
+html[data-ui='2'] .ui2-connect-family > .panel:has(> .table-scroll, > .panel-header + .button-row, > .empty-state) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .panel > .panel-header {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .panel > .panel-header h3 {
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.table-scroll, .table-container) {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+  overflow-x: auto;
+}
+
+/* Legacy cells break words mid-word; keep whole words and let the scroll container absorb width. */
+html[data-ui='2'] .ui2-connect-family :is(th, td) {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html[data-ui='2'] .ui2-connect-family .status-pill {
+  letter-spacing: 0.02em;
+}
+
+/* ── AI connector pages (AWS Bedrock, Azure AI; reference connector hero + settings grid) ── */
+html[data-ui='2'] .ui2-connect-family .ai-security-hero.connector {
+  min-height: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-hero.connector::after {
+  display: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-hero.connector .ai-security-kicker {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-hero.connector h2 {
+  margin: 2px 0 0;
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-hero.connector p {
+  margin-top: 2px;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-connector-columns {
+  gap: 16px;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-connector-columns > .panel {
+  padding: 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-connector-form {
+  gap: 14px;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.ai-run-list, .ai-scope-list) {
+  gap: 8px;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.ai-run-list article, .ai-scope-list > article) {
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-run-list article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--dp-text-3);
+  font-size: 12px;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.ai-run-list strong, .ai-scope-list > article strong) {
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-run-list article > p {
+  margin: 0;
+  color: var(--dp-text-2);
+  font-size: 12px;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-scope-header {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-scope-diagnostic {
+  border-radius: var(--dp-radius-sm);
+  background: color-mix(in srgb, var(--dp-critical) 8%, var(--dp-surface));
+}
+
+/* ── Checkbox labels: control beside its text (reference `.dp-choice`) ── */
+html[data-ui='2'] .ui2-connect-family label:has(> input:is([type='checkbox'], [type='radio'])) {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--dp-text);
+}
+
+/* ── Copilot Studio (standalone route and catalog detail) ────────────── */
+html[data-ui='2'] .ui2-connect-family.ai-security-page,
+html[data-ui='2'] .ui2-connect-family .ai-security-page {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-page > header h1,
+html[data-ui='2'] .ui2-connect-family.ai-security-page > header h1 {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Inside the catalog frame the frame title already names the connector. */
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .ai-security-page > header h1 {
+  font-size: var(--dp-text-xl);
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.ai-security-page, .ui2-connect-family.ai-security-page) > header p {
+  margin: 4px 0 0;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-connect-family.ai-security-page > .panel,
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--dp-radius-lg);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.ai-security-page) > .panel > h2 {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel > :is(p, div) strong {
+  color: var(--dp-text);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel > :is(p, div) {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel > button,
+html[data-ui='2'] .ui2-connect-family .ai-security-page > .panel button:not(.btn) {
+  justify-self: start;
+}
+
+/* ── Configurations tables and simulator ─────────────────────────────── */
+html[data-ui='2'] .ui2-connect-family .config-content table {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  border-collapse: separate !important;
+  border-spacing: 0;
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+  overflow: hidden;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-content table thead tr {
+  border-bottom: 0 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-content table :is(th, td) {
+  padding: 9px 12px !important;
+  border-bottom: 1px solid var(--dp-border);
+  vertical-align: middle;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-content table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .config-content table tbody tr {
+  border-bottom: 0 !important;
+}
+
+html[data-ui='2'] .ui2-connect-family :is(.triage-signal-card, .score-sim) {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .score-sim-header {
+  border-bottom: 1px solid var(--dp-border);
+  background: transparent;
+  color: var(--dp-text);
+  font-weight: 600;
+}
+
+/* Pages that keep their own cards (BOM management, SBOM endpoint) nest form sections inside
+   them; those sections become divided groups rather than cards within cards. */
+html[data-ui='2'] .ui2-connect-family .page-grid > .panel .form-section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .page-grid > .panel .form-section + .form-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--dp-border);
+}
+
+/* ── Narrow viewports ────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  /* Inline fixed-width rule grids (SLA matrix, findings score) scroll inside the section, as
+     the legacy scrolling content area did, rather than widening the page. */
+  html[data-ui='2'] .ui2-connect-family .config-content {
+    overflow-x: auto;
+  }
+
+  /* The SBOM endpoint wizard's step strip also overflows in legacy; let it scroll. */
+  html[data-ui='2'] .ui2-connect-family .wizard-steps {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  html[data-ui='2'] .ui2-connect-family .config-content table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  html[data-ui='2'] .ui2-connect-family .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-ui='2'] .ui2-connect-family .connect-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

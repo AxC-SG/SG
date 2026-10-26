@@ -16,8 +16,37 @@ prototype-app/frontend/.env.*
 prototype-app/backend/target/
 prototype-app/frontend/dist/
 prototype-app/frontend/coverage/
+prototype-app/frontend/e2e/.artifacts/
+prototype-app/frontend/e2e/.results/
+prototype-app/frontend/test-results/
+prototype-app/frontend/playwright-report/
 
 # Dependency caches
 node_modules/
 prototype-app/frontend/node_modules/
 .vercel
+
+# Secrets and credentials — never commit
+**/secrets/
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-local.yaml
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Build output, editor and log files
+dist/
+target/
+coverage/
+.idea/
+.vscode/
+*.log
+
+# UI 2.0 checkpoint screenshots stay on disk, out of git
+prototype-app/Working Knowledge/New UI 2.0/checkpoints/**/*.png

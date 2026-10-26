@@ -815,9 +815,15 @@ public class CustomerDemoDatasetService {
                      asset_medium_sla_multiplier, asset_low_sla_multiplier, auto_close_after_days,
                      auto_close_enabled, critical_sla_days, critical_threshold, high_sla_days,
                      high_threshold, medium_sla_days, low_sla_days, finding_generation_mode, updated_at)
-                VALUES (?, ?, 0.5, 0.75, 1.0, 1.5, 14, true, 3, 90, 14, 70, 30, 90, 'AUTO', ?)
-                ON CONFLICT (tenant_id) DO NOTHING
+                VALUES (?, ?, 0.5, 0.75, 1.0, 1.5, 14, true, 3, 9, 14, 7, 30, 90, 'AUTO', ?)
+                ON CONFLICT (tenant_id) DO UPDATE
+                   SET critical_threshold = EXCLUDED.critical_threshold,
+                       high_threshold = EXCLUDED.high_threshold,
+                       updated_at = EXCLUDED.updated_at
+                 WHERE risk_policies.critical_threshold > 10 OR risk_policies.high_threshold > 10
                 """, stableId(tenantId, "risk-policy"), tenantId, ts(now));
+        // Risk scores are 0-10. Earlier datasets seeded 90/70, which the SLA page rejects; the guarded
+        // update repairs only those out-of-range values and never overwrites an administrator's settings.
         jdbcTemplate.update("""
                 INSERT INTO ownership_rules
                     (id, tenant_id, name, execution_order, user_group, condition_json, created_at, updated_at)

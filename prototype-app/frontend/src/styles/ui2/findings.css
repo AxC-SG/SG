@@ -1,0 +1,1218 @@
+/* UI 2.0 Findings family (reference `#/findings`, `#/findings/F-10420`, `#/findings/ai`).
+ *
+ * Restyles the existing classes of FindingsPage (.fpl-root), FindingDetailPage and
+ * AiFindingDetailPage (.fd3-page), and AiFindingsPage / AiExposuresPage
+ * (.ui2-findings-family). The fpl-, fd3- and ai-security- classes are shared with Inventory,
+ * Campaigns and AI asset pages, so every rule is anchored on one of those three page roots;
+ * the toolbar, widget, chip and record-detail rules also match the Inventory family
+ * (.ui2-inventory-family, see inventory.css), the AI page header also matches the Governance
+ * family (.ui2-governance-family, see governance.css), and Campaigns keep their P1 presentation
+ * until their own phase. The one exception is the column-filter popover, which is portaled to
+ * <body> and is a shared filter primitive (also used by /vuln-repo/vulnerabilities).
+ *
+ * Presentation only: no element, label, handler, selector or row interaction changes. */
+
+/* ── Vulnerability Findings list ──────────────────────────────────────── */
+html[data-ui='2'] .fpl-root {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 0;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .page-freshness,
+html[data-ui='2'] .fpl-root > .panel-caption {
+  margin-bottom: 12px;
+}
+
+html[data-ui='2'] .fpl-root .fpl-toolbar {
+  padding: 0 0 12px;
+  min-height: 0;
+  background: transparent;
+  border: 0;
+}
+
+/* GROUP BY keeps its DOM text; it renders in sentence case like the reference. */
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-label {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--dp-text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  display: inline-block;
+  min-height: 0;
+  line-height: var(--dp-control-md);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-label::first-letter {
+  text-transform: uppercase;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .multi-groupby-trigger {
+  min-height: var(--dp-control-md);
+  border-radius: var(--dp-radius);
+  border-color: var(--dp-border);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-xs);
+}
+
+/* Widgets (reference `.dp-widgets`) */
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+  margin-bottom: 16px;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+
+@media (max-width: 1360px) {
+  html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 800px) {
+  html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widgets { grid-template-columns: minmax(0, 1fr); }
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget {
+  padding: 12px;
+  gap: 10px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget:hover {
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget--active {
+  border-color: var(--dp-accent);
+  box-shadow: 0 0 0 1px var(--dp-accent);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-title {
+  color: var(--dp-text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Severity legend sits under the donut so its labels are not truncated (reference layout). */
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-donut-layout {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-widget-donut-layout .fpl-widget-legend {
+  align-self: stretch;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row {
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row--active,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row--active {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-row--active .fpl-legend-label,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-row--active .fpl-hbar-label {
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-label,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-label {
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-legend-val,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-val {
+  color: var(--dp-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-hbar-track {
+  height: 5px;
+  background: var(--dp-hover);
+}
+
+/* Key indicators (reference `.dp-mini-kpi`); tone comes from the existing inline --kpi-color. */
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-grid {
+  gap: 6px;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-card {
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--dp-radius-sm);
+  background: color-mix(in srgb, var(--kpi-color) 8%, var(--dp-surface-2));
+  box-shadow: inset 2px 0 0 var(--kpi-color);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-card:hover {
+  background: color-mix(in srgb, var(--kpi-color) 14%, var(--dp-surface-2));
+  box-shadow: inset 2px 0 0 var(--kpi-color);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-num {
+  color: var(--dp-text);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-kpi-label {
+  margin-top: 0;
+  color: var(--dp-text-2);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: left;
+  text-transform: none;
+}
+
+/* Group breakdown (reference `.dp-group-card`) */
+html[data-ui='2'] .fpl-root .fpl-group-row {
+  gap: 12px;
+  padding: 0;
+  margin-bottom: 16px;
+  background: transparent;
+  border: 0;
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
+  padding: 12px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-title {
+  flex-basis: 100%;
+  margin-bottom: 2px;
+  color: var(--dp-text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-item {
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--dp-border);
+  border-radius: 999px;
+  background: var(--dp-surface-2);
+  color: var(--dp-text);
+  cursor: pointer;
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-item:hover {
+  border-color: var(--dp-border-strong);
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-item strong {
+  color: var(--dp-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .fpl-root .fpl-group-item[aria-pressed='true'] {
+  border-color: var(--dp-accent);
+  background: color-mix(in srgb, var(--dp-accent) 10%, transparent);
+  color: var(--dp-accent);
+}
+
+/* Filter chips (reference `.dp-filter-chip`) */
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip {
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dp-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-accent) 25%, transparent);
+  color: var(--dp-text);
+  font-size: 12px;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--dp-text-2);
+  opacity: 1;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip button:hover {
+  background: color-mix(in srgb, var(--dp-accent) 18%, transparent);
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip-clear,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-link-btn {
+  color: var(--dp-accent);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-chip-clear:hover,
+html[data-ui='2'] :is(.fpl-root, .ui2-inventory-family) .fpl-link-btn:hover {
+  color: var(--dp-accent);
+  text-decoration: underline;
+}
+
+/* Table card: list bar + table + pagination read as one surface (reference `.dp-table-card`). */
+html[data-ui='2'] .fpl-root .fpl-list-bar {
+  min-height: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg) var(--dp-radius-lg) 0 0;
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .fpl-root .fpl-table-wrap {
+  border: 1px solid var(--dp-border);
+  border-top: 0;
+  border-radius: 0 0 var(--dp-radius-lg) var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .fpl-root .fpl-table-wrap > .notice {
+  margin: 12px 12px 0;
+}
+
+html[data-ui='2'] .fpl-root .fpl-action-btn,
+html[data-ui='2'] .fpl-root .fpl-more-btn,
+html[data-ui='2'] .fpl-root .fpl-colvis-btn {
+  height: var(--dp-control-sm);
+  padding: 0 10px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: 12.5px;
+  box-shadow: var(--dp-shadow-xs);
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-btn,
+html[data-ui='2'] .fpl-root .fpl-colvis-btn {
+  width: auto;
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-btn:hover,
+html[data-ui='2'] .fpl-root .fpl-more-btn--open,
+html[data-ui='2'] .fpl-root .fpl-colvis-btn:hover,
+html[data-ui='2'] .fpl-root .fpl-colvis-btn--open {
+  border-color: var(--dp-border-strong);
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .fpl-root .fpl-action-btn--resolve {
+  border-color: transparent;
+  background: var(--dp-accent);
+  color: var(--dp-accent-fg);
+}
+
+html[data-ui='2'] .fpl-root .fpl-action-btn--resolve:hover:not(.fpl-action-btn--disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--dp-accent) 88%, var(--dp-text));
+  color: var(--dp-accent-fg);
+}
+
+html[data-ui='2'] .fpl-root .fpl-action-btn--disabled {
+  opacity: 0.5;
+}
+
+html[data-ui='2'] .fpl-root .fpl-sel-badge {
+  padding: 0 4px;
+  background: transparent;
+  color: var(--dp-text-2);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-menu,
+html[data-ui='2'] .fpl-root .fpl-colvis-popover {
+  padding: 6px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-item,
+html[data-ui='2'] .fpl-root .fpl-colvis-item {
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: var(--dp-radius-sm);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-item {
+  display: flex;
+  align-items: center;
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-item:hover:not(:disabled),
+html[data-ui='2'] .fpl-root .fpl-colvis-item:hover {
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .fpl-root .fpl-more-sep {
+  margin: 4px -6px;
+  background: var(--dp-border);
+}
+
+html[data-ui='2'] .fpl-root .fpl-colvis-header {
+  padding: 8px 8px 6px;
+  margin: 0 -6px 4px;
+  padding-inline: 14px;
+  border-color: var(--dp-border);
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+html[data-ui='2'] .fpl-root .fpl-table-scroll {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .fpl-root .fpl-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .fpl-root .fpl-table thead {
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-th {
+  height: 36px;
+  border-right: 0;
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-th--check {
+  padding: 0 0 0 16px;
+}
+
+html[data-ui='2'] .fpl-root .fpl-th--filtered {
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-th-inner {
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+html[data-ui='2'] .fpl-root .fpl-th-label {
+  flex: 0 1 auto;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .fpl-root .fpl-th--filtered .fpl-th-label {
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .fpl-root .fpl-th-info {
+  color: var(--dp-text-3);
+}
+
+html[data-ui='2'] .fpl-root .fpl-filter-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--dp-text-3);
+  opacity: 0.55;
+}
+
+html[data-ui='2'] .fpl-root .fpl-th:hover .fpl-filter-btn,
+html[data-ui='2'] .fpl-root .fpl-th--filtered .fpl-filter-btn {
+  opacity: 1;
+}
+
+html[data-ui='2'] .fpl-root .fpl-filter-btn:hover {
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .fpl-root .fpl-th--filtered .fpl-filter-btn {
+  background: color-mix(in srgb, var(--dp-accent) 12%, transparent);
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .fpl-root .fpl-tr {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .fpl-root .fpl-tr:hover td {
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-tr--selected,
+html[data-ui='2'] .fpl-root .fpl-tr--selected td,
+html[data-ui='2'] .fpl-root .fpl-tr--selected:hover td {
+  background: color-mix(in srgb, var(--dp-accent) 7%, var(--dp-surface)) !important;
+}
+
+/* Keep identifiers readable on one line. Let cells grow to their full content width;
+ * the existing table scroll container exposes every column and identifier suffix. */
+html[data-ui='2'] .fpl-root .fpl-td {
+  padding: 10px 12px;
+  border-right: 0;
+  border-bottom: 1px solid var(--dp-border);
+  color: var(--dp-text);
+  max-width: none;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] .fpl-root .fpl-td--check {
+  padding: 0 0 0 16px;
+}
+
+html[data-ui='2'] .fpl-root .fpl-tr:last-child .fpl-td {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] .fpl-root .fpl-cell-main {
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 400;
+}
+
+html[data-ui='2'] .fpl-root .fpl-cell-sub,
+html[data-ui='2'] .fpl-root .fpl-date,
+html[data-ui='2'] .fpl-root .fpl-inc-status,
+html[data-ui='2'] .fpl-root .fpl-cve-text {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .fpl-root .finding-id-link,
+html[data-ui='2'] .fpl-root .fpl-cve-link,
+html[data-ui='2'] .fpl-root .fpl-incident-id {
+  color: var(--dp-accent);
+  font-family: var(--dp-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+html[data-ui='2'] .fpl-root .finding-id-link:hover,
+html[data-ui='2'] .fpl-root .fpl-cve-link:hover {
+  color: var(--dp-accent);
+  text-decoration: underline;
+}
+
+html[data-ui='2'] .fpl-root .fpl-risk {
+  font-family: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .fpl-root .fpl-overdue {
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] .fpl-root .fpl-loading-row,
+html[data-ui='2'] .fpl-root .fpl-empty-row {
+  padding: 32px 16px;
+  color: var(--dp-text-2);
+  white-space: normal;
+}
+
+html[data-ui='2'] .fpl-root .fpl-pagination {
+  padding: 8px 12px;
+  border-top: 1px solid var(--dp-border);
+  border-radius: 0 0 var(--dp-radius-lg) var(--dp-radius-lg);
+  background: transparent;
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .fpl-root .fpl-page-info {
+  color: var(--dp-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Column filter popover: portaled to <body>, so it is styled as a shared primitive. */
+html[data-ui='2'] .fpl-col-filter-popover {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .fpl-col-filter-clear-row,
+html[data-ui='2'] .fpl-col-filter-select-all {
+  padding: 6px 10px;
+  border-color: var(--dp-border);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .fpl-col-filter-clear {
+  color: var(--dp-accent);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .fpl-col-filter-checks {
+  gap: 1px;
+  padding: 6px;
+}
+
+html[data-ui='2'] .fpl-col-filter-check {
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--dp-radius-sm);
+  background: transparent;
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .fpl-col-filter-check:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .fpl-col-filter-input {
+  height: var(--dp-control-md);
+  margin: 8px;
+  width: calc(100% - 16px);
+  padding: 0 10px;
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+}
+
+/* ── Record detail: vulnerability and AI finding (reference `.dp-detail-*`) ─ */
+html[data-ui='2'] .fd3-page {
+  gap: 14px;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .fd3-page > nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-ui='2'] .fd3-page > nav a {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dp-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-accent) 25%, transparent);
+  color: var(--dp-accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-topbar {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-back-btn {
+  height: var(--dp-control-md);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--dp-radius);
+  background: transparent;
+  color: var(--dp-text-2);
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-back-btn:hover {
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-finding-id {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dp-text);
+  font-family: var(--dp-mono);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-target-missed {
+  min-height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dp-critical) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-critical) 22%, transparent);
+  color: color-mix(in srgb, var(--dp-critical) 85%, var(--dp-text));
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn {
+  height: var(--dp-control-md);
+  padding: 0 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+  box-shadow: var(--dp-shadow-xs);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn:hover:not(:disabled) {
+  border-color: var(--dp-border-strong);
+  background: var(--dp-hover);
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--dp-accent);
+  color: var(--dp-accent-fg);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--incident:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dp-accent) 88%, var(--dp-text));
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--fp {
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--fp:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--dp-critical) 35%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-critical) 8%, transparent);
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--reopen {
+  color: var(--dp-success);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-action-btn--reopen:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--dp-success) 35%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-success) 8%, transparent);
+  color: var(--dp-success);
+}
+
+/* Tabs (reference `.dp-tabs`), shared by the detail pages and the AI Findings tab bar. */
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab-bar {
+  gap: 2px;
+  padding: 0;
+  border-bottom: 1px solid var(--dp-border);
+  background: transparent;
+  overflow-x: auto;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab {
+  position: relative;
+  height: 36px;
+  padding: 0 10px;
+  margin-bottom: 0;
+  border: 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab--active {
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-findings-family, .ui2-inventory-family) .fd3-tab--active::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--dp-accent);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-tab-count {
+  height: 18px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dp-hover);
+  color: var(--dp-text-3);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-tab--active .fd3-tab-count {
+  background: color-mix(in srgb, var(--dp-accent) 14%, transparent);
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-body {
+  gap: 16px;
+  padding: 0;
+  align-items: flex-start;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-col {
+  gap: 16px;
+}
+
+html[data-ui='2'] .fd3-page .fd3-col-left,
+html[data-ui='2'] .fd3-page .fd3-col-right {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .iov-panel {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-title {
+  padding: 16px 16px 4px;
+  border-bottom: 0;
+  background: transparent;
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-transform: none;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-body {
+  padding: 4px 16px 12px;
+}
+
+/* Sub-titles are literal upper-case strings; render them in sentence case without changing text. */
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-sub-title {
+  padding: 12px 0 2px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: lowercase;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-panel-sub-title::first-letter {
+  text-transform: uppercase;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-row {
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom-color: var(--dp-border);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-key {
+  flex: 0 0 38%;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-md);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-kv-val {
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-muted {
+  color: var(--dp-text-3);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-overdue {
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-cve-link,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-asset-link,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-link {
+  color: var(--dp-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-cve-link:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-asset-link:hover,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-link:hover {
+  text-decoration: underline;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-assign-display {
+  border-radius: var(--dp-radius-sm);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-assign-display:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-cell-label,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-id-label {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-ci-cell-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-solution-summary,
+html[data-ui='2'] :is(.fd3-page, .ui2-inventory-family) .fd3-incident-card {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .fd3-page > .empty-state {
+  margin: 0;
+}
+
+/* ── AI Findings and AI Exposures (reference `#/findings/ai`) ─────────── */
+html[data-ui='2'] .ui2-findings-family {
+  gap: 16px;
+}
+
+/* The hero becomes a plain page header with labelled filter controls. */
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero::after {
+  display: none;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > div:first-child {
+  flex: 1 1 100%;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-kicker {
+  color: var(--dp-text-3);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero h2 {
+  margin: 0;
+  color: var(--dp-text);
+  font: 600 var(--dp-text-2xl) / 1.2 var(--dp-font);
+  letter-spacing: -0.02em;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero p {
+  max-width: 720px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero .btn {
+  margin-top: 6px;
+  min-height: var(--dp-control-sm);
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero select,
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero input {
+  height: var(--dp-control-md);
+  min-width: min(160px, 100%);
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero label {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > .severity-badge,
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-governance-family) .ai-security-hero > .status-pill {
+  align-self: center;
+}
+
+/* AI tables, severity badges and empty states; shared with the AI Inventory lists. */
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel {
+  padding: 0;
+  overflow-x: auto;
+  border-radius: var(--dp-radius-lg);
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-header {
+  padding: 16px 16px 12px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-header h3 {
+  margin: 0;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-table-panel .panel-caption {
+  margin: 2px 0 0;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table th {
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--dp-border);
+  white-space: nowrap;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--dp-border);
+  vertical-align: middle;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table tbody tr {
+  cursor: pointer;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td strong {
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td a {
+  color: var(--dp-accent);
+  text-decoration: none;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td a:hover {
+  text-decoration: underline;
+}
+
+/* Finding display IDs (badge + ID, no secondary line); exposure titles carry a <small> and stay text. */
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .data-table td:not(:has(small)) > .severity-badge + strong {
+  font-family: var(--dp-mono);
+  font-size: 12px;
+  color: var(--dp-accent);
+}
+
+/* .severity-badge previously had no styles; render it like the shared severity pill. */
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge {
+  --ui2-tone: var(--dp-text-3);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui2-tone) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui2-tone) 22%, transparent);
+  color: color-mix(in srgb, var(--ui2-tone) 85%, var(--dp-text));
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: capitalize;
+  vertical-align: middle;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.critical { --ui2-tone: var(--dp-critical); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.high { --ui2-tone: var(--dp-high); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.medium { --ui2-tone: var(--dp-medium); }
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .severity-badge.low { --ui2-tone: var(--dp-low); }
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty {
+  padding: 32px 16px;
+  border: 1px dashed var(--dp-border-strong);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface-2);
+  box-shadow: none;
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty h3 {
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] :is(.ui2-findings-family, .ui2-inventory-family) .ai-security-empty-mark {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--dp-border);
+  border-radius: 10px;
+  background: var(--dp-surface);
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-lg);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+/* Exposure detail */
+html[data-ui='2'] .ui2-findings-family.ai-exposure-detail > .btn {
+  justify-self: start;
+  align-self: flex-start;
+}
+
+html[data-ui='2'] .ui2-findings-family .ai-exposure-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  html[data-ui='2'] .ui2-findings-family .ai-exposure-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+html[data-ui='2'] .ui2-findings-family .panel > p,
+html[data-ui='2'] .ui2-findings-family .panel li {
+  margin: 0 0 6px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-findings-family .panel .mono {
+  font-family: var(--dp-mono);
+  font-size: 12px;
+}
+
+html[data-ui='2'] .ui2-findings-family .panel > h3 {
+  margin: 0 0 8px;
+}
+
+html[data-ui='2'] .ui2-findings-family .panel details {
+  margin-top: 8px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-findings-family .panel summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-findings-family .panel details > p {
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-findings-family .panel pre {
+  margin: 0;
+  padding: 10px 12px;
+  border-top: 1px solid var(--dp-border);
+  overflow-x: auto;
+  font-family: var(--dp-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+html[data-ui='2'] .ui2-findings-family .panel ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--dp-text-2);
+}

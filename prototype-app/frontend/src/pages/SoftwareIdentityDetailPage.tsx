@@ -654,7 +654,7 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
     : 'Fixes';
 
   return (
-    <section className="inventory-page-shell software-detail-page">
+    <section className="inventory-page-shell software-detail-page ui2-inventory-family">
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={detailRefreshing}

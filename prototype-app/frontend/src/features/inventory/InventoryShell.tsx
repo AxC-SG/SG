@@ -17,7 +17,7 @@ export function InventoryShell({
   legacyClassName,
   children
 }: InventoryShellProps) {
-  const className = ['inventory-shell', legacyClassName].filter(Boolean).join(' ');
+  const className = ['inventory-shell', 'ui2-inventory-family', legacyClassName].filter(Boolean).join(' ');
   return (
     <section className={className}>
       <header className="inventory-shell-header">

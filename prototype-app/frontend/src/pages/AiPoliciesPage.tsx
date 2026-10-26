@@ -68,7 +68,8 @@ function applicableArtifactTypes(policy: AiGridPolicy): string[] {
   return Array.from(new Set(resourceFamilies.map((family) => RESOURCE_FAMILY_ARTIFACT_TYPES[family]).filter(Boolean)));
 }
 
-function providerNames(provider: string): string[] {
+function providerNames(provider: string | null): string[] {
+  if (!provider) return [];
   const normalized = provider.toUpperCase();
   if (normalized === 'MULTI_CLOUD' || normalized === 'MULTI-CLOUD') return ['AWS', 'AZURE'];
   return normalized.split(/[,/ ]+/).filter((name) => name === 'AWS' || name === 'AZURE');
@@ -165,7 +166,7 @@ export function AiPoliciesPage() {
   const assessmentStates = React.useMemo(() => new Map((assessmentStatesQuery.data ?? [])
     .map((summary) => [assessmentKey(summary.policyId, summary.policyVersion), summary])), [assessmentStatesQuery.data]);
   return (
-    <div className="ai-security-page">
+    <div className="ai-security-page ui2-governance-family">
       <section className="ai-security-hero policies">
         <div>
           <span className="ai-security-kicker">Built-in, versioned controls</span>
@@ -318,7 +319,7 @@ function buildPolicyInsights(policies: AiGridPolicy[]) {
   const notEvaluated = policies.filter((policy) => policy.readiness.toUpperCase() === 'NOT_EVALUATED').length;
   const providers = PROVIDER_ORDER.map((provider) => ({
     label: formatLabel(provider),
-    count: policies.filter((policy) => policy.provider.toUpperCase() === provider).length,
+    count: policies.filter((policy) => policy.provider?.toUpperCase() === provider).length,
   }));
   const readinessPercent = policies.length === 0 ? 0 : Math.round((ready / policies.length) * 100);
   return {

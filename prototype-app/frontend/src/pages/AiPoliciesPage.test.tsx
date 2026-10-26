@@ -81,6 +81,18 @@ describe('AiPoliciesPage', () => {
     expect(screen.getByText('aws')).toBeInTheDocument();
   });
 
+  it('renders legacy catalog policies that have no provider instead of crashing', async () => {
+    vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([
+      buildPolicy(),
+      buildPolicy({ policyId: 'AWS_BEDROCK_WEAK_GUARDRAIL', name: 'Legacy weak guardrail', provider: null }),
+    ]);
+    renderPoliciesPage();
+
+    expect(await screen.findByText('Legacy weak guardrail')).toBeInTheDocument();
+    expect(screen.getByText('Public knowledge-base S3 source')).toBeInTheDocument();
+    expect(screen.getByText('Framework risk coverage')).toBeInTheDocument();
+  });
+
   it('navigates to the policy detail page when a row is clicked', async () => {
     vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([buildPolicy()]);
     vi.spyOn(api, 'getAiGridPolicyDetail').mockResolvedValue({

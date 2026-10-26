@@ -247,7 +247,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
 
   if (artifactQuery.isLoading) {
     return (
-      <section className="ai-asset-detail-page">
+      <section className="ai-asset-detail-page ui2-inventory-family">
         <div className="empty-state"><p>Loading AI asset…</p></div>
       </section>
     );
@@ -255,7 +255,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
 
   if (artifactQuery.isError || !artifact) {
     return (
-      <section className="ai-asset-detail-page">
+      <section className="ai-asset-detail-page ui2-inventory-family">
         <div className="empty-state">
           <p>This AI asset could not be found.</p>
           <button type="button" className="btn btn-secondary" onClick={handleClose}>← Back to AI Inventory</button>
@@ -265,7 +265,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
   }
 
   return (
-    <section className="ai-asset-detail-page">
+    <section className="ai-asset-detail-page ui2-inventory-family">
       <div className="button-row host-detail-close-row">
         <button type="button" className="modal-close-btn" onClick={handleClose} aria-label="Close AI asset detail">
           x
@@ -496,6 +496,8 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
             <>
             {graphQuery.isLoading ? (
               <div className="empty-state"><p>Loading connected resources…</p></div>
+            ) : graphQuery.isError && !graphQuery.data ? (
+              <div className="empty-state"><p role="alert">Connected resources could not be loaded.</p></div>
             ) : (graphQuery.data?.edges.length ?? 0) === 0 ? (
               <div className="empty-state"><p>No active relationships observed for this asset.</p></div>
             ) : (

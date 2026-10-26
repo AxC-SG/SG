@@ -2069,7 +2069,7 @@ export function ConfigurationsPage() {
   const { title, description } = SECTION_TITLES[activeSection];
 
   return (
-    <div className="panel">
+    <div className="panel ui2-connect-family">
       <div className="panel-header">
         <h3>Configurations</h3>
         <span className="panel-caption">

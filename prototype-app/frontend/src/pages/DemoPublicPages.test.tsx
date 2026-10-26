@@ -445,4 +445,13 @@ describe('Demo public pages', () => {
     fireEvent.click(screen.getByRole('button', { name: /Hide password/i }));
     expect(password).toHaveAttribute('type', 'password');
   });
+
+  it('marks only authentication entry pages for the UI 2.0 presentation root', () => {
+    const { container, unmount } = renderWithProviders(<LoginPage />, { route: '/login' });
+    expect(container.querySelector('main.public-demo-shell')).toHaveClass('ui2-experience-family');
+    unmount();
+
+    const request = renderWithProviders(<DemoRequestPage />, { route: '/demo/request' });
+    expect(request.container.querySelector('main.public-demo-shell')).not.toHaveClass('ui2-experience-family');
+  });
 });

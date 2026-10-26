@@ -1,0 +1,1675 @@
+.ai-security-page,
+.ai-connector-layout {
+  display: grid;
+  gap: 18px;
+  animation: ai-security-reveal 360ms ease-out both;
+}
+
+.platform-ai-policy-studio {
+  display: grid;
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.platform-ai-policy-studio-sidebar {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 14px;
+  padding-right: 14px;
+  border-right: 1px solid var(--border);
+}
+
+.platform-ai-policy-studio-sidebar-header {
+  display: grid;
+  gap: 5px;
+}
+
+.platform-ai-policy-studio-sidebar-header h3 {
+  margin: 0;
+  color: var(--title);
+  font: 700 1.08rem/1.2 var(--font-display);
+}
+
+.platform-ai-policy-studio-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.platform-ai-policy-studio-nav-link {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--panel-muted);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.platform-ai-policy-studio-nav-link span {
+  color: var(--title);
+  font-weight: 700;
+}
+
+.platform-ai-policy-studio-nav-link small {
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.35;
+}
+
+.platform-ai-policy-studio-nav-link:hover,
+.platform-ai-policy-studio-nav-link:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-muted));
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.platform-ai-policy-studio-nav-link[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  background: color-mix(in srgb, var(--accent) 13%, var(--panel-muted));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.platform-ai-policy-studio-content {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.platform-ai-policy-studio-content [id] {
+  scroll-margin-top: 18px;
+}
+
+.platform-ai-policy-studio-workspace {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.platform-ai-policy-studio-workspace[hidden] {
+  display: none;
+}
+
+.platform-ai-policy-studio-governance-section {
+  display: grid;
+  gap: 14px;
+}
+
+.platform-ai-policy-studio-governance-section > h2 {
+  margin: 0;
+  color: var(--title);
+  font: 700 1.35rem/1.2 var(--font-display);
+}
+
+.policy-studio-attention-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.policy-studio-attention-card {
+  display: grid;
+  gap: 6px;
+  min-height: 142px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--panel-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.policy-studio-attention-card:hover,
+.policy-studio-attention-card:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-muted));
+  transform: translateY(-1px);
+}
+
+.policy-studio-attention-card strong {
+  color: var(--title);
+  font: 750 1.8rem/1 var(--font-display);
+}
+
+.policy-studio-attention-card span {
+  color: var(--title);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.policy-studio-attention-card small {
+  margin-top: auto;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.ai-security-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 170px;
+  padding: 28px;
+  border: 1px solid color-mix(in srgb, #0e7490 28%, var(--border));
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, #22d3a7 22%, transparent), transparent 34%),
+    linear-gradient(125deg, color-mix(in srgb, #0e7490 14%, var(--panel-solid)), var(--panel-solid) 62%);
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-security-hero::after {
+  position: absolute;
+  right: -54px;
+  bottom: -76px;
+  width: 230px;
+  height: 230px;
+  border: 32px solid color-mix(in srgb, #0e7490 10%, transparent);
+  border-radius: 50%;
+  content: '';
+}
+
+.ai-security-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ai-security-hero h2 {
+  margin: 5px 0 7px;
+  color: var(--title);
+  font: 700 clamp(1.75rem, 3vw, 2.55rem)/1 var(--font-display);
+  letter-spacing: -0.035em;
+}
+
+.ai-security-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.ai-security-kicker {
+  color: color-mix(in srgb, #0e7490 86%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Policies list view: plain, light panel — no teal gradient/decoration. */
+.ai-security-hero.policies {
+  min-height: 0;
+  padding: 22px 28px;
+  border-color: var(--border);
+  background: var(--panel-solid);
+  box-shadow: none;
+}
+
+.ai-security-hero.policies::after {
+  display: none;
+}
+
+.ai-security-hero.policies .ai-security-kicker {
+  color: var(--accent);
+}
+
+.ai-security-hero-metrics {
+  display: flex;
+  gap: 10px;
+}
+
+.ai-security-metric {
+  display: grid;
+  min-width: 124px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--panel-solid) 86%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.ai-security-metric strong {
+  color: var(--title);
+  font: 700 1.45rem/1 var(--font-display);
+}
+
+.ai-security-metric span {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ai-security-metric.danger {
+  border-color: color-mix(in srgb, var(--critical) 34%, var(--border));
+}
+
+.ai-security-metric.warning {
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--border));
+}
+
+.ai-security-pill-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-solid) 82%, transparent);
+  width: fit-content;
+}
+
+.ai-security-pill-row--scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.ai-security-pill-row--scroll .ai-security-pill {
+  flex: 0 0 auto;
+}
+
+.ai-security-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ai-security-pill span {
+  min-width: 24px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.72rem;
+}
+
+.ai-security-pill.active {
+  background: #0e7490;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(14, 116, 144, 0.2);
+}
+
+.ai-security-pill.active span {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.ai-security-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 16px;
+  align-items: start;
+}
+
+.ai-security-table-panel {
+  overflow: auto;
+  padding: 0;
+}
+
+.ai-security-table-panel tr {
+  cursor: pointer;
+}
+
+.ai-security-table-panel tr.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ai-security-table-panel td strong,
+.ai-security-table-panel td small {
+  display: block;
+}
+
+.ai-security-table-panel td small {
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-policy-findings-link {
+  display: block;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-policy-findings-link strong {
+  color: var(--title);
+}
+
+.ai-security-table-panel .ai-policy-switch {
+  white-space: nowrap;
+}
+
+.ai-policy-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: -6px 0 4px;
+}
+
+.ai-policy-execute-button {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.ai-policy-selection-status {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ai-policy-select-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.ai-policy-severity-pills {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-policy-severity-pills-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ai-policy-severity-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ai-policy-severity-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.ai-policy-severity-pill:hover {
+  border-color: var(--accent);
+  color: var(--title);
+}
+
+.ai-policy-severity-pill.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.ai-policy-search {
+  flex: 0 1 240px;
+  width: min(240px, 100%);
+  margin-left: auto;
+}
+
+.ai-policy-search input {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--panel);
+  color: var(--title);
+  font-size: 0.85rem;
+}
+
+.ai-security-detail {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 13px;
+}
+
+.ai-security-detail h3,
+.ai-security-detail h4,
+.ai-security-detail p {
+  margin: 0;
+}
+
+.ai-security-detail dl {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 7px 12px;
+  margin: 0;
+}
+
+.ai-security-detail dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ai-security-detail dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.ai-security-detail pre {
+  max-height: 310px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: #10242b;
+  color: #d8f7ef;
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+}
+
+.ai-security-facts {
+  display: grid;
+  gap: 7px;
+}
+
+.ai-security-facts > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+}
+
+.ai-security-facts span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: capitalize;
+}
+
+.ai-security-facts strong {
+  overflow-wrap: anywhere;
+  font-size: 0.79rem;
+}
+
+.ai-security-graph {
+  display: grid;
+  gap: 7px;
+}
+
+.ai-security-graph-edge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, #0e7490 22%, var(--border));
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--panel-muted), color-mix(in srgb, #0e7490 6%, var(--panel-muted)));
+}
+
+.ai-security-graph-edge span {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-security-graph-edge strong {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #0e7490 12%, var(--surface));
+  color: color-mix(in srgb, #0e7490 82%, var(--text));
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+}
+
+.ai-dependency-graph {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+
+.ai-dependency-graph-popup {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  width: min(280px, 80%);
+  height: 100%;
+  overflow-y: auto;
+  padding: 14px;
+  border-left: 1px solid var(--border);
+  background: var(--panel-solid);
+  box-shadow: -8px 0 16px -12px color-mix(in srgb, #000 40%, transparent);
+}
+
+.ai-dependency-graph-popup-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-dependency-graph-popup-title {
+  display: grid;
+  overflow: hidden;
+  gap: 2px;
+  flex: 1;
+}
+
+.ai-dependency-graph-popup-title strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-dependency-graph-popup-title small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.ai-dependency-graph-popup-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.ai-dependency-graph-popup-facts dt {
+  color: var(--muted);
+}
+
+.ai-dependency-graph-popup-facts dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-dependency-graph-popup-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ai-dependency-graph-popup-status.is-inactive {
+  color: var(--muted);
+}
+
+.ai-dependency-graph-popup-cta {
+  align-self: start;
+  justify-self: start;
+  min-height: 20px;
+  padding: 2px 10px;
+}
+
+.ai-dependency-graph .react-flow__edge-path {
+  stroke: color-mix(in srgb, #0e7490 55%, var(--border));
+}
+
+.ai-dependency-graph .react-flow__edge-text {
+  fill: var(--muted);
+  font-size: 0.62rem;
+}
+
+.ai-dependency-graph-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #0e7490 22%, var(--border));
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--panel-muted), color-mix(in srgb, #0e7490 6%, var(--panel-muted)));
+  font-size: 0.78rem;
+}
+
+.ai-dependency-graph-node--root {
+  border-color: color-mix(in srgb, #0e7490 70%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, #0e7490 25%, transparent);
+}
+
+.ai-dependency-graph-node--inactive {
+  opacity: 0.6;
+}
+
+.ai-dependency-graph-node--runtime {
+  border-color: color-mix(in srgb, #7c3aed 65%, var(--border));
+  background: linear-gradient(90deg, var(--panel-muted), color-mix(in srgb, #7c3aed 12%, var(--panel-muted)));
+  box-shadow: 0 0 0 2px color-mix(in srgb, #7c3aed 12%, transparent);
+}
+
+.ai-dependency-graph-legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 4;
+  display: flex;
+  gap: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-solid) 92%, transparent);
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.ai-runtime-graph-controls {
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.ai-dependency-graph-node-text {
+  display: grid;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.ai-dependency-graph-node-text strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-dependency-graph-node-text small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.ai-security-empty {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  min-height: 310px;
+  padding: 48px 24px;
+  border: 1px dashed color-mix(in srgb, #0e7490 42%, var(--border));
+  border-radius: var(--radius-xl);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 18px, color-mix(in srgb, #0e7490 3%, transparent) 18px 19px),
+    var(--panel);
+  text-align: center;
+}
+
+.ai-security-empty h3,
+.ai-security-empty p {
+  margin: 0;
+}
+
+.ai-security-empty p {
+  max-width: 560px;
+  color: var(--muted);
+}
+
+.ai-security-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 6px;
+  border-radius: 19px;
+  background: #0e7490;
+  color: #fff;
+  font: 700 1.2rem var(--font-display);
+  transform: rotate(-5deg);
+}
+
+.ai-security-empty-mark.clean {
+  background: #16845b;
+}
+
+.ai-security-review-actions,
+.ai-connector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-policy-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ai-policy-framework-list,
+.ai-policy-artifact-list {
+  display: grid;
+  gap: 4px;
+  min-width: 118px;
+}
+
+.ai-policy-framework-list span,
+.ai-policy-artifact-list span {
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ai-policy-framework-list small,
+.ai-policy-artifact-list small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ai-policy-provider-logos {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ai-policy-provider-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  min-height: 24px;
+}
+
+.ai-policy-provider-logo svg {
+  display: block;
+}
+
+.ai-policy-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.ai-policy-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ai-policy-toggle-track {
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 23px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #d24b4b;
+  transition: background 160ms ease;
+}
+
+.ai-policy-toggle-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  transform: translateX(0);
+  transition: transform 160ms ease;
+}
+
+.ai-policy-toggle:has(input:checked) .ai-policy-toggle-track {
+  background: #169b68;
+}
+
+.ai-policy-toggle:has(input:checked) .ai-policy-toggle-thumb {
+  transform: translateX(17px);
+}
+
+.ai-policy-toggle:has(input:focus-visible) .ai-policy-toggle-track {
+  outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.ai-policy-toggle:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ai-policy-coverage-gate {
+  display: grid;
+  gap: 3px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+}
+
+.ai-policy-coverage-gate strong {
+  color: var(--title);
+  font-size: 0.78rem;
+}
+
+.ai-policy-coverage-gate span {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.ai-policy-coverage-gate.pass {
+  border-color: color-mix(in srgb, var(--low) 42%, var(--border));
+  background: color-mix(in srgb, var(--low) 10%, var(--panel-muted));
+}
+
+.ai-policy-coverage-gate.fail {
+  border-color: color-mix(in srgb, var(--critical) 45%, var(--border));
+  background: color-mix(in srgb, var(--critical) 10%, var(--panel-muted));
+}
+
+.ai-policy-coverage-gate.fail strong {
+  color: var(--critical);
+}
+
+.ai-connector-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ai-connector-form {
+  display: grid;
+  gap: 13px;
+}
+
+.ai-connector-form > label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.ai-connector-form > label input:not([type='checkbox']) {
+  width: 100%;
+}
+
+.ai-connector-enabled {
+  display: flex !important;
+  align-items: center;
+}
+
+.ai-run-list {
+  display: grid;
+  gap: 9px;
+}
+
+.ai-run-list article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+}
+
+.ai-scope-header {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-scope-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-scope-list > article {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+}
+
+.ai-scope-list > article > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-scope-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ai-scope-diagnostic {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--critical) 7%, var(--panel-solid));
+}
+
+.ai-scope-diagnostic strong,
+.ai-scope-diagnostic span,
+.ai-scope-diagnostic small {
+  overflow-wrap: anywhere;
+}
+
+.ai-scope-diagnostic strong {
+  color: var(--critical);
+  font-size: 0.72rem;
+}
+
+.ai-scope-diagnostic span,
+.ai-scope-diagnostic small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.ai-run-list article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.ai-run-list span,
+.ai-run-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.ai-overview-strip {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.25fr) repeat(5, minmax(92px, 0.62fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, #0e7490 28%, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--border);
+}
+
+.ai-overview-strip > * {
+  display: grid;
+  gap: 4px;
+  min-height: 86px;
+  padding: 14px;
+  border: 0;
+  background: var(--panel-solid);
+  color: inherit;
+  text-align: left;
+}
+
+.ai-overview-strip button {
+  cursor: pointer;
+}
+
+.ai-overview-strip button:hover {
+  background: color-mix(in srgb, #0e7490 8%, var(--panel-solid));
+}
+
+.ai-overview-strip h3 {
+  margin: 0;
+  font: 700 1rem var(--font-display);
+}
+
+.ai-overview-strip strong {
+  color: var(--title);
+  font: 700 1.35rem var(--font-display);
+}
+
+.ai-overview-strip span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ai-overview-strip .risk strong {
+  color: var(--critical);
+}
+
+@keyframes ai-security-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Platform policy distribution workspace */
+.platform-ai-policy-studio {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.policy-studio-hero {
+  align-items: center;
+}
+
+.policy-shipping-state {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  min-width: 156px;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, #16a34a 42%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, #16a34a 10%, var(--panel-solid));
+}
+
+.policy-shipping-state span,
+.policy-shipping-state strong { color: var(--title); }
+.policy-shipping-state span { font-size: 0.77rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 750; }
+.policy-shipping-state strong { font: 700 1rem var(--font-display); }
+.policy-shipping-state--blocked { border-color: color-mix(in srgb, var(--critical) 55%, var(--border)); background: color-mix(in srgb, var(--critical) 10%, var(--panel-solid)); }
+
+.policy-shipping-summary { margin: 0; }
+.policy-catalog-panel, .policy-rollout-panel { display: grid; gap: 16px; }
+.policy-catalog-header { align-items: start; }
+.policy-results-count { flex: 0 0 auto; color: var(--muted); font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
+
+.policy-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+}
+
+.policy-filter-bar label, .policy-config-fields > label { display: grid; gap: 5px; color: var(--muted); font-size: 0.76rem; font-weight: 700; }
+.policy-filter-bar select, .policy-filter-bar input, .policy-config-fields select { min-height: 34px; }
+.policy-search { min-width: min(100%, 280px); flex: 1 1 280px; }
+.policy-filter-bar > .btn { margin-left: auto; }
+
+.policy-management-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.policy-catalog-table { margin: 0; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.policy-catalog-table .data-table { min-width: 880px; }
+.policy-catalog-row { transition: background 140ms ease; }
+.policy-catalog-row:hover, .policy-catalog-row.active { background: color-mix(in srgb, var(--accent) 7%, var(--panel-solid)); }
+.policy-catalog-row small { color: var(--muted); font-size: 0.74rem; }
+.policy-empty-cell { padding: 30px; text-align: center; color: var(--muted); }
+
+.policy-status { display: inline-flex; align-items: center; width: fit-content; border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; color: var(--text); background: var(--panel-muted); font-size: 0.72rem; font-weight: 750; white-space: nowrap; }
+.policy-status--available, .policy-status--general-availability, .policy-status--completed { border-color: color-mix(in srgb, #16a34a 42%, var(--border)); color: color-mix(in srgb, #16a34a 76%, var(--title)); }
+.policy-status--unavailable, .policy-status--retired, .policy-status--failed, .policy-status--critical { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); color: var(--critical); }
+.policy-status--canary, .policy-status--pending, .policy-status--high { border-color: color-mix(in srgb, var(--warn) 48%, var(--border)); color: color-mix(in srgb, var(--warn) 78%, var(--title)); }
+.policy-status--paused, .policy-status--disabled { color: var(--muted); }
+.policy-status--required { border-color: color-mix(in srgb, var(--accent) 48%, var(--border)); color: var(--accent); }
+
+.policy-configuration-panel, .policy-configuration-empty { position: sticky; top: 18px; display: grid; gap: 15px; padding: 17px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel-muted); }
+.policy-configuration-empty { min-height: 240px; align-content: center; }
+.policy-configuration-empty h4, .policy-configuration-panel h4 { margin: 0; color: var(--title); font: 700 1.08rem/1.25 var(--font-display); }
+.policy-configuration-empty p, .policy-configuration-heading p { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.policy-configuration-heading { display: flex; justify-content: space-between; gap: 12px; }
+.policy-detail-summary { display: grid; gap: 8px; padding: 11px 0; border-block: 1px solid var(--border); color: var(--text); font-size: 0.82rem; line-height: 1.45; }
+.policy-config-fields { display: grid; gap: 13px; }
+.policy-config-fields select { width: 100%; }
+.policy-config-fields select[multiple] { min-height: 104px; }
+.policy-config-fields small { color: var(--muted); font-weight: 500; line-height: 1.35; }
+.policy-toggle { grid-template-columns: auto 1fr; align-items: start; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-solid); }
+.policy-toggle input { margin-top: 3px; }
+.policy-toggle span { display: grid; gap: 3px; color: var(--text); }
+.policy-toggle small { color: var(--muted); font-weight: 500; }
+.policy-technical-details { padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+.policy-technical-details summary { cursor: pointer; color: var(--text); font-weight: 700; }
+.policy-technical-details dl { display: grid; grid-template-columns: 115px 1fr; gap: 8px 10px; margin: 12px 0 0; }
+.policy-technical-details dt { color: var(--muted); }
+.policy-technical-details dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+
+@media (max-width: 1120px) {
+  .policy-management-layout { grid-template-columns: 1fr; }
+  .policy-configuration-panel, .policy-configuration-empty { position: static; }
+}
+
+@media (max-width: 1050px) {
+  .platform-ai-policy-studio {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-ai-policy-studio-sidebar {
+    position: static;
+    padding: 0 0 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .platform-ai-policy-studio-nav {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .policy-studio-attention-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-security-split,
+  .ai-connector-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-security-detail {
+    position: static;
+  }
+
+  .ai-overview-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .policy-filter-bar > .btn { margin-left: 0; }
+}
+
+@media (max-width: 720px) {
+  .policy-studio-attention-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-security-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 21px;
+  }
+
+  .policy-shipping-state { width: 100%; }
+  .policy-catalog-header { align-items: start; }
+  .policy-results-count { white-space: normal; }
+
+  .ai-security-hero-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ai-security-pill-row {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+  }
+
+  .ai-security-pill {
+    flex: 0 0 auto;
+  }
+
+  .ai-overview-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── AI Policy detail page (mirrors the CVE detail page's cvd2-* design system) ── */
+.ai-policy-detail-page {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.ai-policy-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--panel, #fff);
+  border-bottom: 1px solid var(--border);
+}
+
+.platform-policy-detail-page .cvd2-tab-content {
+  background: var(--page, #eef3fb);
+}
+
+.platform-policy-detail-page .cvd2-panel label {
+  display: grid;
+  gap: 6px;
+  margin: 14px 16px;
+  color: var(--muted, #5b6b84);
+  font-weight: 600;
+}
+
+.platform-policy-detail-page .cvd2-panel textarea,
+.platform-policy-detail-page .cvd2-panel input,
+.platform-policy-detail-page .cvd2-panel select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.platform-policy-detail-page .cvd2-panel .button-row {
+  margin: 0 16px 16px;
+}
+
+.platform-policy-detail-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: grayscale(0.35);
+}
+
+.platform-policy-copy {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  margin: 0;
+  color: var(--text, #202938);
+  line-height: 1.55;
+}
+
+.platform-policy-copy p { margin: 0; }
+
+.ai-policy-detail-panel-hdr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-policy-detail-panel-hdr-row select {
+  min-height: 28px;
+  font-size: 0.75rem;
+}
+
+/* Compact enterprise policy governance workspace, scoped to this page. */
+.ai-policy-governance {
+  gap: 20px;
+  padding: 22px 24px 32px;
+  font-size: 0.94rem;
+}
+.ai-policy-governance .cvd2-overview-main,
+.ai-policy-governance .cvd2-overview-sidebar { gap: 18px; }
+.ai-policy-governance .cvd2-panel {
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(31, 49, 79, 0.04);
+}
+.ai-policy-governance .cvd2-panel-hdr {
+  padding: 13px 18px 11px;
+  color: var(--title, #172033);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+}
+.ai-policy-governance .ai-policy-config-body { padding: 18px; }
+.ai-policy-governance .card-note,
+.ai-policy-governance .panel-caption { line-height: 1.5; }
+.ai-policy-governance .ai-policy-scope-modes { margin: 14px 0; }
+.ai-policy-governance .ai-policy-scope-mode-btn {
+  border: 1px solid var(--border, #d7deea);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--title, #172033);
+  min-height: 38px;
+  padding: 8px 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ai-policy-governance .ai-policy-scope-mode-btn:hover {
+  border-color: var(--accent, #3b82f6);
+}
+.ai-policy-governance .ai-policy-scope-mode-btn.active {
+  border-color: var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 12%, var(--panel, #fff));
+  color: var(--accent, #2563eb);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #3b82f6) 35%, transparent);
+}
+.ai-policy-governance .ai-policy-rule-logic {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 10px;
+  color: var(--muted, #5c6b84);
+  font-size: 0.94rem;
+}
+.ai-policy-governance .ai-policy-rule-logic strong {
+  color: var(--title, #172033);
+}
+.ai-policy-governance .ai-policy-rule-logic-toggle { margin: 0; }
+.ai-policy-governance .ai-policy-attribute-hint {
+  margin: 4px 0 10px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--accent, #3b82f6);
+  color: var(--muted, #5c6b84);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 5%, var(--panel, #fff));
+  font-size: 0.82rem;
+}
+.ai-policy-governance .ai-policy-rule-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ai-policy-governance .ai-policy-rule-row select,
+.ai-policy-governance .ai-policy-rule-row input { flex: 1 1 160px; }
+.ai-policy-governance .ai-policy-rule-row .ai-policy-rule-remove {
+  flex: 0 0 auto;
+  min-width: 38px;
+}
+.ai-policy-governance .ai-policy-add-exception {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border, #d7deea);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent, #3b82f6) 3%, var(--panel, #fff));
+}
+.ai-policy-governance .ai-policy-exception-rule-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted, #5c6b84);
+}
+.ai-policy-governance .ai-policy-exception-rule-heading strong { color: var(--title, #172033); }
+.ai-policy-governance .ai-policy-exception-rule-heading .ai-policy-scope-modes { margin: 0; }
+.ai-policy-governance .ai-policy-exception-condition-row { margin-bottom: 0; }
+.ai-policy-governance .ai-policy-add-exception > select,
+.ai-policy-governance .ai-policy-add-exception > input { max-width: 360px; }
+.ai-policy-governance .ai-policy-condition-joiner {
+  width: 42px;
+  margin: 5px 0 5px 16px;
+  color: var(--accent, #2563eb);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ai-policy-governance .ai-policy-condition-child-label {
+  margin: 8px 0 6px 22px;
+  color: var(--muted, #5c6b84);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ai-policy-governance .ai-policy-condition-child {
+  margin-left: 22px;
+  padding-left: 14px;
+  border-left: 3px solid color-mix(in srgb, var(--accent, #3b82f6) 45%, var(--border, #d7deea));
+}
+.ai-policy-governance .ai-policy-condition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.ai-policy-governance .ai-policy-rule-row select,
+.ai-policy-governance .ai-policy-rule-row input,
+.ai-policy-governance .ai-policy-condition-value-select,
+.ai-policy-governance .ai-policy-add-exception select,
+.ai-policy-governance .ai-policy-add-exception input,
+.ai-policy-governance .ai-policy-param-row select {
+  min-height: 38px;
+  font-size: 0.88rem;
+}
+.ai-policy-governance .ai-policy-scope-preview {
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent, #3b82f6) 22%, var(--border, #e5e7eb));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent, #3b82f6) 5%, var(--panel, #fff));
+}
+.ai-policy-governance .ai-policy-assist-action { padding: 18px; }
+.ai-policy-governance .ai-policy-assist-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+@media (max-width: 960px) {
+  .ai-policy-governance { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-security-page,
+  .ai-connector-layout {
+    animation: none;
+  }
+}
+
+/* A fraction of the default grid-exposure-table sizing (padding/font/min-width/row height) —
+   used on the AI Inventory severity grid, which has more rows than the exposure dashboard's
+   coarse asset-domain grid and needs to stay compact. table-layout: fixed + an explicit
+   label-column width keep the severity columns from being squeezed off to the side. */
+.ai-severity-grid--compact .grid-exposure-table {
+  table-layout: fixed;
+  margin-top: 4px;
+}
+
+.ai-severity-grid--compact .grid-exposure-table th {
+  padding: 3px 4px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.ai-severity-grid--compact .grid-exposure-table th:first-child {
+  width: 20%;
+}
+
+.ai-severity-grid--compact .grid-exposure-row-label {
+  width: 20%;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.ai-severity-grid--compact .grid-exposure-cell {
+  padding: 0;
+}
+
+/* The row/label chrome stays tight, but the count itself — the number analysts actually
+   read — stays large and legible. */
+.ai-severity-grid--compact .grid-exposure-cell-btn {
+  min-width: 0;
+  width: 100%;
+  padding: 3px 2px;
+  font-size: 1.2rem;
+  line-height: 1.2;
+  border-radius: 3px;
+}
+
+.ai-severity-grid--compact .grid-exposure-total {
+  padding: 2px;
+  font-size: 0.95rem;
+}
+
+/* Severity Grid shares its row with the By Provider and Coverage Gaps widgets, rather than
+   those two sitting below it in the widgets grid — the grid keeps most of the row's width
+   since it has far more to show than either widget. */
+.inventory-shell.ai-security-page .ai-severity-grid-row {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.inventory-shell.ai-security-page .ai-severity-grid-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.inventory-shell.ai-security-page .ai-severity-grid-side .fpl-widget {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .inventory-shell.ai-security-page .ai-severity-grid-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Policy Coverage & Risk, Top 5 Assets at Risk, and Findings by Severity share one row-based
+   grid below the severity grid row — three per row on wide screens, collapsing to two and
+   then one as the viewport narrows. By Provider and Coverage Gaps sit beside the severity
+   grid instead (.ai-severity-grid-row/.ai-severity-grid-side above). */
+.inventory-shell.ai-security-page .fpl-widgets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .inventory-shell.ai-security-page .fpl-widgets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .inventory-shell.ai-security-page .fpl-widgets {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The shared .panel-header renders as a full-width shaded band, which reads as an oversized
+   "banner" for a section whose header has no right-side actions to balance it — flatten it
+   for the AI Inventory page specifically (scoped via InventoryShell's own class, which no
+   other AI Security page uses) rather than touching the shared .panel-header class. */
+.inventory-shell.ai-security-page .panel-header {
+  padding: 6px 10px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Findings column on the AI asset inventory list: one colored chip per severity bucket
+   (critical/high/medium+low) holding that bucket's count directly, instead of a text
+   breakdown — the color already tells you which bucket you're looking at. */
+.finding-severity-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.finding-severity-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.finding-severity-chip--critical {
+  background: #dc2626;
+  color: #fff;
+}
+
+.finding-severity-chip--high {
+  background: #b45309;
+  color: #fff;
+}
+
+.finding-severity-chip--other {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+/* AI Grid Phase 1 — grouped policy list, capability setup items, framework coverage */
+.ai-policy-group { margin-bottom: 1.5rem; }
+.ai-policy-group-heading { margin: 0 0 0.5rem; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85; }
+.ai-policy-group-heading small { opacity: 0.6; font-weight: 400; }
+.ai-policy-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+.ai-policy-insight-card {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px 15px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-muted) 78%, var(--panel-solid));
+}
+.ai-policy-insight-card-positive { border-top-color: #18a875; }
+.ai-policy-insight-card-warn { border-top-color: #d08a22; }
+.ai-policy-insight-card-critical { border-top-color: #d94b4b; }
+.ai-policy-insight-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ai-policy-insight-value {
+  color: var(--title);
+  font: 800 1.65rem/1 var(--font-display);
+}
+.ai-policy-insight-card-positive .ai-policy-insight-value { color: #16845f; }
+.ai-policy-insight-card-warn .ai-policy-insight-value { color: #a96712; }
+.ai-policy-insight-card-critical .ai-policy-insight-value { color: #c43d3d; }
+.ai-policy-insight-detail {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 1250px) {
+  .ai-policy-insight-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .ai-policy-insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ai-policy-insight-card { min-height: 104px; padding: 12px; }
+}
+@media (max-width: 430px) {
+  .ai-policy-insight-grid { grid-template-columns: 1fr; }
+}
+.ai-policy-expand { background: none; border: none; cursor: pointer; font-size: 0.8rem; line-height: 1; padding: 0.25rem 0.4rem; color: inherit; }
+.ai-policy-capability-flag { color: #b45309; font-size: 0.8rem; }
+.ai-policy-detail-row > td { background: rgba(148, 163, 184, 0.08); }
+.ai-policy-detail { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem 0.25rem; }
+.ai-policy-detail-block > strong { display: block; margin-bottom: 0.25rem; }
+.ai-policy-overview-metadata { padding: 8px 16px 12px; font-size: 0.82rem; color: var(--title); }
+.ai-policy-overview-metadata .ai-policy-detail { gap: 0.65rem; padding: 0; }
+.ai-policy-overview-metadata .ai-policy-detail-evidence { margin: 0; line-height: 1.45; }
+.ai-policy-overview-metadata .ai-policy-detail-block > strong { font-family: var(--font-mono, monospace); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted, #8b9cb6); }
+.ai-policy-overview-metadata .ai-policy-detail-block > p { margin: 0; line-height: 1.45; }
+.ai-policy-overview-metadata .ai-policy-setup-list,
+.ai-policy-overview-metadata .ai-policy-mapping-list { font-size: 0.82rem; line-height: 1.45; }
+.ai-policy-overview-metadata .ai-policy-mapping-list small { font-size: 0.75rem; color: var(--text-muted, #8b9cb6); }
+.ai-policy-setup-list, .ai-policy-mapping-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.ai-policy-mapping-type { font-size: 0.75rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 0.5rem; background: rgba(59, 130, 246, 0.15); }
+.ai-policy-deprecation-banner ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+.coverage-status { font-size: 0.78rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 0.6rem; white-space: nowrap; }
+.coverage-status--automated { background: rgba(22, 163, 74, 0.16); color: #15803d; }
+.coverage-status--conditional_automated { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+.coverage-status--preventive_only, .coverage-status--requires_runtime_or_test { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; }
+.coverage-status--not_covered { background: rgba(148, 163, 184, 0.2); color: #475569; }
+.coverage-mapping-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.coverage-mapping-type { font-size: 0.75rem; font-weight: 600; }
+.coverage-conditional { color: #b45309; font-size: 0.78rem; }

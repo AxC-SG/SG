@@ -1,0 +1,150 @@
+table.resizable-table {
+  table-layout: fixed;
+}
+
+.resizable-table-wrapper {
+  position: relative;
+  padding-top: 34px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.table-column-controls {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-settings-btn {
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-muted);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.table-settings-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.table-settings-menu {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  width: 244px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  box-shadow: 0 10px 26px color-mix(in srgb, #000 35%, transparent);
+  padding: 6px;
+}
+
+.table-settings-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.table-settings-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: normal;
+}
+
+.table-settings-item input {
+  margin: 0;
+}
+
+.table-settings-item span {
+  line-height: 1.35;
+}
+
+th.resizable-header {
+  position: sticky;
+  padding-right: 30px;
+}
+
+th.resizable-header.is-dragging {
+  opacity: 0.6;
+}
+
+th.resizable-header.drop-target {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: -3px;
+}
+
+.col-dragger {
+  appearance: none;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  font-size: 0.62rem;
+  line-height: 1;
+  padding: 0;
+  z-index: 3;
+}
+
+.col-dragger:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel-solid) 70%, transparent);
+}
+
+.col-dragger:active {
+  cursor: grabbing;
+}
+
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.col-resizer::after {
+  content: "";
+  position: absolute;
+  top: 15%;
+  bottom: 15%;
+  left: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--border-strong) 70%, transparent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+th.resizable-header:hover .col-resizer::after,
+.col-resizer:hover::after {
+  opacity: 1;
+}

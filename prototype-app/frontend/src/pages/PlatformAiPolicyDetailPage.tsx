@@ -66,10 +66,10 @@ export function PlatformAiPolicyDetailPage({ policyId }: { policyId: string }) {
   const devDeploy = useMutation({ mutationFn: () => api.deployPlatformAiGridPolicyToDev(policyId, cohort, note.trim()), onSuccess: () => onSuccess('Policy deployed to the selected dev/test tenants.'), onError });
   const publish = useMutation({ mutationFn: (publishAll: boolean) => api.publishPlatformAiGridPolicy(policyId, publishAll ? [] : cohort, publishAll), onSuccess: () => onSuccess('Policy publication started.'), onError });
   const deprecate = useMutation({ mutationFn: () => api.deprecatePlatformAiGridPolicy(policyId, reason.trim()), onSuccess: () => onSuccess('Policy deprecated successfully.'), onError });
-  if (!policy) return <section className="cvd2-page ai-policy-detail-page"><div className="empty-state"><p>Policy <strong>{policyId}</strong> was not found.</p><button className="btn btn-secondary" onClick={() => navigate('/platform/ai-policies')}>← Back</button></div></section>;
+  if (!policy) return <section className="cvd2-page ai-policy-detail-page ui2-governance-family"><div className="empty-state"><p>Policy <strong>{policyId}</strong> was not found.</p><button className="btn btn-secondary" onClick={() => navigate('/platform/ai-policies')}>← Back</button></div></section>;
   const activeTenants = (tenants.data ?? []).filter((tenant) => tenant.status === 'ACTIVE');
   return (
-    <section className="cvd2-page ai-policy-detail-page platform-policy-detail-page">
+    <section className="cvd2-page ai-policy-detail-page platform-policy-detail-page ui2-governance-family">
       <div className="ai-policy-detail-topbar"><button type="button" className="cvd-ov-link" onClick={() => navigate('/platform/ai-policies')}>← Back to Policy distribution</button><span>Platform owner · Catalog governance</span></div>
       <div className="cvd2-tab-bar"><button className={`cvd2-tab${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>Overview</button><button className={`cvd2-tab${tab === 'governance' ? ' active' : ''}`} onClick={() => setTab('governance')}>Governance</button></div>
       {tab === 'overview' ? <Overview policy={policy} detail={detail.data} onGovernance={() => setTab('governance')} /> : (

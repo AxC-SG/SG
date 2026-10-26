@@ -1,0 +1,862 @@
+/* UI 2.0 remaining experience (reference `#/exposure`, `#/login`; list, record-detail and
+ * dashboard patterns from `#/findings`, `#/findings/F-10420` and `#/x/<app path>`).
+ *
+ * Restyles the existing classes of the exposure dashboard, the CVE dashboard (/vuln-repo, tenant
+ * and platform scope), campaigns list and detail, the tenant operations views (pipeline,
+ * platform health), the platform console operations view and the public authentication entry
+ * pages (login, password setup, demo and workspace invites), plus the direct-link "Finding not
+ * available" state of FindingDetailPage, which renders outside the fd3- record layout. Each root carries the
+ * presentation-only class .ui2-experience-family; on the auth pages it sits on the public shell
+ * (.public-demo-shell), which marketing pages render without it.
+ *
+ * Presentation only: no element, label, handler, selector, navigation target or query change.
+ * Inline styles in these components are left as they are. */
+
+/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
+html[data-ui='2'] .ui2-experience-family {
+  --surface-bg: var(--dp-surface);
+  --input-bg: var(--dp-surface);
+  --border-color: var(--dp-border);
+  --text-1: var(--dp-text);
+  --title: var(--dp-text);
+  --surface-hover: var(--dp-hover);
+  --track: var(--dp-hover);
+}
+
+/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
+html[data-ui='2'] .ui2-experience-family.page-grid,
+html[data-ui='2'] .ui2-experience-family.campaigns-page,
+html[data-ui='2'] .ui2-experience-family.cd-page {
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-experience-family.cd-page {
+  gap: 0;
+  min-height: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .page-freshness,
+html[data-ui='2'] .ui2-experience-family.page-grid > .page-freshness {
+  margin-bottom: 0;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+/* ── Cards (reference `.dp-card`): one surface, sentence-case header ── */
+html[data-ui='2'] .ui2-experience-family .panel,
+html[data-ui='2'] .ui2-experience-family.panel {
+  padding: 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .panel > .panel-header {
+  align-items: flex-start;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family .panel-header h3 {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .panel-caption {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .btn-link {
+  color: var(--dp-accent);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-experience-family .empty-state {
+  padding: 20px 12px;
+  border: 1px dashed var(--dp-border-strong);
+  border-radius: var(--dp-radius);
+  background: transparent;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  text-align: center;
+}
+
+/* Cards inside cards drop their own frame (operations sections nest page-grids of panels). */
+html[data-ui='2'] .ui2-experience-family .page-grid {
+  gap: 16px;
+}
+
+/* ── Key indicators (reference `.dp-kpi`): label, value, footnote ───── */
+html[data-ui='2'] .ui2-experience-family .exec-kpi,
+html[data-ui='2'] .ui2-experience-family .stat-card,
+html[data-ui='2'] .ui2-experience-family .noise-summary-item {
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi {
+  display: grid;
+  align-content: start;
+  transition: border-color var(--dp-dur-fast), transform var(--dp-dur-fast), box-shadow var(--dp-dur-fast);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi:hover {
+  border-color: var(--dp-border-strong);
+  background: var(--dp-surface);
+  transform: translateY(-1px);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+/* The label is the first visual line, as in the reference; DOM order is unchanged. */
+html[data-ui='2'] .ui2-experience-family .exec-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  order: -1;
+  margin: 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Tone bar (reference `.dp-kpi-bar`) in place of the coloured left border. */
+html[data-ui='2'] .ui2-experience-family .exec-kpi-label::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--exp-tone, var(--dp-text-3));
+  flex-shrink: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi--critical { --exp-tone: var(--dp-critical); border-left: 1px solid var(--dp-border); }
+html[data-ui='2'] .ui2-experience-family .exec-kpi--warn { --exp-tone: var(--dp-warning); border-left: 1px solid var(--dp-border); }
+html[data-ui='2'] .ui2-experience-family .exec-kpi--neutral { border-left: 1px solid var(--dp-border); }
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi-value,
+html[data-ui='2'] .ui2-experience-family .stat-value,
+html[data-ui='2'] .ui2-experience-family .noise-summary-value {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .noise-summary-value {
+  margin-top: 0;
+  font-size: var(--dp-text-xl);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi--critical .exec-kpi-value { color: var(--dp-critical); }
+html[data-ui='2'] .ui2-experience-family .exec-kpi--warn .exec-kpi-value { color: var(--dp-text); }
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi-sub,
+html[data-ui='2'] .ui2-experience-family .stat-caption {
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+}
+
+html[data-ui='2'] .ui2-experience-family .stat-title,
+html[data-ui='2'] .ui2-experience-family .stat-card-label,
+html[data-ui='2'] .ui2-experience-family .noise-summary-label {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .stat-card.stat-critical .stat-value { color: var(--dp-critical); }
+
+/* ── Exposure dashboard: grid exposure heatmap (reference `.dp-heatmap`) ── */
+html[data-ui='2'] .ui2-experience-family .grid-exposure-table {
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-table th {
+  padding: 0 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-table td {
+  border: 0;
+  background: transparent;
+  vertical-align: middle;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-table tbody tr:hover {
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-row-label {
+  color: var(--dp-text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-total {
+  color: var(--dp-text);
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each severity column keeps its own hue; the existing ratio band sets the intensity. */
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell:nth-child(2) { --exp-tone: var(--dp-critical); }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell:nth-child(3) { --exp-tone: var(--dp-high); }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell:nth-child(4) { --exp-tone: var(--dp-medium); }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell:nth-child(5) { --exp-tone: var(--dp-low); }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell--low { --exp-mix: 12%; }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell--medium { --exp-mix: 26%; }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell--high { --exp-mix: 44%; }
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell .grid-exposure-cell-btn {
+  height: 38px;
+  border-radius: var(--dp-radius-sm);
+  background: color-mix(in srgb, var(--exp-tone, var(--dp-text-3)) var(--exp-mix, 0%), var(--dp-surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--exp-tone, var(--dp-text-3)) calc(var(--exp-mix, 0%) + 10%), var(--dp-border));
+  color: var(--dp-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--dp-dur-fast), box-shadow var(--dp-dur-fast);
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell .grid-exposure-cell-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px var(--exp-tone), var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell .grid-exposure-cell-btn:disabled {
+  background: var(--dp-surface-2);
+  box-shadow: inset 0 0 0 1px var(--dp-border);
+  color: var(--dp-text-3);
+  font-weight: 400;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-cell-btn:focus-visible,
+html[data-ui='2'] .ui2-experience-family .exec-kpi:focus-visible,
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-row, .exec-rem-sev-row, .exec-cve-row, .exec-software-row, .exec-asset-row, .exec-exploit-btn, .exec-funnel-stage):focus-visible {
+  outline: none;
+  box-shadow: var(--dp-ring);
+}
+
+/* ── Exposure dashboard: remediation, lists, insights ───────────────── */
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-row, .exec-rem-sev-row, .exec-cve-row, .exec-software-row, .exec-asset-row):hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-label, .exec-rem-sev-label) {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-count, .exec-rem-sev-count) {
+  color: var(--dp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-track, .exec-rem-sev-track, .exec-software-bar-track) {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem--open { background: var(--dp-critical); }
+html[data-ui='2'] .ui2-experience-family .exec-rem--in-progress { background: var(--dp-warning); }
+html[data-ui='2'] .ui2-experience-family .exec-rem--resolved { background: var(--dp-success); }
+html[data-ui='2'] .ui2-experience-family .exec-rem--accepted { background: var(--dp-text-3); }
+html[data-ui='2'] .ui2-experience-family .exec-software-bar { background: var(--dp-accent); }
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-footer,
+html[data-ui='2'] .ui2-experience-family .exec-exploit-summary,
+html[data-ui='2'] .ui2-experience-family .exec-asset-attention {
+  border-top-color: var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-score {
+  color: var(--dp-accent);
+  font-family: var(--dp-font);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-score-label {
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-score-sub {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-cve-row + .exec-cve-row,
+html[data-ui='2'] .ui2-experience-family .exec-asset-row + .exec-asset-row {
+  box-shadow: 0 -1px 0 var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-cve-id {
+  color: var(--dp-text);
+  font-family: var(--dp-mono);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-cve-title,
+html[data-ui='2'] .ui2-experience-family .exec-software-meta span,
+html[data-ui='2'] .ui2-experience-family .exec-asset-meta span {
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-cve-findings,
+html[data-ui='2'] .ui2-experience-family .exec-software-asset-count {
+  color: var(--dp-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-software-cve-count {
+  color: var(--dp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-asset-meta strong {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-asset-icon {
+  border-radius: var(--dp-radius);
+  background: var(--dp-hover);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-asset-cve-count { color: var(--dp-text); }
+html[data-ui='2'] .ui2-experience-family .exec-asset-cve-count--high { color: var(--dp-critical); }
+html[data-ui='2'] .ui2-experience-family .exec-asset-cve-count span { color: var(--dp-text-3); }
+
+/* Insights (reference `.dp-insight-row`): tone dot with halo, no tinted box. */
+html[data-ui='2'] .ui2-experience-family .exec-insights {
+  gap: 4px;
+  margin: 0 -8px;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-insight {
+  --exp-tone: var(--dp-accent);
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--dp-radius);
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-insight:hover { background: var(--dp-surface-2); }
+html[data-ui='2'] .ui2-experience-family .exec-insight--critical { --exp-tone: var(--dp-critical); }
+html[data-ui='2'] .ui2-experience-family .exec-insight--warn { --exp-tone: var(--dp-warning); }
+
+html[data-ui='2'] .ui2-experience-family .exec-insight .exec-insight-dot {
+  background: var(--exp-tone);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--exp-tone) 18%, transparent);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-insight-text {
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+/* Known-exploit callout (reference `.dp-callout-btn`). */
+html[data-ui='2'] .ui2-experience-family .exec-exploit-summary {
+  padding-top: 0;
+  border-top: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-exploit-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--dp-critical) 25%, var(--dp-border));
+  border-radius: var(--dp-radius);
+  background: color-mix(in srgb, var(--dp-critical) 6%, var(--dp-surface));
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-exploit-btn:hover {
+  border-color: color-mix(in srgb, var(--dp-critical) 45%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-critical) 6%, var(--dp-surface));
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-exploit-num {
+  color: var(--dp-critical);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── CVE dashboard (/vuln-repo) ──────────────────────────────────────── */
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-stat-button {
+  transition: border-color var(--dp-dur-fast), box-shadow var(--dp-dur-fast);
+}
+
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-stat-button:hover {
+  border-color: var(--dp-border-strong);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-funnel-card .stat-card-label,
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-software-row--header {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.vuln-repo-dashboard-unresolved-item, .vuln-repo-dashboard-advisory-item, .vuln-repo-dashboard-asset-card) {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.vuln-repo-dashboard-unresolved-item, .vuln-repo-dashboard-advisory-item, .vuln-repo-dashboard-asset-card):hover {
+  border-color: var(--dp-border-strong);
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-asset-copy strong,
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-unresolved-copy {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-context-section,
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-panel-block-header {
+  border-color: var(--dp-border);
+}
+
+/* ── Campaigns list (reference list pattern) ─────────────────────────── */
+html[data-ui='2'] .ui2-experience-family .campaigns-list-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-table th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-table td {
+  border-color: var(--dp-border);
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-table tbody tr:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-experience-family .campaign-progress-bar {
+  border-radius: 999px;
+  background: var(--dp-accent);
+}
+
+/* ── Campaign detail (reference record-detail pattern) ───────────────── */
+html[data-ui='2'] .ui2-experience-family .cd-topbar {
+  padding: 0 0 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-breadcrumb-link { color: var(--dp-text-3); }
+html[data-ui='2'] .ui2-experience-family .cd-breadcrumb-current { color: var(--dp-text); font-weight: 500; }
+
+html[data-ui='2'] .ui2-experience-family .cd-tabnav {
+  padding: 0;
+  border-bottom: 1px solid var(--dp-border);
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-body {
+  padding: 16px 0 0;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-hero-card, .cd-kpi-tile, .cd-stage-card, .cd-progress-card, .cd-sidebar-card) {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-hero-title {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-kpi-value {
+  font-family: var(--dp-font);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Literal labels rendered in sentence case (DOM text unchanged). */
+html[data-ui='2'] .ui2-experience-family :is(.cd-kpi-label, .cd-sidebar-card-title, .cd-group-section-label, .cd-sla-days-label,
+  .cd-team-row--header, .cd-asset-col-head, .cd-cve-row--header, .cd-findings-table th, .cd-ai-insights-title, .cd-notify-left-title,
+  .cd-notify-template-label, .cd-notify-field-label, .cw-launch-kpi-lbl) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-kpi-label, .cd-sidebar-card-title, .cd-group-section-label, .cd-sla-days-label, .cd-ai-insights-title) {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-team-row--header, .cd-asset-col-head, .cd-cve-row--header, .cd-findings-table th) {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-findings-table th {
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-findings-table td {
+  border-color: var(--dp-border);
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-loading {
+  color: var(--dp-text-2);
+}
+
+/* ── Operations (tenant views and the platform console view) ────────── */
+html[data-ui='2'] .ui2-experience-family.ops-context-bar {
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-experience-family.ops-context-bar .ops-context-label {
+  padding: 0;
+  border: 0;
+  color: var(--dp-text-3);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family.ops-context-bar .ops-context-label::after {
+  content: ' /';
+}
+
+html[data-ui='2'] .ui2-experience-family.ops-context-bar .ops-context-view {
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+}
+
+/* Metric tiles inside a card sit on the card's inner surface. */
+html[data-ui='2'] .ui2-experience-family .panel .noise-summary-item {
+  padding: 10px 12px;
+  background: var(--dp-surface-2);
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .ops-table {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .ui2-experience-family .ops-table-header {
+  background: var(--dp-surface-2);
+  border-bottom-color: var(--dp-border);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .ops-table-row {
+  border-bottom-color: var(--dp-border);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .ui2-experience-family .ops-table-row:hover {
+  background: var(--dp-hover);
+}
+
+/* Legacy gives the header a fixed six-column grid and wide rows a four-column one, so tables
+ * with seven cells wrap and wide rows drift from their headers. Columns follow the cell count
+ * instead; the header and its rows always render the same count. */
+html[data-ui='2'] .ui2-experience-family :is(.ops-table-header, .ops-table-row) {
+  grid-template-columns: minmax(130px, 1.5fr);
+  grid-auto-columns: minmax(90px, 1fr);
+  grid-auto-flow: column;
+  align-items: start;
+}
+
+html[data-ui='2'] .ui2-experience-family .ops-table:has(.ops-table-row-wide) .ops-table-header {
+  min-width: 900px;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.slo-pass, .slo-fail) {
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family .slo-pass { color: var(--dp-success); }
+html[data-ui='2'] .ui2-experience-family .slo-fail { color: var(--dp-critical); }
+
+/* The platform console frame is the outer card in legacy (see governance.css). */
+html[data-ui='2'] .ui2-experience-family > .platform-console-shell {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .platform-ops-hero-tag,
+html[data-ui='2'] .ui2-experience-family .platform-ops-metric-scope {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .platform-ops-subnav {
+  border-bottom: 1px solid var(--dp-border);
+}
+
+/* ── Public authentication entry (reference `#/login`, `.dp-auth`) ───── */
+html[data-ui='2'] .ui2-experience-family.public-demo-shell {
+  background:
+    radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--dp-accent) 12%, transparent), transparent 70%),
+    var(--dp-bg);
+  font-family: var(--dp-font);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel {
+  display: grid;
+  gap: 16px;
+  width: min(420px, 100%);
+  margin: 48px auto 24px;
+  padding: 28px;
+  border: 1px solid var(--dp-border);
+  border-radius: 16px;
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel h1 {
+  margin: 0;
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel > p {
+  margin: -8px 0 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  line-height: 1.5;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel form {
+  display: grid;
+  gap: 12px;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel label {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel input {
+  min-height: var(--dp-control-lg);
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  box-shadow: var(--dp-shadow-xs);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel input:focus {
+  border-color: var(--dp-accent);
+  outline: none;
+  box-shadow: var(--dp-ring);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel .btn {
+  min-height: var(--dp-control-lg);
+  border-radius: var(--dp-radius);
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel form .btn-primary {
+  width: 100%;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel .btn-primary {
+  border-color: var(--dp-accent);
+  background: var(--dp-accent);
+  color: var(--dp-accent-fg);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel .btn-primary:disabled {
+  opacity: 0.5;
+}
+
+/* Test personas (reference `.dp-auth-personas`). */
+html[data-ui='2'] .ui2-experience-family .public-form-panel .section-block {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel .section-block h2 {
+  margin: 0 !important;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md) !important;
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family .public-form-panel .section-block .btn {
+  min-height: var(--dp-control-sm);
+}
+
+/* Invite details as a definition grid. */
+html[data-ui='2'] .ui2-experience-family .demo-invite-details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+}
+
+html[data-ui='2'] .ui2-experience-family .demo-invite-details > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+html[data-ui='2'] .ui2-experience-family .demo-invite-details > div + div {
+  border-top: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-experience-family .demo-invite-details dt {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .demo-invite-details dd {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  overflow-wrap: anywhere;
+}
+
+/* ── Narrow viewports ─────────────────────────────────────────────────── */
+/* Legacy 1fr tracks and grid children size to their content, which widens the page at phone
+ * widths; content may shrink here so wide tables and tab strips scroll inside their card. */
+html[data-ui='2'] .ui2-experience-family .exec-two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-ui='2'] .ui2-experience-family.campaigns-page > *,
+html[data-ui='2'] .ui2-experience-family .cd-overview-main,
+html[data-ui='2'] .ui2-experience-family .cd-body {
+  min-width: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-list-panel {
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-tabnav {
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-tab {
+  flex-shrink: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-team-table {
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-team-row {
+  grid-template-columns: minmax(120px, 1fr) 60px 70px 64px 80px;
+  min-width: 440px;
+}
+
+@media (max-width: 900px) {
+  html[data-ui='2'] .ui2-experience-family .exec-two-col,
+  html[data-ui='2'] .ui2-experience-family .cd-overview-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-ui='2'] .ui2-experience-family .campaigns-tab-row {
+    flex-wrap: wrap;
+  }
+
+  html[data-ui='2'] .ui2-experience-family .grid-exposure-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  html[data-ui='2'] .ui2-experience-family .public-form-panel {
+    margin-top: 24px;
+    padding: 20px;
+  }
+}

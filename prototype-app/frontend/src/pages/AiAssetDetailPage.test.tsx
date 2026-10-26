@@ -232,7 +232,7 @@ describe('AiAssetDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Relationships/ }));
     expect(await screen.findByText('claims-model')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'AI artifact dependency graph' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'AI artifact dependency graph' })).toBeInTheDocument();
   });
 
   it('requests only the definition graph and offers no runtime controls', async () => {
@@ -248,6 +248,18 @@ describe('AiAssetDetailPage', () => {
     expect(screen.queryByLabelText('Show runtime activity')).not.toBeInTheDocument();
     expect(screen.queryByText('Activity evidence')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'View executions' })).not.toBeInTheDocument();
+  });
+
+  it('reports a failed graph request instead of showing no relationships', async () => {
+    vi.spyOn(api, 'getAiSecurityArtifact').mockResolvedValue(buildArtifact());
+    vi.spyOn(api, 'listAiGridPolicyDetails').mockResolvedValue([]);
+    vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [], page: 0, size: 200, total: 0 });
+    vi.spyOn(api, 'getAiSecurityGraph').mockRejectedValue(new Error('graph unavailable'));
+    renderWithProviders(<AiAssetDetailPage artifactId="artifact-1" />);
+    await screen.findByText('claims-triage-agent45800');
+    fireEvent.click(screen.getByRole('button', { name: /^Relationships/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Connected resources could not be loaded.');
+    expect(screen.queryByText('No active relationships observed for this asset.')).not.toBeInTheDocument();
   });
 
   it('shows ownership details for the artifact', async () => {

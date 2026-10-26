@@ -1,0 +1,842 @@
+/* UI 2.0 CVE workflow (reference `#/vuln-repo/org-cves/CVE-2026-31337`).
+ *
+ * Restyles the existing classes of the CVE Assessment Workbench (.cve-assessment-page: overview,
+ * investigation canvas, applicability/impact, impacted assets, finding configuration, fixes and
+ * notification drafts), the organization records list and Intelligence detail
+ * (.ui2-cve-family), the Intelligence list (.vuln-repo-vulnerabilities-shell) and the dedicated
+ * CVE assets/software and software-assets routes (.vuln-repo-assets-shell). The cve-, cvd-,
+ * notify- and investigation- classes only render inside these roots, and shared classes
+ * (.panel, .resizable-table, .findings-filter-chip) are anchored so other pages keep their look.
+ * The record-detail tab, panel, signal-pill, link, label and badge rules also match the tenant
+ * and platform AI policy detail pages (.ui2-governance-family, see governance.css).
+ *
+ * Presentation only: no element, label, handler, selector, row interaction or persistence
+ * change. Inline styles in the CVE components are left as they are. */
+
+/* ── Variables the CVE components read with light-only fallbacks ─────────
+ * FindingsTab, VulnRepoOrgCvePage and others use var(--surface-bg, #fff), var(--primary-subtle,
+ * #eff6ff), var(--border-color, #d1d5db) etc. in inline styles. Nothing defines them, so the
+ * fallbacks render light cards in the dark theme. Defining them on the roots fixes both themes
+ * without touching the markup. */
+html[data-ui='2'] .cve-assessment-page,
+html[data-ui='2'] .ui2-cve-family,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell,
+html[data-ui='2'] .vuln-repo-assets-shell {
+  --surface-bg: var(--dp-surface);
+  --input-bg: var(--dp-surface);
+  --border-color: var(--dp-border);
+  --primary-subtle: color-mix(in srgb, var(--dp-accent) 10%, var(--dp-surface));
+  --text-1: var(--dp-text);
+  --badge-info-bg: color-mix(in srgb, var(--dp-accent) 12%, transparent);
+  --badge-info-border: color-mix(in srgb, var(--dp-accent) 30%, transparent);
+  --badge-info-text: var(--dp-accent);
+  /* Keep the legacy inline impact palette as fallback outside the presentation scope. */
+  --cve-impact-high-bg: color-mix(in srgb, var(--dp-critical) 10%, var(--dp-surface));
+  --cve-impact-high-text: var(--dp-critical);
+  --cve-impact-high-border: color-mix(in srgb, var(--dp-critical) 30%, var(--dp-border));
+  --cve-impact-medium-bg: color-mix(in srgb, var(--dp-warning) 10%, var(--dp-surface));
+  --cve-impact-medium-text: var(--dp-warning);
+  --cve-impact-medium-border: color-mix(in srgb, var(--dp-warning) 30%, var(--dp-border));
+  --cve-impact-low-bg: color-mix(in srgb, var(--dp-success) 10%, var(--dp-surface));
+  --cve-impact-low-text: var(--dp-success);
+  --cve-impact-low-border: color-mix(in srgb, var(--dp-success) 30%, var(--dp-border));
+}
+
+/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
+html[data-ui='2'] .cve-assessment-page,
+html[data-ui='2'] .ui2-cve-family,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell,
+html[data-ui='2'] .vuln-repo-assets-shell {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+html[data-ui='2'] .ui2-cve-family > .panel-header,
+html[data-ui='2'] .vuln-repo-assets-shell > .panel-header {
+  padding: 0 0 16px;
+  margin: 0 0 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--dp-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-cve-family > .panel-header h3,
+html[data-ui='2'] .vuln-repo-assets-shell > .panel-header h3 {
+  color: var(--dp-text);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 4px 0 0;
+}
+
+html[data-ui='2'] .vuln-repo-assets-shell > .panel-header .panel-caption {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Shared table frame (DataTable) inside the CVE family: one card, sentence-case headers, and
+ * long identifiers wrap inside their column instead of painting over the next one. */
+html[data-ui='2'] .ui2-cve-family .table-scroll,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .table-scroll {
+  margin-top: 0;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-cve-family .resizable-table th,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .resizable-table th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .resizable-table td,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .resizable-table td {
+  overflow-wrap: anywhere;
+  font-size: var(--dp-text-md);
+  border-color: var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-cve-family .resizable-table tbody tr:hover td,
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .resizable-table tbody tr:hover td {
+  background: var(--dp-hover);
+}
+
+/* CVE id buttons wrap inside a narrow column instead of painting over the description. */
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .vuln-repo-cve-link {
+  max-width: 100%;
+  font-size: var(--dp-text-md);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .vuln-repo-vulnerabilities-shell .intel-col-label {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .pagination-row {
+  padding: 12px 0 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .ui2-cve-family .empty-state {
+  border: 1px dashed var(--dp-border-strong);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  color: var(--dp-text-2);
+}
+
+/* ── Organization records list (Unified Vulnerability Records) ───────── */
+html[data-ui='2'] .ui2-cve-family .org-cve-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  html[data-ui='2'] .ui2-cve-family .org-cve-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-score-card {
+  padding: 12px 16px;
+  border: 0;
+  border-right: 1px solid var(--dp-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+  gap: 4px;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-score-card:last-child {
+  border-right: 0;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-score-card span {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-score-card strong {
+  color: var(--dp-text);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Filter row: labelled fields on the page background, not boxed chips (reference `.dp-toolbar`). */
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-row {
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip {
+  padding: 0;
+  gap: 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip label {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip input,
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip select {
+  min-height: var(--dp-control-md);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  box-shadow: var(--dp-shadow-xs);
+}
+
+html[data-ui='2'] .ui2-cve-family .cve-muted {
+  color: var(--dp-text-3);
+}
+
+/* ── Intelligence detail (/vuln-repo/intel/:externalId) ──────────────── */
+html[data-ui='2'] .ui2-cve-family .panel {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .ui2-cve-family .panel > .panel-header {
+  padding: 0 0 10px;
+  margin-bottom: 10px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--dp-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .panel > .panel-header h3 {
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .ui2-cve-family .btn-link {
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+}
+
+/* ── Workbench: headline / breadcrumb ────────────────────────────────── */
+html[data-ui='2'] .cve-assessment-page {
+  gap: 16px;
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-headline {
+  padding: 0 0 14px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--dp-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-headline-cve-id {
+  font-family: var(--dp-mono);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-headline-step {
+  color: var(--dp-text);
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-signal-pill {
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dp-border);
+  border-radius: 999px;
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-signal-pill--kev {
+  border-color: color-mix(in srgb, var(--dp-high) 40%, transparent);
+  background: color-mix(in srgb, var(--dp-high) 12%, transparent);
+  color: var(--dp-high);
+}
+
+/* Use the same score foreground as Findings and theme-aware status tones. */
+html[data-ui='2'] .cve-assessment-page .cvd-score-badge {
+  color: var(--dp-severity-fg);
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-status-pill {
+  --ui2-status-tone: var(--dp-text-2);
+  background: color-mix(in srgb, var(--ui2-status-tone) 10%, var(--dp-surface));
+  color: var(--ui2-status-tone);
+  border-color: color-mix(in srgb, var(--ui2-status-tone) 30%, var(--dp-border));
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-status-impacted { --ui2-status-tone: var(--dp-critical); }
+html[data-ui='2'] .cve-assessment-page .cvd-status-ok { --ui2-status-tone: var(--dp-success); }
+html[data-ui='2'] .cve-assessment-page :is(.cvd-status-investigating, .cvd-status-warn, .cvd-status-suppressed) { --ui2-status-tone: var(--dp-warning); }
+
+html[data-ui='2'] .cve-assessment-page .cvd-score-tooltip {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+/* Notices inside the workbench read as reference alerts. */
+html[data-ui='2'] .cve-assessment-page > .notice,
+html[data-ui='2'] .ui2-cve-family > .notice,
+html[data-ui='2'] .vuln-repo-assets-shell .notice {
+  border-radius: var(--dp-radius);
+  font-size: var(--dp-text-md);
+}
+
+/* ── Workbench: overview tabs and panels ─────────────────────────────── */
+/* The legacy overview is scaled to 120% on a tinted surface; UI 2.0 uses the base type scale. */
+html[data-ui='2'] .cve-assessment-page .cvd2-page {
+  background: transparent;
+  font-family: var(--dp-font);
+  font-size: 100%;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab-bar {
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab {
+  margin-bottom: -1px;
+  padding: 10px 12px;
+  border-bottom-width: 2px;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab:hover {
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab.active {
+  border-bottom-color: var(--dp-accent);
+  color: var(--dp-text);
+  font-weight: 600;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-tab-content {
+  padding: 16px 0 0;
+  background: transparent;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-body {
+  padding: 16px 0 0;
+  gap: 16px;
+  background: transparent;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-panel {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-panel-hdr {
+  padding: 12px 16px;
+  background: transparent;
+  border-bottom-color: var(--dp-border);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Small caps-style labels become sentence-case field labels (reference `.dp-property-list dt`). */
+html[data-ui='2'] .cve-assessment-page .cvd-section-label,
+html[data-ui='2'] .cve-assessment-page .cvd-kv-label,
+html[data-ui='2'] .cve-assessment-page .cvd-meta-label,
+html[data-ui='2'] .cve-assessment-page .cvd-cvss-cell-label,
+html[data-ui='2'] .cve-assessment-page .cvd-metric-label,
+html[data-ui='2'] .cve-assessment-page .cvd-date-label,
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-tech-attr-label,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-section-hdr,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-primary-rec-label,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-conf-label,
+html[data-ui='2'] .cve-assessment-page .cve-overview-meta-label,
+html[data-ui='2'] .cve-assessment-page .cve-overview-utility-label,
+html[data-ui='2'] .cve-assessment-page .cve-overview-lead-analyst label,
+html[data-ui='2'] .cve-assessment-page .cve-form-field > label,
+html[data-ui='2'] .cve-assessment-page .cve-bulk-actions-label,
+html[data-ui='2'] .cve-assessment-page .vex-evidence-key,
+html[data-ui='2'] .cve-assessment-page .assessment-result-label,
+html[data-ui='2'] .cve-assessment-page .cve-decision-summary-section-title,
+html[data-ui='2'] .cve-assessment-page .cve-findings-summary-label,
+html[data-ui='2'] .cve-assessment-page .notify-compose__label,
+html[data-ui='2'] .cve-assessment-page .notify-preview__field-label,
+html[data-ui='2'] .cve-assessment-page .investigation-summary-card span,
+html[data-ui='2'] .cve-assessment-page .investigation-impact-primary span,
+html[data-ui='2'] .cve-assessment-page .investigation-software-bar-col-header {
+  font-family: var(--dp-font);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-ov-link {
+  font-size: var(--dp-text-md);
+  font-weight: 500;
+}
+
+/* Workflow cards ("Need your attention"). */
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card {
+  border-radius: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card:focus-visible {
+  outline: none;
+  box-shadow: inset var(--dp-ring);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-num {
+  background: color-mix(in srgb, var(--dp-accent) 16%, transparent);
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-title {
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-wf-card-sub {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+}
+
+/* Status badges: tokens instead of light-only hex tints. */
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge {
+  min-height: 20px;
+  font-size: var(--dp-text-xs);
+  font-weight: 500;
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--done,
+html[data-ui='2'] .cve-assessment-page .cve-fp-yes-badge {
+  border-color: color-mix(in srgb, var(--dp-success) 35%, transparent);
+  background: color-mix(in srgb, var(--dp-success) 12%, transparent);
+  color: var(--dp-success);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--progress,
+html[data-ui='2'] .cve-assessment-page .cvd-wf-insight,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-gaps,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-lifecycle-warn,
+html[data-ui='2'] .cve-assessment-page .investigation-unsaved-warning {
+  border-color: color-mix(in srgb, var(--dp-warning) 35%, transparent);
+  background: color-mix(in srgb, var(--dp-warning) 12%, transparent);
+  color: var(--dp-warning);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--pending {
+  border-color: var(--dp-border);
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd-wf-badge--report,
+html[data-ui='2'] .cve-assessment-page .cvd-src-tag-ai,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-dep-badge {
+  border-color: color-mix(in srgb, var(--dp-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--dp-accent) 12%, transparent);
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .cve-assessment-page .cvd-ai-bl-badge-red {
+  border-color: color-mix(in srgb, var(--dp-critical) 35%, transparent);
+  background: color-mix(in srgb, var(--dp-critical) 12%, transparent);
+  color: var(--dp-critical);
+}
+
+/* ── Workbench: applicability and impact (two separate sections) ─────── */
+html[data-ui='2'] .cve-assessment-page .cve-applicability-layout {
+  gap: 16px;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-section {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-section-header {
+  padding: 14px 16px;
+  background: transparent;
+  border-bottom-color: var(--dp-border);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-section-header h4,
+html[data-ui='2'] .cve-assessment-page .cve-decision-summary-card > h4 {
+  font-family: var(--dp-font);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-section-header .panel-caption {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-md);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Impact keeps a distinct (but calm) accent so it is not mistaken for applicability. */
+html[data-ui='2'] .cve-assessment-page .cve-impact-section {
+  border-top: 1px solid var(--dp-border);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--dp-medium) 70%, transparent), var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-impact-section-header {
+  background: transparent;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-bulk-actions {
+  padding: 10px 16px;
+  background: var(--dp-surface-2);
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-table thead th,
+html[data-ui='2'] .cve-assessment-page .cve-findings-asset-table thead th,
+html[data-ui='2'] .cve-assessment-page .investigation-asset-table th,
+html[data-ui='2'] .cve-assessment-page .investigation-false-positive-table th,
+html[data-ui='2'] .cve-assessment-page .investigation-eol-table th,
+html[data-ui='2'] .cve-assessment-page .inv-solutions-table thead th,
+html[data-ui='2'] .cve-assessment-page .cvd-ai-ctrl-table th,
+html[data-ui='2'] .cve-assessment-page .md-table thead tr th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  border-color: var(--dp-border);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-table td,
+html[data-ui='2'] .cve-assessment-page .cve-findings-asset-table td {
+  border-color: var(--dp-border);
+  font-size: var(--dp-text-md);
+  vertical-align: middle;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-table tbody tr:hover td,
+html[data-ui='2'] .cve-assessment-page .cve-findings-asset-table tbody tr:hover td {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-table-muted {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+}
+
+/* Segmented decision controls (applicability / analyst disposition). */
+html[data-ui='2'] .cve-assessment-page .segmented-control-btn {
+  min-height: var(--dp-control-sm);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+/* VEX evidence disclosure (reference `.dp-evidence-note`). */
+html[data-ui='2'] .cve-assessment-page .vex-evidence-card {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+  box-shadow: none;
+}
+
+html[data-ui='2'] .cve-assessment-page .vex-evidence-grid {
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+}
+
+html[data-ui='2'] .cve-assessment-page .vex-evidence-val {
+  overflow-wrap: anywhere;
+  font-size: var(--dp-text-sm);
+}
+
+/* Decision summary sidebar (reference `aside > .dp-card`). */
+html[data-ui='2'] .cve-assessment-page .cve-decision-summary-card {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .assessment-result-banner {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface-2);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-decision-summary-row {
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-notes-textarea,
+html[data-ui='2'] .cve-assessment-page .cve-form-field input,
+html[data-ui='2'] .cve-assessment-page .cve-form-field select,
+html[data-ui='2'] .cve-assessment-page .cve-form-field textarea {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+/* ── Workbench: impacted assets and finding configuration ────────────── */
+html[data-ui='2'] .cve-assessment-page .cve-findings-asset-section {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-bulk-bar {
+  background: transparent;
+  border-color: var(--dp-border);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-col-filter-row th,
+html[data-ui='2'] .cve-assessment-page .cve-findings-col-filter-row td {
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-col-filter-input,
+html[data-ui='2'] .cve-assessment-page .cve-findings-col-filter-select {
+  min-height: var(--dp-control-sm);
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-asset-link {
+  font-family: var(--dp-font);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-bulk-menu {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-bulk-menu-item:hover {
+  background: var(--dp-hover);
+}
+
+/* Finding configuration drawer (reference `Finding Configuration` card). */
+html[data-ui='2'] .cve-assessment-page .cve-findings-config-panel {
+  border-left: 1px solid var(--dp-border);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-modal-header {
+  border-bottom-color: var(--dp-border);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-modal-header h3,
+html[data-ui='2'] .cve-assessment-page .cve-findings-modal-header h4 {
+  color: var(--dp-text);
+  font-size: var(--dp-text-xl);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-snow-checkbox-label {
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-findings-modal-actions {
+  border-top-color: var(--dp-border);
+}
+
+/* ── Workbench: notification drafts ──────────────────────────────────── */
+html[data-ui='2'] .cve-assessment-page .notify-panel {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-panel__col-title {
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-filter-chip,
+html[data-ui='2'] .cve-assessment-page .notify-token-chip {
+  min-height: var(--dp-control-sm);
+  border-color: var(--dp-border);
+  border-radius: 999px;
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-filter-chip--active {
+  border-color: var(--dp-accent);
+  background: color-mix(in srgb, var(--dp-accent) 14%, transparent);
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-token-chip {
+  font-family: var(--dp-mono);
+  font-size: var(--dp-text-xs);
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-compose__subject,
+html[data-ui='2'] .cve-assessment-page .notify-compose__body {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-panel__actions {
+  border-top-color: var(--dp-border);
+  background: var(--dp-surface-2);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-group-item__name {
+  color: var(--dp-text);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page .notify-group-item__meta {
+  color: var(--dp-text-2);
+}
+
+/* ── Workbench: investigation canvas ─────────────────────────────────── */
+html[data-ui='2'] .cve-assessment-page .investigation-summary-card {
+  border-color: var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .cve-assessment-page .investigation-summary-card strong {
+  color: var(--dp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .cve-assessment-page .investigation-draft-badge,
+html[data-ui='2'] .cve-assessment-page .cve-overview-status-pill,
+html[data-ui='2'] .cve-assessment-page .cvd-ra-badge {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Dedicated CVE assets / software and software-assets routes ──────── */
+html[data-ui='2'] .vuln-repo-assets-shell .table-scroll,
+html[data-ui='2'] .vuln-repo-assets-shell .table-wrapper {
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-sm);
+}
+
+html[data-ui='2'] .vuln-repo-assets-shell table th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-ui='2'] .vuln-repo-assets-shell table td {
+  border-color: var(--dp-border);
+  font-size: var(--dp-text-md);
+}
+
+html[data-ui='2'] .vuln-repo-assets-shell table tbody tr:hover td {
+  background: var(--dp-hover);
+}
+
+/* Priority/severity pills in these tables must not break mid-word ("CRITICA / L"). */
+html[data-ui='2'] .vuln-repo-assets-shell td .severity-badge,
+html[data-ui='2'] .vuln-repo-assets-shell td [class*='severity-'],
+html[data-ui='2'] .vuln-repo-assets-shell td .status-pill {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Narrow viewports: the legacy stack keeps the overview's main column at 60% width. */
+@media (max-width: 960px) {
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-body { flex-direction: column; align-items: stretch; }
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-main,
+  html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-sidebar { flex: none; width: 100%; min-width: 0; }
+}

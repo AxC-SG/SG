@@ -209,6 +209,24 @@ describe('FindingsPage', () => {
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined, status: ['OPEN'] })));
   });
 
+  it('keeps the open column filter mounted and focused while its selection re-renders the page', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    await screen.findByText('F-001');
+    fireEvent.click(screen.getByTitle('Filter Status'));
+    const popover = document.querySelector('.fpl-col-filter-popover');
+    const open = screen.getByRole('checkbox', { name: 'Open' });
+    open.focus();
+    fireEvent.click(open);
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ status: ['OPEN'] })));
+    // A remounted popover drops clicks that span a re-render and loses keyboard focus.
+    expect(document.querySelector('.fpl-col-filter-popover')).toBe(popover);
+    expect(open).toBeInTheDocument();
+    expect(open).toHaveFocus();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Resolved' }));
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ status: ['OPEN', 'RESOLVED'] })));
+  });
+
   it('toggles a severity widget and clears status and SLA narrowing without changing queue totals', async () => {
     const spies = mockFindingsWorkspace();
     renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings&status=OPEN' });

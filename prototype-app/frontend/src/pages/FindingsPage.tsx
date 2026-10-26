@@ -790,10 +790,12 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
   }
 
   // ── col header ─────────────────────────────────────────────────────────────
-  function ColHeader({ colKey, label }: { colKey: ColKey; label: string }) {
+  // A render function, not a component declared here: a new component type on every render
+  // would remount the header and its open popover, dropping clicks and keyboard focus.
+  function renderColHeader(colKey: ColKey, label: string) {
     const active = hasColFilter(colKey);
     return (
-      <th className={`fpl-th${active?' fpl-th--filtered':''}`}>
+      <th key={colKey} className={`fpl-th${active?' fpl-th--filtered':''}`}>
         <div className="fpl-th-inner">
           <span className="fpl-th-label">{label}</span>
           {colKey === 'priority' && (
@@ -1225,7 +1227,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
                     ref={el=>{if(el) el.indeterminate=selectedIds.size>0&&!allSelected;}}
                     onChange={toggleSelectAll} aria-label="Select all"/>
                 </th>
-                {visColDefs.map(c=><ColHeader key={c.key} colKey={c.key} label={c.label}/>)}
+                {visColDefs.map(c=>renderColHeader(c.key, c.label))}
               </tr>
             </thead>
             <tbody>

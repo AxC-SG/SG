@@ -421,7 +421,7 @@ export function CampaignsPage() {
   }
 
   return (
-    <div className="campaigns-page">
+    <div className="campaigns-page ui2-experience-family">
       <div className="campaigns-tab-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {STATUS_TABS.map((tab) => (

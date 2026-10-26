@@ -53,7 +53,7 @@ export function AuthorizedWorkspacesPage() {
   const pendingInvitations = (invitationsQuery.data ?? []).filter((grant) => grant.status === 'PENDING');
 
   return (
-    <div className="page-grid">
+    <div className="page-grid ui2-governance-family">
       <section className="panel">
         <div className="section-title-row">
           <div>

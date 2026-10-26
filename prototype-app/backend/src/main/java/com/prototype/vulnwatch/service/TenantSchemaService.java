@@ -2,13 +2,20 @@ package com.prototype.vulnwatch.service;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
@@ -301,6 +308,9 @@ public class TenantSchemaService {
         Set<String> targetIndexNames = standaloneIndexes(targetSchema).stream()
                 .map(IndexDefinition::indexName)
                 .collect(Collectors.toSet());
+        List<String> rlsTables = rlsProtectedTenantTableNames(defaultSchemaName);
+        Map<String, PolicyDefinition> expectedPolicies = expectedTenantIsolationPolicies(targetSchema, rlsTables);
+        Map<String, PolicyDefinition> targetPolicies = tenantIsolationPolicies(targetSchema);
 
         platformJdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
             String originalSearchPath;
@@ -374,21 +384,23 @@ public class TenantSchemaService {
                     statement.execute(rewriteIndexDefinition(targetSchema, index.definition()));
                 }
 
-                for (String tableName : rlsProtectedTenantTableNames(defaultSchemaName)) {
+                for (String tableName : rlsTables) {
                     statement.execute("""
                             ALTER TABLE %s.%s ENABLE ROW LEVEL SECURITY
                             """.formatted(quotedIdentifier(targetSchema), quotedIdentifier(tableName)));
                     statement.execute("""
                             ALTER TABLE %s.%s FORCE ROW LEVEL SECURITY
                             """.formatted(quotedIdentifier(targetSchema), quotedIdentifier(tableName)));
+                    PolicyDefinition expected = expectedPolicies.get(tableName);
+                    // A policy that already matches the template is left alone: dropping and recreating it
+                    // would briefly leave the table without its tenant-pinned predicate.
+                    if (expected.equals(targetPolicies.get(tableName))) {
+                        continue;
+                    }
                     statement.execute("""
                             DROP POLICY IF EXISTS tenant_isolation ON %s.%s
                             """.formatted(quotedIdentifier(targetSchema), quotedIdentifier(tableName)));
-                    statement.execute("""
-                            CREATE POLICY tenant_isolation ON %s.%s
-                            USING (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid)
-                            WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid)
-                            """.formatted(quotedIdentifier(targetSchema), quotedIdentifier(tableName)));
+                    statement.execute(expected.createStatement(quotedIdentifier(targetSchema), quotedIdentifier(tableName)));
                 }
             } finally {
                 try (var restoreSearchPath = connection.prepareStatement("SELECT set_config('search_path', ?, FALSE)")) {
@@ -398,6 +410,43 @@ public class TenantSchemaService {
             }
             return null;
         });
+    }
+
+    /**
+     * The template's tenant_isolation policies, re-pinned to the target tenant. Tenant V1 pins most
+     * policies to its own tenant id as well as the session tenant; copying that pin keeps a schema from
+     * accepting another tenant's rows. Fails closed when a pin cannot be mapped to the target tenant.
+     */
+    private Map<String, PolicyDefinition> expectedTenantIsolationPolicies(String targetSchema, List<String> rlsTables) {
+        Map<String, PolicyDefinition> templatePolicies = tenantIsolationPolicies(defaultSchemaName);
+        UUID templateTenantId = registeredTenantId(defaultSchemaName);
+        UUID targetTenantId = registeredTenantId(targetSchema);
+        Map<String, PolicyDefinition> expected = new HashMap<>();
+        for (String tableName : rlsTables) {
+            PolicyDefinition template = templatePolicies.get(tableName);
+            expected.put(tableName, template == null
+                    ? PolicyDefinition.UNPINNED
+                    : template.repinned(defaultSchemaName, templateTenantId, targetSchema, targetTenantId, tableName));
+        }
+        return expected;
+    }
+
+    private Map<String, PolicyDefinition> tenantIsolationPolicies(String schemaName) {
+        Map<String, PolicyDefinition> policies = new HashMap<>();
+        platformJdbcTemplate.query("""
+                SELECT tablename, permissive, cmd, array_to_string(roles, ',') AS roles, qual, with_check
+                FROM pg_policies
+                WHERE schemaname = ? AND policyname = 'tenant_isolation'
+                """, (RowCallbackHandler) row -> policies.put(row.getString("tablename"), new PolicyDefinition(
+                row.getString("permissive"), row.getString("cmd"), row.getString("roles"),
+                row.getString("qual"), row.getString("with_check"))), schemaName);
+        return policies;
+    }
+
+    private UUID registeredTenantId(String schemaName) {
+        List<UUID> ids = platformJdbcTemplate.queryForList(
+                "SELECT id FROM platform.tenants WHERE schema_name = ?", UUID.class, schemaName);
+        return ids.size() == 1 ? ids.get(0) : null;
     }
 
     private List<String> rlsProtectedTenantTableNames(String schemaName) {
@@ -573,7 +622,7 @@ public class TenantSchemaService {
                 .replace(" ON " + quotedIdentifier(defaultSchemaName) + ".", " ON " + quotedIdentifier(targetSchema) + ".");
     }
 
-    private String quotedIdentifier(String value) {
+    private static String quotedIdentifier(String value) {
         return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
@@ -595,6 +644,55 @@ public class TenantSchemaService {
     }
 
     private record TableConstraintDefinition(String tableName, String constraintName, String definition) {
+    }
+
+    private record PolicyDefinition(String permissive, String command, String roles, String using, String withCheck) {
+        private static final Pattern UUID_LITERAL = Pattern.compile(
+                "'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'::uuid");
+        private static final String SESSION_TENANT = "(NULLIF(current_setting('app.current_tenant_id'::text, true), ''::text))::uuid";
+        /** Used only when the template table has no tenant_isolation policy to copy. */
+        static final PolicyDefinition UNPINNED = new PolicyDefinition("PERMISSIVE", "ALL", "public",
+                "(tenant_id = " + SESSION_TENANT + ")", "(tenant_id = " + SESSION_TENANT + ")");
+
+        PolicyDefinition repinned(String templateSchema, UUID templateTenantId, String targetSchema, UUID targetTenantId, String tableName) {
+            return new PolicyDefinition(permissive, command, roles,
+                    repin(using, templateSchema, templateTenantId, targetSchema, targetTenantId, tableName),
+                    repin(withCheck, templateSchema, templateTenantId, targetSchema, targetTenantId, tableName));
+        }
+
+        private static String repin(String expression, String templateSchema, UUID templateTenantId,
+                                    String targetSchema, UUID targetTenantId, String tableName) {
+            if (expression == null) {
+                return null;
+            }
+            String rewritten = expression.replace(templateSchema + ".", targetSchema + ".");
+            Matcher pins = UUID_LITERAL.matcher(rewritten);
+            if (!pins.find()) {
+                return rewritten;
+            }
+            if (templateTenantId == null || targetTenantId == null) {
+                throw new IllegalStateException("Cannot re-pin tenant_isolation on " + targetSchema + "." + tableName
+                        + ": the template and target schemas must each map to exactly one registered tenant");
+            }
+            rewritten = rewritten.replace("'" + templateTenantId + "'::uuid", "'" + targetTenantId + "'::uuid");
+            Matcher remaining = UUID_LITERAL.matcher(rewritten);
+            while (remaining.find()) {
+                if (!remaining.group(1).equalsIgnoreCase(targetTenantId.toString())) {
+                    throw new IllegalStateException("Unexpected tenant pin in template policy on " + tableName);
+                }
+            }
+            return rewritten;
+        }
+
+        String createStatement(String quotedSchema, String quotedTable) {
+            String grantees = Arrays.stream(roles.split(","))
+                    .map(role -> "public".equals(role) ? "PUBLIC" : quotedIdentifier(role))
+                    .collect(Collectors.joining(", "));
+            return "CREATE POLICY tenant_isolation ON " + quotedSchema + "." + quotedTable
+                    + " AS " + permissive + " FOR " + command + " TO " + grantees
+                    + (using == null ? "" : " USING (" + using + ")")
+                    + (withCheck == null ? "" : " WITH CHECK (" + withCheck + ")");
+        }
     }
 
     private record IndexDefinition(String tableName, String indexName, String definition) {

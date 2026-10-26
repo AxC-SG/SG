@@ -1,0 +1,72 @@
+[
+  {
+    "route": "/vuln-repo/org-cves",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/org-cves",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-org-cves_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/org-cves/CVE-2026-31337",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-org-cves-CVE-2026-31337_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/vulnerabilities",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/vulnerabilities",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-vulnerabilities_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-org-cves-CVE-2026-31337-assets_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/software",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/org-cves/CVE-2026-31337/software",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-org-cves-CVE-2026-31337-software_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-software-assets-softwareIdentityId-sw-1-software-log4j-core_dark_1440.png",
+    "pageErrors": []
+  },
+  {
+    "route": "/vuln-repo/intel/CVE-2026-31337",
+    "theme": "dark",
+    "width": 1440,
+    "finalUrl": "http://127.0.0.1:5176/vuln-repo/intel/CVE-2026-31337",
+    "dataUi": null,
+    "horizontalOverflow": false,
+    "file": "legacy_vuln-repo-intel-CVE-2026-31337_dark_1440.png",
+    "pageErrors": []
+  }
+]

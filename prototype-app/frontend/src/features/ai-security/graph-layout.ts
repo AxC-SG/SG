@@ -24,7 +24,9 @@ export type DependencyGraphLayout = {
 export function layoutDependencyGraph(graph: AiSecurityGraph, rootArtifactId?: string): DependencyGraphLayout {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 96 });
+  // Edge labels sit at the edge midpoint; ranksep leaves room for the longest relationship label
+  // between ranks and nodesep keeps fanned-out labels from stacking on each other.
+  dagreGraph.setGraph({ rankdir: 'LR', nodesep: 48, ranksep: 160 });
 
   graph.nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
