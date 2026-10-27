@@ -194,7 +194,7 @@
 :where(html[data-ui='2']) .public-demo-links .nav-link-outline:where(.ui2-experience-family, .ui2-experience-family *) {
   border: 1px solid var(--border2);
   color: var(--dp-text);
-  background: #ffffff;
+  background: var(--dp-surface);
 }
 
 :where(html[data-ui='2']) .public-demo-links .nav-link-outline:hover:where(.ui2-experience-family, .ui2-experience-family *) {

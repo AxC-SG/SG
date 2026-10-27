@@ -13,6 +13,7 @@
   --public-page-max: 1520px;
   min-height: 100vh;
   padding: 88px 24px 24px;
+  color: var(--text);
   background:
     linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--bg) 92%, #ffffff) 100%);
 }

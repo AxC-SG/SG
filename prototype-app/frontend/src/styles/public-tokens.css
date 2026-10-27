@@ -1,7 +1,9 @@
 
 
+/* The public site is drawn on fixed white surfaces, so its shell keeps the light tokens in either theme. */
 :root:where(:not([data-ui='2'])),
-:where(html:not([data-ui='2']))[data-theme='light'] {
+:where(html:not([data-ui='2']))[data-theme='light'],
+:where(html:not([data-ui='2'])) .public-demo-shell {
   color-scheme: light;
   --font-display: "Space Grotesk", "Segoe UI", sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
