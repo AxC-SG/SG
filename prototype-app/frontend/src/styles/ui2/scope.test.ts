@@ -271,7 +271,7 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(selectors(css)).toContain('.public-demo-shell');
     expect(selectors(css)).toContain('.scout-hero');
     expect(css).not.toMatch(/--dp-|data-ui/);
-    expect(tokens.flatMap((rule) => rule.selectors)).toEqual([":root:where(:not([data-ui='2']))", ":where(html:not([data-ui='2']))[data-theme='light']", ":where(html:not([data-ui='2'])) .public-demo-shell", ":where(html:not([data-ui='2']))[data-theme='dark']"]);
+    expect(tokens.flatMap((rule) => rule.selectors)).toEqual([":root:where(:not([data-ui='2']))", ":where(html:not([data-ui='2']))[data-theme='light']", ":where(html:not([data-ui='2'])) body", ":where(html:not([data-ui='2'])) .public-demo-shell", ":where(html:not([data-ui='2']))[data-theme='dark']"]);
     expect(tokens.flatMap((rule) => rule.declarations).filter(([property]) => property.startsWith('--dp-'))).toEqual([]);
   });
 

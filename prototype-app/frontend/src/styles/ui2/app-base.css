@@ -118,7 +118,7 @@
   width: 100%;
   margin: 0;
   padding: 0 24px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--dp-surface) 92%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--dp-border) 92%, #ffffff);
   backdrop-filter: blur(20px) saturate(1.2);
 }

@@ -48,6 +48,7 @@ function build(version) {
 // router links and browser history, retaining theme/storage and computed public styles.
 async function checkPublicNavigation(browser, server, version, failures) {
   let checks = 0;
+  const publicCanvases = new Map();
   for (const theme of ['dark', 'light']) for (const width of [390, 1280]) {
     const context = await newContext(browser, { viewport: { width, height: 900 } });
     try {
@@ -61,19 +62,46 @@ async function checkPublicNavigation(browser, server, version, failures) {
         await page.waitForLoadState('networkidle');
         const snapshot = await page.evaluate(() => {
           const root = document.documentElement, css = getComputedStyle(root), body = getComputedStyle(document.body);
+          // Test the header text against both possible backdrops behind its translucent surface.
+          // This catches a fixed light header inheriting dark-theme text, even when axe skips it.
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const context = canvas.getContext('2d');
+          const rgba = (color) => {
+            context.clearRect(0, 0, 1, 1);
+            context.fillStyle = color;
+            context.fillRect(0, 0, 1, 1);
+            return [...context.getImageData(0, 0, 1, 1).data];
+          };
+          const luminance = (channels) => channels.map((value) => {
+            const s = value / 255;
+            return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+          const background = rgba(getComputedStyle(document.querySelector('.public-demo-nav')).backgroundColor);
+          const headerMinContrast = Math.min(...[...document.querySelectorAll('.public-demo-brand strong, .public-demo-links a:not([class])')].flatMap((link) => {
+            const text = luminance(rgba(getComputedStyle(link).color).slice(0, 3));
+            return [0, 255].map((backdrop) => {
+              const surface = luminance(background.slice(0, 3).map((channel) => channel * background[3] / 255 + backdrop * (1 - background[3] / 255)));
+              return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
+            });
+          }));
           return { ui: root.getAttribute('data-ui'), theme: root.getAttribute('data-theme'), stored: localStorage.getItem('scoutai-theme'),
             appToken: css.getPropertyValue('--dp-accent').trim(), publicToken: css.getPropertyValue('--accent').trim(),
-            body: [body.color, body.backgroundImage, body.backgroundColor, body.fontFamily] };
+            body: [body.color, body.backgroundImage, body.backgroundColor, body.fontFamily], headerMinContrast };
         });
         checks++;
         const prefix = `${version} ${theme}/${width} ${pathname}`;
         if (snapshot.ui !== (publicPage ? null : '2') || snapshot.theme !== theme || snapshot.stored !== theme) failures.push(`${prefix}: route/theme boundary ${JSON.stringify(snapshot)}`);
         if (publicPage ? snapshot.appToken !== '' || snapshot.publicToken === '' : snapshot.appToken === '' || snapshot.publicToken !== '') failures.push(`${prefix}: token isolation ${JSON.stringify(snapshot)}`);
+        if (!publicPage && snapshot.headerMinContrast < 4.5) failures.push(`${prefix}: auth header text contrast ${snapshot.headerMinContrast.toFixed(2)}:1, expected at least 4.5:1`);
         if (baseline && JSON.stringify(snapshot) !== JSON.stringify(baseline)) failures.push(`${prefix}: public styles differ from direct load`);
         return snapshot;
       };
       await page.goto(`${server.url}/demo`, { waitUntil: 'networkidle' });
       const direct = await check('/demo', true);
+      const canvas = JSON.stringify(direct.body);
+      if (publicCanvases.has(width) && publicCanvases.get(width) !== canvas) failures.push(`${version} ${width}: public canvas changes with the stored theme`);
+      publicCanvases.set(width, canvas);
       await page.locator('.public-demo-nav a[href="/login"]').click();
       await check('/login', false);
       await page.locator('a.public-demo-brand[href="/demo"]').click();
