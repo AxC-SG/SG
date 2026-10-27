@@ -5009,11 +5009,6 @@ label {
   color: var(--text);
 }
 
-.cve-back-to-asset-btn {
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-}
-
 /* Upgrade Recommendation column */
 .upgrade-rec-btn {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -7744,7 +7739,6 @@ label {
 ───────────────────────────────────────────────────────────────────────────── */
 
 .app-page,
-.cve-assessment-page,
 .host-detail-page,
 .ai-asset-detail-page,
 .bom-inventory-page,
@@ -7763,196 +7757,11 @@ label {
   box-shadow: var(--shadow-sm);
 }
 
-.cvd-headline {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 0 12px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 12px;
-}
-
-.cvd-headline-id-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.cvd-headline-cve-id {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.cvd-headline-cve-link {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--accent, #3b82f6);
-  padding: 0;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.cvd-headline-cve-link:hover { text-decoration: underline; }
-
-.cvd-headline-sep {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.cvd-headline-step {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.cvd-headline-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 /* ── S.AI score badge with hover tooltip ── */
 
-.cvd-score-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.cvd-score-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: default;
-  color: #fff;
-  transition: opacity 0.15s;
-  user-select: none;
-}
-.cvd-score-wrap:hover .cvd-score-badge { opacity: 0.9; }
-
-.cvd-score-num {
-  font-size: 14px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.cvd-score-label {
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.92;
-}
-
-.cvd-score-symbol {
-  font-size: 10px;
-  opacity: 0.8;
-}
-
 /* Tooltip — hidden by default, shown on hover */
-.cvd-score-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 200;
-  min-width: 240px;
-  max-width: 300px;
-  background: var(--panel-solid);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-  padding: 12px 14px;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s, visibility 0.15s;
-}
-.cvd-score-wrap:hover .cvd-score-tooltip {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.cvd-score-tooltip-heading {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--muted);
-  margin-bottom: 7px;
-}
-
-.cvd-score-tooltip-journey {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.cvd-score-tooltip-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.cvd-score-tooltip-stage {
-  flex: 1;
-  color: var(--text);
-  font-weight: 500;
-}
-
-.cvd-score-tooltip-delta {
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.cvd-score-tooltip-delta.up   { color: #dc2626; }
-.cvd-score-tooltip-delta.down { color: #16a34a; }
-
-.cvd-score-tooltip-val {
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.cvd-score-tooltip-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 0;
-}
-
-.cvd-score-tooltip-reason {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-}
 
 /* ── Signal pills (CVSS / EPSS / assets / KEV) ── */
-
-.cvd-signal-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255,255,255,0.06);
-  color: var(--muted);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.cvd-signal-pill--kev {
-  background: rgba(180,130,0,0.14);
-  color: #b48000;
-  border-color: rgba(180,130,0,0.28);
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    S.AI Risk Score Panel — compact area chart
@@ -8284,7 +8093,6 @@ label {
 }
 
 @media (max-width: 640px) {
-  .cvd-headline { flex-direction: column; align-items: flex-start; }
   .cvrs-events-row { flex-direction: column; }
   .cvrs-event-card { border-right: none; border-bottom: 1px solid var(--border); }
   .cvrs-event-card:last-child { border-bottom: none; }

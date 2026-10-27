@@ -102,7 +102,7 @@ describe('UI 2.0 stylesheet scope', () => {
   // rule after primitives), so it is part of each sheet's ownership.
   it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './findings-base.css', './findings.css', './cve.css', './inventory.css',
+    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './findings-base.css', './cve-base.css', './findings.css', './cve.css', './inventory.css',
       './governance.css', './connect.css', './experience.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
@@ -111,7 +111,7 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith(file === './findings-base.css'
+      selectors(css).filter((selector) => !selector.startsWith(['./findings-base.css', './cve-base.css'].includes(file)
         ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
   });
@@ -136,6 +136,33 @@ describe('UI 2.0 stylesheet scope', () => {
     const retired = rules(readFileSync(join(directory, '..', 'base.css'), 'utf8')).flatMap((rule) => rule.selectors)
       .filter((selector) => /^\.(?:fpl-|fd3-|finding-id-link\b)/.test(selector));
     expect(retired).toEqual([]);
+  });
+
+  it('keeps shared CVE controls behind a zero-specificity boundary on direct loads', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./cve-base.css', prefix + '.cve-assessment-page').display).toBe('flex');
+    expect(declared('./cve-base.css', prefix + '.cvd2-page').display).toBe('flex');
+    expect(declared('./cve-base.css', prefix + '.notify-panel').display).toBe('grid');
+    expect(declared('./cve-base.css', prefix + '.inv-step').display).toBe('inline-flex');
+    expect(declared('./cve-base.css', prefix + '.agent-draft-popover').position).toBe('absolute');
+    expect(declared('./cve-base.css', prefix + '.criteria-select:disabled').cursor).toBe('not-allowed');
+    expect(declared('./cve-base.css', prefix + '.md-table').width).toBe('100%');
+    const keyframes = [...sheets['./cve-base.css'].matchAll(/@keyframes\s+([\w-]+)/g)].map((match) => match[1]);
+    expect(keyframes.sort()).toEqual(['ui2-cve-slide-in', 'ui2-cve-spin']);
+    expect(sheets['./cve-base.css']).not.toMatch(/\b(?:cvd-spin|slideInFromRight)\b/);
+  });
+
+  it('retires CVE legacy definitions while preserving shared controls and other owners', () => {
+    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    const retired = ['base.css', 'shared.css', 'cve-workbench.css', 'vuln-repo.css'].flatMap((file) => legacy(file)
+      .flatMap((rule) => rule.selectors).filter((selector) => /^(?:a)?\.(?:cve-|cvd-|cvd2-|org-cve-|investigation-|notify-)/.test(selector)));
+    expect(retired).toEqual([]);
+    const shared = legacy('cve-workbench.css').flatMap((rule) => rule.selectors);
+    expect(shared).toContain('.confirm-dialog::backdrop');
+    expect(shared).toContain('.segmented-control');
+    expect(shared).toContain('.col-toggle');
+    expect(legacy('vuln-repo.css').flatMap((rule) => rule.selectors)).toContain('.inventory-overview-shell .vuln-repo-dashboard-panel');
+    expect(selectors(sheets['./cve-base.css']).filter((selector) => /\.inventory-overview-shell|\.vuln-repo-dashboard-|\.app-shell/.test(selector))).toEqual([]);
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {

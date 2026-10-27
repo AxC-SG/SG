@@ -1183,7 +1183,8 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/",
       "evidenceAmendment": "Only the ledger was amended after the fast gate; tested implementation files and frontend tree unchanged."
-     }
+     },
+     "commit": "baedb16d"
     },
     {
      "title": "Findings and AI Findings: retire legacy family rules",
@@ -1277,12 +1278,83 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings",
       "evidenceAmendment": "Only ledger and handoff documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "dbe0bab16f894379610db773a73b7dc1ac55be96"
+    },
+    {
+     "title": "CVE: retire legacy workflow and shared record-detail rules",
+     "status": "verified",
+     "startingCommit": "dbe0bab16f894379610db773a73b7dc1ac55be96",
+     "files": [
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/ui2/cve-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CVE_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_CVE_MAP.md; scratch cascade/declaration evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-cve/",
+     "preflight": [
+      "Findings tip dbe0bab1 has the recorded tested frontend tree a3f1a6b5d930d22b08e407803fffa43068050e13; S6 and scratch fast-summary confirm 775 passed / 0 failed / 0 skipped, lint 0 errors / 2 existing warnings and typecheck passed.",
+      "Exclusive checkout verified: only this chat active in SG, previous chat idle; no competing CLI/test/gate workers. podman machine stop completed successfully before testing.",
+      "All baseline/source.json SHA256 values verified for probe-ui2.json, probe-legacy.json and state.json; starting commit remains 68a4a3bc."
+     ],
+     "evidence": [
+      "Captured CVE ownership/cascade before CSS migration and after, with explicit effective main/lazy order.",
+      "Moved 1258 rules (base 31, shared 77, cve-workbench 1089, vuln-repo 61); removed six superseded declarations, nine identical repeats and one identical keyframe definition.",
+      "Zero-specificity UI 2 base preserves shared Governance, Inventory and Campaign consumers; generic controls and other-family ancestor rules retained. No version switch or bridge removed.",
+      "Declaration verifier: 5052 retained declaration/selector checks passed; remaining base 1637, shared 263, cve-workbench 90 and vuln-repo 149 rules unchanged. CVE selected legacy ownership entries remaining: zero.",
+      "Shared base maps to all 35 routes including public isolation. Scope assertions retained and extended."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 777 passed / 0 failed / 0 skipped in 84 files, including all 21 scope tests.",
+      "Static declaration/ownership verifier: 5052 retained declaration/selector checks passed; other-owner rules unchanged. All 35 routes selected for shared base including public isolation. No full browser/axe/live/coverage/bundle gate run for this slice; those remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Fast slice gate only; full browser/visual/axe/live/build/coverage/bundle checks deferred to checkpoint B and Step 8 per checkDeferral.",
+      "Shared legacy tokens and colour fallbacks retained without redesign. Staging and human reviews waived; accessibility review remains open.",
+      "Logged unrelated defects remain open; no workflow, API, auth, tenant, backend or schema changes."
+     ],
+     "reversal": "Revert only this local CVE retirement slice; retain Findings, Step 6.0 and the original baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "c0d4f6f94bb946dc182abc0fe579e2d2bd53a9b8",
+      "testedFrontendTree": "6ff0d340d8c282bfa078017dbfd659c5ea9a0102",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 777,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 21
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-cve",
+      "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
      }
     }
    ]
   }
  ],
- "nextUnit": "Stopped at the verified Findings slice gate. Next: CVE per STEP6_PROMPT family order, beginning with its cascade/ownership map. Fresh-chat handoff: STEP6_CONTINUE_PROMPT.md. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
+ "nextUnit": "Stopped at the verified CVE slice gate. Next: Inventory per STEP6_PROMPT family order, only when authorized, beginning with its cascade/ownership map. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

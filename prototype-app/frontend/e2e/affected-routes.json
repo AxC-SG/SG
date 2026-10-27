@@ -3,6 +3,7 @@
  "foundation": [
   "^src/styles/ui2/(tokens|primitives|shell|legacy-bridge|index)\\.css$",
   "^src/styles/ui2/findings-base\\.css$",
+  "^src/styles/ui2/cve-base\\.css$",
   "^src/styles/(index|base|shared)\\.css$",
   "^src/(App|main)\\.tsx$",
   "^src/app/",
