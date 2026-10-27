@@ -3,7 +3,7 @@
 /* From shared-after-public.css */
 
 
-:where(html:not([data-ui='2']))*, :where(html:not([data-ui='2'])) * {
+:where(html:not([data-ui='2'])) * {
   box-sizing: border-box;
 }
 

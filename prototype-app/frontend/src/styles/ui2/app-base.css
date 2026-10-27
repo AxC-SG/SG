@@ -2162,7 +2162,7 @@
 /* From shared-after-public.css */
 
 
-:where(html[data-ui='2'])*, :where(html[data-ui='2']) * {
+:where(html[data-ui='2']) * {
   box-sizing: border-box;
 }
 

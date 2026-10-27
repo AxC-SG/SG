@@ -44,4 +44,29 @@ describe('presentation route boundary', () => {
       expect(localStorage.getItem('scoutai-theme')).toBe(theme);
     }
   });
+
+  it.each(['dark', 'light'])('applies the stored %s theme on a direct load when none is set', (theme) => {
+    const root = document.documentElement;
+    localStorage.setItem('scoutai-theme', theme);
+    for (const pathname of ['/demo', '/login']) {
+      root.removeAttribute('data-theme');
+      applyPresentationBoundary(root, pathname);
+      expect(root).toHaveAttribute('data-theme', theme);
+    }
+  });
+
+  it('leaves an existing theme, an invalid stored value and an empty store alone', () => {
+    const root = document.documentElement;
+    localStorage.setItem('scoutai-theme', 'light');
+    root.setAttribute('data-theme', 'dark');
+    applyPresentationBoundary(root, '/login');
+    expect(root).toHaveAttribute('data-theme', 'dark');
+    root.removeAttribute('data-theme');
+    localStorage.setItem('scoutai-theme', 'sepia');
+    applyPresentationBoundary(root, '/login');
+    expect(root).not.toHaveAttribute('data-theme');
+    localStorage.clear();
+    applyPresentationBoundary(root, '/demo');
+    expect(root).not.toHaveAttribute('data-theme');
+  });
 });
