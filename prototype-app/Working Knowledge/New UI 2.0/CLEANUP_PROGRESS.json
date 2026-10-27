@@ -1349,12 +1349,85 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-cve",
       "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "0f1671086bcbfbaa8370f8cdbbface0ed859e250"
+    },
+    {
+     "title": "Inventory: retire legacy shell, lifecycle, quality and AI graph rules",
+     "status": "verified",
+     "startingCommit": "0f1671086bcbfbaa8370f8cdbbface0ed859e250",
+     "files": [
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_INVENTORY_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_INVENTORY_MAP.md; static cascade/declaration evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-inventory/",
+     "preflight": [
+      "CVE tip 0f167108 has tested frontend tree 6ff0d340d8c282bfa078017dbfd659c5ea9a0102 matching S6 and scratch fast-summary: 777 passed / 0 failed / 0 skipped; lint 0 errors / 2 existing warnings; typecheck passed.",
+      "Only this chat active in SG, prior chat idle; no competing test/gate workers. podman machine stop completed before tests.",
+      "All three starting baseline files match baseline/source.json SHA256 values; original 68a4a3bc baseline reused unchanged."
+     ],
+     "evidence": [
+      "Updated Inventory ownership and effective stylesheet order in cascade-map and captured the map before CSS edits.",
+      "Moved 659 rules: base 377, cve-workbench 1, eol 181, vuln-repo 34, finding-detail 5, ai-security 61. Consolidated six adjacent rule blocks with identical declarations; no different values/fallbacks dropped.",
+      "Zero-specificity Inventory base loads before Findings base to preserve the equal-specificity AI Inventory page-root grid. Shared consumers retained; presentation sheets unchanged.",
+      "Static verifier: 2424 retained declaration/selector checks passed. Remaining rules unchanged: base 1262, cve-workbench 89, eol 12, vuln-repo 115, finding-detail 0, ai-security 250. Selected Inventory legacy ownership entries remaining: zero.",
+      "Scope assertions retained and extended; CVE preservation assertion follows the new Inventory owner. Shared base maps to all 35 affected routes including public isolation."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 779 passed / 0 failed / 0 skipped in 84 files, including all 23 scope tests.",
+      "Static declaration/ownership verifier: 2424 retained declaration/selector checks passed; other-owner rules unchanged; six identical adjacent rule blocks consolidated. Shared base selects all 35 affected routes including public isolation. Full browser/visual/axe/live/build/coverage/bundle checks remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Fast slice gate only. Full browser/visual/axe/affected/live/build/coverage/bundle checks remain deferred to checkpoint B and Step 8 per checkDeferral.",
+      "Known Inventory focus/disabled order defect and all logged unrelated defects remain open. Shared legacy tokens and colour fallbacks retained.",
+      "Staging and human reviews waived; accessibility review open. No workflow, API, auth, tenant, backend or schema changes; no final switch or bridge removal."
+     ],
+     "reversal": "Revert only this local Inventory retirement slice; retain CVE, Findings, Step 6.0 and the original baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "0285f459c7aa5d5ff31c19a18e20e6c9080436e7",
+      "testedFrontendTree": "2e5df120491d1ac39f8b73022e652b27d5917dd1",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 779,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 23
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-inventory",
+      "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
      }
     }
    ]
   }
  ],
- "nextUnit": "Stopped at the verified CVE slice gate. Next: Inventory per STEP6_PROMPT family order, only when authorized, beginning with its cascade/ownership map. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
+ "nextUnit": "Stopped at the verified Inventory slice gate. Next: Governance per STEP6_PROMPT family order, only when authorized, beginning with its cascade/ownership map. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

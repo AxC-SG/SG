@@ -102,7 +102,7 @@ describe('UI 2.0 stylesheet scope', () => {
   // rule after primitives), so it is part of each sheet's ownership.
   it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './findings-base.css', './cve-base.css', './findings.css', './cve.css', './inventory.css',
+    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './inventory-base.css', './findings-base.css', './cve-base.css', './findings.css', './cve.css', './inventory.css',
       './governance.css', './connect.css', './experience.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
@@ -111,7 +111,7 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith(['./findings-base.css', './cve-base.css'].includes(file)
+      selectors(css).filter((selector) => !selector.startsWith(['./inventory-base.css', './findings-base.css', './cve-base.css'].includes(file)
         ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
   });
@@ -161,8 +161,36 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(shared).toContain('.confirm-dialog::backdrop');
     expect(shared).toContain('.segmented-control');
     expect(shared).toContain('.col-toggle');
-    expect(legacy('vuln-repo.css').flatMap((rule) => rule.selectors)).toContain('.inventory-overview-shell .vuln-repo-dashboard-panel');
+    expect(selectors(sheets['./inventory-base.css'])).toContain(":where(html[data-ui='2']) .inventory-overview-shell .vuln-repo-dashboard-panel");
     expect(selectors(sheets['./cve-base.css']).filter((selector) => /\.inventory-overview-shell|\.vuln-repo-dashboard-|\.app-shell/.test(selector))).toEqual([]);
+  });
+
+  it('preserves Inventory layout and shared lifecycle controls on direct loads', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./inventory-base.css', prefix + '.inventory-shell').display).toBe('flex');
+    // Findings base comes later: AI Inventory retains its existing grid page root.
+    expect(declared('./findings-base.css', prefix + '.ai-security-page').display).toBe('grid');
+    expect(declared('./inventory-base.css', prefix + '.iov-columns')['grid-template-columns']).toBe('1fr 1fr');
+    const narrowOverview = rules(sheets['./inventory-base.css']).find((rule) =>
+      rule.media === '@media (max-width: 820px)' && rule.selectors.includes(prefix + '.iov-columns'));
+    expect(narrowOverview?.declarations).toContainEqual(['grid-template-columns', '1fr']);
+    expect(declared('./inventory-base.css', prefix + '.eol-badge-eol').color).toBe('var(--critical)');
+    expect(declared('./inventory-base.css', prefix + '.eol-badge-ok').color).toBe('var(--low)');
+    expect(declared('./inventory-base.css', prefix + '.ai-dependency-graph-popup').position).toBe('absolute');
+    expect(declared('./inventory-base.css', prefix + '.inventory-shell.ai-security-page .fpl-widgets').display).toBe('grid');
+  });
+
+  it('retires Inventory legacy rules while leaving navigation, connector and policy owners intact', () => {
+    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8')).flatMap((rule) => rule.selectors);
+    expect(legacy('finding-detail.css')).toEqual([]);
+    expect(legacy('base.css').filter((selector) => /^\.(?:inventory-(?!(?:nav|flyout)(?:-|\b))|host-|software-|sdi-|si-|bom-inventory-|upgrade-|ai-asset-)/.test(selector))).toEqual([]);
+    expect(legacy('base.css')).toContain('.inventory-flyout');
+    expect(legacy('eol.css')).toContain('.source-focus-hero');
+    expect(legacy('eol.css')).toContain('.filter-input');
+    expect(legacy('eol.css').filter((selector) => /^\.(?:eol-|quality-|slug-suggest-)/.test(selector))).toEqual([]);
+    expect(legacy('ai-security.css')).toContain('.ai-security-hero.policies');
+    expect(legacy('ai-security.css').filter((selector) => selector.startsWith('.inventory-shell'))).toEqual([]);
+    expect(selectors(sheets['./inventory-base.css']).filter((selector) => /\.inventory-(?:nav|flyout)|\.ai-policy-|\.ai-connector-|\.source-focus-/.test(selector))).toEqual([]);
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {

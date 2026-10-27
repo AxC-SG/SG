@@ -474,167 +474,6 @@
   letter-spacing: 0.04em;
 }
 
-.ai-dependency-graph {
-  position: relative;
-  height: 420px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--panel);
-}
-
-.ai-dependency-graph-popup {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 5;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  width: min(280px, 80%);
-  height: 100%;
-  overflow-y: auto;
-  padding: 14px;
-  border-left: 1px solid var(--border);
-  background: var(--panel-solid);
-  box-shadow: -8px 0 16px -12px color-mix(in srgb, #000 40%, transparent);
-}
-
-.ai-dependency-graph-popup-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.ai-dependency-graph-popup-title {
-  display: grid;
-  overflow: hidden;
-  gap: 2px;
-  flex: 1;
-}
-
-.ai-dependency-graph-popup-title strong {
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-dependency-graph-popup-title small {
-  color: var(--muted);
-  font-size: 0.68rem;
-}
-
-.ai-dependency-graph-popup-facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 10px;
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.ai-dependency-graph-popup-facts dt {
-  color: var(--muted);
-}
-
-.ai-dependency-graph-popup-facts dd {
-  margin: 0;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-dependency-graph-popup-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ai-dependency-graph-popup-status.is-inactive {
-  color: var(--muted);
-}
-
-.ai-dependency-graph-popup-cta {
-  align-self: start;
-  justify-self: start;
-  min-height: 20px;
-  padding: 2px 10px;
-}
-
-.ai-dependency-graph .react-flow__edge-path {
-  stroke: color-mix(in srgb, #0e7490 55%, var(--border));
-}
-
-.ai-dependency-graph .react-flow__edge-text {
-  fill: var(--muted);
-  font-size: 0.62rem;
-}
-
-.ai-dependency-graph-node {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, #0e7490 22%, var(--border));
-  border-radius: var(--radius-md);
-  background: linear-gradient(90deg, var(--panel-muted), color-mix(in srgb, #0e7490 6%, var(--panel-muted)));
-  font-size: 0.78rem;
-}
-
-.ai-dependency-graph-node--root {
-  border-color: color-mix(in srgb, #0e7490 70%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, #0e7490 25%, transparent);
-}
-
-.ai-dependency-graph-node--inactive {
-  opacity: 0.6;
-}
-
-.ai-dependency-graph-node--runtime {
-  border-color: color-mix(in srgb, #7c3aed 65%, var(--border));
-  background: linear-gradient(90deg, var(--panel-muted), color-mix(in srgb, #7c3aed 12%, var(--panel-muted)));
-  box-shadow: 0 0 0 2px color-mix(in srgb, #7c3aed 12%, transparent);
-}
-
-.ai-dependency-graph-legend {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  z-index: 4;
-  display: flex;
-  gap: 12px;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-solid) 92%, transparent);
-  color: var(--muted);
-  font-size: 0.68rem;
-}
-
-.ai-runtime-graph-controls {
-  align-items: end;
-  margin-bottom: 10px;
-}
-
-.ai-dependency-graph-node-text {
-  display: grid;
-  overflow: hidden;
-  gap: 2px;
-}
-
-.ai-dependency-graph-node-text strong {
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-dependency-graph-node-text small {
-  color: var(--muted);
-  font-size: 0.62rem;
-}
-
 .ai-security-review-actions,
 .ai-connector-actions {
   display: flex;
@@ -890,55 +729,6 @@
   font-size: 0.74rem;
 }
 
-.ai-overview-strip {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.25fr) repeat(5, minmax(92px, 0.62fr));
-  gap: 1px;
-  overflow: hidden;
-  margin-bottom: 16px;
-  border: 1px solid color-mix(in srgb, #0e7490 28%, var(--border));
-  border-radius: var(--radius-lg);
-  background: var(--border);
-}
-
-.ai-overview-strip > * {
-  display: grid;
-  gap: 4px;
-  min-height: 86px;
-  padding: 14px;
-  border: 0;
-  background: var(--panel-solid);
-  color: inherit;
-  text-align: left;
-}
-
-.ai-overview-strip button {
-  cursor: pointer;
-}
-
-.ai-overview-strip button:hover {
-  background: color-mix(in srgb, #0e7490 8%, var(--panel-solid));
-}
-
-.ai-overview-strip h3 {
-  margin: 0;
-  font: 700 1rem var(--font-display);
-}
-
-.ai-overview-strip strong {
-  color: var(--title);
-  font: 700 1.35rem var(--font-display);
-}
-
-.ai-overview-strip span {
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.ai-overview-strip .risk strong {
-  color: var(--critical);
-}
-
 @keyframes ai-security-reveal {
   from {
     opacity: 0;
@@ -1067,10 +857,6 @@
     position: static;
   }
 
-  .ai-overview-strip {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .policy-filter-bar > .btn { margin-left: 0; }
 }
 
@@ -1096,10 +882,6 @@
 
   .ai-security-pill {
     flex: 0 0 auto;
-  }
-
-  .ai-overview-strip {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -1332,140 +1114,27 @@
    used on the AI Inventory severity grid, which has more rows than the exposure dashboard's
    coarse asset-domain grid and needs to stay compact. table-layout: fixed + an explicit
    label-column width keep the severity columns from being squeezed off to the side. */
-.ai-severity-grid--compact .grid-exposure-table {
-  table-layout: fixed;
-  margin-top: 4px;
-}
-
-.ai-severity-grid--compact .grid-exposure-table th {
-  padding: 3px 4px;
-  font-size: 0.65rem;
-  line-height: 1.2;
-}
-
-.ai-severity-grid--compact .grid-exposure-table th:first-child {
-  width: 20%;
-}
-
-.ai-severity-grid--compact .grid-exposure-row-label {
-  width: 20%;
-  padding: 2px 4px;
-  font-size: 0.8rem;
-  line-height: 1.2;
-  white-space: normal;
-}
-
-.ai-severity-grid--compact .grid-exposure-cell {
-  padding: 0;
-}
 
 /* The row/label chrome stays tight, but the count itself — the number analysts actually
    read — stays large and legible. */
-.ai-severity-grid--compact .grid-exposure-cell-btn {
-  min-width: 0;
-  width: 100%;
-  padding: 3px 2px;
-  font-size: 1.2rem;
-  line-height: 1.2;
-  border-radius: 3px;
-}
-
-.ai-severity-grid--compact .grid-exposure-total {
-  padding: 2px;
-  font-size: 0.95rem;
-}
 
 /* Severity Grid shares its row with the By Provider and Coverage Gaps widgets, rather than
    those two sitting below it in the widgets grid — the grid keeps most of the row's width
    since it has far more to show than either widget. */
-.inventory-shell.ai-security-page .ai-severity-grid-row {
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.inventory-shell.ai-security-page .ai-severity-grid-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-.inventory-shell.ai-security-page .ai-severity-grid-side .fpl-widget {
-  width: 100%;
-}
-
-@media (max-width: 900px) {
-  .inventory-shell.ai-security-page .ai-severity-grid-row {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Policy Coverage & Risk, Top 5 Assets at Risk, and Findings by Severity share one row-based
    grid below the severity grid row — three per row on wide screens, collapsing to two and
    then one as the viewport narrows. By Provider and Coverage Gaps sit beside the severity
    grid instead (.ai-severity-grid-row/.ai-severity-grid-side above). */
-.inventory-shell.ai-security-page .fpl-widgets {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-@media (max-width: 1100px) {
-  .inventory-shell.ai-security-page .fpl-widgets {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .inventory-shell.ai-security-page .fpl-widgets {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* The shared .panel-header renders as a full-width shaded band, which reads as an oversized
    "banner" for a section whose header has no right-side actions to balance it — flatten it
    for the AI Inventory page specifically (scoped via InventoryShell's own class, which no
    other AI Security page uses) rather than touching the shared .panel-header class. */
-.inventory-shell.ai-security-page .panel-header {
-  padding: 6px 10px;
-  background: transparent;
-  border-bottom: 1px solid var(--border);
-}
 
 /* Findings column on the AI asset inventory list: one colored chip per severity bucket
    (critical/high/medium+low) holding that bucket's count directly, instead of a text
    breakdown — the color already tells you which bucket you're looking at. */
-.finding-severity-chips {
-  display: flex;
-  gap: 4px;
-}
-
-.finding-severity-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  padding: 2px 6px;
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-.finding-severity-chip--critical {
-  background: #dc2626;
-  color: #fff;
-}
-
-.finding-severity-chip--high {
-  background: #b45309;
-  color: #fff;
-}
-
-.finding-severity-chip--other {
-  background: #fed7aa;
-  color: #7c2d12;
-}
 
 /* AI Grid Phase 1 — grouped policy list, capability setup items, framework coverage */
 .ai-policy-group { margin-bottom: 1.5rem; }
@@ -1535,11 +1204,3 @@
 .ai-policy-setup-list, .ai-policy-mapping-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .ai-policy-mapping-type { font-size: 0.75rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 0.5rem; background: rgba(59, 130, 246, 0.15); }
 .ai-policy-deprecation-banner ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
-.coverage-status { font-size: 0.78rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 0.6rem; white-space: nowrap; }
-.coverage-status--automated { background: rgba(22, 163, 74, 0.16); color: #15803d; }
-.coverage-status--conditional_automated { background: rgba(217, 119, 6, 0.16); color: #b45309; }
-.coverage-status--preventive_only, .coverage-status--requires_runtime_or_test { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; }
-.coverage-status--not_covered { background: rgba(148, 163, 184, 0.2); color: #475569; }
-.coverage-mapping-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.coverage-mapping-type { font-size: 0.75rem; font-weight: 600; }
-.coverage-conditional { color: #b45309; font-size: 0.78rem; }

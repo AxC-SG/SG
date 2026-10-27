@@ -1,5 +1,5 @@
 // Read-only cascade map in effective load order.
-// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve]
+// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory]
 // Findings mode includes its shared base primitives. Media/state reachability and compound
 // selector matching still need review; this static map is not a browser cascade proof.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,23 +8,33 @@ import { createRequire } from 'node:module';
 
 const fe = process.argv[2];
 const family = process.argv[4] ?? 'foundation';
-if (!['foundation', 'findings', 'cve'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
+if (!['foundation', 'findings', 'cve', 'inventory'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
 const require = createRequire(join(fe, 'package.json'));
 const postcss = require('postcss');
 
 const S = 'src/styles/';
 const main = ['base', 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
   .map((n) => `${S}${n}.css`)
-  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'findings-base', 'cve-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
+  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'inventory-base', 'findings-base', 'cve-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
   .concat([`${S}finding-detail.css`, `${S}ai-security.css`]);
 const lazy = ['src/components/DataTable.css', `${S}findings-list.css`, 'src/pages/platform-feed-catalog.css', 'node_modules/@xyflow/react/dist/style.css'];
 const order = [...main, ...lazy];
-const foundation = new Set((family === 'findings' ? ['findings-base', 'findings'] : family === 'cve' ? ['cve-base', 'cve'] : ['tokens', 'legacy-bridge', 'shell', 'primitives']).map((n) => `${S}ui2/${n}.css`));
+const foundation = new Set((family === 'findings' ? ['findings-base', 'findings'] : family === 'cve' ? ['cve-base', 'cve'] : family === 'inventory' ? ['inventory-base', 'inventory'] : ['tokens', 'legacy-bridge', 'shell', 'primitives']).map((n) => `${S}ui2/${n}.css`));
 // Match the leading owned class only; Inventory/dashboard ancestor contexts stay with
 // their owners. CVE base controls also have Governance, Inventory and Campaign consumers.
 const cveRoot = /^(?:a)?\.(?:cve-|cvd-|cvd2-|org-cve-|investigation-|inv-(?:step|steps|solutions|summary)(?:-|\b)|agent-draft-|criteria-|false-positive-|fp-|vex-evidence-|assessment-result-|notify-|ai-sol-|intel-col-|euvd-id-badge\b|md-table\b|eol-loading-spinner\b|solutions-generating\b)/;
 const cveVulnRepo = /^\.vuln-repo-(?:intel-|filter-|source-|scope-|vulnerabilities-|software-(?:drawer|link|table)|cve-(?:link|metadata|description)|summary-|ai-solution-)/;
 const cveSources = ['base.css', 'shared.css', 'cve-workbench.css', 'vuln-repo.css'].map((n) => S + n);
+// Inventory shell/host/software roots, lifecycle/quality controls, and AI Inventory
+// contexts only. Navigation flyouts, generic app controls, policies and connectors stay put.
+const inventoryOwnership = {
+  'base.css': /^\.(?:inventory-(?!(?:nav|flyout)(?:-|\b))|host-|software-|sdi-|si-|bom-inventory-|upgrade-|ai-asset-)/,
+  'cve-workbench.css': /^\.host-workspace-layout\b/,
+  'eol.css': /^\.(?:eol-|quality-|slug-suggest-)/,
+  'vuln-repo.css': /^\.inventory-overview-shell\b/,
+  'finding-detail.css': /^\.iov-/,
+  'ai-security.css': /^\.(?:inventory-shell\b|ai-dependency-|ai-runtime-graph-controls\b|ai-overview-|ai-severity-grid|finding-severity-|coverage-(?:status|mapping|conditional))/,
+};
 
 function split(list) {
   const out = []; let d = 0, cur = '';
@@ -112,7 +122,8 @@ for (const f of fRules) for (const d of f.decls) { const k = `${f.sel}${f.media}
 // Hardcoded colours in the foundation outside tokens.css.
 const colours = fRules.filter((r) => !r.file.endsWith('tokens.css')).flatMap((r) => r.decls.filter((d) => /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|\b(white|black)\b/i.test(d.value)).map((d) => ({ at: `${r.file.replace(S, '')}:${r.line}`, sel: r.sel, prop: d.prop, value: d.value })));
 
-const ownership = family === 'cve' ? rules.filter((r) => cveSources.includes(r.file) && (cveRoot.test(r.sel) || cveVulnRepo.test(r.sel))) : [];
+const ownership = family === 'cve' ? rules.filter((r) => cveSources.includes(r.file) && (cveRoot.test(r.sel) || cveVulnRepo.test(r.sel)))
+  : family === 'inventory' ? rules.filter((r) => inventoryOwnership[r.file.replace(S, '')]?.test(r.sel)) : [];
 const result = { family, order: { main, lazy }, focus: [...foundation], ownership, counts: { foundationRules: fRules.length, ownedLegacySelectorEntries: ownership.length }, losses: out, varRedefs, dupes, colours };
 writeFileSync(process.argv[3], JSON.stringify(result, null, 1));
 const by = (k) => out.reduce((m, x) => ((m[x[k]] = (m[x[k]] || 0) + 1), m), {});
