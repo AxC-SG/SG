@@ -1563,12 +1563,80 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-connect",
       "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
+     },
+     "commit": "b0a029b1b2608535e9f9892dd7b38f057451a0e0"
+    },
+    {
+     "title": "Experience: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "b0a029b1b2608535e9f9892dd7b38f057451a0e0",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/exposure-dashboard.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/ui2/experience-base.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_EXPERIENCE_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md"
+     ],
+     "ownershipMap": "STEP6_EXPERIENCE_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-experience",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Experience owns dashboard, Campaign and operations layouts, including exposure grids shared with Inventory. Its zero-specificity base loads before Inventory base and family presentation. Public/auth-entry markup and shared app/shell defaults remain for public/final extraction.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 875 rules; consolidated 2 identical declaration repeats and 6 adjacent identical blocks.",
+      "Static verifier: 3501 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 785 passed / 0 failed / 0 skipped in 84 files, including 29 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "4f968a4475525f1983634364e5df369d1aeab0b7",
+      "testedFrontendTree": "96583ccefaad89b8bc5fc57b83623997dba3c510",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 785,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 29
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-experience",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
      }
     }
    ]
   }
  ],
- "nextUnit": "Verified connect fast gate. Next: Experience. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
+ "nextUnit": "Verified experience fast gate. Next: Public. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

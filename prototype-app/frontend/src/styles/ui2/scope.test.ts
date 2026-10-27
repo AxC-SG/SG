@@ -102,7 +102,7 @@ describe('UI 2.0 stylesheet scope', () => {
   // rule after primitives), so it is part of each sheet's ownership.
   it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
+    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
       './governance.css', './connect.css', './experience.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
@@ -111,7 +111,7 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith(['./inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css'].includes(file)
+      selectors(css).filter((selector) => !selector.startsWith(['./experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css'].includes(file)
         ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
   });
@@ -211,7 +211,7 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(legacy('user-management.css')).toEqual([]);
     expect(legacy('base.css').filter((selector) => selector.startsWith('.platform-create-tenant-form'))).toEqual([]);
     expect(legacy('shared.css').filter((selector) => selector.startsWith('.platform-console-'))).toEqual([]);
-    expect(legacy('shared.css')).toContain('.platform-ops-space');
+    expect(selectors(sheets['./experience-base.css'])).toContain(":where(html[data-ui='2']) .platform-ops-space");
     expect(legacy('ai-security.css').filter((selector) => /^\.(?:ai-policy-|platform-ai-policy-|platform-policy-|policy-|ai-security-)/.test(selector))).toEqual([]);
     expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .ai-connector-layout");
     expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .ai-run-list");
@@ -234,6 +234,26 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(rules(readFileSync(join(directory, '..', '..', 'pages', 'platform-feed-catalog.css'), 'utf8'))).toEqual([]);
     expect(legacy('eol.css').flatMap((rule) => rule.selectors)).toContain('.filter-input');
     expect(sheets['./connect-base.css']).not.toMatch(/animation:\s*ai-security-reveal/);
+  });
+
+  it('loads Experience dashboard and Campaign layouts before family presentation', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./experience-base.css', prefix + '.cd-page').display).toBe('flex');
+    expect(declared('./experience-base.css', prefix + '.exec-kpi-grid')['grid-template-columns']).toBe('repeat(6, 1fr)');
+    const narrow = rules(sheets['./experience-base.css']).find((rule) => rule.media === '@media (max-width: 700px)' && rule.selectors.includes(prefix + '.exec-kpi-grid'));
+    expect(narrow?.declarations).toContainEqual(['grid-template-columns', 'repeat(2, 1fr)']);
+    expect(sheets['./experience-base.css']).toContain('@keyframes ui2-experience-spin');
+    expect(sheets['./experience-base.css']).toContain('@keyframes ui2-experience-toast');
+  });
+
+  it('retires Experience legacy sheets and preserves public and shared app defaults', () => {
+    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    expect(legacy('vuln-repo.css')).toEqual([]);
+    expect(legacy('exposure-dashboard.css')).toEqual([]);
+    const base = legacy('base.css').flatMap((rule) => rule.selectors);
+    expect(base).toContain('.public-demo-shell');
+    expect(base).toContain('.sidebar');
+    expect(base.filter((selector) => /^\.(?:campaigns?-|cd-|cw-|cvrs-)/.test(selector))).toEqual([]);
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {

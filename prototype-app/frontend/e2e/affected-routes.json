@@ -13,7 +13,8 @@
   "^src/components/",
   "^src/features/widgets/",
   "^src/lib/.*\\.tsx$",
-  "^src/styles/ui2/connect-base\\.css$"
+  "^src/styles/ui2/connect-base\\.css$",
+  "^src/styles/ui2/experience-base\\.css$"
  ],
  "families": {
   "findings": [
