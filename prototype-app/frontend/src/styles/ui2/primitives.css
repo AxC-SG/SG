@@ -250,7 +250,7 @@ html[data-ui='2'] .table-settings-menu {
 /* ── Overlays (reference `.dp-modal`) ─────────────────────────────────── */
 html[data-ui='2'] .modal-backdrop,
 html[data-ui='2'] .fd3-modal-overlay {
-  background: rgba(9, 9, 11, 0.45);
+  background: var(--dp-scrim);
 }
 
 html[data-ui='2'] .fd3-modal,
@@ -262,6 +262,7 @@ html[data-ui='2'] .confirm-dialog {
   box-shadow: var(--dp-shadow-lg);
 }
 
+/* Older engines do not let ::backdrop inherit custom properties from <html>; keep the value as fallback. */
 html[data-ui='2'] .confirm-dialog::backdrop {
-  background: rgba(9, 9, 11, 0.45);
+  background: var(--dp-scrim, rgba(9, 9, 11, 0.45));
 }

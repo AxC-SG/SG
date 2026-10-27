@@ -29,6 +29,12 @@ html[data-ui='2'] {
   --dp-success: #1d7449;
   --dp-warning: #a05100;
 
+  /* Theme-independent: the brand mark and the modal scrim look the same in both themes. */
+  --dp-brand-tint: #0ea5e9;
+  --dp-brand-fg: #ffffff;
+  --dp-brand-highlight: rgba(255, 255, 255, 0.18);
+  --dp-scrim: rgba(9, 9, 11, 0.45);
+
   --dp-radius-sm: 6px;
   --dp-radius: 8px;
   --dp-radius-lg: 12px;
