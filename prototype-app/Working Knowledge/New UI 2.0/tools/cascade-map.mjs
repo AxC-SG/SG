@@ -1,5 +1,5 @@
 // Read-only cascade map in effective load order.
-// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance|connect|experience]
+// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance|connect|experience|public]
 // Findings mode includes its shared base primitives. Media/state reachability and compound
 // selector matching still need review; this static map is not a browser cascade proof.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,12 +8,12 @@ import { createRequire } from 'node:module';
 
 const fe = process.argv[2];
 const family = process.argv[4] ?? 'foundation';
-if (!['foundation', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
+if (!['foundation', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience', 'public'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
 const require = createRequire(join(fe, 'package.json'));
 const postcss = require('postcss');
 
 const S = 'src/styles/';
-const main = ['base', 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
+const main = [...(existsSync(join(fe, `${S}public.css`)) ? ['base', 'public-tokens', 'shared-before-public', 'public', 'shared-after-public'] : ['base']), 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
   .map((n) => `${S}${n}.css`)
   .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'experience-base', 'inventory-base', 'findings-base', 'cve-base', 'governance-base', 'connect-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
   .concat([`${S}finding-detail.css`, `${S}ai-security.css`]);
@@ -27,8 +27,9 @@ const focusSheets = {
   governance: ['governance-base', 'governance'],
   connect: ['connect-base', 'connect'],
   experience: ['experience-base', 'experience'],
+  public: ['public-tokens', 'public'],
 };
-const foundation = new Set(focusSheets[family].map((n) => `${S}ui2/${n}.css`));
+const foundation = new Set(focusSheets[family].map((n) => `${S}${family === 'public' ? '' : 'ui2/'}${n}.css`));
 // Match the leading owned class only; Inventory/dashboard ancestor contexts stay with
 // their owners. CVE base controls also have Governance, Inventory and Campaign consumers.
 const cveRoot = /^(?:a)?\.(?:cve-|cvd-|cvd2-|org-cve-|investigation-|inv-(?:step|steps|solutions|summary)(?:-|\b)|agent-draft-|criteria-|false-positive-|fp-|vex-evidence-|assessment-result-|notify-|ai-sol-|intel-col-|euvd-id-badge\b|md-table\b|eol-loading-spinner\b|solutions-generating\b)/;
@@ -70,6 +71,10 @@ const experienceOwnership = {
   'vuln-repo.css': /./,
   'exposure-dashboard.css': /./,
 };
+
+const publicSource = postcss.parse(readFileSync(join(fe, `${S}base.css`), 'utf8'));
+const publicStart = publicSource.nodes.find((n) => n.type === 'rule' && n.selector === '.public-demo-shell')?.source.start.line ?? Infinity;
+const publicEnd = publicSource.nodes.find((n) => n.type === 'rule' && n.selector === "[data-theme='dark']")?.source.start.line ?? -Infinity;
 
 function split(list) {
   const out = []; let d = 0, cur = '';
@@ -161,7 +166,8 @@ const ownership = family === 'cve' ? rules.filter((r) => cveSources.includes(r.f
   : family === 'inventory' ? rules.filter((r) => inventoryOwnership[r.file.replace(S, '')]?.test(r.sel))
   : family === 'governance' ? rules.filter((r) => governanceOwnership[r.file.replace(S, '')]?.test(r.sel))
   : family === 'connect' ? rules.filter((r) => connectOwnership[r.file.replace(S, '')]?.test(r.sel))
-  : family === 'experience' ? rules.filter((r) => experienceOwnership[r.file.replace(S, '')]?.test(r.sel)) : [];
+  : family === 'experience' ? rules.filter((r) => experienceOwnership[r.file.replace(S, '')]?.test(r.sel))
+  : family === 'public' ? rules.filter((r) => r.file === `${S}base.css` && ((r.line >= publicStart && r.line < publicEnd) || r.sel === ':root' || /^\[data-theme=/.test(r.sel))) : [];
 const result = { family, order: { main, lazy }, focus: [...foundation], ownership, counts: { foundationRules: fRules.length, ownedLegacySelectorEntries: ownership.length }, losses: out, varRedefs, dupes, colours };
 writeFileSync(process.argv[3], JSON.stringify(result, null, 1));
 const by = (k) => out.reduce((m, x) => ((m[x[k]] = (m[x[k]] || 0) + 1), m), {});

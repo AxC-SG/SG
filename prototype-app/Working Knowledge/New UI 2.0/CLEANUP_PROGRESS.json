@@ -1631,12 +1631,88 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-experience",
       "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
-     }
+     },
+     "commit": "8cf278b85df8769476c5652a17747674e726a61e"
+    },
+    {
+     "title": "Public: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "8cf278b85df8769476c5652a17747674e726a61e",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/public.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_PUBLIC_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/frontend/src/styles/public-tokens.css",
+      "prototype-app/frontend/src/styles/shared-before-public.css",
+      "prototype-app/frontend/src/styles/shared-after-public.css"
+     ],
+     "ownershipMap": "STEP6_PUBLIC_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-public",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Public rules and legacy tokens are extracted without redesign. Shared defaults remain available to app consumers at their original source positions through explicit import anchors. Public routes retain the app boundary; frozen UI 1 is the only legacy reference.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 327 rules; consolidated 0 identical declaration repeats and 0 adjacent identical blocks.",
+      "Static verifier: 1345 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 787 passed / 0 failed / 0 skipped in 84 files, including 31 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "bab2276bb060e6f67c3e4e421bcbf6c62d7246ac",
+      "testedFrontendTree": "806521eeec733a6d923895ae360c773034fae1df",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 787,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 31
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-public",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
+     },
+     "gateAttempts": [
+      {
+       "commit": "12125e4c",
+       "fastGate": "787 passed / 0 failed / 0 skipped; lint 0 errors / 2 warnings; typecheck passed",
+       "checkpointB": "Build failed: missing semicolon on the font @import serialized into base.css. Browser steps independently blocked by sandbox EPERM binding local ports. Coverage 787 passed, floors met.",
+       "diagnosis": "PostCSS node.toString() omits the at-rule terminator; public extraction wrapper joined its font import without adding a semicolon. Added terminator and a scope assertion. No assertions removed.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-attempt-1",
+       "fastLogs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-public/fast-attempt-1"
+      }
+     ]
     }
    ]
   }
  ],
- "nextUnit": "Verified experience fast gate. Next: Public. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
+ "nextUnit": "Verified public fast gate. Next: checkpoint B. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

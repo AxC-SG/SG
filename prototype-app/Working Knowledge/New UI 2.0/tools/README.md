@@ -35,3 +35,5 @@ Governance owns `src/styles/ui2/governance-base.css` for console/admin/policy an
 Connect owns `src/styles/ui2/connect-base.css`. Connect base follows Governance base and precedes presentation sheets. Shared provider/configuration controls retain their consumers; the feed catalog is eager. Connector reveal uses private ui2-connect-reveal; original reduced-motion state is preserved. See `../STEP6_CONNECT_MAP.md`.
 
 Experience owns `src/styles/ui2/experience-base.css`. Experience owns dashboard, Campaign and operations layouts, including exposure grids shared with Inventory. Its zero-specificity base loads before Inventory base and family presentation. Public/auth-entry markup and shared app/shell defaults remain for public/final extraction. See `../STEP6_EXPERIENCE_MAP.md`.
+
+Public owns `src/styles/public.css`. Public rules and legacy tokens are extracted without redesign. Shared defaults remain available to app consumers at their original source positions through explicit import anchors. Public routes retain the app boundary; frozen UI 1 is the only legacy reference. See `../STEP6_PUBLIC_MAP.md`.

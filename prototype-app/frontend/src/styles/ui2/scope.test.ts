@@ -184,7 +184,7 @@ describe('UI 2.0 stylesheet scope', () => {
     const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8')).flatMap((rule) => rule.selectors);
     expect(legacy('finding-detail.css')).toEqual([]);
     expect(legacy('base.css').filter((selector) => /^\.(?:inventory-(?!(?:nav|flyout)(?:-|\b))|host-|software-|sdi-|si-|bom-inventory-|upgrade-|ai-asset-)/.test(selector))).toEqual([]);
-    expect(legacy('base.css')).toContain('.inventory-flyout');
+    expect(legacy('shared-after-public.css')).toContain('.inventory-flyout');
     expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .source-focus-hero");
     expect(legacy('eol.css')).toContain('.filter-input');
     expect(legacy('eol.css').filter((selector) => /^\.(?:eol-|quality-|slug-suggest-)/.test(selector))).toEqual([]);
@@ -251,9 +251,32 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(legacy('vuln-repo.css')).toEqual([]);
     expect(legacy('exposure-dashboard.css')).toEqual([]);
     const base = legacy('base.css').flatMap((rule) => rule.selectors);
-    expect(base).toContain('.public-demo-shell');
-    expect(base).toContain('.sidebar');
+    expect(legacy('public.css').flatMap((rule) => rule.selectors)).toContain('.public-demo-shell');
+    expect(legacy('shared-after-public.css').flatMap((rule) => rule.selectors)).toContain('.sidebar');
     expect(base.filter((selector) => /^\.(?:campaigns?-|cd-|cw-|cvrs-)/.test(selector))).toEqual([]);
+  });
+
+  it('extracts public presentation and its tokens without adopting UI 2 app styles', () => {
+    const css = readFileSync(join(directory, '..', 'public.css'), 'utf8');
+    const tokens = rules(readFileSync(join(directory, '..', 'public-tokens.css'), 'utf8'));
+    expect(selectors(css)).toContain('.public-demo-shell');
+    expect(selectors(css)).toContain('.scout-hero');
+    expect(css).not.toMatch(/--dp-|data-ui/);
+    expect(tokens.flatMap((rule) => rule.selectors)).toEqual([':root', "[data-theme='light']", "[data-theme='dark']"]);
+    expect(tokens.flatMap((rule) => rule.declarations).filter(([property]) => property.startsWith('--dp-'))).toEqual([]);
+  });
+
+  it('keeps shared public/app defaults in explicit cascade order', () => {
+    const base = readFileSync(join(directory, '..', 'base.css'), 'utf8');
+    expect(base.split(/\r?\n/, 1)[0]).toMatch(/^@import url\(.+\);$/);
+    expect([...base.matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1])).toEqual([
+      './public-tokens.css', './shared-before-public.css', './public.css', './shared-after-public.css',
+    ]);
+    expect(rules(base)).toEqual([]);
+    const shared = selectors(readFileSync(join(directory, '..', 'shared-after-public.css'), 'utf8'));
+    expect(shared).toContain('body');
+    expect(shared).toContain('.sidebar');
+    expect(shared).toContain('button:focus-visible');
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {
