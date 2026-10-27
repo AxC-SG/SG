@@ -1,0 +1,444 @@
+{
+ "artifact": "UI1-frozen-a3f1d1db.tar.gz",
+ "sha256": "f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707",
+ "purpose": "Frozen UI 1 (legacy presentation) build: Step 6 comparison reference and the rollback artifact. Keep until UI 2 is released, accepted and the rollback window is closed.",
+ "commit": "a3f1d1db",
+ "frontendTree": "69690f13b5de458fb0612836032deb2558ea5744",
+ "frontendTreeEqualsStep4Gate": "6cba0983 (same tree hash)",
+ "build": "cd prototype-app/frontend && VITE_UI_VERSION= npm run build (tsc, vite build, verify-production-bundle); no frontend .env files; production API base https://api.scoutgrid.io/api",
+ "node": "v22.16.0",
+ "packageLockSha256": "161ec76d1263acd7c246d9cd035b6dc0bda3b2c4076d1759e371774b94888707",
+ "packing": "PAX tar, entries sorted, mtime = commit time, uid/gid 0, mode 0644, gzip level 9 with mtime 0 and no name",
+ "files": [
+  {
+   "path": "dist/assets/AiAssetDetailPage-BhKAgHwd.js",
+   "bytes": 250046,
+   "sha256": "d847f57415c4de464d0e792a7b7924b8d0f67bbfe6d7cb5b2b275c057d647157"
+  },
+  {
+   "path": "dist/assets/AiAssetDetailPage-DLioOiRN.css",
+   "bytes": 15413,
+   "sha256": "b0cb7bd6fec5951c9c8f5808821438206604b1629a912c96009ac427f38e7d69"
+  },
+  {
+   "path": "dist/assets/AiBomDeclaredResourceDetailPage-D2vjlBLV.js",
+   "bytes": 11526,
+   "sha256": "730ba46f0d499e4bd080644ccbe87ba3e610afaf03223e7e9c078e0a664248da"
+  },
+  {
+   "path": "dist/assets/AiBomDeclaredResourcesPage-DxmKIVml.js",
+   "bytes": 3214,
+   "sha256": "7714daa90f4710e7c335e6c95a8f105c2ca738fa6d7124ab7bcc3dc4a7426e3a"
+  },
+  {
+   "path": "dist/assets/AiExposuresPage-CNBkGbal.js",
+   "bytes": 6195,
+   "sha256": "6cd049ae559341b11fc307d00c201bd360ab1a7c7dea62fe016c06ff02db6ace"
+  },
+  {
+   "path": "dist/assets/AiFindingDetailPage-D-Sq7l3v.js",
+   "bytes": 9221,
+   "sha256": "59426d7db88d87d8a6dd447bc1ae156b65bb0666a3dcdc78bc4b35a05e74ee07"
+  },
+  {
+   "path": "dist/assets/AiFindingsPage-D3aHiy-s.js",
+   "bytes": 8738,
+   "sha256": "ae2344467595699303fb2eec6fb41387844acfe333726cf59ad7863e77c5aacc"
+  },
+  {
+   "path": "dist/assets/AiInventoryAssetsPage-aQmXhW7k.js",
+   "bytes": 7144,
+   "sha256": "9998faaf2bab2a7f48a74dd326fe7a6905c89d021a2d22d4cd345ff8619037cc"
+  },
+  {
+   "path": "dist/assets/AiInventoryPage-D1g-9GcB.js",
+   "bytes": 8827,
+   "sha256": "374df84c72ae0fefb6c8cc336dbcce8a4a0cc6d78762f1be459a00c7ec4a23de"
+  },
+  {
+   "path": "dist/assets/AiKnowledgeMcpInventoryPage-gkDyfbhC.js",
+   "bytes": 8260,
+   "sha256": "8794ff31b382bfcf373e35be85b92ad29e6657309e2bcd90887d8de2bad55a96"
+  },
+  {
+   "path": "dist/assets/AiPoliciesPage-BOtb5ZZk.js",
+   "bytes": 15874,
+   "sha256": "16112ab4d3889c43b292dd118f0b097789a60cef7f2a06d2a88ce34ba99a9595"
+  },
+  {
+   "path": "dist/assets/AiPolicyDetailPage-DLI6C_U4.js",
+   "bytes": 31660,
+   "sha256": "981ea7b27987dca43220164513b1d38b5c698be7e8579f633ab2ad77df3c76b0"
+  },
+  {
+   "path": "dist/assets/ApplicationDetailPanel-D-FL0LAm.js",
+   "bytes": 18829,
+   "sha256": "bc7f1a13e337e7ec05cdedc41376ee702aaaed5f24d2a1a96580775d13a42a5c"
+  },
+  {
+   "path": "dist/assets/ApplicationsDashboard-C1e6ZTu4.js",
+   "bytes": 13857,
+   "sha256": "16853629cc00a565c21d70efd3f83b8fc683db6e38cb50d0d7eff26a2431a652"
+  },
+  {
+   "path": "dist/assets/AuthorizedWorkspacesPage-C3rn5prN.js",
+   "bytes": 4908,
+   "sha256": "b68d248f3bf96cee556caf279f6f1fc1593c6756848ad9b15c674811337d4651"
+  },
+  {
+   "path": "dist/assets/BomComponents-DlQpxCiU.js",
+   "bytes": 41093,
+   "sha256": "f5f439ef3b4670a214484390fecbd58887228adab2da6cd1287ed6f32d2f2486"
+  },
+  {
+   "path": "dist/assets/BomInventoryPage-D0EBFdH2.js",
+   "bytes": 20485,
+   "sha256": "3376d52174db7c3c148fe857fa0035298fb88d4a755ec6071e9a879bb88ce775"
+  },
+  {
+   "path": "dist/assets/CVEInvestigationSummary-aTzsd0vP.js",
+   "bytes": 373453,
+   "sha256": "2dec621d3010bb0429536d8117da0a739e17ba2ec9b496e33b15aecb2b716897"
+  },
+  {
+   "path": "dist/assets/CampaignDetailPage-DjpmRW9B.js",
+   "bytes": 61285,
+   "sha256": "8634298ce32110dfc80ea23239b10eae5ca87804f633ad34f28fd8117dd7cb86"
+  },
+  {
+   "path": "dist/assets/CampaignsPage-CcVdhPyk.js",
+   "bytes": 30915,
+   "sha256": "7e99402cb37dba30e1204f1fa87c33b30404faf3c1cba0a8e92e5a1a53a85109"
+  },
+  {
+   "path": "dist/assets/ConfigurationsPage-RbKQtGOZ.js",
+   "bytes": 98098,
+   "sha256": "3c2c69700cbe54e71e3b303ea60c668ab4449ba4d7a798530dbcdca70217079e"
+  },
+  {
+   "path": "dist/assets/ConfirmDialog-bvk3modg.js",
+   "bytes": 1028,
+   "sha256": "69708877f33a911f7c7c8dffbee160a39402608faf50177f0ecc02e167288858"
+  },
+  {
+   "path": "dist/assets/ConnectPage-BeGI-RRB.js",
+   "bytes": 143881,
+   "sha256": "e459ebfac4670379e1810144a091dddd85310ac4c29ee306d8691614d558b7c9"
+  },
+  {
+   "path": "dist/assets/CopilotStudioConnectorPage-DBN98wot.js",
+   "bytes": 4577,
+   "sha256": "d8fd0287f0698da9e3af9b105d7176321d2bd3c0f5deb210b911aa1a7057a105"
+  },
+  {
+   "path": "dist/assets/DataTable-DYprTXKl.js",
+   "bytes": 52927,
+   "sha256": "d3415bd47f87b9c5d0af80cbb49bc73c3f173944da669007af473a50b48c105a"
+  },
+  {
+   "path": "dist/assets/DataTable-UzpeVByA.css",
+   "bytes": 2148,
+   "sha256": "d0dac5bb47b1b3d305f7d6d1b09a087d39697a8bb9b4c72c13b70eada22435ee"
+  },
+  {
+   "path": "dist/assets/DemoPublicPages-BN8FlSGz.js",
+   "bytes": 55288,
+   "sha256": "3e9e71d59c6583f86e4165e2dc2734bbfecb9f75380a203b1b83e14a653078d1"
+  },
+  {
+   "path": "dist/assets/EolBadge-BUgJFnHE.js",
+   "bytes": 836,
+   "sha256": "862b366b0a4ef12abedb192f1e0f4acf394abb76e1cd9de72c62e7197fe4fcb6"
+  },
+  {
+   "path": "dist/assets/EolSourcePanel-0QdyvLFL.js",
+   "bytes": 4733,
+   "sha256": "48740e82ab537c93001004783f5cb569a94341124ab6deda3d1ac5b5ada14485"
+  },
+  {
+   "path": "dist/assets/ExposureDashboardPage-CCY6_KQB.js",
+   "bytes": 16863,
+   "sha256": "935758c5bc39599df7eb99262c44a5585d02f85bbd5ddf5c6ad695b8ef22e078"
+  },
+  {
+   "path": "dist/assets/FindingDetailPage-DzVayAJz.js",
+   "bytes": 31701,
+   "sha256": "3ffd46e1367ade107047910fd5e6c21a49892a04c2810bdd439340fcd5583b2d"
+  },
+  {
+   "path": "dist/assets/FindingSeverityChips-DvLJYwdD.js",
+   "bytes": 564,
+   "sha256": "601f855d0d6d659c60bb741eabaaae3b461df845ea32f5ba095729e4274f14ba"
+  },
+  {
+   "path": "dist/assets/FindingsPage-BC0CILXf.js",
+   "bytes": 44610,
+   "sha256": "f57706d412cf5ef587af6bc8ff76440ff2e0c64dfb06a6396dec78f6cd253635"
+  },
+  {
+   "path": "dist/assets/FplWidgets-Dnd-0nFC.css",
+   "bytes": 18472,
+   "sha256": "006fdce00293dcc4ed27d95ad605c4aa652240ae0a3cd41cb6f2f54c21908893"
+  },
+  {
+   "path": "dist/assets/FplWidgets-o8evMX3G.js",
+   "bytes": 2374,
+   "sha256": "e3efaa3e6512df8db59711ba114438478f18b15e20aaf56c2c922a0dbe21d39b"
+  },
+  {
+   "path": "dist/assets/HostAssetDetailPage-CPvHhI7C.js",
+   "bytes": 21830,
+   "sha256": "e125bdfa5f8008e9a83630ec809e5af6a498f0a537730f88aab4c8afde14aa8a"
+  },
+  {
+   "path": "dist/assets/InventoryComponentViewsPage-Cn92nYu8.js",
+   "bytes": 12479,
+   "sha256": "b1765f7af389adf8cbcef773db6ccfa4b8f908bbef7335e45e6427c0982f2214"
+  },
+  {
+   "path": "dist/assets/InventoryOverviewPage-ChGUg7n3.js",
+   "bytes": 69072,
+   "sha256": "57cbc30138f480549d16f782ad5398ecfd412e45c7b9d427fbb65c19fccba0ec"
+  },
+  {
+   "path": "dist/assets/InventoryOverviewPanel-LyCiMvNG.js",
+   "bytes": 1168,
+   "sha256": "67012d80a09bb1f92043f5c096d1756af45f03c61eb3f007d3bbff352353685e"
+  },
+  {
+   "path": "dist/assets/InventoryPage-KRbSUd1j.js",
+   "bytes": 20470,
+   "sha256": "abfd7c46cc38d2f4190be1e0a71ab65931f34566b82dfe5de70b3359c65537ff"
+  },
+  {
+   "path": "dist/assets/InventoryShell-BKDxAM7b.js",
+   "bytes": 777,
+   "sha256": "830fd21b5de584f033dae9f5822e8e024fcd8417af6575319942c5534310f790"
+  },
+  {
+   "path": "dist/assets/MetricInfoIcon-FDZV8Ghq.js",
+   "bytes": 473,
+   "sha256": "617f97465e8092354bf1696689c8828585384f418266339587f9a67a7921d81a"
+  },
+  {
+   "path": "dist/assets/MultiGroupBy-G4cW5U0b.js",
+   "bytes": 4503,
+   "sha256": "fe9f745803b7d92a894c01f8675093447c8dcba399b99d9eeea865069ce8193c"
+  },
+  {
+   "path": "dist/assets/OperationalDashboardPage-D82-D3VZ.js",
+   "bytes": 26325,
+   "sha256": "5daf5149fec75fbafd5ff4f101140cf25c7b718b07d133933b6bc8dbfad08233"
+  },
+  {
+   "path": "dist/assets/PageFreshnessStatus-C8HZsw3J.js",
+   "bytes": 877,
+   "sha256": "7fd2bf71f70f9d8ebad3df5d5558182047cdedf01fe787359929b9d14190a627"
+  },
+  {
+   "path": "dist/assets/PlatformAiPolicyDetailPage-COvERqlo.js",
+   "bytes": 10897,
+   "sha256": "817a1e23750dc38f2029d9ba63880410e357a5f87bb49aeb6ace0110d37fad68"
+  },
+  {
+   "path": "dist/assets/PlatformConsolePage-BozXl77L.js",
+   "bytes": 121070,
+   "sha256": "f96be92707c2d1cad53cba0ac1e2cccf83cacbd3584543acfa6a3aeb953c8497"
+  },
+  {
+   "path": "dist/assets/PlatformConsolePage-DVS28wVi.css",
+   "bytes": 5574,
+   "sha256": "5998270c6ecf1f0eb0749de61832c2c1f156079d3ac0345c95eefbf093b1ac06"
+  },
+  {
+   "path": "dist/assets/PlatformVulnIntelDetailPage-DaIN-nBI.js",
+   "bytes": 9300,
+   "sha256": "eac330f545102239cc3d6115d55339427f56cd53ae5a18966da4c3ed7343bc64"
+  },
+  {
+   "path": "dist/assets/ProviderLogo-D9HyoezD.js",
+   "bytes": 1055,
+   "sha256": "ccdab3e2d58e95c2492ddec7d926ea289cb7a0ef81d631c8ec44f131d5f1cc90"
+  },
+  {
+   "path": "dist/assets/SoftwareIdentitiesPage-G9BU_j5_.js",
+   "bytes": 21274,
+   "sha256": "29bd87525de967202aac571afcda9e5f3f2171831b4a3bf0a092c8b7c0cf1916"
+  },
+  {
+   "path": "dist/assets/SoftwareIdentityDetailPage-BPdN4aw7.js",
+   "bytes": 39676,
+   "sha256": "0b51840132a42922d26d3fc015d05c704920249901cd94c061bef0176717efbf"
+  },
+  {
+   "path": "dist/assets/UserManagementPage-2firiFES.js",
+   "bytes": 35477,
+   "sha256": "52570a40ff1bdc0cbc58e144b86b912b9afa86bd2a8b123011bea201ae861f47"
+  },
+  {
+   "path": "dist/assets/VulnRepoCveAssetsPage-D51ioZ6A.js",
+   "bytes": 21436,
+   "sha256": "f1d3fbaeea7ab46b67e068724fcc244f226b202bb3b37a151ba5b0fa7b96090b"
+  },
+  {
+   "path": "dist/assets/VulnRepoCveSoftwarePage-CMjC1DPN.js",
+   "bytes": 3826,
+   "sha256": "93ee888b987ffca064e011e71bc0770c787419a55291404b43ce622b82d8b0d0"
+  },
+  {
+   "path": "dist/assets/VulnRepoDashboardPage-BfIuOLmE.js",
+   "bytes": 21442,
+   "sha256": "b06a548a2b8464070f2e6f41b762e722a8de504732361d19c18d7f8e9fbb6ba8"
+  },
+  {
+   "path": "dist/assets/VulnRepoOrgCvePage-DbZtPDpJ.js",
+   "bytes": 211835,
+   "sha256": "846dc59e1fa2927dfb046145da8279ad4db9a5809b35e0aedfd15077bc56dcf7"
+  },
+  {
+   "path": "dist/assets/VulnRepoSoftwareAssetsPage-C4UGmZSp.js",
+   "bytes": 3172,
+   "sha256": "dceec7f3af0b00a99c36a957f381613eb2e54232389b173da1d00f77f33eeea7"
+  },
+  {
+   "path": "dist/assets/VulnRepoVulnerabilitiesPage-CjZIDre3.js",
+   "bytes": 32987,
+   "sha256": "6bd376137be8645229716fbb487f864538cb61f2dc2ebc632c6e12a54f584fe3"
+  },
+  {
+   "path": "dist/assets/api-B-vAUAtP.js",
+   "bytes": 6715,
+   "sha256": "28aab26a8c96aabc5b07c584795aa733ede89cdedec7ce021987d1b973303647"
+  },
+  {
+   "path": "dist/assets/api-BRsgwxDS.js",
+   "bytes": 897,
+   "sha256": "a709174db169e88bba804f26c91875fce7dbafd61cbc8653ab15b151e966bf6b"
+  },
+  {
+   "path": "dist/assets/assessment-_dje4LIW.js",
+   "bytes": 1150,
+   "sha256": "d2cd3c9a1afecf5ffebddefb1f6d3a1c3e71ed8fee7686d7f745e90e88dfc05e"
+  },
+  {
+   "path": "dist/assets/client-_eu6Zahn.js",
+   "bytes": 72321,
+   "sha256": "bba2d55f34486189725ac6658bd2b3a75faaab79eab7cb8cc13f58a81df90fc8"
+  },
+  {
+   "path": "dist/assets/formatting-Pu85w1Ot.js",
+   "bytes": 579,
+   "sha256": "838bfbe68ce21b4789273506cd145b8cdb6307242d901d3182697d2b9b78fb5d"
+  },
+  {
+   "path": "dist/assets/helpers-DVu8gjK9.js",
+   "bytes": 763,
+   "sha256": "680dc472c74696238c744580cbcb8fde9c5dd72f42a2932938e016fd3cb9faad"
+  },
+  {
+   "path": "dist/assets/index-B36X6NzC.css",
+   "bytes": 603586,
+   "sha256": "91dd2fbcad8cddc0009c61ed0e04133891a50f2e877be8e1181831e377932eff"
+  },
+  {
+   "path": "dist/assets/index-DIBDlMfb.js",
+   "bytes": 324634,
+   "sha256": "74a6e83659e9645bf6b95118c900b146fa48a12b82a1380c81351d4e81c33c12"
+  },
+  {
+   "path": "dist/assets/investigation-context-BRQYv1UR.js",
+   "bytes": 20042,
+   "sha256": "2a5408f087f4a003457977f960cf509a924ded50ae1c3116e6dfac4b0d082833"
+  },
+  {
+   "path": "dist/assets/polling-DXllOKm1.js",
+   "bytes": 67,
+   "sha256": "b110e1a899bda0947cfff78ed33329c9467ada075a9dfd62917addf79faf9ed3"
+  },
+  {
+   "path": "dist/assets/queries-B--55r0h.js",
+   "bytes": 692,
+   "sha256": "35d621646aa4b7ebd001ad8151d1f1f4a1860d792f0566db7becfaef626c4015"
+  },
+  {
+   "path": "dist/assets/queries-BcsvQxG9.js",
+   "bytes": 1410,
+   "sha256": "bac738ee21d46c2966dce402c235098140b0a1e4a950603c9e02ab88202038a1"
+  },
+  {
+   "path": "dist/assets/queries-C43TOsFM.js",
+   "bytes": 866,
+   "sha256": "b8fbc09c2b3265c277cf67830c90f6440b77c35ad1061e04e99cfa5b0cac5838"
+  },
+  {
+   "path": "dist/assets/queries-DQsGKYYg.js",
+   "bytes": 1060,
+   "sha256": "a91e071eefa24ee932f024ce6496e5ba877b98e588e141991299eebca85033a3"
+  },
+  {
+   "path": "dist/assets/queries-Jk7G18rv.js",
+   "bytes": 790,
+   "sha256": "df07ceacec076467acbbbee4b566f3815e6215d00abce3d2f3a51d3d261a3009"
+  },
+  {
+   "path": "dist/assets/queries-eBQ2EgZu.js",
+   "bytes": 2409,
+   "sha256": "dfcec5e0c687d164b2d0594d9b70ce51c483af49d70ccde7229d4fb91b7411f2"
+  },
+  {
+   "path": "dist/assets/queries-ipHSWLkS.js",
+   "bytes": 479,
+   "sha256": "04f065fc4b122bf8fba0e36dba94625ddf9969b0ab87471cde660449efa27427"
+  },
+  {
+   "path": "dist/assets/riskScoring-D-r4w7W2.js",
+   "bytes": 3694,
+   "sha256": "e02c7612542268cd97d0ed30fe86b34e6b37f2ff14c3b3b8724b483517c7d5cb"
+  },
+  {
+   "path": "dist/assets/searchState-CjLJbrxi.js",
+   "bytes": 864,
+   "sha256": "eb81541715257777ba431cfd75ff3abd07ca6de14bddc7077ce5533d0c7426a9"
+  },
+  {
+   "path": "dist/assets/time-mWrPJBZm.js",
+   "bytes": 373,
+   "sha256": "9c0c7a1499c73720fad206de7ce26a5a2af49b6b257f02a2210fedbcfa4283f4"
+  },
+  {
+   "path": "dist/assets/useMutation-CXV6Ok2d.js",
+   "bytes": 2255,
+   "sha256": "6e7094c58f33dbec825e062d9bd76ef3c603ce9277d5a0d7f8a001e89c5a8093"
+  },
+  {
+   "path": "dist/assets/useQueries-bouHkrAj.js",
+   "bytes": 3356,
+   "sha256": "87612471de4c209c2d5516b1961223805bdb17b0ca769f7af55a0c2f01337d1d"
+  },
+  {
+   "path": "dist/blog/scout-mythos-readiness-onepager.pdf",
+   "bytes": 5763,
+   "sha256": "b6aba38b8f5ba2c492c466c3e1f810ea6cc935ccfb6e440f2365a1ac695e6b36"
+  },
+  {
+   "path": "dist/favicon.svg",
+   "bytes": 439,
+   "sha256": "e454edd207e90b0cc1b29316104cacff37222e85fa3d2a1d555994aeed9f18a2"
+  },
+  {
+   "path": "dist/index.html",
+   "bytes": 1632,
+   "sha256": "faf404f841d2efae10764ab31e53e3ad9886d152663d045b3872d15a917113ad"
+  },
+  {
+   "path": "dist/og-cover.png",
+   "bytes": 850800,
+   "sha256": "26342f573fb740d677a0873937bff780c0e6815afd8d65062c6a025915d23d3c"
+  },
+  {
+   "path": "dist/robots.txt",
+   "bytes": 23,
+   "sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95"
+  }
+ ]
+}
