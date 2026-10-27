@@ -227,6 +227,12 @@ html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip select {
   box-shadow: var(--dp-shadow-xs);
 }
 
+/* Restores the primitives focus ring, which the rule above outranks. */
+html[data-ui='2'] .ui2-cve-family .org-cve-filter-chip :is(input, select):focus {
+  border-color: var(--dp-accent);
+  box-shadow: var(--dp-ring);
+}
+
 html[data-ui='2'] .ui2-cve-family .cve-muted {
   color: var(--dp-text-3);
 }

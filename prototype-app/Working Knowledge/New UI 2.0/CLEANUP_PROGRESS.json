@@ -909,8 +909,130 @@
     "2026-10-27: push approval for feat/ui2-step4-foundation-styles to AxG-SG/SG (by URL) and a PR into main after the Step 4 gate; later pushes and merges still need approval each time.",
     "2026-10-27: no staging environment exists; staging gates in Steps 5 and 8 stay open without evidence.",
     "2026-10-27: the frozen Step 5 UI 1 artifact goes to prototype-app/Working Knowledge/New UI 2.0/checkpoints/ (committed, not ignored) as a .tar.gz with sha256 and per-file manifest. It is the rollback artifact, kept until UI 2 is released, accepted and the rollback window is closed (separate later decision)."
+   ],
+   "merged": "PR #24 merged into AxG-SG main 2026-10-27T04:42:57Z as merge commit 47ab4728 (parents ce85819a, a3f1d1db); all 13 CI jobs passed on a3f1d1db, incl. frontend-e2e 36m21s and backend-postgres 13m7s."
+  },
+  {
+   "id": "S5",
+   "title": "Retirement qualification and decision",
+   "status": "decision_recorded_checkpoint_A_passed",
+   "dependsOn": [
+    "S4"
+   ],
+   "branch": "feat/ui2-step5-qualification (pushed), draft PR #25 into main; candidate app source = 6cba0983 (frontend tree 69690f13), merged to main by #24; Step 5 commits touch only Working Knowledge files",
+   "gates": {
+    "liveJourneys": {
+     "status": "verified",
+     "evidence": "Fresh full e2e:live on the candidate (6cba0983, 2026-10-27, recorded under S4 gate): 250/250 passed, 0 failed, 2 skipped (connect successful save/test/sync, dark+light: needs a real public ServiceNow endpoint; outbound delivery not allowed; covered by the fixture journey). Per journey incl. skips: findings 54, ai-findings 20, cve 52, inventory 38, authority 46, connect 42."
+    },
+    "authenticatedStaging": {
+     "status": "waived_by_user",
+     "evidence": "No staging environment exists (user, 2026-10-27). No evidence; not replaced by local runs."
+    },
+    "responsive": {
+     "status": "verified",
+     "evidence": "e2e:sweep on the candidate artifacts, widths 390/768/1280/1440, dark+light, both versions: 8/8 steps; 322 page checks per version per theme (26 via navigation), 0 page errors, 0 console errors, 0 unexpected requests, 0 orphans; UI 2 data-ui on all 322. Overflow: UI 2 2 per theme, both known (/configurations/sla and /configurations/suppress at 768, logged since Step 2); UI 1 35 per theme (legacy, first recorded count). axe: UI 2 939 = baseline, UI 1 810 = baseline, 0 new."
+    },
+    "keyboardAndZoom": {
+     "status": "fixed_verified_human_review_waived",
+     "evidence": "Automated aid (tools/keyboard-zoom.mjs; not a substitute for the human review): Tab x40 on all 35 routes at 1280 dark. Focus never lands off screen; every route has 3+ distinct stops. Focus indicator missing on UI 2 for 25 element kinds incl. every .btn-primary/.btn-secondary, .tenant-context-pill and .nav-btn.active; UI 1 misses 5 kinds (nav-btn.active, nav-link-cta, three .active nav variants). Cause: base.css:3051 shows keyboard focus as box-shadow: var(--focus-ring) at (0,1,1); UI 2 sets box-shadow on .btn (primitives.css, 0,2,1), .nav-btn.active and .tenant-context-pill (shell.css), which replaces the ring; in dark theme --dp-shadow-xs is none, so no indicator at all. Pre-existing since the UI 2 import, not from Step 4. 200% zoom approximation (640x450 CSS px, deviceScaleFactor 2): UI 2 overflow only on /demo/blog (+8px, public route, not UI 2 styled), 0 page errors; UI 1 overflow on 7 app routes (up to +1500px). A real 200% browser zoom and the human keyboard review remain open.",
+     "fix": "3f3faa89: UI 2 :focus-visible outline (2px var(--dp-accent), inset) on button, a[href], [role=button], focusable [tabindex] in primitives.css; CVE filter fields get the ring back (cve.css); borderless user search shows focus on its frame (governance.css :focus-within). New scope test pins it (proved to fail without the fix). keyboard-zoom aid after the fix: in-scope UI 2 stops without an indicator 25 kinds -> 0 (the /admin/users search input is indicated on its frame, verified directly: accent border + 3px ring); remaining flagged stops are only on /demo public routes (legacy, data-ui never set). Human keyboard and real 200% zoom review waived by the user."
+    },
+    "humanVisualApproval": {
+     "status": "waived_by_user",
+     "evidence": "Waived by the user 2026-10-27 (see userDecisions). No human review was done."
+    },
+    "accessibilityReview": {
+     "status": "open",
+     "evidence": "axe: 0 new in the sweep and in e2e:affected; the logged extra serious UI 2 violations (80 color-contrast, 12 scrollable-region-focusable) remain; the keyboard focus-indicator regression above blocks this gate until fixed. Mouse-only rows on /inventory/ai/declared-resources (logged) remain. Human review open. Focus regression fixed and verified at checkpoint A (c29515d8). Still open: the logged extra serious UI 2 axe findings and the mouse-only declared-resource rows; human review waived."
+    },
+    "performanceAndBundle": {
+     "status": "verified",
+     "evidence": "Bundle vs Step 0 (32c3e91c): CSS 645193 raw / 95440 gzip vs 645010 / 95396 (+183 / +44), both versions; JS UI 2 2519849 / 690732 vs 2519953 / 690722, UI 1 2519847 / 690722 vs 2519951 / 690806. Runtime (tools/perf-compare.mjs, Step 0 rebuilt from 32c3e91c with VITE_API_BASE=/api like the e2e artifacts, fixture routes /login /exposure /findings /vuln-repo/org-cves /inventory /connect, median of 7 cold loads after one warm-up): quiet run Step 0 vs Step 5 UI 2 DCL 16-17 ms both, LCP equal within 4 ms; A/A pairs vary as much. Two earlier runs right after the sweep showed 2-8 ms DCL and up to 40 ms LCP gaps in both orders that vanished when the machine was quiet: noise. Transferred JS identical (within 44 bytes), CSS +183 bytes. performance.memory is quantised without flags, so heap is not reported."
+    },
+    "backend": {
+     "status": "verified",
+     "evidence": "mvn -B -Ppostgres-it verify on a git archive copy of a3f1d1db (prototype-app/backend + .github, no .env.local): BUILD SUCCESS in 14:06; Surefire 1308 passed / 0 failed / 0 errors / 0 skipped; JaCoCo 'All coverage checks have been met'; Failsafe 496 passed / 0 failed / 0 errors / 0 skipped; SpotBugs BugInstance size 0. ITs used their own vulnwatch_it_* databases. In the working checkout the same command fails 5 OsvIntegrationE2ETest tests (see findingsForLaterSteps)."
+    },
+    "ci": {
+     "status": "in_progress",
+     "evidence": "Candidate a3f1d1db (PR #24): all 13 jobs passed, merged as 47ab4728. Step 5 records: draft PR #25, CI pending at the time of writing."
+    },
+    "rollbackRehearsal": {
+     "status": "verified",
+     "evidence": "tools/rollback-rehearsal.mjs with the frozen archive, local backend on scout_ui2_qual (pid 11332, backend unchanged since ce85819a, 7 JDBC connections on scout_ui2_qual, platform V8, ui2-qual-2 ACTIVE at V6): sha256 matches, 86/86 files match the manifest, served without rebuilding; its production API base answered by the local backend through browser request routing; tenant and platform-owner sign-in through the UI 1 login form; 14 routes render in UI 1 presentation (data-ui absent) with 0 page errors; 0 server errors (POST 200 x2, GET 200 x87); nothing left the machine (16 blocked attempts, all fonts.googleapis.com from the legacy base.css import). 20/20 checks. The 4 non-2xx answers are GET 403 /api/operations/quality/summary and GET 400 /api/operations/performance-scorecard on /platform/operations as platform owner; that page's code is shared by both versions (PlatformConsolePage.tsx:415)."
+    }
+   },
+   "frozenUi1": {
+    "artifact": "prototype-app/Working Knowledge/New UI 2.0/checkpoints/UI1-frozen-a3f1d1db.tar.gz",
+    "sha256": "f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707",
+    "manifest": "UI1-frozen-a3f1d1db-manifest.json (86 files, path + bytes + sha256 each)",
+    "commit": "a3f1d1db (frontend tree 69690f13 = Step 4 gate 6cba0983)",
+    "build": "VITE_UI_VERSION= npm run build, Node 22.16.0, no frontend .env files, production API base https://api.scoutgrid.io/api; data-ui absent on /login, /findings, /inventory, /demo",
+    "reproducible": "Packed deterministically; a fresh rebuild of the same commit is byte-identical to the extracted archive.",
+    "retention": "Rollback artifact and Step 6 comparison reference; keep until UI 2 is released, accepted and the rollback window is closed (separate decision)."
+   },
+   "decision": {
+    "status": "given_by_instruction",
+    "recorded": "2026-10-27",
+    "text": "No decision sentence in the suggested wording was given. The user's two instructions above direct proceeding to the retirement work (Step 6) now, with staging and human review waived and the long checks deferred until all steps are done. Treated as the Step 5 decision to proceed; rollback after Step 6 is by the frozen artifact UI1-frozen-a3f1d1db (sha256 f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707). This permits Step 6; it does not approve the resulting artifact (Step 8 and release approval remain).",
+    "package": "Working Knowledge/New UI 2.0/STEP5_DECISION.md"
+   },
+   "findingsForLaterSteps": [
+    "backend/src/main/resources/application.yml imports optional:file:.env.local[.properties] relative to the working directory, so mvn test/verify run from a checkout with the local qualification .env.local loads it: APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED=true binds as a placeholder but the env-style APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_* keys do not bind from a properties file, so ProductionSafetyValidator stops OsvIntegrationE2ETest's context. CI is unaffected (no .env.local). Run backend gates from a git archive copy (see STEP6_PROMPT in the handoff) until this is fixed; changing application.yml or .env.local needs approval.",
+    "UI 2 keyboard focus indicator missing on .btn, .tenant-context-pill and .nav-btn.active (see gates.keyboardAndZoom). Fix candidate, needs approval: a UI 2 :focus-visible ring in primitives.css/shell.css that composes with the existing box-shadow, then e2e:affected (visual baselines would change: e2e:update with inspected diffs).",
+    "/platform/operations as platform owner calls /api/operations/quality/summary (403) and /api/operations/performance-scorecard (400) in both versions."
+   ],
+   "userDecisions": [
+    "2026-10-27, verbatim: \"proceed with focus ring fix, and proceed to commit, there is no staging, and no human review needed.\"",
+    "2026-10-27, verbatim, after being told Step 6 needs an explicit written retirement decision and that the focus-fix gate was still running: \"there is no time, lets proceed and find an appropriate time after completeting all the steps.\""
+   ],
+   "focusFixGate": {
+    "commit": "c29515d8",
+    "status": "verified",
+    "checkpoint": "A",
+    "evidence": [
+     "Host (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 2 warnings; typecheck pass; vitest 773 passed / 0 failed / 0 skipped in 84 files; coverage lines 7937/15211, statements 8912/18010, functions 2571/6208, branches 7868/19521 (floors met).",
+     "Builds UI 2 and UI 1 pass incl. verify-production-bundle; CSS 645602 raw / 95535 gzip both versions (Step 0 645010 / 95396: +592 / +139); JS UI 2 2520018 / 690726, UI 1 2520016 / 690744. e2e:build boundary 15/15 per version. e2e:journeys 12/12 steps: UI 2 737/737; UI 1 703/737, 34 baseline, 0 new; 0 skipped.",
+     "Style probe vs 6cba0983: UI 2 380/380 identical; UI 1 12 snapshots differ, all /admin/users, the Invite user button no longer carries the legacy focus ring on load (intended, c29515d8). Cold vs navigation unchanged (8 / 24 height-only); boundary 120/120 per version. State check identical.",
+     "Intermediate run on 3f3faa89: UI 2 /admin/users showed the new outline on the auto-focused Invite user button (12 snapshots), which led to c29515d8. A stopped run on 3f3faa89 read statements 8889 / functions 2563 and a full run 8897 / 2567; per-file diff: only CampaignDetailPage.tsx (+4 statements, +2 functions) and CampaignsPage.tsx (+4, +2), the known 300ms debounce callbacks.",
+     "Container mcr.microsoft.com/playwright:v1.63.0-noble on a git archive copy of c29515d8: e2e:visual UI 2 140/140, UI 1 140/140; e2e:affected (routes from select-affected --base 6cba0983: all 35) UI 2 140/140, UI 1 140/140; axe UI 2 883 = baseline, UI 1 758 = baseline, 0 new; 0 skipped. No baseline update: the UI 1 /admin/users ring change is below the existing 0.1% tolerance (tolerance unchanged).",
+     "keyboard-zoom aid after the fix: in-scope UI 2 focus stops without an indicator 25 kinds -> 0; remaining flagged stops only on /demo public routes (legacy).",
+     "Live: backend pid 37220 from SG/prototype-app/backend, backend unchanged since ce85819a and clean, 7 JDBC connections on scout_ui2_qual, platform V8, ui2-qual-2 ACTIVE at V6; UI 2 vite on 5180. live-journeys dark+light: 250/250 passed, 0 failed, 2 skipped (connect successful save/test/sync, outbound delivery not allowed). Per journey incl. skips: findings 54, ai-findings 20, cve 52, inventory 38, authority 46, connect 42. Backend errors: 2 uk_tenants_schema_name from the deliberate duplicate-slug check."
+    ]
+   },
+   "units": [
+    {
+     "title": "UI 2 keyboard focus outline on buttons, links and filter fields",
+     "commit": "3f3faa89",
+     "files": "src/styles/ui2/{primitives,cve,governance}.css, src/styles/ui2/scope.test.ts",
+     "reversal": "git revert 3f3faa89"
+    },
+    {
+     "title": "User management: stop focusing Invite user on load",
+     "commit": "c29515d8",
+     "files": "src/pages/UserManagementPage.tsx, UserManagementPage.test.tsx",
+     "change": "The focus-return effects for the invite, bulk invite and service account dialogs ran on the first render, so /admin/users moved focus to Invite user on load (found by the style probe once the outline made focus visible). Focus now returns only after a dialog was open. Regression test seeds the cached auth context like the app shell; it failed before the fix (Invite user focused on load) and passes after.",
+     "reversal": "git revert c29515d8"
+    }
    ]
   }
  ],
- "nextUnit": "S4 gate passed on 6cba0983: push by URL and open the Step 4 PR (approved), then Step 5 qualification on the cleaned candidate."
+ "nextUnit": "Step 6 in a fresh session (STEP6_PROMPT.md) from the feat/ui2-step5-qualification tip; checkpoint B before the final Step 6 slice.",
+ "checkDeferral": {
+  "recorded": "2026-10-27",
+  "by": "user",
+  "instructions": [
+   "there is no time, lets proceed and find an appropriate time after completeting all the steps.",
+   "how about we do those checks right before retirement ?",
+   "what do you suggest (answer: checkpoints A + B + Step 8, accepted as the plan going forward)"
+  ],
+  "plan": {
+   "A": "Full gate on 3f3faa89 (focus fix, Step 5 tip) before Step 6 deletes anything: host gate with the 6cba0983 baseline, container e2e:visual + e2e:affected, live journeys. PASSED on c29515d8 (S5 focusFixGate).",
+   "B": "Full gate right before the final Step 6 slice (the one that removes the version switch and legacy-bridge.css), after all family and public slices.",
+   "Step8": "Full final qualification of the branch tip, as the plan requires."
+  },
+  "perSlice": "Each Step 6/7 slice is still its own local commit with the fast checks (lint, typecheck, vitest incl. scope.test.ts, about 2 minutes); PR CI runs on push. The long per-slice gates are replaced by B and Step 8.",
+  "risk": "Accepted by the user: a regression from one family slice may only be found at checkpoint B, when several families have changed together."
+ }
 }

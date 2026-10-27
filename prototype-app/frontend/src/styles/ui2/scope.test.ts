@@ -172,6 +172,18 @@ describe('UI 2.0 stylesheet scope', () => {
     }
   });
 
+  // UI 2.0 box-shadows on .btn, .nav-btn.active and .tenant-context-pill outrank the base.css
+  // focus ring, so keyboard focus on buttons and links is drawn with an uncontested outline.
+  it('keeps a visible keyboard focus outline on buttons and links', () => {
+    const focus = declared('./primitives.css', "html[data-ui='2'] :is(button, a[href], [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible");
+    expect([focus.outline, focus['outline-offset']]).toEqual(['2px solid var(--dp-accent)', '-2px']);
+    const cleared = FOUNDATION.flatMap((file) => rules(sheets[file])
+      .filter((rule) => rule.declarations.some(([property, value]) => /^outline(-style|-width)?$/.test(property) && /none|\b0\b/.test(value)))
+      .flatMap((rule) => rule.selectors).filter((selector) => /\b(button|a)\b|\.(btn|nav-[\w-]+|tenant-context-pill|theme-icon-btn|section-tab-btn|settings-menu-item)\b/.test(selector))
+      .map((selector) => `${file}: ${selector}`));
+    expect(cleared).toEqual([]);
+  });
+
   it('shows Findings identifiers at full width', () => {
     const cell = declared('./findings.css', "html[data-ui='2'] .fpl-root .fpl-td");
     expect(cell['max-width']).toBe('none');
