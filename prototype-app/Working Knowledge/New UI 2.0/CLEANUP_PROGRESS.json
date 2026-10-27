@@ -909,7 +909,8 @@
     "2026-10-27: push approval for feat/ui2-step4-foundation-styles to AxG-SG/SG (by URL) and a PR into main after the Step 4 gate; later pushes and merges still need approval each time.",
     "2026-10-27: no staging environment exists; staging gates in Steps 5 and 8 stay open without evidence.",
     "2026-10-27: the frozen Step 5 UI 1 artifact goes to prototype-app/Working Knowledge/New UI 2.0/checkpoints/ (committed, not ignored) as a .tar.gz with sha256 and per-file manifest. It is the rollback artifact, kept until UI 2 is released, accepted and the rollback window is closed (separate later decision)."
-   ]
+   ],
+   "merged": "PR #24 merged into AxG-SG main 2026-10-27T04:42:57Z as merge commit 47ab4728 (parents ce85819a, a3f1d1db); all 13 CI jobs passed on a3f1d1db, incl. frontend-e2e 36m21s and backend-postgres 13m7s."
   },
   {
    "id": "S5",
@@ -918,7 +919,7 @@
    "dependsOn": [
     "S4"
    ],
-   "branch": "feat/ui2-step5-qualification from feat/ui2-step4-foundation-styles; candidate app source = 6cba0983 (frontend tree 69690f13, unchanged in a3f1d1db and later Step 5 commits, which touch only Working Knowledge files)",
+   "branch": "feat/ui2-step5-qualification (pushed), draft PR #25 into main; candidate app source = 6cba0983 (frontend tree 69690f13), merged to main by #24; Step 5 commits touch only Working Knowledge files",
    "gates": {
     "liveJourneys": {
      "status": "verified",
@@ -954,7 +955,7 @@
     },
     "ci": {
      "status": "in_progress",
-     "evidence": "PR #24 (Step 4, head a3f1d1db): 12/13 jobs passed (backend, backend-postgres 13m7s, frontend, images, scans, docs-check, migration jobs); frontend-e2e still running at the time of writing. Step 5 commits: draft PR into the Step 4 branch for CI on the exact commit."
+     "evidence": "Candidate a3f1d1db (PR #24): all 13 jobs passed, merged as 47ab4728. Step 5 records: draft PR #25, CI pending at the time of writing."
     },
     "rollbackRehearsal": {
      "status": "verified",
@@ -982,5 +983,5 @@
    ]
   }
  ],
- "nextUnit": "S5 waits for the user's written decision (STEP5_DECISION.md), the keyboard focus-indicator fix decision, human visual/keyboard/200% zoom review and CI on the Step 5 commit. Step 6 starts only after the decision, in a fresh session (STEP6_PROMPT.md)."
+ "nextUnit": "S5 waits for the user's written decision (STEP5_DECISION.md), the focus-indicator fix decision, the human reviews and PR #25 CI. Step 6 starts only after the decision and the #25 merge, in a fresh session (STEP6_PROMPT.md)."
 }

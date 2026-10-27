@@ -21,15 +21,15 @@ Repo: `~/Desktop/AI Projects/SG`. GitHub: AxG-SG/SG is the only repo (AxonCyber-
 
 **DONE:**
 - Steps 0–3: merged to main (PR #22, PR #23 = merge commit `ce85819a`).
-- Step 4: branch `feat/ui2-step4-foundation-styles`, PR #24 into main, to be merged with a merge commit. Gate on `6cba0983`, recorded in S4.
-- Step 5: branch `feat/ui2-step5-qualification`, built on the Step 4 branch, with a draft PR into the Step 4 branch for CI. Evidence is in S5. Frozen UI 1 build: `checkpoints/UI1-frozen-a3f1d1db.tar.gz`, sha256 `f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707`.
+- Step 4: merged to main in PR #24 (merge commit `47ab4728`, parents `ce85819a` and `a3f1d1db`). Gate on `6cba0983`, recorded in S4.
+- Step 5: branch `feat/ui2-step5-qualification`, draft PR #25 into main (records only, no app code). Merge it with a merge commit only after my decision. Evidence is in S5. Frozen UI 1 build: `checkpoints/UI1-frozen-a3f1d1db.tar.gz`, sha256 `f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707`.
 
 **CHECK FIRST, and stop if any is missing:**
 1. My written Step 5 decision to end the legacy presentation and rollback by rebuild. Ask me for it if it isn't recorded in S5 `decision`, and record it verbatim with the date. No decision, no Step 6.
 2. My decision on the UI 2 keyboard focus-indicator defect (S5 `gates.keyboardAndZoom`): fix it before Step 6, as its own slice with `e2e:update` and inspected diffs, or carry it as an open item.
-3. PR #24 state and CI on AxG-SG/SG (report each job). Also the Step 5 draft PR's CI.
-   - If #24 is merged: fetch AxG-SG main, confirm it contains `6cba0983`, merge or rebase the Step 5 branch onto it as I approve, and create `feat/ui2-step6-retire-legacy` from the result.
-   - If #24 is not merged: report and stop.
+3. PR #25 (Step 5) state and CI on AxG-SG/SG (report each job).
+   - If #25 is merged: fetch AxG-SG main, confirm it contains `47ab4728` and the Step 5 commits, and create `feat/ui2-step6-retire-legacy` from it.
+   - If #25 is not merged: report and stop.
 4. The S5 open gates (staging, human visual approval, human keyboard and real 200% zoom review). Report them as open. Don't mark them done.
 
 **NEXT: STEP 6 (retire the legacy styles one family at a time), per the plan:**
