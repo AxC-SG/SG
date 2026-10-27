@@ -76,7 +76,8 @@ html[data-ui='2'] .nav-btn {
   transition: background var(--dp-dur-fast), color var(--dp-dur-fast);
 }
 
-html[data-ui='2'] .nav-btn:hover {
+html[data-ui='2'] .nav-btn:hover,
+html[data-ui='2'] .nav-sub-btn:hover {
   background: var(--dp-hover);
   color: var(--dp-text);
   transform: none;
@@ -127,13 +128,6 @@ html[data-ui='2'] .nav-sub-btn {
   color: var(--dp-text-2);
   font-size: var(--dp-text-md);
   font-weight: 400;
-}
-
-html[data-ui='2'] .nav-sub-btn:hover {
-  background: var(--dp-hover);
-  color: var(--dp-text);
-  transform: none;
-  box-shadow: none;
 }
 
 html[data-ui='2'] .nav-sub-btn.active {
