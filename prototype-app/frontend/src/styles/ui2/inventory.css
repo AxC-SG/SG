@@ -11,13 +11,7 @@
  * Presentation only: no element, label, handler, selector, row interaction or query change.
  * Inline styles in the inventory components are left as they are. */
 
-/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
 html[data-ui='2'] .ui2-inventory-family {
-  --surface-bg: var(--dp-surface);
-  --input-bg: var(--dp-surface);
-  --border-color: var(--dp-border);
-  --primary-subtle: color-mix(in srgb, var(--dp-accent) 10%, var(--dp-surface));
-  --text-1: var(--dp-text);
   /* Key-indicator tint (shared rule in findings.css); cards with an inline --kpi-color keep it. */
   --kpi-color: var(--dp-accent);
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import '../styles/findings-list.css';
 import { Link, useSearchParams } from 'react-router-dom';
 import { pathForFindingDetail, pathForConnectView } from '../app/routes';
 import type {
@@ -812,7 +811,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
               });
               setShowColVis(false);
             }}>
-            <svg viewBox="0 0 12 12" width="11" height="11" fill={active?'var(--accent,#3b82f6)':'currentColor'} aria-hidden>
+            <svg viewBox="0 0 12 12" width="11" height="11" fill={active?'var(--dp-accent)':'currentColor'} aria-hidden>
               <path d="M1 2h10l-4 5v3l-2-1V7z"/>
             </svg>
           </button>
@@ -867,7 +866,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
     if (key==='incidentId') return row.incidentId ? <span className="mono fpl-incident-id">{row.incidentId}</span> : <span className="fpl-empty">—</span>;
     if (key==='incidentStatus') return row.incidentStatus ? <span className="fpl-inc-status">{row.incidentStatus}</span> : <span className="fpl-empty">—</span>;
     if (key==='suppressionRule') return row.suppressedByRuleName
-      ? <span style={{ fontSize: '0.78rem', color: 'var(--medium)', fontWeight: 500 }}>{row.suppressedByRuleName}</span>
+      ? <span style={{ fontSize: '0.78rem', color: 'var(--dp-medium)', fontWeight: 500 }}>{row.suppressedByRuleName}</span>
       : <span className="fpl-empty">—</span>;
     if (key==='firstObserved') return row.firstObservedAt ? <span className="fpl-date">{new Date(row.firstObservedAt).toLocaleDateString()}</span> : <span className="fpl-empty">—</span>;
     if (key==='lastObserved') return row.lastObservedAt ? <span className="fpl-date">{new Date(row.lastObservedAt).toLocaleDateString()}</span> : <span className="fpl-empty">—</span>;
@@ -963,7 +962,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
             })()}
             {actionModal==='delete' && (
               <div className="fpl-form">
-                <p className="fpl-form-desc" style={{color:'var(--danger,#ef4444)'}}>
+                <p className="fpl-form-desc" style={{color:'var(--dp-critical)'}}>
                   Permanently delete <strong>{n}</strong> finding{n!==1?'s':''} and all related data (comments, events)?
                   <br/><strong>This cannot be undone.</strong>
                 </p>

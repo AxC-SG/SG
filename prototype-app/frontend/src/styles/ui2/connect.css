@@ -10,16 +10,6 @@
  * Presentation only: no element, label, handler, selector, role gate, entitlement, containment
  * or query change. Inline styles in these components are left as they are. */
 
-/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
-html[data-ui='2'] .ui2-connect-family {
-  --surface-bg: var(--dp-surface);
-  --input-bg: var(--dp-surface);
-  --border-color: var(--dp-border);
-  --text-1: var(--dp-text);
-  --title: var(--dp-text);
-}
-
-/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
 html[data-ui='2'] .ui2-connect-family {
   gap: 16px;
   padding: 0;

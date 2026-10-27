@@ -19,21 +19,21 @@ const deterministicLocalKey = (cveId: string) => `vulnrepo:${cveId}:det-summary`
 const aiLocalKey = (cveId: string) => `vulnrepo:${cveId}:ai-summary`;
 
 const COLORS = {
-  background: 'var(--panel-muted)',
-  surface: 'var(--panel-solid)',
-  surfaceMuted: 'color-mix(in srgb, var(--panel-muted) 88%, var(--bg))',
-  accent: 'var(--accent)',
-  accentStrong: 'var(--accent-strong)',
-  text: 'var(--text)',
-  title: 'var(--title)',
-  muted: 'var(--muted)',
-  danger: 'var(--critical)',
-  warning: 'var(--high)',
-  caution: 'var(--medium)',
-  success: 'var(--low)',
-  border: 'var(--border)',
-  borderStrong: 'var(--border-strong)',
-  track: 'var(--track)',
+  background: 'var(--dp-surface-2)',
+  surface: 'var(--dp-surface)',
+  surfaceMuted: 'color-mix(in srgb, var(--dp-surface-2) 88%, var(--dp-bg))',
+  accent: 'var(--dp-accent)',
+  accentStrong: 'color-mix(in srgb, var(--dp-accent) 85%, var(--dp-text))',
+  text: 'var(--dp-text)',
+  title: 'var(--dp-text)',
+  muted: 'var(--dp-text-2)',
+  danger: 'var(--dp-critical)',
+  warning: 'var(--dp-high)',
+  caution: 'var(--dp-medium)',
+  success: 'var(--dp-low)',
+  border: 'var(--dp-border)',
+  borderStrong: 'var(--dp-border-strong)',
+  track: 'var(--dp-hover)',
 };
 
 const API_BASE = resolveApiBase();
@@ -164,11 +164,11 @@ function riskMeterGradient(score: number): string {
 }
 
 function tonedSurface(color: string, strength = 14): string {
-  return `color-mix(in srgb, ${color} ${strength}%, var(--panel-muted))`;
+  return `color-mix(in srgb, ${color} ${strength}%, var(--dp-surface-2))`;
 }
 
 function tonedBorder(color: string, strength = 26): string {
-  return `color-mix(in srgb, ${color} ${strength}%, var(--border))`;
+  return `color-mix(in srgb, ${color} ${strength}%, var(--dp-border))`;
 }
 
 function buildDeterministicSummary(input: InvestigationSummaryInput): InvestigationSummaryResponse {

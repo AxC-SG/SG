@@ -630,12 +630,12 @@ export function BomManagementPage({
               </label>
             </div>
             <div className="form-row">
-              <label className="form-label">Supplier <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span>
+              <label className="form-label">Supplier <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span>
                 <input type="text" className="form-input" placeholder="Acme Corp" value={supplier} onChange={e => setSupplier(e.target.value)} />
               </label>
             </div>
             <div className="form-row">
-              <label className="form-label">Replaces existing source <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span>
+              <label className="form-label">Replaces existing source <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span>
                 <select
                   className="form-input"
                   value={replaceSourceId}
@@ -654,7 +654,7 @@ export function BomManagementPage({
                     ))}
                 </select>
               </label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 4 }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--dp-text-2)', marginTop: 4 }}>
                 Leave this alone to add a source. Documents are not replaced just because they
                 share an asset and supplier — pick the source you mean to supersede.
               </div>
@@ -670,7 +670,7 @@ export function BomManagementPage({
                   />
                   <span>
                     This document lists the asset&rsquo;s complete software inventory
-                    <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--muted)', marginTop: 2 }}>
+                    <div style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--dp-text-2)', marginTop: 2 }}>
                       Recorded as an audited assertion against your user. Only a complete
                       document lets a later replacement retire the components it omits; a
                       partial one just stops vouching for them. Asserting this wrongly can
@@ -895,7 +895,7 @@ export function BomManagementPage({
                       {currentSourceOpt?.hint && <span className="field-hint">{currentSourceOpt.hint}</span>}
                     </label>
                   )}
-                  <label>GitHub Token <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(optional)</span>
+                  <label>GitHub Token <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span>
                     <input type="password" value={ghToken} onChange={e => setGhToken(e.target.value)}
                       placeholder="ghp_… leave blank to use the global backend token" autoComplete="new-password" />
                   </label>

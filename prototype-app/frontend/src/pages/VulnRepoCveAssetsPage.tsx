@@ -23,14 +23,14 @@ const PRIORITY_COLORS: Record<string, { bg: string; color: string; border: strin
 
 const INPUT_STYLE: React.CSSProperties = {
   width: '100%', fontSize: 12, padding: '3px 6px',
-  background: 'var(--input-bg, var(--panel-muted))',
-  border: '1px solid var(--border)', borderRadius: 4,
-  color: 'var(--text)', outline: 'none',
+  background: 'var(--dp-surface)',
+  border: '1px solid var(--dp-border)', borderRadius: 4,
+  color: 'var(--dp-text)', outline: 'none',
 };
 
 const TH_STYLE: React.CSSProperties = {
   padding: '8px 10px', textAlign: 'left',
-  fontWeight: 600, color: 'var(--muted)',
+  fontWeight: 600, color: 'var(--dp-text-2)',
   fontSize: 11, letterSpacing: '0.06em',
   whiteSpace: 'nowrap',
 };
@@ -38,7 +38,7 @@ const TH_STYLE: React.CSSProperties = {
 function PriorityBadge({ priority }: { priority: string }) {
   const label = priority.toUpperCase();
   const style = PRIORITY_COLORS[label];
-  if (!style) return <span style={{ color: 'var(--muted)' }}>—</span>;
+  if (!style) return <span style={{ color: 'var(--dp-text-2)' }}>—</span>;
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: 12,
@@ -372,7 +372,7 @@ export function VulnRepoCveAssetsPage() {
   return (
     <>
     <section className="panel vuln-repo-assets-shell">
-      <div className="panel-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+      <div className="panel-header" style={{ borderBottom: '1px solid var(--dp-border)', paddingBottom: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div>
             <button
@@ -393,10 +393,10 @@ export function VulnRepoCveAssetsPage() {
       </div>
 
       {/* Action bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-          Total Assets: <strong style={{ color: 'var(--text)' }}>{filteredRows.length}</strong>
-          &nbsp;&nbsp;Selected Assets: <strong style={{ color: 'var(--text)' }}>{selectedIds.size}</strong>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--dp-border)' }}>
+        <span style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>
+          Total Assets: <strong style={{ color: 'var(--dp-text)' }}>{filteredRows.length}</strong>
+          &nbsp;&nbsp;Selected Assets: <strong style={{ color: 'var(--dp-text)' }}>{selectedIds.size}</strong>
         </span>
         <div style={{ flex: 1 }} />
         <button
@@ -425,7 +425,7 @@ export function VulnRepoCveAssetsPage() {
         <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)' }}>
+              <tr style={{ background: 'var(--dp-surface-2)', borderBottom: '1px solid var(--dp-border)' }}>
                 <th style={{ width: 36, padding: '8px 10px' }}>
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} />
                 </th>
@@ -438,7 +438,7 @@ export function VulnRepoCveAssetsPage() {
                 <th style={TH_STYLE}>PRIORITY</th>
                 <th style={TH_STYLE}>INCIDENT ID</th>
               </tr>
-              <tr style={{ background: 'var(--panel-muted)', borderBottom: '2px solid var(--border)' }}>
+              <tr style={{ background: 'var(--dp-surface-2)', borderBottom: '2px solid var(--dp-border)' }}>
                 <td />
                 <td style={{ padding: '4px 10px' }}>
                   <input style={INPUT_STYLE} placeholder="Filter asset..." value={filterAsset} onChange={(e) => setFilterAsset(e.target.value)} />
@@ -474,14 +474,14 @@ export function VulnRepoCveAssetsPage() {
             </thead>
             <tbody>
               {filteredRows.map((row) => (
-                <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr key={row.id} style={{ borderBottom: '1px solid var(--dp-border)' }}>
                   <td style={{ padding: '10px', textAlign: 'center' }}>
                     <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => toggleRow(row.id)} />
                   </td>
                   <td style={{ padding: '10px' }}>
                     <button
                       type="button"
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: 13, textAlign: 'left' }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--dp-accent)', fontWeight: 600, fontSize: 13, textAlign: 'left' }}
                       onClick={() => {
                         const navId = row.assetId ?? row.id;
                         navigate(pathForVulnRepoHostAsset(navId, `/vuln-repo/org-cves/${encodeURIComponent(cveId ?? '')}/assets`));
@@ -489,9 +489,9 @@ export function VulnRepoCveAssetsPage() {
                     >
                       {row.entity}
                     </button>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'monospace', marginTop: 2 }}>{row.identifier}</div>
+                    <div style={{ fontSize: 11, color: 'var(--dp-text-2)', fontFamily: 'monospace', marginTop: 2 }}>{row.identifier}</div>
                     <div style={{ marginTop: 3 }}>
-                      <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, background: 'var(--panel-muted)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                      <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)', color: 'var(--dp-text-2)' }}>
                         {row.owner === '—' ? 'Unassigned' : row.owner}
                       </span>
                     </div>
@@ -500,7 +500,7 @@ export function VulnRepoCveAssetsPage() {
                     {row.finding ? (
                       <button
                         type="button"
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)', fontFamily: 'monospace', fontSize: 13 }}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--dp-accent)', fontFamily: 'monospace', fontSize: 13 }}
                         onClick={() => navigate(
                           pathForFindingDetail(row.finding!.displayId, `/vuln-repo/org-cves/${encodeURIComponent(cveId ?? '')}/assets`),
                           { state: { finding: row.finding } }
@@ -508,16 +508,16 @@ export function VulnRepoCveAssetsPage() {
                       >
                         {row.finding.displayId}
                       </button>
-                    ) : <span style={{ color: 'var(--muted)' }}>—</span>}
+                    ) : <span style={{ color: 'var(--dp-text-2)' }}>—</span>}
                   </td>
-                  <td style={{ padding: '10px', color: 'var(--text)' }}>{row.softwareLabel}</td>
-                  <td style={{ padding: '10px', color: 'var(--muted)' }}>{row.falsePositive}</td>
-                  <td style={{ padding: '10px', color: 'var(--muted)' }}>{row.supportGroup}</td>
-                  <td style={{ padding: '10px', color: 'var(--muted)' }}>{row.owner}</td>
+                  <td style={{ padding: '10px', color: 'var(--dp-text)' }}>{row.softwareLabel}</td>
+                  <td style={{ padding: '10px', color: 'var(--dp-text-2)' }}>{row.falsePositive}</td>
+                  <td style={{ padding: '10px', color: 'var(--dp-text-2)' }}>{row.supportGroup}</td>
+                  <td style={{ padding: '10px', color: 'var(--dp-text-2)' }}>{row.owner}</td>
                   <td style={{ padding: '10px' }}>
-                    {row.priority !== '—' ? <PriorityBadge priority={row.priority} /> : <span style={{ color: 'var(--muted)' }}>—</span>}
+                    {row.priority !== '—' ? <PriorityBadge priority={row.priority} /> : <span style={{ color: 'var(--dp-text-2)' }}>—</span>}
                   </td>
-                  <td style={{ padding: '10px', color: 'var(--muted)', fontFamily: 'monospace', fontSize: 12 }}>{row.incidentId}</td>
+                  <td style={{ padding: '10px', color: 'var(--dp-text-2)', fontFamily: 'monospace', fontSize: 12 }}>{row.incidentId}</td>
                 </tr>
               ))}
             </tbody>
@@ -538,34 +538,34 @@ export function VulnRepoCveAssetsPage() {
         >
           <div style={{
             width: 560, maxHeight: '100vh', overflowY: 'auto',
-            background: 'var(--panel)', borderLeft: '1px solid var(--border)',
+            background: 'var(--dp-surface)', borderLeft: '1px solid var(--dp-border)',
             padding: '28px 28px 24px', display: 'flex', flexDirection: 'column', gap: 20,
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Finding Configuration</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 13, color: 'var(--dp-text-2)', marginTop: 6, lineHeight: 1.5 }}>
                   Configure due date, tags, and assignment logic for the selected impacted assets without leaving the current findings workspace.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowConfigModal(false)}
-                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: 'var(--text)', flexShrink: 0 }}
+                style={{ background: 'none', border: '1px solid var(--dp-border)', borderRadius: 6, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: 'var(--dp-text)', flexShrink: 0 }}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border)' }} />
+            <div style={{ borderTop: '1px solid var(--dp-border)' }} />
 
             {/* Finding Title */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>FINDING TITLE</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>FINDING TITLE</label>
               <input
                 aria-label="Finding title"
-                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)', boxSizing: 'border-box' }}
                 value={cfgTitle}
                 onChange={(e) => setCfgTitle(e.target.value)}
               />
@@ -574,10 +574,10 @@ export function VulnRepoCveAssetsPage() {
             {/* Priority + Due Date */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>SEVERITY</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>SEVERITY</label>
                 <select
                   aria-label="Finding severity"
-                  style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
+                  style={{ padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)' }}
                   value={cfgPriority}
                   onChange={(e) => setCfgPriority(e.target.value)}
                 >
@@ -588,11 +588,11 @@ export function VulnRepoCveAssetsPage() {
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>DUE DATE</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>DUE DATE</label>
                 <input
                   aria-label="Finding due date"
                   type="date"
-                  style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
+                  style={{ padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)' }}
                   value={cfgDueDate}
                   onChange={(e) => setCfgDueDate(e.target.value)}
                 />
@@ -601,10 +601,10 @@ export function VulnRepoCveAssetsPage() {
 
             {/* Tags */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>TAGS</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>TAGS</label>
               <input
                 aria-label="Finding tags"
-                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)', boxSizing: 'border-box' }}
                 placeholder="e.g. internet-facing, zero-day, patching"
                 value={cfgTags}
                 onChange={(e) => setCfgTags(e.target.value)}
@@ -620,10 +620,10 @@ export function VulnRepoCveAssetsPage() {
 
             {/* Assignment */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>ASSIGNMENT / OWNERSHIP LOGIC</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>ASSIGNMENT / OWNERSHIP LOGIC</label>
               <select
                 aria-label="Finding ownership"
-                style={{ padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)' }}
+                style={{ padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)' }}
                 value={cfgAssignment}
                 onChange={(e) => setCfgAssignment(e.target.value)}
               >
@@ -640,14 +640,14 @@ export function VulnRepoCveAssetsPage() {
                 type="checkbox"
                 checked={cfgServiceNow}
                 onChange={(e) => setCfgServiceNow(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: 'var(--accent)' }}
+                style={{ width: 16, height: 16, accentColor: 'var(--dp-accent)' }}
               />
               Create tickets in ServiceNow
             </label>
 
             {/* Finding Creation Mode */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>FINDING CREATION MODE</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>FINDING CREATION MODE</label>
               {(
                 [
                   {
@@ -669,8 +669,8 @@ export function VulnRepoCveAssetsPage() {
                     style={{
                       display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px',
                       borderRadius: 8, cursor: 'pointer',
-                      border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                      background: active ? 'color-mix(in srgb, var(--accent) 6%, var(--panel-muted))' : 'var(--panel-muted)',
+                      border: `1.5px solid ${active ? 'var(--dp-accent)' : 'var(--dp-border)'}`,
+                      background: active ? 'color-mix(in srgb, var(--dp-accent) 6%, var(--dp-surface-2))' : 'var(--dp-surface-2)',
                       transition: 'border-color 0.15s, background 0.15s',
                     }}
                   >
@@ -680,11 +680,11 @@ export function VulnRepoCveAssetsPage() {
                       value={value}
                       checked={active}
                       onChange={() => setCfgCreationMode(value)}
-                      style={{ marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }}
+                      style={{ marginTop: 2, accentColor: 'var(--dp-accent)', flexShrink: 0 }}
                     />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>{description}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dp-text)', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--dp-text-2)', lineHeight: 1.5 }}>{description}</div>
                     </div>
                   </label>
                 );
@@ -693,21 +693,21 @@ export function VulnRepoCveAssetsPage() {
 
             {/* Notes */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>NOTES</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>NOTES</label>
               <textarea
                 rows={4}
-                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--input-bg, var(--panel-muted))', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14, background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 6, color: 'var(--dp-text)', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
                 placeholder="Describe the remediation approach or ticket creation context..."
                 value={cfgNotes}
                 onChange={(e) => setCfgNotes(e.target.value)}
               />
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border)' }} />
+            <div style={{ borderTop: '1px solid var(--dp-border)' }} />
 
             {selectedRowsHaveGroupedFinding && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em' }}>WHEN FINDING EXISTS</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>WHEN FINDING EXISTS</label>
                 {(
                   [
                     { value: 'ADD_TO_EXISTING' as ExistingFindingBehavior, label: 'Add to existing finding', description: 'Update the existing finding\'s evidence to include all currently selected assets.' },
@@ -721,8 +721,8 @@ export function VulnRepoCveAssetsPage() {
                       style={{
                         display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px',
                         borderRadius: 8, cursor: 'pointer',
-                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                        background: active ? 'color-mix(in srgb, var(--accent) 6%, var(--panel-muted))' : 'var(--panel-muted)',
+                        border: `1.5px solid ${active ? 'var(--dp-accent)' : 'var(--dp-border)'}`,
+                        background: active ? 'color-mix(in srgb, var(--dp-accent) 6%, var(--dp-surface-2))' : 'var(--dp-surface-2)',
                         transition: 'border-color 0.15s, background 0.15s',
                       }}
                     >
@@ -732,11 +732,11 @@ export function VulnRepoCveAssetsPage() {
                         value={value}
                         checked={active}
                         onChange={() => setExistingFindingBehavior(value)}
-                        style={{ marginTop: 2, flexShrink: 0, accentColor: 'var(--accent)' }}
+                        style={{ marginTop: 2, flexShrink: 0, accentColor: 'var(--dp-accent)' }}
                       />
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{label}</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{description}</div>
+                        <div style={{ fontSize: 12, color: 'var(--dp-text-2)', lineHeight: 1.4 }}>{description}</div>
                       </div>
                     </label>
                   );

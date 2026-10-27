@@ -33,7 +33,7 @@ for ext in ('css','js'):
   print(f"  {sys.argv[1]} {ext}: {len(fs)} files {raw} raw / {gz} gzip")
 EOF
 }
-VITE_UI_VERSION=2 run build-ui2 npm run build; bundle ui2
+run build-ui2 npm run build; bundle ui2
 run e2e-build npm run e2e:build; grep "boundary" $O/e2e-build.log | sed 's/^/  /' | tee -a $O/summary.txt
 run e2e-journeys npm run e2e:journeys
 grep -E "passed|failed|skipped|known|new" $O/e2e-journeys.log | grep -iE "total|summary|journey:|passed" | tail -16 | sed 's/^/  /' >> $O/summary.txt

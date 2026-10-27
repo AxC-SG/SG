@@ -1,9 +1,8 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// Every UI 2.0 rule must stay behind the html[data-ui='2'] presentation flag so the legacy UI
-// remains isolated from public routes. Findings presentation rules stay on their page roots;
+// Every app rule stays behind html[data-ui='2'] so public routes remain isolated. Findings presentation rules stay on their page roots;
 // its shared base primitives retain their original specificity behind a zero-weight boundary.
 // Read from disk: vitest stubs CSS imports (including ?raw) to empty strings, and jsdom's
 // import.meta.url is not a file URL, so resolve from the vitest root (the frontend package).
@@ -74,15 +73,22 @@ function rules(css: string, media = ''): Rule[] {
 const declared = (sheet: string, selector: string) =>
   Object.fromEntries(rules(sheets[sheet]).filter((rule) => rule.selectors.includes(selector) && !rule.media).flatMap((rule) => rule.declarations));
 
-// Page and family roots. Foundation sheets (tokens, legacy-bridge, shell, primitives) style shared
+// Page and family roots. Foundation sheets (tokens, shell, primitives) style shared
 // classes on every page, so they must never name one of these.
 const FAMILY_ROOTS = ['.fpl-root', '.fd3-page', '.cve-assessment-page', '.vuln-repo-vulnerabilities-shell', '.vuln-repo-assets-shell',
   '.ui2-findings-family', '.ui2-cve-family', '.ui2-inventory-family', '.ui2-governance-family', '.ui2-connect-family', '.ui2-experience-family'];
-const FOUNDATION = ['./tokens.css', './legacy-bridge.css', './shell.css', './primitives.css'];
+const FOUNDATION = ['./tokens.css', './shell.css', './primitives.css'];
 const ROOT_SELECTORS = ["html[data-ui='2']", "html[data-ui='2'][data-theme='light']", "html[data-ui='2'][data-theme='dark']"];
 // A colour literal is allowed only as the fallback inside var(--token, <literal>).
 const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
 const withoutFallbacks = (value: string) => value.replace(/var\(--[\w-]+,\s*(?:(?:rgba?|hsla?)\([^)]*\)|#[0-9a-f]{3,8})\s*\)/gi, 'var()');
+
+// Retired files must be absent, rather than kept as empty import stubs.
+function retiredRules(name: string): Rule[] {
+  expect(existsSync(join(directory, '..', name)), name).toBe(false);
+  return [];
+}
+const sharedSelectors = () => selectors(sheets['./app-base.css']).map((selector) => selector.replace(":where(html[data-ui='2']) ", ''));
 
 describe('UI 2.0 stylesheet scope', () => {
   it('parses selector lists and anchors', () => {
@@ -100,19 +106,22 @@ describe('UI 2.0 stylesheet scope', () => {
 
   // Load order decides ties between equal-specificity rules (for example the Inventory input
   // rule after primitives), so it is part of each sheet's ownership.
-  it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
+  it('loads every app sheet once in deterministic precedence order', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
-      './governance.css', './connect.css', './experience.css']);
-    expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
+    expect(imports(join(directory, 'index.css'))).toEqual(['./tokens.css', './app-base.css', './shell.css', './primitives.css', './experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
+      './governance.css', './connect.css', './experience.css', './tables.css', '@xyflow/react/dist/style.css']);
+    expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).filter((file) => file.startsWith('./')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
-    for (const file of imports(join(directory, 'index.css'))) expect(rules(sheets[file]).length, file).toBeGreaterThan(0);
+    for (const file of imports(join(directory, 'index.css')).filter((file) => file.startsWith('./'))) expect(rules(sheets[file]).length, file).toBeGreaterThan(0);
   });
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith(['./experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css'].includes(file)
-        ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
+      selectors(css).filter((selector) => {
+        if (file === './app-base.css') return !/^(?::where\(html\[data-ui='2'\]\)|html:where\(\[data-ui='2'\]\))/.test(selector);
+        return !selector.startsWith(['./tables.css', './experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css'].includes(file)
+          ? ":where(html[data-ui='2']) " : "html[data-ui='2']");
+      }).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
   });
 
@@ -130,10 +139,10 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(declared('./findings-base.css', prefix + '.fpl-root').display).toBe('flex');
     expect(declared('./findings-base.css', prefix + '.fd3-body').display).toBe('flex');
     expect(declared('./findings-base.css', prefix + '.fd3-modal-overlay').position).toBe('fixed');
-    expect(rules(readFileSync(join(directory, '..', 'findings-list.css'), 'utf8'))).toEqual([]);
-    const inventory = rules(readFileSync(join(directory, '..', 'finding-detail.css'), 'utf8')).flatMap((rule) => rule.selectors);
+    expect(retiredRules('findings-list.css')).toEqual([]);
+    const inventory = retiredRules('finding-detail.css').flatMap((rule) => rule.selectors);
     expect(inventory.filter((selector) => !selector.startsWith('.iov-'))).toEqual([]);
-    const retired = rules(readFileSync(join(directory, '..', 'base.css'), 'utf8')).flatMap((rule) => rule.selectors)
+    const retired = retiredRules('base.css').flatMap((rule) => rule.selectors)
       .filter((selector) => /^\.(?:fpl-|fd3-|finding-id-link\b)/.test(selector));
     expect(retired).toEqual([]);
   });
@@ -153,11 +162,11 @@ describe('UI 2.0 stylesheet scope', () => {
   });
 
   it('retires CVE legacy definitions while preserving shared controls and other owners', () => {
-    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    const legacy = (name: string) => retiredRules(name);
     const retired = ['base.css', 'shared.css', 'cve-workbench.css', 'vuln-repo.css'].flatMap((file) => legacy(file)
       .flatMap((rule) => rule.selectors).filter((selector) => /^(?:a)?\.(?:cve-|cvd-|cvd2-|org-cve-|investigation-|notify-)/.test(selector)));
     expect(retired).toEqual([]);
-    const shared = legacy('cve-workbench.css').flatMap((rule) => rule.selectors);
+    const shared = sharedSelectors();
     expect(shared).toContain('.confirm-dialog::backdrop');
     expect(shared).toContain('.segmented-control');
     expect(shared).toContain('.col-toggle');
@@ -174,19 +183,19 @@ describe('UI 2.0 stylesheet scope', () => {
     const narrowOverview = rules(sheets['./inventory-base.css']).find((rule) =>
       rule.media === '@media (max-width: 820px)' && rule.selectors.includes(prefix + '.iov-columns'));
     expect(narrowOverview?.declarations).toContainEqual(['grid-template-columns', '1fr']);
-    expect(declared('./inventory-base.css', prefix + '.eol-badge-eol').color).toBe('var(--critical)');
-    expect(declared('./inventory-base.css', prefix + '.eol-badge-ok').color).toBe('var(--low)');
+    expect(declared('./inventory-base.css', prefix + '.eol-badge-eol').color).toBe('var(--dp-critical)');
+    expect(declared('./inventory-base.css', prefix + '.eol-badge-ok').color).toBe('var(--dp-low)');
     expect(declared('./inventory-base.css', prefix + '.ai-dependency-graph-popup').position).toBe('absolute');
     expect(declared('./inventory-base.css', prefix + '.inventory-shell.ai-security-page .fpl-widgets').display).toBe('grid');
   });
 
   it('retires Inventory legacy rules while leaving navigation, connector and policy owners intact', () => {
-    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8')).flatMap((rule) => rule.selectors);
+    const legacy = (name: string) => retiredRules(name).flatMap((rule) => rule.selectors);
     expect(legacy('finding-detail.css')).toEqual([]);
     expect(legacy('base.css').filter((selector) => /^\.(?:inventory-(?!(?:nav|flyout)(?:-|\b))|host-|software-|sdi-|si-|bom-inventory-|upgrade-|ai-asset-)/.test(selector))).toEqual([]);
-    expect(legacy('shared-after-public.css')).toContain('.inventory-flyout');
+    expect(sharedSelectors()).toContain('.inventory-flyout');
     expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .source-focus-hero");
-    expect(legacy('eol.css')).toContain('.filter-input');
+    expect(sharedSelectors()).toContain('.filter-input');
     expect(legacy('eol.css').filter((selector) => /^\.(?:eol-|quality-|slug-suggest-)/.test(selector))).toEqual([]);
     expect(selectors(sheets['./governance-base.css'])).toContain(":where(html[data-ui='2']) .ai-security-hero.policies");
     expect(legacy('ai-security.css').filter((selector) => selector.startsWith('.inventory-shell'))).toEqual([]);
@@ -200,14 +209,14 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(declared('./governance-base.css', prefix + '.platform-policy-detail-page button:disabled').cursor).toBe('not-allowed');
     expect(declared('./governance-base.css', prefix + '.um-modal-backdrop').position).toBe('fixed');
     expect(declared('./governance-base.css', prefix + '.um-modal')['overflow']).toBe('auto');
-    expect(declared('./governance-base.css', prefix + '.um-form-grid input[disabled]').color).toBe('var(--muted)');
+    expect(declared('./governance-base.css', prefix + '.um-form-grid input[disabled]').color).toBe('var(--dp-text-2)');
     const narrowForm = rules(sheets['./governance-base.css']).find((rule) =>
       rule.media === '@media (max-width: 760px)' && rule.selectors.includes(prefix + '.um-form-grid'));
     expect(narrowForm?.declarations).toContainEqual(['grid-template-columns', '1fr']);
   });
 
   it('retires Governance legacy definitions and preserves connector and operations owners', () => {
-    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8')).flatMap((rule) => rule.selectors);
+    const legacy = (name: string) => retiredRules(name).flatMap((rule) => rule.selectors);
     expect(legacy('user-management.css')).toEqual([]);
     expect(legacy('base.css').filter((selector) => selector.startsWith('.platform-create-tenant-form'))).toEqual([]);
     expect(legacy('shared.css').filter((selector) => selector.startsWith('.platform-console-'))).toEqual([]);
@@ -223,16 +232,16 @@ describe('UI 2.0 stylesheet scope', () => {
     const prefix = ":where(html[data-ui='2']) ";
     expect(declared('./connect-base.css', prefix + '.ai-connector-layout').animation).toBe('ui2-connect-reveal 360ms ease-out both');
     expect(declared('./connect-base.css', prefix + '.sn-health-bar').display).toBe('grid');
-    expect(declared('./connect-base.css', prefix + '.platform-feed-search:focus-within').outline).toBe('2px solid var(--accent)');
-    expect(declared('./connect-base.css', prefix + '.sn-check-fail').color).toBe('var(--critical)');
+    expect(declared('./connect-base.css', prefix + '.platform-feed-search:focus-within').outline).toBe('2px solid var(--dp-accent)');
+    expect(declared('./connect-base.css', prefix + '.sn-check-fail').color).toBe('var(--dp-critical)');
   });
 
   it('retires Connect legacy sheets without consuming the remaining shared controls', () => {
-    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    const legacy = (name: string) => retiredRules(name);
     expect(legacy('connect.css')).toEqual([]);
     expect(legacy('ai-security.css')).toEqual([]);
-    expect(rules(readFileSync(join(directory, '..', '..', 'pages', 'platform-feed-catalog.css'), 'utf8'))).toEqual([]);
-    expect(legacy('eol.css').flatMap((rule) => rule.selectors)).toContain('.filter-input');
+    expect(existsSync(join(directory, '..', '..', 'pages', 'platform-feed-catalog.css'))).toBe(false);
+    expect(sharedSelectors()).toContain('.filter-input');
     expect(sheets['./connect-base.css']).not.toMatch(/animation:\s*ai-security-reveal/);
   });
 
@@ -247,12 +256,12 @@ describe('UI 2.0 stylesheet scope', () => {
   });
 
   it('retires Experience legacy sheets and preserves public and shared app defaults', () => {
-    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    const legacy = (name: string) => retiredRules(name);
     expect(legacy('vuln-repo.css')).toEqual([]);
     expect(legacy('exposure-dashboard.css')).toEqual([]);
     const base = legacy('base.css').flatMap((rule) => rule.selectors);
-    expect(legacy('public.css').flatMap((rule) => rule.selectors)).toContain('.public-demo-shell');
-    expect(legacy('shared-after-public.css').flatMap((rule) => rule.selectors)).toContain('.sidebar');
+    expect(selectors(readFileSync(join(directory, '..', 'public.css'), 'utf8'))).toContain('.public-demo-shell');
+    expect(sharedSelectors()).toContain('.sidebar');
     expect(base.filter((selector) => /^\.(?:campaigns?-|cd-|cw-|cvrs-)/.test(selector))).toEqual([]);
   });
 
@@ -262,18 +271,18 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(selectors(css)).toContain('.public-demo-shell');
     expect(selectors(css)).toContain('.scout-hero');
     expect(css).not.toMatch(/--dp-|data-ui/);
-    expect(tokens.flatMap((rule) => rule.selectors)).toEqual([':root', "[data-theme='light']", "[data-theme='dark']"]);
+    expect(tokens.flatMap((rule) => rule.selectors)).toEqual([":root:where(:not([data-ui='2']))", ":where(html:not([data-ui='2']))[data-theme='light']", ":where(html:not([data-ui='2']))[data-theme='dark']"]);
     expect(tokens.flatMap((rule) => rule.declarations).filter(([property]) => property.startsWith('--dp-'))).toEqual([]);
   });
 
   it('keeps shared public/app defaults in explicit cascade order', () => {
-    const base = readFileSync(join(directory, '..', 'base.css'), 'utf8');
+    const base = readFileSync(join(directory, '..', 'index.css'), 'utf8');
     expect(base.split(/\r?\n/, 1)[0]).toMatch(/^@import url\(.+\);$/);
     expect([...base.matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1])).toEqual([
-      './public-tokens.css', './shared-before-public.css', './public.css', './shared-after-public.css',
+      './public-tokens.css', './public-before.css', './public.css', './public-after.css', './ui2/index.css',
     ]);
     expect(rules(base)).toEqual([]);
-    const shared = selectors(readFileSync(join(directory, '..', 'shared-after-public.css'), 'utf8'));
+    const shared = sharedSelectors();
     expect(shared).toContain('body');
     expect(shared).toContain('.sidebar');
     expect(shared).toContain('button:focus-visible');
@@ -281,21 +290,24 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('preserves semantic Inventory bar colours over the later shared Findings fill', () => {
     const prefix = ":where(html[data-ui='2']) ";
-    expect(declared('./findings-base.css', prefix + '.fpl-hbar-fill').background).toBe('var(--accent)');
-    for (const [tone, value] of [['success', 'var(--low)'], ['warning', 'var(--warning)'], ['muted', 'color-mix(in srgb, var(--muted) 36%, transparent)']]) {
+    expect(declared('./findings-base.css', prefix + '.fpl-hbar-fill').background).toBe('var(--dp-accent)');
+    for (const [tone, value] of [['success', 'var(--dp-low)'], ['warning', 'var(--dp-warning)'], ['muted', 'color-mix(in srgb, var(--dp-text-2) 36%, transparent)']]) {
       expect(declared('./inventory-base.css', prefix + `.inventory-hbar-${tone}.fpl-hbar-fill`).background).toBe(value);
     }
   });
 
-  it('keeps tokens and the legacy bridge to custom properties on the root', () => {
-    for (const file of ['./tokens.css', './legacy-bridge.css']) {
-      for (const rule of rules(sheets[file])) {
-        expect(rule.selectors.filter((selector) => !ROOT_SELECTORS.includes(selector)), file).toEqual([]);
-        expect(rule.declarations.filter(([property]) => !property.startsWith('--')), file).toEqual([]);
-      }
+  it('keeps design tokens on the root and removes the token bridge', () => {
+    for (const rule of rules(sheets['./tokens.css'])) {
+      expect(rule.selectors.filter((selector) => !ROOT_SELECTORS.includes(selector))).toEqual([]);
+      expect(rule.declarations.filter(([property]) => !property.startsWith('--') && property !== 'color-scheme')).toEqual([]);
     }
-    // The bridge only re-points legacy properties; it never redefines a UI 2.0 token.
-    expect(rules(sheets['./legacy-bridge.css']).flatMap((rule) => rule.declarations).filter(([property]) => property.startsWith('--dp-'))).toEqual([]);
+    expect(existsSync(join(directory, 'legacy-bridge.css'))).toBe(false);
+    // Family component-local state tokens remain; shared compatibility aliases do not.
+    const retiredAliases = /^(?:--(?:font-(?:body|display|mono)|space-[1-8]|control-(?:sm|md|lg)|radius-(?:sm|md|lg|xl)|bg(?:-gradient)?|shell-glow|sidebar-(?:bg|border|muted)|panel(?:-solid|-muted)?|surface(?:-raised|-hover|-bg)?|track|table-row|text(?:-primary|-secondary|-muted|-1)?|title|muted|border(?:-strong|-color)?|accent(?:-strong)?|critical|high|medium|low|success|danger|warn(?:ing)?(?:-strong)?|shadow-(?:sm|md|lg)|focus-ring|color-[\w-]+|input-bg|primary-subtle|badge-info-(?:bg|border|text)))$/;
+    for (const [file, css] of Object.entries(sheets)) {
+      expect(rules(css).flatMap((rule) => rule.declarations).filter(([property]) => retiredAliases.test(property)), file).toEqual([]);
+      expect([...css.matchAll(/var\((--[\w-]+)/g)].map((match) => match[1]).filter((property) => retiredAliases.test(property)), file).toEqual([]);
+    }
   });
 
   it('defines UI 2.0 tokens only in tokens.css', () => {
@@ -314,6 +326,52 @@ describe('UI 2.0 stylesheet scope', () => {
     }
   });
 
+  it('owns the only source stylesheet import at startup', () => {
+    const source = join(directory, '..', '..');
+    const files = (folder: string): string[] => readdirSync(folder, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? files(join(folder, entry.name)) : [join(folder, entry.name)]);
+    const imports = files(source).filter((file) => /\.(ts|tsx)$/.test(file)).flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(/^import\s+['"]([^'"]+\.css)['"];?$/gm)].map((match) => [relative(source, file), match[1]]));
+    expect(imports).toEqual([['main.tsx', './styles/index.css']]);
+    expect(readFileSync(join(source, 'main.tsx'), 'utf8').split('\n')[0]).toBe("import './styles/index.css';");
+  });
+
+  it('isolates public tokens and shared defaults from every app route', () => {
+    const root = document.documentElement;
+    const css = ['public-tokens.css', 'public-before.css', 'public-after.css'].map((file) => readFileSync(join(directory, '..', file), 'utf8'));
+    for (const selector of css.flatMap(selectors)) expect(selector).toContain(":not([data-ui='2'])");
+    // Token selectors must switch with the same root attribute used before paint.
+    const tokenSelectors = selectors(css[0]);
+    const originalUi = root.getAttribute('data-ui'), originalTheme = root.getAttribute('data-theme');
+    try {
+      for (const theme of ['dark', 'light']) {
+        root.setAttribute('data-theme', theme);
+        root.removeAttribute('data-ui');
+        expect(tokenSelectors.some((selector) => root.matches(selector))).toBe(true);
+        root.setAttribute('data-ui', '2');
+        expect(tokenSelectors.some((selector) => root.matches(selector))).toBe(false);
+      }
+    } finally {
+      if (originalUi === null) root.removeAttribute('data-ui'); else root.setAttribute('data-ui', originalUi);
+      if (originalTheme === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', originalTheme);
+    }
+    for (const file of ['base.css', 'shared.css', 'cve-workbench.css', 'eol.css', 'shared-before-public.css', 'shared-after-public.css']) retiredRules(file);
+  });
+
+  it('retains shared auth defaults, responsive shell, dialogs and eager table controls', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./app-base.css', prefix + '.auth-gate').display).toBe('grid');
+    expect(declared('./app-base.css', prefix + 'body')['font-family']).toBe('var(--dp-font)');
+    expect(declared('./app-base.css', prefix + '.sidebar').position).toBe('sticky');
+    expect(declared('./app-base.css', prefix + '.modal-overlay').position).toBe('fixed');
+    expect(declared('./app-base.css', prefix + '.confirm-dialog::backdrop').background).toBeDefined();
+    expect(declared('./tables.css', prefix + '.table-settings-btn:disabled').cursor).toBe('not-allowed');
+    expect(declared('./tables.css', prefix + 'table.resizable-table')['table-layout']).toBe('fixed');
+    expect(rules(sheets['./app-base.css']).some((rule) => rule.media && rule.selectors.includes(prefix + '.app-shell'))).toBe(true);
+    const auth = prefix + '.public-demo-shell:where(.ui2-experience-family, .ui2-experience-family *)';
+    expect(declared('./app-base.css', auth)['min-height']).toBe('100vh');
+  });
+
   it('keeps each severity and status tone on its own token', () => {
     expect(declared('./primitives.css', "html[data-ui='2'] .severity-critical")).toEqual({ '--ui2-tone': 'var(--dp-critical)' });
     expect(declared('./primitives.css', "html[data-ui='2'] .severity-high")).toEqual({ '--ui2-tone': 'var(--dp-high)' });
@@ -322,9 +380,9 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(declared('./primitives.css', "html[data-ui='2'] .notice.error")['--ui2-tone']).toBe('var(--dp-critical)');
     expect(declared('./primitives.css', "html[data-ui='2'] .notice.success")['--ui2-tone']).toBe('var(--dp-success)');
     expect(declared('./primitives.css', "html[data-ui='2'] .notice.warning")['--ui2-tone']).toBe('var(--dp-warning)');
-    const bridge = declared('./legacy-bridge.css', "html[data-ui='2']");
-    expect([bridge['--critical'], bridge['--high'], bridge['--medium'], bridge['--low'], bridge['--success'], bridge['--danger'], bridge['--warning']])
-      .toEqual(['var(--dp-critical)', 'var(--dp-high)', 'var(--dp-medium)', 'var(--dp-low)', 'var(--dp-success)', 'var(--dp-critical)', 'var(--dp-warning)']);
+    const lifecycle = declared('./inventory-base.css', ":where(html[data-ui='2']) .eol-badge-eol");
+    expect(lifecycle.color).toBe('var(--dp-critical)');
+    expect(declared('./inventory-base.css', ":where(html[data-ui='2']) .eol-badge-ok").color).toBe('var(--dp-low)');
     // Light-theme semantic tones darkened for WCAG contrast (01353de5).
     const light = declared('./tokens.css', "html[data-ui='2']");
     expect([light['--dp-critical'], light['--dp-high'], light['--dp-medium'], light['--dp-low'], light['--dp-success'], light['--dp-warning']])
@@ -359,12 +417,12 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(cell['text-overflow']).toBeUndefined();
   });
 
-  // The public marketing routes never carry data-ui (src/lib/uiVersion.ts). The auth-entry pages
+  // The public marketing routes never carry data-ui (src/lib/presentationBoundary.ts). The auth-entry pages
   // share their markup, so UI 2.0 may only style public classes under the auth-entry family root.
-  it('styles public-route markup only under the auth-entry family', () => {
+  it('keeps shared public markup inside the app boundary and auth presentation under its family', () => {
     const publicClass = /\.(public-[\w-]+|demo-[\w-]+|blog-[\w-]+|scout-hero)\b/;
     const outsideFamily = Object.entries(sheets).flatMap(([file, css]) => selectors(css)
-      .filter((selector) => publicClass.test(selector) && !/^html\[data-ui='2'\] \.ui2-experience-family[.\s]/.test(selector))
+      .filter((selector) => publicClass.test(selector) && !/^html\[data-ui='2'\] \.ui2-experience-family[.\s]/.test(selector) && !(file === './app-base.css' && (selector.startsWith(":where(html[data-ui='2']) .demo-status-pill") || (selector.startsWith(":where(html[data-ui='2']) ") && selector.includes(':where(.ui2-experience-family, .ui2-experience-family *)')))))
       .map((selector) => `${file}: ${selector}`));
     expect(outsideFamily).toEqual([]);
   });

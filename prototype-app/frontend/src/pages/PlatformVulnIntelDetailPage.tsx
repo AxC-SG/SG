@@ -33,7 +33,7 @@ function SourceObservationCard({ obs }: { obs: PlatformVulnIntelSourceObservatio
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <SourceBadge name={obs.sourceSystem} />
           {obs.sourceRecordId && obs.sourceRecordId !== obs.sourceSystem && (
-            <span className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{obs.sourceRecordId}</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--dp-text-2)' }}>{obs.sourceRecordId}</span>
           )}
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
@@ -53,12 +53,12 @@ function SourceObservationCard({ obs }: { obs: PlatformVulnIntelSourceObservatio
       )}
 
       {obs.description && (
-        <p style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary, var(--muted))' }}>
+        <p style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.6, color: 'var(--dp-text-2)' }}>
           {obs.description}
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted)' }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--dp-text-2)' }}>
         {obs.cvssVector && (
           <span className="mono" title="CVSS Vector" style={{ fontSize: 11 }}>{obs.cvssVector}</span>
         )}
@@ -145,7 +145,7 @@ export function PlatformVulnIntelDetailPage() {
             )}
 
             {bestDescription ? (
-              <p style={{ margin: '4px 0 0', lineHeight: 1.7, fontSize: 14, whiteSpace: 'pre-wrap', color: 'var(--text-secondary, inherit)' }}>
+              <p style={{ margin: '4px 0 0', lineHeight: 1.7, fontSize: 14, whiteSpace: 'pre-wrap', color: 'var(--dp-text-2)' }}>
                 {bestDescription}
               </p>
             ) : null}
@@ -248,7 +248,7 @@ export function PlatformVulnIntelDetailPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
                 {detail.cpes.map((cpe) => (
-                  <div key={cpe} className="mono" style={{ fontSize: 12, padding: '4px 8px', background: 'var(--panel-muted)', borderRadius: 4 }}>
+                  <div key={cpe} className="mono" style={{ fontSize: 12, padding: '4px 8px', background: 'var(--dp-surface-2)', borderRadius: 4 }}>
                     {cpe}
                   </div>
                 ))}
@@ -280,7 +280,7 @@ export function PlatformVulnIntelDetailPage() {
               </div>
               <ul style={{ margin: 0, padding: '4px 0', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {detail.references.map((url) => (
-                  <li key={url} className="mono" style={{ fontSize: 12, wordBreak: 'break-all', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
+                  <li key={url} className="mono" style={{ fontSize: 12, wordBreak: 'break-all', padding: '3px 0', borderBottom: '1px solid var(--dp-border)' }}>
                     {url}
                   </li>
                 ))}

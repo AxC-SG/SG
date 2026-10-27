@@ -193,16 +193,16 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
             </div>
 
             {detail.serialNumber && (
-              <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--panel-muted)', borderRadius: 6, border: '1px solid var(--border)' }}>
+              <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--dp-surface-2)', borderRadius: 6, border: '1px solid var(--dp-border)' }}>
                 <span className="panel-caption" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>SERIAL NUMBER</span>
                 <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{detail.serialNumber}</code>
               </div>
             )}
 
             {detail.checksumSha256 && (
-              <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--panel-muted)', borderRadius: 6, border: '1px solid var(--border)' }}>
+              <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--dp-surface-2)', borderRadius: 6, border: '1px solid var(--dp-border)' }}>
                 <span className="panel-caption" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>SHA-256 CHECKSUM</span>
-                <code style={{ fontSize: 11, wordBreak: 'break-all', color: 'var(--text-secondary)' }}>{detail.checksumSha256}</code>
+                <code style={{ fontSize: 11, wordBreak: 'break-all', color: 'var(--dp-text-2)' }}>{detail.checksumSha256}</code>
               </div>
             )}
           </div>
@@ -234,7 +234,7 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
                   { label: 'Ingested', value: timeAgo(detail.ingestedAt) },
                   { label: 'Ingested by', value: detail.ingestedBy ?? '—' },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--dp-border)' }}>
                     <span className="panel-caption" style={{ fontSize: 12, flexShrink: 0 }}>{label}</span>
                     <span style={{ fontSize: 13, fontWeight: 500, textAlign: 'right' }}>{value}</span>
                   </div>
@@ -253,7 +253,7 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
                   { label: 'System', value: detail.sourceSystem ?? '—' },
                   { label: 'Reference', value: detail.sourceReference ?? '—', mono: true },
                 ].map(({ label, value, mono }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--dp-border)' }}>
                     <span className="panel-caption" style={{ fontSize: 12, flexShrink: 0 }}>{label}</span>
                     <span style={{ fontSize: 13, fontWeight: 500, textAlign: 'right', fontFamily: mono ? 'monospace' : undefined, wordBreak: 'break-all' }}>{value}</span>
                   </div>
@@ -261,7 +261,7 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
                 {detail.sourceUrl && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                     <span className="panel-caption" style={{ fontSize: 12, flexShrink: 0 }}>URL</span>
-                    <span style={{ fontSize: 12, textAlign: 'right', wordBreak: 'break-all', color: 'var(--accent)' }}>{detail.sourceUrl}</span>
+                    <span style={{ fontSize: 12, textAlign: 'right', wordBreak: 'break-all', color: 'var(--dp-accent)' }}>{detail.sourceUrl}</span>
                   </div>
                 )}
               </div>
@@ -280,7 +280,7 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
                 { label: 'Spec Family', value: detail.inspection?.specFamily ?? detail.specFamily },
                 { label: 'Document Format', value: detail.inspection?.documentFormat ?? detail.documentFormat },
               ].map(({ label, value }) => (
-                <div key={label} style={{ padding: '10px 14px', background: 'var(--panel-muted)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                <div key={label} style={{ padding: '10px 14px', background: 'var(--dp-surface-2)', borderRadius: 6, border: '1px solid var(--dp-border)' }}>
                   <div className="panel-caption" style={{ fontSize: 11, marginBottom: 4 }}>{label.toUpperCase()}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{value}</div>
                 </div>
@@ -420,7 +420,7 @@ function OnDemandPanel({ items, onRunTriggered }: {
           <div key={key} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 14px', borderRadius: 8,
-            background: 'var(--panel-muted)', border: '1px solid var(--border)',
+            background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 18 }}>⬡</span>
@@ -433,7 +433,7 @@ function OnDemandPanel({ items, onRunTriggered }: {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {running.has(key) && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--accent)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--dp-accent)' }}>
                   <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>↻</span>
                   Running…
                 </span>
@@ -658,8 +658,8 @@ export function BomInventoryPage() {
                             title="Delete this BOM record"
                             style={{
                               padding: '3px 8px', fontSize: 13, cursor: 'pointer',
-                              background: 'none', border: '1px solid var(--border)',
-                              borderRadius: 6, color: 'var(--critical)',
+                              background: 'none', border: '1px solid var(--dp-border)',
+                              borderRadius: 6, color: 'var(--dp-critical)',
                             }}
                             onClick={() => setConfirmDelete(item.id)}
                           >

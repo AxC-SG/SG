@@ -1,5 +1,5 @@
 // Read-only cascade map in effective load order.
-// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance|connect|experience|public]
+// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance|connect|experience|public|final]
 // Findings mode includes its shared base primitives. Media/state reachability and compound
 // selector matching still need review; this static map is not a browser cascade proof.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,16 +8,31 @@ import { createRequire } from 'node:module';
 
 const fe = process.argv[2];
 const family = process.argv[4] ?? 'foundation';
-if (!['foundation', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience', 'public'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
+if (!['foundation', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience', 'public', 'final'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
 const require = createRequire(join(fe, 'package.json'));
 const postcss = require('postcss');
 
 const S = 'src/styles/';
-const main = [...(existsSync(join(fe, `${S}public.css`)) ? ['base', 'public-tokens', 'shared-before-public', 'public', 'shared-after-public'] : ['base']), 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
+const legacyMain = [...(existsSync(join(fe, `${S}public.css`)) ? ['base', 'public-tokens', 'shared-before-public', 'public', 'shared-after-public'] : ['base']), 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
   .map((n) => `${S}${n}.css`)
   .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'experience-base', 'inventory-base', 'findings-base', 'cve-base', 'governance-base', 'connect-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
   .concat([`${S}finding-detail.css`, `${S}ai-security.css`]);
-const lazy = ['src/components/DataTable.css', `${S}findings-list.css`, 'src/pages/platform-feed-catalog.css', 'node_modules/@xyflow/react/dist/style.css'];
+const legacyLazy = ['src/components/DataTable.css', `${S}findings-list.css`, 'src/pages/platform-feed-catalog.css', 'node_modules/@xyflow/react/dist/style.css'];
+// The final entry owns every sheet, including tables and the graph vendor CSS.
+function importedSheets(file) {
+  const root = postcss.parse(readFileSync(join(fe, file), 'utf8'));
+  const children = [];
+  root.walkAtRules('import', (rule) => {
+    const target = rule.params.match(/^["']([^"']+)["']/)?.[1];
+    if (!target) return;
+    const resolved = target.startsWith('@') ? `node_modules/${target}` : join(file, '..', target);
+    children.push(...importedSheets(resolved));
+  });
+  return children.length ? children : [file];
+}
+const finalEntry = !existsSync(join(fe, `${S}base.css`));
+const main = finalEntry ? importedSheets(`${S}index.css`) : legacyMain;
+const lazy = finalEntry ? [] : legacyLazy;
 const order = [...main, ...lazy];
 const focusSheets = {
   foundation: ['tokens', 'legacy-bridge', 'shell', 'primitives'],
@@ -28,6 +43,7 @@ const focusSheets = {
   connect: ['connect-base', 'connect'],
   experience: ['experience-base', 'experience'],
   public: ['public-tokens', 'public'],
+  final: ['tokens', 'app-base', 'tables', 'shell', 'primitives'],
 };
 const foundation = new Set(focusSheets[family].map((n) => `${S}${family === 'public' ? '' : 'ui2/'}${n}.css`));
 // Match the leading owned class only; Inventory/dashboard ancestor contexts stay with
@@ -72,7 +88,7 @@ const experienceOwnership = {
   'exposure-dashboard.css': /./,
 };
 
-const publicSource = postcss.parse(readFileSync(join(fe, `${S}base.css`), 'utf8'));
+const publicSource = postcss.parse(existsSync(join(fe, `${S}base.css`)) ? readFileSync(join(fe, `${S}base.css`), 'utf8') : '');
 const publicStart = publicSource.nodes.find((n) => n.type === 'rule' && n.selector === '.public-demo-shell')?.source.start.line ?? Infinity;
 const publicEnd = publicSource.nodes.find((n) => n.type === 'rule' && n.selector === "[data-theme='dark']")?.source.start.line ?? -Infinity;
 
@@ -162,7 +178,8 @@ for (const f of fRules) for (const d of f.decls) { const k = `${f.sel}${f.media}
 // Hardcoded colours in the foundation outside tokens.css.
 const colours = fRules.filter((r) => !r.file.endsWith('tokens.css')).flatMap((r) => r.decls.filter((d) => /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|\b(white|black)\b/i.test(d.value)).map((d) => ({ at: `${r.file.replace(S, '')}:${r.line}`, sel: r.sel, prop: d.prop, value: d.value })));
 
-const ownership = family === 'cve' ? rules.filter((r) => cveSources.includes(r.file) && (cveRoot.test(r.sel) || cveVulnRepo.test(r.sel)))
+const ownership = family === 'final' ? rules.filter((r) => legacyMain.includes(r.file) && !r.file.includes('/ui2/') && !/\/public(?:-tokens)?\.css$/.test(r.file))
+  : family === 'cve' ? rules.filter((r) => cveSources.includes(r.file) && (cveRoot.test(r.sel) || cveVulnRepo.test(r.sel)))
   : family === 'inventory' ? rules.filter((r) => inventoryOwnership[r.file.replace(S, '')]?.test(r.sel))
   : family === 'governance' ? rules.filter((r) => governanceOwnership[r.file.replace(S, '')]?.test(r.sel))
   : family === 'connect' ? rules.filter((r) => connectOwnership[r.file.replace(S, '')]?.test(r.sel))

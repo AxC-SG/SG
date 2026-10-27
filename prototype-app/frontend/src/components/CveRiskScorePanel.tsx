@@ -174,8 +174,8 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
             return (
               <g key={v}>
                 <line x1={PAD_L} y1={y} x2={CHART_VW - PAD_R} y2={y}
-                  stroke="var(--border)" strokeWidth="0.5" opacity="0.5" />
-                <text x={PAD_L - 4} y={y + 3} textAnchor="end" fontSize="8" fill="var(--muted)">{v}</text>
+                  stroke="var(--dp-border)" strokeWidth="0.5" opacity="0.5" />
+                <text x={PAD_L - 4} y={y + 3} textAnchor="end" fontSize="8" fill="var(--dp-text-2)">{v}</text>
               </g>
             );
           })}
@@ -183,9 +183,9 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
           {cvssScore > 0 && (
             <>
               <line x1={PAD_L} y1={cvssY} x2={CHART_VW - PAD_R} y2={cvssY}
-                stroke="var(--muted)" strokeWidth="1" strokeDasharray="5 4" opacity="0.5" />
+                stroke="var(--dp-text-2)" strokeWidth="1" strokeDasharray="5 4" opacity="0.5" />
               <text x={CHART_VW - PAD_R - 2} y={cvssY - 3}
-                textAnchor="end" fontSize="8" fill="var(--muted)">
+                textAnchor="end" fontSize="8" fill="var(--dp-text-2)">
                 CVSS {cvssScore.toFixed(1)}
               </text>
             </>
@@ -200,12 +200,12 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
             <circle key={i} cx={pt.x} cy={pt.y}
               r={i === pts.length - 1 ? 5 : 4}
               fill={i === 0 ? '#dc3545' : i === pts.length - 1 ? '#16a34a' : result.color}
-              stroke="var(--panel-solid)" strokeWidth="1.5" />
+              stroke="var(--dp-surface)" strokeWidth="1.5" />
           ))}
           {/* X-axis date labels — change visibly when period is changed */}
           {xTicks.map((pt, i) => (
             <text key={i} x={pt.x} y={MINI_VH - 4}
-              textAnchor="middle" fontSize="8" fill="var(--muted)">
+              textAnchor="middle" fontSize="8" fill="var(--dp-text-2)">
               {fmtDate(pt.date)}
             </text>
           ))}
@@ -286,16 +286,16 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
           return (
             <g key={v}>
               <line x1={PAD_L} y1={y} x2={CHART_VW - PAD_R} y2={y}
-                stroke="var(--border)" strokeWidth="1"
+                stroke="var(--dp-border)" strokeWidth="1"
                 strokeDasharray={v === 10 ? '4 4' : undefined} />
-              <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="var(--muted)">{v}</text>
+              <text x={PAD_L - 4} y={y + 4} textAnchor="end" fontSize="9" fill="var(--dp-text-2)">{v}</text>
             </g>
           );
         })}
         {cvssScore > 0 && (
           <line
             x1={PAD_L} y1={scoreToY(cvssScore)} x2={CHART_VW - PAD_R} y2={scoreToY(cvssScore)}
-            stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.55"
+            stroke="var(--dp-text-2)" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.55"
           />
         )}
         {areaPath && <path d={areaPath} fill="url(#cvrs-area-grad)" />}
@@ -307,11 +307,11 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
           <circle key={i} cx={pt.x} cy={pt.y}
             r={i === pts.length - 1 ? 5 : 4}
             fill={i === pts.length - 1 ? result.color : '#dc3545'}
-            stroke="var(--panel-solid)" strokeWidth="1.5" />
+            stroke="var(--dp-surface)" strokeWidth="1.5" />
         ))}
         {xTicks.map((pt, i) => (
           <text key={i} x={pt.x} y={CHART_VH - 4}
-            textAnchor="middle" fontSize="9" fill="var(--muted)">
+            textAnchor="middle" fontSize="9" fill="var(--dp-text-2)">
             {fmtDate(pt.date)}
           </text>
         ))}
@@ -323,7 +323,7 @@ export function CveRiskScorePanel({ item, mini = false }: Props) {
           <div key={i} className="cvrs-event-card">
             <div className="cvrs-event-card-top">
               <span className="cvrs-event-card-dot"
-                style={{ background: i === 0 ? 'var(--muted)' : '#dc3545' }} />
+                style={{ background: i === 0 ? 'var(--dp-text-2)' : '#dc3545' }} />
               <span className="cvrs-event-date">{fmtDate(pt.date)}</span>
             </div>
             <span className="cvrs-event-name">{pt.stage}</span>

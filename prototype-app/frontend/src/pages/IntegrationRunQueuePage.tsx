@@ -130,7 +130,7 @@ function buildRows(runs: SyncRun[]): DataTableRow[] {
                 {formatRunStatus(run.status)}
               </span>
               {run.errorMessage && (
-                <div className="panel-caption" style={{ color: 'var(--critical)', marginTop: 2 }}>
+                <div className="panel-caption" style={{ color: 'var(--dp-critical)', marginTop: 2 }}>
                   {run.errorMessage.length > 60 ? run.errorMessage.slice(0, 60) + '…' : run.errorMessage}
                 </div>
               )}
@@ -140,7 +140,7 @@ function buildRows(runs: SyncRun[]): DataTableRow[] {
         started:   { content: new Date(run.startedAt).toLocaleString() },
         completed: { content: run.completedAt ? new Date(run.completedAt).toLocaleString() : '—' },
         duration:  { content: humanDuration(run.startedAt, run.completedAt) },
-        records:   { content: <span className="panel-caption" style={{ color: 'var(--text)' }}>{totalRecords(run, meta)}</span> },
+        records:   { content: <span className="panel-caption" style={{ color: 'var(--dp-text)' }}>{totalRecords(run, meta)}</span> },
         details: {
           content: (
             <details className="evidence-details">

@@ -15,7 +15,7 @@ function BomTypeTag({ type }: { type: string }) {
   const colors: Record<string, string> = {
     SBOM: '#2563eb', AI_BOM: '#0891b2', CBOM: '#7c3aed', VENDOR: '#059669', UNMAPPED: '#d88f3d',
   };
-  const color = colors[type] ?? 'var(--muted)';
+  const color = colors[type] ?? 'var(--dp-text-2)';
   return (
     <span style={{
       display: 'inline-flex', padding: '2px 7px', borderRadius: 999,
@@ -63,7 +63,7 @@ function CorrelationPill({ state }: { state: BomComponentSummaryItem['correlatio
  * disproved. LEGACY_UNKNOWN covers components predating contribution tracking.
  */
 function EvidencePill({ state }: { state: BomComponentSummaryItem['bomEvidenceState'] }) {
-  if (!state) return <span style={{ color: 'var(--muted)' }}>—</span>;
+  if (!state) return <span style={{ color: 'var(--dp-text-2)' }}>—</span>;
   const map: Record<string, string> = {
     SUPPORTED:      'status-pill inv-status-applicable',
     CONFLICTING:    'status-pill status-unknown',
@@ -106,14 +106,14 @@ function WidgetRow({
   const apps = new Set(items.map((c) => c.assetName)).size;
 
   const stats: { key: WidgetFilter; label: string; value: React.ReactNode; sub: string; color: string; clickable: boolean }[] = [
-    { key: 'all',        label: 'Inventory Components', value: items.length.toLocaleString(), sub: `across ${apps} applications`,                                       color: 'var(--title)', clickable: true },
+    { key: 'all',        label: 'Inventory Components', value: items.length.toLocaleString(), sub: `across ${apps} applications`,                                       color: 'var(--dp-text)', clickable: true },
     { key: 'bom_mapped', label: 'BOM-mapped Components', value: bomMapped.toLocaleString(),   sub: 'linked to active BOM records',                                      color: '#2563eb', clickable: true },
     { key: 'unmapped',   label: 'Unmapped Inventory',    value: unmapped.toLocaleString(),     sub: 'active rows without BOM type',                                      color: '#d88f3d', clickable: true },
-    { key: 'vulnerable', label: 'Vulnerable',            value: vulnerable,                    sub: `${items.filter(c => c.criticalCveCount > 0).length} with critical CVEs`, color: 'var(--critical)', clickable: true },
+    { key: 'vulnerable', label: 'Vulnerable',            value: vulnerable,                    sub: `${items.filter(c => c.criticalCveCount > 0).length} with critical CVEs`, color: 'var(--dp-critical)', clickable: true },
     { key: 'eol',        label: 'EOL Components',        value: eol,                           sub: 'past end-of-life',                                                  color: '#d88f3d', clickable: true },
     { key: 'ai_bom',     label: 'AI/ML Libraries',       value: aiBom,                         sub: 'from AI BOMs',                                                      color: '#7c3aed', clickable: true },
     { key: 'cbom',       label: 'Crypto Libraries',      value: cbom,                          sub: 'from CBOMs',                                                        color: '#0891b2', clickable: true },
-    { key: 'all',        label: 'Licenses',              value: licenses,                       sub: 'unique licenses',                                                   color: 'var(--muted)', clickable: true },
+    { key: 'all',        label: 'Licenses',              value: licenses,                       sub: 'unique licenses',                                                   color: 'var(--dp-text-2)', clickable: true },
   ];
 
   return (
@@ -172,16 +172,16 @@ function EcosystemBreakdown({
             onClick={() => onEcosystemFilter(isActive ? '' : name)}
             style={{
               marginBottom: 10, cursor: 'pointer', borderRadius: 6, padding: '4px 6px',
-              background: isActive ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
-              outline: isActive ? '1px solid var(--accent)' : 'none',
+              background: isActive ? 'color-mix(in srgb, var(--dp-accent) 10%, transparent)' : 'transparent',
+              outline: isActive ? '1px solid var(--dp-accent)' : 'none',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 12, color: isActive ? 'var(--accent)' : undefined }}>{name}</span>
+              <span style={{ fontWeight: 600, textTransform: 'uppercase', fontSize: 12, color: isActive ? 'var(--dp-accent)' : undefined }}>{name}</span>
               <span className="panel-caption">{count} ({pct}%)</span>
             </div>
-            <div style={{ height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${pct}%`, background: isActive ? 'var(--accent)' : 'var(--accent)', borderRadius: 999, opacity: isActive ? 1 : 0.6 }} />
+            <div style={{ height: 6, borderRadius: 999, background: 'var(--dp-border)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${pct}%`, background: isActive ? 'var(--dp-accent)' : 'var(--dp-accent)', borderRadius: 999, opacity: isActive ? 1 : 0.6 }} />
             </div>
           </div>
         );
@@ -232,7 +232,7 @@ function BomTypeBreakdown({
           onClick={() => onBomTypeFilter(isActive ? '' : key)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 8px', borderBottom: '1px solid var(--border)',
+            padding: '10px 8px', borderBottom: '1px solid var(--dp-border)',
             cursor: 'pointer', borderRadius: 6,
             background: isActive ? `color-mix(in srgb, ${color} 10%, transparent)` : 'transparent',
             outline: isActive ? `1px solid ${color}40` : 'none',
@@ -358,7 +358,7 @@ export function BomComponents() {
   if (isError) {
     return (
       <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'var(--critical)' }}>Failed to load BOM components.</p>
+        <p style={{ color: 'var(--dp-critical)' }}>Failed to load BOM components.</p>
       </div>
     );
   }
@@ -502,7 +502,7 @@ export function BomComponents() {
                       <td><RiskPill level={c.riskLevel} /></td>
                       <td>
                         {c.totalCveCount > 0
-                          ? <span style={{ fontWeight: 600, color: c.criticalCveCount > 0 ? 'var(--critical)' : c.highCveCount > 0 ? 'var(--high)' : 'var(--title)' }}>{c.totalCveCount}</span>
+                          ? <span style={{ fontWeight: 600, color: c.criticalCveCount > 0 ? 'var(--dp-critical)' : c.highCveCount > 0 ? 'var(--dp-high)' : 'var(--dp-text)' }}>{c.totalCveCount}</span>
                           : <span className="panel-caption">—</span>}
                       </td>
                       <td>
@@ -536,7 +536,7 @@ export function BomComponents() {
         )}
 
         {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px solid var(--dp-border)' }}>
             <span className="panel-caption" style={{ fontSize: 12 }}>
               Page {page + 1} of {totalPages}
             </span>

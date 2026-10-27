@@ -43,7 +43,7 @@ function Overview({ policy, detail, onGovernance }: { policy: AiGridPolicyDistri
           <div className="cvd-tech-attr"><span className="cvd-tech-attr-label">Provider</span><span className="cvd-tech-attr-value">{formatLabel(policy.provider)}</span></div>
         </div>
         </div>
-        <div className="cvd2-panel"><div className="cvd2-panel-hdr">Framework Mappings · {mappings.length}</div><div className="cvd-refs-list">{mappings.length ? mappings.map((mapping) => <div key={`${mapping.name}-${mapping.control}`} className="cvd-ref-row"><span style={{ color: 'var(--title)', fontSize: 13, fontWeight: 500 }}>{mapping.name}</span><span className="cvd-src-tag">{mapping.control} · {formatLabel(mapping.type)}</span></div>) : <p className="cvd-ov-description">No structured framework mappings.</p>}</div>
+        <div className="cvd2-panel"><div className="cvd2-panel-hdr">Framework Mappings · {mappings.length}</div><div className="cvd-refs-list">{mappings.length ? mappings.map((mapping) => <div key={`${mapping.name}-${mapping.control}`} className="cvd-ref-row"><span style={{ color: 'var(--dp-text)', fontSize: 13, fontWeight: 500 }}>{mapping.name}</span><span className="cvd-src-tag">{mapping.control} · {formatLabel(mapping.type)}</span></div>) : <p className="cvd-ov-description">No structured framework mappings.</p>}</div>
         </div>
         <div className="cvd2-panel"><div className="cvd2-panel-hdr">Policy Intent</div><div className="platform-policy-copy"><p>{detail?.securityIntent ?? detail?.description ?? 'Policy intent is loading.'}</p><p><strong>Evaluation approach:</strong> {detail?.evaluationMode ? formatLabel(detail.evaluationMode) : 'Declared evidence from applicable AI inventory.'}</p></div></div>
       </div>

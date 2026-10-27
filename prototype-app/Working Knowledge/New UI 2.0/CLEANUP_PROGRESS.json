@@ -1020,7 +1020,7 @@
   {
    "id": "S6",
    "title": "Retire the legacy styles one family at a time",
-   "status": "in_progress",
+   "status": "verified",
    "dependsOn": [
     "S5"
    ],
@@ -1908,6 +1908,166 @@
        "diagnosis": "Detail route URL was ready while data/components still loading. Strengthened readiness and explicit failure branches; original pass assertions retained."
       }
      ]
+    },
+    {
+     "title": "Final slice: deterministic stylesheet entry, direct tokens and permanent public/app boundary",
+     "status": "verified",
+     "startingCommit": "0049451a",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_FINAL_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/host-gate.sh",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/e2e/build-artifacts.mjs",
+      "prototype-app/frontend/src/App.tsx",
+      "prototype-app/frontend/src/app/PresentationBoundary.test.tsx",
+      "prototype-app/frontend/src/app/PresentationBoundary.tsx",
+      "prototype-app/frontend/src/app/UiVersionPresentation.test.tsx",
+      "prototype-app/frontend/src/app/UiVersionPresentation.tsx",
+      "prototype-app/frontend/src/components/CVEInvestigationSummary.tsx",
+      "prototype-app/frontend/src/components/CveRiskScorePanel.tsx",
+      "prototype-app/frontend/src/components/DataTable.css",
+      "prototype-app/frontend/src/components/DataTable.tsx",
+      "prototype-app/frontend/src/features/ai-security/AiDependencyGraph.tsx",
+      "prototype-app/frontend/src/features/campaigns/CampaignDetailPage.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/CveOverviewTab.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/FindingsTab.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/InvestigationCanvas.tsx",
+      "prototype-app/frontend/src/features/inventory/ApplicationDetailPanel.tsx",
+      "prototype-app/frontend/src/features/inventory/ApplicationsDashboard.tsx",
+      "prototype-app/frontend/src/features/inventory/BomComponentDetailPanel.tsx",
+      "prototype-app/frontend/src/features/inventory/BomComponents.tsx",
+      "prototype-app/frontend/src/features/widgets/FplWidgets.tsx",
+      "prototype-app/frontend/src/lib/presentationBoundary.test.ts",
+      "prototype-app/frontend/src/lib/presentationBoundary.ts",
+      "prototype-app/frontend/src/lib/riskScoring.ts",
+      "prototype-app/frontend/src/lib/uiVersion.test.ts",
+      "prototype-app/frontend/src/lib/uiVersion.ts",
+      "prototype-app/frontend/src/main.tsx",
+      "prototype-app/frontend/src/pages/AiPolicyDetailPage.tsx",
+      "prototype-app/frontend/src/pages/BomInventoryPage.tsx",
+      "prototype-app/frontend/src/pages/BomManagementPage.tsx",
+      "prototype-app/frontend/src/pages/CampaignsPage.tsx",
+      "prototype-app/frontend/src/pages/ConfigurationsPage.tsx",
+      "prototype-app/frontend/src/pages/ConnectPage.tsx",
+      "prototype-app/frontend/src/pages/ExposureDashboardPage.tsx",
+      "prototype-app/frontend/src/pages/FindingDetailPage.tsx",
+      "prototype-app/frontend/src/pages/FindingsPage.tsx",
+      "prototype-app/frontend/src/pages/IntegrationRunQueuePage.tsx",
+      "prototype-app/frontend/src/pages/PlatformAiPolicyDetailPage.tsx",
+      "prototype-app/frontend/src/pages/PlatformVulnIntelDetailPage.tsx",
+      "prototype-app/frontend/src/pages/SoftwareIdentitiesPage.tsx",
+      "prototype-app/frontend/src/pages/SoftwareIdentityDetailPage.tsx",
+      "prototype-app/frontend/src/pages/SourcesPage.tsx",
+      "prototype-app/frontend/src/pages/UserManagementPage.tsx",
+      "prototype-app/frontend/src/pages/VulnIntelConfigPage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoCveAssetsPage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoCveSoftwarePage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx",
+      "prototype-app/frontend/src/pages/platform-feed-catalog.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/connect.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/exposure-dashboard.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/findings-list.css",
+      "prototype-app/frontend/src/styles/index.css",
+      "prototype-app/frontend/src/styles/public-after.css",
+      "prototype-app/frontend/src/styles/public-before.css",
+      "prototype-app/frontend/src/styles/public-tokens.css",
+      "prototype-app/frontend/src/styles/shared-after-public.css",
+      "prototype-app/frontend/src/styles/shared-before-public.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/app-base.css",
+      "prototype-app/frontend/src/styles/ui2/connect-base.css",
+      "prototype-app/frontend/src/styles/ui2/connect.css",
+      "prototype-app/frontend/src/styles/ui2/cve-base.css",
+      "prototype-app/frontend/src/styles/ui2/cve.css",
+      "prototype-app/frontend/src/styles/ui2/experience-base.css",
+      "prototype-app/frontend/src/styles/ui2/experience.css",
+      "prototype-app/frontend/src/styles/ui2/findings-base.css",
+      "prototype-app/frontend/src/styles/ui2/governance-base.css",
+      "prototype-app/frontend/src/styles/ui2/governance.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/inventory.css",
+      "prototype-app/frontend/src/styles/ui2/legacy-bridge.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/ui2/shell.css",
+      "prototype-app/frontend/src/styles/ui2/tables.css",
+      "prototype-app/frontend/src/styles/ui2/tokens.css",
+      "prototype-app/frontend/src/styles/user-management.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/vite-env.d.ts"
+     ],
+     "evidence": [
+      "Captured gate-final/cascade-before.json before app edits; cascade-after.json reads every final import recursively, with no lazy application sheets.",
+      "Verified 5863 rules / 23652 declaration-selector pairs, all 31 inline consumers, existing design token values, and byte-identical public presentation. Source-order, conditions and priorities preserved; no coverage reachability deletion.",
+      "Auth pages share public markup: preserved canonical-token defaults in their original cascade position, restricted to the Experience root/descendants with zero specificity. Separate public defaults retain their original ordering and values.",
+      "One stylesheet import at main.tsx; remaining legacy aliases/import stubs/bridge removed before replacing the version switch. Route-aware data-ui=2 and scoutai-theme retained. CI already runs UI 2 only; workflow untouched; historical UI 1 baselines retained.",
+      "Original baseline files checksum-verified against source.json at 68a4a3bc; baseline unchanged. Podman stopped; no competing editor/tests or SG live services found.",
+      "Diagnosed first fast failure without loosening its assertion: never-defined executive --color-* fallback references now use four direct --dp-exec-* tokens with identical fixed palette values. Historical deleted stylesheet/boundary paths retained in route map; all 35 routes selected."
+     ],
+     "tests": [
+      "Fresh post-commit gate on 6d4906fc6aaa28d1e5d78a75bba49064864e04c2: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 801 passed / 0 failed / 0 skipped in 84 files, including 35 scope tests.",
+      "Independent static migration verifier passed: 5863 rules / 23652 declaration-selector pairs, 31 inline consumers, all 16 retired files absent; public.css byte-identical; existing design-token values unchanged. Node syntax checks passed.",
+      "Affected-route selection against checkpoint B selects all 35 routes. Permanent artifact direct/link/history/public-style checks are added but not executed in this fast-only slice; full browser/visual/axe/live/build/coverage remains due at Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Static equivalence is not browser qualification. The final source has not had the full gate; Step 8 qualifies the branch tip after Step 7.",
+      "Final bundle size unmeasured; duplicated shared defaults can increase CSS. Checkpoint B was 752338 raw / 96964 gzip (+16.53% / +1.50% vs qualified Step 5), not a final-slice measurement.",
+      "Accessibility review and unrelated defects remain open; staging and human reviews waived. Checkpoint B live evidence retains 250 passed / 0 failed / 2 outbound ServiceNow provider skips."
+     ],
+     "reversal": "Revert only the final slice to restore checkpoint B source; UI 1 release rollback uses only the checksum-verified frozen Step 5 artifact.",
+     "statuses": {
+      "fixture": "fast_gate_verified; browser_qualification_due_at_Step8",
+      "localAuthenticated": "not_rerun_after_final_slice; due_at_Step8",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "gateAttempts": [
+      {
+       "commit": "cf2157016751a2eb7ee3f084ecac808d76ea15a1",
+       "lint": "0 errors / 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 800,
+        "failed": 1,
+        "skipped": 0
+       },
+       "diagnosis": "New alias-retirement assertion found 16 references to never-defined --color-warn/accent/resolved/neutral-bar variables in Experience. Verified no definitions; replaced literal fallbacks by equivalent direct --dp-exec-* tokens, preserving colours in both themes. Assertion unchanged.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final/attempt-1"
+      }
+     ],
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "6d4906fc6aaa28d1e5d78a75bba49064864e04c2",
+      "testedFrontendTree": "fc25b50ef295346291ce154d37641b2e8ab5f7d8",
+      "testedApplicationSrcTree": "3faa6a35201678a56311e437d62735a1634e1b5e",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "passed": 801,
+       "failed": 0,
+       "skipped": 0,
+       "files": 84,
+       "scopeTests": 35
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final",
+      "evidenceAmendment": "Only Working Knowledge ledger/map/handoff documentation amended after this run. Frontend and application src trees unchanged."
+     }
     }
    ],
    "checkpointB": {
@@ -1995,7 +2155,7 @@
      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final/live-complete-readiness"
     },
     "baseline": "/private/tmp/sg-ui2-step6.QsSmLw/baseline (original 68a4a3bc, checksums verified)",
-    "stopBeforeFinalSlice": true,
+    "stopBeforeFinalSlice": false,
     "sourceEquivalence": {
      "hostTestedCommit": "f0bb95d494ca210871a6c294a4e44c07b221d9c0",
      "containerTestedCommit": "7b3f30b3eeeade80e10d2f8a30107fdd831cfc59",
@@ -2048,11 +2208,27 @@
     },
     "originalBaselineChecksumsVerified": true,
     "frozenUi1Sha256": "f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707",
-    "finalSlice": "not_started; stop for user before version-switch/legacy-bridge removal"
+    "finalSlice": "completed in separate final slice; see finalSlice and last units entry. Checkpoint B results qualify their recorded tested sources only."
+   },
+   "finalSliceAuthorization": {
+    "date": "2026-10-27",
+    "by": "user",
+    "instruction": "Continue past checkpoint B and complete the final Step 6 slice."
+   },
+   "completionScope": "All family/public/final retirement slices complete. Final slice fast gate passed; full final qualification remains Step 8 after Step 7.",
+   "finalSlice": {
+    "status": "complete_fast_gate_verified",
+    "startingCommit": "0049451a",
+    "testedCommitBeforeEvidenceAmendment": "6d4906fc6aaa28d1e5d78a75bba49064864e04c2",
+    "testedFrontendTree": "fc25b50ef295346291ce154d37641b2e8ab5f7d8",
+    "testedApplicationSrcTree": "3faa6a35201678a56311e437d62735a1634e1b5e",
+    "staticEvidence": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final",
+    "fullQualification": "pending Step 8 after Step 7; no final-slice browser/live/build/coverage pass claimed",
+    "bundle": "unmeasured after final slice; Step 8 must report increases against Step 0 and qualified Step 5 honestly"
    }
   }
  ],
- "nextUnit": "Checkpoint B verified. Stop for the user before final Step 6 stylesheet entry-point/version-switch/legacy-bridge removal. Step 6 is not yet complete; Step 8 still qualifies the final tip.",
+ "nextUnit": "Step 6 complete with verified final-slice fast gate. Next: Step 7 archive/documentation in a separate slice; then Step 8 full final qualification of the branch tip. Accessibility review remains open; staging/human review waived; no release approval.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

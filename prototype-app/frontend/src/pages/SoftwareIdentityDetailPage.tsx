@@ -1098,15 +1098,15 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
   }
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
-          <tr style={{ background: 'var(--panel-muted)', borderBottom: '1px solid var(--border)' }}>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 90 }}>Fix ID</th>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 120 }}>CVE</th>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 130 }}>Fix Type</th>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Summary</th>
-            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 60 }}>Details</th>
+          <tr style={{ background: 'var(--dp-surface-2)', borderBottom: '1px solid var(--dp-border)' }}>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 90 }}>Fix ID</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 120 }}>CVE</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 130 }}>Fix Type</th>
+            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Summary</th>
+            <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, width: 60 }}>Details</th>
           </tr>
         </thead>
         <tbody>
@@ -1121,9 +1121,9 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
             type LifecycleWarning = { product?: string; is_eol?: boolean; upgrade_recommendation?: string };
             return (
               <React.Fragment key={fix.id}>
-                <tr style={{ borderBottom: '1px solid var(--border)', background: idx % 2 === 0 ? 'var(--bg)' : 'var(--panel-muted)' }}>
-                  <td style={{ padding: '10px 12px', color: 'var(--muted)', fontFamily: 'monospace', fontSize: 11 }}>{shortId}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 11, fontFamily: 'monospace', color: 'var(--text)' }}>{fix.cveId}</td>
+                <tr style={{ borderBottom: '1px solid var(--dp-border)', background: idx % 2 === 0 ? 'var(--dp-bg)' : 'var(--dp-surface-2)' }}>
+                  <td style={{ padding: '10px 12px', color: 'var(--dp-text-2)', fontFamily: 'monospace', fontSize: 11 }}>{shortId}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 11, fontFamily: 'monospace', color: 'var(--dp-text)' }}>{fix.cveId}</td>
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: bg, color, border: `1px solid ${border}` }}>
@@ -1136,22 +1136,22 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
                       )}
                     </div>
                   </td>
-                  <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: 380 }}>
+                  <td style={{ padding: '10px 12px', color: 'var(--dp-text-2)', maxWidth: 380 }}>
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fix.summary}>{fix.summary}</span>
-                    {fix.osHint && <span style={{ fontSize: 10, color: 'var(--muted)' }}>{fix.osHint}</span>}
+                    {fix.osHint && <span style={{ fontSize: 10, color: 'var(--dp-text-2)' }}>{fix.osHint}</span>}
                   </td>
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                     <button
                       type="button"
                       title="View details"
                       onClick={() => setOpenId(isOpen ? null : fix.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 4, color: isOpen ? 'var(--accent)' : 'var(--muted)', fontSize: 16, lineHeight: 1 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 4, color: isOpen ? 'var(--dp-accent)' : 'var(--dp-text-2)', fontSize: 16, lineHeight: 1 }}
                     >ℹ</button>
                   </td>
                 </tr>
                 {isOpen && (
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td colSpan={5} style={{ padding: '12px 16px', background: 'color-mix(in srgb, var(--accent) 4%, var(--bg))' }}>
+                  <tr style={{ borderBottom: '1px solid var(--dp-border)' }}>
+                    <td colSpan={5} style={{ padding: '12px 16px', background: 'color-mix(in srgb, var(--dp-accent) 4%, var(--dp-bg))' }}>
                       {rich ? (() => {
                         const pf = rich.primary_fix as PrimaryFix | undefined;
                         const controls = rich.compensating_controls as Control[] | undefined;
@@ -1159,37 +1159,37 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
                         const lifecycle = rich.lifecycle_warning as LifecycleWarning | null | undefined;
                         const supersedes = Array.isArray(rich.supersedes) ? (rich.supersedes as string[]) : [];
                         return (
-                          <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>
+                          <div style={{ fontSize: 12, color: 'var(--dp-text)', lineHeight: 1.6 }}>
                             {isSupersedence && supersedes.length > 0 && (
                               <div style={{ marginBottom: 10, padding: '6px 8px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 4 }}>
                                 <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 11 }}>⇑ Supersedence fix </span>
-                                <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>— covers older versions: </span>
-                                <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 11 }}>{supersedes.join(', ')}</span>
+                                <span style={{ color: 'var(--dp-text-2)', fontSize: 11 }}>— covers older versions: </span>
+                                <span style={{ color: 'var(--dp-text)', fontWeight: 600, fontSize: 11 }}>{supersedes.join(', ')}</span>
                               </div>
                             )}
                             {pf && (
                               <div style={{ marginBottom: 10 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: 1, marginBottom: 4 }}>Primary Fix</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--dp-text-2)', letterSpacing: 1, marginBottom: 4 }}>Primary Fix</div>
                                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{pf.action ?? fix.fixType}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: 'var(--text-secondary)', fontSize: 11 }}>
-                                  {pf.target_version && <span>Target: <strong style={{ color: 'var(--text)' }}>{pf.target_version}</strong></span>}
-                                  {pf.patch_id && <span>Patch: <strong style={{ color: 'var(--text)' }}>{pf.patch_id}</strong></span>}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: 'var(--dp-text-2)', fontSize: 11 }}>
+                                  {pf.target_version && <span>Target: <strong style={{ color: 'var(--dp-text)' }}>{pf.target_version}</strong></span>}
+                                  {pf.patch_id && <span>Patch: <strong style={{ color: 'var(--dp-text)' }}>{pf.patch_id}</strong></span>}
                                   {pf.applies_to && <span>{pf.applies_to}</span>}
                                   <span>Reboot: <strong style={{ color: pf.reboot_required ? '#d97706' : '#16a34a' }}>{pf.reboot_required ? 'Required' : 'Not required'}</strong></span>
                                 </div>
                                 {pf.verification && (
                                   <div style={{ marginTop: 6, fontSize: 11 }}>
                                     <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ Verify </span>
-                                    <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>{pf.verification}</span>
+                                    <span style={{ color: 'var(--dp-text-2)', fontStyle: 'italic' }}>{pf.verification}</span>
                                   </div>
                                 )}
                               </div>
                             )}
                             {controls && controls.length > 0 && (
                               <div style={{ marginBottom: 10 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: 1, marginBottom: 4 }}>Compensating Controls</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--dp-text-2)', letterSpacing: 1, marginBottom: 4 }}>Compensating Controls</div>
                                 {controls.map((c, i) => (
-                                  <div key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                  <div key={i} style={{ fontSize: 11, color: 'var(--dp-text-2)', marginBottom: 2 }}>
                                     {c.control} — Effort: {c.effort}, Effectiveness: {c.effectiveness}
                                   </div>
                                 ))}
@@ -1197,8 +1197,8 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
                             )}
                             {rollback && rollback.length > 0 && (
                               <div style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: 1, marginBottom: 4 }}>Rollback Plan</div>
-                                <ol style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: 'var(--text-secondary)' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--dp-text-2)', letterSpacing: 1, marginBottom: 4 }}>Rollback Plan</div>
+                                <ol style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: 'var(--dp-text-2)' }}>
                                   {rollback.map((s, i) => <li key={i}>{s}</li>)}
                                 </ol>
                               </div>
@@ -1206,13 +1206,13 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
                             {lifecycle?.is_eol && (
                               <div style={{ padding: '6px 8px', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)', borderRadius: 4, fontSize: 11 }}>
                                 <span style={{ color: '#d97706' }}>⚠ EOL — {lifecycle.product}</span>
-                                {lifecycle.upgrade_recommendation && <div style={{ color: 'var(--text-secondary)', marginTop: 2 }}>{lifecycle.upgrade_recommendation}</div>}
+                                {lifecycle.upgrade_recommendation && <div style={{ color: 'var(--dp-text-2)', marginTop: 2 }}>{lifecycle.upgrade_recommendation}</div>}
                               </div>
                             )}
                             {fix.sourceUrls && fix.sourceUrls.length > 0 && (
                               <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 {fix.sourceUrls.slice(0, 2).map(url => (
-                                  <a key={url} href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                                  <a key={url} href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--dp-accent)', textDecoration: 'underline', wordBreak: 'break-all' }}>
                                     {url.length > 50 ? url.slice(0, 47) + '…' : url}
                                   </a>
                                 ))}
@@ -1221,7 +1221,7 @@ function SoftwareFixRecordsTable({ fixes }: { fixes: FixRecord[] }) {
                           </div>
                         );
                       })() : (
-                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', margin: 0 }}>{fix.description ?? 'No description available.'}</p>
+                        <p style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'pre-wrap', margin: 0 }}>{fix.description ?? 'No description available.'}</p>
                       )}
                     </td>
                   </tr>

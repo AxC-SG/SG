@@ -472,10 +472,10 @@ function parseOwnershipRuleCondition(condition: string): OwnershipRuleForm {
 
 
 function scoreSeverityLabel(score: number): { label: string; color: string } {
-  if (score >= 9) return { label: 'Critical', color: 'var(--critical)' };
-  if (score >= 7) return { label: 'High', color: 'var(--high)' };
-  if (score >= 4) return { label: 'Medium', color: 'var(--medium)' };
-  return { label: 'Low', color: 'var(--low)' };
+  if (score >= 9) return { label: 'Critical', color: 'var(--dp-critical)' };
+  if (score >= 7) return { label: 'High', color: 'var(--dp-high)' };
+  if (score >= 4) return { label: 'Medium', color: 'var(--dp-medium)' };
+  return { label: 'Low', color: 'var(--dp-low)' };
 }
 
 function fmt2(n: number): string {
@@ -831,7 +831,7 @@ export function ConfigurationsPage() {
             {policySaving ? 'Saving…' : 'Save'}
           </button>
           {policyMessage && activeSection === sectionKey && (
-            <span className="field-hint" style={{ marginLeft: 10, color: /saved|updated|ran now/i.test(policyMessage) ? 'var(--low)' : 'var(--critical)' }}>
+            <span className="field-hint" style={{ marginLeft: 10, color: /saved|updated|ran now/i.test(policyMessage) ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
               {policyMessage}
             </span>
           )}
@@ -964,7 +964,7 @@ export function ConfigurationsPage() {
                     type="checkbox"
                     checked={val}
                     onChange={(e) => set(e.target.checked)}
-                    style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                    style={{ accentColor: 'var(--dp-accent)', width: 14, height: 14 }}
                   />
                   {label}
                 </label>
@@ -979,7 +979,7 @@ export function ConfigurationsPage() {
                 return (
                   <div
                     className="score-sim-badge"
-                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--panel-muted))`, border: `1px solid color-mix(in srgb, ${color} 30%, var(--border))` }}
+                    style={{ background: `color-mix(in srgb, ${color} 12%, var(--dp-surface-2))`, border: `1px solid color-mix(in srgb, ${color} 30%, var(--dp-border))` }}
                   >
                     <div>
                       <div
@@ -998,7 +998,7 @@ export function ConfigurationsPage() {
 
               {triageSim.activeReasons.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--dp-text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Active urgency signals
                   </div>
                   <div className="triage-urgency-signals">
@@ -1011,12 +1011,12 @@ export function ConfigurationsPage() {
 
               <div className="score-breakdown-list">
                 {[
-                  { label: 'Exploitability', val: triageSim.exploitC, color: 'var(--critical)' },
-                  { label: 'Blast Radius', val: triageSim.blastC, color: 'var(--high)' },
-                  { label: 'EOL Risk', val: triageSim.eolC, color: 'var(--medium)' },
-                  { label: 'SLA Breach', val: triageSim.slaC, color: 'var(--accent)' },
-                  { label: 'Missing Owner', val: triageSim.ownerC, color: 'var(--muted)' },
-                  { label: 'Patch Gap', val: triageSim.patchC, color: 'var(--muted)' },
+                  { label: 'Exploitability', val: triageSim.exploitC, color: 'var(--dp-critical)' },
+                  { label: 'Blast Radius', val: triageSim.blastC, color: 'var(--dp-high)' },
+                  { label: 'EOL Risk', val: triageSim.eolC, color: 'var(--dp-medium)' },
+                  { label: 'SLA Breach', val: triageSim.slaC, color: 'var(--dp-accent)' },
+                  { label: 'Missing Owner', val: triageSim.ownerC, color: 'var(--dp-text-2)' },
+                  { label: 'Patch Gap', val: triageSim.patchC, color: 'var(--dp-text-2)' },
                 ].map(({ label, val, color }) => (
                   <div key={label} className="score-breakdown-row">
                     <span className="score-breakdown-label">{label}</span>
@@ -1063,7 +1063,7 @@ export function ConfigurationsPage() {
               gridTemplateColumns: 'minmax(180px, 1.15fr) minmax(240px, 1fr) minmax(180px, 0.9fr) minmax(220px, 1fr)',
               gap: 16,
               padding: '0 16px',
-              color: 'var(--muted)',
+              color: 'var(--dp-text-2)',
               fontSize: 12,
               fontWeight: 800,
               letterSpacing: '0.08em',
@@ -1163,13 +1163,13 @@ export function ConfigurationsPage() {
                 gap: 16,
                 alignItems: 'start',
                 padding: '14px 16px',
-                border: '1px solid var(--border)',
+                border: '1px solid var(--dp-border)',
                 borderRadius: 12,
-                background: 'var(--panel)',
+                background: 'var(--dp-surface)',
               }}
             >
               <div>
-                <div style={{ fontWeight: 700, color: 'var(--title)', marginBottom: 6 }}>{row.tier}</div>
+                <div style={{ fontWeight: 700, color: 'var(--dp-text)', marginBottom: 6 }}>{row.tier}</div>
                 <div className="field-hint">{row.thresholdLabel}</div>
               </div>
               <label style={{ display: 'grid', gap: 6, margin: 0 }}>
@@ -1193,19 +1193,19 @@ export function ConfigurationsPage() {
   // ── Automation section ─────────────────────────────────────────────────────
   const renderAutomation = () => (
     <div className="config-section-body">
-      <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)', padding: '14px 16px', marginBottom: 12 }}>
+      <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface)', padding: '14px 16px', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Auto Close</span>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: policy.autoCloseEnabled ? 'color-mix(in srgb, var(--low) 15%, transparent)' : 'var(--surface)', color: policy.autoCloseEnabled ? 'var(--low)' : 'var(--muted)', border: `1px solid ${policy.autoCloseEnabled ? 'color-mix(in srgb, var(--low) 30%, transparent)' : 'var(--border)'}` }}>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: policy.autoCloseEnabled ? 'color-mix(in srgb, var(--dp-low) 15%, transparent)' : 'var(--dp-surface-2)', color: policy.autoCloseEnabled ? 'var(--dp-low)' : 'var(--dp-text-2)', border: `1px solid ${policy.autoCloseEnabled ? 'color-mix(in srgb, var(--dp-low) 30%, transparent)' : 'var(--dp-border)'}` }}>
             {policy.autoCloseEnabled ? 'Enabled' : 'Disabled'}
           </span>
         </div>
 
         <div className="form-grid ingestion-grid" style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--dp-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Enable Auto Close
             <select
-              style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)' }}
+              style={{ padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)' }}
               value={policy.autoCloseEnabled ? 'true' : 'false'}
               onChange={(e) => updatePolicy('autoCloseEnabled', e.target.value === 'true')}
             >
@@ -1213,45 +1213,45 @@ export function ConfigurationsPage() {
               <option value="true">Enabled</option>
             </select>
           </label>
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--dp-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Asset Scope (optional)
             <input
-              style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)' }}
+              style={{ padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)' }}
               value={policy.autoCloseAssetIdentifier ?? ''}
               onChange={(e) => updatePolicy('autoCloseAssetIdentifier', e.target.value)}
               placeholder="Blank applies to all assets"
             />
           </label>
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--dp-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Run Every (days)
             <input
               type="number" min={1} max={365}
-              style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)' }}
+              style={{ padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)' }}
               value={policy.autoCloseRunIntervalDays}
               onChange={(e) => updatePolicy('autoCloseRunIntervalDays', Number(e.target.value))}
             />
           </label>
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--dp-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Grace Period (days)
             <input
               type="number" min={0} max={365}
-              style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)' }}
+              style={{ padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)' }}
               value={policy.autoCloseAfterDays}
               onChange={(e) => updatePolicy('autoCloseAfterDays', Number(e.target.value))}
             />
           </label>
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--dp-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Required Missed Scans
             <input
               type="number" min={1} max={10}
-              style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)' }}
+              style={{ padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)' }}
               value={policy.autoCloseRequiredConsecutiveMisses}
               onChange={(e) => updatePolicy('autoCloseRequiredConsecutiveMisses', Number(e.target.value))}
             />
           </label>
         </div>
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dp-text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
           Lifecycle Triggers
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -1270,9 +1270,9 @@ export function ConfigurationsPage() {
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                 cursor: canEditRiskPolicy ? 'pointer' : 'default',
-                border: `1px solid ${checked ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'var(--border)'}`,
-                background: checked ? 'color-mix(in srgb, var(--accent) 10%, var(--panel))' : 'var(--panel)',
-                color: checked ? 'var(--accent)' : 'var(--muted)',
+                border: `1px solid ${checked ? 'color-mix(in srgb, var(--dp-accent) 40%, transparent)' : 'var(--dp-border)'}`,
+                background: checked ? 'color-mix(in srgb, var(--dp-accent) 10%, var(--dp-surface))' : 'var(--dp-surface)',
+                color: checked ? 'var(--dp-accent)' : 'var(--dp-text-2)',
                 transition: 'border-color 0.12s, background 0.12s, color 0.12s',
               }}
             >
@@ -1459,7 +1459,7 @@ export function ConfigurationsPage() {
         <div style={{ marginBottom: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
+              <tr style={{ borderBottom: '2px solid var(--dp-border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px 0' }}>Name</th>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px' }}>Condition</th>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px' }}>User Group</th>
@@ -1470,7 +1470,7 @@ export function ConfigurationsPage() {
             </thead>
             <tbody>
               {ownershipRules.map((rule) => (
-                <tr key={rule.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr key={rule.id} style={{ borderBottom: '1px solid var(--dp-border)' }}>
                   <td style={{ padding: '10px 8px 10px 0', fontWeight: 600 }}>{rule.name}</td>
                   <td style={{ padding: '10px 8px', color: 'var(--text-2)', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{formatOwnershipRuleCondition(rule)}</td>
                   <td style={{ padding: '10px 8px', color: 'var(--text-2)' }}>{rule.userGroup}</td>
@@ -1478,11 +1478,11 @@ export function ConfigurationsPage() {
                   <td style={{ padding: '10px 8px', color: 'var(--text-2)' }}>{formatInstant(rule.updatedAt)}</td>
                   <td style={{ padding: '10px 0', whiteSpace: 'nowrap', textAlign: 'right' }}>
                     <button type="button" className="btn-link" style={{ fontSize: '0.78rem', marginRight: 8 }} onClick={() => openOwnershipEdit(rule)}>Edit</button>
-                    <button type="button" className="btn-link" style={{ fontSize: '0.78rem', color: 'var(--critical)', marginRight: 8 }} onClick={() => deleteOwnershipRule(rule.id)}>Delete</button>
+                    <button type="button" className="btn-link" style={{ fontSize: '0.78rem', color: 'var(--dp-critical)', marginRight: 8 }} onClick={() => deleteOwnershipRule(rule.id)}>Delete</button>
                     <button
                       type="button"
                       className="btn-link"
-                      style={{ fontSize: '0.78rem', color: 'var(--accent)' }}
+                      style={{ fontSize: '0.78rem', color: 'var(--dp-accent)' }}
                       disabled={ownershipExecutingId === rule.id}
                       onClick={() => executeOwnershipRule(rule.id)}
                     >
@@ -1503,7 +1503,7 @@ export function ConfigurationsPage() {
       )}
 
       {ownershipShowForm ? (
-        <div style={{ background: 'var(--panel-muted)', border: '1px solid var(--border)', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+        <div style={{ background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)', borderRadius: 6, padding: 16, marginBottom: 16 }}>
           <div className="form-grid ingestion-grid" style={{ marginBottom: 12 }}>
             <label>Name *
               <input
@@ -1535,8 +1535,8 @@ export function ConfigurationsPage() {
                     maxHeight: 220,
                     overflowY: 'auto',
                     overscrollBehavior: 'contain',
-                    background: 'var(--bg)',
-                    border: '1px solid var(--border)',
+                    background: 'var(--dp-bg)',
+                    border: '1px solid var(--dp-border)',
                     borderRadius: 8,
                     boxShadow: '0 18px 36px rgba(15, 23, 42, 0.12)',
                     padding: 4,
@@ -1626,13 +1626,13 @@ export function ConfigurationsPage() {
                       gridTemplateColumns: '40px 130px 160px 110px minmax(120px, 1fr) 22px',
                       gap: 8,
                       alignItems: 'center',
-                      background: 'var(--panel-bg, var(--bg))',
-                      border: '1px solid var(--border)',
+                      background: 'var(--panel-bg, var(--dp-bg))',
+                      border: '1px solid var(--dp-border)',
                       borderRadius: 6,
                       padding: '8px 10px',
                     }}
                   >
-                    <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--accent)', minWidth: 30, textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--dp-accent)', minWidth: 30, textAlign: 'center' }}>
                       {index > 0 ? ownershipForm.conditionLogic : ''}
                     </span>
                     <select
@@ -1671,14 +1671,14 @@ export function ConfigurationsPage() {
                         placeholder="value"
                         value={cond.value}
                         onChange={(e) => updateOwnershipCondition(index, 'value', e.target.value)}
-                        style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--panel-bg, var(--bg))', fontSize: '0.8rem', padding: '7px 10px' }}
+                        style={{ width: '100%', border: '1px solid var(--dp-border)', borderRadius: 4, background: 'var(--panel-bg, var(--dp-bg))', fontSize: '0.8rem', padding: '7px 10px' }}
                       />
                     )}
                     {ownershipForm.conditions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeOwnershipCondition(index)}
-                        style={{ border: 'none', background: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
+                        style={{ border: 'none', background: 'none', color: 'var(--dp-critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}
                       >
                         ×
                       </button>
@@ -1730,7 +1730,7 @@ export function ConfigurationsPage() {
         {parsedFindingsColumns.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             {/* Header row */}
-            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0 6px', borderBottom: '2px solid var(--border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0 6px', borderBottom: '2px solid var(--dp-border)' }}>
               <span style={hdr}>Table</span>
               <span style={hdr}>Column</span>
               <span style={hdr}>Condition &amp; Weight</span>
@@ -1761,7 +1761,7 @@ export function ConfigurationsPage() {
                       )}
 
                       {/* Condition chip: [op] [val] [AND op2 val2] Weight: [w] [×] */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--panel-muted)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', width: 'fit-content' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)', borderRadius: 4, padding: '4px 10px', width: 'fit-content' }}>
                         {/* First bound */}
                         <select
                           value={vw.operator}
@@ -1788,7 +1788,7 @@ export function ConfigurationsPage() {
                             placeholder="value"
                             value={vw.value}
                             onChange={(e) => updateValueInColumn(ci, vi, 'value', e.target.value)}
-                            style={{ width: 86, border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
+                            style={{ width: 86, border: 'none', borderBottom: '1px solid var(--dp-border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
                             disabled={!canEditRiskPolicy}
                           />
                         )}
@@ -1810,7 +1810,7 @@ export function ConfigurationsPage() {
                               placeholder="value"
                               value={vw.value2 ?? ''}
                               onChange={(e) => updateValueInColumn(ci, vi, 'value2', e.target.value)}
-                              style={{ width: 72, border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
+                              style={{ width: 72, border: 'none', borderBottom: '1px solid var(--dp-border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
                               disabled={!canEditRiskPolicy}
                             />
                             {canEditRiskPolicy && (
@@ -1821,7 +1821,7 @@ export function ConfigurationsPage() {
                           <button
                             type="button"
                             onClick={() => addSecondBound(ci, vi)}
-                            style={{ border: 'none', background: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '0 2px' }}
+                            style={{ border: 'none', background: 'none', color: 'var(--dp-accent)', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '0 2px' }}
                           >+ and</button>
                         ))}
 
@@ -1834,24 +1834,24 @@ export function ConfigurationsPage() {
                           step={0.05}
                           value={vw.weight}
                           onChange={(e) => updateValueInColumn(ci, vi, 'weight', Math.min(1, Math.max(0, Number(e.target.value))))}
-                          style={{ width: 60, padding: '2px 5px', border: '1px solid var(--border)', borderRadius: 3, background: 'var(--panel-bg, var(--bg))', fontSize: '0.8rem', fontWeight: 600 }}
+                          style={{ width: 60, padding: '2px 5px', border: '1px solid var(--dp-border)', borderRadius: 3, background: 'var(--panel-bg, var(--dp-bg))', fontSize: '0.8rem', fontWeight: 600 }}
                           disabled={!canEditRiskPolicy}
                         />
 
                         {canEditRiskPolicy && (
-                          <button type="button" onClick={() => removeValueFromColumn(ci, vi)} style={{ border: 'none', background: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}>×</button>
+                          <button type="button" onClick={() => removeValueFromColumn(ci, vi)} style={{ border: 'none', background: 'none', color: 'var(--dp-critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}>×</button>
                         )}
                       </div>
 
                       {/* Remove column — only on first value row */}
                       {vi === 0 && canEditRiskPolicy ? (
-                        <button type="button" className="btn-link" onClick={() => removeFindingsColumn(ci)} style={{ color: 'var(--critical)', fontSize: '0.78rem' }}>Remove</button>
+                        <button type="button" className="btn-link" onClick={() => removeFindingsColumn(ci)} style={{ color: 'var(--dp-critical)', fontSize: '0.78rem' }}>Remove</button>
                       ) : <span />}
                     </div>
                   ))}
 
                   {/* + value row (below all value rows, no table/col labels) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '2px 0 10px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '2px 0 10px', borderBottom: '1px solid var(--dp-border)' }}>
                     <span /><span />
                     {canEditRiskPolicy && (
                       <button type="button" className="btn-link" onClick={() => addValueToColumn(ci)} style={{ fontSize: '0.78rem', textAlign: 'left' }}>+ value</button>
@@ -1865,7 +1865,7 @@ export function ConfigurationsPage() {
             {/* Total weight */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 0', fontSize: '0.83rem' }}>
               <span style={{ color: 'var(--text-2)' }}>Total weight:</span>
-              <span style={{ fontWeight: 700, color: weightOk ? 'var(--low)' : 'var(--medium)' }}>
+              <span style={{ fontWeight: 700, color: weightOk ? 'var(--dp-low)' : 'var(--dp-medium)' }}>
                 {totalFindingsWeight.toFixed(2)}{weightOk ? ' ✓' : ' ⚠ must equal 1.00'}
               </span>
               <span style={{ color: 'var(--text-2)', fontSize: '0.77rem' }}>· {parsedFindingsColumns.length}/10 columns</span>
@@ -1921,7 +1921,7 @@ export function ConfigurationsPage() {
             {recomputeInProgress ? 'Recalculating…' : 'Recalculate Findings'}
           </button>
           {recomputeMessage && (
-            <span className="field-hint" style={{ marginLeft: 10, color: recomputeMessage.includes('updated') ? 'var(--low)' : 'var(--critical)' }}>
+            <span className="field-hint" style={{ marginLeft: 10, color: recomputeMessage.includes('updated') ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
               {recomputeMessage}
             </span>
           )}
@@ -1992,7 +1992,7 @@ export function ConfigurationsPage() {
                     <>
                       <div
                         className="score-sim-badge"
-                        style={{ background: `color-mix(in srgb, ${color} 12%, var(--panel-muted))`, border: `1px solid color-mix(in srgb, ${color} 30%, var(--border))` }}
+                        style={{ background: `color-mix(in srgb, ${color} 12%, var(--dp-surface-2))`, border: `1px solid color-mix(in srgb, ${color} 30%, var(--dp-border))` }}
                       >
                         <div>
                           <div className="score-sim-badge-number" style={{ color }}>{score.toFixed(1)}</div>
@@ -2004,7 +2004,7 @@ export function ConfigurationsPage() {
                           <div key={lbl} className="score-breakdown-row">
                             <span className="score-breakdown-label">{lbl}</span>
                             <div className="score-breakdown-bar-bg">
-                              <div className="score-breakdown-bar-fill" style={{ width: `${Math.min(100, (val / maxVal) * 100)}%`, background: 'var(--accent)' }} />
+                              <div className="score-breakdown-bar-fill" style={{ width: `${Math.min(100, (val / maxVal) * 100)}%`, background: 'var(--dp-accent)' }} />
                             </div>
                             <span className="score-breakdown-value">{val.toFixed(2)}</span>
                           </div>
@@ -2221,11 +2221,11 @@ function formatInstant(iso?: string): string {
 
 function stateBadgeColor(state: string): string {
   switch (state) {
-    case 'APPROVED': return 'var(--low)';
-    case 'REJECTED': return 'var(--critical)';
-    case 'IN_REVIEW': return 'var(--medium)';
+    case 'APPROVED': return 'var(--dp-low)';
+    case 'REJECTED': return 'var(--dp-critical)';
+    case 'IN_REVIEW': return 'var(--dp-medium)';
     case 'EXPIRED': return 'var(--text-2)';
-    default: return 'var(--accent)';
+    default: return 'var(--dp-accent)';
   }
 }
 
@@ -2403,7 +2403,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
         <div style={{ marginBottom: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
+              <tr style={{ borderBottom: '2px solid var(--dp-border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px 0' }}>Name</th>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px' }}>Type</th>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px' }}>State</th>
@@ -2417,7 +2417,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
             <tbody>
               {rules.map((rule) => (
                 <React.Fragment key={rule.id}>
-                  <tr style={{ borderBottom: executeMsg[rule.id] ? 'none' : '1px solid var(--border)' }}>
+                  <tr style={{ borderBottom: executeMsg[rule.id] ? 'none' : '1px solid var(--dp-border)' }}>
                     <td style={{ padding: '6px 8px 6px 0', fontWeight: 600 }}>{rule.name}</td>
                     <td style={{ padding: '6px 8px' }}>{rule.recordType}</td>
                     <td style={{ padding: '6px 8px' }}>
@@ -2426,7 +2426,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
                     <td style={{ padding: '6px 8px', color: 'var(--text-2)' }}>{rule.conditionLogic}</td>
                     <td style={{ padding: '6px 8px', color: 'var(--text-2)' }}>{formatInstant(rule.validFrom)}</td>
                     <td style={{ padding: '6px 8px', color: 'var(--text-2)' }}>{formatInstant(rule.validTo)}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, color: rule.suppressedCount > 0 ? 'var(--medium)' : 'var(--text-2)' }}>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, color: rule.suppressedCount > 0 ? 'var(--dp-medium)' : 'var(--text-2)' }}>
                       {rule.suppressedCount}
                     </td>
                     <td style={{ padding: '6px 0', whiteSpace: 'nowrap', textAlign: 'right' }}>
@@ -2455,14 +2455,14 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
                             </button>
                           )}
                           <button type="button" className="btn-link" style={{ fontSize: '0.78rem', marginRight: 8 }} onClick={() => openEdit(rule)}>Edit</button>
-                          <button type="button" className="btn-link" style={{ fontSize: '0.78rem', color: 'var(--critical)' }} onClick={() => deleteRule(rule.id)}>Delete</button>
+                          <button type="button" className="btn-link" style={{ fontSize: '0.78rem', color: 'var(--dp-critical)' }} onClick={() => deleteRule(rule.id)}>Delete</button>
                         </>
                       )}
                     </td>
                   </tr>
                   {executeMsg[rule.id] && (
-                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td colSpan={8} style={{ padding: '2px 8px 6px 0', fontSize: '0.78rem', color: executeMsg[rule.id].includes('suppressed') ? 'var(--low)' : 'var(--critical)' }}>
+                    <tr style={{ borderBottom: '1px solid var(--dp-border)' }}>
+                      <td colSpan={8} style={{ padding: '2px 8px 6px 0', fontSize: '0.78rem', color: executeMsg[rule.id].includes('suppressed') ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
                         {executeMsg[rule.id]}
                       </td>
                     </tr>
@@ -2480,7 +2480,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
 
       {/* Form */}
       {showForm ? (
-        <div style={{ background: 'var(--panel-muted)', border: '1px solid var(--border)', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+        <div style={{ background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)', borderRadius: 6, padding: 16, marginBottom: 16 }}>
           <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 12 }}>
             {editingId ? 'Edit Suppression Rule' : 'New Suppression Rule'}
           </div>
@@ -2541,9 +2541,9 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
               const isBoolean = colType === 'boolean';
               const isNumeric = colType === 'numeric';
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, background: 'var(--panel-bg, var(--bg))', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 10px' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, background: 'var(--panel-bg, var(--dp-bg))', border: '1px solid var(--dp-border)', borderRadius: 4, padding: '6px 10px' }}>
                   {i > 0 && (
-                    <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--accent)', minWidth: 28, textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--dp-accent)', minWidth: 28, textAlign: 'center' }}>
                       {form.conditionLogic}
                     </span>
                   )}
@@ -2583,11 +2583,11 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
                       placeholder="value"
                       value={cond.value}
                       onChange={(e) => updateCondition(i, 'value', e.target.value)}
-                      style={{ width: 110, border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
+                      style={{ width: 110, border: 'none', borderBottom: '1px solid var(--dp-border)', background: 'transparent', fontSize: '0.8rem', outline: 'none' }}
                     />
                   )}
                   {conditions.length > 1 && (
-                    <button type="button" onClick={() => removeCondition(i)} style={{ border: 'none', background: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}>×</button>
+                    <button type="button" onClick={() => removeCondition(i)} style={{ border: 'none', background: 'none', color: 'var(--dp-critical)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}>×</button>
                   )}
                 </div>
               );
@@ -2607,7 +2607,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
                 placeholder="Explain why these records are being suppressed…"
                 rows={3}
-                style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: '0.82rem', padding: '6px 8px', background: 'var(--panel-bg, var(--bg))', border: '1px solid var(--border)', borderRadius: 4, color: 'inherit' }}
+                style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: '0.82rem', padding: '6px 8px', background: 'var(--panel-bg, var(--dp-bg))', border: '1px solid var(--dp-border)', borderRadius: 4, color: 'inherit' }}
               />
             </label>
           </div>
@@ -2618,7 +2618,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
             </button>
             <button type="button" className="btn btn-secondary" onClick={cancelForm} disabled={saving}>Close</button>
             {saveMsg && (
-              <span className="field-hint" style={{ marginLeft: 10, color: saveMsg === 'Saved' || saveMsg === 'Created' ? 'var(--low)' : 'var(--critical)' }}>
+              <span className="field-hint" style={{ marginLeft: 10, color: saveMsg === 'Saved' || saveMsg === 'Created' ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
                 {saveMsg}
               </span>
             )}
@@ -3249,13 +3249,13 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
     }
   };
 
-  const inputStyle: React.CSSProperties = { padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, color: 'var(--text)', background: 'var(--panel)', width: '100%', boxSizing: 'border-box' };
-  const sectionLabelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' };
+  const inputStyle: React.CSSProperties = { padding: '6px 10px', border: '1px solid var(--dp-border)', borderRadius: 6, fontSize: 13, color: 'var(--dp-text)', background: 'var(--dp-surface)', width: '100%', boxSizing: 'border-box' };
+  const sectionLabelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--dp-text-2)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' };
 
   return (
     <div>
       {rules.length === 0 && !showForm && (
-        <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
+        <p style={{ color: 'var(--dp-text-2)', fontSize: 13, marginBottom: 16 }}>
           No auto investigation rules configured. Rules run automatically when new CVEs are ingested or inventory is updated.
         </p>
       )}
@@ -3267,14 +3267,14 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
             const hasRun = rule.lastRunAt != null;
             return (
               <React.Fragment key={rule.id}>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)', padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface)', padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--title)' }}>{rule.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: rule.enabled ? 'color-mix(in srgb, var(--low) 15%, transparent)' : 'var(--surface)', color: rule.enabled ? 'var(--low)' : 'var(--muted)', border: `1px solid ${rule.enabled ? 'color-mix(in srgb, var(--low) 30%, transparent)' : 'var(--border)'}` }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--dp-text)' }}>{rule.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: rule.enabled ? 'color-mix(in srgb, var(--dp-low) 15%, transparent)' : 'var(--dp-surface-2)', color: rule.enabled ? 'var(--dp-low)' : 'var(--dp-text-2)', border: `1px solid ${rule.enabled ? 'color-mix(in srgb, var(--dp-low) 30%, transparent)' : 'var(--dp-border)'}` }}>
                       {rule.enabled ? 'Enabled' : 'Disabled'}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--dp-accent) 10%, transparent)', color: 'var(--dp-accent)', border: '1px solid color-mix(in srgb, var(--dp-accent) 25%, transparent)' }}>
                       {rule.investigate
                         ? (rule.createFindings
                           ? (rule.createServiceNowIncident ? 'Investigate + Findings + Incident' : 'Investigate + Findings')
@@ -3298,19 +3298,19 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
                       if (skipped > 0) parts.push(`${skipped} skipped`);
                       if (parts.length === 0) parts.push('0 created');
                       return (
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--low) 12%, transparent)', color: 'var(--low)', border: '1px solid color-mix(in srgb, var(--low) 28%, transparent)' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--dp-low) 12%, transparent)', color: 'var(--dp-low)', border: '1px solid color-mix(in srgb, var(--dp-low) 28%, transparent)' }}>
                           ✓ {parts.join(' · ')}
                         </span>
                       );
                     })()}
                     {isRunning && (
-                      <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>Running…</span>
+                      <span style={{ fontSize: 11, color: 'var(--dp-text-2)', fontStyle: 'italic' }}>Running…</span>
                     )}
                     {!isRunning && executeError[rule.id] && (
-                      <span style={{ fontSize: 11, color: 'var(--critical, #dc2626)' }}>⚠ {executeError[rule.id]}</span>
+                      <span style={{ fontSize: 11, color: 'var(--dp-critical)' }}>⚠ {executeError[rule.id]}</span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: 'var(--dp-text-2)' }}>
                     {rule.cveConditions.length > 0 && (
                       <span>CVE: {rule.cveConditions.map(c => `${CVE_COLUMNS.find(col => col.value === c.column)?.label ?? c.column} ${c.operator} ${c.value}`).join(' · ')}</span>
                     )}
@@ -3467,12 +3467,12 @@ function AutoFindingRuleForm({
     return acc;
   }, {});
 
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em' };
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--dp-text-2)', textTransform: 'uppercase', letterSpacing: '0.04em' };
   const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel)', padding: '16px 20px', marginBottom: 16 }}>
-      <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--title)' }}>
+    <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface)', padding: '16px 20px', marginBottom: 16 }}>
+      <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--dp-text)' }}>
         {isEdit ? 'Edit Rule' : 'New Auto Investigation Rule'}
       </h4>
 
@@ -3496,7 +3496,7 @@ function AutoFindingRuleForm({
                 const ops = operatorsFor(colDef);
                 return (
                   <div key={cond.id} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--title)', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--dp-text)', padding: '5px 8px', border: '1px solid var(--dp-border)', borderRadius: 5, background: 'var(--dp-surface-2)', whiteSpace: 'nowrap' }}>
                       {colDef.label}
                     </span>
                     {colDef.type !== 'boolean' && (
@@ -3523,7 +3523,7 @@ function AutoFindingRuleForm({
                         placeholder={colDef.type === 'number' ? '0' : 'value'} />
                     )}
                     <button type="button" onClick={() => removeCondition(cond.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, lineHeight: 1, padding: '4px 4px' }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dp-text-2)', fontSize: 16, lineHeight: 1, padding: '4px 4px' }}>
                       ×
                     </button>
                   </div>
@@ -3541,7 +3541,7 @@ function AutoFindingRuleForm({
             {colPickerOpen && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, zIndex: 200, marginTop: 4,
-                background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8,
+                background: 'var(--dp-surface)', border: '1px solid var(--dp-border)', borderRadius: 8,
                 boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, maxHeight: 320, overflowY: 'auto',
               }}>
                 {CVE_COLUMNS.map(col => {
@@ -3552,13 +3552,13 @@ function AutoFindingRuleForm({
                       onClick={() => addCondition(col)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px',
-                        background: alreadyAdded ? 'var(--surface)' : 'none', border: 'none', cursor: alreadyAdded ? 'default' : 'pointer',
-                        fontSize: 13, color: alreadyAdded ? 'var(--muted)' : 'var(--text)', textAlign: 'left',
+                        background: alreadyAdded ? 'var(--dp-surface-2)' : 'none', border: 'none', cursor: alreadyAdded ? 'default' : 'pointer',
+                        fontSize: 13, color: alreadyAdded ? 'var(--dp-text-2)' : 'var(--dp-text)', textAlign: 'left',
                       }}
-                      onMouseEnter={e => { if (!alreadyAdded) (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--accent) 10%, var(--panel))'; }}
+                      onMouseEnter={e => { if (!alreadyAdded) (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--dp-accent) 10%, var(--dp-surface))'; }}
                       onMouseLeave={e => { if (!alreadyAdded) (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
                     >
-                      {alreadyAdded && <span style={{ color: 'var(--accent)', fontSize: 12 }}>✓</span>}
+                      {alreadyAdded && <span style={{ color: 'var(--dp-accent)', fontSize: 12 }}>✓</span>}
                       {col.label}
                     </button>
                   );
@@ -3585,8 +3585,8 @@ function AutoFindingRuleForm({
                 })}
               />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--title)' }}>Run investigation</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Run assessment, false positive, EOL, and fix analysis before any findings are created.</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--dp-text)' }}>Run investigation</div>
+                <div style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 1 }}>Run assessment, false positive, EOL, and fix analysis before any findings are created.</div>
               </div>
             </label>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', padding: '4px 0' }}>
@@ -3601,8 +3601,8 @@ function AutoFindingRuleForm({
                 })}
               />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--title)' }}>Create findings</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Only create findings after the investigation finishes successfully.</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--dp-text)' }}>Create findings</div>
+                <div style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 1 }}>Only create findings after the investigation finishes successfully.</div>
               </div>
             </label>
           </div>
@@ -3617,8 +3617,8 @@ function AutoFindingRuleForm({
                     <input type="radio" name="findingType" value={type} checked={form.findingType === type}
                       onChange={() => setForm(p => ({ ...p, findingType: type }))} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--title)' }}>{type === 'CVE_ASSET' ? 'CVE + Asset' : 'CVE + Fix'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--dp-text)' }}>{type === 'CVE_ASSET' ? 'CVE + Asset' : 'CVE + Fix'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 1 }}>
                         {type === 'CVE_ASSET' ? 'One finding per matched asset. Tracks remediation by asset owner.' : 'One finding per available fix. Groups all affected assets under each patch.'}
                       </div>
                     </div>
@@ -3640,42 +3640,42 @@ function AutoFindingRuleForm({
                 </select>
               </div>
               {form.softwareScope === 'SPECIFIC' && (
-                <div style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', overflow: 'hidden' }}>
-                  <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', background: 'var(--panel)' }}>
+                <div style={{ marginTop: 8, border: '1px solid var(--dp-border)', borderRadius: 7, background: 'var(--dp-surface-2)', overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--dp-border)', background: 'var(--dp-surface)' }}>
                     <input style={{ ...inputStyle, margin: 0 }} placeholder="Search vendors or software…"
                       value={softwareSearch} onChange={e => setSoftwareSearch(e.target.value)} />
                   </div>
                   {form.selectedSoftware.length > 0 && (
-                    <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--dp-border)', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {form.selectedSoftware.map(s => (
-                        <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 12, fontSize: 11, fontWeight: 500, background: 'color-mix(in srgb, var(--accent) 12%, var(--panel))', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 28%, transparent)' }}>
+                        <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 12, fontSize: 11, fontWeight: 500, background: 'color-mix(in srgb, var(--dp-accent) 12%, var(--dp-surface))', color: 'var(--dp-accent)', border: '1px solid color-mix(in srgb, var(--dp-accent) 28%, transparent)' }}>
                           {s.name}
                           <button type="button" onClick={() => toggleSoftware(s)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dp-accent)', fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
                         </span>
                       ))}
                     </div>
                   )}
                   <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                     {softwareLoading ? (
-                      <p style={{ padding: '10px 14px', color: 'var(--muted)', fontSize: 13 }}>Loading software…</p>
+                      <p style={{ padding: '10px 14px', color: 'var(--dp-text-2)', fontSize: 13 }}>Loading software…</p>
                     ) : Object.keys(vendorGroups).length === 0 ? (
-                      <p style={{ padding: '10px 14px', color: 'var(--muted)', fontSize: 13 }}>No software found.</p>
+                      <p style={{ padding: '10px 14px', color: 'var(--dp-text-2)', fontSize: 13 }}>No software found.</p>
                     ) : (
                       Object.entries(vendorGroups).sort(([a], [b]) => a.localeCompare(b)).map(([vendor, items]) => (
                         <div key={vendor}>
-                          <div style={{ padding: '5px 10px 3px', fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ padding: '5px 10px 3px', fontSize: 10, fontWeight: 700, color: 'var(--dp-text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--dp-surface-2)', borderBottom: '1px solid var(--dp-border)' }}>
                             {vendor}
                           </div>
                           {items.map(item => {
                             const checked = form.selectedSoftware.some(s => s.id === item.id);
                             return (
-                              <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: checked ? 'color-mix(in srgb, var(--accent) 6%, var(--panel))' : 'var(--panel)', borderBottom: '1px solid var(--border)' }}
-                                onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLLabelElement).style.background = 'var(--surface)'; }}
-                                onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLLabelElement).style.background = 'var(--panel)'; }}
+                              <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', background: checked ? 'color-mix(in srgb, var(--dp-accent) 6%, var(--dp-surface))' : 'var(--dp-surface)', borderBottom: '1px solid var(--dp-border)' }}
+                                onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLLabelElement).style.background = 'var(--dp-surface-2)'; }}
+                                onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLLabelElement).style.background = 'var(--dp-surface)'; }}
                               >
                                 <input type="checkbox" checked={checked} onChange={() => toggleSoftware(item)} />
-                                <span style={{ fontSize: 13, color: 'var(--text)' }}>{item.name}</span>
+                                <span style={{ fontSize: 13, color: 'var(--dp-text)' }}>{item.name}</span>
                               </label>
                             );
                           })}
@@ -3719,13 +3719,13 @@ function AutoFindingRuleForm({
               value={form.scheduleHours ?? ''}
               onChange={e => setForm(p => ({ ...p, scheduleHours: e.target.value }))}
             />
-            <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Leave blank to run manually only</span>
+            <span style={{ fontSize: 11, color: 'var(--dp-text-2)', marginTop: 2 }}>Leave blank to run manually only</span>
           </div>
         </div>
       </div>
 
       {/* ── Full-width footer ── */}
-      <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 14 }}>
+      <div style={{ borderTop: '1px solid var(--dp-border)', marginTop: 16, paddingTop: 14 }}>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, cursor: 'pointer', padding: '4px 0' }}>
           <input
             type="checkbox"
@@ -3734,8 +3734,8 @@ function AutoFindingRuleForm({
             onChange={() => setForm(p => ({ ...p, createServiceNowIncident: !p.createServiceNowIncident }))}
           />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--title)' }}>Create ServiceNow incident</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Open a ServiceNow incident when the rule matches. If findings are also enabled, incidents are created after findings are created or reopened.</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--dp-text)' }}>Create ServiceNow incident</div>
+            <div style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 1 }}>Open a ServiceNow incident when the rule matches. If findings are also enabled, incidents are created after findings are created or reopened.</div>
           </div>
         </label>
 

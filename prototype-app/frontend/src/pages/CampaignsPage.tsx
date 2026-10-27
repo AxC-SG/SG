@@ -651,7 +651,7 @@ export function CampaignsPage() {
                                   <span>
                                     {rec.severity
                                       ? <span className={sevPill(rec.severity)} style={{ fontSize: 10 }}>{rec.severity}</span>
-                                      : <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span>}
+                                      : <span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span>}
                                   </span>
                                 </label>
                               );
@@ -711,7 +711,7 @@ export function CampaignsPage() {
                                     onChange={() => setWizardForm((f) => ({ ...f, selectedSoftwareIds: toggleSelection(f.selectedSoftwareIds, sw.id) }))} />
                                   <div>
                                     <span className="cd-cve-id" style={{ fontFamily: 'inherit' }}>{sw.displayName}</span>
-                                    {sw.vendor && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 6 }}>{sw.vendor}</span>}
+                                    {sw.vendor && <span style={{ fontSize: 11, color: 'var(--dp-text-2)', marginLeft: 6 }}>{sw.vendor}</span>}
                                   </div>
                                   <span className="cd-asset-col-cell" style={{ fontSize: 12 }}>{sw.assetCount}</span>
                                   <span className="cd-asset-col-cell" style={{ fontSize: 12 }}>{sw.openFindingCount}</span>
@@ -773,7 +773,7 @@ export function CampaignsPage() {
                                     onChange={() => setWizardForm((f) => ({ ...f, selectedAssetIds: toggleSelection(f.selectedAssetIds, a.identifier) }))} />
                                   <div>
                                     <span style={{ fontSize: 13, fontWeight: 600 }}>{a.name}</span>
-                                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 6 }}>{a.identifier}</span>
+                                    <span className="mono" style={{ fontSize: 11, color: 'var(--dp-text-2)', marginLeft: 6 }}>{a.identifier}</span>
                                   </div>
                                   <span className="cd-asset-col-cell" style={{ fontSize: 11 }}>{a.type || '—'}</span>
                                   <span className="cd-asset-col-cell" style={{ fontSize: 11 }}>{a.environment || '—'}</span>
@@ -797,7 +797,7 @@ export function CampaignsPage() {
                   <div className="cw-scope-sel-row">
                     {scopeSelectionCount() > 0
                       ? <span><strong>{scopeSelectionCount()}</strong> {wizardForm.scopeMode === 'cves' ? `CVE${scopeSelectionCount() !== 1 ? 's' : ''}` : wizardForm.scopeMode === 'software' ? `software item${scopeSelectionCount() !== 1 ? 's' : ''}` : `asset${scopeSelectionCount() !== 1 ? 's' : ''}`} selected</span>
-                      : <span style={{ color: 'var(--text-secondary)' }}>Nothing selected yet</span>}
+                      : <span style={{ color: 'var(--dp-text-2)' }}>Nothing selected yet</span>}
                   </div>
                 </div>
               )}
@@ -815,7 +815,7 @@ export function CampaignsPage() {
                         <button
                           type="button"
                           className="btn"
-                          style={{ fontSize: 13, background: 'var(--accent)', color: '#fff', padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                          style={{ fontSize: 13, background: 'var(--dp-accent)', color: '#fff', padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                           onClick={openWizardNotify}
                         >
                           ✉ Compose Notification
@@ -832,7 +832,7 @@ export function CampaignsPage() {
                       placeholder="Search groups…"
                       value={groupSearch}
                       onChange={(e) => setGroupSearch(e.target.value)}
-                      style={{ width: '100%', marginBottom: 10, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg, var(--panel))', color: 'var(--text-primary)', fontSize: 13 }}
+                      style={{ width: '100%', marginBottom: 10, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dp-border)', background: 'var(--dp-surface)', color: 'var(--dp-text)', fontSize: 13 }}
                     />
                     <div className="campaign-chip-grid">
                       {groupOptions.filter((g) => g.toLowerCase().includes(groupSearch.toLowerCase())).map((group) => (
@@ -848,7 +848,7 @@ export function CampaignsPage() {
                     </div>
                     {wizardForm.selectedGroups.length > 0 && (
                       <div style={{ marginTop: 8 }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        <span style={{ fontSize: 11, color: 'var(--dp-text-2)' }}>
                           {`${wizardForm.selectedGroups.length} group${wizardForm.selectedGroups.length !== 1 ? 's' : ''} selected`}
                         </span>
                       </div>
@@ -927,13 +927,13 @@ export function CampaignsPage() {
                       </div>
                     )}
                     {wizardForm.scopeMode !== 'cves' && (
-                      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 10 }}>
+                      <p style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 10 }}>
                         Software and asset scope can be managed in full from the campaign workspace after launch.
                       </p>
                     )}
                   </div>
                   <label className="full" htmlFor="campaign-launch-note">
-                    <span style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Launch Note <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(optional)</span></span>
+                    <span style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Launch Note <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span></span>
                     <textarea
                       id="campaign-launch-note"
                       className="cw-input cw-textarea"

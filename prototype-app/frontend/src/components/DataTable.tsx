@@ -6,7 +6,6 @@ import {
   type ColumnSizingState,
   type VisibilityState,
 } from '@tanstack/react-table';
-import './DataTable.css';
 
 export type DataTableColumn = {
   id: string;

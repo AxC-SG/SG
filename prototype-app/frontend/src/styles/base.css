@@ -1,6 +1,0 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-/* Explicit anchors preserve the original public/shared cascade until the final entry-point slice. */
-@import "./public-tokens.css";
-@import "./shared-before-public.css";
-@import "./public.css";
-@import "./shared-after-public.css";

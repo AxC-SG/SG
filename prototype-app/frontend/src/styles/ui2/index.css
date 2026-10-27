@@ -1,7 +1,6 @@
-/* UI 2.0 presentation layer. Every rule is scoped to html[data-ui='2'];
- * without that attribute (the default) the legacy UI renders unchanged. */
+/* App styles in deterministic precedence order; every app rule has a route boundary. */
 @import "./tokens.css";
-@import "./legacy-bridge.css";
+@import "./app-base.css";
 @import "./shell.css";
 @import "./primitives.css";
 @import "./experience-base.css";
@@ -16,3 +15,5 @@
 @import "./governance.css";
 @import "./connect.css";
 @import "./experience.css";
+@import "./tables.css";
+@import "@xyflow/react/dist/style.css";

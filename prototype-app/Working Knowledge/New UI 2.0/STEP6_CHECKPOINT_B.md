@@ -1,6 +1,6 @@
-# Step 6 checkpoint B — verified, final slice pending
+# Step 6 checkpoint B — verified before final slice
 
-The family slices and public extraction are complete locally. Checkpoint B is verified with the intended Intelligence geometry differences below. Stop here for the user, as required by STEP6_PROMPT.md. The final deterministic stylesheet entry point, version-switch removal and legacy-bridge removal have not started. Step 6 remains in progress; Step 8 must qualify the final tip.
+The family slices and public extraction are complete locally. Checkpoint B is verified with the intended Intelligence geometry differences below. The required stop was honored. The user authorized the final slice on 2026-10-27; its separate evidence is in STEP6_FINAL_MAP.md. Results below qualify checkpoint B only. Step 8 must qualify the final tip.
 
 ## Results
 

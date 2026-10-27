@@ -15,7 +15,7 @@ function BomTypeBadge({ type }: { type: string }) {
     AI_BOM: { color: '#0891b2', bg: 'color-mix(in srgb, #0891b2 12%, transparent)' },
     VENDOR: { color: '#059669', bg: 'color-mix(in srgb, #059669 12%, transparent)' },
   };
-  const { color, bg } = colorMap[type] ?? { color: 'var(--muted)', bg: 'var(--panel-muted)' };
+  const { color, bg } = colorMap[type] ?? { color: 'var(--dp-text-2)', bg: 'var(--dp-surface-2)' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', padding: '2px 8px',
@@ -50,13 +50,13 @@ function SeverityPill({ severity }: { severity: string | null }) {
 
 function RiskBarInline({ score, level }: { score: number; level: string }) {
   const colorMap: Record<string, string> = {
-    CRITICAL: 'var(--critical)', HIGH: 'var(--high)',
-    MEDIUM: '#d88f3d', LOW: 'var(--accent)', NONE: 'var(--muted)',
+    CRITICAL: 'var(--dp-critical)', HIGH: 'var(--dp-high)',
+    MEDIUM: '#d88f3d', LOW: 'var(--dp-accent)', NONE: 'var(--dp-text-2)',
   };
   const color = colorMap[level] ?? colorMap['NONE'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', minWidth: 60 }}>
+      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--dp-border)', overflow: 'hidden', minWidth: 60 }}>
         <div style={{ height: '100%', borderRadius: 999, width: `${Math.min(100, score * 10)}%`, background: color }} />
       </div>
       <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 28 }}>{score.toFixed(1)}</span>
@@ -66,8 +66,8 @@ function RiskBarInline({ score, level }: { score: number; level: string }) {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--muted)', paddingTop: 1 }}>
+    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--dp-border)' }}>
+      <span style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--dp-text-2)', paddingTop: 1 }}>
         {label}
       </span>
       <span style={{ fontSize: 13 }}>{children}</span>
@@ -78,7 +78,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function StatCard({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
   return (
     <div className="panel" style={{ padding: '12px 16px', textAlign: 'center', minWidth: 90 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--title)' }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--dp-text)' }}>{value}</div>
       <div className="panel-caption" style={{ fontSize: 10 }}>{label}</div>
     </div>
   );
@@ -94,7 +94,7 @@ function TabBar({ active, tabs, onSelect }: {
   onSelect: (t: Tab) => void;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
+    <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--dp-border)', marginBottom: 20 }}>
       {tabs.map(({ key, label }) => (
         <button
           key={key}
@@ -103,8 +103,8 @@ function TabBar({ active, tabs, onSelect }: {
           style={{
             padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
             fontSize: 13, fontWeight: active === key ? 700 : 500,
-            color: active === key ? 'var(--accent)' : 'var(--muted)',
-            borderBottom: active === key ? '2px solid var(--accent)' : '2px solid transparent',
+            color: active === key ? 'var(--dp-accent)' : 'var(--dp-text-2)',
+            borderBottom: active === key ? '2px solid var(--dp-accent)' : '2px solid transparent',
             marginBottom: -2,
           }}
         >
@@ -154,7 +154,7 @@ function OverviewTab({ app }: { app: ApplicationRiskSummary }) {
         <DetailRow label="Total components">{app.totalComponents}</DetailRow>
         <DetailRow label="Vulnerable">
           {app.vulnerableComponents > 0
-            ? <span style={{ fontWeight: 700, color: 'var(--high)' }}>{app.vulnerableComponents}</span>
+            ? <span style={{ fontWeight: 700, color: 'var(--dp-high)' }}>{app.vulnerableComponents}</span>
             : '0'}
         </DetailRow>
         <DetailRow label="EOL components">
@@ -164,12 +164,12 @@ function OverviewTab({ app }: { app: ApplicationRiskSummary }) {
         </DetailRow>
         <DetailRow label="Critical CVEs">
           {app.criticalCveCount > 0
-            ? <span style={{ fontWeight: 700, color: 'var(--critical)' }}>{app.criticalCveCount}</span>
+            ? <span style={{ fontWeight: 700, color: 'var(--dp-critical)' }}>{app.criticalCveCount}</span>
             : '0'}
         </DetailRow>
         <DetailRow label="High CVEs">
           {app.highCveCount > 0
-            ? <span style={{ fontWeight: 700, color: 'var(--high)' }}>{app.highCveCount}</span>
+            ? <span style={{ fontWeight: 700, color: 'var(--dp-high)' }}>{app.highCveCount}</span>
             : '0'}
         </DetailRow>
         <DetailRow label="Medium CVEs">{app.mediumCveCount}</DetailRow>
@@ -214,7 +214,7 @@ function DependsOnTab({ app }: { app: ApplicationRiskSummary }) {
     );
   }
   if (isError) {
-    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--critical)' }}>Failed to load components.</p></div>;
+    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--dp-critical)' }}>Failed to load components.</p></div>;
   }
 
   return (
@@ -222,7 +222,7 @@ function DependsOnTab({ app }: { app: ApplicationRiskSummary }) {
       {/* Summary bar */}
       <div style={{ display: 'flex', gap: 12 }}>
         <StatCard label="Total" value={appComponents.length} />
-        <StatCard label="Vulnerable" value={vulnerableCount} color={vulnerableCount > 0 ? 'var(--high)' : undefined} />
+        <StatCard label="Vulnerable" value={vulnerableCount} color={vulnerableCount > 0 ? 'var(--dp-high)' : undefined} />
         <StatCard label="EOL" value={eolCount} color={eolCount > 0 ? '#d88f3d' : undefined} />
       </div>
 
@@ -300,8 +300,8 @@ function DependsOnTab({ app }: { app: ApplicationRiskSummary }) {
                       {c.totalCveCount > 0 ? (
                         <div style={{ display: 'flex', gap: 4 }}>
                           <span style={{ fontWeight: 600 }}>{c.totalCveCount}</span>
-                          {c.criticalCveCount > 0 && <span style={{ color: 'var(--critical)', fontSize: 11 }}>{c.criticalCveCount}C</span>}
-                          {c.highCveCount > 0 && <span style={{ color: 'var(--high)', fontSize: 11 }}>{c.highCveCount}H</span>}
+                          {c.criticalCveCount > 0 && <span style={{ color: 'var(--dp-critical)', fontSize: 11 }}>{c.criticalCveCount}C</span>}
+                          {c.highCveCount > 0 && <span style={{ color: 'var(--dp-high)', fontSize: 11 }}>{c.highCveCount}H</span>}
                         </div>
                       ) : <span className="panel-caption">—</span>}
                     </td>
@@ -351,7 +351,7 @@ function VulnerabilitiesTab({ app }: { app: ApplicationRiskSummary }) {
     );
   }
   if (isError) {
-    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--critical)' }}>Failed to load vulnerabilities.</p></div>;
+    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--dp-critical)' }}>Failed to load vulnerabilities.</p></div>;
   }
 
   if (sorted.length === 0) {
@@ -365,8 +365,8 @@ function VulnerabilitiesTab({ app }: { app: ApplicationRiskSummary }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 12 }}>
-        <StatCard label="Critical" value={counts.CRITICAL} color={counts.CRITICAL > 0 ? 'var(--critical)' : undefined} />
-        <StatCard label="High"     value={counts.HIGH}     color={counts.HIGH > 0 ? 'var(--high)' : undefined} />
+        <StatCard label="Critical" value={counts.CRITICAL} color={counts.CRITICAL > 0 ? 'var(--dp-critical)' : undefined} />
+        <StatCard label="High"     value={counts.HIGH}     color={counts.HIGH > 0 ? 'var(--dp-high)' : undefined} />
         <StatCard label="Medium"   value={counts.MEDIUM}   color={counts.MEDIUM > 0 ? '#d88f3d' : undefined} />
         <StatCard label="Low"      value={counts.LOW} />
       </div>
@@ -392,7 +392,7 @@ function VulnerabilitiesTab({ app }: { app: ApplicationRiskSummary }) {
                       type="button"
                       className="mono"
                       onClick={() => navigate(`/vuln-repo/org-cves/${encodeURIComponent(c.externalId)}`)}
-                      style={{ fontWeight: 600, color: 'var(--accent)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ fontWeight: 600, color: 'var(--dp-accent)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
                     >
                       {c.externalId}
                     </button>
@@ -436,7 +436,7 @@ function FindingsTab({ app }: { app: ApplicationRiskSummary }) {
     );
   }
   if (isError) {
-    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--critical)' }}>Failed to load findings.</p></div>;
+    return <div className="panel" style={{ padding: 32 }}><p style={{ color: 'var(--dp-critical)' }}>Failed to load findings.</p></div>;
   }
   if (findings.length === 0) {
     return <div className="empty-state"><p>No findings for <strong>{app.assetName}</strong>.</p></div>;
@@ -606,9 +606,9 @@ export function ApplicationDetailPanel({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <StatCard label="Components"  value={app.totalComponents} />
-              <StatCard label="Vulnerable"  value={app.vulnerableComponents}  color={app.vulnerableComponents > 0 ? 'var(--high)' : undefined} />
+              <StatCard label="Vulnerable"  value={app.vulnerableComponents}  color={app.vulnerableComponents > 0 ? 'var(--dp-high)' : undefined} />
               <StatCard label="EOL"         value={app.eolComponents}          color={app.eolComponents > 0 ? '#d88f3d' : undefined} />
-              <StatCard label="CVEs"        value={app.totalCveCount}          color={app.totalCveCount > 0 ? 'var(--critical)' : undefined} />
+              <StatCard label="CVEs"        value={app.totalCveCount}          color={app.totalCveCount > 0 ? 'var(--dp-critical)' : undefined} />
             </div>
             {app.totalCveCount > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -621,7 +621,7 @@ export function ApplicationDetailPanel({
                   {createFindingsMutation.isPending ? 'Creating…' : 'Create Findings'}
                 </button>
                 {createMsg && (
-                  <span style={{ fontSize: 11, color: createFindingsMutation.isError ? 'var(--critical)' : 'var(--success, #16a34a)', maxWidth: 280, textAlign: 'right' }}>
+                  <span style={{ fontSize: 11, color: createFindingsMutation.isError ? 'var(--dp-critical)' : 'var(--dp-success)', maxWidth: 280, textAlign: 'right' }}>
                     {createMsg}
                   </span>
                 )}

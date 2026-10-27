@@ -1,5 +1,4 @@
 import React from 'react';
-import './platform-feed-catalog.css';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, ArrowUpRight, CalendarDays, BookOpen, FileText, Globe, Monitor, PackageSearch, Search, Shield, TrendingUp } from 'lucide-react';

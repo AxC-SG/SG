@@ -35,7 +35,7 @@ function BomTypeTag({ type }: { type: string }) {
     SBOM: '#2563eb', AI_BOM: '#0891b2', CBOM: '#7c3aed', VENDOR: '#059669',
   };
   const label = type === 'AI_BOM' ? 'AI BOM' : type;
-  const color = colors[type] ?? 'var(--muted)';
+  const color = colors[type] ?? 'var(--dp-text-2)';
   return (
     <span style={{
       display: 'inline-flex', padding: '2px 7px', borderRadius: 999,
@@ -80,7 +80,7 @@ function TabBar({ active, tabs, onSelect }: {
   onSelect: (t: Tab) => void;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
+    <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--dp-border)', marginBottom: 20 }}>
       {tabs.map(({ key, label }) => (
         <button
           key={key}
@@ -89,8 +89,8 @@ function TabBar({ active, tabs, onSelect }: {
           style={{
             padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer',
             fontSize: 13, fontWeight: active === key ? 700 : 500,
-            color: active === key ? 'var(--accent)' : 'var(--muted)',
-            borderBottom: active === key ? '2px solid var(--accent)' : '2px solid transparent',
+            color: active === key ? 'var(--dp-accent)' : 'var(--dp-text-2)',
+            borderBottom: active === key ? '2px solid var(--dp-accent)' : '2px solid transparent',
             marginBottom: -2,
           }}
         >
@@ -105,8 +105,8 @@ function TabBar({ active, tabs, onSelect }: {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--muted)', paddingTop: 1 }}>
+    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--dp-border)' }}>
+      <span style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--dp-text-2)', paddingTop: 1 }}>
         {label}
       </span>
       <span style={{ fontSize: 13 }}>{children}</span>
@@ -119,7 +119,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function StatCard({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
   return (
     <div className="panel" style={{ padding: '12px 16px', textAlign: 'center', minWidth: 90 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--title)' }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--dp-text)' }}>{value}</div>
       <div className="panel-caption" style={{ fontSize: 10 }}>{label}</div>
     </div>
   );
@@ -180,23 +180,23 @@ function CveBar({ critical, high, medium, low, total }: {
   if (total === 0) return <span className="panel-caption">—</span>;
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-      {critical > 0 && <span style={{ fontWeight: 700, color: 'var(--critical)', fontSize: 12 }}>{critical}C</span>}
-      {high > 0     && <span style={{ fontWeight: 700, color: 'var(--high)',     fontSize: 12 }}>{high}H</span>}
+      {critical > 0 && <span style={{ fontWeight: 700, color: 'var(--dp-critical)', fontSize: 12 }}>{critical}C</span>}
+      {high > 0     && <span style={{ fontWeight: 700, color: 'var(--dp-high)',     fontSize: 12 }}>{high}H</span>}
       {medium > 0   && <span style={{ fontWeight: 700, color: '#d88f3d',         fontSize: 12 }}>{medium}M</span>}
-      {low > 0      && <span style={{ fontWeight: 700, color: 'var(--muted)',     fontSize: 12 }}>{low}L</span>}
+      {low > 0      && <span style={{ fontWeight: 700, color: 'var(--dp-text-2)',     fontSize: 12 }}>{low}L</span>}
     </div>
   );
 }
 
 function RiskBar({ score, level }: { score: number; level: string }) {
-  const color = level === 'CRITICAL' ? 'var(--critical)'
-    : level === 'HIGH' ? 'var(--high)'
+  const color = level === 'CRITICAL' ? 'var(--dp-critical)'
+    : level === 'HIGH' ? 'var(--dp-high)'
     : level === 'MEDIUM' ? '#d88f3d'
-    : level === 'LOW' ? 'var(--accent)'
-    : 'var(--border)';
+    : level === 'LOW' ? 'var(--dp-accent)'
+    : 'var(--dp-border)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', minWidth: 60 }}>
+      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--dp-border)', overflow: 'hidden', minWidth: 60 }}>
         <div style={{ height: '100%', borderRadius: 999, width: `${Math.min(100, score * 10)}%`, background: color }} />
       </div>
       <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 30 }}>{score.toFixed(1)}</span>
@@ -231,7 +231,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
   if (isError) {
     return (
       <div className="panel" style={{ padding: 32 }}>
-        <p style={{ color: 'var(--critical)' }}>Could not load application details.</p>
+        <p style={{ color: 'var(--dp-critical)' }}>Could not load application details.</p>
       </div>
     );
   }
@@ -270,8 +270,8 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
       <div className="panel">
         {/* Selection toolbar */}
         {selectedAssetIds.size > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'color-mix(in srgb, var(--accent) 6%, transparent)' }}>
-            <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid var(--dp-border)', background: 'color-mix(in srgb, var(--dp-accent) 6%, transparent)' }}>
+            <span style={{ fontSize: 13, color: 'var(--dp-accent)', fontWeight: 600 }}>
               {selectedAssetIds.size} application{selectedAssetIds.size !== 1 ? 's' : ''} selected
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -298,7 +298,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                    style={{ cursor: 'pointer', accentColor: 'var(--dp-accent)' }}
                     title="Select all"
                   />
                 </th>
@@ -320,7 +320,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                   style={{
                     cursor: 'pointer',
                     background: selectedAssetIds.has(row.assetId)
-                      ? 'color-mix(in srgb, var(--accent) 6%, transparent)'
+                      ? 'color-mix(in srgb, var(--dp-accent) 6%, transparent)'
                       : undefined,
                   }}
                   onClick={() => toggleRow(row.assetId)}
@@ -330,12 +330,12 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                       type="checkbox"
                       checked={selectedAssetIds.has(row.assetId)}
                       onChange={() => toggleRow(row.assetId)}
-                      style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      style={{ cursor: 'pointer', accentColor: 'var(--dp-accent)' }}
                     />
                   </td>
                   <td>
                     <div
-                      style={{ fontWeight: 600, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer' }}
+                      style={{ fontWeight: 600, color: 'var(--dp-accent)', textDecoration: 'underline', cursor: 'pointer' }}
                       onClick={e => { e.stopPropagation(); onSelectApp?.(row); }}
                     >{row.assetName}</div>
                     <div className="mono panel-caption" style={{ fontSize: 10 }}>{row.assetIdentifier}</div>
@@ -353,7 +353,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                   <td style={{ fontWeight: 600 }}>{row.totalComponents}</td>
                   <td>
                     {row.vulnerableComponents > 0
-                      ? <span style={{ fontWeight: 700, color: 'var(--high)' }}>{row.vulnerableComponents}</span>
+                      ? <span style={{ fontWeight: 700, color: 'var(--dp-high)' }}>{row.vulnerableComponents}</span>
                       : <span className="panel-caption">0</span>}
                   </td>
                   <td>
@@ -432,7 +432,7 @@ function VulnerabilitiesTab({ d }: { d: BomComponentDetail }) {
               style={{ cursor: 'pointer' }}
               onClick={() => navigate(pathForVulnRepoView('org-cves', cve.externalId))}
             >
-              <td className="mono" style={{ fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--accent)', textDecoration: 'underline' }}>{cve.externalId}</td>
+              <td className="mono" style={{ fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--dp-accent)', textDecoration: 'underline' }}>{cve.externalId}</td>
               <td><SeverityPill severity={cve.severity} /></td>
               <td>{cve.cvssScore != null ? cve.cvssScore.toFixed(1) : '—'}</td>
               <td>{cve.epssScore != null ? `${(cve.epssScore * 100).toFixed(2)}%` : '—'}</td>
@@ -486,7 +486,7 @@ function LifecycleTab({ d }: { d: BomComponentDetail }) {
         </thead>
         <tbody>
           {d.eolReleases.map(r => (
-            <tr key={r.cycle} style={r.cycle === d.eolCycle ? { background: 'color-mix(in srgb, var(--accent) 8%, transparent)' } : {}}>
+            <tr key={r.cycle} style={r.cycle === d.eolCycle ? { background: 'color-mix(in srgb, var(--dp-accent) 8%, transparent)' } : {}}>
               <td style={{ fontWeight: r.cycle === d.eolCycle ? 700 : 500 }}>
                 {r.cycle}
                 {r.cycle === d.eolCycle && (
@@ -541,7 +541,7 @@ function FindingsTab({ d, onCountLoaded }: { d: BomComponentDetail; onCountLoade
   if (isError) {
     return (
       <div className="panel" style={{ padding: 32 }}>
-        <p style={{ color: 'var(--critical)' }}>Failed to load findings.</p>
+        <p style={{ color: 'var(--dp-critical)' }}>Failed to load findings.</p>
       </div>
     );
   }
@@ -587,7 +587,7 @@ function FindingsTab({ d, onCountLoaded }: { d: BomComponentDetail; onCountLoade
                   <Link
                     to={pathForFindingDetail(f.displayId || f.id)}
                     state={{ finding: f }}
-                    style={{ color: 'var(--accent)', textDecoration: 'underline' }}
+                    style={{ color: 'var(--dp-accent)', textDecoration: 'underline' }}
                     onClick={e => e.stopPropagation()}
                   >
                     {f.displayId}
@@ -730,7 +730,7 @@ function FindingConfigModal({
         <div className="cve-findings-modal-header">
           <div>
             <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700 }}>Create Findings</h3>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--dp-text-2)' }}>
               Configure scope and metadata for <strong>{d.packageName}</strong>.
             </p>
           </div>
@@ -739,14 +739,14 @@ function FindingConfigModal({
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: 'color-mix(in srgb, var(--critical) 10%, transparent)',
+              background: 'color-mix(in srgb, var(--dp-critical) 10%, transparent)',
               border: 'none',
               borderRadius: 8,
               width: 32,
               height: 32,
               cursor: 'pointer',
               fontSize: 16,
-              color: 'var(--critical)',
+              color: 'var(--dp-critical)',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
@@ -767,13 +767,13 @@ function FindingConfigModal({
           {selectedApps && selectedApps.length > 0 && (
             <div>
               <div className="cw-label" style={{ marginBottom: 8 }}>Applications in scope</div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--panel)' }}>
+              <div style={{ border: '1px solid var(--dp-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--dp-surface)' }}>
                 {selectedApps.map((a, i) => (
                   <div
                     key={a.assetId}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
-                      borderBottom: i < selectedApps.length - 1 ? '1px solid var(--border)' : 'none',
+                      borderBottom: i < selectedApps.length - 1 ? '1px solid var(--dp-border)' : 'none',
                     }}
                   >
                     <div style={{ flex: 1 }}>
@@ -820,16 +820,16 @@ function FindingConfigModal({
           {sortedCves.length > 0 && (
             <div>
               <div className="cw-label" style={{ marginBottom: 8 }}>CVEs — all selected by default</div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--panel)' }}>
+              <div style={{ border: '1px solid var(--dp-border)', borderRadius: 10, overflow: 'hidden', background: 'var(--dp-surface)' }}>
                 {sortedCves.map((cve, i) => (
                   <label
                     key={cve.externalId}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
                       cursor: 'pointer',
-                      borderBottom: i < sortedCves.length - 1 ? '1px solid var(--border)' : 'none',
+                      borderBottom: i < sortedCves.length - 1 ? '1px solid var(--dp-border)' : 'none',
                       background: selectedCveIds.has(cve.externalId)
-                        ? 'color-mix(in srgb, var(--accent) 6%, transparent)'
+                        ? 'color-mix(in srgb, var(--dp-accent) 6%, transparent)'
                         : 'transparent',
                     }}
                   >
@@ -837,7 +837,7 @@ function FindingConfigModal({
                       type="checkbox"
                       checked={selectedCveIds.has(cve.externalId)}
                       onChange={() => toggleCve(cve.externalId)}
-                      style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      style={{ cursor: 'pointer', accentColor: 'var(--dp-accent)' }}
                     />
                     <span className="mono" style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>{cve.externalId}</span>
                     <SeverityPill severity={cve.severity} />
@@ -884,9 +884,9 @@ function FindingConfigModal({
 function HeaderStats({ d }: { d: BomComponentDetail }) {
   return (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-      <StatCard label="Total CVEs"   value={d.totalCveCount}    color={d.totalCveCount > 0 ? 'var(--title)' : undefined} />
-      <StatCard label="Critical"     value={d.criticalCveCount} color={d.criticalCveCount > 0 ? 'var(--critical)' : undefined} />
-      <StatCard label="High"         value={d.highCveCount}     color={d.highCveCount > 0 ? 'var(--high)' : undefined} />
+      <StatCard label="Total CVEs"   value={d.totalCveCount}    color={d.totalCveCount > 0 ? 'var(--dp-text)' : undefined} />
+      <StatCard label="Critical"     value={d.criticalCveCount} color={d.criticalCveCount > 0 ? 'var(--dp-critical)' : undefined} />
+      <StatCard label="High"         value={d.highCveCount}     color={d.highCveCount > 0 ? 'var(--dp-high)' : undefined} />
       <StatCard label="EOL Releases" value={d.eolReleases.length} />
     </div>
   );
@@ -948,7 +948,7 @@ export function BomComponentDetailPanel({
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
               <h2 style={{ margin: 0, fontSize: 22 }}>{seed.packageName}</h2>
               {seed.version && (
-                <span style={{ fontSize: 16, color: 'var(--muted)', fontWeight: 400 }}>{seed.version}</span>
+                <span style={{ fontSize: 16, color: 'var(--dp-text-2)', fontWeight: 400 }}>{seed.version}</span>
               )}
               <RiskPill level={seed.riskLevel} />
             </div>
@@ -971,13 +971,13 @@ export function BomComponentDetailPanel({
 
       {/* Loading / error for detail fetch */}
       {isPending && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dp-text-2)', fontSize: 13, marginBottom: 12 }}>
           <div className="loading-spinner" style={{ width: 14, height: 14 }} />
           Loading details…
         </div>
       )}
       {isError && (
-        <div style={{ color: 'var(--critical)', fontSize: 13, marginBottom: 12 }}>
+        <div style={{ color: 'var(--dp-critical)', fontSize: 13, marginBottom: 12 }}>
           Failed to load component details.
         </div>
       )}
