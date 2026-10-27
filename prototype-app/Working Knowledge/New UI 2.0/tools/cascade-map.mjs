@@ -1,5 +1,5 @@
 // Read-only cascade map in effective load order.
-// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance]
+// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings|cve|inventory|governance|connect]
 // Findings mode includes its shared base primitives. Media/state reachability and compound
 // selector matching still need review; this static map is not a browser cascade proof.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,14 +8,14 @@ import { createRequire } from 'node:module';
 
 const fe = process.argv[2];
 const family = process.argv[4] ?? 'foundation';
-if (!['foundation', 'findings', 'cve', 'inventory', 'governance'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
+if (!['foundation', 'findings', 'cve', 'inventory', 'governance', 'connect'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
 const require = createRequire(join(fe, 'package.json'));
 const postcss = require('postcss');
 
 const S = 'src/styles/';
 const main = ['base', 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
   .map((n) => `${S}${n}.css`)
-  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'inventory-base', 'findings-base', 'cve-base', 'governance-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
+  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'inventory-base', 'findings-base', 'cve-base', 'governance-base', 'connect-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('-base.css') || existsSync(join(fe, file))))
   .concat([`${S}finding-detail.css`, `${S}ai-security.css`]);
 const lazy = ['src/components/DataTable.css', `${S}findings-list.css`, 'src/pages/platform-feed-catalog.css', 'node_modules/@xyflow/react/dist/style.css'];
 const order = [...main, ...lazy];
@@ -25,6 +25,7 @@ const focusSheets = {
   cve: ['cve-base', 'cve'],
   inventory: ['inventory-base', 'inventory'],
   governance: ['governance-base', 'governance'],
+  connect: ['connect-base', 'connect'],
 };
 const foundation = new Set(focusSheets[family].map((n) => `${S}ui2/${n}.css`));
 // Match the leading owned class only; Inventory/dashboard ancestor contexts stay with
@@ -49,6 +50,16 @@ const governanceOwnership = {
   'shared.css': /^\.platform-console-/,
   'user-management.css': /^\.(?:user-management-page\b|um-)/,
   'ai-security.css': /^\.(?:ai-policy-|platform-ai-policy-|platform-policy-|policy-|ai-security-)/,
+};
+
+const connectOwnership = {
+  'base.css': /^\.(?:connect-|config-|triage-|score-sim|score-breakdown|source-focus-|sync-danger-|connector-status-|source-filter-|nvd-overview|nvd-api-|filter-unsaved)/,
+  'shared.css': /^\.(?:connect-filter-|wizard-|pipeline-|danger-zone|connector-|field-hint|advanced-vex|ingestion-grid|form-section|aws-region-|secure-input)/,
+  'cve-workbench.css': /^\.(?:connect-|connector-)/,
+  'connect.css': /./,
+  'eol.css': /^\.(?:source-focus-|sync-danger-|connector-status-|source-filter-)/,
+  'ai-security.css': /./,
+  'src/pages/platform-feed-catalog.css': /./,
 };
 
 function split(list) {
@@ -139,7 +150,8 @@ const colours = fRules.filter((r) => !r.file.endsWith('tokens.css')).flatMap((r)
 
 const ownership = family === 'cve' ? rules.filter((r) => cveSources.includes(r.file) && (cveRoot.test(r.sel) || cveVulnRepo.test(r.sel)))
   : family === 'inventory' ? rules.filter((r) => inventoryOwnership[r.file.replace(S, '')]?.test(r.sel))
-  : family === 'governance' ? rules.filter((r) => governanceOwnership[r.file.replace(S, '')]?.test(r.sel)) : [];
+  : family === 'governance' ? rules.filter((r) => governanceOwnership[r.file.replace(S, '')]?.test(r.sel))
+  : family === 'connect' ? rules.filter((r) => connectOwnership[r.file.replace(S, '')]?.test(r.sel)) : [];
 const result = { family, order: { main, lazy }, focus: [...foundation], ownership, counts: { foundationRules: fRules.length, ownedLegacySelectorEntries: ownership.length }, losses: out, varRedefs, dupes, colours };
 writeFileSync(process.argv[3], JSON.stringify(result, null, 1));
 const by = (k) => out.reduce((m, x) => ((m[x[k]] = (m[x[k]] || 0) + 1), m), {});

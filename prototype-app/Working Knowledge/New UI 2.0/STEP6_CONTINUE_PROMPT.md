@@ -13,3 +13,6 @@ Long checks are deferred by the recorded `checkDeferral`: run checkpoint B after
 No push, remote merge or deploy without explicit approval for that action. AxG-SG/SG is the only GitHub repo; push only by URL to `https://github.com/AxG-SG/SG.git` and do not change remotes. Workflow edits require an exact diff and approval first. Do not change APIs, auth, tenant scoping, database schemas or migrations. Do not use customer data, reset databases, or deliver externally except to approved test endpoints. Verify the disposable backend identity before any live run and never print credentials. Use `caffeinate -ims` for long runs.
 
 Preserve the existing deletion of `prototype-app/Working Knowledge/scout-ui-design-mockup.html` and leave the user's untracked `UI2-Final-Implementation-Plan.md` and `Scout_Normalisation_and_Correlation.pdf` untouched. Keep the logged unrelated defects open. Continue the next family only when authorized; stop at every gate.
+
+
+Latest continuation: Verified connect fast gate. Next: Experience. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged. Read STEP6_CONNECT_MAP.md and the latest S6 fastGate for exact tested commit/tree and evidence.

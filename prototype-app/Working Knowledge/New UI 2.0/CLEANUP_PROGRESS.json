@@ -1493,12 +1493,82 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-governance",
       "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "342c8be7f0935d2f37e048cb49442cb7518aa6ba"
+    },
+    {
+     "title": "Connect: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "342c8be7f0935d2f37e048cb49442cb7518aa6ba",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/pages/platform-feed-catalog.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/connect.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/ui2/connect-base.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONNECT_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md"
+     ],
+     "ownershipMap": "STEP6_CONNECT_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-connect",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Connect base follows Governance base and precedes presentation sheets. Shared provider/configuration controls retain their consumers; the feed catalog is eager. Connector reveal uses private ui2-connect-reveal; original reduced-motion state is preserved.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 371 rules; consolidated 5 identical declaration repeats and 3 adjacent identical blocks.",
+      "Static verifier: 1341 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 783 passed / 0 failed / 0 skipped in 84 files, including 27 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "6089638c3bdafbb34ec73e7d57684b0f86a7b328",
+      "testedFrontendTree": "c57a0fa14626f854eceb7b91c9a566edc717842b",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 783,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 27
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-connect",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
      }
     }
    ]
   }
  ],
- "nextUnit": "Stopped at the verified Governance slice gate. Next: Connect per STEP6_PROMPT family order, only when authorized, beginning with its cascade/ownership map; then Experience and public. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
+ "nextUnit": "Verified connect fast gate. Next: Experience. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

@@ -102,7 +102,7 @@ describe('UI 2.0 stylesheet scope', () => {
   // rule after primitives), so it is part of each sheet's ownership.
   it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './findings.css', './cve.css', './inventory.css',
+    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
       './governance.css', './connect.css', './experience.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
@@ -111,7 +111,7 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith(['./inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css'].includes(file)
+      selectors(css).filter((selector) => !selector.startsWith(['./inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css'].includes(file)
         ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
   });
@@ -185,7 +185,7 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(legacy('finding-detail.css')).toEqual([]);
     expect(legacy('base.css').filter((selector) => /^\.(?:inventory-(?!(?:nav|flyout)(?:-|\b))|host-|software-|sdi-|si-|bom-inventory-|upgrade-|ai-asset-)/.test(selector))).toEqual([]);
     expect(legacy('base.css')).toContain('.inventory-flyout');
-    expect(legacy('eol.css')).toContain('.source-focus-hero');
+    expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .source-focus-hero");
     expect(legacy('eol.css')).toContain('.filter-input');
     expect(legacy('eol.css').filter((selector) => /^\.(?:eol-|quality-|slug-suggest-)/.test(selector))).toEqual([]);
     expect(selectors(sheets['./governance-base.css'])).toContain(":where(html[data-ui='2']) .ai-security-hero.policies");
@@ -213,10 +213,27 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(legacy('shared.css').filter((selector) => selector.startsWith('.platform-console-'))).toEqual([]);
     expect(legacy('shared.css')).toContain('.platform-ops-space');
     expect(legacy('ai-security.css').filter((selector) => /^\.(?:ai-policy-|platform-ai-policy-|platform-policy-|policy-|ai-security-)/.test(selector))).toEqual([]);
-    expect(legacy('ai-security.css')).toContain('.ai-connector-layout');
-    expect(legacy('ai-security.css')).toContain('.ai-run-list');
-    expect(legacy('ai-security.css')).toContain('.ai-scope-list');
+    expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .ai-connector-layout");
+    expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .ai-run-list");
+    expect(selectors(sheets['./connect-base.css'])).toContain(":where(html[data-ui='2']) .ai-scope-list");
     expect(selectors(sheets['./governance-base.css']).filter((selector) => /\.ai-connector-|\.ai-run-|\.ai-scope-|\.platform-ops-/.test(selector))).toEqual([]);
+  });
+
+  it('loads Connect provider, configuration and feed controls eagerly inside the app boundary', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./connect-base.css', prefix + '.ai-connector-layout').animation).toBe('ui2-connect-reveal 360ms ease-out both');
+    expect(declared('./connect-base.css', prefix + '.sn-health-bar').display).toBe('grid');
+    expect(declared('./connect-base.css', prefix + '.platform-feed-search:focus-within').outline).toBe('2px solid var(--accent)');
+    expect(declared('./connect-base.css', prefix + '.sn-check-fail').color).toBe('var(--critical)');
+  });
+
+  it('retires Connect legacy sheets without consuming the remaining shared controls', () => {
+    const legacy = (name: string) => rules(readFileSync(join(directory, '..', name), 'utf8'));
+    expect(legacy('connect.css')).toEqual([]);
+    expect(legacy('ai-security.css')).toEqual([]);
+    expect(rules(readFileSync(join(directory, '..', '..', 'pages', 'platform-feed-catalog.css'), 'utf8'))).toEqual([]);
+    expect(legacy('eol.css').flatMap((rule) => rule.selectors)).toContain('.filter-input');
+    expect(sheets['./connect-base.css']).not.toMatch(/animation:\s*ai-security-reveal/);
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {

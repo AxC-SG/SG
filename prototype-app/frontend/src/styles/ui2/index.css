@@ -8,6 +8,7 @@
 @import "./findings-base.css";
 @import "./cve-base.css";
 @import "./governance-base.css";
+@import "./connect-base.css";
 @import "./findings.css";
 @import "./cve.css";
 @import "./inventory.css";

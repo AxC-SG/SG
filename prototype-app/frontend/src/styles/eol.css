@@ -1,27 +1,6 @@
 /* Shared filters, chips and connector responsive rules retained for their owners.
  * Lifecycle/quality defaults are owned by ui2/inventory-base.css.
  * This shared import remains until the final stylesheet entry-point slice. */
-@media (max-width: 900px) {
-  .source-focus-hero,
-  .connector-status-grid,
-  .sync-danger-card {
-    grid-template-columns: 1fr;
-  }
-
-  .source-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .source-focus-hero-actions,
-  .sync-danger-actions {
-    justify-items: stretch;
-  }
-
-  .source-focus-hero-actions .btn,
-  .sync-danger-actions .btn {
-    width: 100%;
-  }
-}
 .filter-row {
   display: flex;
   flex-wrap: wrap;
