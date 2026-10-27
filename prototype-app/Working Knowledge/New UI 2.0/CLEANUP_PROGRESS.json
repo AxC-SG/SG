@@ -1707,12 +1707,68 @@
        "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-attempt-1",
        "fastLogs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-public/fast-attempt-1"
       }
-     ]
+     ],
+     "commit": "3c3e66957b4f72aa414374429ab9ee7a35474a49"
+    },
+    {
+     "title": "Checkpoint B: preserve Inventory semantic bar colours after base retirement",
+     "status": "verified",
+     "startingCommit": "3c3e66957b4f72aa414374429ab9ee7a35474a49",
+     "files": [
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md"
+     ],
+     "ownershipMap": "Existing Inventory ownership/order; before/after maps in /private/tmp/sg-ui2-step6.QsSmLw/gate-inventory-colours/",
+     "evidence": [
+      "Focused browser comparison against a scratch UI 2 build of the original 68a4a3bc source identified three Inventory bar variants overridden by the later shared fpl-hbar-fill accent background.",
+      "Explicit combined semantic/fill selectors retain the original success var(--low), warning var(--warning), and muted colour-mix values for every app consumer. No colour redesign or tolerance change.",
+      "Added a scope assertion for all three semantic variants. Existing assertions retained.",
+      "All ten first-run visual diffs inspected; AI Inventory shared controls match starting UI2 navigation styles exactly in both themes and widths. Remaining expected cold-load differences arise from eager shared Findings controls; no baseline updates yet."
+     ],
+     "tests": [
+      "Post-commit fast gate: lint 0 errors / 2 existing warnings, typecheck passed, Vitest 788 passed / 0 failed / 0 skipped in 84 files including 32 scope tests.",
+      "Focused colour-corrected browser comparison: all Inventory Hosts and AI Inventory shared control styles match starting UI 2 navigation styles at 390/1280 in both themes, with zero differences. The earlier incomplete Hosts SPA capture is resolved by fixture readiness."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Checkpoint B still in progress; first container visual 130 passed / 10 failed / 0 skipped. Affected visual same; axe 883 baseline / 883 current / 0 new.",
+      "The first focused Hosts light/390 navigation capture was incomplete. Repeated only after diagnosing SPA readiness and waiting for all 109 fixture controls; corrected comparison has zero differences.",
+      "Final version-switch and bridge removal remain gated after checkpoint B."
+     ],
+     "reversal": "Revert only the semantic bar priority fix.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "250_passed_2_provider_skips_on_3c3e6695",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "09b1d44e0c0f5d4f002cd9e3c90a53a2d2cd6874",
+      "testedFrontendTree": "4da755fd7218cf2dd3b4cf931623b7939f2665f5",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-inventory-colours/",
+      "evidenceAmendment": "Ledger and checkpoint documentation amended after the run; tested frontend tree unchanged."
+     }
     }
    ]
   }
  ],
- "nextUnit": "Verified public fast gate. Next: checkpoint B. User authorized remaining Step 6 slices on 2026-10-27 with: proceed to complete step 6. Continue through passed family/public gates to checkpoint B; stop there before final switch/bridge removal. Original baseline unchanged.",
+ "nextUnit": "Inventory colour fix verified. Qualification follow-up: wait for actual React route commit before probe observations, regenerate only diagnosed eager-Findings snapshots through pinned-container e2e:update, inspect diffs, then rerun checkpoint B on the corrected candidate. Stop before final switch/bridge removal.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

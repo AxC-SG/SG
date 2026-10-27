@@ -895,6 +895,20 @@
   background: var(--accent);
 }
 
+/* Shared Findings bars load after the Inventory roots. A bar's semantic variant
+ * must keep its original tone when both classes are present, on every app page. */
+:where(html[data-ui='2']) .inventory-hbar-success.fpl-hbar-fill {
+  background: var(--low);
+}
+
+:where(html[data-ui='2']) .inventory-hbar-warning.fpl-hbar-fill {
+  background: var(--warning);
+}
+
+:where(html[data-ui='2']) .inventory-hbar-muted.fpl-hbar-fill {
+  background: color-mix(in srgb, var(--muted) 36%, transparent);
+}
+
 :where(html[data-ui='2']) .inventory-tab-button,
 :where(html[data-ui='2']) .inventory-chip {
   border-radius: 999px;

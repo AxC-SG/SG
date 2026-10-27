@@ -279,6 +279,14 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(shared).toContain('button:focus-visible');
   });
 
+  it('preserves semantic Inventory bar colours over the later shared Findings fill', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./findings-base.css', prefix + '.fpl-hbar-fill').background).toBe('var(--accent)');
+    for (const [tone, value] of [['success', 'var(--low)'], ['warning', 'var(--warning)'], ['muted', 'color-mix(in srgb, var(--muted) 36%, transparent)']]) {
+      expect(declared('./inventory-base.css', prefix + `.inventory-hbar-${tone}.fpl-hbar-fill`).background).toBe(value);
+    }
+  });
+
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {
     for (const file of ['./tokens.css', './legacy-bridge.css']) {
       for (const rule of rules(sheets[file])) {
