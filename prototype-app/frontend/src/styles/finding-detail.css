@@ -615,6 +615,11 @@
   flex-shrink: 0;
 }
 
+/* Pushes the trailing actions to the end of the tab bar. */
+.fd3-tab-spacer {
+  flex: 1;
+}
+
 .fd3-tab {
   background: none;
   border: none;

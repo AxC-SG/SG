@@ -773,8 +773,144 @@
    },
    "findingsForLaterSteps": [
     "Coverage timing variation remains from 300ms search-debounce timers in CampaignsPage.tsx (217, 237) and CampaignDetailPage.tsx (270, 340): covered only when a test stays mounted past 300ms. Seen as statements 8883-8887 and functions 2559-2561 at the same source; no line-count effect. Functions margin over the floor is small (2559 vs 2556 needed at Batch A totals)."
+   ],
+   "merged": "PR #23 merged into AxG-SG main 2026-10-26 as merge commit ce85819a (parents d872791a, aba6ab05); all 14 CI jobs passed on aba6ab05, including frontend-e2e (1h6m) and backend-postgres."
+  },
+  {
+   "id": "S4",
+   "title": "Consolidate foundation styles (tokens, primitives, shell, tab strips)",
+   "status": "verified",
+   "dependsOn": [
+    "S3"
+   ],
+   "branch": "feat/ui2-step4-foundation-styles from AxG-SG main ce85819a (merge of PR #23, contains aba6ab05); local only, not pushed",
+   "scope": "src/styles/ui2/{tokens,primitives,shell}.css and the tab strips. Tab-strip rules that live in family sheets (findings.css fd3 tabs, connect.css connector tabs, cve.css/governance.css cvd2 tabs, experience.css cd-tab) stay where they are until their Step 6 family slice; only shell.css section tabs are consolidated here.",
+   "cascadeMap": {
+    "method": "2026-10-26/27 on ce85819a. Static: postcss parse of every stylesheet in effective load order, per-selector specificity, winners per (subject, property) against the foundation rules. Browser: computed styles of 70 foundation targets plus ::before/::after, hover/focus states, on all 35 e2e routes x dark/light x 1280/390, from a cold direct link and after a client-side navigation sequence that loads every lazy route sheet first, then Back and Forward through /demo. Fixture-backed artifacts from e2e:build, both versions. Scratch scripts, not committed.",
+    "loadOrder": {
+     "main": "App.tsx imports styles/index.css (base, shared, cve-workbench, connect, eol, vuln-repo, user-management, exposure-dashboard, then ui2/index.css: tokens, legacy-bridge, shell, primitives, findings, cve, inventory, governance, connect, experience), then finding-detail.css, then ai-security.css. One main CSS file, linked from index.html.",
+     "lazy": "Appended when their route chunk first loads and kept for the rest of the session: components/DataTable.css (DataTable chunk), styles/findings-list.css (FplWidgets chunk, imported by FindingsPage and SoftwareIdentitiesPage), pages/platform-feed-catalog.css (PlatformConsolePage chunk), @xyflow/react/dist/style.css (AiAssetDetailPage chunk).",
+     "uiSwitch": "applyUiVersion sets data-ui='2' on <html> before the first render (main.tsx) and before paint on every location change (UiVersionPresentation useLayoutEffect); removed on /demo and /demo/*. CSS is byte-identical between the two builds."
+    },
+    "winners": [
+     "Lazy route sheets win against no foundation declaration (0 cases), so cold links and navigation sequences cannot change a foundation outcome.",
+     "legacy-bridge.css (html[data-ui='2'] and its [data-theme] variants, specificity 0,1,1 / 0,2,1) beats base.css :root, [data-theme='light'] and [data-theme='dark'] (0,1,0) for every bridged variable. No bridged or --dp-* variable is redefined below the root.",
+     "UI 2 family sheets override the foundation in 484 (subject, property) pairs, by design: they are anchored on family roots (0,3,1 and up). Exceptions: ui2/inventory.css:98 '.ui2-inventory-family input/select' ties primitives.css select:focus, input:disabled and select:disabled at the same specificity and wins by source order, so on Inventory pages focused selects keep the plain border/shadow and disabled inputs and selects keep the enabled background and text colour; findings.css:496 uses !important for the selected Findings row (same colour as the foundation, no visible effect).",
+     "Legacy rules beat the foundation only by specificity, on page-scoped selectors: .host-detail-page .btn.btn-secondary (Inventory family re-overrides), .md-table thead tr th, .host-detail-page/.ai-asset-detail-page .data-table th (Inventory family re-overrides th), .ai-policy-governance row inputs/selects (font-size), .platform-policy-detail-page .cvd2-panel label (colour), .cve-form-field select/textarea:focus (ring), last-row td border resets. .public-demo-shell .btn-primary:hover is on the public routes, where data-ui is never set."
+    ],
+    "browserCheck": {
+     "ui2": "240 cold-vs-navigation/Back comparisons: 232 identical; 8 differ only in .content/.panel height on /vuln-repo/vulnerabilities (cause below). 0 colour, border, font, spacing, tab-underline or hover/focus differences. Boundary: 120/120 sequences correct (data-ui absent on /demo, '2' after Back, absent after Forward); data-ui '2' on all 32 app routes, absent on /demo, /demo/blog, /demo/request.",
+     "legacy": "240 comparisons: 216 identical; 24 differ only in .content/.panel height on /vuln-repo/vulnerabilities, /inventory/hosts and /inventory/ai (cause below). data-ui absent on all 35 routes; boundary 120/120 correct."
+    },
+    "duplicatesInFoundation": "No identical selector+property repeats. Identical declaration blocks: .nav-btn:hover = .nav-sub-btn:hover (same meaning, merge); .modal-backdrop/.fd3-modal-overlay = .confirm-dialog::backdrop (same scrim, merge via token); .tenant-context-pill:hover = input hover border, and .settings-menu-header span = .panel-caption (different meaning, keep). The bounded tab underline (left/right 6px, height 2px) is repeated in shell.css:324, findings.css:793 and connect.css:86; only the shell copy is in Step 4 scope.",
+    "hardcodedColours": "Outside tokens.css: shell.css .brand-mark (#0ea5e9 in the gradient, #fff text, rgba(255,255,255,0.18) inset), primitives.css scrim rgba(9,9,11,0.45) on .modal-backdrop, .fd3-modal-overlay and .confirm-dialog::backdrop. No status or severity colour is hardcoded in the foundation.",
+    "staticInlineStyles": "Shell (App.tsx): none. Tab strips: CampaignsPage.tsx:425-426 (campaigns-tab-row justify/align; inner tab group flex/gap/wrap) and SoftwareIdentityDetailPage.tsx:717 (flex:1 spacer in the fd3 tab bar). Both apply to both versions."
+   },
+   "units": [
+    {
+     "title": "Tokens for the hardcoded foundation colours",
+     "commit": "e4523b96",
+     "files": "src/styles/ui2/{tokens,shell,primitives}.css",
+     "change": "Added theme-independent --dp-brand-tint #0ea5e9, --dp-brand-fg #ffffff, --dp-brand-highlight rgba(255,255,255,0.18), --dp-scrim rgba(9,9,11,0.45); .brand-mark and the modal scrims use them. The ::backdrop rule keeps the literal as var() fallback because older engines do not inherit custom properties into ::backdrop. No status or severity colour touched.",
+     "evidence": [
+      "Per-slice host gate at e4523b96 (before the user switched to one gate at the end): lint 0 errors / 2 warnings; typecheck pass; vitest 763/763, 0 skipped, 84 files; coverage lines 7920/15202, statements 8897/17998, functions 2567/6208, branches 7852/19515; both builds pass; e2e:build boundary 15/15 per version; e2e:journeys 12/12 steps, UI 2 737/737, UI 1 703/737 (34 baseline, 0 new), 0 skipped. Style probe: only difference the four new root variables; UI 1 380/380 identical.",
+      "Container at e4523b96: e2e:visual UI 2 140/140, UI 1 139/140 (legacy /platform/tenants dark 1280: 'Failed to take two consecutive stable screenshots', diagnosed, see findingsForLaterSteps); e2e:affected (35 routes) UI 2 140/140, UI 1 140/140, axe 0 new both versions."
+     ],
+     "tests": [
+      "See the S4 gate entry (one gate on the tip 6cba0983, by user decision)."
+     ],
+     "reversal": "git revert e4523b96",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "verified",
+      "staging": "not_available",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Merge same-meaning duplicate foundation rules",
+     "commit": "18f79c47",
+     "files": "src/styles/ui2/{shell,primitives}.css",
+     "change": ".nav-sub-btn:hover joins .nav-btn:hover (identical declarations, same specificity, still before .nav-sub-btn.active); .confirm-dialog::backdrop joins .modal-backdrop/.fd3-modal-overlay in one scrim rule.",
+     "evidence": [
+      "State check (sub-navigation hover on every expanded group, 12 items incl. the active one, and injected .modal-backdrop/.fd3-modal-overlay/dialog.confirm-dialog::backdrop, 5 routes x 2 themes): identical to the pre-Step-4 build (aba6ab05 app source = ce85819a)."
+     ],
+     "tests": [
+      "See the S4 gate entry (one gate on the tip 6cba0983, by user decision)."
+     ],
+     "reversal": "git revert 18f79c47",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "verified",
+      "staging": "not_available",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "Tab-strip static inline styles to classes",
+     "commit": "27a40834",
+     "files": "src/pages/CampaignsPage.tsx, src/pages/SoftwareIdentityDetailPage.tsx, src/styles/base.css, src/styles/finding-detail.css",
+     "change": "campaigns-tab-row justify/align moved into its base.css rule; new .campaigns-tab-group (flex, gap 8px, wrap) and .fd3-tab-spacer (flex 1) next to the sheets that own those strips. Unscoped so both versions keep the same layout. No other rule sets these properties on these elements. SoftwareIdentityDetailPage.tsx:686 (header spacer, not a tab strip) left alone.",
+     "evidence": [
+      "Style probe .campaigns-tab-row identical both versions; visual baselines unchanged for /vuln-repo/campaigns and the software identity detail route."
+     ],
+     "tests": [
+      "See the S4 gate entry (one gate on the tip 6cba0983, by user decision)."
+     ],
+     "reversal": "git revert 27a40834",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "verified",
+      "staging": "not_available",
+      "release": "not_requested"
+     }
+    },
+    {
+     "title": "scope.test.ts: ownership and route-boundary checks instead of rule counts",
+     "commit": "6cba0983",
+     "files": "src/styles/ui2/scope.test.ts",
+     "change": "8 tests -> 16. Removed only the toBeGreaterThan(N) rule counts; kept every scope and family-anchor check. Added: sheet load order (foundation first, ui2 last in styles/index.css, every sheet non-empty), tokens/bridge root-only custom properties, --dp-* defined only in tokens.css, shell/primitives free of family roots, !important and colour literals, severity/status tone mapping and the 01353de5 light contrast values, bounded tab underlines (bottom 0, left/right 6px, height 2px), full-width Findings identifiers, public-route classes only under the auth-entry family.",
+     "evidence": [
+      "Mutation check: 11 deliberate breaks (underline bottom -1px, hex colour in primitives, --dp token in a family sheet, family root in shell, severity remap, contrast value, identifier ellipsis, unanchored public selector, swapped import order, --dp token in the bridge, unscoped rule) each failed the matching test; files restored from git after each."
+     ],
+     "tests": [
+      "See the S4 gate entry (one gate on the tip 6cba0983, by user decision)."
+     ],
+     "reversal": "git revert 6cba0983",
+     "statuses": {
+      "fixture": "verified",
+      "localAuthenticated": "verified",
+      "staging": "not_available",
+      "release": "not_requested"
+     }
+    }
+   ],
+   "findingsForLaterSteps": [
+    "findings-list.css is lazy (FplWidgets chunk via FindingsPage and SoftwareIdentitiesPage) but its unscoped .fpl-* rules are used on other pages. On a cold link to /vuln-repo/vulnerabilities the column-filter buttons (.fpl-filter-btn) render with button defaults; after /findings has loaded the sheet they get padding 2px, border 0, display flex (both versions, page height +4 to +7px). On UI 1, /inventory/hosts and /inventory/ai fpl-widget cards also change (+24px); UI 2 covers them in inventory.css. Fix belongs to the Findings/Inventory family slices or the Step 6 final stylesheet entry point.",
+    "ui2/inventory.css:98 overrides the primitives focus and disabled styles for inputs and selects on Inventory pages by source order (see cascadeMap.winners). Not changed in Step 4 (outside scope; would change Inventory visuals).",
+    "Visual harness: a full-page screenshot makes Chromium re-run auto table layout on /platform/tenants (.table-scroll > table.data-table <code> cells wrap differently). UI 1 grows 1821 -> 1864px after the first capture and stays there; UI 2 widths shift without a height change. Reproduced 5/5 in the container. The baseline holds the grown state, so toHaveScreenshot passes only when two post-change shots fit in its 5s window; it failed once under two workers (legacy dark 1280). Candidate fix (needs approval, harness change): one warm-up full-page screenshot before the comparison. Tolerances and baselines unchanged.",
+    "Live and fixture runs: on the first load after an artifact server starts, a page can reach networkidle after only /api/me (seen once in a diagnostic container run at viewport height 900). Not seen in gate runs.",
+    "Coverage at 18f79c47 (CSS-only change after e4523b96) read lines 7918, statements 8886, functions 2563, branches 7841; the gate at 6cba0983 read the e4523b96 values again (7920/8897/2567/7852). Same known timing variation class (debounce timers); per-file coverage is now saved with each gate run for diagnosis if it recurs."
+   ],
+   "gate": {
+    "decision": "2026-10-27 user: run a single full check at the end of Step 4 instead of after each slice (slice 1 had already been gated); no risky shortcuts; e2e:visual and the live journeys kept.",
+    "commit": "6cba0983",
+    "evidence": [
+     "Host (Node 22.16.0, caffeinate, Podman VM stopped): lint 0 errors / 2 warnings; typecheck pass; vitest 771 passed / 0 failed / 0 skipped in 84 files; coverage lines 7920/15202, statements 8897/17998, functions 2567/6208, branches 7852/19515 (identical to Step 3; floors met).",
+     "Builds: UI 2 and UI 1 pass incl. verify-production-bundle. Bundle: CSS 5 files 645193 raw / 95440 gzip both versions (Step 0: 645010 / 95396; +183 / +44 for the tokens and classes); JS 76 files, UI 2 2519849 / 690732, UI 1 2519847 / 690722.",
+     "e2e:build exit 0, data-ui boundary 15/15 routes per version. e2e:journeys 12/12 steps: UI 2 737/737 (findings 67, cve 80, inventory 106, governance 166, connect 116, experience 202); UI 1 703/737, 34 failed all in the reviewed baseline, 0 new; 0 skipped.",
+     "Style probe (computed styles of 70 foundation targets plus ::before/::after and hover/focus, 35 routes x dark/light x 1280/390, cold link, navigation sequence and Back) against the ce85819a artifacts: UI 2 380 snapshots, only differences the four new root variables, no element style changed; UI 1 380/380 identical. Cold vs navigation unchanged from the map (8 UI 2 / 24 UI 1 height-only differences from lazy findings-list.css); boundary 120/120 sequences per version. Sub-nav hover and scrim state check identical to the pre-Step-4 build.",
+     "Container mcr.microsoft.com/playwright:v1.63.0-noble (arm64, Podman, copy of the committed tree): e2e:build exit 0; e2e:visual UI 2 140/140, UI 1 140/140; e2e:affected --routes all 35 (foundation match) at 1280 and 390, both themes, both versions: UI 2 140/140, UI 1 140/140; axe UI 2 883 = baseline, UI 1 758 = baseline, 0 new (0 serious or critical), 0 resolved; 0 skipped, 0 flaky.",
+     "Live: backend pid 25370 from SG/prototype-app/backend/target/classes, profiles local,postgres, backend source unchanged since ce85819a and clean; 7 JDBC connections, all on scout_ui2_qual; platform Flyway V8; tenant ui2-qual-2 ACTIVE, tenant_ui2_qual_2 at V6. Frontend VITE_UI_VERSION=2 vite on 127.0.0.1:5180. live-journeys.mjs dark+light, form sign-in, caffeinate: 250/250 passed, 0 failed, 2 skipped (connect successful save/test/sync, dark+light: needs a real public ServiceNow endpoint, outbound delivery not allowed; fixture journey covers it). Per journey incl. skips: findings 54, ai-findings 20, cve 52, inventory 38, authority 46, connect 42 - same as the Step 1 gate run. Backend errors: 2 uk_tenants_schema_name from the deliberate duplicate-slug check (passed)."
+    ],
+    "exit": "e2e:affected passes, frontend gate passes, affected live journeys (all, foundation change) pass. Staging not available (user, 2026-10-27): staging evidence stays open."
+   },
+   "userDecisions": [
+    "2026-10-27: push approval for feat/ui2-step4-foundation-styles to AxG-SG/SG (by URL) and a PR into main after the Step 4 gate; later pushes and merges still need approval each time.",
+    "2026-10-27: no staging environment exists; staging gates in Steps 5 and 8 stay open without evidence.",
+    "2026-10-27: the frozen Step 5 UI 1 artifact goes to prototype-app/Working Knowledge/New UI 2.0/checkpoints/ (committed, not ignored) as a .tar.gz with sha256 and per-file manifest. It is the rollback artifact, kept until UI 2 is released, accepted and the rollback window is closed (separate later decision)."
    ]
   }
  ],
- "nextUnit": "S3 PR CI on AxG-SG/SG, then the user approves Step 4 (foundation styles)."
+ "nextUnit": "S4 gate passed on 6cba0983: push by URL and open the Step 4 PR (approved), then Step 5 qualification on the cleaned candidate."
 }
