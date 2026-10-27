@@ -4,6 +4,7 @@
 @import "./legacy-bridge.css";
 @import "./shell.css";
 @import "./primitives.css";
+@import "./findings-base.css";
 @import "./findings.css";
 @import "./cve.css";
 @import "./inventory.css";

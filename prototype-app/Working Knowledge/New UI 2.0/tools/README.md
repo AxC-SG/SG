@@ -11,7 +11,7 @@ Put every output in a scratch folder, never in the repo. The probe outputs are a
 | `style-probe.mjs <frontend> <ui2\|legacy> <out.json>` | Computed styles of the foundation targets, including `::before`/`::after` and hover/focus, on every e2e route × dark/light × 1280/390. Measured from a cold direct link, after a client-side navigation sequence that loads every lazy route sheet, and after Back. Also checks the `data-ui` boundary through `/demo`. |
 | `probe-compare.mjs self <probe.json>` / `diff <before> <after>` | `self`: cold link vs navigation vs Back within one run, plus the boundary sequences. `diff`: one run against another. |
 | `state-check.mjs <frontend> <artifact dir> <port> <out.json>` | Sub-navigation hover (every expanded group) and the modal scrims (`.modal-backdrop`, `.fd3-modal-overlay`, `dialog.confirm-dialog::backdrop`), which the probe does not reach. Compare two outputs with `cmp`. |
-| `cascade-map.mjs <frontend> <out.json>` | Static map of which rule wins per (subject, property) against the foundation sheets, in effective load order. Step-4 specific; see its header. |
+| `cascade-map.mjs <frontend> <out.json> [foundation\|findings]` | Static overlap map in effective load order. Defaults to the foundation sheets; Findings mode includes its shared base and presentation sheets. This is a review aid: media/state reachability and full ancestor matching still need browser checks. |
 | `height-diag.mjs` | Finds the element and style behind a cold-vs-navigation difference. |
 | `rollback-rehearsal.mjs` | Rollback rehearsal with the frozen UI 1 archive (see its header): checks the sha256 and manifest, serves the archive as is, and answers its production API base from the local backend. Every other host is blocked and counted. |
 | `ui-attr.mjs` | Prints `data-ui` on a few routes of a served artifact. A UI 1 build must print null. |
@@ -23,3 +23,5 @@ Known limits:
 - Height-only differences between cold and navigation come from lazily loaded `findings-list.css` (see the ledger, S4 `findingsForLaterSteps`).
 
 From Step 6, candidate builds and checks run UI 2 only. UI 1 baselines remain historical evidence. For a legacy comparison, use the frozen `checkpoints/UI1-frozen-a3f1d1db.tar.gz` after checking its sha256 (`f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707`) and per-file manifest. `rollback-rehearsal.mjs` serves that frozen artifact; never rebuild UI 1 from the retiring source.
+
+Findings owns `src/styles/ui2/findings-base.css` for its shared controls and `findings.css` for page presentation. The base uses `:where(html[data-ui='2'])` so the UI 2 boundary adds no specificity. It loads before the presentation sheets on every route. Inventory-specific `iov-*` rules still in `finding-detail.css` belong to the Inventory slice; the empty `findings-list.css` import stub is removed in the final entry-point slice. See `../STEP6_FINDINGS_MAP.md`.

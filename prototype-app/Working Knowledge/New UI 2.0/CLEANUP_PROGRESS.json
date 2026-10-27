@@ -1184,11 +1184,105 @@
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/",
       "evidenceAmendment": "Only the ledger was amended after the fast gate; tested implementation files and frontend tree unchanged."
      }
+    },
+    {
+     "title": "Findings and AI Findings: retire legacy family rules",
+     "status": "verified",
+     "startingCommit": "baedb16d",
+     "files": [
+      "prototype-app/frontend/src/styles/ui2/findings-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/findings-list.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_FINDINGS_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_FINDINGS_MAP.md; static cascade and declaration manifests in /private/tmp/sg-ui2-step6.QsSmLw/gate-findings/",
+     "evidence": [
+      "Captured cascade-before.json before any CSS edit after updating the helper for Findings ownership; cascade-after.json includes the new shared base in effective load order. Static subject/property overlaps are review candidates, not browser regression counts.",
+      "Moved required declarations from 316 rules: base.css 33, finding-detail.css 108, ai-security.css 19, findings-list.css 156. Removed 37 declarations superseded by unconditional UI 2 rules with the identical selector body/property, and consolidated 37 identical repeats. Values, priorities and conditional states otherwise retained.",
+      "New ui2/findings-base.css scopes shared controls with :where(html[data-ui=2]) (no added specificity), before family presentation sheets. Its global import removes the lazy Findings-route dependency for shared fpl-* controls. This intentionally addresses the logged direct-load versus navigation difference.",
+      "Other-family contexts retained: five Inventory-context rules in base.css, five iov-* rules in finding-detail.css, policy/graph/connector rules and the connector reveal keyframes in ai-security.css. Legacy import stubs remain for final entry-point cleanup.",
+      "Declaration verifier passed 1455 retained declaration/selector checks; remaining 1667 base, 5 Inventory overview and 311 AI rules match their starting selectors, declarations and contexts. 37 superseding UI 2 declarations and 37 identical repetitions recorded in the manifest.",
+      "Updated ownership/scope tests without removing assertions. Added zero-specificity/private-keyframe checks and eager control/legacy-retirement checks. Existing Findings presentation anchors remain unchanged. Shared base maps conservatively to all 35 affected routes, including public-route isolation.",
+      "Prepared STEP6_CONTINUE_PROMPT.md for a fresh chat after this slice; branch and scratch baseline are retained."
+     ],
+     "tests": [
+      "Corrected post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 775 passed / 0 failed / 0 skipped in 84 files, including all 19 scope tests.",
+      "First attempt: 774 passed / 1 failed / 0 skipped. The new ownership test caught eight Inventory-context selectors selected by an overbroad AI predicate. Corrected the predicate, restored those Inventory rules, and retained the assertion before the corrected run. See gateAttempts and the archived attempt-1 logs.",
+      "Static declaration/ownership verifier: 1455 retained declaration/selector checks passed; other owners unchanged. Shared-base affected-route selection: all 35 routes including public isolation. No full browser/axe/live/coverage/bundle gate run for this slice; those remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full visual/axe/affected/live/build/coverage/bundle gates deferred to checkpoint B and Step 8 per checkDeferral. No new visual, axe or live pass claimed.",
+      "Shared legacy colour defaults and token aliases retained without redesign; legacy-bridge.css stays until the final slice.",
+      "Staging and human reviews remain waived; accessibility review remains open."
+     ],
+     "reversal": "Revert only the local Findings retirement slice commit; keep the previous Step 6.0 commit and starting baseline.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "pending_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "gateAttempts": [
+      {
+       "commit": "55083004",
+       "lint": "passed: 0 errors, 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 774,
+        "failed": 1,
+        "skipped": 0
+       },
+       "failure": "scope.test.ts:122: shared Findings base ownership rejected eight selectors beginning .inventory-shell.ai-security-page. The AI migration predicate had matched an owned class anywhere in the selector instead of requiring a leading owned root.",
+       "fix": "Require a leading shared AI root. Restore all eight Inventory-context rules to ai-security.css; remove them from findings-base.css. The failing assertion is unchanged.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings/attempt-1/"
+      },
+      {
+       "commit": "9b1d572a110fde3e3345fd180b0e9fd49c53d45a",
+       "lint": "passed: 0 errors, 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 775,
+        "failed": 0,
+        "skipped": 0
+       },
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings"
+      }
+     ],
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "9b1d572a110fde3e3345fd180b0e9fd49c53d45a",
+      "testedFrontendTree": "a3f1a6b5d930d22b08e407803fffa43068050e13",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 775,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 19
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings",
+      "evidenceAmendment": "Only ledger and handoff documentation amended after this run; tested frontend files and tree unchanged."
+     }
     }
    ]
   }
  ],
- "nextUnit": "Stopped at the Step 6.0 slice gate after its local commit and passing fast checks. Next: the first family retirement slice, starting with its cascade map. Preserve the checkpoint B baseline at /private/tmp/sg-ui2-step6.QsSmLw/baseline; run the full checkpoint B gate before the final version-switch/bridge removal and stop for the user.",
+ "nextUnit": "Stopped at the verified Findings slice gate. Next: CVE per STEP6_PROMPT family order, beginning with its cascade/ownership map. Fresh-chat handoff: STEP6_CONTINUE_PROMPT.md. Full checkpoint B remains due before final switch/bridge removal; GATE_BASELINE=/private/tmp/sg-ui2-step6.QsSmLw/baseline.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

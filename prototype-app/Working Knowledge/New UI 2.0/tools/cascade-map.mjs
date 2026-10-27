@@ -1,23 +1,25 @@
-// Read-only cascade map for the UI 2.0 foundation sheets: which rule wins per (subject, property),
-// in effective load order. Usage: node cascade-map.mjs <frontend dir> <out.json>
-// The load order and the foundation set are written for Step 4; update `main`, `lazy` and
-// `foundation` when a later step changes the stylesheet entry points.
-import { readFileSync, writeFileSync } from 'node:fs';
+// Read-only cascade map in effective load order.
+// Usage: node cascade-map.mjs <frontend dir> <out.json> [foundation|findings]
+// Findings mode includes its shared base primitives. Media/state reachability and compound
+// selector matching still need review; this static map is not a browser cascade proof.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 
 const fe = process.argv[2];
+const family = process.argv[4] ?? 'foundation';
+if (!['foundation', 'findings'].includes(family)) throw new Error(`Unknown cascade family: ${family}`);
 const require = createRequire(join(fe, 'package.json'));
 const postcss = require('postcss');
 
 const S = 'src/styles/';
 const main = ['base', 'shared', 'cve-workbench', 'connect', 'eol', 'vuln-repo', 'user-management', 'exposure-dashboard']
   .map((n) => `${S}${n}.css`)
-  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`))
+  .concat(['tokens', 'legacy-bridge', 'shell', 'primitives', 'findings-base', 'findings', 'cve', 'inventory', 'governance', 'connect', 'experience'].map((n) => `${S}ui2/${n}.css`).filter((file) => !file.endsWith('/findings-base.css') || existsSync(join(fe, file))))
   .concat([`${S}finding-detail.css`, `${S}ai-security.css`]);
 const lazy = ['src/components/DataTable.css', `${S}findings-list.css`, 'src/pages/platform-feed-catalog.css', 'node_modules/@xyflow/react/dist/style.css'];
 const order = [...main, ...lazy];
-const foundation = new Set(['tokens', 'legacy-bridge', 'shell', 'primitives'].map((n) => `${S}ui2/${n}.css`));
+const foundation = new Set((family === 'findings' ? ['findings-base', 'findings'] : ['tokens', 'legacy-bridge', 'shell', 'primitives']).map((n) => `${S}ui2/${n}.css`));
 
 function split(list) {
   const out = []; let d = 0, cur = '';
@@ -41,7 +43,7 @@ function spec(sel) {
 function cmp(x, y) { return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; }
 // Subject = last compound, without pseudo-elements; returns tokens (classes, tag, states).
 function subject(sel) {
-  const s = sel.replace(/html\[data-ui='2'\]\s*/, '').trim();
+  const s = sel.replace(/^(?:html\[data-ui='2'\]|:where\(html\[data-ui='2'\]\))\s*/, '').trim();
   const parts = s.split(/\s*[>+~]\s*|\s+(?![^(]*\))/);
   const last = parts[parts.length - 1].replace(/::?(before|after|placeholder|backdrop|selection)\b.*/, (m) => '§' + m.replace(/^:+/, ''));
   const pe = (last.match(/§(\w+)/) || [])[1] || '';
@@ -87,7 +89,7 @@ for (const f of fRules) {
         else if (fd.important && !od.important) { win = 'foundation'; why = '!important'; }
         else { const c = cmp(o.spec, f.spec); if (c > 0) { win = 'other'; why = 'specificity'; } else if (c < 0) { win = 'foundation'; why = 'specificity'; } else { const later = o.lazy || o.fi > f.fi; win = later ? 'other' : 'foundation'; why = o.lazy ? 'tie, lazy sheet loads later' : 'tie, source order'; } }
         if (win !== 'other') continue;
-        const scoped = o.sel.startsWith("html[data-ui='2']");
+        const scoped = /^(?:html\[data-ui='2'\]|:where\(html\[data-ui='2'\]\))/.test(o.sel);
         out.push({ foundation: `${f.file.replace(S, '')}:${f.line} ${f.sel}${f.media ? ' ' + f.media : ''}`, prop: fd.prop, fvalue: fd.value, other: `${o.file.replace(S, '')}:${o.line} ${o.sel}${o.media ? ' ' + o.media : ''}`, ovalue: od.value + (od.important ? ' !important' : ''), why, kind: scoped ? 'ui2-family-override' : o.lazy ? 'lazy-legacy' : 'legacy' });
       }
     }
@@ -105,7 +107,7 @@ for (const f of fRules) for (const d of f.decls) { const k = `${f.sel}${f.media}
 // Hardcoded colours in the foundation outside tokens.css.
 const colours = fRules.filter((r) => !r.file.endsWith('tokens.css')).flatMap((r) => r.decls.filter((d) => /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|\b(white|black)\b/i.test(d.value)).map((d) => ({ at: `${r.file.replace(S, '')}:${r.line}`, sel: r.sel, prop: d.prop, value: d.value })));
 
-const result = { order: { main, lazy }, counts: { foundationRules: fRules.length }, losses: out, varRedefs, dupes, colours };
+const result = { family, order: { main, lazy }, focus: [...foundation], counts: { foundationRules: fRules.length }, losses: out, varRedefs, dupes, colours };
 writeFileSync(process.argv[3], JSON.stringify(result, null, 1));
 const by = (k) => out.reduce((m, x) => ((m[x[k]] = (m[x[k]] || 0) + 1), m), {});
 console.log('foundation selector entries', fRules.length, 'losses', out.length, by('kind'), by('why'));

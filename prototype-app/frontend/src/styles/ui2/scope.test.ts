@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // Every UI 2.0 rule must stay behind the html[data-ui='2'] presentation flag so the legacy UI
-// renders unchanged by default, and Findings-family rules must stay anchored on that family's
-// page roots so shared fpl-/fd3-/ai-security- classes on other pages are not restyled early.
+// remains isolated from public routes. Findings presentation rules stay on their page roots;
+// its shared base primitives retain their original specificity behind a zero-weight boundary.
 // Read from disk: vitest stubs CSS imports (including ?raw) to empty strings, and jsdom's
 // import.meta.url is not a file URL, so resolve from the vitest root (the frontend package).
 const directory = join(process.cwd(), 'src', 'styles', 'ui2');
@@ -31,11 +31,7 @@ function splitList(list: string): string[] {
 }
 
 function selectors(css: string): string[] {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  return [...withoutComments.matchAll(/([^{}]+)\{/g)]
-    .map((match) => match[1].trim())
-    .filter((selector) => !selector.startsWith('@'))
-    .flatMap(splitList);
+  return rules(css).flatMap((rule) => rule.selectors);
 }
 
 // The selector's leading compound: a single root class or an :is() group of root classes.
@@ -92,6 +88,7 @@ describe('UI 2.0 stylesheet scope', () => {
   it('parses selector lists and anchors', () => {
     expect(selectors(".a{} html[data-ui='2'] .b, .c{}")).toEqual(['.a', "html[data-ui='2'] .b", '.c']);
     expect(selectors(":is(.a, .b) .c, .d{}")).toEqual([':is(.a, .b) .c', '.d']);
+    expect(selectors('@keyframes private { from { opacity: 0; } to { opacity: 1; } } .a{}')).toEqual(['.a']);
     expect(anchoredOn("html[data-ui='2'] :is(.a, .b) .c", ['.a', '.b'])).toBe(true);
     expect(anchoredOn("html[data-ui='2'] :is(.a, .z) .c", ['.a', '.b'])).toBe(false);
     expect(rules('@media (x) { .a { b: c; d: e } } .f { g: h }')).toEqual([
@@ -105,7 +102,7 @@ describe('UI 2.0 stylesheet scope', () => {
   // rule after primitives), so it is part of each sheet's ownership.
   it('loads every UI 2.0 sheet once, foundation first, after the legacy sheets', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
-    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './findings.css', './cve.css', './inventory.css',
+    expect(imports(join(directory, 'index.css'))).toEqual([...FOUNDATION, './findings-base.css', './findings.css', './cve.css', './inventory.css',
       './governance.css', './connect.css', './experience.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
@@ -114,8 +111,31 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('scopes every rule to html[data-ui=2]', () => {
     const unscoped = Object.entries(sheets).flatMap(([file, css]) =>
-      selectors(css).filter((selector) => !selector.startsWith("html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
+      selectors(css).filter((selector) => !selector.startsWith(file === './findings-base.css'
+        ? ":where(html[data-ui='2']) " : "html[data-ui='2']")).map((selector) => `${file}: ${selector}`));
     expect(unscoped).toEqual([]);
+  });
+
+  it('keeps shared Findings base primitives scoped without increasing their specificity', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    const owned = /^\.(?:fpl-[\w-]+|fd3-[\w-]+|finding-id-link\b|ai-security-(?:page|hero|kicker|table-panel|empty|empty-mark)\b)/;
+    expect(selectors(sheets['./findings-base.css']).filter((selector) => !owned.test(selector.slice(prefix.length)))).toEqual([]);
+    const keyframes = [...sheets['./findings-base.css'].matchAll(/@keyframes\s+([\w-]+)/g)].map((match) => match[1]);
+    expect(keyframes.sort()).toEqual(['ui2-findings-reveal', 'ui2-findings-spin']);
+    expect(declared('./findings-base.css', prefix + '.ai-security-page').animation).toBe('ui2-findings-reveal 360ms ease-out both');
+  });
+
+  it('loads shared Findings controls before any lazy Findings route and retires their legacy definitions', () => {
+    const prefix = ":where(html[data-ui='2']) ";
+    expect(declared('./findings-base.css', prefix + '.fpl-root').display).toBe('flex');
+    expect(declared('./findings-base.css', prefix + '.fd3-body').display).toBe('flex');
+    expect(declared('./findings-base.css', prefix + '.fd3-modal-overlay').position).toBe('fixed');
+    expect(rules(readFileSync(join(directory, '..', 'findings-list.css'), 'utf8'))).toEqual([]);
+    const inventory = rules(readFileSync(join(directory, '..', 'finding-detail.css'), 'utf8')).flatMap((rule) => rule.selectors);
+    expect(inventory.filter((selector) => !selector.startsWith('.iov-'))).toEqual([]);
+    const retired = rules(readFileSync(join(directory, '..', 'base.css'), 'utf8')).flatMap((rule) => rule.selectors)
+      .filter((selector) => /^\.(?:fpl-|fd3-|finding-id-link\b)/.test(selector));
+    expect(retired).toEqual([]);
   });
 
   it('keeps tokens and the legacy bridge to custom properties on the root', () => {
