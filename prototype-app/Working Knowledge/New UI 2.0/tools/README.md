@@ -11,7 +11,7 @@ Put every output in a scratch folder, never in the repo. The probe outputs are a
 | `style-probe.mjs <frontend> <ui2\|legacy> <out.json>` | Computed styles of the foundation targets, including `::before`/`::after` and hover/focus, on every e2e route × dark/light × 1280/390. Measured from a cold direct link, after a client-side navigation sequence that loads every lazy route sheet, and after Back. Also checks the `data-ui` boundary through `/demo`. |
 | `probe-compare.mjs self <probe.json>` / `diff <before> <after>` | `self`: cold link vs navigation vs Back within one run, plus the boundary sequences. `diff`: one run against another. |
 | `state-check.mjs <frontend> <artifact dir> <port> <out.json>` | Sub-navigation hover (every expanded group) and the modal scrims (`.modal-backdrop`, `.fd3-modal-overlay`, `dialog.confirm-dialog::backdrop`), which the probe does not reach. Compare two outputs with `cmp`. |
-| `cascade-map.mjs <frontend> <out.json> [foundation\|findings\|cve\|inventory\|governance]` | Static overlap map in effective load order. Defaults to the foundation sheets; Family modes include their shared base and presentation sheets; CVE, Inventory and Governance also record selected legacy ownership. This is a review aid: media/state reachability and full ancestor matching still need browser checks. |
+| `cascade-map.mjs <frontend> <out.json> [foundation\|findings\|cve\|inventory\|governance\|connect\|experience\|public]` | Static overlap map in effective load order. Defaults to the foundation sheets; Family modes include their shared base and presentation sheets; Retirement modes record selected legacy ownership. Public mode includes the extracted token sheet and explicit shared/public import anchors. This is a review aid: media/state reachability and full ancestor matching still need browser checks. |
 | `height-diag.mjs` | Finds the element and style behind a cold-vs-navigation difference. |
 | `rollback-rehearsal.mjs` | Rollback rehearsal with the frozen UI 1 archive (see its header): checks the sha256 and manifest, serves the archive as is, and answers its production API base from the local backend. Every other host is blocked and counted. |
 | `ui-attr.mjs` | Prints `data-ui` on a few routes of a served artifact. A UI 1 build must print null. |
@@ -20,7 +20,7 @@ Put every output in a scratch folder, never in the repo. The probe outputs are a
 
 Known limits:
 - The probe measures up to 4 elements per selector and a fixed property list. It is a regression net, not a full visual review.
-- Height-only differences between cold and navigation come from lazily loaded `findings-list.css` (see the ledger, S4 `findingsForLaterSteps`).
+- The historical cold/navigation differences came from lazy `findings-list.css` (S4 `findingsForLaterSteps`). Findings controls now load eagerly. The host probe waits for React route commit and settled requests before sampling; all style and boundary comparisons remain.
 
 From Step 6, candidate builds and checks run UI 2 only. UI 1 baselines remain historical evidence. For a legacy comparison, use the frozen `checkpoints/UI1-frozen-a3f1d1db.tar.gz` after checking its sha256 (`f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707`) and per-file manifest. `rollback-rehearsal.mjs` serves that frozen artifact; never rebuild UI 1 from the retiring source.
 
@@ -37,3 +37,5 @@ Connect owns `src/styles/ui2/connect-base.css`. Connect base follows Governance 
 Experience owns `src/styles/ui2/experience-base.css`. Experience owns dashboard, Campaign and operations layouts, including exposure grids shared with Inventory. Its zero-specificity base loads before Inventory base and family presentation. Public/auth-entry markup and shared app/shell defaults remain for public/final extraction. See `../STEP6_EXPERIENCE_MAP.md`.
 
 Public owns `src/styles/public.css`. Public rules and legacy tokens are extracted without redesign. Shared defaults remain available to app consumers at their original source positions through explicit import anchors. Public routes retain the app boundary; frozen UI 1 is the only legacy reference. See `../STEP6_PUBLIC_MAP.md`.
+
+Checkpoint B follow-ups preserve the original Inventory success/warning/muted bar colours with combined semantic/fill selectors. The inspected eager Findings snapshot changes are generated only by pinned-container `e2e:update`; copy only inspected PNGs from scratch, retaining the tracked journey and axe baselines. See `../STEP6_CHECKPOINT_B.md`.

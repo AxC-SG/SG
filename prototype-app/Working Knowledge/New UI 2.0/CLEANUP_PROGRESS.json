@@ -1228,8 +1228,8 @@
      ],
      "reversal": "Revert only the local Findings retirement slice commit; keep the previous Step 6.0 commit and starting baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1325,8 +1325,8 @@
      ],
      "reversal": "Revert only this local CVE retirement slice; retain Findings, Step 6.0 and the original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1398,8 +1398,8 @@
      ],
      "reversal": "Revert only this local Inventory retirement slice; retain CVE, Findings, Step 6.0 and the original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1469,8 +1469,8 @@
      ],
      "reversal": "Revert only this local Governance slice; retain Inventory, CVE, Findings, Step 6.0 and the original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1539,8 +1539,8 @@
      ],
      "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1607,8 +1607,8 @@
      ],
      "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1673,8 +1673,8 @@
      ],
      "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1739,8 +1739,8 @@
      ],
      "reversal": "Revert only the semantic bar priority fix.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
-      "localAuthenticated": "250_passed_2_provider_skips_on_3c3e6695",
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
       "staging": "waived_by_user",
       "release": "not_requested"
      },
@@ -1789,7 +1789,7 @@
      ],
      "reversal": "Revert this qualification-probe slice; retain the Inventory colour fix.",
      "statuses": {
-      "fixture": "pending_checkpoint_B",
+      "fixture": "verified_checkpoint_B",
       "localAuthenticated": "not_applicable",
       "staging": "waived_by_user",
       "release": "not_requested"
@@ -1813,12 +1813,246 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-probe-readiness/",
       "evidenceAmendment": "Only ledger/checkpoint documentation amended after this run; tested frontend tree unchanged."
-     }
+     },
+     "commit": "f0bb95d4"
+    },
+    {
+     "title": "Checkpoint B: refresh inspected eager-control snapshots and make live readiness deterministic",
+     "status": "verified",
+     "startingCommit": "f0bb95d4",
+     "files": [
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-1280.png",
+      "prototype-app/frontend/e2e/live-journeys.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md"
+     ],
+     "evidence": [
+      "All ten initial visual diffs inspected. Restoring original Inventory bar colours made both Hosts failures pass against unchanged baselines. Remaining eight changes are eager shared Findings controls on Intelligence and AI Inventory.",
+      "Generated only through e2e:update inside mcr.microsoft.com/playwright:v1.63.0-noble, native aarch64, on an archive of f0bb95d4. Before update: selected routes 4 passed / 8 failed / 0 skipped. Update: 12 passed / 0 failed / 0 skipped; full update runner 9/9 steps passed.",
+      "Only eight UI2 PNGs copied back. Seven are byte-identical to the previously inspected actuals; the eighth differs by six pixels at the dark-390 search input border and was inspected side by side. No mask or tolerance change.",
+      "Strict independent compare of the full generated axe audit against the untouched tracked baseline: 939 current / 939 baseline / 0 new / 0 resolved. Journey and axe baseline files from scratch were not copied. UI1 baselines unchanged.",
+      "Diagnosed live failure: assessment POST succeeded, but dark-theme screenshot was still Applicability with Proceed to Findings visible. The runner had matched generic Impacted Assets text before saving/navigation completed, then skipped Proceed while its label was Saving.... Added bounded waits for an enabled visible transition control and the Findings creation control; all assertions retained. No application or API behavior change.",
+      "Case-name audit of the first live-readiness rerun: 248 passed / 0 failed / 2 provider skips, but host-tabs and retired-history light checks were not reached. The earlier declared-resource detail screenshot still showed Loading.... Added bounded visible waits and explicit failure branches for missing host/history controls; no silent omission is accepted. Full live rerun required.",
+      "Final live case-name audit matches the original 250 required checks exactly, including host-tabs and retired-history checks in both themes. No silently omitted required check accepted."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate on 130729c7 under caffeinate with Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 788 passed / 0 failed / 0 skipped in 84 files, including 32 scope tests.",
+      "Final strict pinned-container visual: 140 passed / 0 failed / 0 skipped. Affected routes: all 35 since 68a4a3bc, 140 passed / 0 failed / 0 skipped. Axe 883 current / 883 baseline / 0 new / 0 resolved. Native arm64 Playwright v1.63.0-noble; tested 7b3f30b3 has identical application source and PNGs.",
+      "Full live run on 130729c7: 250 passed / 0 failed / 2 skipped; every one of the original 250 required case names reached. The skips are successful outbound ServiceNow delivery, for which no approved endpoint is configured.",
+      "Pinned-container e2e:update visual stage: 12 passed / 0 failed / 0 skipped; full update runner 9/9 steps passed. Strict independent full axe audit comparison against untouched tracked baseline: 939 current / 939 baseline / 0 new / 0 resolved."
+     ],
+     "screenshots": [
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-1280.png"
+     ],
+     "limitations": [
+      "Failed and incomplete attempts retained with their diagnoses; corrected reruns supersede their pass claims. See STEP6_CHECKPOINT_B.md.",
+      "Checkpoint B is complete with intended Intelligence height changes documented. The final version-switch/legacy-bridge removal has not started; Step 8 must qualify the final tip.",
+      "Staging and human reviews waived; accessibility review remains open and existing axe defects remain. Outbound ServiceNow success scenarios remain skipped."
+     ],
+     "reversal": "Revert this qualification-baseline/live-readiness slice; keep all app ownership and Inventory colour fixes.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+      "testedFrontendTree": "0601bb987ac9ab213d1b37ae166438d7aab286d8",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-snapshot-qualification",
+      "evidenceAmendment": "Only ledger/checkpoint/handoff documentation amended after this run; tested frontend tree unchanged."
+     },
+     "gateAttempts": [
+      {
+       "commit": "08012ee7",
+       "fastGate": "788 passed / 0 failed / 0 skipped; lint 0 errors / 2 existing warnings; typecheck passed",
+       "liveReadinessRerun": {
+        "passed": 248,
+        "failed": 0,
+        "skipped": 2,
+        "missingExpectedChecks": [
+         "inventory: host tabs switch [light]",
+         "inventory: retired history requests history=true [light]"
+        ]
+       },
+       "diagnosis": "Detail route URL was ready while data/components still loading. Strengthened readiness and explicit failure branches; original pass assertions retained."
+      }
+     ]
     }
-   ]
+   ],
+   "checkpointB": {
+    "status": "verified_with_documented_intended_geometry_differences",
+    "host": {
+     "status": "verified_with_documented_intended_geometry_differences",
+     "commit": "f0bb95d4",
+     "applicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "lint": "0 errors / 2 existing warnings",
+     "typecheck": "passed",
+     "coverageTests": {
+      "passed": 788,
+      "failed": 0,
+      "skipped": 0,
+      "files": 84
+     },
+     "fixtureJourneys": {
+      "passed": 737,
+      "failed": 0,
+      "skipped": 0
+     },
+     "uiBoundaryRoutes": {
+      "passed": 15,
+      "failed": 0
+     },
+     "probe": {
+      "snapshotsAgainstStartingBaseline": 380,
+      "differentSnapshots": 12,
+      "classification": "Only Intelligence route .content/.panel height after eager Findings controls; all other properties unchanged. Original baseline retained.",
+      "coldNavigationBackComparisons": 240,
+      "coldNavigationBackDifferences": 0,
+      "boundarySequences": 120,
+      "badBoundarySequences": 0
+     },
+     "stateCheck": "identical to starting baseline",
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final/",
+     "coverageFloors": "met; unchanged: lines 52.17%, statements 49.5%, functions 41.44%, branches 40.3%"
+    },
+    "container": {
+     "status": "verified",
+     "testedCommit": "7b3f30b3eeeade80e10d2f8a30107fdd831cfc59",
+     "image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+     "architecture": "aarch64",
+     "visual": {
+      "passed": 140,
+      "failed": 0,
+      "skipped": 0
+     },
+     "affected": {
+      "base": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+      "routes": 35,
+      "passed": 140,
+      "failed": 0,
+      "skipped": 0
+     },
+     "axe": {
+      "current": 883,
+      "baseline": 883,
+      "new": 0,
+      "resolved": 0
+     },
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final-ctr"
+    },
+    "live": {
+     "status": "verified_with_two_provider_skips",
+     "testedCommit": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+     "passed": 250,
+     "failed": 0,
+     "skipped": 2,
+     "requiredCaseNamesReached": 250,
+     "missingExpectedCases": [],
+     "backend": {
+      "pid": 94226,
+      "tree": "2d25898ef3da9b73125b009810f097df51906cba",
+      "unchangedSince": "68a4a3bc",
+      "cwd": "prototype-app/backend",
+      "database": "scout_ui2_qual",
+      "jdbcConnectionsObserved": 9,
+      "platformFlyway": 8,
+      "tenant": "ui2-qual-2",
+      "tenantStatus": "ACTIVE",
+      "tenantSchemaVersion": 6
+     },
+     "skips": "Successful ServiceNow outbound save/test/sync delivery has no approved public endpoint; no external delivery exercised.",
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final/live-complete-readiness"
+    },
+    "baseline": "/private/tmp/sg-ui2-step6.QsSmLw/baseline (original 68a4a3bc, checksums verified)",
+    "stopBeforeFinalSlice": true,
+    "sourceEquivalence": {
+     "hostTestedCommit": "f0bb95d494ca210871a6c294a4e44c07b221d9c0",
+     "containerTestedCommit": "7b3f30b3eeeade80e10d2f8a30107fdd831cfc59",
+     "fastAndLiveTestedCommit": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+     "currentApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "hostApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "containerApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "currentVisualBaselineTree": "980a51c090e28121a0f9ed0b8a70f51a7db45400",
+     "containerVisualBaselineTree": "980a51c090e28121a0f9ed0b8a70f51a7db45400"
+    },
+    "bundle": {
+     "current": {
+      "cssRawBytes": 752338,
+      "cssGzipBytes": 96964,
+      "cssFiles": 4,
+      "jsRawBytes": 2519985,
+      "jsGzipBytes": 690746
+     },
+     "comparison": {
+      "Step 0": {
+       "rawBytes": 107328,
+       "rawPercent": 16.64,
+       "gzipBytes": 1568,
+       "gzipPercent": 1.64
+      },
+      "Step 6 start": {
+       "rawBytes": 106736,
+       "rawPercent": 16.53,
+       "gzipBytes": 1429,
+       "gzipPercent": 1.5
+      },
+      "Step 5 pre-focus performance check": {
+       "rawBytes": 107145,
+       "rawPercent": 16.61,
+       "gzipBytes": 1524,
+       "gzipPercent": 1.6
+      },
+      "Step 5 qualified focus-fix tip": {
+       "commit": "c29515d8",
+       "cssRawBytes": 645602,
+       "cssGzipBytes": 95535,
+       "rawBytes": 106736,
+       "rawPercent": 16.53,
+       "gzipBytes": 1429,
+       "gzipPercent": 1.5,
+       "evidence": "S5.focusFixGate.evidence[1]; same frontend tree as Step6 start 68a4a3bc"
+      }
+     },
+     "method": "Sum dist CSS files; gzip level 9 per file, same as recorded Step 0/Step 5. Repeated zero-specificity app boundary scopes increase raw CSS. Original frozen UI1 archive SHA256 verified; no UI1 build run."
+    },
+    "originalBaselineChecksumsVerified": true,
+    "frozenUi1Sha256": "f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707",
+    "finalSlice": "not_started; stop for user before version-switch/legacy-bridge removal"
+   }
   }
  ],
- "nextUnit": "Complete diagnosed eager Findings screenshot updates through pinned-container e2e:update and inspect generated differences. Rerun checkpoint B on corrected app code and route-ready probe. All family/public slices are verified locally. Stop before final switch/bridge removal.",
+ "nextUnit": "Checkpoint B verified. Stop for the user before final Step 6 stylesheet entry-point/version-switch/legacy-bridge removal. Step 6 is not yet complete; Step 8 still qualifies the final tip.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",
