@@ -15,6 +15,8 @@ Put every output in a scratch folder, never in the repo. The probe outputs are a
 | `height-diag.mjs` | Finds the element and style behind a cold-vs-navigation difference. |
 | `rollback-rehearsal.mjs` | Rollback rehearsal with the frozen UI 1 archive (see its header): checks the sha256 and manifest, serves the archive as is, and answers its production API base from the local backend. Every other host is blocked and counted. |
 | `ui-attr.mjs` | Prints `data-ui` on a few routes of a served artifact. A UI 1 build must print null. |
+| `perf-compare.mjs <frontend> <out.json> <label>=<dir> ...` | Runtime load comparison of builds on fixture routes: median DOMContentLoaded, load, LCP and transferred JS/CSS bytes over cold loads. Run an A/A pair (the same build twice) to see the noise floor, and run on a quiet machine. |
+| `keyboard-zoom.mjs <frontend> <ui2\|legacy> <out.json>` | Automated aid for the keyboard and 200% zoom review: Tab stops with on-screen and focus-indicator checks, and overflow at 640×450 CSS px with 2× pixel density. Not a substitute for the human review. |
 
 Known limits:
 - The probe measures up to 4 elements per selector and a fixed property list. It is a regression net, not a full visual review.

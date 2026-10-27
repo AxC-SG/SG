@@ -14,7 +14,7 @@ const [fe, checkpoints, name, extractDir, outFile] = process.argv.slice(2);
 const imp = (p) => import(pathToFileURL(path.join(fe, p)).href);
 const { chromium } = await imp('node_modules/@playwright/test/index.mjs');
 const { serveArtifact } = await imp('e2e/serve.mjs');
-const result = { artifact: name, checks: [], external: [], apiStatus: {} };
+const result = { artifact: name, checks: [], external: [], apiStatus: {}, nonOk: [] };
 const check = (label, ok, detail = '') => { result.checks.push({ label, ok: !!ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${detail ? ` — ${detail}` : ''}`); };
 
 const archive = path.join(checkpoints, `${name}.tar.gz`);
@@ -39,6 +39,7 @@ async function session(credentialsFile) {
       const response = await route.fetch({ url: `http://127.0.0.1:8080${url.pathname}${url.search}` });
       const key = `${route.request().method()} ${response.status()}`;
       result.apiStatus[key] = (result.apiStatus[key] ?? 0) + 1;
+      if (response.status() >= 400) result.nonOk.push(`${key} ${url.pathname} (page ${new URL(route.request().frame().url()).pathname})`);
       return route.fulfill({ response });
     }
     result.external.push(`${url.hostname}${url.pathname}`);
@@ -83,7 +84,12 @@ try {
   await browser.close();
   await server.close();
 }
-check('no request left the machine', result.external.length === 0, `${result.external.length} blocked: ${[...new Set(result.external)].slice(0, 5).join(', ')}`);
+// Every non-local request is aborted above, so nothing leaves the machine. The only expected
+// attempts are the legacy base.css Google Fonts import; anything else is a finding.
+const unexpectedHosts = [...new Set(result.external.map((entry) => entry.split('/')[0]))].filter((host) => host !== 'fonts.googleapis.com');
+check('nothing left the machine; only the legacy Google Fonts import was attempted (blocked)', unexpectedHosts.length === 0,
+  `${result.external.length} attempts blocked, hosts: ${[...new Set(result.external.map((entry) => entry.split('/')[0]))].join(', ') || 'none'}`);
+console.log('non-2xx API answers:', result.nonOk.length ? `\n  ${result.nonOk.join('\n  ')}` : 'none');
 const serverErrors = Object.entries(result.apiStatus).filter(([key]) => / 5\d\d$/.test(key)).reduce((sum, [, n]) => sum + n, 0);
 check('no API call answered with a server error', serverErrors === 0, JSON.stringify(result.apiStatus));
 writeFileSync(outFile, JSON.stringify(result, null, 1));
