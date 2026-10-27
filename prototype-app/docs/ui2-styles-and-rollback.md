@@ -35,7 +35,7 @@ The import order lives in `src/styles/ui2/index.css`. `ui2/scope.test.ts` fails 
 | `npm run e2e:sweep` | Full route sweep, 4 widths, both themes |
 | `npm run e2e:live` | Live-backend journeys |
 | `npm run e2e:update` | Rewrite known-failure baselines; review the diff |
-| `node e2e/verify-archive.mjs [manifest]` | Verify a checkpoint archive against its per-file manifest |
+| `npm run e2e:verify-archive [-- manifest]` | Verify a checkpoint archive against its per-file manifest |
 
 Per-slice gate: `npm run lint && npm run typecheck && npm run test:coverage`, then the journeys and visual runs.
 

@@ -72,18 +72,9 @@ frontend/src/
     index.ts                Re-exports only — source of truth is always the feature directory
     ownership.ts            OwnershipSummary type
   styles/
-    index.css               Imports all CSS files
-    base.css                CSS custom properties + font imports
-    shared.css              Global layout classes, buttons, pills, badges
-    cve-workbench.css       CVE workbench-specific styles
-    connect.css             Connector page styles + SBOM wizard
-    eol.css                 EOL page styles
-    vuln-repo.css           Vuln repo page styles
-    user-management.css     User management page styles
-    exposure-dashboard.css  Exposure dashboard exec-* classes
-    finding-detail.css      Finding detail page styles
-    findings-list.css       Findings list page styles
-    ai-security.css         AI Security / AI Grid page styles
+    index.css               Single entry: public sheets, then ui2/index.css (see ui2-styles-and-rollback.md)
+    public*.css             Public marketing/blog/demo presentation (html:not([data-ui='2']))
+    ui2/                    App presentation: tokens, shell, primitives, per-family sheets, scope.test.ts
   test/
     setup.ts                @testing-library/jest-dom/vitest import; ResizeObserver and DOMMatrixReadOnly stubs for @xyflow/react
     test-utils.tsx          renderWithProviders — QueryClientProvider (retry: false) + MemoryRouter
@@ -803,45 +794,9 @@ All styles are plain CSS with custom properties. No CSS-in-JS, no Tailwind.
 
 Two themes: `light` (default) and `dark`. Applied as `data-theme="dark"` on `<html>`. Persisted in `localStorage` under `scoutai-theme`. Theme state is managed in `App.tsx`.
 
-### CSS custom properties (defined in `src/styles/base.css`)
+### Tokens, fonts and CSS file organization
 
-| Variable | Purpose |
-|---|---|
-| `--bg` | Page background |
-| `--panel` | Card/panel background |
-| `--panel-muted` | Slightly muted panel |
-| `--text` | Body text |
-| `--title` | Heading text |
-| `--muted` | Secondary/caption text |
-| `--border` | Default border |
-| `--border-strong` | Emphasized border |
-| `--accent` | Brand/action color |
-| `--critical` | Critical severity color |
-| `--high` | High severity color |
-| `--medium` | Medium severity color |
-| `--low` | Low severity color |
-| `--space-1` through `--space-6` | Spacing scale |
-| `--control-sm` | Small control height |
-
-### Fonts
-
-- **Space Grotesk** — display/heading text
-- **IBM Plex Sans** — body text
-
-### CSS file organization
-
-| File | Contents |
-|---|---|
-| `base.css` | CSS custom properties for both themes, font imports, reset |
-| `shared.css` | Global layout classes (`page-grid`, `panel`, `panel-header`), buttons, pills, badges, filter dropdowns, SBOM wizard, segmented controls |
-| `cve-workbench.css` | CVE Assessment Workbench panel and workflow styles |
-| `connect.css` | Connector filter bar, connector card grid, wizard step styles |
-| `eol.css` | EOL page — at-risk table, catalog styles |
-| `vuln-repo.css` | Vuln repo pages — inline bars, status pills |
-| `user-management.css` | User management page — role matrix table, member rows |
-| `exposure-dashboard.css` | Executive dashboard — `exec-kpi-*`, `exec-pipeline-*`, `exec-cve-*`, `exec-rem-*`, `exec-asset-*`, `exec-software-*`, `exec-insight-*` classes |
-| `finding-detail.css` | Finding detail page styles |
-| `findings-list.css` | Findings list page styles |
+App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. The legacy `base.css`, `shared.css` and per-page sheets are retired. Stylesheet ownership, token rules, e2e commands and rollback are documented in [ui2-styles-and-rollback.md](ui2-styles-and-rollback.md).
 
 ### CSS class naming patterns
 

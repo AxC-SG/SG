@@ -2226,9 +2226,33 @@
     "fullQualification": "pending Step 8 after Step 7; no final-slice browser/live/build/coverage pass claimed",
     "bundle": "unmeasured after final slice; Step 8 must report increases against Step 0 and qualified Step 5 honestly"
    }
+  },
+  {
+   "id": "S7",
+   "title": "Archive and document",
+   "status": "verified",
+   "units": [
+    {
+     "title": "Archive P0 baseline, add verify-archive, document styles and rollback",
+     "files": [
+      "checkpoints/P0-baseline-frontend-src.tar.gz (+ .sha256, -manifest.json)",
+      "frontend/e2e/verify-archive.mjs",
+      "frontend/package.json (e2e:verify-archive)",
+      "docs/ui2-styles-and-rollback.md",
+      "docs/frontend.md (styles section)"
+     ],
+     "evidence": [
+      "2026-10-27: archive 487865af537e764fbeb1e3ed701913f48214a9f88c775275ece4c57d56b13fe1; verify-archive OK, 320 files match; tampered manifest fails (sha256 mismatch + unlisted file); expanded copy deleted only after the pass (318 tracked files removed in a16a5935)."
+     ],
+     "limitations": [
+      "Archive, docs and script only: no app source changed; lint/typecheck/e2e not rerun (Step 8 qualifies the final tip)."
+     ],
+     "reversal": "git revert the Step 7 commits; the archive restores the P0 tree via tar -xzf."
+    }
+   ]
   }
  ],
- "nextUnit": "Step 6 complete with verified final-slice fast gate. Next: Step 7 archive/documentation in a separate slice; then Step 8 full final qualification of the branch tip. Accessibility review remains open; staging/human review waived; no release approval.",
+ "nextUnit": "Step 7 verified. Next: Step 8 full final qualification of the branch tip (any later commit means rerunning it). Push/CI needs separate approval; no release approval.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",
