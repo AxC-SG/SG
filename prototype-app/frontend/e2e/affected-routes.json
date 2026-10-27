@@ -5,6 +5,7 @@
   "^src/styles/ui2/findings-base\\.css$",
   "^src/styles/ui2/cve-base\\.css$",
   "^src/styles/ui2/inventory-base\\.css$",
+  "^src/styles/ui2/governance-base\\.css$",
   "^src/styles/(index|base|shared)\\.css$",
   "^src/(App|main)\\.tsx$",
   "^src/app/",

@@ -48,99 +48,6 @@
   color: var(--text);
 }
 
-.platform-console-shell {
-  display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.platform-console-shell--no-sidebar {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.platform-console-sidebar {
-  display: grid;
-  gap: var(--space-3);
-  padding-right: var(--space-2);
-  border-right: 1px solid var(--border);
-}
-
-.platform-console-sidebar-header {
-  display: grid;
-  gap: 6px;
-}
-
-.platform-console-nav {
-  display: grid;
-  gap: 8px;
-}
-
-.platform-console-nav-groups {
-  display: grid;
-  gap: 14px;
-}
-
-.platform-console-nav-group {
-  display: grid;
-  gap: 8px;
-}
-
-.platform-console-nav-group-title {
-  font-size: 0.73rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-inline: 2px;
-}
-
-.platform-console-nav-btn {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--panel-muted);
-  color: var(--text);
-  text-align: left;
-  padding: 12px 14px;
-  display: grid;
-  gap: 4px;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
-}
-
-.platform-console-nav-btn span {
-  font-weight: 700;
-  color: var(--title);
-}
-
-.platform-console-nav-btn small {
-  color: var(--muted);
-  font-size: 0.77rem;
-  line-height: 1.35;
-}
-
-.platform-console-nav-btn:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-}
-
-.platform-console-nav-btn.active {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 10%, var(--panel-muted));
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.platform-console-content {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.platform-console-section {
-  min-width: 0;
-}
-
 .platform-ops-space {
   display: grid;
   gap: var(--space-3);
@@ -289,19 +196,6 @@
 .table-critical {
   color: var(--critical);
   font-weight: 700;
-}
-
-@media (max-width: 960px) {
-  .platform-console-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .platform-console-sidebar {
-    padding-right: 0;
-    padding-bottom: var(--space-3);
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
 }
 
 /* SBOM Wizard */

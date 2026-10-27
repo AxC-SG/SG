@@ -136,17 +136,6 @@
   line-height: 1.3;
 }
 
-.platform-create-tenant-form {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  gap: 10px;
-  margin: 12px 0;
-}
-
-.platform-create-tenant-form input {
-  min-width: 0;
-}
-
 .public-demo-shell {
   --red: #dc2626;
   --cyan: #0891b2;
@@ -2213,12 +2202,6 @@
 
   .scout-hero-visual {
     margin-top: 0;
-  }
-}
-
-@media (max-width: 920px) {
-  .platform-create-tenant-form {
-    grid-template-columns: 1fr;
   }
 }
 
