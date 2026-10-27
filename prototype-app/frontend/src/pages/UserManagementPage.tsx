@@ -293,6 +293,10 @@ export function UserManagementPage() {
 
   const serviceNameRef = React.useRef<HTMLInputElement | null>(null);
   const serviceOpenerRef = React.useRef<HTMLButtonElement | null>(null);
+  // Focus returns to a dialog's opener only after that dialog was open, not on the first render.
+  const inviteWasOpenRef = React.useRef(false);
+  const bulkInviteWasOpenRef = React.useRef(false);
+  const serviceWasOpenRef = React.useRef(false);
 
   const setActiveView = React.useCallback(
     (next: AdminRouteView) => {
@@ -361,9 +365,11 @@ export function UserManagementPage() {
 
   React.useEffect(() => {
     if (!inviteOpen) {
-      inviteOpenerRef.current?.focus();
+      if (inviteWasOpenRef.current) inviteOpenerRef.current?.focus();
+      inviteWasOpenRef.current = false;
       return;
     }
+    inviteWasOpenRef.current = true;
     inviteEmailRef.current?.focus();
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -377,9 +383,11 @@ export function UserManagementPage() {
 
   React.useEffect(() => {
     if (!bulkInviteOpen) {
-      bulkInviteOpenerRef.current?.focus();
+      if (bulkInviteWasOpenRef.current) bulkInviteOpenerRef.current?.focus();
+      bulkInviteWasOpenRef.current = false;
       return;
     }
+    bulkInviteWasOpenRef.current = true;
     bulkInviteFileRef.current?.focus();
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -393,9 +401,11 @@ export function UserManagementPage() {
 
   React.useEffect(() => {
     if (!serviceOpen) {
-      serviceOpenerRef.current?.focus();
+      if (serviceWasOpenRef.current) serviceOpenerRef.current?.focus();
+      serviceWasOpenRef.current = false;
       return;
     }
+    serviceWasOpenRef.current = true;
     serviceNameRef.current?.focus();
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

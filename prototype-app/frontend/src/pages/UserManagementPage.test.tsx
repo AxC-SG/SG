@@ -1,8 +1,9 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import type { AuditEvent, AuthContext, ServiceAccount, TenantMember } from '../features/admin/types';
-import { renderWithProviders } from '../test/test-utils';
+import { getAuthContextQueryKey } from '../features/auth/queries';
+import { createTestQueryClient, renderWithProviders } from '../test/test-utils';
 import { UserManagementPage } from './UserManagementPage';
 
 const AUTH_CONTEXT: AuthContext = {
@@ -82,6 +83,29 @@ describe('UserManagementPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Acme Security.*1 member/)).toBeInTheDocument();
     });
+  });
+
+  it('leaves focus alone on load and returns it to Invite user only after the dialog closes', async () => {
+    vi.spyOn(api, 'getAuthContext').mockResolvedValue(AUTH_CONTEXT);
+    vi.spyOn(api, 'listTenantMembers').mockResolvedValue([buildMember()]);
+    vi.spyOn(api, 'listTenantInvites').mockResolvedValue([]);
+    vi.spyOn(api, 'listServiceAccounts').mockResolvedValue([]);
+    vi.spyOn(api, 'listAuditEvents').mockResolvedValue([]);
+
+    // In the app the auth context is already cached when the page mounts (the shell loaded it),
+    // so the Invite button is enabled on the first render.
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(getAuthContextQueryKey('anonymous'), AUTH_CONTEXT);
+    renderWithProviders(<UserManagementPage />, { queryClient });
+
+    const invite = await screen.findByRole('button', { name: /Invite user/ });
+    await waitFor(() => expect(invite).toBeEnabled());
+    expect(invite).not.toHaveFocus();
+
+    fireEvent.click(invite);
+    await waitFor(() => expect(invite).not.toHaveFocus());
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(invite).toHaveFocus());
   });
 
   it('renders a member row in the Users table when members are loaded', async () => {
