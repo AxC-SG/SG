@@ -422,8 +422,8 @@ export function CampaignsPage() {
 
   return (
     <div className="campaigns-page ui2-experience-family">
-      <div className="campaigns-tab-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="campaigns-tab-row">
+        <div className="campaigns-tab-group">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}

@@ -714,7 +714,7 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
             </span>
           </button>
         ))}
-        <div style={{ flex: 1 }} />
+        <div className="fd3-tab-spacer" />
         <button
           type="button"
           className="btn btn-primary software-detail-create-findings-btn"

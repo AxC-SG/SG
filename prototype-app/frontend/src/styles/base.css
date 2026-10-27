@@ -8582,8 +8582,16 @@ label {
 
 .campaigns-tab-row {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
   overflow-x: auto;
+}
+
+.campaigns-tab-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .campaign-tab,
