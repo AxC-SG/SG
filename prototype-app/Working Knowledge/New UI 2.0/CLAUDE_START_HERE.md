@@ -80,14 +80,16 @@ Open `http://127.0.0.1:5174/design-preview.html#/reference`. Reference checks: `
 The fixture-backed browser checks moved from `browser-fixtures/` in this folder to `prototype-app/frontend/e2e/`. Historical commands recorded in the ledgers keep the old path. From `prototype-app/frontend`, after `npm ci`:
 
 ```sh
-npm run e2e:build        # builds UI 2 and UI 1 into e2e/.artifacts/, checks the data-ui route boundary
-npm run e2e:journeys     # fixture journeys against both builds
+npm run e2e:build        # builds UI 2 into e2e/.artifacts/ui2, checks the data-ui route boundary
+npm run e2e:journeys     # fixture journeys against the UI 2 candidate
 npm run e2e:sweep        # route sweep plus axe comparison with e2e/axe-baseline/
 npm run e2e:visual       # visual baselines; only inside mcr.microsoft.com/playwright:v<pinned version>
 npm run e2e:affected -- --routes /findings,/login
 npm run e2e:update       # rewrites visual and axe baselines; inspect e2e/.results/visual-report first
 npm run e2e:live         # real backend; needs LIVE_CREDENTIALS and is never part of default CI
 ```
+
+From cleanup Step 6, candidate checks run UI 2 only. Keep the UI 1 baselines as historical evidence. For legacy comparisons, serve the checksum-verified frozen Step 5 artifact with `tools/rollback-rehearsal.mjs`; never rebuild UI 1 from the changing source. See `tools/README.md` for its checksum and the gate commands.
 
 Every script exits non-zero on a failed check, a page or console error, or an `/api` request with no fixture.
 

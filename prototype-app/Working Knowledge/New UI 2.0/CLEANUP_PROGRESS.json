@@ -1016,9 +1016,179 @@
      "reversal": "git revert c29515d8"
     }
    ]
+  },
+  {
+   "id": "S6",
+   "title": "Retire the legacy styles one family at a time",
+   "status": "in_progress",
+   "dependsOn": [
+    "S5"
+   ],
+   "branch": "feat/ui2-step6-retire-legacy",
+   "startingCommit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+   "checkFirst": {
+    "decision": "Confirmed S5 decision and userDecisions: proceed to retirement; staging and human reviews waived; rollback uses the frozen UI 1 artifact. Accessibility review remains open.",
+    "checkpointA": "S5 focusFixGate verified on c29515d8. Step 5 tip fc108c4c and fetched main 68a4a3bc both have frontend tree 3e9e2cb83bea94c9015900bfb40251b9582529f7, identical to c29515d8.",
+    "pr25": {
+     "state": "merged",
+     "mergeCommit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+     "ciHead": "fc108c4c7baae81b439602d50de19360ee67c8a8",
+     "jobs": {
+      "frontend": "success",
+      "backend": "success",
+      "backend-postgres": "success",
+      "frontend-e2e": "success",
+      "policy-packages": "success",
+      "migration-validation": "success",
+      "migration-boundaries": "success",
+      "docs-check": "success",
+      "secrets": "success",
+      "images": "success",
+      "Filesystem scan": "success",
+      "Docker image scan": "success",
+      "Semgrep CE security scan": "success"
+     }
+    },
+    "ancestry": "Fetched https://github.com/AxG-SG/SG.git main without changing remotes. Confirmed 47ab4728, fc108c4c and c29515d8 are ancestors. Advanced the unused Step 6 branch created from the Step 5 tip to fetched main, then switched to it.",
+    "exclusiveCheckout": "Previous Claude CLI session in this checkout ended; verified no competing Claude CLI or gate/test process before starting. Podman VM stopped."
+   },
+   "startingBaseline": {
+    "date": "2026-10-27",
+    "commit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+    "command": "GATE_WORK=/private/tmp/sg-ui2-step6.QsSmLw caffeinate -ims zsh tools/host-gate.sh step6-start (GATE_BASELINE unset)",
+    "status": "verified_with_recorded_legacy_failures_and_height_differences",
+    "summary": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-start/summary.txt",
+    "GATE_BASELINE": "/private/tmp/sg-ui2-step6.QsSmLw/baseline",
+    "retained": "probe-ui2.json, probe-legacy.json, state.json (copied from state-new.json), source.json with their SHA256 values; scratch only, never commit probe outputs.",
+    "tests": {
+     "lint": {
+      "errors": 0,
+      "existingWarnings": 2
+     },
+     "typecheck": "passed",
+     "vitest": {
+      "filesPassed": 84,
+      "passed": 773,
+      "failed": 0,
+      "skipped": 0
+     },
+     "coverage": {
+      "lines": "7937/15211 (52.17%)",
+      "statements": "8916/18010 (49.5%)",
+      "functions": "2573/6208 (41.44%)",
+      "branches": "7868/19521 (40.3%)",
+      "floors": "met; unchanged"
+     },
+     "builds": "UI 2 and UI 1 passed, including production bundle verification; e2e:build boundaries 15/15 each. This is the required pre-slice starting run; Step 6.0 will remove new UI 1 builds.",
+     "journeys": {
+      "ui2": {
+       "passed": 737,
+       "failed": 0,
+       "skipped": 0
+      },
+      "legacy": {
+       "passed": 703,
+       "failed": 34,
+       "skipped": 0,
+       "newFailures": 0,
+       "failureClassification": "All 34 match the reviewed legacy journey baseline."
+      }
+     },
+     "probes": "140 route/theme/width entries per version; 240 cold/navigation/Back comparisons each; UI 2 8 height-only differences on /vuln-repo/vulnerabilities, UI 1 24 height-only differences on that route and /inventory/hosts and /inventory/ai, all previously recorded. Boundary 120/120 per version; state check completed with 10 UI 2 route/theme entries."
+    },
+    "bundle": {
+     "cssRawBytes": 645602,
+     "cssGzipBytes": 95535,
+     "vsStep0": {
+      "rawBytes": 592,
+      "gzipBytes": 139
+     },
+     "vsStep5": {
+      "rawBytes": 409,
+      "gzipBytes": 95
+     },
+     "ui2JsRawBytes": 2520018,
+     "ui2JsGzipBytes": 690726
+    },
+    "frozenUi1": "Archive SHA256 f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707 verified before extracting; all 86 files match the manifest. Extracted in /private/tmp/sg-ui2-step6.QsSmLw/frozen-ui1; no rebuild of the frozen artifact."
+   },
+   "units": [
+    {
+     "title": "Step 6.0: switch candidate build and checks to UI 2 only",
+     "status": "verified",
+     "files": [
+      ".github/workflows/quality.yml",
+      ".github/workflows/frontend-e2e-sweep.yml",
+      "prototype-app/frontend/e2e/build-artifacts.mjs",
+      "prototype-app/frontend/e2e/run.mjs",
+      "prototype-app/frontend/playwright.config.ts",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/host-gate.sh",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/ctr-gate.sh",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLAUDE_START_HERE.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "approvalGate": {
+      "status": "approved_and_applied",
+      "reason": "STEP6_PROMPT Step 6.0 requires the exact workflow diff and approval before changing .github/workflows/.",
+      "proposedChange": "Add E2E_VERSIONS: ui2 to frontend-e2e in quality.yml and sweep in frontend-e2e-sweep.yml, and update their comments.",
+      "recorded": "2026-10-27",
+      "userInstructionVerbatim": "keep going",
+      "context": "Reply to the explicit request to approve /private/tmp/sg-ui2-step6.QsSmLw/step6-0-workflows.patch. Applied workflows match that exact proposal byte for byte."
+     },
+     "evidence": [
+      "Candidate build, journey/sweep/visual/affected/update runner, and Playwright project selection default to UI 2 and reject legacy or mixed version requests. E2E_VERSIONS is honored by the build and runner, matching the approved CI configuration.",
+      "The host gate no longer builds or probes UI 1. The container gate explicitly selects UI 2. Updated active handoff and tools documentation; UI 1 baselines remain in the repo as historical evidence.",
+      "App source and CSS unchanged; no legacy style family retired in Step 6.0. No API, auth, tenant or schema changes.",
+      "10/10 configuration checks passed, 0 failed, 0 skipped: eight legacy/mixed-version rejection checks plus two UI 2 Playwright listing checks (default and explicit environment). Each listing selects 140 UI 2 visual cases; listing is not a visual pass. Node and zsh syntax checks passed. Evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings (PageFreshnessStatus.tsx fast-refresh export warning; ConfigurationsPage.tsx STORAGE_KEY effect dependency), typecheck passed, vitest 773 passed / 0 failed / 0 skipped in 84 files, including the 17 scope.test.ts checks. No coverage run: the long gate remains deferred to checkpoint B and Step 8.",
+      "Configuration checks: 10 passed / 0 failed / 0 skipped. Legacy and mixed versions rejected by build/runner/Playwright; default and explicit UI 2 selection each list 140 visual cases (not executed). Node and zsh syntax checks passed; approved workflow bytes unchanged."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/build/live/coverage checks for this slice are deferred to checkpoint B and Step 8 per checkDeferral; this is the fast slice gate only.",
+      "Staging and human reviews remain waived; accessibility review remains open.",
+      "No legacy style family has been retired yet."
+     ],
+     "reversal": "Revert the local Step 6.0 commit to restore two-version candidate tooling; the frozen Step 5 artifact and historical baselines are retained.",
+     "statuses": {
+      "fixture": "pending",
+      "localAuthenticated": "pending",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "eae220211f47deaf02a393fa08b1227708eafd19",
+      "testedFrontendTree": "dd59950175ae5412fd0990ebb93bb5b7399bb414",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 773,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTestsDiscoveredAndIncluded": 17
+      },
+      "configurationChecks": {
+       "passed": 10,
+       "failed": 0,
+       "skipped": 0
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/",
+      "evidenceAmendment": "Only the ledger was amended after the fast gate; tested implementation files and frontend tree unchanged."
+     }
+    }
+   ]
   }
  ],
- "nextUnit": "Step 6 in a fresh session (STEP6_PROMPT.md) from the feat/ui2-step5-qualification tip; checkpoint B before the final Step 6 slice.",
+ "nextUnit": "Stopped at the Step 6.0 slice gate after its local commit and passing fast checks. Next: the first family retirement slice, starting with its cascade map. Preserve the checkpoint B baseline at /private/tmp/sg-ui2-step6.QsSmLw/baseline; run the full checkpoint B gate before the final version-switch/bridge removal and stop for the user.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

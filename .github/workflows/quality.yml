@@ -100,7 +100,7 @@ jobs:
       - run: npm run build
       - run: npm run test:coverage
 
-  # Fixture-backed browser checks for both presentation versions. The image tag must equal the
+  # Fixture-backed browser checks for UI 2. The image tag must equal the
   # pinned @playwright/test version; check-playwright-image.mjs fails the job otherwise.
   frontend-e2e:
     runs-on: ubuntu-latest
@@ -109,6 +109,7 @@ jobs:
     env:
       E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
       E2E_WORKERS: 2
+      E2E_VERSIONS: ui2
     defaults:
       run:
         working-directory: prototype-app/frontend

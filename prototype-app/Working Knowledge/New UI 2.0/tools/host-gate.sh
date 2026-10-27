@@ -34,11 +34,10 @@ for ext in ('css','js'):
 EOF
 }
 VITE_UI_VERSION=2 run build-ui2 npm run build; bundle ui2
-VITE_UI_VERSION= run build-ui1 npm run build; bundle ui1
 run e2e-build npm run e2e:build; grep "boundary" $O/e2e-build.log | sed 's/^/  /' | tee -a $O/summary.txt
 run e2e-journeys npm run e2e:journeys
 grep -E "passed|failed|skipped|known|new" $O/e2e-journeys.log | grep -iE "total|summary|journey:|passed" | tail -16 | sed 's/^/  /' >> $O/summary.txt
-for v in ui2 legacy; do
+for v in ui2; do
   node $TOOLS/style-probe.mjs "$FE" $v $O/probe-$v.json > $O/probe-$v.log 2>&1; sum "probe-$v exit=$?"
   if [ -n "${GATE_BASELINE:-}" ]; then
     node $TOOLS/probe-compare.mjs diff $GATE_BASELINE/probe-$v.json $O/probe-$v.json > $O/probe-diff-$v.txt; tail -1 $O/probe-diff-$v.txt | sed 's/^/  /' | tee -a $O/summary.txt

@@ -27,7 +27,7 @@ echo "copy of $(git rev-parse --short HEAD) in $C"
 podman run --rm --arch arm64 --ipc=host \
   -v $C:/work -v $S/npmcache:/npmcache -v sg-ui2-node-modules:/work/prototype-app/frontend/node_modules \
   -v $O:/out \
-  -e npm_config_cache=/npmcache -e npm_config_prefer_offline=true -e E2E_PLAYWRIGHT_IMAGE=$IMAGE -e ROUTES="$ROUTES" -e CI=1 \
+  -e npm_config_cache=/npmcache -e npm_config_prefer_offline=true -e E2E_PLAYWRIGHT_IMAGE=$IMAGE -e E2E_VERSIONS=ui2 -e ROUTES="$ROUTES" -e CI=1 \
   -w /work/prototype-app/frontend $IMAGE bash -c '
     set -u; uname -m; node -v
     npm ci --no-audit --no-fund > /out/ctr-npm-ci.log 2>&1; echo "npm ci exit=$?"

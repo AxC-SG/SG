@@ -1,15 +1,13 @@
 #!/usr/bin/env node
-// Builds both presentation versions into separate artifact folders and checks each one.
+// Builds the current UI 2 candidate and checks its route boundary.
+// Legacy comparisons use the checksum-verified frozen Step 5 artifact; never rebuild UI 1.
 //
-// UI 2 is built with VITE_UI_VERSION=2 and UI 1 with VITE_UI_VERSION set explicitly empty, so
-// neither inherits a value from the shell or a .env file. `npm run build` includes the
-// production-bundle security check for both. VITE_API_BASE=/api keeps every API call on the
-// artifact's own origin, where the fixtures answer it; without it a production build calls the
-// production API. Each copied folder is then served on its own port and checked route by route:
-// app and auth routes carry data-ui="2" only in the UI 2 build, and the public marketing, blog
-// and demo routes never carry it.
+// UI 2 is built with VITE_UI_VERSION=2. `npm run build` includes the production-bundle
+// security check. VITE_API_BASE=/api keeps every API call on the artifact's own origin,
+// where the fixtures answer it. App and auth routes carry data-ui="2"; public marketing,
+// blog and demo routes never carry it.
 //
-// Usage: node e2e/build-artifacts.mjs [--versions ui2,legacy]
+// Usage: node e2e/build-artifacts.mjs [--versions ui2]
 import { spawnSync } from 'node:child_process';
 import { cpSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -25,9 +23,12 @@ const args = Object.fromEntries(
     return pairs;
   }, [])
 );
-const versions = (args.versions ?? 'ui2,legacy').split(',');
+const versions = (args.versions ?? process.env.E2E_VERSIONS ?? 'ui2').split(',');
+if (versions.length !== 1 || versions[0] !== 'ui2') {
+  throw new Error('Only UI 2 may be rebuilt. Use the checksum-verified frozen Step 5 artifact for legacy comparisons.');
+}
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const UI_VERSION = { ui2: '2', legacy: '' };
+const UI_VERSION = { ui2: '2' };
 
 // Signed-in app routes, auth entry routes (signed out) and the excluded public routes.
 const APP_ROUTES = ['/exposure', '/findings', '/vuln-repo/org-cves', '/inventory', '/connect', '/configurations/sla'];

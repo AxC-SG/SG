@@ -3,8 +3,11 @@ import { ARTIFACTS } from './e2e/serve.mjs';
 import { CONTEXT_OPTIONS } from './e2e/browser.mjs';
 
 // Visual baselines only. Journeys, the route sweep and axe run as plain scripts (see e2e/run.mjs).
-// Each UI version is a project with its own artifact server and its own baseline folder.
-const versions = (process.env.E2E_VERSIONS ?? 'ui2,legacy').split(',') as Array<keyof typeof ARTIFACTS>;
+// The UI 2 candidate has its own artifact server and baseline folder. UI 1 baselines stay in the repo.
+const versions = (process.env.E2E_VERSIONS ?? 'ui2').split(',') as Array<keyof typeof ARTIFACTS>;
+if (versions.length !== 1 || versions[0] !== 'ui2') {
+  throw new Error('Candidate visual checks run only on UI 2; UI 1 baselines are retained as historical evidence.');
+}
 
 export default defineConfig({
   testDir: './e2e',
