@@ -398,6 +398,12 @@ html[data-ui='2'] .ui2-governance-family .um-search input:not([type='checkbox'])
   box-shadow: none;
 }
 
+/* The flush field has no frame of its own, so keyboard focus shows on the search frame. */
+html[data-ui='2'] .ui2-governance-family .um-search:focus-within {
+  border-color: var(--dp-accent);
+  box-shadow: var(--dp-ring);
+}
+
 html[data-ui='2'] .ui2-governance-family .um-inline-filter {
   gap: 6px;
   color: var(--dp-text-2);

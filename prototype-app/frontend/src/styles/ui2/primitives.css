@@ -33,6 +33,16 @@ html[data-ui='2'] textarea:focus {
   box-shadow: var(--dp-ring);
 }
 
+/* Keyboard focus for buttons and links. base.css shows focus as a box-shadow ring, but UI 2.0
+ * sets box-shadow on .btn, .nav-btn.active, .tenant-context-pill and others at higher
+ * specificity, which hid it. An outline is not contested by those rules; drawn inside the edge
+ * so scrolling tab strips and table cells cannot clip it. Family rules that draw their own ring
+ * (outline: none + box-shadow) are more specific and keep it. */
+html[data-ui='2'] :is(button, a[href], [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: -2px;
+}
+
 html[data-ui='2'] input::placeholder,
 html[data-ui='2'] textarea::placeholder {
   color: var(--dp-text-3);
