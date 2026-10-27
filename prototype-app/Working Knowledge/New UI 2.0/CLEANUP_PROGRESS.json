@@ -773,8 +773,45 @@
    },
    "findingsForLaterSteps": [
     "Coverage timing variation remains from 300ms search-debounce timers in CampaignsPage.tsx (217, 237) and CampaignDetailPage.tsx (270, 340): covered only when a test stays mounted past 300ms. Seen as statements 8883-8887 and functions 2559-2561 at the same source; no line-count effect. Functions margin over the floor is small (2559 vs 2556 needed at Batch A totals)."
+   ],
+   "merged": "PR #23 merged into AxG-SG main 2026-10-26 as merge commit ce85819a (parents d872791a, aba6ab05); all 14 CI jobs passed on aba6ab05, including frontend-e2e (1h6m) and backend-postgres."
+  },
+  {
+   "id": "S4",
+   "title": "Consolidate foundation styles (tokens, primitives, shell, tab strips)",
+   "status": "in_progress",
+   "dependsOn": [
+    "S3"
+   ],
+   "branch": "feat/ui2-step4-foundation-styles from AxG-SG main ce85819a (merge of PR #23, contains aba6ab05); local only, not pushed",
+   "scope": "src/styles/ui2/{tokens,primitives,shell}.css and the tab strips. Tab-strip rules that live in family sheets (findings.css fd3 tabs, connect.css connector tabs, cve.css/governance.css cvd2 tabs, experience.css cd-tab) stay where they are until their Step 6 family slice; only shell.css section tabs are consolidated here.",
+   "cascadeMap": {
+    "method": "2026-10-26/27 on ce85819a. Static: postcss parse of every stylesheet in effective load order, per-selector specificity, winners per (subject, property) against the foundation rules. Browser: computed styles of 70 foundation targets plus ::before/::after, hover/focus states, on all 35 e2e routes x dark/light x 1280/390, from a cold direct link and after a client-side navigation sequence that loads every lazy route sheet first, then Back and Forward through /demo. Fixture-backed artifacts from e2e:build, both versions. Scratch scripts, not committed.",
+    "loadOrder": {
+     "main": "App.tsx imports styles/index.css (base, shared, cve-workbench, connect, eol, vuln-repo, user-management, exposure-dashboard, then ui2/index.css: tokens, legacy-bridge, shell, primitives, findings, cve, inventory, governance, connect, experience), then finding-detail.css, then ai-security.css. One main CSS file, linked from index.html.",
+     "lazy": "Appended when their route chunk first loads and kept for the rest of the session: components/DataTable.css (DataTable chunk), styles/findings-list.css (FplWidgets chunk, imported by FindingsPage and SoftwareIdentitiesPage), pages/platform-feed-catalog.css (PlatformConsolePage chunk), @xyflow/react/dist/style.css (AiAssetDetailPage chunk).",
+     "uiSwitch": "applyUiVersion sets data-ui='2' on <html> before the first render (main.tsx) and before paint on every location change (UiVersionPresentation useLayoutEffect); removed on /demo and /demo/*. CSS is byte-identical between the two builds."
+    },
+    "winners": [
+     "Lazy route sheets win against no foundation declaration (0 cases), so cold links and navigation sequences cannot change a foundation outcome.",
+     "legacy-bridge.css (html[data-ui='2'] and its [data-theme] variants, specificity 0,1,1 / 0,2,1) beats base.css :root, [data-theme='light'] and [data-theme='dark'] (0,1,0) for every bridged variable. No bridged or --dp-* variable is redefined below the root.",
+     "UI 2 family sheets override the foundation in 484 (subject, property) pairs, by design: they are anchored on family roots (0,3,1 and up). Exceptions: ui2/inventory.css:98 '.ui2-inventory-family input/select' ties primitives.css select:focus, input:disabled and select:disabled at the same specificity and wins by source order, so on Inventory pages focused selects keep the plain border/shadow and disabled inputs and selects keep the enabled background and text colour; findings.css:496 uses !important for the selected Findings row (same colour as the foundation, no visible effect).",
+     "Legacy rules beat the foundation only by specificity, on page-scoped selectors: .host-detail-page .btn.btn-secondary (Inventory family re-overrides), .md-table thead tr th, .host-detail-page/.ai-asset-detail-page .data-table th (Inventory family re-overrides th), .ai-policy-governance row inputs/selects (font-size), .platform-policy-detail-page .cvd2-panel label (colour), .cve-form-field select/textarea:focus (ring), last-row td border resets. .public-demo-shell .btn-primary:hover is on the public routes, where data-ui is never set."
+    ],
+    "browserCheck": {
+     "ui2": "240 cold-vs-navigation/Back comparisons: 232 identical; 8 differ only in .content/.panel height on /vuln-repo/vulnerabilities (cause below). 0 colour, border, font, spacing, tab-underline or hover/focus differences. Boundary: 120/120 sequences correct (data-ui absent on /demo, '2' after Back, absent after Forward); data-ui '2' on all 32 app routes, absent on /demo, /demo/blog, /demo/request.",
+     "legacy": "240 comparisons: 216 identical; 24 differ only in .content/.panel height on /vuln-repo/vulnerabilities, /inventory/hosts and /inventory/ai (cause below). data-ui absent on all 35 routes; boundary 120/120 correct."
+    },
+    "duplicatesInFoundation": "No identical selector+property repeats. Identical declaration blocks: .nav-btn:hover = .nav-sub-btn:hover (same meaning, merge); .modal-backdrop/.fd3-modal-overlay = .confirm-dialog::backdrop (same scrim, merge via token); .tenant-context-pill:hover = input hover border, and .settings-menu-header span = .panel-caption (different meaning, keep). The bounded tab underline (left/right 6px, height 2px) is repeated in shell.css:324, findings.css:793 and connect.css:86; only the shell copy is in Step 4 scope.",
+    "hardcodedColours": "Outside tokens.css: shell.css .brand-mark (#0ea5e9 in the gradient, #fff text, rgba(255,255,255,0.18) inset), primitives.css scrim rgba(9,9,11,0.45) on .modal-backdrop, .fd3-modal-overlay and .confirm-dialog::backdrop. No status or severity colour is hardcoded in the foundation.",
+    "staticInlineStyles": "Shell (App.tsx): none. Tab strips: CampaignsPage.tsx:425-426 (campaigns-tab-row justify/align; inner tab group flex/gap/wrap) and SoftwareIdentityDetailPage.tsx:717 (flex:1 spacer in the fd3 tab bar). Both apply to both versions."
+   },
+   "units": [],
+   "findingsForLaterSteps": [
+    "findings-list.css is lazy (FplWidgets chunk via FindingsPage and SoftwareIdentitiesPage) but its unscoped .fpl-* rules are used on other pages. On a cold link to /vuln-repo/vulnerabilities the column-filter buttons (.fpl-filter-btn) render with button defaults; after /findings has loaded the sheet they get padding 2px, border 0, display flex (both versions, page height +4 to +7px). On UI 1, /inventory/hosts and /inventory/ai fpl-widget cards also change (+24px); UI 2 covers them in inventory.css. Fix belongs to the Findings/Inventory family slices or the Step 6 final stylesheet entry point.",
+    "ui2/inventory.css:98 overrides the primitives focus and disabled styles for inputs and selects on Inventory pages by source order (see cascadeMap.winners). Not changed in Step 4 (outside scope; would change Inventory visuals)."
    ]
   }
  ],
- "nextUnit": "S3 PR CI on AxG-SG/SG, then the user approves Step 4 (foundation styles)."
+ "nextUnit": "S4 slices on feat/ui2-step4-foundation-styles: tokens for hardcoded foundation colours, merge same-meaning duplicates, tab-strip inline styles to classes, scope.test.ts ownership and route-boundary checks; then the Step 4 gate."
 }
