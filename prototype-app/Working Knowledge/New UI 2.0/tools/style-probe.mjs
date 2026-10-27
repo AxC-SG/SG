@@ -83,8 +83,43 @@ async function interact(page) {
   return states;
 }
 
-const settle = async (page) => { await page.waitForLoadState('networkidle'); await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(150); };
-const clientNav = async (page, to) => { await page.evaluate((p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }, to); await settle(page); };
+// A history URL change is synchronous; React's route commit is not. Never sample the
+// previous page merely because networkidle was already true before SPA navigation.
+const network = new WeakMap();
+const routeIdentity = () => JSON.stringify({
+  headings: [...document.querySelectorAll('h1, h2, h3')].map((node) => node.textContent.trim()),
+  roots: [...document.querySelectorAll('.content > *, [class*="ui2-"][class*="-family"]')].map((node) => node.className),
+  publicPage: !!document.querySelector('.public-demo-shell:not(.ui2-experience-family)'),
+  loading: [...document.querySelectorAll('.notice')].some((node) => node.textContent.trim() === 'Loading page...'),
+});
+const settle = async (page) => {
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => document.fonts.ready);
+  const end = Date.now() + 30000;
+  const state = network.get(page);
+  while (state && (state.pending.size || Date.now() - state.changed < 200)) {
+    if (Date.now() > end) throw new Error('Probe route requests did not settle');
+    await page.waitForTimeout(50);
+  }
+  await page.waitForTimeout(150);
+};
+const routeReady = async (page, { expected, before, publicPage = false } = {}) => {
+  const end = Date.now() + 30000;
+  while (Date.now() < end) {
+    const current = await page.evaluate(routeIdentity);
+    const state = JSON.parse(current);
+    if (!state.loading && (publicPage ? state.publicPage : expected ? current === expected : current !== before)) return;
+    await page.waitForTimeout(50);
+  }
+  throw new Error(`Probe route commit timed out at ${page.url()}`);
+};
+const clientNav = async (page, to, expected) => {
+  const before = await page.evaluate(routeIdentity);
+  const sameRoute = new URL(page.url()).pathname + new URL(page.url()).search === to;
+  await page.evaluate((p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }, to);
+  if (!sameRoute) await routeReady(page, { expected, before, publicPage: to === '/demo' });
+  await settle(page);
+};
 const WARM = { tenant: ['/findings', `/inventory/ai/${PRIMARY_AI_ASSET_ID}`, `/inventory/hosts/${PRIMARY_HOST_ID}`, '/vuln-repo/vulnerabilities'], platform: ['/platform/ai-policies', '/platform/operations', '/platform/tenants'] };
 
 const server = await serveArtifact(ARTIFACTS[version].dir, ARTIFACTS[version].port);
@@ -95,13 +130,19 @@ async function page(theme, width, who) {
   await context.addInitScript((value) => localStorage.setItem('scoutai-theme', value), theme);
   await routeFixtures(context, { actorOverride: who === 'platform' ? platformActor : actor });
   if (who === 'signedOut') await context.route((url) => url.pathname.endsWith('/api/me'), (route) => route.fulfill({ status: 401, json: { message: 'Unauthorized (fixture)' } }));
-  return { context, page: await context.newPage() };
+  const page = await context.newPage();
+  const state = { pending: new Set(), changed: Date.now() };
+  network.set(page, state);
+  page.on('request', (request) => { state.pending.add(request); state.changed = Date.now(); });
+  for (const event of ['requestfinished', 'requestfailed']) page.on(event, (request) => { state.pending.delete(request); state.changed = Date.now(); });
+  return { context, page };
 }
 try {
   for (const theme of ['dark', 'light']) for (const width of widths) for (const [route, who] of ALL_ROUTES) {
     const key = `${route}|${theme}|${width}`;
     const cold = await page(theme, width, who);
     await cold.page.goto(route); await settle(cold.page);
+    const expected = await cold.page.evaluate(routeIdentity);
     const entry = { cold: await collect(cold.page), coldStates: await interact(cold.page) };
     await cold.context.close();
     if (who !== 'signedOut') {
@@ -109,15 +150,15 @@ try {
       const warm = WARM[who];
       await nav.page.goto(warm[0]); await settle(nav.page);
       for (const step of warm.slice(1)) await clientNav(nav.page, step);
-      await clientNav(nav.page, route);
+      await clientNav(nav.page, route, expected);
       entry.nav = await collect(nav.page);
       entry.navStates = await interact(nav.page);
       // Public boundary mid-sequence, then Back to the route and Forward again.
       await clientNav(nav.page, '/demo');
       const onDemo = await nav.page.evaluate(() => document.documentElement.getAttribute('data-ui'));
-      await nav.page.goBack(); await settle(nav.page);
+      await nav.page.goBack(); await routeReady(nav.page, { expected }); await settle(nav.page);
       entry.back = await collect(nav.page);
-      await nav.page.goForward(); await settle(nav.page);
+      await nav.page.goForward(); await routeReady(nav.page, { publicPage: true }); await settle(nav.page);
       const forward = await nav.page.evaluate(() => document.documentElement.getAttribute('data-ui'));
       result.boundary.push({ key, onDemo, back: entry.back.dataUi, forward });
       await nav.context.close();

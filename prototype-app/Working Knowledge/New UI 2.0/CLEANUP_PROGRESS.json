@@ -1763,12 +1763,62 @@
       },
       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-inventory-colours/",
       "evidenceAmendment": "Ledger and checkpoint documentation amended after the run; tested frontend tree unchanged."
+     },
+     "commit": "652750d3"
+    },
+    {
+     "title": "Checkpoint B: wait for committed SPA routes in the qualification probe",
+     "status": "verified",
+     "startingCommit": "652750d3",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/style-probe.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md"
+     ],
+     "evidence": [
+      "Diagnosed the six cold/navigation anomalies as snapshots of previous React routes: wrong page title/tabs and shared height 1134.27px from the preceding CVE list. Two onDemo observations preceded the public route commit; the application boundary implementation is unchanged and uses useLayoutEffect before paint.",
+      "Probe now waits for target route headings/family-root identity, public page commit, and settled requests. No style property, route, width, state, comparison or boundary assertion removed. Timeout fails rather than accepting the wrong page.",
+      "Node syntax check passed. Full corrected host probe will qualify the change; original failed observations and baseline remain retained."
+     ],
+     "tests": [
+      "Node syntax check passed; post-commit fast gate: lint 0 errors / 2 existing warnings, typecheck passed, Vitest 788 passed / 0 failed / 0 skipped in 84 files (32 scope tests). Full probe rerun pending."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Checkpoint B remains open pending the corrected full host probe and pinned-container visual baseline updates for the inspected eager Findings control changes."
+     ],
+     "reversal": "Revert this qualification-probe slice; retain the Inventory colour fix.",
+     "statuses": {
+      "fixture": "pending_checkpoint_B",
+      "localAuthenticated": "not_applicable",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "823760244d847bda0d9e1bbac566d5d7712e2afc",
+      "testedFrontendTree": "4da755fd7218cf2dd3b4cf931623b7939f2665f5",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-probe-readiness/",
+      "evidenceAmendment": "Only ledger/checkpoint documentation amended after this run; tested frontend tree unchanged."
      }
     }
    ]
   }
  ],
- "nextUnit": "Inventory colour fix verified. Qualification follow-up: wait for actual React route commit before probe observations, regenerate only diagnosed eager-Findings snapshots through pinned-container e2e:update, inspect diffs, then rerun checkpoint B on the corrected candidate. Stop before final switch/bridge removal.",
+ "nextUnit": "Complete diagnosed eager Findings screenshot updates through pinned-container e2e:update and inspect generated differences. Rerun checkpoint B on corrected app code and route-ready probe. All family/public slices are verified locally. Stop before final switch/bridge removal.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",
