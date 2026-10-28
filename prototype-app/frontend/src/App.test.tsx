@@ -396,15 +396,20 @@ describe('App test persona switcher', () => {
   });
 
   it.each([
-    '/fix-intelligence',
-    pathForFixIntelligenceView('patches'),
-    '/fix-intelligence/details/fix-1',
-  ])('redirects retired Fix Intelligence URLs to findings: %s', async (route) => {
+    ['/fix-intelligence', '/fix-intelligence/all'],
+    [pathForFixIntelligenceView('patches'), '/fix-intelligence/patches'],
+    ['/fix-intelligence/details/fix-1', '/fix-intelligence/details/fix-1'],
+  ])('opens Fix Intelligence routes: %s', async (route, expected) => {
     const auth = await import('./features/auth/api');
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const fixtures = await import('./features/fix-intelligence/fixtures');
+    const { fixIntelligenceApi } = await import('./features/fix-intelligence/api');
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(fixtures.summary());
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(fixtures.page([fixtures.listItem()]));
+    vi.spyOn(fixIntelligenceApi, 'detail').mockResolvedValue(fixtures.detail({ title: 'Disable SMBv1' }));
     const { default: App } = await import('./App');
     renderWithProviders(<><App /><LocationProbe /></>, { route });
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/findings$/));
-    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`^${expected}$`)));
+    expect((await screen.findAllByRole('button', { name: /Fix Intelligence/ }, { timeout: 5000 })).length).toBeGreaterThan(0);
   });
 });

@@ -19,7 +19,6 @@ import {
   viewLabel
 } from './format';
 import type { FixSummary, FixView } from './types';
-import './fix-intelligence.css';
 
 const PAGE_SIZE = 50;
 
@@ -53,7 +52,7 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
   const list = listQuery.data;
 
   return (
-    <div className="page-grid fi-page">
+    <div className="page-grid fi-page ui2-fix-family">
       <div className="fi-header">
         <div>
           <h2>{viewLabel(view)}</h2>
@@ -178,7 +177,7 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
           )}
         </section>
 
-        <aside className="panel fi-distribution">
+        <section className="panel fi-distribution" aria-label="Severity distribution">
           <h3>Severity Distribution</h3>
           <div className="severity-meter">
             {SEVERITY_ORDER.filter((key) => key !== 'NONE').map((key) => {
@@ -195,7 +194,7 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
               );
             })}
           </div>
-        </aside>
+        </section>
       </div>
     </div>
   );

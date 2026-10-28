@@ -36,7 +36,7 @@ Tenant claims select a registered workspace; they do not authorize it. A platfor
 
 `SecurityConfig` permits OPTIONS, health/readiness/liveness/info, POST login/setup-password/setup-session and demo-requests, GET `/api/auth/csrf`, and GET/POST demo-invite and tenant-invite exchange routes. Public exchange does not bypass token/lifecycle checks. Setup-password uses its setup cookie plus CSRF; verified header authentication bypasses CSRF only after successful authentication, with setup-password explicitly excluded.
 
-Other actuator routes and `/api/**` require authentication, with additional route/controller/service checks. `/api/platform/**` and `/api/operations/**` require PLATFORM_OWNER; GET operations quality and software-identity search also admit the listed tenant reader/admin roles in `SecurityConfig`. `/api/auth/context` and `/api/me` require authentication. `/api/fix-intelligence` and descendants are **denyAll**; the controller also returns `FIX_INTELLIGENCE_UNAVAILABLE` if invoked directly. Static host-context evidence requires SERVICE_ACCOUNT plus producer/principal binding; runtime ingestion/read paths remain HTTP 410 / `RUNTIME_OUT_OF_SCOPE`.
+Other actuator routes and `/api/**` require authentication, with additional route/controller/service checks. `/api/platform/**` and `/api/operations/**` require PLATFORM_OWNER; GET operations quality and software-identity search also admit the listed tenant reader/admin roles in `SecurityConfig`. `/api/auth/context` and `/api/me` require authentication. `/api/fix-intelligence/**` requires authentication (the former denyAll rule was removed when Fix Intelligence shipped); writes are role-checked in `FixIntelligenceController`. Static host-context evidence requires SERVICE_ACCOUNT plus producer/principal binding; runtime ingestion/read paths remain HTTP 410 / `RUNTIME_OUT_OF_SCOPE`.
 
 ## Tenant context and isolation
 
@@ -418,7 +418,7 @@ All write endpoints: `PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`.
 
 ### Fix Intelligence
 
-**FixIntelligenceController — `/api/fix-intelligence`** is retired. `SecurityConfig` denies the root and descendants; direct controller invocation returns HTTP 410 / `FIX_INTELLIGENCE_UNAVAILABLE`. `/fix-intelligence/*` frontend routes redirect to `/findings`. Historical seeders and domain/repository scaffolding remain; there is no live synthetic fix endpoint.
+**FixIntelligenceController — `/api/fix-intelligence`** serves `GET /summary`, `/fixes`, `/fixes/{id}` and `/context` to every tenant role. `POST /fixes` and `PUT /fixes/{id}` need `TENANT_ADMIN` or `SECURITY_ANALYST`; `POST /fixes/{id}/approve` and `/retire` need `TENANT_ADMIN`, and the approver must differ from the proposer. Reads are tenant-filtered SQL in `service/fix/FixIntelligenceQueryService`; writes are in `FixManagementService`. Fixes are remediation context only and never change finding status.
 
 The independent CVE Workbench `FixRecordService` remains subject to normal authorization and deterministic/generative policy. Unwired patch entities (`AssetFixStatus`, `CveFixMap`, `PatchConnectorCredential`, `JiraIssueBacklog`) lack backing migrations; `.disabled` patch scheduling/registration files are excluded from the build.
 
@@ -604,7 +604,7 @@ Historical generic Azure scaffolding, currently contained. Auth types in retaine
 
 `SyncRun` entity tracks each connector sync job.
 
-**Patch management connectors (SCCM, BigFix, Tanium)** have no backend controller. Their unsupported mock UI has been retired under [P30](#fix-intelligence).
+**Patch management connectors (SCCM/MECM, Microsoft Intune, HCL BigFix, Tanium Cloud)** are served by `PatchConnectorController` (`/api/connectors/patch/{provider}`, `TENANT_ADMIN` or `INVENTORY_ADMIN`) with providers under `service/patch/`. Syncs run as durable `PATCH_SYNC` jobs. BigFix hosts must be listed in `BIGFIX_ALLOWED_HOSTS`; Tanium must be a `*.cloud.tanium.com` host; Intune uses `graph.microsoft.com` and `login.microsoftonline.com`. Intune, BigFix and Tanium are verified only against mocked APIs.
 
 ### Auth / Admin
 

@@ -125,7 +125,7 @@ export function PatchConnectorPage({ provider }: { provider: PatchProvider }): R
 
       {(copy.baseUrl || copy.directory || copy.username || copy.secret) && (
         <div className="form-section">
-          <h4 className="form-section-title">Connection</h4>
+          <h2 className="form-section-title">Connection</h2>
           <div className="form-grid">
             {copy.baseUrl && (
               <label>
@@ -169,7 +169,7 @@ export function PatchConnectorPage({ provider }: { provider: PatchProvider }): R
       )}
 
       <div className="form-section">
-        <h4 className="form-section-title">Sync Settings</h4>
+        <h2 className="form-section-title">Sync Settings</h2>
         <div className="sn-toggle-group">
           <label className="sn-toggle-row">
             <input type="checkbox" checked={enabled} disabled={!canManage} onChange={(event) => setEnabled(event.target.checked)} />
@@ -193,7 +193,7 @@ export function PatchConnectorPage({ provider }: { provider: PatchProvider }): R
 
       {testResult && (
         <div className="form-section" aria-label="Connection test result">
-          <h4 className="form-section-title">Connection test · {testResult.status.replace(/_/g, ' ').toLowerCase()}</h4>
+          <h2 className="form-section-title">Connection test · {testResult.status.replace(/_/g, ' ').toLowerCase()}</h2>
           <p className="panel-caption">{testResult.message}</p>
           <ul>
             {testResult.checks.map((check) => (

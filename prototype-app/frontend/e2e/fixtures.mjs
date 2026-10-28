@@ -11,6 +11,7 @@ import { inventoryFixtureFor } from './inventory-fixtures.mjs';
 import { governanceFixtureFor } from './governance-fixtures.mjs';
 import { connectFixtureFor } from './connect-fixtures.mjs';
 import { experienceFixtureFor } from './experience-fixtures.mjs';
+import { fixFixtureFor } from './fix-fixtures.mjs';
 
 export const actor = {
   creator: false,
@@ -97,6 +98,8 @@ export async function routeFixtures(context, { actorOverride = actor, onRequest,
     if (governance !== undefined) return route.fulfill(governance);
     const experience = experienceFixtureFor(request.url(), request.method(), request.postData());
     if (experience !== undefined) return route.fulfill(experience);
+    const fix = fixFixtureFor(request.url(), request.method());
+    if (fix !== undefined) return route.fulfill(fix);
     const body = fixtureFor(request.url(), actorOverride, request.method());
     return body === NOT_FOUND
       ? route.fulfill({ status: 404, json: { message: 'Not found (fixture)' } })

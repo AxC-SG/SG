@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { formatTimestamp } from '../../lib/time';
 import { fixIntelligenceApi } from './api';
 import { fixTypeLabel, providerLabel, severityClass, titleCase } from './format';
-import './fix-intelligence.css';
 
 type Props = {
   cveId?: string | null;
@@ -26,8 +25,8 @@ export function FixContextPanel({ cveId, assetId }: Props): React.ReactElement |
 
   const fixes = contextQuery.data?.fixes ?? [];
   return (
-    <section className="panel fi-context" aria-label="Remediation options">
-      <h3>Remediation options</h3>
+    <section className="panel fi-context ui2-fix-family" aria-label="Remediation options">
+      <h2>Remediation options</h2>
       {contextQuery.isLoading && <p className="muted">Loading fixes…</p>}
       {contextQuery.isError && <p className="muted">Fix Intelligence is unavailable right now.</p>}
       {contextQuery.isSuccess && fixes.length === 0 && (

@@ -13,6 +13,7 @@ UI 2 is the only app presentation. The legacy stylesheets are retired; this page
 | `ui2/app-base.css`, `shell.css`, `primitives.css` | App layout, shell, shared controls (buttons, badges, forms, overlays, table frame) | `html[data-ui='2']` |
 | `ui2/*-base.css` (experience, inventory, findings, cve, governance, connect) | Base class declarations shared across families, kept at their original specificity | `:where(html[data-ui='2'])` |
 | `ui2/findings.css`, `cve.css`, `inventory.css`, `governance.css`, `connect.css`, `experience.css` | Family presentation, anchored on page roots (`.fpl-root`, `.fd3-page`, `.ui2-<family>-family`) | `html[data-ui='2']` |
+| `ui2/fix-intelligence.css` | Fix Intelligence pages and the Remediation options panel embedded in CVE, finding and host detail, anchored on `.ui2-fix-family` | `html[data-ui='2']` |
 | `ui2/tables.css` | Shared table presentation, loaded last | `html[data-ui='2']` |
 
 The import order lives in `src/styles/ui2/index.css`. `ui2/scope.test.ts` fails if any app rule lacks the route boundary, so public routes stay isolated. The boundary itself is `src/lib/presentationBoundary.ts`: app and auth routes carry `data-ui="2"`, public routes never do.

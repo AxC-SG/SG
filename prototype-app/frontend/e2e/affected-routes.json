@@ -34,7 +34,7 @@
    "^src/styles/ui2/inventory\\.css$",
    "^src/styles/(eol|ai-security)\\.css$",
    "^src/features/(inventory|software-identities|eol|ai-security)/",
-   "^src/pages/(Inventory|Assets|HostAsset|SoftwareIdentit|Bom|AiInventory|AiAsset|AiKnowledge|AiBom|AiAgent|Eol|VulnRepoSoftwareAssets|VulnRepoHostAsset)"
+   "^src/pages/(Inventory|Assets|HostAsset|SoftwareIdentit|Bom|AiInventory|AiAsset|AiKnowledge|AiBom|AiAgent|Eol|VulnRepoSoftwareAssets|VulnRepoHostAsset|CloudResources)"
   ],
   "governance": [
    "^src/styles/ui2/governance\\.css$",
@@ -53,6 +53,10 @@
    "^src/styles/(exposure-dashboard|user-management|vuln-repo)\\.css$",
    "^src/features/(admin|campaigns|configurations|dashboard|operations|vuln-repo-dashboard)/",
    "^src/pages/(ExposureDashboard|Dashboard|Campaign|Configurations|UserManagement|PlatformConsole|Platform|Operational|AuthorizedWorkspaces|VulnRepoDashboard)"
+  ],
+  "fix": [
+   "^src/styles/ui2/fix-intelligence\\.css$",
+   "^src/features/fix-intelligence/"
   ],
   "auth": [
    "^src/features/auth/",

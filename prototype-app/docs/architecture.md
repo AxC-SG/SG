@@ -184,7 +184,7 @@ For production, the same rollout runs from `ProductionBootstrapCli` — a standa
 
 `JwtTenantAuthenticationService` revalidates current stored global grants and tenant membership/support. Human claims cannot create grants or memberships; stale owner claims are rejected after revocation. Machine JWTs require SERVICE_ACCOUNT-only roles, explicit tenant and an active same-tenant registry entry matching the verified subject. A key ID alone is not a credential. API-key/creator-key role escalation remains local compatibility only and is rejected by deployed validation. See [backend authentication](backend.md#authentication).
 
-`SecurityConfig` exposes only the listed public health/info, login/setup/CSRF and invitation/demo exchanges. Other API/actuator routes require authentication plus their route/service authorization. Fix Intelligence is denyAll and directly unavailable. Setup-cookie password submission requires CSRF; header CSRF bypass is granted only after verified authentication. See [public/protected endpoints](backend.md#public-and-protected-endpoints).
+`SecurityConfig` exposes only the listed public health/info, login/setup/CSRF and invitation/demo exchanges. Other API/actuator routes require authentication plus their route/service authorization. `/api/fix-intelligence/**` requires authentication; its writes are role-checked in `FixIntelligenceController`. Setup-cookie password submission requires CSRF; header CSRF bypass is granted only after verified authentication. See [public/protected endpoints](backend.md#public-and-protected-endpoints).
 
 ### Role Hierarchy
 

@@ -76,7 +76,7 @@ const declared = (sheet: string, selector: string) =>
 // Page and family roots. Foundation sheets (tokens, shell, primitives) style shared
 // classes on every page, so they must never name one of these.
 const FAMILY_ROOTS = ['.fpl-root', '.fd3-page', '.cve-assessment-page', '.vuln-repo-vulnerabilities-shell', '.vuln-repo-assets-shell',
-  '.ui2-findings-family', '.ui2-cve-family', '.ui2-inventory-family', '.ui2-governance-family', '.ui2-connect-family', '.ui2-experience-family'];
+  '.ui2-findings-family', '.ui2-cve-family', '.ui2-inventory-family', '.ui2-governance-family', '.ui2-connect-family', '.ui2-experience-family', '.ui2-fix-family'];
 const FOUNDATION = ['./tokens.css', './shell.css', './primitives.css'];
 const ROOT_SELECTORS = ["html[data-ui='2']", "html[data-ui='2'][data-theme='light']", "html[data-ui='2'][data-theme='dark']"];
 // A colour literal is allowed only as the fallback inside var(--token, <literal>).
@@ -109,7 +109,7 @@ describe('UI 2.0 stylesheet scope', () => {
   it('loads every app sheet once in deterministic precedence order', () => {
     const imports = (file: string) => [...readFileSync(file, 'utf8').matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1]);
     expect(imports(join(directory, 'index.css'))).toEqual(['./tokens.css', './app-base.css', './shell.css', './primitives.css', './experience-base.css', './inventory-base.css', './findings-base.css', './cve-base.css', './governance-base.css', './connect-base.css', './findings.css', './cve.css', './inventory.css',
-      './governance.css', './connect.css', './experience.css', './tables.css', '@xyflow/react/dist/style.css']);
+      './governance.css', './connect.css', './experience.css', './fix-intelligence.css', './tables.css', '@xyflow/react/dist/style.css']);
     expect(Object.keys(sheets).filter((file) => file !== './index.css').sort()).toEqual(imports(join(directory, 'index.css')).filter((file) => file.startsWith('./')).sort());
     expect(imports(join(directory, '..', 'index.css')).slice(-1)).toEqual(['./ui2/index.css']);
     for (const file of imports(join(directory, 'index.css')).filter((file) => file.startsWith('./'))) expect(rules(sheets[file]).length, file).toBeGreaterThan(0);
@@ -454,6 +454,11 @@ describe('UI 2.0 stylesheet scope', () => {
 
   it('anchors remaining-experience rules on the dashboard, campaign, operations and auth-entry roots', () => {
     const unanchored = selectors(sheets['./experience.css']).filter((selector) => !anchoredOn(selector, ['.ui2-experience-family']));
+    expect(unanchored).toEqual([]);
+  });
+
+  it('anchors Fix Intelligence rules on its page roots and the embedded Remediation options panel', () => {
+    const unanchored = selectors(sheets['./fix-intelligence.css']).filter((selector) => !anchoredOn(selector, ['.ui2-fix-family']));
     expect(unanchored).toEqual([]);
   });
 

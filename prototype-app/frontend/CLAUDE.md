@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> **Current prerequisite contract (October 21, 2026):** [implementation closure](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>). Generic Azure, local archive operations, Fix Intelligence/tenant OSV, runtime evidence and destructive tenant purge remain contained; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>). Documentation completion is not release qualification.
+> **Current prerequisite contract (October 21, 2026):** [implementation closure](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>). Generic Azure, local archive operations, tenant OSV, runtime evidence and destructive tenant purge remain contained; Fix Intelligence and the patch connectors are re-enabled (tenant V9) but not yet release-qualified; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>). Documentation completion is not release qualification.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -94,7 +94,7 @@ src/
     performanceMonitoring.tsx  # Client performance telemetry
   pages/               # One file per route; lazy-loaded via React.lazy in App.tsx
   components/          # Shared presentational components (≤ 300 lines each)
-  styles/              # Global CSS — index.css, finding-detail.css, and per-feature sheets
+  styles/              # index.css (the only stylesheet entry) and ui2/ family sheets — see docs/ui2-styles-and-rollback.md
   types/               # Re-exports only — source of truth is always in the feature directory
   test/
     setup.ts           # @testing-library/jest-dom/vitest import
@@ -194,4 +194,4 @@ Thresholds are enforced by `vitest.config.ts` and **only move up, never down**. 
 - `src/lib/riskScoring.ts` is pure TypeScript — no React imports, no API calls.
 - The app uses React StrictMode (see `src/main.tsx`) — effects run twice in development, so side effects should be idempotent.
 - Theme (`dark` / `light`) is persisted in `localStorage` under `scoutai-theme` and applied as `data-theme` on `<html>`.
-- **Fetch through `api/client.ts`, not raw `fetch()`.** `client.ts` reads dev-only credentials (`VITE_API_KEY`, `VITE_CREATOR_KEY`, etc.) through an `import.meta.env.DEV ? '<default>' : ''` ternary, which Vite dead-code-eliminates from a production build. `FixIntelligencePage`/`FixDetailPage` (since removed) called `fetch()` directly with hardcoded `X-API-Key`/`X-Creator-Key` values instead, which shipped those literals into the production bundle and failed `scripts/verify-production-bundle.mjs` (part of `npm run build`). If a page genuinely needs a bespoke endpoint outside `api/client.ts`, gate any dev-only header inline behind `import.meta.env.DEV`, the same pattern `client.ts` uses.
+- **Fetch through `api/client.ts`, not raw `fetch()`.** `client.ts` reads dev-only credentials (`VITE_API_KEY`, `VITE_CREATOR_KEY`, etc.) through an `import.meta.env.DEV ? '<default>' : ''` ternary, which Vite dead-code-eliminates from a production build. The original `FixIntelligencePage`/`FixDetailPage` (since replaced by `src/features/fix-intelligence/`) called `fetch()` directly with hardcoded `X-API-Key`/`X-Creator-Key` values instead, which shipped those literals into the production bundle and failed `scripts/verify-production-bundle.mjs` (part of `npm run build`). If a page genuinely needs a bespoke endpoint outside `api/client.ts`, gate any dev-only header inline behind `import.meta.env.DEV`, the same pattern `client.ts` uses.

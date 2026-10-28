@@ -82,15 +82,17 @@ for (const theme of themes) {
   await page.goto(`${base}/connect`, { waitUntil: 'networkidle' });
   await page.locator('.connect-source-card').first().waitFor();
   await settle(page);
-  check(tag('catalog renders 10 connector cards'), (await page.locator('.connect-source-card').count()) === 10, String(await page.locator('.connect-source-card').count()));
-  check(tag('inventory then BOM sections'), (await page.locator('.connect-source-section-head h4').allTextContents()).join('|') === 'Inventory|BOM Management');
+  check(tag('catalog renders 16 connector cards'), (await page.locator('.connect-source-card').count()) === 16, String(await page.locator('.connect-source-card').count()));
+  const sections = (await page.locator('.connect-source-section-head h4').allTextContents()).join('|');
+  check(tag('inventory, BOM, ticketing then patch sections'), sections === 'Inventory|BOM Management|Incident & Ticketing Tools|Patch Management', sections);
   const dot = (name) => card(page, name).locator('.connect-source-dot');
   check(tag('ServiceNow dot reports last sync'), /^Last sync · /.test(await dot('ServiceNow').getAttribute('aria-label') ?? ''), await dot('ServiceNow').getAttribute('aria-label'));
   check(tag('SCCM dot reports failure'), /^Last sync failed/.test(await dot('SCCM\\/MECM').getAttribute('aria-label') ?? ''), await dot('SCCM\\/MECM').getAttribute('aria-label'));
   check(tag('Azure dot reports not configured'), (await dot('Azure').getAttribute('aria-label')) === 'Not configured');
   check(tag('dot classes carry health'), (await dot('SCCM\\/MECM').getAttribute('class')).includes('connect-source-dot--fail')
     && (await dot('ServiceNow').getAttribute('class')).includes('connect-source-dot--ok'));
-  check(tag('no patch-management cards'), (await page.getByText(/BigFix|Tanium|Patch/i).count()) === 0);
+  const patchCards = page.locator('.connect-source-section', { has: page.locator('h4', { hasText: 'Patch Management' }) }).locator('.connect-source-card');
+  check(tag('four patch-management cards'), (await patchCards.count()) === 4, String(await patchCards.count()));
   check(tag('vulnerability intelligence accordion expanded'), (await page.locator('.config-accordion-toggle').getAttribute('aria-expanded')) === 'true');
   const sourceSwitches = page.getByRole('switch');
   check(tag('9 tenant source switches'), (await sourceSwitches.count()) === 9, String(await sourceSwitches.count()));
@@ -137,7 +139,7 @@ for (const theme of themes) {
   check(tag('test connection posts'), calls(requests, '/connectors/servicenow-cmdb/test', 'POST').length === 1);
   await page.keyboard.press('Escape');
   await settle(page);
-  check(tag('Escape returns to catalog'), here(page) === '/connect' && (await page.locator('.connect-source-card').count()) === 10, here(page));
+  check(tag('Escape returns to catalog'), here(page) === '/connect' && (await page.locator('.connect-source-card').count()) === 16, here(page));
 
   // ── AWS: multi-account target test failure ──────────────────────────────
   await page.goto(`${base}/connect?connectSource=aws-discovery`, { waitUntil: 'networkidle' });
@@ -153,8 +155,13 @@ for (const theme of themes) {
 
   // ── Contained and platform-owned connectors ────────────────────────────
   await page.goto(`${base}/connect?connectSource=sccm-cmdb`, { waitUntil: 'networkidle' });
-  check(tag('SCCM is contained read-only'), await page.getByText('SCCM live JDBC is disabled for the assisted pilot.', { exact: false }).isVisible()
-    && (await page.locator('.connector-page-back-row ~ *').getByRole('button', { name: /Save|Test|Sync|Run/ }).count()) === 0);
+  await page.getByRole('button', { name: 'Save Connector' }).first().waitFor({ timeout: 10000 }).catch(() => null);
+  check(tag('SCCM is a live connector form'), (await page.getByRole('button', { name: 'Save Connector' }).count()) > 0
+    && (await page.getByText('SCCM live JDBC is disabled for the assisted pilot.', { exact: false }).count()) === 0);
+  await page.goto(`${base}/connect?connectSource=patch-sccm`, { waitUntil: 'networkidle' });
+  await settle(page);
+  check(tag('patch SCCM card opens its connector form'), here(page) === '/connect?connectSource=patch-sccm' && (await page.locator('.notice.error').count()) === 0, here(page));
+  await shot(page, tag('patch-sccm'));
   await page.goto(`${base}/connect?connectSource=azure-discovery`, { waitUntil: 'networkidle' });
   check(tag('Azure is contained read-only'), await page.getByText('Disabled for the pilot. Existing inventory and saved settings are retained.').isVisible()
     && (await page.locator('.connector-page-back-row ~ *').getByRole('button', { name: /Save|Test|Sync|Run/ }).count()) === 0);
@@ -225,7 +232,7 @@ for (const theme of themes) {
   const unentitled = await newPage(theme, 1440, { ...actor, entitlements: { 'ai.security': false } });
   await unentitled.page.goto(`${base}/connect`, { waitUntil: 'networkidle' });
   await unentitled.page.locator('.connect-source-card').first().waitFor();
-  check(tag('AI connectors hidden without entitlement'), (await unentitled.page.locator('.connect-source-card').count()) === 7
+  check(tag('AI connectors hidden without entitlement'), (await unentitled.page.locator('.connect-source-card').count()) === 13
     && (await card(unentitled.page, 'AWS Bedrock').count()) === 0);
   await unentitled.page.goto(`${base}/connect/copilot-studio`, { waitUntil: 'networkidle' });
   await settle(unentitled.page);

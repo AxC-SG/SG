@@ -91,7 +91,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 | `/exposure` | `ExposureDashboardPage` | Risk-focused exec overview (Overview tab) |
 | `/findings` | `FindingsPage` | Active findings list with server+client-side filters |
 | `/findings/:displayId` | `FindingDetailPage` | Single finding detail, workflow, and AI remediation |
-| `/fix-intelligence/*` | Redirect to `/findings` | Synthetic Fix Intelligence is unavailable |
+| `/fix-intelligence/:view?`, `/fix-intelligence/details/:fixId` | `FixIntelligencePage`, `FixDetailPage` (`src/features/fix-intelligence/`) | Views: `all`, `patches`, `workarounds`, `compensating-controls` |
 
 | `/operations/:operationsView?` | `OperationalDashboardPage` | Default `pipeline`; also `platform-health` (the `quality` view now redirects to `/inventory` with quality-tab search params instead of rendering here — see note below) |
 | `/vuln-repo` | `VulnRepoDashboardPage` | Vulnerability Repository dashboard |
@@ -150,7 +150,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 ---
 
-The generic Azure page shows disabled/read-only status and its API independently refuses changes/tests/runs. `SccmConnectorPage` is a live form (SQL authentication, no mock mode, save/test/run). `/fix-intelligence/*` redirects to `/findings`. Unsupported patch cards/forms have been retired as documented [in the connector inventory](#connect-srcfeaturesconnect); old query IDs and direct paths cannot mount them.
+The generic Azure page shows disabled/read-only status and its API independently refuses changes/tests/runs. `SccmConnectorPage` is a live form (SQL authentication, no mock mode, save/test/run). `PatchConnectorPage` serves the live `patch-sccm`, `patch-intune`, `patch-bigfix` and `patch-tanium` cards. The earlier unsupported patch cards/forms have been retired as documented [in the connector inventory](#connect-srcfeaturesconnect); old query IDs and direct paths cannot mount them.
 
 ## 3. Authentication and Auth Flow
 

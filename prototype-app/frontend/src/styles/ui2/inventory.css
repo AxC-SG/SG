@@ -374,3 +374,11 @@ html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-facts {
 html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-popup-facts dd {
   color: var(--dp-text);
 }
+
+/* Cloud Resources heading is an h2 under the Inventory shell h1; it keeps the panel title size. */
+html[data-ui='2'] .ui2-inventory-family .cloud-resources-title {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}

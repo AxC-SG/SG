@@ -63,7 +63,7 @@ export function CloudResourcesPage() {
     <section className="panel">
       <div className="panel-header">
         <div>
-          <h3>Cloud Resources</h3>
+          <h2 className="cloud-resources-title">Cloud Resources</h2>
           <span className="panel-caption">
             Compute and platform resources discovered by the AWS, Azure and GCP connectors.
           </span>

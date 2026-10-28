@@ -1,0 +1,293 @@
+/* UI 2.0 Fix Intelligence (`/fix-intelligence/<view>`, `/fix-intelligence/details/<id>`) and the
+ * Remediation options panel embedded in the CVE, finding and host detail pages. The page roots and
+ * the panel carry the presentation-only class .ui2-fix-family. */
+
+html[data-ui='2'] .ui2-fix-family.fi-page {
+  gap: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--dp-space-4);
+  flex-wrap: wrap;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-header h2 {
+  margin: 0 0 var(--dp-space-1);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-header p {
+  margin: 0;
+  max-width: 72ch;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpi {
+  display: grid;
+  gap: var(--dp-space-1);
+  padding: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpi-label {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpi-value {
+  font-size: var(--dp-text-2xl);
+  font-weight: 700;
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  cursor: pointer;
+  color: var(--dp-text);
+  font: inherit;
+  text-align: left;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem:hover {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem.active {
+  border-color: var(--dp-accent);
+  box-shadow: 0 0 0 1px var(--dp-accent) inset;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem-name {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-ecosystem-count {
+  font-weight: 700;
+  color: var(--dp-text);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--dp-space-4);
+  align-items: start;
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.fi-table-panel, .fi-distribution) {
+  padding: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-distribution h3 {
+  margin-top: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-filters {
+  display: flex;
+  gap: var(--dp-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-search {
+  flex: 1 1 260px;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table td {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-status-tag {
+  margin-left: var(--dp-space-2);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--dp-border-strong);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-xs);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-severity-none {
+  background: var(--dp-surface-2);
+  border-color: var(--dp-border);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-empty {
+  padding: var(--dp-space-5) 0;
+  text-align: center;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.fi-tags, .fi-actions, .fi-form-actions) {
+  display: flex;
+  gap: var(--dp-space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-form-actions {
+  justify-content: flex-end;
+  margin-top: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-back {
+  justify-self: start;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-detail-grid > .panel,
+html[data-ui='2'] .ui2-fix-family.fi-page > section.panel {
+  padding: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-text-block h4 {
+  margin: var(--dp-space-3) 0 var(--dp-space-1);
+  font-size: var(--dp-text-sm);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-plain-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--dp-space-1) var(--dp-space-3);
+  margin-top: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-meta dt {
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-meta dd {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-cve-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--dp-space-1);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kev {
+  margin-left: var(--dp-space-2);
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: var(--dp-text-xs);
+  font-weight: 700;
+  color: var(--dp-critical);
+  border: 1px solid color-mix(in srgb, var(--dp-critical) 40%, transparent);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-form {
+  padding: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-form h3 {
+  margin-top: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-field {
+  display: grid;
+  gap: var(--dp-space-1);
+  font-size: var(--dp-text-sm);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-field--wide {
+  grid-column: 1 / -1;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-asset-scope {
+  margin-top: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-sm);
+  padding: var(--dp-space-3);
+  display: grid;
+  gap: var(--dp-space-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-asset-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--dp-space-1);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-asset-option {
+  display: flex;
+  gap: var(--dp-space-2);
+  align-items: center;
+}
+
+html[data-ui='2'] .ui2-fix-family.fi-context {
+  padding: var(--dp-space-4);
+}
+
+/* The panel heading is an h2 so it follows the host page's h1; it keeps the panel title size. */
+html[data-ui='2'] .ui2-fix-family.fi-context h2 {
+  margin: 0 0 var(--dp-space-3);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-fix-family.fi-context ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--dp-space-2);
+}
+
+html[data-ui='2'] .ui2-fix-family.fi-context li {
+  display: flex;
+  gap: var(--dp-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 960px) {
+  html[data-ui='2'] .ui2-fix-family :is(.fi-body, .fi-detail-grid) {
+    grid-template-columns: 1fr;
+  }
+}

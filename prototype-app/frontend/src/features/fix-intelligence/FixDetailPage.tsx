@@ -16,7 +16,6 @@ import {
   titleCase
 } from './format';
 import type { ControlFixType, FixDetail } from './types';
-import './fix-intelligence.css';
 
 export function FixDetailPage(): React.ReactElement {
   const { fixId = '' } = useParams();
@@ -47,7 +46,7 @@ export function FixDetailPage(): React.ReactElement {
   if (detailQuery.isLoading) return <p className="muted">Loading fix…</p>;
   if (detailQuery.isError || !detailQuery.data) {
     return (
-      <div className="page-grid">
+      <div className="page-grid ui2-fix-family">
         <div className="notice error">This fix was not found.</div>
         <Link to="/fix-intelligence/all">Back to Fix Intelligence</Link>
       </div>
@@ -61,7 +60,7 @@ export function FixDetailPage(): React.ReactElement {
   const canRetire = fix.editable && fix.status !== 'RETIRED' && canApproveFixControls(actor);
 
   return (
-    <div className="page-grid fi-page">
+    <div className="page-grid fi-page ui2-fix-family">
       <button type="button" className="btn fi-back" onClick={() => navigate(-1)}>← Back</button>
       <div className="fi-header">
         <div>

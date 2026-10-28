@@ -259,7 +259,7 @@ for (const theme of themes) {
     ['/vulnerability-intelligence/vulnerabilities', '/vuln-repo/vulnerabilities'],
     [`/vulnerability-intelligence/org-cves/${CRITICAL_CVE_ID}`, `/vuln-repo/org-cves/${CRITICAL_CVE_ID}`],
     ['/vuln-repo/policies', '/platform/ai-policies'],
-    ['/fix-intelligence/details/fix-1', '/findings'],
+    ['/fix-intelligence', '/fix-intelligence/all'],
     ['/end-of-life', '/exposure'],
     ['/no-such-route', '/configurations'],
   ]) {
