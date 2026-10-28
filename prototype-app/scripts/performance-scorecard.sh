@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-false}"
+export CERTIFICATION_STRICT
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 API_KEY="${API_KEY:-change-me-in-prod}"
 CREATOR_KEY="${CREATOR_KEY:-}"
@@ -95,4 +98,13 @@ echo "Artifacts written to: $OUT_DIR"
 if [ -f "$slo_file" ]; then
   slo_noncompliant="$(grep -o '"compliant":false' "$slo_file" | wc -l | tr -d '[:space:]')"
   echo "Non-compliant SLO entries: $slo_noncompliant"
+fi
+
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+  if [ -n "$CREATOR_KEY" ]; then
+    python3 "$SCRIPT_DIR/validate-certification.py" reports "$OUT_DIR" --require-slo
+  else
+    python3 "$SCRIPT_DIR/validate-certification.py" reports "$OUT_DIR"
+  fi
 fi

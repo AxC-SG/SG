@@ -62,6 +62,7 @@ jobs:
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
       SEED_DEMO_DATA: ${{ github.event_name == 'workflow_dispatch' && (inputs.seed_demo_data || 'false') || 'false' }}
       BASELINE_ITERATIONS: ${{ inputs.baseline_iterations || '3' }}
+      CERTIFICATION_STRICT: "true"
       FAIL_ON_NONCOMPLIANT: "true"
       FAIL_ON_AUTH_SKIPS: "true"
     steps:

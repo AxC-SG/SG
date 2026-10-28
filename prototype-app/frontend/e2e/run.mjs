@@ -92,7 +92,7 @@ if (command === 'journeys') {
       for (const theme of THEMES) {
         await step(`${version} route sweep (${theme})`, path.join(here, 'route-sweep.mjs'), ['--base', base, '--out', path.join(out, 'sweep'), '--label', `${version}_${theme}`, '--theme', theme, '--widths', widths]);
       }
-      await axe(version, base, out);
+      await axe(version, base, out, ['--widths', widths]);
       await axeCompare(version, out);
     });
   }

@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-false}"
+export CERTIFICATION_STRICT
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 API_KEY="${API_KEY:-change-me-in-prod}"
 CREATOR_KEY="${CREATOR_KEY:-}"
@@ -303,6 +306,11 @@ if [ "$RUN_BASELINE_AFTER" = "true" ]; then
 fi
 
 status=0
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  if ! python3 "$(dirname "$0")/validate-certification.py" scorecard "$OUT_DIR/final-performance-scorecard.json"; then
+    status=1
+  fi
+fi
 if [ "$steady_state" != "true" ]; then
   echo "Certification did not reach steady state within ${MAX_WAIT_SECONDS}s"
   status=1

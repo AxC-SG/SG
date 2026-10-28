@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-true}"
+export CERTIFICATION_STRICT
+
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="${BACKEND_DIR:-$PROJECT_DIR/backend}"

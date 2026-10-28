@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-false}"
+export CERTIFICATION_STRICT
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 API_KEY="${API_KEY:-change-me-in-prod}"
 CREATOR_KEY="${CREATOR_KEY:-}"
@@ -17,6 +20,11 @@ FAIL_ON_AUTH_SKIPS="${FAIL_ON_AUTH_SKIPS:-false}"
 SEED_ALLOWED_PROFILES="${SEED_ALLOWED_PROFILES:-local test certification}"
 SEED_ALLOWED_BASE_URLS="${SEED_ALLOWED_BASE_URLS:-http://127.0.0.1:8080 http://localhost:8080}"
 ROUTE_AUTH_NOTE=""
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  python3 "$SCRIPT_DIR/validate-certification.py" iterations "$ITERATIONS"
+fi
 
 mkdir -p "$OUT_DIR"
 
@@ -229,8 +237,8 @@ while [ "$iteration" -le "$ITERATIONS" ]; do
     route_request "$route_path" "$headers_file" "$body_file"
 
     status_code="$(awk 'NR==1 {print $2}' "$headers_file")"
-    request_id="$(awk 'BEGIN{IGNORECASE=1} /^X-Request-ID:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
-    server_timing="$(awk 'BEGIN{IGNORECASE=1} /^Server-Timing:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
+    request_id="$(awk 'tolower($0) ~ /^x-request-id:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
+    server_timing="$(awk 'tolower($0) ~ /^server-timing:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
     classification="ok"
     if [ "${status_code:-}" = "403" ] && grep -q 'Tenant context is required\|Platform owner must switch into an approved tenant context' "$body_file"; then
       classification="tenant_context_required"
@@ -306,5 +314,9 @@ BASE_URL="$BASE_URL" \
 API_KEY="$API_KEY" \
 CREATOR_KEY="$CREATOR_KEY" \
 "$(dirname "$0")/performance-scorecard.sh"
+
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  python3 "$SCRIPT_DIR/validate-certification.py" baseline "$routes_file" "$samples_file" "$ITERATIONS"
+fi
 
 echo "Baseline collection complete: $OUT_DIR"
