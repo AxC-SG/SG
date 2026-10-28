@@ -2,11 +2,8 @@ name: Performance Governance
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/performance-governance.yml"
-      - "prototype-app/backend/**"
-      - "prototype-app/scripts/**"
-      - "prototype-app/docs/**"
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       seed_demo_data:
@@ -20,13 +17,34 @@ on:
   schedule:
     - cron: "15 5 * * *"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      performance: ${{ steps.select.outputs.performance }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 .github/scripts/classify-changes.py
+
   certify:
+    needs: changes
+    if: needs.changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16@sha256:d4d4f1579fcfba19c2257326f6a93f4bcf677a430619f084ced704e18eb428ce
         env:
           POSTGRES_DB: vulnwatch
           POSTGRES_USER: postgres
@@ -62,12 +80,13 @@ jobs:
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
       SEED_DEMO_DATA: ${{ github.event_name == 'workflow_dispatch' && (inputs.seed_demo_data || 'false') || 'false' }}
       BASELINE_ITERATIONS: ${{ inputs.baseline_iterations || '3' }}
+      CERTIFICATION_STRICT: "true"
       FAIL_ON_NONCOMPLIANT: "true"
       FAIL_ON_AUTH_SKIPS: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
@@ -80,8 +99,32 @@ jobs:
 
       - name: Upload performance governance artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: performance-governance-${{ github.run_id }}
           path: ${{ runner.temp }}/performance-governance
           retention-days: 14
+
+  required:
+    name: Performance gate
+    if: always()
+    needs: [changes, certify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Enforce expected certification result
+        env:
+          SELECTION_RESULT: ${{ needs.changes.result }}
+          APPLICABLE: ${{ needs.changes.outputs.performance }}
+          CERTIFICATION_RESULT: ${{ needs.certify.result }}
+        run: |
+          test "$SELECTION_RESULT" = success
+          if [ "$APPLICABLE" = true ]; then
+            test "$CERTIFICATION_RESULT" = success
+          elif [ "$APPLICABLE" = false ]; then
+            test "$CERTIFICATION_RESULT" = skipped
+            echo 'Performance certification is not applicable to these changes.'
+          else
+            echo 'Missing performance selection' >&2
+            exit 1
+          fi

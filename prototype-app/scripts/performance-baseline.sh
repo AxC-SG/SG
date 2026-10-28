@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-false}"
+export CERTIFICATION_STRICT
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 API_KEY="${API_KEY:-change-me-in-prod}"
 CREATOR_KEY="${CREATOR_KEY:-}"
@@ -18,34 +21,18 @@ SEED_ALLOWED_PROFILES="${SEED_ALLOWED_PROFILES:-local test certification}"
 SEED_ALLOWED_BASE_URLS="${SEED_ALLOWED_BASE_URLS:-http://127.0.0.1:8080 http://localhost:8080}"
 ROUTE_AUTH_NOTE=""
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  python3 "$SCRIPT_DIR/validate-certification.py" iterations "$ITERATIONS"
+fi
+
 mkdir -p "$OUT_DIR"
 
 routes_file="$OUT_DIR/routes.tsv"
 samples_file="$OUT_DIR/route-samples.tsv"
 summary_file="$OUT_DIR/route-summary.tsv"
 
-cat >"$routes_file" <<'EOF'
-dashboard-summary	/api/dashboard
-dashboard-applicable-software	/api/dashboard/applicable-software?page=0&size=10
-dashboard-impacted-cves	/api/dashboard/impacted-cves?page=0&size=10
-dashboard-cve-inventory-map	/api/dashboard/cve-inventory-map?limit=5
-findings-list	/api/findings?page=0&size=25
-findings-summary	/api/findings/summary
-findings-distributions	/api/findings/distributions
-findings-backlog-health	/api/findings/backlog-health
-findings-filters	/api/findings/filters
-findings-projection-status	/api/findings/projection-status
-inventory-components	/api/inventory/components?page=0&size=25
-inventory-component-filters	/api/inventory/components/filters
-software-identities	/api/inventory/software-identities?page=0&size=25
-software-identity-funnel	/api/inventory/software-identities/funnel
-vulnerability-intelligence-list	/api/vulnerability-intelligence?page=0&size=25
-vulnerability-intelligence-filters	/api/vulnerability-intelligence/filters
-vuln-repo-dashboard	/api/vuln-repo/dashboard
-vuln-repo-vulnerabilities	/api/vuln-repo/vulnerabilities?page=0&size=25
-vuln-repo-org-cves	/api/vuln-repo/org-cves?page=0&size=25
-vuln-repo-org-cves-status	/api/vuln-repo/org-cves/status
-EOF
+cp "$SCRIPT_DIR/performance-routes.tsv" "$routes_file"
 
 printf 'route\titeration\tstatus\trequest_id\tserver_timing\tclassification\n' >"$samples_file"
 
@@ -229,8 +216,8 @@ while [ "$iteration" -le "$ITERATIONS" ]; do
     route_request "$route_path" "$headers_file" "$body_file"
 
     status_code="$(awk 'NR==1 {print $2}' "$headers_file")"
-    request_id="$(awk 'BEGIN{IGNORECASE=1} /^X-Request-ID:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
-    server_timing="$(awk 'BEGIN{IGNORECASE=1} /^Server-Timing:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
+    request_id="$(awk 'tolower($0) ~ /^x-request-id:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
+    server_timing="$(awk 'tolower($0) ~ /^server-timing:/ {sub(/\r$/, "", $0); sub(/^[^:]+:[[:space:]]*/, "", $0); print $0}' "$headers_file" | tail -n 1)"
     classification="ok"
     if [ "${status_code:-}" = "403" ] && grep -q 'Tenant context is required\|Platform owner must switch into an approved tenant context' "$body_file"; then
       classification="tenant_context_required"
@@ -306,5 +293,9 @@ BASE_URL="$BASE_URL" \
 API_KEY="$API_KEY" \
 CREATOR_KEY="$CREATOR_KEY" \
 "$(dirname "$0")/performance-scorecard.sh"
+
+if [ "$CERTIFICATION_STRICT" = "true" ]; then
+  python3 "$SCRIPT_DIR/validate-certification.py" baseline "$routes_file" "$samples_file" "$ITERATIONS"
+fi
 
 echo "Baseline collection complete: $OUT_DIR"

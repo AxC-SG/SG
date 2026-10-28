@@ -52,6 +52,11 @@ if (args.audit === 'true') {
 const changed = args.files
   ? args.files.split(',')
   : git('diff', '--name-only', '--relative', `${args.base ?? 'origin/main'}...HEAD`);
+// Changes to the browser harness or build inputs require a complete qualification sweep.
+if (changed.some((file) => /^(e2e\/.*\.(mjs|json)|playwright\.config\.ts|package(-lock)?\.json)$/.test(file))) {
+  console.log('FULL_SWEEP');
+  process.exit(0);
+}
 const presentation = changed.filter(isPresentation);
 if (!presentation.length) {
   console.log('NONE');

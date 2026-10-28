@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+CERTIFICATION_STRICT="${CERTIFICATION_STRICT:-true}"
+export CERTIFICATION_STRICT
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:8080}"
 API_KEY="${API_KEY:-change-me-in-prod}"
 CREATOR_KEY="${CREATOR_KEY:-}"
@@ -36,6 +39,7 @@ summary_file="$OUT_DIR/certification-summary.txt"
 
 write_manifest() {
   {
+    printf 'certification_strict=%s\n' "$CERTIFICATION_STRICT"
     printf 'base_url=%s\n' "$BASE_URL"
     printf 'seed_demo_data=%s\n' "$SEED_DEMO_DATA"
     printf 'run_baseline=%s\n' "$RUN_BASELINE"
@@ -75,6 +79,10 @@ final_scorecard_status="SKIPPED"
 overall_status=0
 
 write_manifest
+if [ "$CERTIFICATION_STRICT" = "true" ] && { [ "$RUN_BASELINE" != "true" ] || [ "$RUN_CORRELATION" != "true" ] || [ "$RUN_FINAL_SCORECARD" != "true" ]; }; then
+  echo "Strict certification requires all phases" >&2
+  overall_status=1
+fi
 
 if [ "$RUN_BASELINE" = "true" ]; then
   echo "Running enterprise read-path baseline into $OUT_DIR/baseline"

@@ -1,0 +1,12 @@
+[
+  "jvm-heap-utilization",
+  "process-cpu-utilization",
+  "db-pool-active-utilization",
+  "db-pool-pending-threads",
+  "executor-ingestion-active",
+  "executor-ingestion-queue",
+  "executor-integration-queue-active",
+  "executor-integration-queue",
+  "executor-connector-sync-active",
+  "executor-connector-sync-queue"
+]
