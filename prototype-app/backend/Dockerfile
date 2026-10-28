@@ -5,7 +5,7 @@ RUN mvn -q -DskipTests dependency:go-offline
 COPY src ./src
 RUN mvn -q -DskipTests package
 
-FROM eclipse-temurin:17-jre-noble@sha256:b3e1d0486f09293b2455aed02d396d4b6b5ea9b0e8c7c065c297cfef453b0116
+FROM eclipse-temurin:24-jre-noble@sha256:b416d02335e702b0403ff280de9475a3348e29382285969c9d4e17862ce632e7
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends busybox-static postgresql-client \
