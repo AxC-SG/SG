@@ -79,7 +79,7 @@ Run commands from `prototype-app/frontend` after `npm ci`. All current candidate
 | `npm run e2e:visual` | Screenshots against `e2e/visual-baselines/ui2/` in both themes |
 | `node e2e/select-affected.mjs --base <git-ref>` | Map presentation changes to routes; outputs a route list, `NONE`, or `FULL_SWEEP` |
 | `npm run e2e:affected -- --routes /findings,/login` | Selected routes at 390/1280px, both themes, visual and axe comparison |
-| `npm run e2e:sweep -- --widths 390,768,1280,1440` | Four-width route sweeps in both themes, then the representative axe audit/comparison (audit defaults to 1280/390px) |
+| `npm run e2e:sweep -- --widths 390,768,1280,1440` | Four-width route sweeps and representative axe audit/comparison in both themes |
 | `npm run e2e:update` | Rewrites UI 2 visual, journey and axe baselines after producing visual differences; inspect all changed evidence before accepting |
 | `npm run e2e:live -- --base <local-frontend-url> --out <scratch-dir>` | Real-backend journeys using `LIVE_CREDENTIALS` and optional `LIVE_PLATFORM_CREDENTIALS` JSON files outside the repo; approved disposable data required |
 | `npm run e2e:verify-archive -- <manifest-path>` | Verify an archive and all its files in scratch; defaults to the P0 source manifest |
@@ -87,6 +87,8 @@ Run commands from `prototype-app/frontend` after `npm ci`. All current candidate
 Visual/affected/update runs require `mcr.microsoft.com/playwright:v1.63.0-noble`, matching exact-pinned `@playwright/test` 1.63.0. `E2E_PLAYWRIGHT_IMAGE` must name the image and the runner checks `/ms-playwright`; setting the variable alone is insufficient. Keep screenshot tolerance (`maxDiffPixelRatio: 0.001`), assertions and coverage floors. No baseline refresh solely to turn an unexplained failure green.
 
 Fixtures use fixed time, locale `en-US`, timezone `UTC`, reduced motion and blocked nonlocal requests; they reject unexpected API requests. Axe comparisons key violations by route/theme/rule/element. Existing baselines can contain known failures: a passing comparison means no new regression relative to that baseline, not zero accessibility defects. Missing data/accounts remain pending scenarios, never passes.
+
+Accessible control names must include their visible text. The account menu includes the workspace and role, exposure funnel stages include the count and supporting metric, and policy links retain the visible “Open policy” wording before the policy name. Axe-core 4.14 checks these through `label-content-name-mismatch`; run `npm run e2e:sweep -- --checks accessibility --widths 390,768,1280,1440` to compare both themes against the reviewed baseline.
 
 `.github/workflows/quality.yml` runs the quality and browser gates; `frontend-e2e-sweep.yml` runs the scheduled/on-demand full sweep. Unknown presentation files select `FULL_SWEEP`, never zero routes. Add new routes and presentation ownership to `e2e/routes.mjs` and `affected-routes.json` with the screen. Live journeys are separate from default CI.
 
