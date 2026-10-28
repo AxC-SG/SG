@@ -28,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 .github/scripts/test-ci-contracts.py
+      - run: python3 .github/scripts/test-maven-reports.py
       - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
 
   migration-validation:
@@ -40,9 +41,6 @@ jobs:
         env:
           MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: python3 .github/scripts/validate-migrations.py
-      - name: Run migration catalog tests
-        working-directory: prototype-app/backend
-        run: mvn -q -Dtest=MigrationCatalogTest,PostgresResetMigrationGuardTest test
 
   migration-boundaries:
     runs-on: ubuntu-latest
@@ -189,6 +187,8 @@ jobs:
           java-version: 17
           cache: maven
       - run: mvn -q verify
+      - name: Verify migration tests ran in the ordinary suite
+        run: python3 ../../.github/scripts/verify-maven-reports.py unit .
 
   backend-postgres:
     needs: changes
@@ -221,10 +221,12 @@ jobs:
           java-version: 17
           cache: maven
       - run: >-
-          mvn -q -Ppostgres-it
+          mvn -q -Pci-postgres-it
           -Dpostgres.test.username=postgres
           -Dpostgres.test.password=postgres
           verify
+      - name: Verify integration tests executed without skips
+        run: python3 ../../.github/scripts/verify-maven-reports.py postgres .
 
   docs-check:
     runs-on: ubuntu-latest
@@ -243,23 +245,10 @@ jobs:
             echo "::warning::Source code changed but no files in prototype-app/docs/ were updated. Check the Documentation section of the PR template."
           fi
 
-  images:
-    runs-on: ubuntu-latest
-    needs:
-      - frontend
-      - backend
-      - backend-postgres
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build backend image
-        run: docker build -f prototype-app/backend/Dockerfile -t vulnwatch-backend:${{ github.sha }} prototype-app/backend
-      - name: Build frontend image
-        run: docker build -f prototype-app/frontend/Dockerfile.ci -t vulnwatch-frontend:${{ github.sha }} prototype-app/frontend
-
   required:
     name: Quality gate
     if: always()
-    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres, images]
+    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

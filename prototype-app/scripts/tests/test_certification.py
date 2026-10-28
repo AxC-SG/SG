@@ -82,6 +82,7 @@ class CertificationTest(unittest.TestCase):
                            MAX_WAIT_SECONDS="1", POLL_INTERVAL_SECONDS="1")
                 env["ROUTE_AUTH_MODE"] = "api-key"
                 env["ROUTE_AUTH_MODE"] = "api-key"
+                env["ROUTE_AUTH_MODE"] = "api-key"
                 if strict is not None:
                     env["CERTIFICATION_STRICT"] = strict
                 script = "enterprise-performance-certification.sh" if enterprise else "performance-baseline.sh"

@@ -69,8 +69,17 @@ jobs:
           python3 .github/scripts/test-spring-advisory-applicability.py
           python3 .github/scripts/check-spring-advisory-applicability.py
 
+      - uses: docker/setup-buildx-action@v3
       - name: Build backend image
-        run: docker build -f prototype-app/backend/Dockerfile -t vulnwatch-backend:${{ github.sha }} prototype-app/backend
+        uses: docker/build-push-action@v6
+        with:
+          context: prototype-app/backend
+          file: prototype-app/backend/Dockerfile
+          load: true
+          push: false
+          tags: vulnwatch-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
 
       - name: Scan backend image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -85,7 +94,17 @@ jobs:
           exit-code: '0'
 
       - name: Build frontend image
-        run: docker build -f prototype-app/frontend/Dockerfile.ci -t vulnwatch-frontend:${{ github.sha }} prototype-app/frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: prototype-app/frontend
+          file: prototype-app/frontend/Dockerfile.ci
+          load: true
+          push: false
+          tags: vulnwatch-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+      - name: Record scanned image identities
+        run: docker image inspect vulnwatch-backend:${{ github.sha }} vulnwatch-frontend:${{ github.sha }} --format '{{json .}}' > image-identities.jsonl
 
       - name: Scan frontend image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -110,6 +129,7 @@ jobs:
         with:
           name: trivy-images-${{ github.run_id }}
           path: |
+            image-identities.jsonl
             trivy-backend.sarif
             trivy-frontend.sarif
           if-no-files-found: error

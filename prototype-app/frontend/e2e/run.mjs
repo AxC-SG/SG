@@ -106,7 +106,6 @@ if (command === 'journeys') {
   }
   await imageCheck();
   if (steps.every((s) => s.status === 0)) {
-    await visualSteps([], { E2E_ROUTES: args.routes, E2E_WIDTHS: AFFECTED_WIDTHS });
     for (const version of versions) {
       await withServer(version, async (base, out) => {
         const affectedOut = path.join(out, 'affected');
