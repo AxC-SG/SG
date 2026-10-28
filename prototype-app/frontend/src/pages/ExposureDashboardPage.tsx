@@ -136,7 +136,7 @@ function ExposureFunnelWidget({
                 fontWeight={600}
                 fill="var(--dp-text)"
               >
-                {stage.label}
+                {stage.label}{' '}
               </text>
               <text
                 x={OFFSET_X + CX}
@@ -147,7 +147,7 @@ function ExposureFunnelWidget({
                 fontWeight={700}
                 fill="#ffffff"
               >
-                {fmt(stage.value)}
+                {fmt(stage.value)}{' '}
               </text>
               <text
                 x={OFFSET_X + CX}
