@@ -12,19 +12,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   filesystem:
     name: Trivy filesystem gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Verify Spring advisory applicability
         run: |
           python3 .github/scripts/test-spring-advisory-applicability.py
           python3 .github/scripts/check-spring-advisory-applicability.py
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '17'
@@ -35,7 +40,7 @@ jobs:
         run: mvn -q -DskipTests dependency:go-offline
 
       - name: Run Trivy on filesystem
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -51,7 +56,7 @@ jobs:
 
       - name: Retain filesystem scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-filesystem-${{ github.run_id }}
           path: trivy-fs.sarif
@@ -61,17 +66,18 @@ jobs:
   images:
     name: Trivy images gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Verify Spring advisory applicability
         run: |
           python3 .github/scripts/test-spring-advisory-applicability.py
           python3 .github/scripts/check-spring-advisory-applicability.py
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Build backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: prototype-app/backend
           file: prototype-app/backend/Dockerfile
@@ -82,7 +88,7 @@ jobs:
           cache-to: type=gha,scope=backend,mode=max
 
       - name: Scan backend image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: vulnwatch-backend:${{ github.sha }}
@@ -94,7 +100,7 @@ jobs:
           exit-code: '0'
 
       - name: Build frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: prototype-app/frontend
           file: prototype-app/frontend/Dockerfile.ci
@@ -107,7 +113,7 @@ jobs:
         run: docker image inspect vulnwatch-backend:${{ github.sha }} vulnwatch-frontend:${{ github.sha }} --format '{{json .}}' > image-identities.jsonl
 
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: vulnwatch-frontend:${{ github.sha }}
@@ -125,7 +131,7 @@ jobs:
 
       - name: Retain image scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-images-${{ github.run_id }}
           path: |

@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const pinned = JSON.parse(readFileSync(require.resolve('@playwright/test/package.json'), 'utf8')).version;
 const image = process.env.E2E_PLAYWRIGHT_IMAGE ?? '';
-const match = /^mcr\.microsoft\.com\/playwright:v(\d+\.\d+\.\d+)(?:-[a-z]+)?$/.exec(image);
+const match = /^mcr\.microsoft\.com\/playwright:v(\d+\.\d+\.\d+)(?:-[a-z]+)?(?:@sha256:[a-f0-9]{64})?$/.exec(image);
 
 if (!match) {
   console.error(`Visual runs need the Playwright container. Set E2E_PLAYWRIGHT_IMAGE to mcr.microsoft.com/playwright:v${pinned}-noble `

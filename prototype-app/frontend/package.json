@@ -18,7 +18,8 @@
     "e2e:update": "node e2e/run.mjs update",
     "e2e:affected": "node e2e/run.mjs affected",
     "e2e:live": "node e2e/live-journeys.mjs",
-    "e2e:verify-archive": "node e2e/verify-archive.mjs"
+    "e2e:verify-archive": "node e2e/verify-archive.mjs",
+    "test:e2e-runner": "node --test e2e/runner.test.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
@@ -53,5 +54,8 @@
     "typescript-eslint": "^8.57.2",
     "vite": "^8.3.4",
     "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

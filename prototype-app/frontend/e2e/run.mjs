@@ -10,6 +10,7 @@
 // The UI 2 candidate is served from its artifact folder and port. Output goes to
 // e2e/.results/<version>/. The process exits non-zero when any step fails.
 import { spawn } from 'node:child_process';
+import { runPool } from './runner-pool.mjs';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,9 +81,8 @@ const visualSteps = async (extraArgs = [], env = {}) => {
 if (command === 'journeys') {
   for (const version of versions) {
     await withServer(version, async (base, out) => {
-      for (const journey of JOURNEYS) {
-        await journeyStep(version, journey, base, out);
-      }
+      await runPool(JOURNEYS, Number(process.env.E2E_JOURNEY_WORKERS ?? 1),
+        (journey) => journeyStep(version, journey, base, out));
     });
   }
 } else if (command === 'sweep') {
