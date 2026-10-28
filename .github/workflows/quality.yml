@@ -1,32 +1,79 @@
 name: Quality
 
 on:
-  merge_group:
   pull_request:
   push:
     branches:
       - main
-      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      application: ${{ steps.select.outputs.application }}
+      routes: ${{ steps.routes.outputs.routes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 .github/scripts/classify-changes.py
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - id: routes
+        working-directory: prototype-app/frontend
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          APPLICATION: ${{ steps.select.outputs.application }}
+        run: |
+          routes=NONE
+          if [ "$EVENT_NAME" = pull_request ] && [ "$APPLICATION" = true ]; then
+            routes=$(node e2e/select-affected.mjs --base "origin/$BASE_REF")
+          fi
+          echo "routes=$routes" >> "$GITHUB_OUTPUT"
+
+
+  ci-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: node --test prototype-app/frontend/e2e/runner.test.mjs
+      - run: python3 .github/scripts/test-ci-contracts.py
+      - run: python3 .github/scripts/test-maven-reports.py
+      - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
+
   migration-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Validate migration filenames, ownership, and append-only changes
         env:
-          MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python3 .github/scripts/validate-migrations.py
-      - name: Run migration catalog tests
-        working-directory: prototype-app/backend
-        run: mvn -q -Dtest=MigrationCatalogTest,PostgresResetMigrationGuardTest test
 
   migration-boundaries:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Prevent migration history rewrites and version collisions
@@ -41,11 +88,12 @@ jobs:
 
   policy-packages:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: 24
       - name: Validate legacy example policy packages
         run: node prototype-app/scripts/validate-policy-packages.mjs
       - name: Validate governed AI Grid Phase 1 catalog
@@ -55,10 +103,11 @@ jobs:
 
   secrets:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Install verified Gitleaks CLI
@@ -70,12 +119,12 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
       - name: Scan commit history for secrets
         env:
-          GITLEAKS_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          GITLEAKS_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           GITLEAKS_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash .github/scripts/run-secret-scan.sh
       - name: Retain redacted secret scan report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gitleaks-${{ github.run_id }}
           path: ${{ runner.temp }}/gitleaks.sarif
@@ -83,15 +132,18 @@ jobs:
           retention-days: 14
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: prototype-app/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: prototype-app/frontend/package-lock.json
       - run: npm ci
@@ -100,26 +152,40 @@ jobs:
       - run: npm run build
       - run: npm run test:coverage
 
+      - name: Retain frontend verification reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-${{ github.run_id }}
+          path: |
+            prototype-app/frontend/coverage
+          if-no-files-found: warn
+          retention-days: 14
+
   # Fixture-backed browser checks for UI 2. The image tag must equal the
   # pinned @playwright/test version; check-playwright-image.mjs fails the job otherwise.
   frontend-e2e:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
     env:
       E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
       E2E_WORKERS: 2
+      E2E_JOURNEY_WORKERS: 2
       E2E_VERSIONS: ui2
     defaults:
       run:
         working-directory: prototype-app/frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: prototype-app/frontend/package-lock.json
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -128,48 +194,110 @@ jobs:
       - run: npm run e2e:build
       - run: npm run e2e:journeys
       - run: npm run e2e:visual
-      - name: Select routes affected by presentation changes
-        id: affected
-        if: github.event_name == 'pull_request'
-        run: echo "routes=$(node e2e/select-affected.mjs --base origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
       - name: Affected routes at 390 and 1280px
-        if: github.event_name == 'pull_request' && steps.affected.outputs.routes != 'NONE' && steps.affected.outputs.routes != 'FULL_SWEEP'
+        if: github.event_name == 'pull_request' && needs.changes.outputs.routes != 'NONE' && needs.changes.outputs.routes != 'FULL_SWEEP'
         env:
-          ROUTES: ${{ steps.affected.outputs.routes }}
+          ROUTES: ${{ needs.changes.outputs.routes }}
         run: npm run e2e:affected -- --routes "$ROUTES"
-      - name: Full sweep for presentation files missing from the route map
-        if: github.event_name == 'pull_request' && steps.affected.outputs.routes == 'FULL_SWEEP'
-        run: npm run e2e:sweep
       - name: Retain e2e results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: frontend-e2e-${{ github.run_id }}
           path: prototype-app/frontend/e2e/.results
-          if-no-files-found: warn
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+
+  frontend-sweep:
+    needs: changes
+    if: needs.changes.outputs.application == 'true' && needs.changes.outputs.routes == 'FULL_SWEEP'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+    env:
+      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+      E2E_VERSIONS: ui2
+    defaults:
+      run:
+        working-directory: prototype-app/frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: prototype-app/frontend/package-lock.json
+      - run: npm ci
+      - run: node e2e/check-playwright-image.mjs
+      - run: npm run e2e:build
+      - name: Audit all accessibility widths
+        run: npm run e2e:sweep -- --checks accessibility --widths 390,768,1280,1440
+      - name: Retain accessibility qualification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-accessibility-${{ github.run_id }}
+          path: prototype-app/frontend/e2e/.results/ui2
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Sweep all route widths
+        if: ${{ !cancelled() }}
+        run: npm run e2e:sweep -- --checks routes --widths 390,768,1280,1440
+      - name: Retain full sweep evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-full-sweep-${{ github.run_id }}
+          path: prototype-app/frontend/e2e/.results
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 14
 
   backend:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: prototype-app/backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
           cache: maven
       - run: mvn -q verify
+      - name: Verify migration tests ran in the ordinary suite
+        run: python3 ../../.github/scripts/verify-maven-reports.py unit .
+
+      - name: Retain backend verification reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-${{ github.run_id }}
+          path: |
+            prototype-app/backend/target/surefire-reports
+            prototype-app/backend/target/site/jacoco
+            prototype-app/backend/target/spotbugs*
+          if-no-files-found: warn
+          retention-days: 14
 
   backend-postgres:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     env:
       APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED: "false"
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16@sha256:d4d4f1579fcfba19c2257326f6a93f4bcf677a430619f084ced704e18eb428ce
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -185,23 +313,36 @@ jobs:
       run:
         working-directory: prototype-app/backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
           cache: maven
       - run: >-
-          mvn -q -Ppostgres-it
+          mvn -q -Pci-postgres-it
           -Dpostgres.test.username=postgres
           -Dpostgres.test.password=postgres
           verify
+      - name: Verify integration tests executed without skips
+        run: python3 ../../.github/scripts/verify-maven-reports.py postgres .
+
+      - name: Retain backend-postgres verification reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-postgres-${{ github.run_id }}
+          path: |
+            prototype-app/backend/target/failsafe-reports
+          if-no-files-found: warn
+          retention-days: 14
 
   docs-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Warn if source changed without docs
@@ -214,15 +355,15 @@ jobs:
             echo "::warning::Source code changed but no files in prototype-app/docs/ were updated. Check the Documentation section of the PR template."
           fi
 
-  images:
+  required:
+    name: Quality gate
+    if: always()
+    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, frontend-sweep, backend, backend-postgres]
     runs-on: ubuntu-latest
-    needs:
-      - frontend
-      - backend
-      - backend-postgres
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Build backend image
-        run: docker build -f prototype-app/backend/Dockerfile -t vulnwatch-backend:${{ github.sha }} prototype-app/backend
-      - name: Build frontend image
-        run: docker build -f prototype-app/frontend/Dockerfile.ci -t vulnwatch-frontend:${{ github.sha }} prototype-app/frontend
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Enforce all expected results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 .github/scripts/check-quality-gate.py

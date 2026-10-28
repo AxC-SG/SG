@@ -1,11 +1,11 @@
-FROM maven:3.9.9-eclipse-temurin-17 AS build
+FROM maven:3.9.9-eclipse-temurin-17@sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731c75b906c0f7b34076f1851318cc AS build
 WORKDIR /workspace
 COPY pom.xml .
 RUN mvn -q -DskipTests dependency:go-offline
 COPY src ./src
 RUN mvn -q -DskipTests package
 
-FROM eclipse-temurin:17-jre-noble
+FROM eclipse-temurin:17-jre-noble@sha256:b3e1d0486f09293b2455aed02d396d4b6b5ea9b0e8c7c065c297cfef453b0116
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends busybox-static postgresql-client \

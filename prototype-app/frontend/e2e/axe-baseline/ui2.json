@@ -7510,5 +7510,7541 @@
   "rule": "nested-interactive",
   "impact": "serious",
   "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/audit",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active.nav-btn"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/admin/users",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[step=\"0.1\"][max=\"10\"][value=\"7\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"120\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"30\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"60\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"7\"][max=\"365\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"9\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[step=\"0.1\"][max=\"10\"][value=\"7\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"120\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"30\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"60\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"7\"][max=\"365\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"9\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[step=\"0.1\"][max=\"10\"][value=\"7\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"120\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"30\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"60\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"7\"][max=\"365\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"9\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[step=\"0.1\"][max=\"10\"][value=\"7\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"120\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"30\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"60\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"7\"][max=\"365\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "input[value=\"9\"]"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/sla",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(8)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(8)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(8) > .btn.btn-secondary[type=\"button\"]:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(8) > .btn.btn-secondary[type=\"button\"]:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(8)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(8) > .btn.btn-secondary[type=\"button\"]:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(8) > .btn.btn-secondary[type=\"button\"]:nth-child(2)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(8)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".config-section-head-text > h3"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/configurations/suppress",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect/run-history",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".form-section:nth-child(3) > h4"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".form-section:nth-child(3) > h4"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".form-section:nth-child(3) > h4"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".form-section:nth-child(3) > h4"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/connect?connectSource=servicenow-cmdb",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-footer-row.panel-summary-row > .badge--red.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-summary-good"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(2)"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(3)"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(3) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(4) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(5) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(6) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .badge--blue.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .badge--cyan.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .badge--orange.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .badge--purple.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-footer-row.panel-summary-row > .badge--red.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-summary-good"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(2)"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(3)"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(3) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(4) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(5) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(6) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .badge--blue.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .badge--cyan.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .badge--orange.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .badge--purple.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-footer-row.panel-summary-row > .badge--red.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-summary-good"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(2)"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(3)"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(3) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(4) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(5) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(6) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .badge--blue.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .badge--cyan.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .badge--orange.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .badge--purple.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-footer-row.panel-summary-row > .badge--red.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".panel-summary-good"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(2)"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-metric:nth-child(3)"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row--highlight > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(3) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(4) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(5) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".priority-row:nth-child(6) > .priority-score"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .badge--blue.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(1) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .badge--cyan.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(2) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .badge--orange.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(3) > .risk-status"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .badge--purple.badge"
+ },
+ {
+  "route": "/demo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".risk-row:nth-child(4) > .risk-status"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-07-19\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-08-14\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-09-12\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-07-19\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-08-14\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-09-12\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-07-19\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-08-14\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-09-12\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-07-19\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-08-14\"]"
+ },
+ {
+  "route": "/demo/blog",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "time[datetime=\"2026-09-12\"]"
+ },
+ {
+  "route": "/demo/request",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "aria-prohibited-attr",
+  "impact": "serious",
+  "target": ".turnstile-field"
+ },
+ {
+  "route": "/demo/request",
+  "theme": "dark",
+  "width": 768,
+  "rule": "aria-prohibited-attr",
+  "impact": "serious",
+  "target": ".turnstile-field"
+ },
+ {
+  "route": "/demo/request",
+  "theme": "light",
+  "width": 1440,
+  "rule": "aria-prohibited-attr",
+  "impact": "serious",
+  "target": ".turnstile-field"
+ },
+ {
+  "route": "/demo/request",
+  "theme": "light",
+  "width": 768,
+  "rule": "aria-prohibited-attr",
+  "impact": "serious",
+  "target": ".turnstile-field"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".page-grid > section > .panel-header > h3"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".page-grid > section > .panel-header > h3"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".exec-cve-row[type=\"button\"]:nth-child(1) > .exec-cve-left > .status-pill.status-warning.exec-cve-exploit"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".exec-cve-row[type=\"button\"]:nth-child(3) > .exec-cve-left > .status-pill.status-warning.exec-cve-exploit"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".page-grid > section > .panel-header > h3"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".exec-cve-row[type=\"button\"]:nth-child(1) > .exec-cve-left > .status-pill.status-warning.exec-cve-exploit"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".exec-cve-row[type=\"button\"]:nth-child(3) > .exec-cve-left > .status-pill.status-warning.exec-cve-exploit"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".page-grid > section > .panel-header > h3"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/exposure",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".fpl-tr:nth-child(14) > td:nth-child(9) > .status-auto_closed.status-pill"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".fpl-tr:nth-child(21) > td:nth-child(9) > .status-auto_closed.status-pill"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/F-10420",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "scrollable-region-focusable",
+  "impact": "serious",
+  "target": ".panel.ai-security-table-panel:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "scrollable-region-focusable",
+  "impact": "serious",
+  "target": ".panel.ai-security-table-panel:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/exposures",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/findings/ai/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".ai-overview-strip > div > h3"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".ai-overview-strip > div > h3"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-unknown"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".ai-overview-strip > div > h3"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-unknown"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".ai-overview-strip > div > h3"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/inventory/ai/ai-agent-claims-triage",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(10) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(5) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(9) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(10) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(5) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".inventory-table-row-clickable:nth-child(9) > td:nth-child(9) > .status-inactive.status-pill"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/hosts/host-prod-api-gw-01",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "select"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "dark",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "select"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "select"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".fd3-tab-bar"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".active"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/inventory/software-identities/si-log4j-core",
+  "theme": "light",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "select"
+ },
+ {
+  "route": "/platform/ai-policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/platform/ai-policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/platform/ai-policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/platform/ai-policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th[aria-label=\"Actions\"]"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "landmark-complementary-is-top-level",
+  "impact": "moderate",
+  "target": ".cvd2-overview-sidebar"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "dark",
+  "width": 768,
+  "rule": "landmark-complementary-is-top-level",
+  "impact": "moderate",
+  "target": ".cvd2-overview-sidebar"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-status-pill"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "light",
+  "width": 1440,
+  "rule": "landmark-complementary-is-top-level",
+  "impact": "moderate",
+  "target": ".cvd2-overview-sidebar"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-status-pill"
+ },
+ {
+  "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+  "theme": "light",
+  "width": 768,
+  "rule": "landmark-complementary-is-top-level",
+  "impact": "moderate",
+  "target": ".cvd2-overview-sidebar"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".section-tab-row"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "dark",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".section-tab-row"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "light",
+  "width": 1440,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".section-tab-row"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "light",
+  "width": 768,
+  "rule": "aria-required-children",
+  "impact": "critical",
+  "target": ".section-tab-row"
+ },
+ {
+  "route": "/platform/operations",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+ },
+ {
+  "route": "/platform/tenants",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/platform/tenants",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/platform/tenants",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/platform/tenants",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-status-pill"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-status-pill"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/policies/policy.aws.2",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning.status-pill[type=\"button\"]"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-warning.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-warning.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".status-warning.status-pill[type=\"button\"]"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-warning.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-warning.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".vuln-repo-dashboard-stat-button[type=\"button\"]:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".active.campaign-status-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".blocked"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".closed"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".review"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".active.campaign-status-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".blocked"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".closed"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".review"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-detail-value:nth-child(2) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-notify-row:nth-child(1) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-notify-row:nth-child(2) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-severity-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-detail-value:nth-child(2) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-notify-row:nth-child(1) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-notify-row:nth-child(2) > .cd-avatar"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-severity-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".campaign-status-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-evidence-partial"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-progress-resolved"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-severity-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-sla-days"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".campaign-status-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-evidence-partial"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-progress-resolved"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-severity-badge"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-sla-days"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(1) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(2) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(3) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(4) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(5) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(6) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(1) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(2) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(3) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(4) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(5) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".org-cve-row:nth-child(6) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-ov-kev-overdue"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-title"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvd-ov-kev-overdue"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-title"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-title"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".cvrs-mini-title"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(2) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "th:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(5) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(8) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(2) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(8) > span"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "th:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(5) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "dark",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(8) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "th:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(5) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 1440,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(8) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "empty-table-header",
+  "impact": "minor",
+  "target": "th:nth-child(1)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "heading-order",
+  "impact": "moderate",
+  "target": "h3"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "th:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "label",
+  "impact": "critical",
+  "target": "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(5) > select"
+ },
+ {
+  "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+  "theme": "light",
+  "width": 768,
+  "rule": "select-name",
+  "impact": "critical",
+  "target": "td:nth-child(8) > select"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".is-active"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(2) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(2) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(5) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(6) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": ".is-active"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(1) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(2) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(3) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(5) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(6) > td:nth-child(7) > span"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "dark",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "color-contrast",
+  "impact": "serious",
+  "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 1440,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(2)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-bottom-section > .nav-btn:nth-child(3)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(5)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-btn:nth-child(7)"
+ },
+ {
+  "route": "/vuln-repo/vulnerabilities",
+  "theme": "light",
+  "width": 768,
+  "rule": "nested-interactive",
+  "impact": "serious",
+  "target": ".nav-main-section > .nav-btn:nth-child(2)"
  }
 ]

@@ -8,7 +8,7 @@
 //
 // Usage:
 //   node axe-compare.mjs --run <dir>/<label>_axe.json --baseline axe-baseline/<version>.json [--routes <list>] [--update]
-// --routes limits the baseline to the routes a partial run audited (e2e:affected).
+// --routes and --widths limit comparison to the dimensions a partial run audited.
 // --update rewrites the baseline from the run; use it only through `npm run e2e:update`.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -52,7 +52,9 @@ if (args.update === 'true') {
 }
 
 const audited = args.routes ? new Set(args.routes.split(',')) : null;
-const baseline = JSON.parse(readFileSync(args.baseline, 'utf8')).filter((entry) => !audited || audited.has(entry.route));
+const auditedWidths = args.widths ? new Set(args.widths.split(',').map(Number)) : null;
+if (auditedWidths && [...auditedWidths].some((width) => !Number.isInteger(width) || width < 1)) throw new Error('Invalid audit widths');
+const baseline = JSON.parse(readFileSync(args.baseline, 'utf8')).filter((entry) => (!audited || audited.has(entry.route)) && (!auditedWidths || auditedWidths.has(entry.width)));
 const known = new Set(baseline.map(keyOf));
 const seen = new Set(current.map(keyOf));
 const added = current
