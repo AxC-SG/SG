@@ -22,6 +22,6 @@ describe('PlatformAiPolicyStudio', () => {
     expect(await screen.findByText('Guardrail attached')).toBeInTheDocument();
     expect(screen.getByText('OWASP GenAI LLM Top 10 2026 · LLM01 (DIRECT)')).toBeInTheDocument();
     expect(screen.getByText('digest verified')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open guardrail attached/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open policy: Guardrail attached' })).toBeInTheDocument();
   });
 });

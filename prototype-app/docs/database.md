@@ -1,12 +1,16 @@
 # VulnWatch Database
 
-Last updated: 2026-10-21 (scoped migration/readiness guidance)
+Last updated: 2026-10-28 (UI 2.0 documentation alignment; schema ownership retained)
 
 > **Historical version labels:** ~70 section notes below cite pre-reset migration numbers (e.g. "Added in V44", "V40/V41"). Those histories were consolidated into the V1 baselines; the current post-reset heads are platform V8 and tenant V8. Read older labels as provenance, not as files that exist.
 
 The runtime database is PostgreSQL with two independent Flyway lines, each consolidated into a complete V1 development baseline: `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`. They include current AI Grid, AI-BOM, GitHub advisory/OSV, deployment metadata, harm-baseline schema, and runtime exclusion. Tenant migrations are applied once per schema by `TenantSchemaMigrationService` / `ProductionBootstrapCli`. Historical version references below describe when features were introduced; their SQL is now incorporated in V1. Use fresh disposable local databases and remove stale packaged resources with `mvn clean`. Existing shared/deployed histories need read-only inspection and a separately authorized transition; do not reset them or use `flyway:repair` to adopt this reset.
 
 ---
+
+## UI 2.0 persistence boundary
+
+The frontend presentation migration introduced no schema migration or new persistence model. Theme and existing table/filter preferences remain browser state; findings, assessments, policies, connector settings and tenant administration keep their existing API and database ownership. Visual or fixture checks cannot certify that a write persisted: changed workflows require an approved disposable environment and a reload/read-back check. New screens follow [the UI development standard](ui-development-standard.md); they must not add database resets, bypass tenant isolation or treat local UI drafts as saved records.
 
 ## Overview
 

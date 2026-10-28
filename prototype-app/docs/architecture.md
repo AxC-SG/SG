@@ -1,6 +1,6 @@
 # VulnWatch Architecture
 
-Last updated: 2026-10-21
+Last updated: 2026-10-28 (UI 2.0 documentation alignment)
 
 ---
 
@@ -267,6 +267,14 @@ React 18 + TypeScript + Vite + React Router v7 + TanStack Query (React Query).
 
 All routes defined in `src/App.tsx` with typed helpers in `src/app/routes.ts`. Legacy query-param URLs redirected via `buildLegacyCompatiblePath()` on first render.
 
+### One application presentation
+
+UI 2.0 is the only tenant/platform/auth presentation. `main.tsx` imports one eager CSS entry (`styles/index.css`) and composes QueryClientProvider, BrowserRouter and `PresentationBoundary`. `AppShell` inside `App.tsx` owns shared navigation, workspace context and mounted theme. Route pages compose existing feature behavior and shared components; they do not own a second shell or theme store.
+
+`presentationBoundary.ts` applies `data-ui="2"` outside `/demo` on direct loads; `PresentationBoundary` reapplies it before paint on route navigation and browser history. Public/demo content intentionally retains separately scoped styles. UI 1 rebuild switching and the legacy bridge are removed. Rollback uses the retained frozen build, not a build-time flag.
+
+New screens follow [the UI development standard](ui-development-standard.md), with exact CSS ownership in [UI 2 styles and rollback](ui2-styles-and-rollback.md). Changes to shared presentation/interaction conventions need user approval during development, with alternatives, pros/cons and an affected-screen consistency plan.
+
 ### Key Architectural Decisions
 
 **Feature-colocated types:** TypeScript types live in the feature directory that owns them (`src/features/findings/types.ts`, etc.). `src/types/index.ts` re-exports them for convenience but is not the source of truth.
@@ -277,11 +285,11 @@ All routes defined in `src/App.tsx` with typed helpers in `src/app/routes.ts`. L
 
 **S.AI Scoring (browser-side only):** `src/lib/riskScoring.ts` computes CVE Risk Score and Finding Priority Score from data already returned by the API. Not stored in the database. Recalculates on every render. Accepts optional `PolicyWeights` from the tenant's risk policy.
 
-**ExposureDashboard vs. OperationalDashboard:** `/exposure` is risk-focused (CVE counts, SLA status, risk score). `/operations` is pipeline-focused (correlation efficiency, CSAF/VEX analytics, quality issues). Do not add operational/pipeline panels to the Exposure Dashboard.
+**ExposureDashboard vs. OperationalDashboard:** `/exposure` is risk-focused (CVE counts, SLA status, risk score). `/operations` is pipeline-focused (ingestion, source freshness, SLOs and run queues). Correlation efficiency and CSAF/VEX quality analytics live under Inventory; `/operations/quality` redirects there with quality-tab search parameters. Do not add operational/pipeline panels to the Exposure Dashboard.
 
 ### API Layer
 
-All API calls go through `src/api/client.ts`. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or production `https://api.scoutgrid.io/api`. Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
+API calls use `src/api/client.ts` and the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or production `https://api.scoutgrid.io/api`. Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
 
 ---
 

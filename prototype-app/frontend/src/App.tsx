@@ -1174,9 +1174,9 @@ function AppShell() {
             </div>
             <div className="topbar-actions">
               <button type="button" className="tenant-context-pill" title={`${actorLabel} · ${displayRole}`}
-                aria-label="Open account menu" aria-expanded={settingsMenuOpen}
+                aria-label={`${tenantLabel} ${displayRole}: Open account menu`} aria-expanded={settingsMenuOpen}
                 onClick={() => setSettingsMenuOpen((open) => !open)}>
-                <span>{tenantLabel}</span>
+                <span>{tenantLabel}{' '}</span>
                 <small>{displayRole}</small>
               </button>
               {activePersonaLabel && (

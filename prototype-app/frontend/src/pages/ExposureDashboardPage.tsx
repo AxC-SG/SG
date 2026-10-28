@@ -119,7 +119,7 @@ function ExposureFunnelWidget({
               key={stage.label}
               style={{ cursor: 'pointer' }}
               role="button"
-              aria-label={`${stage.label}: ${fmt(stage.value)}`}
+              aria-label={`${stage.label} ${fmt(stage.value)} ${stage.sub}`}
               onClick={() => onNavigate(stage.path)}
             >
               <polygon
@@ -136,7 +136,7 @@ function ExposureFunnelWidget({
                 fontWeight={600}
                 fill="var(--dp-text)"
               >
-                {stage.label}
+                {stage.label}{' '}
               </text>
               <text
                 x={OFFSET_X + CX}
@@ -147,7 +147,7 @@ function ExposureFunnelWidget({
                 fontWeight={700}
                 fill="#ffffff"
               >
-                {fmt(stage.value)}
+                {fmt(stage.value)}{' '}
               </text>
               <text
                 x={OFFSET_X + CX}

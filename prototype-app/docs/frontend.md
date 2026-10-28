@@ -2,7 +2,7 @@
 
 This document describes the React/TypeScript frontend for VulnWatch (package name `vulnwatch-frontend`). It is derived entirely from reading the source code in `frontend/src/`.
 
-Last updated: 2026-10-21
+Last updated: 2026-10-28 (UI 2.0 documentation alignment)
 
 ---
 
@@ -10,24 +10,28 @@ Last updated: 2026-10-21
 
 | Concern | Library / Version |
 |---|---|
-| UI framework | React 18.3.1 |
-| Language | TypeScript 5.5.4 |
-| Build tool | Vite 5.4.2 |
-| Routing | React Router DOM 7.13.2 |
-| Server state | @tanstack/react-query 5.95.2 |
-| Table | @tanstack/react-table 8.21.3 |
-| Error monitoring | @sentry/react 10.51.0 |
-| Report export | docx 9.6.1 |
+| UI framework | React ^18.3.1 |
+| Language | TypeScript ^5.5.4 |
+| Build tool | Vite ^8.3.4 |
+| Routing | React Router DOM ^7.18.4 |
+| Server state | @tanstack/react-query ^5.95.2 |
+| Table | @tanstack/react-table ^8.21.3 |
+| Error monitoring | @sentry/react ^10.51.0 |
+| Report export | docx ^9.6.1 |
 | HTTP | Native `fetch` (no axios) |
-| Test runner | Vitest 4.0.18 |
-| Test utilities | @testing-library/react 16.3.2, @testing-library/jest-dom 6.9.1 |
-| Coverage | @vitest/coverage-v8 4.1.5 |
-| Lint | ESLint 9.39.4 + typescript-eslint 8.57.2 + eslint-plugin-react-hooks 7.0.1 |
-| DOM environment | jsdom 29.0.1 |
+| Test runner | Vitest ^4.1.11 |
+| Test utilities | @testing-library/react ^16.3.2, @testing-library/jest-dom ^6.9.1 |
+| Coverage | @vitest/coverage-v8 ^4.1.5 |
+| Lint | ESLint ^9.39.4 + typescript-eslint ^8.57.2 + eslint-plugin-react-hooks ^7.0.1 |
+| DOM environment | jsdom ^29.0.1 |
+
+Versions above describe declared package constraints; `package-lock.json` pins resolved versions. Browser gates use exact-pinned `@playwright/test` 1.63.0 and `axe-core` 4.10.2. AI relationship graphs use `@xyflow/react` and `@dagrejs/dagre`.
 
 The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.lazy`. The dev server runs strictly on port 5173 (`--strictPort`). Vite proxies `/api/**` to `http://localhost:8080` in dev so the frontend calls the backend without a separate CORS config.
 
-**CI gate order:** `lint` → `typecheck` → `build` → `test:coverage`. All four must pass.
+**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Browser CI also runs fixture journeys, visual and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](ui2-styles-and-rollback.md#browser-gates).
+
+**New development:** follow [the UI development standard](ui-development-standard.md) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
 ---
 
@@ -42,6 +46,7 @@ frontend/src/
   api/base.ts               resolveApiBase (VITE_API_BASE / dev proxy / production default)
   app/
     routes.ts               Typed path-builder helpers and legacy query-param redirect logic
+    PresentationBoundary.tsx Update data-ui before paint on links and Back/Forward
   features/                 Feature-colocated modules; types live here, not in src/types/
     auth/                   ActorContext type, context/provider, role helpers, entitlements, queries
     findings/               Finding type, queries, filters
@@ -64,6 +69,7 @@ frontend/src/
     polling.ts              Refresh interval constants
     performanceMonitoring.tsx  API/render timing telemetry
     time.ts                 timeAgo, formatTimestamp helpers
+    presentationBoundary.ts App/auth UI 2 outside /demo; restore saved theme
   pages/                    One file per route; lazy-loaded in App.tsx
   components/               Shared presentational components (max ~300 lines each)
   hooks/
@@ -310,7 +316,7 @@ Files: `types.ts`, `queries.ts`
 
 **Run Queue (`InventoryRunQueuePage`, at `/connect/run-history`):** merges `useSyncRunsQuery`'s completed/active `SyncRun` rows with, for the async AI Security providers, in-flight `IngestionJob` rows from `useIngestionJobsQuery` while they're QUEUED, RUNNING, or FAILED (previously QUEUED-only, so a claimed/running job used to disappear from the queue). `hasReplacementSyncRun()` drops an ingestion-job row once a matching `SyncRun` for the same connector shows up, so a job doesn't double-render as it transitions from queued/running to a completed sync run. `formatSyncType` labels: `AI_SECURITY_AWS_BEDROCK` → "AWS AI Discovery", `AI_SECURITY_AZURE_DISCOVERY` → "Azure AI Discovery", and `AI_SECURITY_COPILOT_STUDIO` → "Microsoft Copilot Discovery". All three enter through `ingestion_jobs`; the worker creates the provider `SyncRun` only after it claims the job. Triggering a run from `AiSecurityAzureConnectorPage` or `CopilotStudioConnectorPage` invalidates the `ingestion-jobs` and `sync-runs` query caches (in addition to the connector's own scoped `ai-security-runs` query) so the new run appears in this queue immediately rather than on the next poll tick.
 
-**Connector catalog card-grid rework (`ConnectPage`, `/connect/sources`):** the catalog no longer stacks connectors in a fixed two-column list; cards center in an auto-fill grid (`connect.css` steps the column count from five down to one as the viewport narrows — this ladder has to live in `connect.css`, not `base.css`, because `cve-workbench.css` loads later and would otherwise collapse the grid to one column below 1220px). Cards show each connector's real vendor mark as inline SVG (Microsoft's four squares, the `aws` wordmark, Azure's triangle, ServiceNow's `NOW` tile, BigFix's slate-blue "b", Tanium's red-disc "T") rather than a generic icon-well glyph, so no third-party logo files are committed to the repo. There's no room in the card for a stacked "Last sync · 2h ago" / "Failed · …" line, so connector health now lives on the status dot's `title`/`aria-label` — assert against the accessible label in tests, not card body text, when checking a failed-connector state.
+**Connector catalog card-grid rework (`ConnectPage`, `/connect/sources`):** the catalog no longer stacks connectors in a fixed two-column list; cards center in an auto-fill grid (the scoped `ui2/connect-base.css` and `ui2/connect.css` own its responsive layout; both load eagerly through the UI 2 entry, so it must not rely on a retired or lazy stylesheet). Cards show each connector's real vendor mark as inline SVG (Microsoft's four squares, the `aws` wordmark, Azure's triangle, ServiceNow's `NOW` tile, BigFix's slate-blue "b", Tanium's red-disc "T") rather than a generic icon-well glyph, so no third-party logo files are committed to the repo. There's no room in the card for a stacked "Last sync · 2h ago" / "Failed · …" line, so connector health now lives on the status dot's `title`/`aria-label` — assert against the accessible label in tests, not card body text, when checking a failed-connector state.
 
 Three connector-card sections render under `sources`: **Inventory** (CMDB, cloud — including `gcp-discovery` / `GcpDiscoveryConnectorPage` — and entitlement-gated static AI sources), **BOM Management** (`sbom-endpoint`, `bom-management`) and **Incident & Ticketing Tools** (`jira-ticketing`, rendered by `JiraTicketingConnectorPage` using `useJiraTicketingConfigQuery` / `useTicketingProviderStatusQuery`; its card health comes from the last connection test via `buildTicketingConnectorStatus`, not a sync timestamp). Ticket creation from the CVE workbench and AI finding detail uses the provider-neutral `cveWorkbenchApi.createCveTickets` / `api.createFindingTicket`, and the UI labels each ticket with the provider named in the response. Unsupported Patch Management IDs/cards and detail branches were removed; `SccmPatchConnectorPage`, `BigFixPatchConnectorPage`, `TaniumPatchConnectorPage` and the unused `PatchConnectorPage` mock catalog were retired, removing all their input/credential logging. The URL is the single selection source: only catalog IDs are accepted, invalid IDs are removed without dropping other query parameters, and direct unsupported `/connect/:connectView` paths normalize to Sources. Catalog, query, app-route and in-page navigation regressions cover this containment. See [repair evidence](<../Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>). Backend patch scaffolding remains unwired.
 
@@ -440,6 +446,10 @@ LocalStorage persistence:
 
 Internal hook: `useContainerWidth()` — ResizeObserver-based container measurement for proportional width rebalancing when columns are shown/hidden.
 
+### PageFreshnessStatus and RouteErrorBoundary
+
+`src/components/PageFreshnessStatus.tsx` provides last-update, refresh and delayed-data announcements (`role="status"`, `aria-live="polite"`); `latestFreshnessValue` combines timestamps. `RouteErrorBoundary.tsx` provides the shared route-render failure treatment. Reuse these separately from feature query loading/error handling.
+
 ### StatCard (`src/components/StatCard.tsx`)
 
 Metric display card. Props: `title`, `value`, `tone` (`neutral | warn | critical`), `caption`, `description`. Renders a `MetricInfoIcon` when `description` is provided.
@@ -460,7 +470,7 @@ Each `FilterBuilderField` has: `key`, `label`, `categoryKey`, `description`, `ty
 
 Native `<dialog>` element with `showModal()` / `close()`. Closes on backdrop click or Escape via `onCancel` prop.
 
-Props: `isOpen`, `title`, `message`, `confirmLabel?` (default `'Confirm'`), `cancelLabel?` (default `'Cancel'`), `onConfirm`, `onCancel`
+Props: `isOpen`, `title`, `message`, `confirmLabel?` (default `'Confirm'`), `cancelLabel?` (default `'Cancel'`), `confirmDisabled?`, `onConfirm`, `onCancel`
 
 ### SegmentedControl (`src/components/SegmentedControl.tsx`)
 
@@ -792,11 +802,11 @@ All styles are plain CSS with custom properties. No CSS-in-JS, no Tailwind.
 
 ### Theme system
 
-Two themes: `light` (default) and `dark`. Applied as `data-theme="dark"` on `<html>`. Persisted in `localStorage` under `scoutai-theme`. Theme state is managed in `App.tsx`.
+Two themes: `light` and `dark`. `AppShell` defaults to dark when `scoutai-theme` has no valid preference. It owns the mounted app theme through `data-theme` on `<html>`. `presentationBoundary.ts` restores a valid saved choice for direct public/auth loads without replacing an existing root theme. The public site retains its light local canvases and controls; see the explicit rules in `public-tokens.css` and `public.css`.
 
 ### Tokens, fonts and CSS file organization
 
-App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. The legacy `base.css`, `shared.css` and per-page sheets are retired. Stylesheet ownership, token rules, e2e commands and rollback are documented in [ui2-styles-and-rollback.md](ui2-styles-and-rollback.md).
+App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. `main.tsx` imports only `styles/index.css`, which loads public styles followed by `ui2/index.css`; all application styles are eager. The legacy `base.css`, `shared.css`, page stylesheet imports, compatibility bridge and version switch are retired. App token stacks are `--dp-font` (Inter/system fallbacks) and `--dp-mono` (JetBrains Mono/monospace fallbacks); declaring them does not bundle those fonts. The entry still contains the original public Google Fonts import, which is not a new dependency to copy into app screens. See [stylesheet ownership and browser gates](ui2-styles-and-rollback.md) and the required [UI development standard](ui-development-standard.md).
 
 ### CSS class naming patterns
 

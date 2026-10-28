@@ -286,7 +286,7 @@ for (const theme of themes) {
   await settle(pp);
   check(tag('retry posts the failed rollout'), calls(preq, '/platform/ai-grid/policy-rollouts/rollout-1/retry', 'POST').length === 1);
 
-  await pp.getByRole('button', { name: 'Open Unrestricted agent tool permissions' }).click();
+  await pp.getByRole('button', { name: 'Open policy: Unrestricted agent tool permissions', exact: true }).click();
   await pp.waitForURL(new RegExp(`/platform/ai-policies/${PRIMARY_PLATFORM_POLICY_ID}`));
   check(tag('open policy navigates to platform detail'), new URL(pp.url()).pathname === `/platform/ai-policies/${PRIMARY_PLATFORM_POLICY_ID}`, here(pp));
   await pp.getByText('Platform Governance').waitFor();

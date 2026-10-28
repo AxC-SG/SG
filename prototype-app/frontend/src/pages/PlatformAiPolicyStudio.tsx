@@ -103,7 +103,7 @@ export function PlatformAiPolicyStudio() {
             <td><strong>{policy.name}</strong><br /><small>{policy.policyId} · {policy.provider} · {policy.severity}</small></td>
             <td>{jsonLabels(policy.artifactTypesJson)}</td><td>{jsonLabels(policy.nativeKindsJson)}</td><td>{frameworkMappings(policy.frameworkMappingsJson, frameworkLabels)}</td><td><span className={statusClass(policy.available ? 'available' : 'unavailable')}>{policy.available ? 'Available' : 'Unavailable'}</span></td>
             <td><span className={statusClass(policy.defaultSelection)}>{policy.defaultSelection}</span><br /><small>Tenant default</small></td><td><span className={statusClass(policy.rolloutStage)}>{rolloutLabel(policy.rolloutStage)}</span></td><td><span className={statusClass(policy.lifecycle)}>{policy.lifecycle}</span></td>
-            <td><button type="button" className="btn btn-secondary btn-sm" aria-label={`Open ${policy.name}`} onClick={() => navigate(pathForPlatformPolicyDetail(policy.policyId))}>Open policy</button></td>
+            <td><button type="button" className="btn btn-secondary btn-sm" aria-label={`Open policy: ${policy.name}`} onClick={() => navigate(pathForPlatformPolicyDetail(policy.policyId))}>Open policy</button></td>
           </tr>)}</tbody></table></div>
       </div>
     </section>

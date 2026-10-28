@@ -1,5 +1,8 @@
 # AI Grid — Working Context & Decision Memory
 
+> **Archived context — current guidance updated October 28, 2026:** The dated pilot decisions below are historical and do not override the current code, capability containment or UI rules. For active work read [project guidance](../../../../../CLAUDE.md), [frontend guidance](../../../../../frontend/CLAUDE.md), [backend guidance](../../../../../backend/CLAUDE.md), [the UI development standard](../../../../../docs/ui-development-standard.md) and [business logic](../../../../../docs/business-logic-guide.md). UI 2.0 is the only app/auth presentation, with shared components and tokens; `/demo` retains the public boundary. Any departure needs user approval during new development with pros/cons and a plan to update affected screens consistently. Do not resume the old pilot roadmap or runtime collection from this archive.
+
+
 > **Purpose:** This is the living memory for the AI Grid (a.k.a. "AI Security" / "Scout AI Security") workstream
 > as it moves **pilot → production**. It is updated every working session with new context, decisions, and
 > important points. When working anywhere under `ai-grid/`, read this first.
@@ -73,7 +76,7 @@ Key contents summarized in §3 below so we don't need the PDF open every time.
   `AiSecurityConnectorPage` (AWS), `AiSecurityAzureConnectorPage` (Azure) — all with `.test.tsx`
 - `features/ai-security/` — `types.ts`, `AiInventoryOverviewStrip.tsx`
 - Routes: `/inventory/ai`, `/findings/ai`, `/policies`, `/policies/:policyId` (gated by `AiSecurityRoute`)
-- Styles: `styles/ai-security.css`; API methods in `api/client.ts`
+- Current styles: `styles/ui2/inventory-base.css` / `inventory.css` for AI inventory and graphs, `findings-base.css` / `findings.css` for AI Findings, `governance-base.css` / `governance.css` for policies/admin and `connect-base.css` / `connect.css` for providers; API methods in `api/client.ts`. The original `styles/ai-security.css` is retired
 
 **Migrations:**
 - Platform (`db/migration/postgres_reset/`): `V47` entitlement compat, `V48` platform policy distribution

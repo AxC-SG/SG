@@ -1,6 +1,12 @@
 # VulnWatch Backend
 
-Last updated: 2026-10-21
+Last updated: 2026-10-28 (UI 2.0 documentation alignment)
+
+## UI 2.0 integration boundary
+
+UI 2.0 migration is complete in the frontend; it preserves existing endpoint, DTO, authorization, tenant and capability contracts. `/fix-intelligence/*` in the browser redirects to `/findings`; the backend Fix Intelligence API remains unavailable. Runtime evidence, generic Azure, SCCM JDBC and other contained capabilities are not enabled by the redesign.
+
+New API-driven screens follow [the UI development standard](ui-development-standard.md), including explicit loading/error/unavailable states and real persistence checks. Use shared frontend HTTP/auth handling and backend enforcement; changes to shared UI conventions need user approval with pros/cons and an app-wide consistency plan. [Current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) records qualification limits.
 
 ## Tech Stack
 

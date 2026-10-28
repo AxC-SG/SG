@@ -2,7 +2,7 @@
 //
 // Every context gets the same locale, time zone and fixed clock, requests to other hosts are
 // blocked, animations and transitions take zero time, and the Google Fonts import in
-// src/styles/base.css is answered from the font files bundled in node_modules (the same Space
+// src/styles/index.css is answered from the font files bundled in node_modules (the same Space
 // Grotesk and IBM Plex Sans weights it requests). Nothing is masked: scores, IDs, selected states
 // and controls render as they do for a user.
 import { readFileSync } from 'node:fs';

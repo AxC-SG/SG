@@ -51,3 +51,9 @@ mvn -q -Dapp.security.bootstrap.platform-owners.enabled=false \
 ```
 
 The local database repair is an environment operation, not an application-startup migration. Other environments require their normal authorized migration workflow before running this V9-dependent release.
+
+## PR #41 conflict resolution
+
+Merged `main` at `fc1a879907ac84eec5a803e390bf317d8281c622` into the PR source branch, preserving both Fix Intelligence commits and the base branch's accessibility fixes and documentation cleanup. Resolved the three documentation conflicts by retaining the current UI development guidance and adding the Fix Intelligence stylesheet to its import-order and ownership records. The resolved frontend dependency manifest and lockfile match `main`, including its updated XYFlow, Testing Library, axe-core, globals and jsdom versions.
+
+Validation on Node 24.22.1: lint (the same two existing warnings), type checking, production build/bundle checks, 92 test files / 859 tests, 15 direct-route and 20 public/history boundary checks, and all six fixture browser journeys (739/739 checks) passed. No unmerged paths or conflict markers remain. The PR diff against `main` passes the whitespace check. This merge did not alter backend application code or migrations.
