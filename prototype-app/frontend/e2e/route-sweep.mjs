@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // UI 2.0 P7 — consistency sweep over every active tenant and platform route (direct links from
-// IMPLEMENTATION_ROUTE_CHECKLIST.json with fixture IDs) and every left-navigation destination.
+// e2e/routes.mjs with fixture IDs) and every left-navigation destination.
 //
 // For each page it records the final URL, whether the rendered content sits under a UI 2.0
 // presentation root (an orphan is legacy presentation on an active route), page errors and

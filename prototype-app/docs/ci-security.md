@@ -18,3 +18,9 @@ SARIF reports are retained with `actions/upload-artifact` rather than sent to th
 Require Quality, Semgrep SAST and Trivy Security Scan to pass on the current PR/main candidate, with Performance Governance where its workflow applies. Branch rules are enforceable only when supported by the organization's plan; otherwise maintainers must verify all jobs before merging. Do not bypass scanner failures, lower thresholds or add broad suppressions to obtain a green result.
 
 If Code Security is purchased later, add and qualify a licensed CodeQL workflow and SARIF dashboard uploads in a separately reviewed change. Purchasing a plan does not resolve existing dependency conflicts or validate a deployed environment.
+
+## UI 2.0 regression gates (October 28, 2026)
+
+UI 2.0 is the only current candidate. Quality's frontend job runs lint, typecheck, build (including the production credential/bundle guard) and coverage. Its `frontend-e2e` job uses `mcr.microsoft.com/playwright:v1.63.0-noble`, exact-pinned Playwright 1.63.0, Node 20 and two workers: artifact/boundary build, fixture journeys, visual checks and presentation-affected routes with axe comparison. Unknown presentation files trigger the full sweep. Results are retained for 14 days. `frontend-e2e-sweep.yml` runs the four-width dark/light sweep on schedule or dispatch.
+
+Keep visual, journey and axe baselines under review: a pass against an existing baseline does not mean zero known defects. `e2e:update` rewrites all three types and requires inspected differences, never reduced assertions or tolerance. Live-backend persistence, approved exceptions and release qualification remain separately evidenced. See [browser gate commands](ui2-styles-and-rollback.md#browser-gates) and [the UI development standard](ui-development-standard.md) for new-screen acceptance and approval for shared-pattern changes.

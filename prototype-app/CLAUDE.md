@@ -4,6 +4,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## UI 2.0 development contract (October 28, 2026)
+
+UI 2.0 is the only application presentation. Read [the UI development standard](docs/ui-development-standard.md) before adding or substantially changing a screen and [stylesheet ownership and rollback](docs/ui2-styles-and-rollback.md) before changing shared CSS. Reuse the existing shell in `frontend/src/App.tsx`, feature modules, React components and CSS primitives. App/auth routes use `data-ui="2"`; `/demo` content retains its intentional public boundary. There is no `VITE_UI_VERSION` switch or legacy bridge.
+
+All new tenant, platform and auth screens must use the same components, tokens, state/feedback patterns and interaction conventions. A change to these shared standards needs explicit user approval during development, with the reason, alternatives, pros/cons, affected screens, verification/rollback and a plan to keep the full app consistent. Record the decision and update the standard; do not introduce a permanent per-screen fork.
+
+The [migration record](<Working Knowledge/New UI 2.0/README.md>) separates previous state, implemented plans and current code from historical qualification evidence. Code migration is complete; the old ledgers do not certify final branch-tip release qualification.
+
 ## Commands
 
 ### Backend
@@ -40,7 +48,7 @@ npm run test:coverage # vitest run --coverage (enforces line/branch thresholds)
 npx vitest run src/pages/FindingsPage.test.tsx  # run a single test file
 ```
 
-Frontend CI gates: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage` (vitest with coverage thresholds enforced).
+Frontend quality gates: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage` (Vitest with configured coverage floors). Quality also runs fixture journeys, visual checks and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](docs/ui2-styles-and-rollback.md#browser-gates).
 
 Backend CI gates: default `mvn -q verify` runs Surefire + JaCoCo `check` + SpotBugs; `mvn -Ppostgres-it verify` additionally runs PostgreSQL Failsafe integration tests. Repo-wide, `gitleaks` (config: `.gitleaks.toml`, also wired as a `pre-commit` hook via `.pre-commit-config.yaml`) scans for committed secrets. Evidence/review and environment follow-ups are in the [review handoff](<Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>).
 
@@ -174,7 +182,7 @@ Demo/public routes (outside auth boundary): `/demo`, `/demo/blog`, `/demo/blog/z
 Overview (`/exposure`) is reserved for risk metrics and risk-focused summaries only. Do not place operational, pipeline, quality, freshness, correlation-efficiency, or CSAF/VEX analytics panels on Overview; those belong under Operational Dashboard.
 Correlation Efficiency and CSAF/VEX Quality Analytics have moved off Operations → Pipeline and now live under Inventory (reached via `/operations/quality` redirecting to `/inventory` with quality-tab search params); `PipelinePayload` itself only carries ingestion/freshness data now.
 
-All API calls go through `src/api/client.ts`. Without `VITE_API_BASE`, development uses `/api` through the Vite proxy to localhost:8080; production uses `https://api.scoutgrid.io/api`. Auth headers are injected on every request.
+API calls use `src/api/client.ts`, with the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Without `VITE_API_BASE`, development uses `/api` through the Vite proxy to localhost:8080; production uses `https://api.scoutgrid.io/api`. Auth headers are injected on every request.
 
 ### TypeScript Types
 
@@ -336,7 +344,7 @@ A handful of additional infra-level jobs also run (ingestion job polling every 2
 
 - `POST /api/cve-detail/{cveId}/suppress` persists suppression state via `OrgCveRecordService.suppress()` and returns a `SuppressionResponse`. Suppression expiry is handled by the 15-minute reopen job.
 - Multi-tenant schema-per-tenant isolation is implemented (see "Multi-Tenancy Status" above). `AiGridPolicyDeprecationService` uses `TenantService.getDefaultTenant()` only as the audit destination for platform policy deprecations; tenant selection and publication do not use it as a fallback. Full RLS enforcement across production tenants remains gated by `ProductionSafetyValidator.validateRuntimeRoleCannotBypassRls()` (confirms the runtime role is non-superuser and lacks `BYPASSRLS` before enforcement is allowed to proceed).
-- The live CVE workflow is the CVE Assessment Workbench at `/vuln-repo/org-cves`. `CveDetailPage.tsx` exists but is not mounted in the router.
+- The live CVE workflow is the CVE Assessment Workbench at `/vuln-repo/org-cves`. The unused standalone `CveDetailPage.tsx` was removed during UI 2.0 cleanup; use the workbench and its feature components.
 - GHCR attestation ingestion does not yet perform cryptographic signature verification.
 - Generative assistance defaults off and is hard off for the deployed pilot before credential resolution; startup rejects enablement. Deterministic recommendations and honest fallback remain. See `GenerativeAssistancePolicy` and [business guidance](docs/business-logic-guide.md#ai-integration-openai).
 - ServiceNow incident creation (`POST /api/cve-detail/{cveId}/servicenow-incident`) writes `incident_id` / `incident_status` onto findings. The `FindingIncidentSyncService` daily 07:00 job pulls incident state changes back, so the integration is no longer fully one-way — but it is read-only on the ServiceNow side.
@@ -353,7 +361,7 @@ A handful of additional infra-level jobs also run (ingestion job polling every 2
 - **Fix Intelligence** is unavailable at HTTP and direct controller boundaries; synthetic routes redirect away. Re-enablement requires real data, schema, authorization and completeness qualification.
 
 - **Patch management is unavailable.** The unsupported catalog entries and mock form modules have been removed, including credential/input logging; no patch API or pipeline has been added. The domain entities added alongside them (`AssetFixStatus`, `CveFixMap`, `PatchConnectorCredential`, `JiraIssueBacklog`) and their repositories have **no corresponding Flyway migration** — `asset_fix_status`, `cve_fix_map`, `patch_connector_credentials`, and `jira_issue_backlog` don't exist in either migration line, so any code path that actually touches them will fail against a real Postgres (`ddl-auto=none`). `FixApplicabilityService` and the `dto/patch/*` DTOs (`PatchCoverageMetricsResponse`, `PatchDeploymentDashboardResponse`, `VendorPatchData`, etc.) have no controller or service caller anywhere in the codebase. `PatchConnectorRegistrationConfig`, `PatchSyncSchedulingConfig`, and `JiraIssueStatusSyncService` ship with a `.disabled` file extension, excluding them from the Maven build entirely — treat all of this as scaffolding for future work, not a working patch-management pipeline.
-- The production-bundle credential check (`frontend/scripts/verify-production-bundle.mjs`, run as part of `npm run build`) scans `dist/` for literal dev-credential strings (`change-me-in-prod`, `local-creator`, `local-analyst`, provider secret patterns). `src/api/client.ts` already avoids embedding these in production by reading them through an `import.meta.env.DEV ? '<default>' : ''` ternary, which Vite dead-code-eliminates in a prod build. `FixIntelligencePage`/`FixDetailPage` initially bypassed this by calling `fetch()` directly with hardcoded `X-API-Key`/`X-Creator-Key` header values instead of going through `api/client.ts`, which leaked the literals into the production bundle and failed this gate; they were fixed to gate those headers behind `import.meta.env.DEV` inline. Prefer routing new pages through `api/client.ts` rather than raw `fetch()` so this class of bug can't recur.
+- The production-bundle credential check (`frontend/scripts/verify-production-bundle.mjs`, run as part of `npm run build`) scans `dist/` for literal dev-credential strings (`change-me-in-prod`, `local-creator`, `local-analyst`, provider secret patterns). `src/api/client.ts` already avoids embedding these in production by reading them through an `import.meta.env.DEV ? '<default>' : ''` ternary, which Vite dead-code-eliminates in a prod build. The unused standalone Fix Intelligence and patch dashboard pages were removed; `/fix-intelligence/*` still redirects to `/findings`. New pages must use the shared API layer so dev credentials cannot leak through a bespoke request path.
 
 ### GitHub Token
 
@@ -371,7 +379,7 @@ A change is done when **all** of these are true:
 2. **CI is green.** All gates above pass: lint, typecheck, build, coverage thresholds, JaCoCo line floor, SpotBugs, Failsafe ITs.
 3. **No new warnings introduced.** ESLint or `tsc` warnings on touched files block merge — fix them in the same PR.
 4. **PR template is filled in.** Scope, why, repro, test added/changed, blast radius, rollback. Empty sections = reject.
-5. **For UI changes, a screenshot is attached.** Type-check passing is not the same as feature working — see the global guidance on UI changes.
+5. **For UI changes, a screenshot is attached.** Follow [the UI development standard](docs/ui-development-standard.md), run relevant journey/visual/axe checks, and record approved departures with their pros/cons and app-wide consistency plan. Type-check passing does not establish working behavior or visual consistency.
 
 ### When to add a test
 

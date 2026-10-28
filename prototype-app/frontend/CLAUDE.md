@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > The root `../CLAUDE.md` contains full project conventions, route table, feature descriptions, and the never-touch list. This file adds frontend-specific runtime detail.
 
+## UI 2.0: required reading for new screens
+
+Follow [the UI development standard](../docs/ui-development-standard.md) for every new or substantially changed screen. It defines the architecture, reusable React components and CSS primitives, required states, accessibility, responsive checks and the approval process for changing a shared pattern. [UI 2 styles and rollback](../docs/ui2-styles-and-rollback.md) defines the exact import order, route boundary and browser commands.
+
+Use the existing `AppShell` inside `src/App.tsx`; compose route pages from feature modules and shared components. UI 2.0 is always active on app/auth routes; `/demo` routes have the intentional public presentation. No `VITE_UI_VERSION`, `uiVersion.ts`, legacy stylesheet imports or `legacy-bridge.css` remain. Styles load eagerly once from `main.tsx` through `styles/index.css`; do not add page-local CSS imports.
+
+Extend shared components/tokens and matching family styles. Do not create a second component library, shell, theme store or per-screen design. A departure from the standard needs explicit user approval during development after explaining alternatives, pros/cons and the affected-screen convergence plan; record it and update the shared standard. Routine screens following the standard proceed normally.
+
 ## Commands
 
 ```bash
@@ -20,7 +28,7 @@ npm run test:coverage # vitest run --coverage (enforces line/branch thresholds)
 npx vitest run src/pages/FindingsPage.test.tsx
 ```
 
-CI gates in order: `lint` → `typecheck` → `build` → `test:coverage`.
+Quality gates in order: `lint` → `typecheck` → `build` → `test:coverage`. Browser CI additionally runs UI 2-only fixture journeys, visual tests and affected-route/axe checks; the scheduled sweep covers four widths in both themes. Run `npm run e2e:build` before browser commands. Visual/affected/update commands require the pinned Playwright container. See [browser gates](../docs/ui2-styles-and-rollback.md#browser-gates); `e2e:live` requires approved disposable accounts/data and is separate from default CI.
 
 ## Environment variables
 
@@ -65,6 +73,7 @@ src/
     client.ts          # Single api object — all backend calls, auth header injection,
                        # getStoredAuthToken / setStoredAuthToken / clearStoredAuthToken
   app/
+    PresentationBoundary.tsx # Update route presentation before paint on router navigation
     routes.ts          # All typed path helpers (pathForTab, pathForVulnRepoView, …)
                        # and legacy query-param → path-based redirect logic
   features/            # Feature-colocated modules; types live here, not in src/types/
@@ -88,13 +97,15 @@ src/
     useDebouncedValue.ts  # Generic debounce hook
   lib/
     riskScoring.ts     # Pure TS: computeCveRiskScore, computeFindingPriorityScore, computeOrgImpact
+    presentationBoundary.ts # App/auth UI 2 outside /demo; restore saved theme
     queryClient.ts     # createQueryClient factory (shared between app and tests)
     time.ts            # timeAgo, formatTimestamp
     polling.ts         # Refresh-interval constants for run-queue and status polling
     performanceMonitoring.tsx  # Client performance telemetry
   pages/               # One file per route; lazy-loaded via React.lazy in App.tsx
   components/          # Shared presentational components (≤ 300 lines each)
-  styles/              # Global CSS — index.css, finding-detail.css, and per-feature sheets
+  styles/              # One eager index.css: scoped public*.css, then ui2/index.css
+                       # ui2/: tokens, app-base, shell, primitives, family base/presentation, tables
   types/               # Re-exports only — source of truth is always in the feature directory
   test/
     setup.ts           # @testing-library/jest-dom/vitest import
@@ -193,5 +204,5 @@ Thresholds are enforced by `vitest.config.ts` and **only move up, never down**. 
 - Components in `src/components/` must stay under ~300 lines. New substantial components go under `src/features/<feature>/`.
 - `src/lib/riskScoring.ts` is pure TypeScript — no React imports, no API calls.
 - The app uses React StrictMode (see `src/main.tsx`) — effects run twice in development, so side effects should be idempotent.
-- Theme (`dark` / `light`) is persisted in `localStorage` under `scoutai-theme` and applied as `data-theme` on `<html>`.
-- **Fetch through `api/client.ts`, not raw `fetch()`.** `client.ts` reads dev-only credentials (`VITE_API_KEY`, `VITE_CREATOR_KEY`, etc.) through an `import.meta.env.DEV ? '<default>' : ''` ternary, which Vite dead-code-eliminates from a production build. `FixIntelligencePage`/`FixDetailPage` (since removed) called `fetch()` directly with hardcoded `X-API-Key`/`X-Creator-Key` values instead, which shipped those literals into the production bundle and failed `scripts/verify-production-bundle.mjs` (part of `npm run build`). If a page genuinely needs a bespoke endpoint outside `api/client.ts`, gate any dev-only header inline behind `import.meta.env.DEV`, the same pattern `client.ts` uses.
+- Theme (`dark` / `light`) is persisted in `localStorage` under `scoutai-theme` and applied as `data-theme` on `<html>`. `AppShell` defaults to dark; the presentation boundary restores a valid saved preference on public/auth direct loads. Public canvases retain their explicit local palette.
+- **Use the shared API layer** (`api/client.ts` or the established CVE adapter), not raw authenticated `fetch()` or inline credentials. Production builds reject static auth inputs and scan the output bundle. A new endpoint belongs behind the shared base/auth/error handling.

@@ -1,6 +1,8 @@
 # UI 2.0 implementation plan
 
-Prepared October 24, 2026. Status: planned; implementation and deployment have not started under this plan.
+Prepared October 24, 2026. Historical plan: its source migration phases have been implemented. Updated record status October 28, 2026; the dated body below preserves the original sequence and starting assumptions.
+
+For present code, ownership and qualification limits read [CURRENT_STATE.md](CURRENT_STATE.md). For the later cleanup/retirement plan read [UI2-Final-Implementation-Plan.md](UI2-Final-Implementation-Plan.md). For new screens follow [the UI development standard](../../docs/ui-development-standard.md). Old reference/report/checklist paths, baseline counts and version-switch instructions below are historical; retired inputs can be recovered from Git at `eedc8a0864cadf7c0cd0e55ec733f4637ff6622a`. Do not restart these phases or reintroduce their transitional mechanisms.
 
 ## Recommended delivery model
 
