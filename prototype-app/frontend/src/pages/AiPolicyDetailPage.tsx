@@ -548,7 +548,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                   <div className="cvd-refs-list">
                     {Object.entries(policy.controlMappings).map(([framework, control]) => (
                       <div key={framework} className="cvd-ref-row">
-                        <span style={{ color: 'var(--title)', fontSize: 13, fontWeight: 500 }}>{framework}</span>
+                        <span style={{ color: 'var(--dp-text)', fontSize: 13, fontWeight: 500 }}>{framework}</span>
                         <span className="cvd-src-tag">{control}</span>
                       </div>
                     ))}
@@ -560,8 +560,8 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
             <div className="cvd2-overview-sidebar">
               <div className="cvd2-panel">
                 <div className="cvd2-panel-hdr">Decision Coverage</div>
-                <div className={`ai-policy-coverage-gate ${policy.decisionCoverageStatus.toLowerCase()}`} style={{ margin: 16, borderRadius: 'var(--radius-md)' }}>
-                  <strong style={{ fontSize: '1.6rem', fontFamily: 'var(--font-display)' }}>
+                <div className={`ai-policy-coverage-gate ${policy.decisionCoverageStatus.toLowerCase()}`} style={{ margin: 16, borderRadius: 'var(--dp-radius)' }}>
+                  <strong style={{ fontSize: '1.6rem', fontFamily: 'var(--dp-font)' }}>
                     {Math.round(policy.decisionCoverage * 100)}%
                   </strong>
                   <span>{coverageStatusLabel(policy.decisionCoverageStatus)}</span>

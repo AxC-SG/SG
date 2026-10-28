@@ -122,8 +122,8 @@ export function VulnRepoCveSoftwarePage() {
                 fontSize: 12,
                 fontWeight: 600,
                 background: software.evidenceSource.includes('BOM') ? 'rgba(59, 130, 246, 0.12)' : 'rgba(107, 114, 128, 0.12)',
-                color: software.evidenceSource.includes('BOM') ? '#2563eb' : 'var(--muted)',
-                border: software.evidenceSource.includes('BOM') ? '1px solid rgba(59, 130, 246, 0.24)' : '1px solid var(--border)',
+                color: software.evidenceSource.includes('BOM') ? '#2563eb' : 'var(--dp-text-2)',
+                border: software.evidenceSource.includes('BOM') ? '1px solid rgba(59, 130, 246, 0.24)' : '1px solid var(--dp-border)',
               }}
             >
               {software.evidenceSource}

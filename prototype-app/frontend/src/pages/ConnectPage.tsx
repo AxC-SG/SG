@@ -391,7 +391,7 @@ function EuvdConnectorPanel() {
         {message && (
           <div className="notice">{message}</div>
         )}
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel-muted)', padding: 16 }}>
+        <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface-2)', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>EUVD Vulnerability Feed</div>
@@ -404,17 +404,17 @@ function EuvdConnectorPanel() {
             </button>
           </div>
           <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Status</div>
               <div style={{ fontWeight: 700, marginTop: 4, textTransform: 'capitalize' }}>
                 {loading ? 'Loading…' : (status?.status ?? 'never')}
               </div>
             </div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Last completed</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>{formatInstantConnect(status?.completedAt)}</div>
             </div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Fetched / Inserted / Updated</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>
                 {(status?.recordsFetched ?? 0).toLocaleString()} / {(status?.recordsInserted ?? 0).toLocaleString()} / {(status?.recordsUpdated ?? 0).toLocaleString()}
@@ -478,7 +478,7 @@ function JvnConnectorPanel() {
         {message && (
           <div className="notice">{message}</div>
         )}
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--panel-muted)', padding: 16 }}>
+        <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface-2)', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem' }}>JVN Vulnerability Feed</div>
@@ -491,17 +491,17 @@ function JvnConnectorPanel() {
             </button>
           </div>
           <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Status</div>
               <div style={{ fontWeight: 700, marginTop: 4, textTransform: 'capitalize' }}>
                 {loading ? 'Loading…' : (status?.status ?? 'never')}
               </div>
             </div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Last completed</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>{formatInstantConnect(status?.completedAt)}</div>
             </div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', padding: 12 }}>
+            <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Fetched / Inserted / Updated</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>
                 {(status?.recordsFetched ?? 0).toLocaleString()} / {(status?.recordsInserted ?? 0).toLocaleString()} / {(status?.recordsUpdated ?? 0).toLocaleString()}

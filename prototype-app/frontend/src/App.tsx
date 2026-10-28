@@ -42,9 +42,6 @@ import {
   canRunSecurityWorkflow,
   canViewReadOnly
 } from './features/auth/roles';
-import './styles/index.css';
-import './styles/finding-detail.css';
-import './styles/ai-security.css';
 
 const ExposureDashboardPage = React.lazy(async () => ({
   default: (await import('./pages/ExposureDashboardPage')).ExposureDashboardPage

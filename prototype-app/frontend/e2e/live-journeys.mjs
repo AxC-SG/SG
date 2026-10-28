@@ -371,7 +371,10 @@ async function cveJourney(theme) {
     await shot(page, `applicability_${theme}`);
     requests.length = 0;
     await page.getByRole('button', { name: 'Save Assessment' }).click();
-    await page.getByRole('button', { name: 'Proceed to Findings' }).or(page.getByText('Impacted Assets')).first().waitFor({ timeout: 15000 }).catch(() => null);
+    // Saving may still be committing the assessment when the response arrives.
+    // The generic "Impacted Assets" text does not prove the Findings view is ready.
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some((button) =>
+      !button.disabled && button.getClientRects().length > 0 && ['Proceed to Findings', 'Create Findings'].includes(button.textContent.trim())), null, { timeout: 15000 }).catch(() => null);
     const proceed = page.getByRole('button', { name: 'Proceed to Findings' });
     if (await visible(proceed)) await proceed.click();
     await page.getByText('Impacted Assets').first().waitFor({ timeout: 15000 }).catch(() => null);
@@ -383,6 +386,7 @@ async function cveJourney(theme) {
 
     // Configured creation, ServiceNow ticket partial failure (connector unconfigured → local error), duplicate result.
     const create = page.getByRole('button', { name: /^Create Findings$/ });
+    await create.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
     if (await visible(create)) {
       await create.click();
       await page.getByLabel('Notes').waitFor({ timeout: 10000 });
@@ -484,11 +488,14 @@ async function inventoryJourney(theme) {
   await page.waitForURL(/\/inventory\/hosts\/[^/?]+\?returnTo=/, { timeout: 10000 }).catch(() => null);
   check(tag('host opens detail with returnTo'), new URL(page.url()).searchParams.get('returnTo') === '/inventory/hosts', here(page));
   await settle(page);
-  await shot(page, `host-detail_${theme}`);
   const cvesTab = page.getByText('Applicable CVEs').first();
+  await cvesTab.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+  await shot(page, `host-detail_${theme}`);
   if (await visible(cvesTab)) {
     await cvesTab.click();
     check(tag('host tabs switch'), await visible(page.locator('.fd3-tab--active', { hasText: 'Applicable CVEs' })));
+  } else {
+    check(tag('host CVE tab is available'), false, 'tab not shown after detail navigation');
   }
   await page.getByLabel('Close host detail').click();
   await page.waitForURL(/\/inventory\/hosts$/, { timeout: 10000 }).catch(() => null);
@@ -530,14 +537,17 @@ async function inventoryJourney(theme) {
     await page.waitForURL(/\/inventory\/ai\/declared-resources\/[^/]+/, { timeout: 10000 }).catch(() => null);
     check(tag('declared resource opens detail'), /\/inventory\/ai\/declared-resources\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
     await settle(page);
-    await shot(page, `declared-resource-detail_${theme}`);
     const history = page.getByRole('button', { name: 'Retired history' });
+    await history.waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+    await shot(page, `declared-resource-detail_${theme}`);
     if (await visible(history)) {
       requests.length = 0;
       await history.click();
       await settle(page);
       const call = requests.find((request) => /\/bom\/declared-resources\/[^/]+\/correlation$/.test(apiPath(request.url())));
       check(tag('retired history requests history=true'), call && new URL(call.url()).searchParams.get('history') === 'true', call?.url());
+    } else {
+      check(tag('retired history is available'), false, 'control not shown after detail navigation');
     }
     await page.getByRole('button', { name: 'Back to declared resources' }).click();
     await page.waitForURL(/\/inventory\/ai\/declared-resources$/, { timeout: 10000 }).catch(() => null);

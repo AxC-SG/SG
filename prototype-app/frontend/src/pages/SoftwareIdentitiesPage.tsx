@@ -1,5 +1,4 @@
 import React from 'react';
-import '../styles/findings-list.css';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { MultiGroupBy, type MultiGroupByOption } from '../components/MultiGroupBy';

@@ -348,7 +348,7 @@ export function VulnRepoOrgCvePage({
               ? { background: '#b7791f22', color: '#b7791f', border: '1px solid #b7791f44' }
               : orgImpact === 'LOW'
                 ? { background: '#2d6a4f22', color: '#2d6a4f', border: '1px solid #2d6a4f44' }
-                : { background: 'var(--panel-muted)', color: 'var(--muted)', border: '1px solid var(--border)' };
+                : { background: 'var(--dp-surface-2)', color: 'var(--dp-text-2)', border: '1px solid var(--dp-border)' };
         const orgImpactLabel = orgImpact === 'NONE' ? 'No' : orgImpact.charAt(0) + orgImpact.slice(1).toLowerCase();
         return {
         cve: {
@@ -445,10 +445,10 @@ export function VulnRepoOrgCvePage({
               }}>
                 Suppressed
               </span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--medium)' }}>{item.suppressedByRuleName}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--dp-medium)' }}>{item.suppressedByRuleName}</span>
               <button
                 type="button"
-                style={{ fontSize: '0.7rem', padding: '1px 6px', cursor: 'pointer', marginTop: 2, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-1)' }}
+                style={{ fontSize: '0.7rem', padding: '1px 6px', cursor: 'pointer', marginTop: 2, border: '1px solid var(--dp-border)', borderRadius: 4, background: 'var(--dp-surface-2)', color: 'var(--dp-text)' }}
                 disabled={reopeningId === item.recordId}
                 onClick={(e) => void handleReopenCve(item.recordId, e)}
               >

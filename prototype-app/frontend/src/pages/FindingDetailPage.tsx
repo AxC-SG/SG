@@ -115,11 +115,11 @@ function FixDescriptionDetail({ description }: { description: string }) {
   }
 
   const WRAP: React.CSSProperties = { marginTop: 10, fontSize: 12, lineHeight: 1.6 };
-  const SECTION: React.CSSProperties = { fontWeight: 700, fontSize: 10, letterSpacing: '0.07em', color: 'var(--muted)', textTransform: 'uppercase', marginTop: 12, marginBottom: 6 };
+  const SECTION: React.CSSProperties = { fontWeight: 700, fontSize: 10, letterSpacing: '0.07em', color: 'var(--dp-text-2)', textTransform: 'uppercase', marginTop: 12, marginBottom: 6 };
   // Two-column grid: label 110px, value fills rest — no wrapping in narrow columns
   const GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: '110px 1fr', gap: '3px 10px', marginBottom: 2 };
-  const KEY: React.CSSProperties = { fontWeight: 600, color: 'var(--muted)', fontSize: 11, alignSelf: 'start', paddingTop: 1 };
-  const VAL: React.CSSProperties = { color: 'var(--text)', fontSize: 12, wordBreak: 'break-word' };
+  const KEY: React.CSSProperties = { fontWeight: 600, color: 'var(--dp-text-2)', fontSize: 11, alignSelf: 'start', paddingTop: 1 };
+  const VAL: React.CSSProperties = { color: 'var(--dp-text)', fontSize: 12, wordBreak: 'break-word' };
 
   return (
     <div style={WRAP}>
@@ -138,10 +138,10 @@ function FixDescriptionDetail({ description }: { description: string }) {
         <>
           <div style={SECTION}>Compensating Controls</div>
           {parsed.compensating_controls.map((c, i) => (
-            <div key={i} style={{ flexDirection: 'column', display: 'flex', marginBottom: 8, paddingLeft: 8, borderLeft: '2px solid var(--border)' }}>
+            <div key={i} style={{ flexDirection: 'column', display: 'flex', marginBottom: 8, paddingLeft: 8, borderLeft: '2px solid var(--dp-border)' }}>
               <span style={{ fontWeight: 600, fontSize: 12 }}>{c.control}</span>
               {(c.effort || c.effectiveness) && (
-                <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+                <span style={{ color: 'var(--dp-text-2)', fontSize: 11 }}>
                   {[c.effort && `Effort: ${c.effort}`, c.effectiveness && `Effectiveness: ${c.effectiveness}`].filter(Boolean).join(' · ')}
                 </span>
               )}
@@ -278,7 +278,7 @@ export function FindingDetailPage() {
         <section className="panel">
           <div style={{ padding: 48, textAlign: 'center' }}>
             <h2 style={{ marginBottom: 12 }}>Finding not available</h2>
-            <p style={{ color: 'var(--muted)', marginBottom: 16 }}>
+            <p style={{ color: 'var(--dp-text-2)', marginBottom: 16 }}>
               Navigate here from the Findings list or the CVE Assessment Workbench.
             </p>
             <button className="btn btn-secondary" onClick={() => navigate(returnTo)}>← Back to Findings</button>
@@ -803,7 +803,7 @@ export function FindingDetailPage() {
                   {/* Full description — full-width, outside KVRow to avoid narrow column wrapping */}
                   {relevantFix.description && relevantFix.description !== relevantFix.summary && (
                     <details style={{ marginTop: 8 }}>
-                      <summary style={{ cursor: 'pointer', color: 'var(--accent, #3b82f6)', userSelect: 'none', fontSize: 12, fontWeight: 500, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--dp-accent)', userSelect: 'none', fontSize: 12, fontWeight: 500, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ fontSize: 10 }}>▶</span> Show full description
                       </summary>
                       <FixDescriptionDetail description={relevantFix.description} />
@@ -833,25 +833,25 @@ export function FindingDetailPage() {
 
               const STAT: React.CSSProperties = {
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                flex: 1, padding: '12px 8px', borderRight: '1px solid var(--border)',
+                flex: 1, padding: '12px 8px', borderRight: '1px solid var(--dp-border)',
               };
-              const NUM: React.CSSProperties = { fontSize: 28, fontWeight: 700, color: 'var(--text)', lineHeight: 1 };
-              const CAP: React.CSSProperties = { fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', color: 'var(--muted)', textTransform: 'uppercase', marginTop: 4, textAlign: 'center' };
+              const NUM: React.CSSProperties = { fontSize: 28, fontWeight: 700, color: 'var(--dp-text)', lineHeight: 1 };
+              const CAP: React.CSSProperties = { fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', color: 'var(--dp-text-2)', textTransform: 'uppercase', marginTop: 4, textAlign: 'center' };
 
               return (
                 <Panel title="Affected Assets">
                   <div style={{ margin: '-12px -16px' }}>
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--dp-border)' }}>
                       <div style={STAT}>
                         <span style={NUM}>{total}</span>
                         <span style={CAP}>Total Assets</span>
                       </div>
                       <div style={STAT}>
-                        <span style={{ ...NUM, color: externalCount > 0 ? '#c53030' : 'var(--text)' }}>{externalCount}</span>
+                        <span style={{ ...NUM, color: externalCount > 0 ? '#c53030' : 'var(--dp-text)' }}>{externalCount}</span>
                         <span style={CAP}>External Facing</span>
                       </div>
                       <div style={{ ...STAT, borderRight: 'none' }}>
-                        <span style={{ ...NUM, color: criticalCount > 0 ? '#9b2335' : 'var(--text)' }}>{criticalCount}</span>
+                        <span style={{ ...NUM, color: criticalCount > 0 ? '#9b2335' : 'var(--dp-text)' }}>{criticalCount}</span>
                         <span style={CAP}>Critical Assets</span>
                       </div>
                     </div>
@@ -986,42 +986,42 @@ export function FindingDetailPage() {
             <div className="fd3-panel-body" style={{ padding: 0 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: 'var(--panel-muted)', borderBottom: '2px solid var(--border)' }}>
-                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>ASSET ID</th>
-                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>HOST NAME</th>
-                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>SOFTWARE</th>
-                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>VERSION</th>
-                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.06em' }}>TYPE</th>
+                  <tr style={{ background: 'var(--dp-surface-2)', borderBottom: '2px solid var(--dp-border)' }}>
+                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>ASSET ID</th>
+                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>HOST NAME</th>
+                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>SOFTWARE</th>
+                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>VERSION</th>
+                    <th style={{ padding: '8px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--dp-text-2)', letterSpacing: '0.06em' }}>TYPE</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isGroupedFinding && affectedAssetsFromEvidence.length > 0
                     ? affectedAssetsFromEvidence.map((a, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid var(--border)', cursor: a.assetId ? 'pointer' : 'default' }}
+                        <tr key={i} style={{ borderBottom: '1px solid var(--dp-border)', cursor: a.assetId ? 'pointer' : 'default' }}
                           onClick={() => a.assetId && navigate(pathForInventoryHostAsset(a.assetId))}>
-                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 11, color: 'var(--muted)' }}>
+                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 11, color: 'var(--dp-text-2)' }}>
                             {a.assetIdentifier || (a.componentId ? a.componentId.slice(0, 8).toUpperCase() : '—')}
                           </td>
-                          <td style={{ padding: '10px 16px', fontWeight: 500, color: a.assetId ? 'var(--accent, #3b82f6)' : 'var(--text)' }}>
+                          <td style={{ padding: '10px 16px', fontWeight: 500, color: a.assetId ? 'var(--dp-accent)' : 'var(--dp-text)' }}>
                             {a.assetName || '—'}
                           </td>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{a.packageName || '—'}</td>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{a.version || '—'}</td>
-                          <td style={{ padding: '10px 16px', color: 'var(--muted)', fontSize: 12 }}>{fmt(a.assetType)}</td>
+                          <td style={{ padding: '10px 16px', color: 'var(--dp-text-2)', fontSize: 12 }}>{fmt(a.assetType)}</td>
                         </tr>
                       ))
                     : (
-                        <tr style={{ borderBottom: '1px solid var(--border)', cursor: hostAssetId ? 'pointer' : 'default' }}
+                        <tr style={{ borderBottom: '1px solid var(--dp-border)', cursor: hostAssetId ? 'pointer' : 'default' }}
                           onClick={() => hostAssetId && navigate(pathForInventoryHostAsset(hostAssetId))}>
-                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 11, color: 'var(--muted)' }}>
+                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 11, color: 'var(--dp-text-2)' }}>
                             {currentFinding.assetIdentifier || '—'}
                           </td>
-                          <td style={{ padding: '10px 16px', fontWeight: 500, color: hostAssetId ? 'var(--accent, #3b82f6)' : 'var(--text)' }}>
+                          <td style={{ padding: '10px 16px', fontWeight: 500, color: hostAssetId ? 'var(--dp-accent)' : 'var(--dp-text)' }}>
                             {currentFinding.assetName || '—'}
                           </td>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{currentFinding.packageName || '—'}</td>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{currentFinding.packageVersion || '—'}</td>
-                          <td style={{ padding: '10px 16px', color: 'var(--muted)', fontSize: 12 }}>{fmt(currentFinding.assetType)}</td>
+                          <td style={{ padding: '10px 16px', color: 'var(--dp-text-2)', fontSize: 12 }}>{fmt(currentFinding.assetType)}</td>
                         </tr>
                       )
                   }

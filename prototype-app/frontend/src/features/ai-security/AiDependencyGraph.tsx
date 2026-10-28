@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { Background, Controls, Handle, Position, ReactFlow, ReactFlowProvider } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 import React from 'react';
 import { api } from '../../api/client';
 import { formatLabel } from '../cve-workbench/formatting';

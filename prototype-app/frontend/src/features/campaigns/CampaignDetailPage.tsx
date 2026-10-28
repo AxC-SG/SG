@@ -1137,7 +1137,7 @@ export function CampaignDetailPage() {
                   return (
                     <tr key={pr.name} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForInventoryViewWithSearch('software-identities', { query: pr.name }))}>
                       <td>
-                        <strong style={{ fontSize: 13, color: 'var(--accent)' }}>{pr.name}</strong>
+                        <strong style={{ fontSize: 13, color: 'var(--dp-accent)' }}>{pr.name}</strong>
                       </td>
                       <td style={{ fontSize: 13 }}>{pr.assets.size}</td>
                       <td style={{ fontSize: 13 }}>{pr.total}</td>
@@ -1145,7 +1145,7 @@ export function CampaignDetailPage() {
                       <td>
                         {pr.maxSev
                           ? <span className={sevPill(pr.maxSev)}>{pr.maxSev}</span>
-                          : <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span>}
+                          : <span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span>}
                       </td>
                       <td>
                         <div className="cd-prod-progress">
@@ -1163,15 +1163,15 @@ export function CampaignDetailPage() {
                   <tr key={sw.id} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForSoftwareIdentityDetail(sw.id))}>
                     <td>
                       <div>
-                        <strong style={{ fontSize: 13, color: 'var(--accent)' }}>{sw.displayName}</strong>
-                        {sw.vendor && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{sw.vendor}</div>}
+                        <strong style={{ fontSize: 13, color: 'var(--dp-accent)' }}>{sw.displayName}</strong>
+                        {sw.vendor && <div style={{ fontSize: 11, color: 'var(--dp-text-2)', marginTop: 2 }}>{sw.vendor}</div>}
                       </div>
                     </td>
                     <td style={{ fontSize: 13 }}>{sw.assetCount}</td>
                     <td style={{ fontSize: 13 }}>{sw.openFindingCount}</td>
                     <td style={{ fontSize: 13, color: '#21d07a' }}>—</td>
-                    <td><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span></td>
-                    <td><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span></td>
+                    <td><span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span></td>
+                    <td><span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span></td>
                     <td>
                       <button type="button" className="cd-delete-btn" title="Remove" onClick={(e) => { e.stopPropagation(); deleteSoftwareItem(sw.id); }}>✕</button>
                     </td>
@@ -1231,13 +1231,13 @@ export function CampaignDetailPage() {
                         </div>
                       </td>
                       <td style={{ fontSize: 13 }}>{a.supportGroup || '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{ownerGroup || '—'}</td>
+                      <td style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>{ownerGroup || '—'}</td>
                       <td style={{ fontSize: 13 }}>{a.openFindings}</td>
                       <td style={{ fontSize: 13, color: '#21d07a' }}>{a.resolvedFindings}</td>
                       <td>
                         {maxSev
                           ? <span className={sevPill(maxSev)}>{maxSev}</span>
-                          : <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span>}
+                          : <span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span>}
                       </td>
                       <td>
                         <button type="button" className="cd-delete-btn" title="Remove asset"
@@ -1285,7 +1285,7 @@ export function CampaignDetailPage() {
                         <span className="cd-finding-id-link mono">{f.displayId || '—'}</span>
                       </td>
                       <td onClick={(e) => { if (cveId) { e.stopPropagation(); navigate(pathForVulnRepoView('org-cves', cveId)); } }}>
-                        <span className="mono" style={{ fontSize: 12, color: 'var(--accent)', cursor: cveId ? 'pointer' : undefined }}>
+                        <span className="mono" style={{ fontSize: 12, color: 'var(--dp-accent)', cursor: cveId ? 'pointer' : undefined }}>
                           {cveId || '—'}
                         </span>
                       </td>
@@ -1295,7 +1295,7 @@ export function CampaignDetailPage() {
                             {f.assetName || f.assetIdentifier || '—'}
                           </strong>
                           {f.assetIdentifier && (
-                            <div className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            <div className="mono" style={{ fontSize: 11, color: 'var(--dp-text-2)', marginTop: 2 }}>
                               {f.assetIdentifier}
                             </div>
                           )}
@@ -1305,13 +1305,13 @@ export function CampaignDetailPage() {
                       <td>
                         {f.severity
                           ? <span className={sevPill(f.severity)}>{f.severity}</span>
-                          : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
+                          : <span style={{ color: 'var(--dp-text-2)' }}>—</span>}
                       </td>
                       <td>
                         <span className={statusPill(f.status)}>{f.status || '—'}</span>
                       </td>
                       <td style={{ fontSize: 13 }}>{f.ownerGroup || 'Unassigned'}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                         {formatDate(f.dueAt)}
                       </td>
                     </tr>
@@ -1360,17 +1360,17 @@ export function CampaignDetailPage() {
                         {linked?.packageName || ex.packageName || '—'}
                       </td>
                       <td style={{ fontSize: 13, fontWeight: 600 }}>{ex.title}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 200 }}>{ex.reason}</td>
+                      <td style={{ fontSize: 12, color: 'var(--dp-text-2)', maxWidth: 200 }}>{ex.reason}</td>
                       <td>
                         <span className={`campaign-status-badge ${exStatus}`}>
                           {ex.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      <td style={{ fontSize: 12, color: 'var(--dp-text-2)' }}>
                         {ex.requestedBy || '—'}
                         <div style={{ fontSize: 11, marginTop: 2 }}>{formatDate(ex.requestedAt)}</div>
                       </td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                         {ex.decisionDueAt ? formatDate(ex.decisionDueAt) : '—'}
                       </td>
                       <td>
@@ -1439,7 +1439,7 @@ export function CampaignDetailPage() {
                             <span className="cd-finding-id-link mono">{f.displayId || '—'}</span>
                           </td>
                           <td onClick={(e) => { if (cveId) { e.stopPropagation(); navigate(pathForVulnRepoView('org-cves', cveId)); } }}>
-                            <span className="mono" style={{ fontSize: 12, color: 'var(--accent)', cursor: cveId ? 'pointer' : undefined }}>
+                            <span className="mono" style={{ fontSize: 12, color: 'var(--dp-accent)', cursor: cveId ? 'pointer' : undefined }}>
                               {cveId || '—'}
                             </span>
                           </td>
@@ -1450,12 +1450,12 @@ export function CampaignDetailPage() {
                           <td>
                             {f.severity
                               ? <span className={sevPill(f.severity)}>{f.severity}</span>
-                              : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
+                              : <span style={{ color: 'var(--dp-text-2)' }}>—</span>}
                           </td>
                           <td>
                             <span className={statusPill(f.status)}>{f.status || '—'}</span>
                           </td>
-                          <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                          <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                             {formatDate(f.dueAt)}
                           </td>
                         </tr>
@@ -1516,21 +1516,21 @@ export function CampaignDetailPage() {
                     return (
                       <tr key={cveId} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForVulnRepoView('org-cves', cveId))}>
                         <td>
-                          <span className="mono" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
+                          <span className="mono" style={{ fontSize: 13, color: 'var(--dp-accent)', fontWeight: 700 }}>
                             {cveId}
                           </span>
                         </td>
                         <td>
                           {sev
                             ? <span className={sevPill(sev)}>{sev}</span>
-                            : <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span>}
+                            : <span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span>}
                         </td>
                         <td style={{ fontSize: 13 }}>{totalCount}</td>
                         <td style={{ fontSize: 13, color: '#21d07a' }}>{resolvedCount}</td>
                         <td>
                           <span className={statusPill(evStatus)}>{evStatus}</span>
                         </td>
-                        <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                           {pctDone}% · {formatDate(s.dueAt)}
                         </td>
                         <td>
@@ -1701,7 +1701,7 @@ export function CampaignDetailPage() {
                                   });
                                 }}
                               />
-                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--dp-text-2)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                                 Select page
                               </span>
                             </label>
@@ -1714,7 +1714,7 @@ export function CampaignDetailPage() {
                               <input type="checkbox" checked={selectedAssetIds.has(a.id)} onChange={() => toggleAssetId(a.id)} />
                               <div className="cd-asset-row-name">
                                 <strong>{a.name}</strong>
-                                <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{a.identifier}</span>
+                                <span className="mono" style={{ fontSize: 11, color: 'var(--dp-text-2)' }}>{a.identifier}</span>
                               </div>
                               <span className="cd-asset-col-cell">{a.type || '—'}</span>
                               <span className="cd-asset-col-cell">{a.environment || '—'}</span>
@@ -1766,7 +1766,7 @@ export function CampaignDetailPage() {
                     {!assetsLoading && assetTagInput.trim() && (
                       <p className="cd-mode-desc" style={{ marginTop: 8 }}>
                         {previewCount > 0
-                          ? <><strong style={{ color: 'var(--accent)' }}>{previewCount}</strong> new assets would be added.</>
+                          ? <><strong style={{ color: 'var(--dp-accent)' }}>{previewCount}</strong> new assets would be added.</>
                           : 'No new assets match these tags (they may already be in this campaign).'}
                       </p>
                     )}
@@ -1801,7 +1801,7 @@ export function CampaignDetailPage() {
                     {assetClassSel.size > 0 && !assetsLoading && (
                       <p className="cd-mode-desc" style={{ marginTop: 10 }}>
                         {previewCount > 0
-                          ? <><strong style={{ color: 'var(--accent)' }}>{previewCount}</strong> new assets would be added.</>
+                          ? <><strong style={{ color: 'var(--dp-accent)' }}>{previewCount}</strong> new assets would be added.</>
                           : 'All matching assets are already in this campaign.'}
                       </p>
                     )}
@@ -1814,10 +1814,10 @@ export function CampaignDetailPage() {
                   {addAssetsTab === 'search'
                     ? selectedAssetIds.size > 0
                       ? <><strong>{selectedAssetIds.size}</strong> asset{selectedAssetIds.size !== 1 ? 's' : ''} selected</>
-                      : <span style={{ color: 'var(--text-secondary)' }}>No assets selected</span>
+                      : <span style={{ color: 'var(--dp-text-2)' }}>No assets selected</span>
                     : previewCount > 0
                       ? <><strong>{previewCount}</strong> asset{previewCount !== 1 ? 's' : ''} will be added</>
-                      : <span style={{ color: 'var(--text-secondary)' }}>No assets matched</span>}
+                      : <span style={{ color: 'var(--dp-text-2)' }}>No assets matched</span>}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn btn-secondary" onClick={closeAddAssets}>Cancel</button>
@@ -1879,7 +1879,7 @@ export function CampaignDetailPage() {
                             onChange={() => { if (!alreadyAdded) toggleSoftwareSelection(sw); }} />
                           <div>
                             <span className="cd-cve-id">{sw.displayName}</span>
-                            {sw.vendor && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 6 }}>{sw.vendor}</span>}
+                            {sw.vendor && <span style={{ fontSize: 11, color: 'var(--dp-text-2)', marginLeft: 6 }}>{sw.vendor}</span>}
                           </div>
                           <span className="cd-asset-col-cell" style={{ fontSize: 12 }}>{sw.assetCount} assets</span>
                         </label>
@@ -1905,7 +1905,7 @@ export function CampaignDetailPage() {
               <span className="cd-asset-sel-count">
                 {selectedSoftwareMap.size > 0
                   ? <><strong>{selectedSoftwareMap.size}</strong> item{selectedSoftwareMap.size !== 1 ? 's' : ''} selected</>
-                  : <span style={{ color: 'var(--text-secondary)' }}>No software selected</span>}
+                  : <span style={{ color: 'var(--dp-text-2)' }}>No software selected</span>}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" onClick={closeAddSoftware}>Cancel</button>
@@ -1989,7 +1989,7 @@ export function CampaignDetailPage() {
                   <span className="cd-asset-page-info">{cveTotalItems} CVE{cveTotalItems !== 1 ? 's' : ''}</span>
                 </div>
               )}
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
+              <p style={{ fontSize: 11, color: 'var(--dp-text-2)', marginTop: 8 }}>
                 Currently tracked: <span className="mono">{cveLabel || 'none'}</span>
               </p>
             </div>
@@ -1997,7 +1997,7 @@ export function CampaignDetailPage() {
               <span className="cd-asset-sel-count">
                 {selectedCveMap.size > 0
                   ? <><strong>{selectedCveMap.size}</strong> CVE{selectedCveMap.size !== 1 ? 's' : ''} selected</>
-                  : <span style={{ color: 'var(--text-secondary)' }}>No CVEs selected</span>}
+                  : <span style={{ color: 'var(--dp-text-2)' }}>No CVEs selected</span>}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" onClick={closeAddCve}>Cancel</button>

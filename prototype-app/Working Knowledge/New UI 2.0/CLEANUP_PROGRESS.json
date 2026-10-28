@@ -1016,9 +1016,1243 @@
      "reversal": "git revert c29515d8"
     }
    ]
+  },
+  {
+   "id": "S6",
+   "title": "Retire the legacy styles one family at a time",
+   "status": "verified",
+   "dependsOn": [
+    "S5"
+   ],
+   "branch": "feat/ui2-step6-retire-legacy",
+   "startingCommit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+   "checkFirst": {
+    "decision": "Confirmed S5 decision and userDecisions: proceed to retirement; staging and human reviews waived; rollback uses the frozen UI 1 artifact. Accessibility review remains open.",
+    "checkpointA": "S5 focusFixGate verified on c29515d8. Step 5 tip fc108c4c and fetched main 68a4a3bc both have frontend tree 3e9e2cb83bea94c9015900bfb40251b9582529f7, identical to c29515d8.",
+    "pr25": {
+     "state": "merged",
+     "mergeCommit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+     "ciHead": "fc108c4c7baae81b439602d50de19360ee67c8a8",
+     "jobs": {
+      "frontend": "success",
+      "backend": "success",
+      "backend-postgres": "success",
+      "frontend-e2e": "success",
+      "policy-packages": "success",
+      "migration-validation": "success",
+      "migration-boundaries": "success",
+      "docs-check": "success",
+      "secrets": "success",
+      "images": "success",
+      "Filesystem scan": "success",
+      "Docker image scan": "success",
+      "Semgrep CE security scan": "success"
+     }
+    },
+    "ancestry": "Fetched https://github.com/AxG-SG/SG.git main without changing remotes. Confirmed 47ab4728, fc108c4c and c29515d8 are ancestors. Advanced the unused Step 6 branch created from the Step 5 tip to fetched main, then switched to it.",
+    "exclusiveCheckout": "Previous Claude CLI session in this checkout ended; verified no competing Claude CLI or gate/test process before starting. Podman VM stopped."
+   },
+   "startingBaseline": {
+    "date": "2026-10-27",
+    "commit": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+    "command": "GATE_WORK=/private/tmp/sg-ui2-step6.QsSmLw caffeinate -ims zsh tools/host-gate.sh step6-start (GATE_BASELINE unset)",
+    "status": "verified_with_recorded_legacy_failures_and_height_differences",
+    "summary": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-start/summary.txt",
+    "GATE_BASELINE": "/private/tmp/sg-ui2-step6.QsSmLw/baseline",
+    "retained": "probe-ui2.json, probe-legacy.json, state.json (copied from state-new.json), source.json with their SHA256 values; scratch only, never commit probe outputs.",
+    "tests": {
+     "lint": {
+      "errors": 0,
+      "existingWarnings": 2
+     },
+     "typecheck": "passed",
+     "vitest": {
+      "filesPassed": 84,
+      "passed": 773,
+      "failed": 0,
+      "skipped": 0
+     },
+     "coverage": {
+      "lines": "7937/15211 (52.17%)",
+      "statements": "8916/18010 (49.5%)",
+      "functions": "2573/6208 (41.44%)",
+      "branches": "7868/19521 (40.3%)",
+      "floors": "met; unchanged"
+     },
+     "builds": "UI 2 and UI 1 passed, including production bundle verification; e2e:build boundaries 15/15 each. This is the required pre-slice starting run; Step 6.0 will remove new UI 1 builds.",
+     "journeys": {
+      "ui2": {
+       "passed": 737,
+       "failed": 0,
+       "skipped": 0
+      },
+      "legacy": {
+       "passed": 703,
+       "failed": 34,
+       "skipped": 0,
+       "newFailures": 0,
+       "failureClassification": "All 34 match the reviewed legacy journey baseline."
+      }
+     },
+     "probes": "140 route/theme/width entries per version; 240 cold/navigation/Back comparisons each; UI 2 8 height-only differences on /vuln-repo/vulnerabilities, UI 1 24 height-only differences on that route and /inventory/hosts and /inventory/ai, all previously recorded. Boundary 120/120 per version; state check completed with 10 UI 2 route/theme entries."
+    },
+    "bundle": {
+     "cssRawBytes": 645602,
+     "cssGzipBytes": 95535,
+     "vsStep0": {
+      "rawBytes": 592,
+      "gzipBytes": 139
+     },
+     "vsStep5": {
+      "rawBytes": 409,
+      "gzipBytes": 95
+     },
+     "ui2JsRawBytes": 2520018,
+     "ui2JsGzipBytes": 690726
+    },
+    "frozenUi1": "Archive SHA256 f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707 verified before extracting; all 86 files match the manifest. Extracted in /private/tmp/sg-ui2-step6.QsSmLw/frozen-ui1; no rebuild of the frozen artifact."
+   },
+   "units": [
+    {
+     "title": "Step 6.0: switch candidate build and checks to UI 2 only",
+     "status": "verified",
+     "files": [
+      ".github/workflows/quality.yml",
+      ".github/workflows/frontend-e2e-sweep.yml",
+      "prototype-app/frontend/e2e/build-artifacts.mjs",
+      "prototype-app/frontend/e2e/run.mjs",
+      "prototype-app/frontend/playwright.config.ts",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/host-gate.sh",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/ctr-gate.sh",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLAUDE_START_HERE.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "approvalGate": {
+      "status": "approved_and_applied",
+      "reason": "STEP6_PROMPT Step 6.0 requires the exact workflow diff and approval before changing .github/workflows/.",
+      "proposedChange": "Add E2E_VERSIONS: ui2 to frontend-e2e in quality.yml and sweep in frontend-e2e-sweep.yml, and update their comments.",
+      "recorded": "2026-10-27",
+      "userInstructionVerbatim": "keep going",
+      "context": "Reply to the explicit request to approve /private/tmp/sg-ui2-step6.QsSmLw/step6-0-workflows.patch. Applied workflows match that exact proposal byte for byte."
+     },
+     "evidence": [
+      "Candidate build, journey/sweep/visual/affected/update runner, and Playwright project selection default to UI 2 and reject legacy or mixed version requests. E2E_VERSIONS is honored by the build and runner, matching the approved CI configuration.",
+      "The host gate no longer builds or probes UI 1. The container gate explicitly selects UI 2. Updated active handoff and tools documentation; UI 1 baselines remain in the repo as historical evidence.",
+      "App source and CSS unchanged; no legacy style family retired in Step 6.0. No API, auth, tenant or schema changes.",
+      "10/10 configuration checks passed, 0 failed, 0 skipped: eight legacy/mixed-version rejection checks plus two UI 2 Playwright listing checks (default and explicit environment). Each listing selects 140 UI 2 visual cases; listing is not a visual pass. Node and zsh syntax checks passed. Evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings (PageFreshnessStatus.tsx fast-refresh export warning; ConfigurationsPage.tsx STORAGE_KEY effect dependency), typecheck passed, vitest 773 passed / 0 failed / 0 skipped in 84 files, including the 17 scope.test.ts checks. No coverage run: the long gate remains deferred to checkpoint B and Step 8.",
+      "Configuration checks: 10 passed / 0 failed / 0 skipped. Legacy and mixed versions rejected by build/runner/Playwright; default and explicit UI 2 selection each list 140 visual cases (not executed). Node and zsh syntax checks passed; approved workflow bytes unchanged."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/build/live/coverage checks for this slice are deferred to checkpoint B and Step 8 per checkDeferral; this is the fast slice gate only.",
+      "Staging and human reviews remain waived; accessibility review remains open.",
+      "No legacy style family has been retired yet."
+     ],
+     "reversal": "Revert the local Step 6.0 commit to restore two-version candidate tooling; the frozen Step 5 artifact and historical baselines are retained.",
+     "statuses": {
+      "fixture": "pending",
+      "localAuthenticated": "pending",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "eae220211f47deaf02a393fa08b1227708eafd19",
+      "testedFrontendTree": "dd59950175ae5412fd0990ebb93bb5b7399bb414",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 773,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTestsDiscoveredAndIncluded": 17
+      },
+      "configurationChecks": {
+       "passed": 10,
+       "failed": 0,
+       "skipped": 0
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-step6-0/",
+      "evidenceAmendment": "Only the ledger was amended after the fast gate; tested implementation files and frontend tree unchanged."
+     },
+     "commit": "baedb16d"
+    },
+    {
+     "title": "Findings and AI Findings: retire legacy family rules",
+     "status": "verified",
+     "startingCommit": "baedb16d",
+     "files": [
+      "prototype-app/frontend/src/styles/ui2/findings-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/findings-list.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_FINDINGS_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_FINDINGS_MAP.md; static cascade and declaration manifests in /private/tmp/sg-ui2-step6.QsSmLw/gate-findings/",
+     "evidence": [
+      "Captured cascade-before.json before any CSS edit after updating the helper for Findings ownership; cascade-after.json includes the new shared base in effective load order. Static subject/property overlaps are review candidates, not browser regression counts.",
+      "Moved required declarations from 316 rules: base.css 33, finding-detail.css 108, ai-security.css 19, findings-list.css 156. Removed 37 declarations superseded by unconditional UI 2 rules with the identical selector body/property, and consolidated 37 identical repeats. Values, priorities and conditional states otherwise retained.",
+      "New ui2/findings-base.css scopes shared controls with :where(html[data-ui=2]) (no added specificity), before family presentation sheets. Its global import removes the lazy Findings-route dependency for shared fpl-* controls. This intentionally addresses the logged direct-load versus navigation difference.",
+      "Other-family contexts retained: five Inventory-context rules in base.css, five iov-* rules in finding-detail.css, policy/graph/connector rules and the connector reveal keyframes in ai-security.css. Legacy import stubs remain for final entry-point cleanup.",
+      "Declaration verifier passed 1455 retained declaration/selector checks; remaining 1667 base, 5 Inventory overview and 311 AI rules match their starting selectors, declarations and contexts. 37 superseding UI 2 declarations and 37 identical repetitions recorded in the manifest.",
+      "Updated ownership/scope tests without removing assertions. Added zero-specificity/private-keyframe checks and eager control/legacy-retirement checks. Existing Findings presentation anchors remain unchanged. Shared base maps conservatively to all 35 affected routes, including public-route isolation.",
+      "Prepared STEP6_CONTINUE_PROMPT.md for a fresh chat after this slice; branch and scratch baseline are retained."
+     ],
+     "tests": [
+      "Corrected post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 775 passed / 0 failed / 0 skipped in 84 files, including all 19 scope tests.",
+      "First attempt: 774 passed / 1 failed / 0 skipped. The new ownership test caught eight Inventory-context selectors selected by an overbroad AI predicate. Corrected the predicate, restored those Inventory rules, and retained the assertion before the corrected run. See gateAttempts and the archived attempt-1 logs.",
+      "Static declaration/ownership verifier: 1455 retained declaration/selector checks passed; other owners unchanged. Shared-base affected-route selection: all 35 routes including public isolation. No full browser/axe/live/coverage/bundle gate run for this slice; those remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full visual/axe/affected/live/build/coverage/bundle gates deferred to checkpoint B and Step 8 per checkDeferral. No new visual, axe or live pass claimed.",
+      "Shared legacy colour defaults and token aliases retained without redesign; legacy-bridge.css stays until the final slice.",
+      "Staging and human reviews remain waived; accessibility review remains open."
+     ],
+     "reversal": "Revert only the local Findings retirement slice commit; keep the previous Step 6.0 commit and starting baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "gateAttempts": [
+      {
+       "commit": "55083004",
+       "lint": "passed: 0 errors, 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 774,
+        "failed": 1,
+        "skipped": 0
+       },
+       "failure": "scope.test.ts:122: shared Findings base ownership rejected eight selectors beginning .inventory-shell.ai-security-page. The AI migration predicate had matched an owned class anywhere in the selector instead of requiring a leading owned root.",
+       "fix": "Require a leading shared AI root. Restore all eight Inventory-context rules to ai-security.css; remove them from findings-base.css. The failing assertion is unchanged.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings/attempt-1/"
+      },
+      {
+       "commit": "9b1d572a110fde3e3345fd180b0e9fd49c53d45a",
+       "lint": "passed: 0 errors, 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 775,
+        "failed": 0,
+        "skipped": 0
+       },
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings"
+      }
+     ],
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "9b1d572a110fde3e3345fd180b0e9fd49c53d45a",
+      "testedFrontendTree": "a3f1a6b5d930d22b08e407803fffa43068050e13",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 775,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 19
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-findings",
+      "evidenceAmendment": "Only ledger and handoff documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "dbe0bab16f894379610db773a73b7dc1ac55be96"
+    },
+    {
+     "title": "CVE: retire legacy workflow and shared record-detail rules",
+     "status": "verified",
+     "startingCommit": "dbe0bab16f894379610db773a73b7dc1ac55be96",
+     "files": [
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/ui2/cve-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CVE_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_CVE_MAP.md; scratch cascade/declaration evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-cve/",
+     "preflight": [
+      "Findings tip dbe0bab1 has the recorded tested frontend tree a3f1a6b5d930d22b08e407803fffa43068050e13; S6 and scratch fast-summary confirm 775 passed / 0 failed / 0 skipped, lint 0 errors / 2 existing warnings and typecheck passed.",
+      "Exclusive checkout verified: only this chat active in SG, previous chat idle; no competing CLI/test/gate workers. podman machine stop completed successfully before testing.",
+      "All baseline/source.json SHA256 values verified for probe-ui2.json, probe-legacy.json and state.json; starting commit remains 68a4a3bc."
+     ],
+     "evidence": [
+      "Captured CVE ownership/cascade before CSS migration and after, with explicit effective main/lazy order.",
+      "Moved 1258 rules (base 31, shared 77, cve-workbench 1089, vuln-repo 61); removed six superseded declarations, nine identical repeats and one identical keyframe definition.",
+      "Zero-specificity UI 2 base preserves shared Governance, Inventory and Campaign consumers; generic controls and other-family ancestor rules retained. No version switch or bridge removed.",
+      "Declaration verifier: 5052 retained declaration/selector checks passed; remaining base 1637, shared 263, cve-workbench 90 and vuln-repo 149 rules unchanged. CVE selected legacy ownership entries remaining: zero.",
+      "Shared base maps to all 35 routes including public isolation. Scope assertions retained and extended."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 777 passed / 0 failed / 0 skipped in 84 files, including all 21 scope tests.",
+      "Static declaration/ownership verifier: 5052 retained declaration/selector checks passed; other-owner rules unchanged. All 35 routes selected for shared base including public isolation. No full browser/axe/live/coverage/bundle gate run for this slice; those remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Fast slice gate only; full browser/visual/axe/live/build/coverage/bundle checks deferred to checkpoint B and Step 8 per checkDeferral.",
+      "Shared legacy tokens and colour fallbacks retained without redesign. Staging and human reviews waived; accessibility review remains open.",
+      "Logged unrelated defects remain open; no workflow, API, auth, tenant, backend or schema changes."
+     ],
+     "reversal": "Revert only this local CVE retirement slice; retain Findings, Step 6.0 and the original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "c0d4f6f94bb946dc182abc0fe579e2d2bd53a9b8",
+      "testedFrontendTree": "6ff0d340d8c282bfa078017dbfd659c5ea9a0102",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 777,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 21
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-cve",
+      "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "0f1671086bcbfbaa8370f8cdbbface0ed859e250"
+    },
+    {
+     "title": "Inventory: retire legacy shell, lifecycle, quality and AI graph rules",
+     "status": "verified",
+     "startingCommit": "0f1671086bcbfbaa8370f8cdbbface0ed859e250",
+     "files": [
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_INVENTORY_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_INVENTORY_MAP.md; static cascade/declaration evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-inventory/",
+     "preflight": [
+      "CVE tip 0f167108 has tested frontend tree 6ff0d340d8c282bfa078017dbfd659c5ea9a0102 matching S6 and scratch fast-summary: 777 passed / 0 failed / 0 skipped; lint 0 errors / 2 existing warnings; typecheck passed.",
+      "Only this chat active in SG, prior chat idle; no competing test/gate workers. podman machine stop completed before tests.",
+      "All three starting baseline files match baseline/source.json SHA256 values; original 68a4a3bc baseline reused unchanged."
+     ],
+     "evidence": [
+      "Updated Inventory ownership and effective stylesheet order in cascade-map and captured the map before CSS edits.",
+      "Moved 659 rules: base 377, cve-workbench 1, eol 181, vuln-repo 34, finding-detail 5, ai-security 61. Consolidated six adjacent rule blocks with identical declarations; no different values/fallbacks dropped.",
+      "Zero-specificity Inventory base loads before Findings base to preserve the equal-specificity AI Inventory page-root grid. Shared consumers retained; presentation sheets unchanged.",
+      "Static verifier: 2424 retained declaration/selector checks passed. Remaining rules unchanged: base 1262, cve-workbench 89, eol 12, vuln-repo 115, finding-detail 0, ai-security 250. Selected Inventory legacy ownership entries remaining: zero.",
+      "Scope assertions retained and extended; CVE preservation assertion follows the new Inventory owner. Shared base maps to all 35 affected routes including public isolation."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 779 passed / 0 failed / 0 skipped in 84 files, including all 23 scope tests.",
+      "Static declaration/ownership verifier: 2424 retained declaration/selector checks passed; other-owner rules unchanged; six identical adjacent rule blocks consolidated. Shared base selects all 35 affected routes including public isolation. Full browser/visual/axe/live/build/coverage/bundle checks remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Fast slice gate only. Full browser/visual/axe/affected/live/build/coverage/bundle checks remain deferred to checkpoint B and Step 8 per checkDeferral.",
+      "Known Inventory focus/disabled order defect and all logged unrelated defects remain open. Shared legacy tokens and colour fallbacks retained.",
+      "Staging and human reviews waived; accessibility review open. No workflow, API, auth, tenant, backend or schema changes; no final switch or bridge removal."
+     ],
+     "reversal": "Revert only this local Inventory retirement slice; retain CVE, Findings, Step 6.0 and the original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "0285f459c7aa5d5ff31c19a18e20e6c9080436e7",
+      "testedFrontendTree": "2e5df120491d1ac39f8b73022e652b27d5917dd1",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 779,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 23
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-inventory",
+      "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "c81822c2b66bbc295b86d700ce5a6651cba7e405"
+    },
+    {
+     "title": "Governance: retire legacy console, administration and AI policy rules",
+     "status": "verified",
+     "startingCommit": "c81822c2b66bbc295b86d700ce5a6651cba7e405",
+     "files": [
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/user-management.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/ui2/governance-base.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_GOVERNANCE_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json"
+     ],
+     "ownershipMap": "STEP6_GOVERNANCE_MAP.md; scratch cascade/declaration evidence in /private/tmp/sg-ui2-step6.QsSmLw/gate-governance",
+     "preflight": [
+      "Inventory tip c81822c2 has tested frontend tree 2e5df120491d1ac39f8b73022e652b27d5917dd1 matching S6 and scratch fast-summary: 779 passed / 0 failed / 0 skipped; lint 0 errors / 2 existing warnings; typecheck passed.",
+      "Only this chat active in SG, prior chat idle; no competing test/gate workers. podman machine stop completed before tests.",
+      "All three starting baseline files match baseline/source.json SHA256 values; original 68a4a3bc baseline reused unchanged."
+     ],
+     "evidence": [
+      "Updated Governance ownership and effective stylesheet order in cascade-map and captured the map before CSS edits.",
+      "Moved 312 rules: base 3, shared 17, user-management 62, ai-security 230. Grouped one pair of adjacent narrow-screen rules with identical declarations; different values/fallbacks retained.",
+      "Zero-specificity Governance base loads after CVE base and before every presentation sheet. Console/shared AI consumers preserved; user-management becomes an import stub.",
+      "Static verifier: 1156 retained declaration/selector checks passed. Remaining rules unchanged: base 1259, shared 246, user-management 0, ai-security 22. Selected Governance legacy ownership entries remaining: zero.",
+      "Connector layout/run/scope styles and their reveal keyframes/reduced-motion remain for Connect. Scope assertions retained and extended; shared base maps to all 35 affected routes including public isolation."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate under caffeinate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 781 passed / 0 failed / 0 skipped in 84 files, including all 25 scope tests.",
+      "Static declaration/ownership verifier: 1156 retained declaration/selector checks passed; other-owner rules unchanged; one pair of identical adjacent responsive rules consolidated. All original keyframes in the four source sheets are unchanged. Shared base selects all 35 affected routes including public isolation. Full browser/visual/axe/live/build/coverage/bundle checks remain due at checkpoint B and Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Fast slice gate only. Full browser/visual/axe/affected/live/build/coverage/bundle checks remain deferred to checkpoint B and Step 8 per checkDeferral.",
+      "All logged unrelated defects remain open. Shared legacy tokens and colour fallbacks retained.",
+      "Staging and human reviews waived; accessibility review open. No workflow, API, auth, role/tenant logic, backend or schema changes; no final switch or bridge removal."
+     ],
+     "reversal": "Revert only this local Governance slice; retain Inventory, CVE, Findings, Step 6.0 and the original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "66916f0abb8e3c12ed855ac915cbb2df8c505af9",
+      "testedFrontendTree": "8c1e1a7f0b5e6c024f0907fed758e89ec542c6a3",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 781,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 25
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-governance",
+      "evidenceAmendment": "Only ledger and handoff/map documentation amended after this run; tested frontend files and tree unchanged."
+     },
+     "commit": "342c8be7f0935d2f37e048cb49442cb7518aa6ba"
+    },
+    {
+     "title": "Connect: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "342c8be7f0935d2f37e048cb49442cb7518aa6ba",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/pages/platform-feed-catalog.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/connect.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/ui2/connect-base.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONNECT_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md"
+     ],
+     "ownershipMap": "STEP6_CONNECT_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-connect",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Connect base follows Governance base and precedes presentation sheets. Shared provider/configuration controls retain their consumers; the feed catalog is eager. Connector reveal uses private ui2-connect-reveal; original reduced-motion state is preserved.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 371 rules; consolidated 5 identical declaration repeats and 3 adjacent identical blocks.",
+      "Static verifier: 1341 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 783 passed / 0 failed / 0 skipped in 84 files, including 27 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "6089638c3bdafbb34ec73e7d57684b0f86a7b328",
+      "testedFrontendTree": "c57a0fa14626f854eceb7b91c9a566edc717842b",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 783,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 27
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-connect",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
+     },
+     "commit": "b0a029b1b2608535e9f9892dd7b38f057451a0e0"
+    },
+    {
+     "title": "Experience: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "b0a029b1b2608535e9f9892dd7b38f057451a0e0",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/exposure-dashboard.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/styles/ui2/experience-base.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_EXPERIENCE_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md"
+     ],
+     "ownershipMap": "STEP6_EXPERIENCE_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-experience",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Experience owns dashboard, Campaign and operations layouts, including exposure grids shared with Inventory. Its zero-specificity base loads before Inventory base and family presentation. Public/auth-entry markup and shared app/shell defaults remain for public/final extraction.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 875 rules; consolidated 2 identical declaration repeats and 6 adjacent identical blocks.",
+      "Static verifier: 3501 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 785 passed / 0 failed / 0 skipped in 84 files, including 29 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "4f968a4475525f1983634364e5df369d1aeab0b7",
+      "testedFrontendTree": "96583ccefaad89b8bc5fc57b83623997dba3c510",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 785,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 29
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-experience",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
+     },
+     "commit": "8cf278b85df8769476c5652a17747674e726a61e"
+    },
+    {
+     "title": "Public: retire legacy presentation rules",
+     "status": "verified",
+     "startingCommit": "8cf278b85df8769476c5652a17747674e726a61e",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/public.css",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_PUBLIC_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/frontend/src/styles/public-tokens.css",
+      "prototype-app/frontend/src/styles/shared-before-public.css",
+      "prototype-app/frontend/src/styles/shared-after-public.css"
+     ],
+     "ownershipMap": "STEP6_PUBLIC_MAP.md; scratch: /private/tmp/sg-ui2-step6.QsSmLw/gate-public",
+     "preflight": [
+      "Previous slice tested frontend tree verified against HEAD; original baseline/source.json checksums verified; Podman stopped and exclusive checkout confirmed."
+     ],
+     "evidence": [
+      "Public rules and legacy tokens are extracted without redesign. Shared defaults remain available to app consumers at their original source positions through explicit import anchors. Public routes retain the app boundary; frozen UI 1 is the only legacy reference.",
+      "Ownership/cascade captured before CSS edits and after; selected definitions retired in the same slice.",
+      "Moved 327 rules; consolidated 0 identical declaration repeats and 0 adjacent identical blocks.",
+      "Static verifier: 1345 retained declaration/selector checks passed; remaining other-owner rules unchanged.",
+      "Existing assertions retained or advanced to the current owner. No lowered coverage floors, removed assertions, visual tolerance changes or unrelated defect fixes."
+     ],
+     "tests": [
+      "Fresh post-commit caffeinate fast gate, Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 787 passed / 0 failed / 0 skipped in 84 files, including 31 scope tests."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Full browser/visual/axe/affected/live/build/coverage/bundle gate remains due at checkpoint B immediately before final switch/bridge removal, then Step 8.",
+      "Staging and human reviews waived; accessibility review open. No API, auth, tenant logic, backend, schema or workflow changes."
+     ],
+     "reversal": "Revert only this local slice; retain preceding slices and original baseline.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "bab2276bb060e6f67c3e4e421bcbf6c62d7246ac",
+      "testedFrontendTree": "806521eeec733a6d923895ae360c773034fae1df",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 787,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 31
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-public",
+      "evidenceAmendment": "Only ledger and map/handoff documentation amended afterward; tested frontend tree unchanged."
+     },
+     "gateAttempts": [
+      {
+       "commit": "12125e4c",
+       "fastGate": "787 passed / 0 failed / 0 skipped; lint 0 errors / 2 warnings; typecheck passed",
+       "checkpointB": "Build failed: missing semicolon on the font @import serialized into base.css. Browser steps independently blocked by sandbox EPERM binding local ports. Coverage 787 passed, floors met.",
+       "diagnosis": "PostCSS node.toString() omits the at-rule terminator; public extraction wrapper joined its font import without adding a semicolon. Added terminator and a scope assertion. No assertions removed.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-attempt-1",
+       "fastLogs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-public/fast-attempt-1"
+      }
+     ],
+     "commit": "3c3e66957b4f72aa414374429ab9ee7a35474a49"
+    },
+    {
+     "title": "Checkpoint B: preserve Inventory semantic bar colours after base retirement",
+     "status": "verified",
+     "startingCommit": "3c3e66957b4f72aa414374429ab9ee7a35474a49",
+     "files": [
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md"
+     ],
+     "ownershipMap": "Existing Inventory ownership/order; before/after maps in /private/tmp/sg-ui2-step6.QsSmLw/gate-inventory-colours/",
+     "evidence": [
+      "Focused browser comparison against a scratch UI 2 build of the original 68a4a3bc source identified three Inventory bar variants overridden by the later shared fpl-hbar-fill accent background.",
+      "Explicit combined semantic/fill selectors retain the original success var(--low), warning var(--warning), and muted colour-mix values for every app consumer. No colour redesign or tolerance change.",
+      "Added a scope assertion for all three semantic variants. Existing assertions retained.",
+      "All ten first-run visual diffs inspected; AI Inventory shared controls match starting UI2 navigation styles exactly in both themes and widths. Remaining expected cold-load differences arise from eager shared Findings controls; no baseline updates yet."
+     ],
+     "tests": [
+      "Post-commit fast gate: lint 0 errors / 2 existing warnings, typecheck passed, Vitest 788 passed / 0 failed / 0 skipped in 84 files including 32 scope tests.",
+      "Focused colour-corrected browser comparison: all Inventory Hosts and AI Inventory shared control styles match starting UI 2 navigation styles at 390/1280 in both themes, with zero differences. The earlier incomplete Hosts SPA capture is resolved by fixture readiness."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Checkpoint B still in progress; first container visual 130 passed / 10 failed / 0 skipped. Affected visual same; axe 883 baseline / 883 current / 0 new.",
+      "The first focused Hosts light/390 navigation capture was incomplete. Repeated only after diagnosing SPA readiness and waiting for all 109 fixture controls; corrected comparison has zero differences.",
+      "Final version-switch and bridge removal remain gated after checkpoint B."
+     ],
+     "reversal": "Revert only the semantic bar priority fix.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips_at_checkpoint_B",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "09b1d44e0c0f5d4f002cd9e3c90a53a2d2cd6874",
+      "testedFrontendTree": "4da755fd7218cf2dd3b4cf931623b7939f2665f5",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-inventory-colours/",
+      "evidenceAmendment": "Ledger and checkpoint documentation amended after the run; tested frontend tree unchanged."
+     },
+     "commit": "652750d3"
+    },
+    {
+     "title": "Checkpoint B: wait for committed SPA routes in the qualification probe",
+     "status": "verified",
+     "startingCommit": "652750d3",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/tools/style-probe.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md"
+     ],
+     "evidence": [
+      "Diagnosed the six cold/navigation anomalies as snapshots of previous React routes: wrong page title/tabs and shared height 1134.27px from the preceding CVE list. Two onDemo observations preceded the public route commit; the application boundary implementation is unchanged and uses useLayoutEffect before paint.",
+      "Probe now waits for target route headings/family-root identity, public page commit, and settled requests. No style property, route, width, state, comparison or boundary assertion removed. Timeout fails rather than accepting the wrong page.",
+      "Node syntax check passed. Full corrected host probe will qualify the change; original failed observations and baseline remain retained."
+     ],
+     "tests": [
+      "Node syntax check passed; post-commit fast gate: lint 0 errors / 2 existing warnings, typecheck passed, Vitest 788 passed / 0 failed / 0 skipped in 84 files (32 scope tests). Full probe rerun pending."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Checkpoint B remains open pending the corrected full host probe and pinned-container visual baseline updates for the inspected eager Findings control changes."
+     ],
+     "reversal": "Revert this qualification-probe slice; retain the Inventory colour fix.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "not_applicable",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "823760244d847bda0d9e1bbac566d5d7712e2afc",
+      "testedFrontendTree": "4da755fd7218cf2dd3b4cf931623b7939f2665f5",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-probe-readiness/",
+      "evidenceAmendment": "Only ledger/checkpoint documentation amended after this run; tested frontend tree unchanged."
+     },
+     "commit": "f0bb95d4"
+    },
+    {
+     "title": "Checkpoint B: refresh inspected eager-control snapshots and make live readiness deterministic",
+     "status": "verified",
+     "startingCommit": "f0bb95d4",
+     "files": [
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-1280.png",
+      "prototype-app/frontend/e2e/live-journeys.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md"
+     ],
+     "evidence": [
+      "All ten initial visual diffs inspected. Restoring original Inventory bar colours made both Hosts failures pass against unchanged baselines. Remaining eight changes are eager shared Findings controls on Intelligence and AI Inventory.",
+      "Generated only through e2e:update inside mcr.microsoft.com/playwright:v1.63.0-noble, native aarch64, on an archive of f0bb95d4. Before update: selected routes 4 passed / 8 failed / 0 skipped. Update: 12 passed / 0 failed / 0 skipped; full update runner 9/9 steps passed.",
+      "Only eight UI2 PNGs copied back. Seven are byte-identical to the previously inspected actuals; the eighth differs by six pixels at the dark-390 search input border and was inspected side by side. No mask or tolerance change.",
+      "Strict independent compare of the full generated axe audit against the untouched tracked baseline: 939 current / 939 baseline / 0 new / 0 resolved. Journey and axe baseline files from scratch were not copied. UI1 baselines unchanged.",
+      "Diagnosed live failure: assessment POST succeeded, but dark-theme screenshot was still Applicability with Proceed to Findings visible. The runner had matched generic Impacted Assets text before saving/navigation completed, then skipped Proceed while its label was Saving.... Added bounded waits for an enabled visible transition control and the Findings creation control; all assertions retained. No application or API behavior change.",
+      "Case-name audit of the first live-readiness rerun: 248 passed / 0 failed / 2 provider skips, but host-tabs and retired-history light checks were not reached. The earlier declared-resource detail screenshot still showed Loading.... Added bounded visible waits and explicit failure branches for missing host/history controls; no silent omission is accepted. Full live rerun required.",
+      "Final live case-name audit matches the original 250 required checks exactly, including host-tabs and retired-history checks in both themes. No silently omitted required check accepted."
+     ],
+     "tests": [
+      "Fresh post-commit fast gate on 130729c7 under caffeinate with Podman stopped: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 788 passed / 0 failed / 0 skipped in 84 files, including 32 scope tests.",
+      "Final strict pinned-container visual: 140 passed / 0 failed / 0 skipped. Affected routes: all 35 since 68a4a3bc, 140 passed / 0 failed / 0 skipped. Axe 883 current / 883 baseline / 0 new / 0 resolved. Native arm64 Playwright v1.63.0-noble; tested 7b3f30b3 has identical application source and PNGs.",
+      "Full live run on 130729c7: 250 passed / 0 failed / 2 skipped; every one of the original 250 required case names reached. The skips are successful outbound ServiceNow delivery, for which no approved endpoint is configured.",
+      "Pinned-container e2e:update visual stage: 12 passed / 0 failed / 0 skipped; full update runner 9/9 steps passed. Strict independent full axe audit comparison against untouched tracked baseline: 939 current / 939 baseline / 0 new / 0 resolved."
+     ],
+     "screenshots": [
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-light-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-1280.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-dark-390.png",
+      "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-vulnerabilities-light-1280.png"
+     ],
+     "limitations": [
+      "Failed and incomplete attempts retained with their diagnoses; corrected reruns supersede their pass claims. See STEP6_CHECKPOINT_B.md.",
+      "Checkpoint B is complete with intended Intelligence height changes documented. The final version-switch/legacy-bridge removal has not started; Step 8 must qualify the final tip.",
+      "Staging and human reviews waived; accessibility review remains open and existing axe defects remain. Outbound ServiceNow success scenarios remain skipped."
+     ],
+     "reversal": "Revert this qualification-baseline/live-readiness slice; keep all app ownership and Inventory colour fixes.",
+     "statuses": {
+      "fixture": "verified_checkpoint_B",
+      "localAuthenticated": "250_passed_0_failed_2_outbound_provider_skips",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+      "testedFrontendTree": "0601bb987ac9ab213d1b37ae166438d7aab286d8",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "filesPassed": 84,
+       "passed": 788,
+       "failed": 0,
+       "skipped": 0,
+       "scopeTests": 32
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-snapshot-qualification",
+      "evidenceAmendment": "Only ledger/checkpoint/handoff documentation amended after this run; tested frontend tree unchanged."
+     },
+     "gateAttempts": [
+      {
+       "commit": "08012ee7",
+       "fastGate": "788 passed / 0 failed / 0 skipped; lint 0 errors / 2 existing warnings; typecheck passed",
+       "liveReadinessRerun": {
+        "passed": 248,
+        "failed": 0,
+        "skipped": 2,
+        "missingExpectedChecks": [
+         "inventory: host tabs switch [light]",
+         "inventory: retired history requests history=true [light]"
+        ]
+       },
+       "diagnosis": "Detail route URL was ready while data/components still loading. Strengthened readiness and explicit failure branches; original pass assertions retained."
+      }
+     ]
+    },
+    {
+     "title": "Final slice: deterministic stylesheet entry, direct tokens and permanent public/app boundary",
+     "status": "verified",
+     "startingCommit": "0049451a",
+     "files": [
+      "prototype-app/Working Knowledge/New UI 2.0/CLEANUP_PROGRESS.json",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CHECKPOINT_B.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_CONTINUE_PROMPT.md",
+      "prototype-app/Working Knowledge/New UI 2.0/STEP6_FINAL_MAP.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/README.md",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/cascade-map.mjs",
+      "prototype-app/Working Knowledge/New UI 2.0/tools/host-gate.sh",
+      "prototype-app/frontend/e2e/affected-routes.json",
+      "prototype-app/frontend/e2e/build-artifacts.mjs",
+      "prototype-app/frontend/src/App.tsx",
+      "prototype-app/frontend/src/app/PresentationBoundary.test.tsx",
+      "prototype-app/frontend/src/app/PresentationBoundary.tsx",
+      "prototype-app/frontend/src/app/UiVersionPresentation.test.tsx",
+      "prototype-app/frontend/src/app/UiVersionPresentation.tsx",
+      "prototype-app/frontend/src/components/CVEInvestigationSummary.tsx",
+      "prototype-app/frontend/src/components/CveRiskScorePanel.tsx",
+      "prototype-app/frontend/src/components/DataTable.css",
+      "prototype-app/frontend/src/components/DataTable.tsx",
+      "prototype-app/frontend/src/features/ai-security/AiDependencyGraph.tsx",
+      "prototype-app/frontend/src/features/campaigns/CampaignDetailPage.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/CveOverviewTab.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/FindingsTab.tsx",
+      "prototype-app/frontend/src/features/cve-workbench/components/InvestigationCanvas.tsx",
+      "prototype-app/frontend/src/features/inventory/ApplicationDetailPanel.tsx",
+      "prototype-app/frontend/src/features/inventory/ApplicationsDashboard.tsx",
+      "prototype-app/frontend/src/features/inventory/BomComponentDetailPanel.tsx",
+      "prototype-app/frontend/src/features/inventory/BomComponents.tsx",
+      "prototype-app/frontend/src/features/widgets/FplWidgets.tsx",
+      "prototype-app/frontend/src/lib/presentationBoundary.test.ts",
+      "prototype-app/frontend/src/lib/presentationBoundary.ts",
+      "prototype-app/frontend/src/lib/riskScoring.ts",
+      "prototype-app/frontend/src/lib/uiVersion.test.ts",
+      "prototype-app/frontend/src/lib/uiVersion.ts",
+      "prototype-app/frontend/src/main.tsx",
+      "prototype-app/frontend/src/pages/AiPolicyDetailPage.tsx",
+      "prototype-app/frontend/src/pages/BomInventoryPage.tsx",
+      "prototype-app/frontend/src/pages/BomManagementPage.tsx",
+      "prototype-app/frontend/src/pages/CampaignsPage.tsx",
+      "prototype-app/frontend/src/pages/ConfigurationsPage.tsx",
+      "prototype-app/frontend/src/pages/ConnectPage.tsx",
+      "prototype-app/frontend/src/pages/ExposureDashboardPage.tsx",
+      "prototype-app/frontend/src/pages/FindingDetailPage.tsx",
+      "prototype-app/frontend/src/pages/FindingsPage.tsx",
+      "prototype-app/frontend/src/pages/IntegrationRunQueuePage.tsx",
+      "prototype-app/frontend/src/pages/PlatformAiPolicyDetailPage.tsx",
+      "prototype-app/frontend/src/pages/PlatformVulnIntelDetailPage.tsx",
+      "prototype-app/frontend/src/pages/SoftwareIdentitiesPage.tsx",
+      "prototype-app/frontend/src/pages/SoftwareIdentityDetailPage.tsx",
+      "prototype-app/frontend/src/pages/SourcesPage.tsx",
+      "prototype-app/frontend/src/pages/UserManagementPage.tsx",
+      "prototype-app/frontend/src/pages/VulnIntelConfigPage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoCveAssetsPage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoCveSoftwarePage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx",
+      "prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx",
+      "prototype-app/frontend/src/pages/platform-feed-catalog.css",
+      "prototype-app/frontend/src/styles/ai-security.css",
+      "prototype-app/frontend/src/styles/base.css",
+      "prototype-app/frontend/src/styles/connect.css",
+      "prototype-app/frontend/src/styles/cve-workbench.css",
+      "prototype-app/frontend/src/styles/eol.css",
+      "prototype-app/frontend/src/styles/exposure-dashboard.css",
+      "prototype-app/frontend/src/styles/finding-detail.css",
+      "prototype-app/frontend/src/styles/findings-list.css",
+      "prototype-app/frontend/src/styles/index.css",
+      "prototype-app/frontend/src/styles/public-after.css",
+      "prototype-app/frontend/src/styles/public-before.css",
+      "prototype-app/frontend/src/styles/public-tokens.css",
+      "prototype-app/frontend/src/styles/shared-after-public.css",
+      "prototype-app/frontend/src/styles/shared-before-public.css",
+      "prototype-app/frontend/src/styles/shared.css",
+      "prototype-app/frontend/src/styles/ui2/app-base.css",
+      "prototype-app/frontend/src/styles/ui2/connect-base.css",
+      "prototype-app/frontend/src/styles/ui2/connect.css",
+      "prototype-app/frontend/src/styles/ui2/cve-base.css",
+      "prototype-app/frontend/src/styles/ui2/cve.css",
+      "prototype-app/frontend/src/styles/ui2/experience-base.css",
+      "prototype-app/frontend/src/styles/ui2/experience.css",
+      "prototype-app/frontend/src/styles/ui2/findings-base.css",
+      "prototype-app/frontend/src/styles/ui2/governance-base.css",
+      "prototype-app/frontend/src/styles/ui2/governance.css",
+      "prototype-app/frontend/src/styles/ui2/index.css",
+      "prototype-app/frontend/src/styles/ui2/inventory-base.css",
+      "prototype-app/frontend/src/styles/ui2/inventory.css",
+      "prototype-app/frontend/src/styles/ui2/legacy-bridge.css",
+      "prototype-app/frontend/src/styles/ui2/scope.test.ts",
+      "prototype-app/frontend/src/styles/ui2/shell.css",
+      "prototype-app/frontend/src/styles/ui2/tables.css",
+      "prototype-app/frontend/src/styles/ui2/tokens.css",
+      "prototype-app/frontend/src/styles/user-management.css",
+      "prototype-app/frontend/src/styles/vuln-repo.css",
+      "prototype-app/frontend/src/vite-env.d.ts"
+     ],
+     "evidence": [
+      "Captured gate-final/cascade-before.json before app edits; cascade-after.json reads every final import recursively, with no lazy application sheets.",
+      "Verified 5863 rules / 23652 declaration-selector pairs, all 31 inline consumers, existing design token values, and byte-identical public presentation. Source-order, conditions and priorities preserved; no coverage reachability deletion.",
+      "Auth pages share public markup: preserved canonical-token defaults in their original cascade position, restricted to the Experience root/descendants with zero specificity. Separate public defaults retain their original ordering and values.",
+      "One stylesheet import at main.tsx; remaining legacy aliases/import stubs/bridge removed before replacing the version switch. Route-aware data-ui=2 and scoutai-theme retained. CI already runs UI 2 only; workflow untouched; historical UI 1 baselines retained.",
+      "Original baseline files checksum-verified against source.json at 68a4a3bc; baseline unchanged. Podman stopped; no competing editor/tests or SG live services found.",
+      "Diagnosed first fast failure without loosening its assertion: never-defined executive --color-* fallback references now use four direct --dp-exec-* tokens with identical fixed palette values. Historical deleted stylesheet/boundary paths retained in route map; all 35 routes selected."
+     ],
+     "tests": [
+      "Fresh post-commit gate on 6d4906fc6aaa28d1e5d78a75bba49064864e04c2: lint 0 errors / 2 existing warnings; typecheck passed; Vitest 801 passed / 0 failed / 0 skipped in 84 files, including 35 scope tests.",
+      "Independent static migration verifier passed: 5863 rules / 23652 declaration-selector pairs, 31 inline consumers, all 16 retired files absent; public.css byte-identical; existing design-token values unchanged. Node syntax checks passed.",
+      "Affected-route selection against checkpoint B selects all 35 routes. Permanent artifact direct/link/history/public-style checks are added but not executed in this fast-only slice; full browser/visual/axe/live/build/coverage remains due at Step 8."
+     ],
+     "screenshots": [],
+     "limitations": [
+      "Static equivalence is not browser qualification. The final source has not had the full gate; Step 8 qualifies the branch tip after Step 7.",
+      "Final bundle size unmeasured; duplicated shared defaults can increase CSS. Checkpoint B was 752338 raw / 96964 gzip (+16.53% / +1.50% vs qualified Step 5), not a final-slice measurement.",
+      "Accessibility review and unrelated defects remain open; staging and human reviews waived. Checkpoint B live evidence retains 250 passed / 0 failed / 2 outbound ServiceNow provider skips."
+     ],
+     "reversal": "Revert only the final slice to restore checkpoint B source; UI 1 release rollback uses only the checksum-verified frozen Step 5 artifact.",
+     "statuses": {
+      "fixture": "fast_gate_verified; browser_qualification_due_at_Step8",
+      "localAuthenticated": "not_rerun_after_final_slice; due_at_Step8",
+      "staging": "waived_by_user",
+      "release": "not_requested"
+     },
+     "gateAttempts": [
+      {
+       "commit": "cf2157016751a2eb7ee3f084ecac808d76ea15a1",
+       "lint": "0 errors / 2 existing warnings",
+       "typecheck": "passed",
+       "vitest": {
+        "passed": 800,
+        "failed": 1,
+        "skipped": 0
+       },
+       "diagnosis": "New alias-retirement assertion found 16 references to never-defined --color-warn/accent/resolved/neutral-bar variables in Experience. Verified no definitions; replaced literal fallbacks by equivalent direct --dp-exec-* tokens, preserving colours in both themes. Assertion unchanged.",
+       "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final/attempt-1"
+      }
+     ],
+     "fastGate": {
+      "status": "verified",
+      "date": "2026-10-27",
+      "testedCommitBeforeEvidenceAmendment": "6d4906fc6aaa28d1e5d78a75bba49064864e04c2",
+      "testedFrontendTree": "fc25b50ef295346291ce154d37641b2e8ab5f7d8",
+      "testedApplicationSrcTree": "3faa6a35201678a56311e437d62735a1634e1b5e",
+      "lint": {
+       "errors": 0,
+       "existingWarnings": 2
+      },
+      "typecheck": "passed",
+      "vitest": {
+       "passed": 801,
+       "failed": 0,
+       "skipped": 0,
+       "files": 84,
+       "scopeTests": 35
+      },
+      "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final",
+      "evidenceAmendment": "Only Working Knowledge ledger/map/handoff documentation amended after this run. Frontend and application src trees unchanged."
+     }
+    }
+   ],
+   "checkpointB": {
+    "status": "verified_with_documented_intended_geometry_differences",
+    "host": {
+     "status": "verified_with_documented_intended_geometry_differences",
+     "commit": "f0bb95d4",
+     "applicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "lint": "0 errors / 2 existing warnings",
+     "typecheck": "passed",
+     "coverageTests": {
+      "passed": 788,
+      "failed": 0,
+      "skipped": 0,
+      "files": 84
+     },
+     "fixtureJourneys": {
+      "passed": 737,
+      "failed": 0,
+      "skipped": 0
+     },
+     "uiBoundaryRoutes": {
+      "passed": 15,
+      "failed": 0
+     },
+     "probe": {
+      "snapshotsAgainstStartingBaseline": 380,
+      "differentSnapshots": 12,
+      "classification": "Only Intelligence route .content/.panel height after eager Findings controls; all other properties unchanged. Original baseline retained.",
+      "coldNavigationBackComparisons": 240,
+      "coldNavigationBackDifferences": 0,
+      "boundarySequences": 120,
+      "badBoundarySequences": 0
+     },
+     "stateCheck": "identical to starting baseline",
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final/",
+     "coverageFloors": "met; unchanged: lines 52.17%, statements 49.5%, functions 41.44%, branches 40.3%"
+    },
+    "container": {
+     "status": "verified",
+     "testedCommit": "7b3f30b3eeeade80e10d2f8a30107fdd831cfc59",
+     "image": "mcr.microsoft.com/playwright:v1.63.0-noble",
+     "architecture": "aarch64",
+     "visual": {
+      "passed": 140,
+      "failed": 0,
+      "skipped": 0
+     },
+     "affected": {
+      "base": "68a4a3bc78f3688a095e8e89291cd671dd9891d6",
+      "routes": 35,
+      "passed": 140,
+      "failed": 0,
+      "skipped": 0
+     },
+     "axe": {
+      "current": 883,
+      "baseline": 883,
+      "new": 0,
+      "resolved": 0
+     },
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final-ctr"
+    },
+    "live": {
+     "status": "verified_with_two_provider_skips",
+     "testedCommit": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+     "passed": 250,
+     "failed": 0,
+     "skipped": 2,
+     "requiredCaseNamesReached": 250,
+     "missingExpectedCases": [],
+     "backend": {
+      "pid": 94226,
+      "tree": "2d25898ef3da9b73125b009810f097df51906cba",
+      "unchangedSince": "68a4a3bc",
+      "cwd": "prototype-app/backend",
+      "database": "scout_ui2_qual",
+      "jdbcConnectionsObserved": 9,
+      "platformFlyway": 8,
+      "tenant": "ui2-qual-2",
+      "tenantStatus": "ACTIVE",
+      "tenantSchemaVersion": 6
+     },
+     "skips": "Successful ServiceNow outbound save/test/sync delivery has no approved public endpoint; no external delivery exercised.",
+     "logs": "/private/tmp/sg-ui2-step6.QsSmLw/gate-checkpoint-b-final/live-complete-readiness"
+    },
+    "baseline": "/private/tmp/sg-ui2-step6.QsSmLw/baseline (original 68a4a3bc, checksums verified)",
+    "stopBeforeFinalSlice": false,
+    "sourceEquivalence": {
+     "hostTestedCommit": "f0bb95d494ca210871a6c294a4e44c07b221d9c0",
+     "containerTestedCommit": "7b3f30b3eeeade80e10d2f8a30107fdd831cfc59",
+     "fastAndLiveTestedCommit": "130729c7a1e57a1c9a221f79dfe0e0048bede239",
+     "currentApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "hostApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "containerApplicationSrcTree": "384efe6623ec412a93659587009892a27889f53e",
+     "currentVisualBaselineTree": "980a51c090e28121a0f9ed0b8a70f51a7db45400",
+     "containerVisualBaselineTree": "980a51c090e28121a0f9ed0b8a70f51a7db45400"
+    },
+    "bundle": {
+     "current": {
+      "cssRawBytes": 752338,
+      "cssGzipBytes": 96964,
+      "cssFiles": 4,
+      "jsRawBytes": 2519985,
+      "jsGzipBytes": 690746
+     },
+     "comparison": {
+      "Step 0": {
+       "rawBytes": 107328,
+       "rawPercent": 16.64,
+       "gzipBytes": 1568,
+       "gzipPercent": 1.64
+      },
+      "Step 6 start": {
+       "rawBytes": 106736,
+       "rawPercent": 16.53,
+       "gzipBytes": 1429,
+       "gzipPercent": 1.5
+      },
+      "Step 5 pre-focus performance check": {
+       "rawBytes": 107145,
+       "rawPercent": 16.61,
+       "gzipBytes": 1524,
+       "gzipPercent": 1.6
+      },
+      "Step 5 qualified focus-fix tip": {
+       "commit": "c29515d8",
+       "cssRawBytes": 645602,
+       "cssGzipBytes": 95535,
+       "rawBytes": 106736,
+       "rawPercent": 16.53,
+       "gzipBytes": 1429,
+       "gzipPercent": 1.5,
+       "evidence": "S5.focusFixGate.evidence[1]; same frontend tree as Step6 start 68a4a3bc"
+      }
+     },
+     "method": "Sum dist CSS files; gzip level 9 per file, same as recorded Step 0/Step 5. Repeated zero-specificity app boundary scopes increase raw CSS. Original frozen UI1 archive SHA256 verified; no UI1 build run."
+    },
+    "originalBaselineChecksumsVerified": true,
+    "frozenUi1Sha256": "f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707",
+    "finalSlice": "completed in separate final slice; see finalSlice and last units entry. Checkpoint B results qualify their recorded tested sources only."
+   },
+   "finalSliceAuthorization": {
+    "date": "2026-10-27",
+    "by": "user",
+    "instruction": "Continue past checkpoint B and complete the final Step 6 slice."
+   },
+   "completionScope": "All family/public/final retirement slices complete. Final slice fast gate passed; full final qualification remains Step 8 after Step 7.",
+   "finalSlice": {
+    "status": "complete_fast_gate_verified",
+    "startingCommit": "0049451a",
+    "testedCommitBeforeEvidenceAmendment": "6d4906fc6aaa28d1e5d78a75bba49064864e04c2",
+    "testedFrontendTree": "fc25b50ef295346291ce154d37641b2e8ab5f7d8",
+    "testedApplicationSrcTree": "3faa6a35201678a56311e437d62735a1634e1b5e",
+    "staticEvidence": "/private/tmp/sg-ui2-step6.QsSmLw/gate-final",
+    "fullQualification": "pending Step 8 after Step 7; no final-slice browser/live/build/coverage pass claimed",
+    "bundle": "unmeasured after final slice; Step 8 must report increases against Step 0 and qualified Step 5 honestly"
+   }
+  },
+  {
+   "id": "S7",
+   "title": "Archive and document",
+   "status": "verified",
+   "units": [
+    {
+     "title": "Archive P0 baseline, add verify-archive, document styles and rollback",
+     "files": [
+      "checkpoints/P0-baseline-frontend-src.tar.gz (+ .sha256, -manifest.json)",
+      "frontend/e2e/verify-archive.mjs",
+      "frontend/package.json (e2e:verify-archive)",
+      "docs/ui2-styles-and-rollback.md",
+      "docs/frontend.md (styles section)"
+     ],
+     "evidence": [
+      "2026-10-27: archive 487865af537e764fbeb1e3ed701913f48214a9f88c775275ece4c57d56b13fe1; verify-archive OK, 320 files match; tampered manifest fails (sha256 mismatch + unlisted file); expanded copy deleted only after the pass (318 tracked files removed in a16a5935)."
+     ],
+     "limitations": [
+      "Archive, docs and script only: no app source changed; lint/typecheck/e2e not rerun (Step 8 qualifies the final tip)."
+     ],
+     "reversal": "git revert the Step 7 commits; the archive restores the P0 tree via tar -xzf."
+    }
+   ]
   }
  ],
- "nextUnit": "Step 6 in a fresh session (STEP6_PROMPT.md) from the feat/ui2-step5-qualification tip; checkpoint B before the final Step 6 slice.",
+ "nextUnit": "Step 7 verified. Next: Step 8 full final qualification of the branch tip (any later commit means rerunning it). Push/CI needs separate approval; no release approval.",
  "checkDeferral": {
   "recorded": "2026-10-27",
   "by": "user",

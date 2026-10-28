@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Runs the fixture-backed checks against the artifacts built by build-artifacts.mjs.
 //
-//   node e2e/run.mjs journeys [--versions ui2,legacy]
-//   node e2e/run.mjs sweep    [--versions ui2,legacy] [--widths 390,768,1280,1440]
-//   node e2e/run.mjs visual   [--versions ui2,legacy]
-//   node e2e/run.mjs affected --routes /findings,/login [--versions ui2,legacy]
-//   node e2e/run.mjs update   [--versions ui2,legacy]
+//   node e2e/run.mjs journeys [--versions ui2]
+//   node e2e/run.mjs sweep    [--versions ui2] [--widths 390,768,1280,1440]
+//   node e2e/run.mjs visual   [--versions ui2]
+//   node e2e/run.mjs affected --routes /findings,/login [--versions ui2]
+//   node e2e/run.mjs update   [--versions ui2]
 //
-// Each version is served from its own artifact folder and port. Output goes to
+// The UI 2 candidate is served from its artifact folder and port. Output goes to
 // e2e/.results/<version>/. The process exits non-zero when any step fails.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -24,7 +24,10 @@ const args = Object.fromEntries(
 );
 const here = path.dirname(fileURLToPath(import.meta.url));
 const frontend = path.resolve(here, '..');
-const versions = (args.versions ?? 'ui2,legacy').split(',');
+const versions = (args.versions ?? process.env.E2E_VERSIONS ?? 'ui2').split(',');
+if (versions.length !== 1 || versions[0] !== 'ui2') {
+  throw new Error('Candidate checks run only on UI 2. Use tools/rollback-rehearsal.mjs for the checksum-verified frozen UI 1 artifact.');
+}
 const JOURNEYS = ['findings', 'cve', 'inventory', 'governance', 'connect', 'experience'];
 const THEMES = ['dark', 'light'];
 const AFFECTED_WIDTHS = '1280,390';

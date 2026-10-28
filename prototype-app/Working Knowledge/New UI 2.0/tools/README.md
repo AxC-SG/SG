@@ -1,17 +1,17 @@
 # UI 2.0 cleanup check tools
 
-Helper scripts used to qualify Steps 4 and 5 of the cleanup plan (`../CLEANUP_PLAN.md`). They are not part of the app or its CI. They live here, outside `frontend/`, so lint, typecheck and the builds never see them. Each script reads the e2e helpers in `prototype-app/frontend/e2e/` (fixtures, deterministic browser setup, artifact server), so run `npm run e2e:build` first.
+Helper scripts used to qualify Steps 4–6 of the cleanup plan (`../CLEANUP_PLAN.md`). They are not part of the app or its CI. They live here, outside `frontend/`, so lint, typecheck and the builds never see them. Each script reads the e2e helpers in `prototype-app/frontend/e2e/` (fixtures, deterministic browser setup, artifact server), so run `npm run e2e:build` first.
 
 Put every output in a scratch folder, never in the repo. The probe outputs are about 23 MB each.
 
 | Script | What it does |
 |---|---|
-| `host-gate.sh <label>` | Host half of the gate: lint, typecheck, `test:coverage` (saves `coverage-summary.json`), both builds with bundle sizes, `e2e:build`, `e2e:journeys`, the style probe for both versions, and the state check. Needs `GATE_WORK`; `GATE_BASELINE` is optional. Podman VM must be stopped. |
+| `host-gate.sh <label>` | Host half of the gate: lint, typecheck, `test:coverage` (saves `coverage-summary.json`), the UI 2 build with bundle sizes, `e2e:build`, `e2e:journeys`, the UI 2 style probe, and the state check. Needs `GATE_WORK`; `GATE_BASELINE` is optional. Podman VM must be stopped. |
 | `ctr-gate.sh <label>` | Container half: `e2e:visual` and `e2e:affected` (routes from `select-affected.mjs --base $AFFECTED_BASE`) in `mcr.microsoft.com/playwright:v1.63.0-noble`, on a `git archive` copy of HEAD. Needs `GATE_WORK` and `AFFECTED_BASE`, plus an npm cache filled on the host. |
 | `style-probe.mjs <frontend> <ui2\|legacy> <out.json>` | Computed styles of the foundation targets, including `::before`/`::after` and hover/focus, on every e2e route × dark/light × 1280/390. Measured from a cold direct link, after a client-side navigation sequence that loads every lazy route sheet, and after Back. Also checks the `data-ui` boundary through `/demo`. |
 | `probe-compare.mjs self <probe.json>` / `diff <before> <after>` | `self`: cold link vs navigation vs Back within one run, plus the boundary sequences. `diff`: one run against another. |
 | `state-check.mjs <frontend> <artifact dir> <port> <out.json>` | Sub-navigation hover (every expanded group) and the modal scrims (`.modal-backdrop`, `.fd3-modal-overlay`, `dialog.confirm-dialog::backdrop`), which the probe does not reach. Compare two outputs with `cmp`. |
-| `cascade-map.mjs <frontend> <out.json>` | Static map of which rule wins per (subject, property) against the foundation sheets, in effective load order. Step-4 specific; see its header. |
+| `cascade-map.mjs <frontend> <out.json> [foundation\|findings\|cve\|inventory\|governance\|connect\|experience\|public\|final]` | Static overlap map in effective load order. Defaults to the foundation sheets; Family modes include their shared base and presentation sheets; Retirement modes record selected legacy ownership. Public mode includes the extracted token sheet and explicit shared/public import anchors. This is a review aid: media/state reachability and full ancestor matching still need browser checks. |
 | `height-diag.mjs` | Finds the element and style behind a cold-vs-navigation difference. |
 | `rollback-rehearsal.mjs` | Rollback rehearsal with the frozen UI 1 archive (see its header): checks the sha256 and manifest, serves the archive as is, and answers its production API base from the local backend. Every other host is blocked and counted. |
 | `ui-attr.mjs` | Prints `data-ui` on a few routes of a served artifact. A UI 1 build must print null. |
@@ -20,4 +20,27 @@ Put every output in a scratch folder, never in the repo. The probe outputs are a
 
 Known limits:
 - The probe measures up to 4 elements per selector and a fixed property list. It is a regression net, not a full visual review.
-- Height-only differences between cold and navigation come from lazily loaded `findings-list.css` (see the ledger, S4 `findingsForLaterSteps`).
+- The historical cold/navigation differences came from lazy `findings-list.css` (S4 `findingsForLaterSteps`). Findings controls now load eagerly. The host probe waits for React route commit and settled requests before sampling; all style and boundary comparisons remain.
+
+From Step 6, candidate builds and checks run UI 2 only. UI 1 baselines remain historical evidence. For a legacy comparison, use the frozen `checkpoints/UI1-frozen-a3f1d1db.tar.gz` after checking its sha256 (`f040137d4956b5bcc68133b89b2eb1f28136a456561a76f7236200352c81a707`) and per-file manifest. `rollback-rehearsal.mjs` serves that frozen artifact; never rebuild UI 1 from the retiring source.
+
+Findings owns `src/styles/ui2/findings-base.css` for its shared controls and `findings.css` for page presentation. The base uses `:where(html[data-ui='2'])` so the UI 2 boundary adds no specificity. It loads before the presentation sheets on every route. Inventory-specific `iov-*` rules now live in `ui2/inventory-base.css`; the final entry-point slice removes the empty `finding-detail.css` and `findings-list.css` import stubs. See `../STEP6_FINDINGS_MAP.md`.
+
+CVE owns `src/styles/ui2/cve-base.css` for workflow and shared record-detail defaults and `cve.css` for page presentation. Its zero-specificity base loads before every presentation sheet and preserves Governance, Inventory and Campaign consumers. General controls and other-family rules remain in the legacy sheets until their owning slices. See `../STEP6_CVE_MAP.md`.
+
+Inventory owns `src/styles/ui2/inventory-base.css` for shared Inventory/lifecycle/quality/AI graph defaults and `inventory.css` for page presentation. Its zero-specificity base loads before Findings base so the existing shared AI page-root grid retains precedence. Navigation flyouts, generic app controls, policies and connector rules remain with their owners. See `../STEP6_INVENTORY_MAP.md`.
+
+Governance owns `src/styles/ui2/governance-base.css` for console/admin/policy and shared AI security defaults and `governance.css` for page presentation. Its zero-specificity base follows CVE base and precedes every presentation sheet. Connector run/scope controls and their reveal animation remain in `ai-security.css`; the final slice removes the `user-management.css` import stub. See `../STEP6_GOVERNANCE_MAP.md`.
+
+Connect owns `src/styles/ui2/connect-base.css`. Connect base follows Governance base and precedes presentation sheets. Shared provider/configuration controls retain their consumers; the feed catalog is eager. Connector reveal uses private ui2-connect-reveal; original reduced-motion state is preserved. See `../STEP6_CONNECT_MAP.md`.
+
+Experience owns `src/styles/ui2/experience-base.css`. Experience owns dashboard, Campaign and operations layouts, including exposure grids shared with Inventory. Its zero-specificity base loads before Inventory base and family presentation. Public/auth-entry markup and shared app/shell defaults remain for public/final extraction. See `../STEP6_EXPERIENCE_MAP.md`.
+
+Public owns `src/styles/public.css`. Public rules and legacy tokens are extracted without redesign. Shared defaults remain available to app consumers at their original source positions through explicit import anchors. Public routes retain the app boundary; frozen UI 1 is the only legacy reference. See `../STEP6_PUBLIC_MAP.md`.
+
+Checkpoint B follow-ups preserve the original Inventory success/warning/muted bar colours with combined semantic/fill selectors. The inspected eager Findings snapshot changes are generated only by pinned-container `e2e:update`; copy only inspected PNGs from scratch, retaining the tracked journey and axe baselines. See `../STEP6_CHECKPOINT_B.md`.
+
+
+The final Step 6 slice imports `styles/index.css` only from `main.tsx`. It orders public tokens/before/presentation/after, then the app entry. `ui2/app-base.css` owns the remaining shared defaults, including public markup needed by auth entry pages. Family sheets remain in their qualified order, followed by eager table controls and XYFlow CSS. App consumers use design tokens directly; the compatibility bridge and build-time version switch are removed. `PresentationBoundary` preserves the route-aware `data-ui="2"` boundary and theme storage. `cascade-map.mjs ... final` reads the complete import order. See `../STEP6_FINAL_MAP.md`.
+
+`e2e:build` retains the 15 direct boundary routes and permanently checks real public/app links plus browser Back/Forward at 390/1280 in both themes (20 additional states), including public computed-style equality with direct load. Step 8 must execute these checks on the final tip. UI 1 references remain historical/frozen only.

@@ -29,8 +29,8 @@ export function DonutChart({
   if (total === 0) {
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border,#e5e7eb)" strokeWidth={sw} />
-        <text x={cx} y={cy + 4} textAnchor="middle" fontSize={10} fill="var(--muted,#9ca3af)">—</text>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--dp-border)" strokeWidth={sw} />
+        <text x={cx} y={cy + 4} textAnchor="middle" fontSize={10} fill="var(--dp-text-2)">—</text>
       </svg>
     );
   }
@@ -44,7 +44,7 @@ export function DonutChart({
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0, overflow: 'visible' }}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border,#e5e7eb)" strokeWidth={sw} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--dp-border)" strokeWidth={sw} />
       {visible.map((seg) => {
         const arcLen = (seg.value / total) * C;
         const offset = -offsets[seg.key];
@@ -70,10 +70,10 @@ export function DonutChart({
           </circle>
         );
       })}
-      <text x={cx} y={cy + 2} textAnchor="middle" fontSize={13} fontWeight="700" fill="var(--title,#111827)">
+      <text x={cx} y={cy + 2} textAnchor="middle" fontSize={13} fontWeight="700" fill="var(--dp-text)">
         {total.toLocaleString()}
       </text>
-      <text x={cx} y={cy + 13} textAnchor="middle" fontSize={8} fill="var(--muted,#9ca3af)">
+      <text x={cx} y={cy + 13} textAnchor="middle" fontSize={8} fill="var(--dp-text-2)">
         {centerLabel}
       </text>
     </svg>

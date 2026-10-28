@@ -12,18 +12,6 @@
  * Presentation only: no element, label, handler, selector, navigation target or query change.
  * Inline styles in these components are left as they are. */
 
-/* ── Variables inline styles read with light-only fallbacks (see cve.css) ── */
-html[data-ui='2'] .ui2-experience-family {
-  --surface-bg: var(--dp-surface);
-  --input-bg: var(--dp-surface);
-  --border-color: var(--dp-border);
-  --text-1: var(--dp-text);
-  --title: var(--dp-text);
-  --surface-hover: var(--dp-hover);
-  --track: var(--dp-hover);
-}
-
-/* ── Page roots: no outer page card (reference `.dp-page`) ───────────── */
 html[data-ui='2'] .ui2-experience-family.page-grid,
 html[data-ui='2'] .ui2-experience-family.campaigns-page,
 html[data-ui='2'] .ui2-experience-family.cd-page {

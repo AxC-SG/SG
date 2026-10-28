@@ -1,14 +1,21 @@
 {
  "description": "Maps changed presentation files (paths relative to prototype-app/frontend) to route families in e2e/routes.mjs. Patterns are regular expressions. A foundation match runs every family plus the public-route isolation checks. A presentation file (src/**/*.css or a non-test src/**/*.tsx) that matches nothing runs the full e2e:sweep.",
  "foundation": [
-  "^src/styles/ui2/(tokens|primitives|shell|legacy-bridge|index)\\.css$",
+  "^src/styles/ui2/(tokens|primitives|shell|app-base|tables|legacy-bridge|index)\\.css$",
+  "^src/styles/ui2/findings-base\\.css$",
+  "^src/styles/ui2/cve-base\\.css$",
+  "^src/styles/ui2/inventory-base\\.css$",
+  "^src/styles/ui2/governance-base\\.css$",
   "^src/styles/(index|base|shared)\\.css$",
   "^src/(App|main)\\.tsx$",
   "^src/app/",
-  "^src/lib/uiVersion\\.ts$",
+  "^src/lib/(presentationBoundary|uiVersion)\\.ts$",
   "^src/components/",
   "^src/features/widgets/",
-  "^src/lib/.*\\.tsx$"
+  "^src/lib/.*\\.tsx$",
+  "^src/styles/ui2/connect-base\\.css$",
+  "^src/styles/ui2/experience-base\\.css$",
+  "^src/styles/(public|public-tokens|public-before|public-after|shared-before-public|shared-after-public)\\.css$"
  ],
  "families": {
   "findings": [

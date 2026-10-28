@@ -49,7 +49,7 @@
      "title": "Snapshot relevant current tracked and untracked work",
      "status": "verified",
      "evidence": [
-      "checkpoints/P0-baseline-frontend-src/ (rsync of prototype-app/frontend excluding node_modules/dist/coverage); checkpoints/P0-baseline-src.sha256 (297 src files)"
+      "checkpoints/P0-baseline-frontend-src.tar.gz (archive of prototype-app/frontend excluding node_modules/dist/coverage; manifest alongside); checkpoints/P0-baseline-src.sha256 (297 src files)"
      ]
     },
     {
@@ -156,7 +156,7 @@
     "frontend/src/main.tsx (+2 lines: import, applyUiVersion call)",
     "frontend/src/vite-env.d.ts (+1 line: VITE_UI_VERSION type)"
    ],
-   "rollback": "Presentation rollback: build/serve without VITE_UI_VERSION (no data or URL impact). Code rollback: delete frontend/src/styles/ui2/ and frontend/src/lib/uiVersion*.ts, remove the ui2 import line from styles/index.css, the two uiVersion lines from main.tsx and the VITE_UI_VERSION line from vite-env.d.ts; or restore from checkpoints/P0-baseline-frontend-src.",
+   "rollback": "Presentation rollback: build/serve without VITE_UI_VERSION (no data or URL impact). Code rollback: delete frontend/src/styles/ui2/ and frontend/src/lib/uiVersion*.ts, remove the ui2 import line from styles/index.css, the two uiVersion lines from main.tsx and the VITE_UI_VERSION line from vite-env.d.ts; or restore from checkpoints/P0-baseline-frontend-src.tar.gz (verify with frontend/e2e/verify-archive.mjs first).",
    "preview": "cd prototype-app/frontend && VITE_UI_VERSION=2 npx vite --port 5175 --strictPort"
   },
   {

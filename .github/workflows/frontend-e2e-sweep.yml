@@ -1,7 +1,7 @@
 name: Frontend E2E Sweep
 
-# Full route sweep and axe comparison at 390/768/1280/1440px in both themes and both UI
-# versions. Kept out of quality.yml so the schedule does not re-run the other quality jobs.
+# Full UI 2 route sweep and axe comparison at 390/768/1280/1440px in both themes.
+# Kept out of quality.yml so the schedule does not re-run the other quality jobs.
 on:
   schedule:
     - cron: '30 4 * * *'
@@ -14,6 +14,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     env:
       E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+      E2E_VERSIONS: ui2
     defaults:
       run:
         working-directory: prototype-app/frontend

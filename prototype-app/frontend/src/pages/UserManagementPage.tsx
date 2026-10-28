@@ -662,7 +662,7 @@ export function UserManagementPage() {
                                         autoFocus
                                         defaultValue={member.role}
                                         disabled={!mayManageUsers || updateMember.isPending}
-                                        style={{ fontSize: 12, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--title)' }}
+                                        style={{ fontSize: 12, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--dp-border)', background: 'var(--dp-surface)', color: 'var(--dp-text)' }}
                                         onChange={(event) => {
                                           event.stopPropagation();
                                           updateMember.mutate({ memberId: member.id, payload: { role: event.target.value } });

@@ -17,7 +17,7 @@ function BomTypeBadge({ type }: { type: string }) {
     AI_BOM: { color: '#0891b2', bg: 'color-mix(in srgb, #0891b2 12%, transparent)' },
     VENDOR: { color: '#059669', bg: 'color-mix(in srgb, #059669 12%, transparent)' },
   };
-  const { color, bg } = colorMap[type] ?? { color: 'var(--muted)', bg: 'var(--panel-muted)' };
+  const { color, bg } = colorMap[type] ?? { color: 'var(--dp-text-2)', bg: 'var(--dp-surface-2)' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', padding: '2px 8px',
@@ -31,11 +31,11 @@ function BomTypeBadge({ type }: { type: string }) {
 
 function RiskBadge({ level, score }: { level: string; score: number }) {
   const colorMap: Record<string, { color: string; bg: string }> = {
-    CRITICAL: { color: 'var(--critical)', bg: 'color-mix(in srgb, var(--critical) 12%, transparent)' },
-    HIGH:     { color: 'var(--high)',     bg: 'color-mix(in srgb, var(--high) 12%, transparent)' },
+    CRITICAL: { color: 'var(--dp-critical)', bg: 'color-mix(in srgb, var(--dp-critical) 12%, transparent)' },
+    HIGH:     { color: 'var(--dp-high)',     bg: 'color-mix(in srgb, var(--dp-high) 12%, transparent)' },
     MEDIUM:   { color: '#d88f3d',         bg: 'color-mix(in srgb, #d88f3d 12%, transparent)' },
-    LOW:      { color: 'var(--accent)',   bg: 'color-mix(in srgb, var(--accent) 10%, transparent)' },
-    NONE:     { color: 'var(--muted)',    bg: 'color-mix(in srgb, var(--muted) 8%, transparent)' },
+    LOW:      { color: 'var(--dp-accent)',   bg: 'color-mix(in srgb, var(--dp-accent) 10%, transparent)' },
+    NONE:     { color: 'var(--dp-text-2)',    bg: 'color-mix(in srgb, var(--dp-text-2) 8%, transparent)' },
   };
   const { color, bg } = colorMap[level] ?? colorMap['NONE'];
   return (
@@ -64,11 +64,11 @@ function RiskPill({ level }: { level: string }) {
 function RiskBar({ score, level }: { score: number; level: string }) {
   const pct = (score / 10) * 100;
   const colorMap: Record<string, string> = {
-    CRITICAL: 'var(--critical)', HIGH: 'var(--high)',
-    MEDIUM: '#d88f3d', LOW: 'var(--accent)', NONE: 'var(--muted)',
+    CRITICAL: 'var(--dp-critical)', HIGH: 'var(--dp-high)',
+    MEDIUM: '#d88f3d', LOW: 'var(--dp-accent)', NONE: 'var(--dp-text-2)',
   };
   return (
-    <div style={{ height: 5, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', margin: '6px 0 10px' }}>
+    <div style={{ height: 5, borderRadius: 999, background: 'var(--dp-border)', overflow: 'hidden', margin: '6px 0 10px' }}>
       <div style={{ height: '100%', width: `${pct}%`, background: colorMap[level] ?? colorMap['NONE'], borderRadius: 999, transition: 'width 0.4s ease' }} />
     </div>
   );
@@ -76,13 +76,13 @@ function RiskBar({ score, level }: { score: number; level: string }) {
 
 function RiskBarInline({ score, level }: { score: number; level: string }) {
   const colorMap: Record<string, string> = {
-    CRITICAL: 'var(--critical)', HIGH: 'var(--high)',
-    MEDIUM: '#d88f3d', LOW: 'var(--accent)', NONE: 'var(--muted)',
+    CRITICAL: 'var(--dp-critical)', HIGH: 'var(--dp-high)',
+    MEDIUM: '#d88f3d', LOW: 'var(--dp-accent)', NONE: 'var(--dp-text-2)',
   };
   const color = colorMap[level] ?? colorMap['NONE'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', minWidth: 60 }}>
+      <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--dp-border)', overflow: 'hidden', minWidth: 60 }}>
         <div style={{ height: '100%', borderRadius: 999, width: `${Math.min(100, score * 10)}%`, background: color }} />
       </div>
       <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 28 }}>{score.toFixed(1)}</span>
@@ -94,10 +94,10 @@ function CveSeverityRow({ critical, high, medium, low }: {
   critical: number; high: number; medium: number; low: number;
 }) {
   const chips = [
-    { count: critical, label: 'CRITICAL', color: 'var(--critical)' },
-    { count: high,     label: 'HIGH',     color: 'var(--high)' },
+    { count: critical, label: 'CRITICAL', color: 'var(--dp-critical)' },
+    { count: high,     label: 'HIGH',     color: 'var(--dp-high)' },
     { count: medium,   label: 'MED',      color: '#d88f3d' },
-    { count: low,      label: 'LOW',      color: 'var(--accent)' },
+    { count: low,      label: 'LOW',      color: 'var(--dp-accent)' },
   ].filter(c => c.count > 0);
 
   if (chips.length === 0) return <span className="panel-caption" style={{ fontSize: 11 }}>No CVEs correlated</span>;
@@ -123,10 +123,10 @@ function CveInlineBar({ critical, high, medium, low, total }: {
   if (total === 0) return <span className="panel-caption">—</span>;
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-      {critical > 0 && <span style={{ fontWeight: 700, color: 'var(--critical)', fontSize: 12 }}>{critical}C</span>}
-      {high > 0     && <span style={{ fontWeight: 700, color: 'var(--high)',     fontSize: 12 }}>{high}H</span>}
+      {critical > 0 && <span style={{ fontWeight: 700, color: 'var(--dp-critical)', fontSize: 12 }}>{critical}C</span>}
+      {high > 0     && <span style={{ fontWeight: 700, color: 'var(--dp-high)',     fontSize: 12 }}>{high}H</span>}
       {medium > 0   && <span style={{ fontWeight: 700, color: '#d88f3d',         fontSize: 12 }}>{medium}M</span>}
-      {low > 0      && <span style={{ fontWeight: 700, color: 'var(--muted)',     fontSize: 12 }}>{low}L</span>}
+      {low > 0      && <span style={{ fontWeight: 700, color: 'var(--dp-text-2)',     fontSize: 12 }}>{low}L</span>}
     </div>
   );
 }
@@ -145,9 +145,9 @@ function FilterPills({ value, options, onChange }: {
           onClick={() => onChange(opt)}
           style={{
             padding: '3px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', border: '1px solid var(--border)',
-            background: value === opt ? 'var(--accent)' : 'var(--panel-muted)',
-            color: value === opt ? 'var(--panel)' : 'var(--text)',
+            cursor: 'pointer', border: '1px solid var(--dp-border)',
+            background: value === opt ? 'var(--dp-accent)' : 'var(--dp-surface-2)',
+            color: value === opt ? 'var(--dp-surface)' : 'var(--dp-text)',
           }}
         >
           {opt}
@@ -188,9 +188,9 @@ function SummaryWidgets({ apps }: { apps: ApplicationRiskSummary[] }) {
 
 function AppCard({ app, onSelect }: { app: ApplicationRiskSummary; onSelect: (app: ApplicationRiskSummary) => void }) {
   const borderColor =
-    app.riskLevel === 'CRITICAL' ? 'color-mix(in srgb, var(--critical) 35%, transparent)' :
-    app.riskLevel === 'HIGH'     ? 'color-mix(in srgb, var(--high) 30%, transparent)' :
-    'var(--border)';
+    app.riskLevel === 'CRITICAL' ? 'color-mix(in srgb, var(--dp-critical) 35%, transparent)' :
+    app.riskLevel === 'HIGH'     ? 'color-mix(in srgb, var(--dp-high) 30%, transparent)' :
+    'var(--dp-border)';
 
   return (
     <div
@@ -222,7 +222,7 @@ function AppCard({ app, onSelect }: { app: ApplicationRiskSummary; onSelect: (ap
           { value: app.vulnerableComponents, label: 'vulnerable' },
           { value: app.eolComponents,      label: 'EOL' },
         ].map(({ value, label }) => (
-          <div key={label} style={{ textAlign: 'center', padding: '8px 4px', borderRadius: 6, background: 'var(--panel-muted)', border: '1px solid var(--border)' }}>
+          <div key={label} style={{ textAlign: 'center', padding: '8px 4px', borderRadius: 6, background: 'var(--dp-surface-2)', border: '1px solid var(--dp-border)' }}>
             <div style={{ fontWeight: 700, fontSize: 18 }}>{value}</div>
             <div className="panel-caption" style={{ fontSize: 11 }}>{label}</div>
           </div>
@@ -231,7 +231,7 @@ function AppCard({ app, onSelect }: { app: ApplicationRiskSummary; onSelect: (ap
 
       <CveSeverityRow critical={app.criticalCveCount} high={app.highCveCount} medium={app.mediumCveCount} low={app.lowCveCount} />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--dp-border)' }}>
         <span className="panel-caption" style={{ fontSize: 11 }}>
           {app.lastIngestedAt ? `Ingested ${timeAgo(app.lastIngestedAt)}` : 'Not yet ingested'}
         </span>
@@ -329,12 +329,12 @@ function AllApplicationsListView({
                     <td style={{ fontWeight: 600 }}>{app.totalComponents}</td>
                     <td>
                       {app.vulnerableComponents > 0
-                        ? <span style={{ fontWeight: 700, color: 'var(--high)' }}>{app.vulnerableComponents}</span>
+                        ? <span style={{ fontWeight: 700, color: 'var(--dp-high)' }}>{app.vulnerableComponents}</span>
                         : <span className="panel-caption">0</span>}
                     </td>
                     <td>
                       {app.findingCount > 0
-                        ? <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{app.findingCount}</span>
+                        ? <span style={{ fontWeight: 700, color: 'var(--dp-accent)' }}>{app.findingCount}</span>
                         : <span className="panel-caption">—</span>}
                     </td>
                     <td>
@@ -401,7 +401,7 @@ export function ApplicationsDashboard() {
   if (isError) {
     return (
       <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'var(--critical)' }}>Failed to load application risk data.</p>
+        <p style={{ color: 'var(--dp-critical)' }}>Failed to load application risk data.</p>
       </div>
     );
   }

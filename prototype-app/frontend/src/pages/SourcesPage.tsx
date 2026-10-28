@@ -688,7 +688,7 @@ export function SourcesPage({
                 {run.status}
               </span>
               {run.errorMessage && (
-                <div className="panel-caption" style={{ marginTop: 4, color: 'var(--critical)' }}>{run.errorMessage}</div>
+                <div className="panel-caption" style={{ marginTop: 4, color: 'var(--dp-critical)' }}>{run.errorMessage}</div>
               )}
             </>
           )

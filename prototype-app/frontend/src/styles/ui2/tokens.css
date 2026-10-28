@@ -1,8 +1,7 @@
 /* UI 2.0 design tokens, translated from the design reference
  * (Working Knowledge/New UI 2.0/design-reference/src/design-preview/styles/tokens.css).
  *
- * Scoped to html[data-ui='2'] so nothing changes until the presentation flag is set
- * (see src/lib/uiVersion.ts). Fonts fall back to the system stack: the reference's
+ * Scoped to the app route boundary (src/lib/presentationBoundary.ts). The
  * Google Fonts import is not carried over because the deployed CSP (font-src 'self')
  * would block it. */
 html[data-ui='2'] {
@@ -61,6 +60,17 @@ html[data-ui='2'] {
   --dp-control-sm: 28px;
   --dp-control-md: 32px;
   --dp-control-lg: 36px;
+  /* Existing executive dashboard fallback palette, unchanged in both themes. */
+  --dp-exec-warning: #f59e0b;
+  --dp-exec-accent: #3b82f6;
+  --dp-exec-resolved: #22c55e;
+  --dp-exec-neutral-bar: #6b7280;
+
+  --dp-control-xl: 40px;
+  --dp-radius-xl: 16px;
+  --dp-space-10: 40px;
+  --dp-space-12: 48px;
+  color-scheme: light;
 
   --dp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dp-dur-fast: 120ms;
@@ -68,6 +78,7 @@ html[data-ui='2'] {
 }
 
 html[data-ui='2'][data-theme='dark'] {
+  color-scheme: dark;
   --dp-bg: #0b0b0e;
   --dp-surface: #121216;
   --dp-surface-2: #16161b;

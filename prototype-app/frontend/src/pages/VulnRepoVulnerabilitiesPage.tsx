@@ -43,7 +43,7 @@ const DEFAULT_INTEL_COL_FILTERS: IntelColFilters = {
 // Funnel SVG icon used in column headers
 const FunnelIcon = ({ active }: { active: boolean }) => (
   <svg viewBox="0 0 12 12" width="11" height="11"
-    fill={active ? 'var(--accent,#3b82f6)' : 'currentColor'} aria-hidden="true">
+    fill={active ? 'var(--dp-accent)' : 'currentColor'} aria-hidden="true">
     <path d="M1 2h10l-4 5v3l-2-1V7z" />
   </svg>
 );
@@ -387,7 +387,7 @@ export function VulnRepoVulnerabilitiesPage() {
       return (
         <div className="fpl-col-filter-checks">
           {options.map((v) => (
-            <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--title)' }}>
+            <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--dp-text)' }}>
               <input type="checkbox" checked={selected.includes(v)} onChange={() => toggleColArr(key, v)} style={{ flexShrink: 0 }} />
               {renderLabel(v)}
             </label>
@@ -401,7 +401,7 @@ export function VulnRepoVulnerabilitiesPage() {
       top: filterAnchorPos?.top ?? 100,
       left: filterAnchorPos?.left ?? 200,
       zIndex: 9999,
-      background: 'var(--panel-solid)',
+      background: 'var(--dp-surface)',
       boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
     };
 
@@ -439,7 +439,7 @@ export function VulnRepoVulnerabilitiesPage() {
         {colKey === 'applicable' && (
           <div className="fpl-col-filter-checks">
             {(['YES', 'NO'] as const).map((v) => (
-              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--title)' }}>
+              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--dp-text)' }}>
                 <input type="radio" name="intel-applicable-filter" style={{ flexShrink: 0 }}
                   checked={colFilters.applicable === v}
                   onChange={() => { setColFilters((f) => ({ ...f, applicable: f.applicable === v ? '' : v })); setPage(0); }} />
@@ -459,7 +459,7 @@ export function VulnRepoVulnerabilitiesPage() {
         {colKey === 'openFindings' && (
           <div className="fpl-col-filter-checks">
             {(['yes', 'no'] as const).map((v) => (
-              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--title)' }}>
+              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--dp-text)' }}>
                 <input type="radio" name="intel-openfindings-filter" style={{ flexShrink: 0 }}
                   checked={colFilters.openFindings === v}
                   onChange={() => { setColFilters((f) => ({ ...f, openFindings: f.openFindings === v ? '' : v })); setPage(0); }} />
@@ -471,7 +471,7 @@ export function VulnRepoVulnerabilitiesPage() {
         {colKey === 'hasAiSummary' && (
           <div className="fpl-col-filter-checks">
             {(['yes', 'no'] as const).map((v) => (
-              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--title)' }}>
+              <label key={v} className="fpl-col-filter-check" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, padding: '13px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--dp-text)' }}>
                 <input type="radio" name="intel-aisum-filter" style={{ flexShrink: 0 }}
                   checked={colFilters.hasAiSummary === v}
                   onChange={() => { setColFilters((f) => ({ ...f, hasAiSummary: f.hasAiSummary === v ? '' : v })); setPage(0); }} />
@@ -666,7 +666,7 @@ export function VulnRepoVulnerabilitiesPage() {
                   ? { background: '#b7791f22', color: '#b7791f', border: '1px solid #b7791f44' }
                   : orgImpact === 'LOW'
                     ? { background: '#2d6a4f22', color: '#2d6a4f', border: '1px solid #2d6a4f44' }
-                    : { background: 'var(--panel-muted)', color: 'var(--muted)', border: '1px solid var(--border)' };
+                    : { background: 'var(--dp-surface-2)', color: 'var(--dp-text-2)', border: '1px solid var(--dp-border)' };
             const orgImpactLabel = orgImpact === 'NONE' ? 'No' : orgImpact.charAt(0) + orgImpact.slice(1).toLowerCase();
             const cls = `risk-score-badge risk-score-badge--${riskScoreLabel(r.score).toLowerCase()}`;
             return {

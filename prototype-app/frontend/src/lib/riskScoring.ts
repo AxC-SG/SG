@@ -38,10 +38,10 @@ export function riskScoreLabel(score: number): RiskScoreLabel {
 }
 
 export function riskScoreColor(score: number): string {
-  if (score >= 9) return 'var(--critical, #dc3545)';
-  if (score >= 7) return 'var(--high, #f57b2a)';
-  if (score >= 4) return 'var(--medium, #d9a404)';
-  return 'var(--low, #45a669)';
+  if (score >= 9) return 'var(--dp-critical)';
+  if (score >= 7) return 'var(--dp-high)';
+  if (score >= 4) return 'var(--dp-medium)';
+  return 'var(--dp-low)';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

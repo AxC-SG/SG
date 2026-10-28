@@ -134,7 +134,7 @@ function ExposureFunnelWidget({
                 dominantBaseline="middle"
                 fontSize={13}
                 fontWeight={600}
-                fill="var(--text-primary, #e2e8f0)"
+                fill="var(--dp-text)"
               >
                 {stage.label}
               </text>
