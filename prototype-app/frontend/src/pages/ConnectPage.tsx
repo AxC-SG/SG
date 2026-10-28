@@ -8,11 +8,14 @@ import { EolSourcePanel } from '../components/EolSourcePanel';
 import { SccmConnectorPage } from './SccmConnectorPage';
 import { AwsDiscoveryConnectorPage } from './AwsDiscoveryConnectorPage';
 import { AzureDiscoveryConnectorPage } from './AzureDiscoveryConnectorPage';
+import { GcpDiscoveryConnectorPage } from './GcpDiscoveryConnectorPage';
 import { api } from '../api/client';
 import type { VulnIntelSourceStatus, VulnIntelSourcesSummary } from '../api/client';
 import {
   useAwsDiscoveryConfigQuery,
   useAzureDiscoveryConfigQuery,
+  useGcpDiscoveryConfigQuery,
+  useJiraTicketingConfigQuery,
   useSccmCmdbConfigQuery,
   useServiceNowCmdbConfigQuery
 } from '../features/connect/queries';
@@ -24,6 +27,11 @@ import { BomManagementPage } from './BomManagementPage';
 import { AiSecurityConnectorPage } from './AiSecurityConnectorPage';
 import { AiSecurityAzureConnectorPage } from './AiSecurityAzureConnectorPage';
 import { CopilotStudioConnectorPage } from './CopilotStudioConnectorPage';
+import { JiraTicketingConnectorPage } from './JiraTicketingConnectorPage';
+import { PatchConnectorPage } from './PatchConnectorPage';
+import { useQueries } from '@tanstack/react-query';
+import { fixIntelligenceApi } from '../features/fix-intelligence/api';
+import type { PatchProvider } from '../features/fix-intelligence/types';
 import { pathForPlatformView } from '../app/routes';
 import { canUseEntitlement } from '../features/auth/entitlements';
 
@@ -35,6 +43,7 @@ type ConnectorId =
   | 'sccm-cmdb'
   | 'aws-discovery'
   | 'azure-discovery'
+  | 'gcp-discovery'
   | 'ai-security-aws'
   | 'ai-security-azure'
   | 'ai-security-copilot'
@@ -46,7 +55,12 @@ type ConnectorId =
   | 'advisory-feed'
   | 'endoflife-date'
   | 'euvd-feed'
-  | 'jvn-feed';
+  | 'jvn-feed'
+  | 'jira-ticketing'
+  | 'patch-sccm'
+  | 'patch-intune'
+  | 'patch-bigfix'
+  | 'patch-tanium';
 
 type ConnectView = 'sources' | 'run-history';
 
@@ -64,6 +78,8 @@ type InventoryConnectorStatus = {
   isFailed: boolean;
   demoDisabled: boolean;
   lastSyncAt?: string;
+  /** Overrides the default sync-oriented dot tooltip for connectors that never sync. */
+  label?: string;
 };
 
 /* ── Inline SVG connector icons ─────────────────────────────────────────────
@@ -106,6 +122,34 @@ const IconAzure = (
   <svg width="44" height="40" viewBox="0 0 44 40" aria-hidden="true">
     <path d="M17.2 5.2h10.4L16.6 26.2H8z" fill="#0078D4" />
     <path d="M19.2 28.4 28.8 10.8l8.6 23.8H14.2z" fill="#50BCEB" />
+  </svg>
+);
+
+// Jira: the brand's nested chevron rhombus in Atlassian blue, the lower-left half lighter.
+const IconJira = (
+  <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+    <path d="M20 2.6 37.4 20 20 37.4l-6.8-6.8L27 16.8l-7-7Z" fill="#2684FF" />
+    <path d="M20 2.6 2.6 20l6.8 6.8L20 16.2Z" fill="#2684FF" opacity="0.55" />
+  </svg>
+);
+
+// Patch tools get neutral lettermark tiles rather than vendor logos.
+function patchTile(letters: string, color: string): React.ReactElement {
+  return (
+    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="8" fill={color} />
+      <text x="20" y="25" textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff" fontFamily="sans-serif">{letters}</text>
+    </svg>
+  );
+}
+
+// Google Cloud: the four-colour cloud outline, drawn inline rather than shipped as a logo file.
+const IconGcp = (
+  <svg width="44" height="40" viewBox="0 0 44 40" aria-hidden="true">
+    <path d="M27.6 13.4h1.2l3.4-3.4.2-1.4A15.2 15.2 0 0 0 7.6 16a1.8 1.8 0 0 1 1.2-.1l6.8-1.1s.3-.6.5-.6a8.5 8.5 0 0 1 11.5-.8Z" fill="#EA4335" />
+    <path d="M37 16a15.3 15.3 0 0 0-4.6-7.4l-4.8 4.8a8.5 8.5 0 0 1 3.1 6.7v.9a4.3 4.3 0 1 1 0 8.5h-8.5l-.9.9v5.1l.9.8h8.5A11 11 0 0 0 37 16Z" fill="#4285F4" />
+    <path d="M13.4 36.3h8.5v-6.8h-8.5a4.2 4.2 0 0 1-1.8-.4l-1.2.4-3.4 3.4-.3 1.2a11 11 0 0 0 6.7 2.2Z" fill="#34A853" />
+    <path d="M13.4 14.2A11 11 0 0 0 6.7 34l4.9-4.9a4.3 4.3 0 1 1 5.6-5.6l4.9-4.9a11 11 0 0 0-8.7-4.4Z" fill="#FBBC05" />
   </svg>
 );
 
@@ -238,6 +282,12 @@ const CONNECTORS: ConnectorDefinition[] = [
     icon: IconAzure
   },
   {
+    id: 'gcp-discovery',
+    name: 'Google Cloud',
+    summary: 'Compute Engine VMs with OS packages, plus GKE, Cloud Run, Functions, Cloud SQL, Storage and Artifact Registry.',
+    icon: IconGcp
+  },
+  {
     id: 'ai-security-aws',
     name: 'AWS Bedrock',
     summary: 'AI resource discovery and posture assessment for AWS Bedrock agents and models.',
@@ -308,6 +358,36 @@ const CONNECTORS: ConnectorDefinition[] = [
     name: 'JVN Vulnerability Database',
     summary: 'Ingest Japan Vulnerability Notes (JVNdb) records via the MyJVN API and sync JVNDB-to-CVE correlations.',
     icon: IconJvn
+  },
+  {
+    id: 'jira-ticketing',
+    name: 'Jira',
+    summary: 'Raise remediation issues for findings in a Jira project. Overrides ServiceNow ticketing.',
+    icon: IconJira
+  },
+  {
+    id: 'patch-sccm',
+    name: 'SCCM / MECM Patches',
+    summary: 'Import software updates, per-device compliance and deployment schedules from SCCM/MECM.',
+    icon: patchTile('CM', '#3b6fd8')
+  },
+  {
+    id: 'patch-intune',
+    name: 'Microsoft Intune',
+    summary: 'Import managed devices and Windows update status through Microsoft Graph.',
+    icon: patchTile('IN', '#2d8a9e')
+  },
+  {
+    id: 'patch-bigfix',
+    name: 'HCL BigFix',
+    summary: 'Import Fixlets, CVEs and action status from an on-premises BigFix server.',
+    icon: patchTile('BF', '#7a4fc9')
+  },
+  {
+    id: 'patch-tanium',
+    name: 'Tanium Cloud',
+    summary: 'Import endpoints, patches and deployment status from Tanium Cloud.',
+    icon: patchTile('TA', '#c2531f')
   }
 ];
 
@@ -327,12 +407,22 @@ const INVENTORY_CONNECTOR_IDS: ConnectorId[] = [
   'sccm-cmdb',
   'aws-discovery',
   'azure-discovery',
+  'gcp-discovery',
   'ai-security-aws',
   'ai-security-azure',
   'ai-security-copilot'
 ];
 
 const BOM_CONNECTOR_IDS: ConnectorId[] = ['sbom-endpoint', 'bom-management'];
+
+const TICKETING_CONNECTOR_IDS: ConnectorId[] = ['jira-ticketing'];
+
+const PATCH_CONNECTORS: Array<{ id: ConnectorId; provider: PatchProvider }> = [
+  { id: 'patch-sccm', provider: 'sccm' },
+  { id: 'patch-intune', provider: 'intune' },
+  { id: 'patch-bigfix', provider: 'bigfix' },
+  { id: 'patch-tanium', provider: 'tanium' }
+];
 
 // The AI connectors are entitlement-gated, so they drop out of Inventory rather than
 // leaving an empty section behind.
@@ -544,11 +634,54 @@ function buildInventoryConnectorStatus(config: {
   };
 }
 
+/**
+ * Health for a ticketing connector.
+ *
+ * <p>These never run an inventory sync, so a missing last-sync timestamp is normal rather than a
+ * warning. What matters is whether credentials are saved and whether the last connection test
+ * passed.
+ */
+function buildTicketingConnectorStatus(config: {
+  configured?: boolean;
+  enabled?: boolean;
+  lastTestStatus?: string;
+  lastTestedAt?: string;
+} | null, demoDisabled: boolean): InventoryConnectorStatus {
+  const lastTestStatus = config?.lastTestStatus?.trim().toUpperCase();
+  const configured = Boolean(config?.configured);
+  const isFailed = lastTestStatus === 'FAILED';
+  const label = !configured
+    ? 'Not configured'
+    : isFailed
+      ? 'Last connection test failed'
+      : config?.enabled === false
+        ? 'Configured but disabled'
+        : lastTestStatus === 'SUCCESS'
+          ? 'Connection test passed'
+          : 'Configured — not yet tested';
+  return {
+    hasSynced: configured && !isFailed && config?.enabled !== false,
+    isFailed,
+    demoDisabled,
+    label,
+  };
+}
+
 type ConnectorDetailsProps = {
   connectorId: ConnectorId;
 };
 
 function ConnectorDetailContent({ connectorId }: ConnectorDetailsProps) {
+  if (connectorId === 'gcp-discovery') {
+    return <GcpDiscoveryConnectorPage />;
+  }
+  if (connectorId === 'jira-ticketing') {
+    return <JiraTicketingConnectorPage />;
+  }
+  const patch = PATCH_CONNECTORS.find((item) => item.id === connectorId);
+  if (patch) {
+    return <PatchConnectorPage provider={patch.provider} />;
+  }
   if (connectorId === 'sbom-endpoint') {
     return (
       <IngestionPage
@@ -712,13 +845,32 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
   }, [searchParams, setSearchParams]);
   const [vulnIntelCollapsed, setVulnIntelCollapsed] = React.useState(false);
   const serviceNowConfigQuery = useServiceNowCmdbConfigQuery();
+  const jiraTicketingConfigQuery = useJiraTicketingConfigQuery();
   const sccmConfigQuery = useSccmCmdbConfigQuery();
   const awsConfigQuery = useAwsDiscoveryConfigQuery();
   const azureConfigQuery = useAzureDiscoveryConfigQuery();
+  const gcpConfigQuery = useGcpDiscoveryConfigQuery();
   const snConfig = serviceNowConfigQuery.data ?? null;
   const sccmConfig = sccmConfigQuery.data ?? null;
   const awsConfig = awsConfigQuery.data ?? null;
   const azureConfig = azureConfigQuery.data ?? null;
+  const gcpConfig = gcpConfigQuery.data ?? null;
+  const jiraTicketingConfig = jiraTicketingConfigQuery.data ?? null;
+  const patchConfigQueries = useQueries({
+    queries: PATCH_CONNECTORS.map((item) => ({
+      queryKey: ['patch-connector', item.provider],
+      queryFn: () => fixIntelligenceApi.getPatchConnector(item.provider)
+    }))
+  });
+  const patchStatus = (connectorId: ConnectorId) => {
+    const index = PATCH_CONNECTORS.findIndex((item) => item.id === connectorId);
+    const config = index >= 0 ? patchConfigQueries[index]?.data : undefined;
+    return buildTicketingConnectorStatus(config ? {
+      configured: config.configured,
+      enabled: config.enabled,
+      lastTestStatus: config.lastTestStatus ?? undefined
+    } : null, inventoryConnectorsDisabledForDemo);
+  };
 
   React.useEffect(() => {
     setActiveView(initialView);
@@ -752,6 +904,14 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
     .map((id) => CONNECTORS.find((connector) => connector.id === id))
     .filter((connector): connector is ConnectorDefinition => Boolean(connector));
 
+  const ticketingConnectors = TICKETING_CONNECTOR_IDS
+    .map((id) => CONNECTORS.find((connector) => connector.id === id))
+    .filter((connector): connector is ConnectorDefinition => Boolean(connector));
+
+  const patchConnectors = PATCH_CONNECTORS
+    .map((item) => CONNECTORS.find((connector) => connector.id === item.id))
+    .filter((connector): connector is ConnectorDefinition => Boolean(connector));
+
   const visibleSections = [
     {
       key: 'inventory' as const,
@@ -764,6 +924,18 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
       title: 'BOM Management',
       connectors: bomConnectors,
       caption: 'Ingest and manage Bill of Materials files.',
+    },
+    {
+      key: 'incident-ticketing' as const,
+      title: 'Incident & Ticketing Tools',
+      connectors: ticketingConnectors,
+      caption: 'Raise remediation tickets for findings. When Jira is enabled it overrides ServiceNow for new tickets.',
+    },
+    {
+      key: 'patch-management' as const,
+      title: 'Patch Management',
+      connectors: patchConnectors,
+      caption: 'Import patches, CVEs and per-device deployment status into Fix Intelligence.',
     }
   ];
 
@@ -810,6 +982,9 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
                           connector.id === 'sccm-cmdb' ? buildInventoryConnectorStatus(sccmConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'aws-discovery' ? buildInventoryConnectorStatus(awsConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'azure-discovery' ? buildInventoryConnectorStatus(azureConfig, inventoryConnectorsDisabledForDemo) :
+                          connector.id === 'gcp-discovery' ? buildInventoryConnectorStatus(gcpConfig, inventoryConnectorsDisabledForDemo) :
+                          connector.id === 'jira-ticketing' ? buildTicketingConnectorStatus(jiraTicketingConfig, inventoryConnectorsDisabledForDemo) :
+                          connector.id.startsWith('patch-') ? patchStatus(connector.id) :
                           buildInventoryConnectorStatus(null, inventoryConnectorsDisabledForDemo);
                         const lastSync = timeAgo(status.lastSyncAt);
 
@@ -817,6 +992,7 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
                                          status.hasSynced ? 'connect-source-dot--ok' :
                                          'connect-source-dot--warn';
                         const statusTitle = status.demoDisabled ? 'Unavailable in 7-day demo'
+                          : status.label ? status.label
                           : status.isFailed ? `Last sync failed${lastSync ? ` · ${lastSync}` : ''}`
                           : lastSync ? `Last sync · ${lastSync}`
                           : 'Not configured';

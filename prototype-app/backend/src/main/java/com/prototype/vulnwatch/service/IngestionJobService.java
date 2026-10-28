@@ -31,6 +31,9 @@ public class IngestionJobService {
 
     public static final String JOB_TYPE_AWS_DISCOVERY = "AWS_DISCOVERY";
     public static final String JOB_TYPE_SERVICENOW_CMDB = "SERVICENOW_CMDB";
+    public static final String JOB_TYPE_SCCM_CMDB = "SCCM_CMDB";
+    public static final String JOB_TYPE_GCP_DISCOVERY = "GCP_DISCOVERY";
+    public static final String JOB_TYPE_PATCH_SYNC = "PATCH_SYNC";
     public static final String JOB_TYPE_REMOTE_ENDPOINT = "REMOTE_ENDPOINT";
     public static final String JOB_TYPE_GITHUB_REPOSITORY = "GITHUB_REPOSITORY";
     public static final String JOB_TYPE_GITHUB_GHCR = "GITHUB_GHCR";
@@ -243,12 +246,15 @@ public class IngestionJobService {
         var types = new java.util.ArrayList<>(AI_SECURITY_JOB_TYPES);
         types.add(JOB_TYPE_AWS_DISCOVERY);
         types.add(JOB_TYPE_SERVICENOW_CMDB);
+        types.add(JOB_TYPE_SCCM_CMDB);
+        types.add(JOB_TYPE_GCP_DISCOVERY);
+        types.add(JOB_TYPE_PATCH_SYNC);
         return types;
     }
 
     public IngestionJobAcceptedResponse enqueueConnectorJob(Tenant tenant, String jobType,
             UUID configId, UUID runId, String triggerMode, UUID targetId) {
-        if (!List.of(JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB).contains(jobType)) {
+        if (!List.of(JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB, JOB_TYPE_SCCM_CMDB, JOB_TYPE_GCP_DISCOVERY, JOB_TYPE_PATCH_SYNC).contains(jobType)) {
             throw new IllegalArgumentException("Unsupported durable connector type");
         }
         return enqueueJob(tenant, jobType, jobType.toLowerCase(Locale.ROOT), configId.toString(),
@@ -316,7 +322,7 @@ public class IngestionJobService {
         if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
         if (JOB_TYPE_AI_GRID_RUNTIME_ADAPTER.equals(jobType)) return List.of();
         if (!java.util.Set.of(JOB_TYPE_AI_SECURITY_AWS_BEDROCK,JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
-                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB).contains(jobType))
+                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB,JOB_TYPE_SCCM_CMDB,JOB_TYPE_GCP_DISCOVERY,JOB_TYPE_PATCH_SYNC).contains(jobType))
             throw new IllegalArgumentException("Unsupported retained ingestion job type");
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
             attempts.lockCapacity(tenant.getId());
@@ -543,7 +549,7 @@ public class IngestionJobService {
                     requestedBy, payload, dedupeKey);
         };
         if (List.of(JOB_TYPE_REMOTE_ENDPOINT, JOB_TYPE_GITHUB_REPOSITORY, JOB_TYPE_GITHUB_GHCR,
-                JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB).contains(jobType)) {
+                JOB_TYPE_AWS_DISCOVERY, JOB_TYPE_SERVICENOW_CMDB, JOB_TYPE_SCCM_CMDB, JOB_TYPE_GCP_DISCOVERY, JOB_TYPE_PATCH_SYNC).contains(jobType)) {
             return withAdmission(tenant, insert);
         }
         // AI projection/collection already owns its separate budget/source lock. Its

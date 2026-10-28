@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { intelligenceApi } from '../features/intelligence/api';
+import { fixIntelligenceApi } from '../features/fix-intelligence/api';
 import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
 import { renderWithProviders } from '../test/test-utils';
@@ -54,15 +55,22 @@ describe('ConnectPage', () => {
     vi.spyOn(api, 'getSccmCmdbConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getSccmCmdbConfig>>);
     vi.spyOn(api, 'getAwsDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAwsDiscoveryConfig>>);
     vi.spyOn(api, 'getAzureDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAzureDiscoveryConfig>>);
+    vi.spyOn(api, 'getJiraTicketingConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getJiraTicketingConfig>>);
+    vi.spyOn(api, 'getGcpDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getGcpDiscoveryConfig>>);
+    vi.spyOn(api, 'getTicketingProviderStatus').mockResolvedValue({ activeProvider: null, activeProviderName: null, configuredProviders: [], overridden: [] });
     vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
+    vi.spyOn(fixIntelligenceApi, 'getPatchConnector').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof fixIntelligenceApi.getPatchConnector>>);
     vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
   });
 
-  it.each([{ roles: ['TENANT_ADMIN'] }, { roles: ['TENANT_ADMIN', 'PLATFORM_OWNER'] }])('omits unsupported patch connectors for roles $roles while retaining inventory, BOM and static AI cards', async ({ roles }) => {
+  it.each([{ roles: ['TENANT_ADMIN'] }, { roles: ['TENANT_ADMIN', 'PLATFORM_OWNER'] }])('shows the patch management connectors for roles $roles alongside inventory, BOM and static AI cards', async ({ roles }) => {
     renderConnectPage({ ...TENANT_ADMIN, roles, entitlements: { 'ai.security': true } });
-    expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /BigFix|Tanium/ })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /SCCM\/MECM/ })).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Patch Management' })).toBeInTheDocument();
+    for (const name of ['SCCM / MECM Patches', 'Microsoft Intune', 'HCL BigFix', 'Tanium Cloud']) {
+      expect(screen.getByText(name).closest('button')).not.toBeNull();
+    }
+    // The SCCM/MECM inventory card plus the SCCM patch card, which reuses its connection.
+    expect(screen.getAllByRole('button', { name: /SCCM\/MECM/ })).toHaveLength(2);
     for (const name of ['GitHub', 'ServiceNow', 'SCCM/MECM', 'AWS', 'Azure', 'SBOM API Endpoint', 'BOM Management', 'AWS Bedrock', 'Azure AI', 'Copilot Studio']) {
       expect(screen.getAllByText(name).some((element) => element.closest('button') != null)).toBe(true);
     }
@@ -78,7 +86,7 @@ describe('ConnectPage', () => {
     expect(await screen.findByText('Processing: COMPLETED · revision 1/1 · release Awaiting first publication')).toHaveAttribute('role', 'status');
   });
 
-  it.each(['sccm-patch', 'bigfix-patch', 'tanium-patch'])('rejects the %s query bookmark before mounting credential inputs', async (id) => {
+  it.each(['sccm-patch', 'bigfix-patch', 'tanium-patch'])('rejects the retired %s mock bookmark before mounting credential inputs', async (id) => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const fetch = vi.spyOn(globalThis, 'fetch');
     const { container } = renderConnectPage(TENANT_ADMIN, `/connect/sources?connectSource=${id}&keep=1`);
@@ -93,7 +101,7 @@ describe('ConnectPage', () => {
 
   it('rejects a retired bookmark during navigation from a retained connector', async () => {
     renderConnectPage(TENANT_ADMIN, '/connect/sources?connectSource=sccm-cmdb');
-    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    expect(await screen.findByText(/approved by your platform operator/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open retired bookmark' }));
     expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Current search')).toHaveTextContent(/^\?keep=1$/));
@@ -103,7 +111,7 @@ describe('ConnectPage', () => {
   it('opens a retained status card and closes it with Escape without dropping other query parameters', async () => {
     renderConnectPage(TENANT_ADMIN, '/connect/sources?keep=1');
     fireEvent.click(screen.getByText('SCCM/MECM').closest('button')!);
-    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    expect(await screen.findByText(/approved by your platform operator/)).toBeInTheDocument();
     expect(screen.getByLabelText('Current search')).toHaveTextContent('connectSource=sccm-cmdb');
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
@@ -114,7 +122,7 @@ describe('ConnectPage', () => {
     vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
     vi.spyOn(api, 'listIngestionJobs').mockResolvedValue({ items: [], totalItems: 0, totalPages: 0, page: 0, size: 100 });
     renderConnectPage(TENANT_ADMIN, '/connect/sources?connectSource=sccm-cmdb');
-    expect(await screen.findByText(/SCCM live JDBC is disabled/)).toBeInTheDocument();
+    expect(await screen.findByText(/approved by your platform operator/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Run History' }));
     await waitFor(() => expect(screen.getByLabelText('Current path')).toHaveTextContent('/connect/run-history'));
     expect(screen.getByLabelText('Current search')).toBeEmptyDOMElement();
@@ -221,6 +229,67 @@ describe('ConnectPage', () => {
 
     expect(await screen.findByLabelText(/last sync failed/i)).toBeInTheDocument();
     expect(screen.getByText('ServiceNow')).toBeInTheDocument();
+  });
+
+  it('offers the Jira ticketing connector and says Jira overrides ServiceNow', async () => {
+    vi.spyOn(api, 'getJiraTicketingConfig').mockResolvedValue({
+      configured: true,
+      baseUrl: 'https://acme.atlassian.net',
+      authType: 'BASIC',
+      username: 'svc-scout@acme.test',
+      hasCredentialSecret: true,
+      projectKey: 'SEC',
+      issueTypeId: '',
+      issueTypeName: 'Task',
+      defaultLabels: '',
+      includePriority: true,
+      enabled: true,
+      lastTestStatus: 'SUCCESS',
+      lastTestedAt: '2026-09-20T09:00:00Z'
+    });
+
+    renderConnectPage(TENANT_ADMIN);
+
+    expect(await screen.findByRole('heading', { name: 'Incident & Ticketing Tools' })).toBeInTheDocument();
+    expect(screen.getAllByText('Jira').some((element) => element.closest('button') != null)).toBe(true);
+    expect(screen.getByText(/Overrides ServiceNow ticketing/i)).toBeInTheDocument();
+    expect(screen.getByText(/When Jira is enabled it overrides ServiceNow for new tickets/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/connection test passed/i)).toBeInTheDocument();
+  });
+
+  it('offers the Google Cloud discovery connector in the Inventory section', async () => {
+    vi.spyOn(api, 'listGcpDiscoveryTargets').mockResolvedValue([]);
+    renderConnectPage(TENANT_ADMIN);
+
+    const card = screen.getAllByText('Google Cloud').find((element) => element.closest('button'))!.closest('button')!;
+    expect(card).toHaveTextContent(/Compute Engine VMs with OS packages/);
+    fireEvent.click(card);
+    expect(await screen.findByText(/download its JSON key/i)).toBeInTheDocument();
+  });
+
+  it('marks a Jira connector whose last connection test failed', async () => {
+    vi.spyOn(api, 'getJiraTicketingConfig').mockResolvedValue({
+      configured: true,
+      baseUrl: 'https://acme.atlassian.net',
+      authType: 'BASIC',
+      username: 'svc-scout@acme.test',
+      hasCredentialSecret: true,
+      projectKey: 'SEC',
+      issueTypeId: '',
+      issueTypeName: 'Task',
+      defaultLabels: '',
+      includePriority: true,
+      enabled: true,
+      lastTestStatus: 'FAILED',
+      lastTestMessage: 'project unreachable',
+      lastTestedAt: '2026-09-20T09:00:00Z'
+    });
+
+    renderConnectPage(TENANT_ADMIN);
+
+    // A ticketing connector never syncs inventory, so its health reads as a test result rather
+    // than a missing last-sync timestamp.
+    expect(await screen.findByLabelText(/last connection test failed/i)).toBeInTheDocument();
   });
 
   it('keeps platform-owned vulnerability connector management hidden from tenant users', async () => {

@@ -183,6 +183,179 @@ export type ServiceNowCmdbConnectionTest = {
   testedAt: string;
 };
 
+export type JiraAuthType = 'BASIC' | 'BEARER';
+
+export type JiraTicketingConfig = {
+  id?: string;
+  configured: boolean;
+  baseUrl: string;
+  authType: JiraAuthType;
+  username: string;
+  hasCredentialSecret: boolean;
+  projectKey: string;
+  issueTypeId: string;
+  issueTypeName: string;
+  defaultLabels: string;
+  includePriority: boolean;
+  enabled: boolean;
+  lastTestStatus?: string;
+  lastTestMessage?: string;
+  lastTestedAt?: string;
+};
+
+export type JiraTicketingConfigRequest = {
+  baseUrl: string;
+  authType: JiraAuthType;
+  username?: string;
+  /** Write-only: omit to keep the stored token. */
+  credentialSecret?: string;
+  projectKey: string;
+  issueTypeId?: string;
+  issueTypeName?: string;
+  defaultLabels?: string;
+  includePriority: boolean;
+  enabled: boolean;
+};
+
+export type JiraConnectionTest = {
+  status: 'SUCCESS' | 'FAILED';
+  message: string;
+  credentialsValid: boolean;
+  projectReachable: boolean;
+  testedAt: string;
+};
+
+/** Provider-neutral ticket request; omitted fields are derived from the finding. */
+export type CreateFindingTicketRequest = {
+  title?: string;
+  severity?: string;
+  priority?: string;
+  dueDate?: string;
+  assignee?: string;
+  assignmentGroup?: string;
+  notes?: string;
+  solutionInfo?: string;
+};
+
+export type FindingTicketResponse = {
+  provider: string;
+  providerName: string;
+  ticketKey: string;
+  ticketId?: string;
+  url?: string;
+  status?: string;
+  message?: string;
+};
+
+/** Which ticketing system new tickets go to, and which configured ones it outranks. */
+export type TicketingProviderStatus = {
+  activeProvider: string | null;
+  activeProviderName: string | null;
+  configuredProviders: string[];
+  overridden: string[];
+};
+
+export type GcpDiscoveryConfig = {
+  id?: string;
+  configured: boolean;
+  /** Whether a service account key is stored. The key itself is never returned. */
+  hasCredential: boolean;
+  /** Read from the customer's key, for display. */
+  serviceAccountEmail?: string;
+  keyProjectId?: string;
+  enabled: boolean;
+  autoSyncEnabled: boolean;
+  intervalMinutes: number;
+  requiredRoles: string[];
+  supportedResourceTypes: string[];
+  lastTestStatus?: string;
+  lastTestMessage?: string;
+  lastTestedAt?: string;
+  lastSyncAt?: string;
+};
+
+export type GcpDiscoveryConfigRequest = {
+  /** Service account key JSON; write-only, omit to keep the stored key. */
+  credentialJson?: string;
+  enabled?: boolean;
+  autoSyncEnabled?: boolean;
+  intervalMinutes?: number;
+};
+
+export type GcpDiscoveryTarget = {
+  id: string;
+  projectId: string;
+  displayName?: string;
+  enabled: boolean;
+  resourceTypes: string[];
+  lastTestStatus?: string;
+  lastTestMessage?: string;
+  lastTestedAt?: string;
+  lastSyncAt?: string;
+};
+
+export type GcpDiscoveryTargetRequest = {
+  projectId?: string;
+  displayName?: string;
+  enabled?: boolean;
+  resourceTypes?: string[];
+};
+
+export type GcpConnectionTestResponse = {
+  status: 'SUCCESS' | 'SUCCESS_WITH_WARNINGS' | 'FAILED';
+  message: string;
+  serviceAccountEmail?: string;
+  permissions: Array<{ permission: string; granted: boolean; required: boolean }>;
+  testedAt: string;
+};
+
+export type CloudResource = {
+  id: string;
+  name: string;
+  identifier: string;
+  assetType: 'HOST' | 'CLOUD_RESOURCE' | 'APPLICATION' | 'CONTAINER_IMAGE';
+  state: string;
+  provider: string;
+  accountId?: string;
+  region?: string;
+  availabilityZone?: string;
+  resourceType?: string;
+  instanceType?: string;
+  network?: string;
+  subnet?: string;
+  labels: Record<string, string>;
+  createdAt?: string;
+  lastSeenAt?: string;
+};
+
+export type CloudResourceFacetValue = { value: string; count: number };
+
+export type CloudResourcePage = {
+  items: CloudResource[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  facets: {
+    providers: CloudResourceFacetValue[];
+    accounts: CloudResourceFacetValue[];
+    regions: CloudResourceFacetValue[];
+    resourceTypes: CloudResourceFacetValue[];
+    states: CloudResourceFacetValue[];
+  };
+};
+
+export type CloudResourceFilters = {
+  provider?: string;
+  accountId?: string;
+  region?: string;
+  resourceType?: string;
+  state?: string;
+  search?: string;
+  page?: number;
+  size?: number;
+};
+
 export type SccmAuthType = 'SQL_AUTH' | 'WINDOWS_AUTH';
 
 export type SccmCmdbConfig = {

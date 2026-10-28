@@ -105,6 +105,22 @@ const azureConfig = {
   subscriptionIdsJson: '[]', regionsJson: '[]', enabled: false, autoSyncEnabled: false, intervalMinutes: 1440,
 };
 
+// GCP discovery, Jira ticketing and the patch connectors are not configured in the fixtures.
+const gcpConfig = {
+  configured: false, hasCredential: false, enabled: false, autoSyncEnabled: false, intervalMinutes: 1440,
+  requiredRoles: ['roles/cloudasset.viewer', 'roles/osconfig.inventoryViewer'], supportedResourceTypes: ['compute.googleapis.com/Instance'],
+};
+const jiraConfig = {
+  configured: false, baseUrl: '', authType: 'API_TOKEN', username: '', hasCredentialSecret: false, projectKey: '', issueTypeId: '',
+  issueTypeName: '', defaultLabels: '', includePriority: true, enabled: false,
+};
+const PATCH_PROVIDERS = { sccm: 'SCCM/MECM', intune: 'Microsoft Intune', bigfix: 'BigFix', tanium: 'Tanium' };
+const patchConfig = (provider) => ({
+  id: null, provider: provider.toUpperCase(), displayName: PATCH_PROVIDERS[provider], configured: false, hasSecret: false, baseUrl: null,
+  directoryId: null, clientId: null, username: null, enabled: true, autoSyncEnabled: false, intervalMinutes: 1440,
+  lastTestStatus: null, lastTestMessage: null, lastTestedAt: null, lastSyncAt: null,
+});
+
 const awsTargets = [
   { id: AWS_PRIMARY_TARGET_ID, accountId: AWS_ACCOUNT_ID, accountName: 'production', roleArn: `arn:aws:iam::${AWS_ACCOUNT_ID}:role/ScoutGridDiscovery`,
     externalId: 'scoutgrid-fixture-ext-7c1d', enabled: true, regionsJson: JSON.stringify(['us-east-1', 'us-west-2']), resourceTypesJson: '["EC2"]',
@@ -420,6 +436,13 @@ export function connectFixtureFor(rawUrl, method = 'GET', body = null) {
     return ok({ status: 'FAILED', message: 'Azure Cloud Discovery is disabled for the pilot (fixture).', reachableSubscriptions: [], warnings: [], subscriptionErrors: {}, testedAt: iso(0) });
   }
   if (path === '/connectors/azure-discovery/sync') return trigger('sync-run-inv-az-new', 'Azure discovery queued (fixture).');
+
+  // GCP discovery, Jira ticketing and patch connectors (all unconfigured)
+  if (path === '/connectors/gcp-discovery') return ok(isGet ? gcpConfig : { ...gcpConfig, ...json, configured: true });
+  if (path === '/connectors/gcp-discovery/targets') return ok(isGet ? [] : { id: 'gcp-target-new', enabled: true, ...json });
+  if (path === '/connectors/jira-ticketing') return ok(isGet ? jiraConfig : { ...jiraConfig, ...json, configured: true });
+  const patchConnector = path.match(/^\/connectors\/patch\/(sccm|intune|bigfix|tanium)$/);
+  if (patchConnector) return ok(isGet ? patchConfig(patchConnector[1]) : { ...patchConfig(patchConnector[1]), ...json, configured: true });
 
   // GitHub SBOM pipelines and BOM sources
   if (path === '/github-sbom-sources') {

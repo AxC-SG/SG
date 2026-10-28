@@ -20,6 +20,9 @@ public class IngestionJobExecutionService {
     private final BomIngestionOrchestrator bomIngestionOrchestrator;
     private final AwsDiscoverySyncService awsDiscovery;
     private final ServiceNowCmdbSyncService serviceNow;
+    private final SccmCmdbSyncService sccm;
+    private final GcpDiscoverySyncService gcp;
+    private final com.prototype.vulnwatch.service.patch.PatchSyncService patch;
     private final com.prototype.vulnwatch.repo.SyncRunRepository syncRuns;
     private final GithubSbomSourceService githubSbomSourceService;
     private final IngestionJobService ingestionJobService;
@@ -29,6 +32,9 @@ public class IngestionJobExecutionService {
             GithubSbomSourceService githubSbomSourceService,
             IngestionJobService ingestionJobService,
             AwsDiscoverySyncService awsDiscovery, ServiceNowCmdbSyncService serviceNow,
+            SccmCmdbSyncService sccm,
+            GcpDiscoverySyncService gcp,
+            com.prototype.vulnwatch.service.patch.PatchSyncService patch,
             com.prototype.vulnwatch.repo.SyncRunRepository syncRuns
     ) {
         this.bomIngestionOrchestrator = bomIngestionOrchestrator;
@@ -36,6 +42,9 @@ public class IngestionJobExecutionService {
         this.ingestionJobService = ingestionJobService;
         this.awsDiscovery = awsDiscovery;
         this.serviceNow = serviceNow;
+        this.sccm = sccm;
+        this.gcp = gcp;
+        this.patch = patch;
         this.syncRuns = syncRuns;
     }
 
@@ -44,16 +53,26 @@ public class IngestionJobExecutionService {
             case IngestionJobService.JOB_TYPE_REMOTE_ENDPOINT -> executeEndpointJob(tenant, job);
             case IngestionJobService.JOB_TYPE_GITHUB_REPOSITORY -> executeGithubRepositoryJob(tenant, job);
             case IngestionJobService.JOB_TYPE_GITHUB_GHCR -> executeGithubGhcrJob(tenant, job);
-            case IngestionJobService.JOB_TYPE_AWS_DISCOVERY -> executeConnector(tenant, job, true);
-            case IngestionJobService.JOB_TYPE_SERVICENOW_CMDB -> executeConnector(tenant, job, false);
+            case IngestionJobService.JOB_TYPE_AWS_DISCOVERY -> executeConnector(tenant, job, Connector.AWS);
+            case IngestionJobService.JOB_TYPE_SERVICENOW_CMDB -> executeConnector(tenant, job, Connector.SERVICENOW);
+            case IngestionJobService.JOB_TYPE_SCCM_CMDB -> executeConnector(tenant, job, Connector.SCCM);
+            case IngestionJobService.JOB_TYPE_GCP_DISCOVERY -> executeConnector(tenant, job, Connector.GCP);
+            case IngestionJobService.JOB_TYPE_PATCH_SYNC -> executeConnector(tenant, job, Connector.PATCH);
             default -> throw new IOException("Unsupported ingestion job type: " + job.getJobType());
         };
     }
 
-    private ExecutionOutcome executeConnector(Tenant tenant, IngestionJob job, boolean aws) {
+    private enum Connector { AWS, SERVICENOW, SCCM, GCP, PATCH }
+
+    private ExecutionOutcome executeConnector(Tenant tenant, IngestionJob job, Connector connector) {
         var payload = ingestionJobService.readPayload(job, IngestionJobService.ConnectorJobPayload.class);
-        if (aws) awsDiscovery.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode(), payload.targetId());
-        else serviceNow.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode());
+        switch (connector) {
+            case AWS -> awsDiscovery.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode(), payload.targetId());
+            case SERVICENOW -> serviceNow.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode());
+            case SCCM -> sccm.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode());
+            case GCP -> gcp.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode(), payload.targetId());
+            case PATCH -> patch.executeQueuedRun(tenant.getId(), payload.configId(), payload.runId(), payload.triggerMode());
+        }
         var run = syncRuns.findById(payload.runId()).orElseThrow();
         if ("failed".equalsIgnoreCase(run.getStatus())) {
             throw new IllegalStateException("Connector execution failed; inspect its recorded sync run");

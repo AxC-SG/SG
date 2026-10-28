@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-28 (UI 2.0 documentation alignment; schema ownership retained)
 
-> **Historical version labels:** ~70 section notes below cite pre-reset migration numbers (e.g. "Added in V44", "V40/V41"). Those histories were consolidated into the V1 baselines; the current post-reset heads are platform V8 and tenant V6. Read older labels as provenance, not as files that exist.
+> **Historical version labels:** ~70 section notes below cite pre-reset migration numbers (e.g. "Added in V44", "V40/V41"). Those histories were consolidated into the V1 baselines; the current post-reset heads are platform V8 and tenant V8. Read older labels as provenance, not as files that exist.
 
 The runtime database is PostgreSQL with two independent Flyway lines, each consolidated into a complete V1 development baseline: `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`. They include current AI Grid, AI-BOM, GitHub advisory/OSV, deployment metadata, harm-baseline schema, and runtime exclusion. Tenant migrations are applied once per schema by `TenantSchemaMigrationService` / `ProductionBootstrapCli`. Historical version references below describe when features were introduced; their SQL is now incorporated in V1. Use fresh disposable local databases and remove stale packaged resources with `mvn clean`. Existing shared/deployed histories need read-only inspection and a separately authorized transition; do not reset them or use `flyway:repair` to adopt this reset.
 
@@ -17,7 +17,7 @@ The frontend presentation migration introduced no schema migration or new persis
 - **Database name (local):** `vulnwatch`
 - **JDBC URL default:** `jdbc:postgresql://localhost:5432/vulnwatch`
 - **Migration directories:** `backend/src/main/resources/db/migration/postgres_reset/` (platform/`public` schema) and `backend/src/main/resources/db/migration/tenant/` (per-tenant schema, applied by the tenant schema control plane, not by the application's own startup Flyway run)
-- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; current heads are platform V8 (`V8__reviewed_intelligence_publication.sql`) and tenant V6 (`V6__intelligence_revision_and_finding_eligibility.sql`); next platform change is V9, next tenant change is V7
+- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; current heads are platform V8 (`V8__reviewed_intelligence_publication.sql`) and tenant V8 (`V8__gcp_cloud_discovery.sql`); next platform change is V9, next tenant change is V9
 - **Replay rule:** V1 baselines bootstrap fresh databases only; all applied files are immutable and no baseline or later migration may be replayed manually against existing state
 - **`ddl-auto`:** `none` (Flyway owns all DDL; Hibernate never creates or alters tables)
 
@@ -966,6 +966,28 @@ Fields: `auth_type` (CHECK IN `BASIC`, `BEARER`), `base_url`, `username`, `crede
 
 ---
 
+### `gcp_discovery_configs` / `gcp_discovery_targets`
+
+GCP Cloud Discovery (tenant `V8`), both with `ENABLE` + `FORCE ROW LEVEL SECURITY` and a `tenant_isolation` policy.
+
+`gcp_discovery_configs` — one per tenant (`uk_gcp_discovery_configs_tenant_source`). Fields: `credential_secret` (the customer's service account key JSON, encrypted, `text`), `service_account_email` and `key_project_id` (read from the key for display), `enabled`, `auto_sync_enabled`, `interval_minutes`, `last_test_*`, `last_sync_at`.
+
+`gcp_discovery_targets` — one per customer project (`uk_gcp_discovery_targets_config_project`, FK to the config). Fields: `project_id`, `display_name`, `enabled`, `resource_types_json` (Scout keys such as `COMPUTE_INSTANCE`, `GKE_CLUSTER`), `last_test_*`, `last_sync_at`.
+
+Discovered resources land in `assets` with `cloud_provider='gcp'`, `cloud_account_id`=project, `cloud_resource_type`=Scout key, `identifier`/`cloud_arn` = full GCP resource name (VMs keyed on numeric instance id).
+
+---
+
+### `jira_ticketing_configs`
+
+Jira ticketing connector configuration (tenant `V7`). One row per tenant (`uk_jira_ticketing_configs_tenant`), `ENABLE` + `FORCE ROW LEVEL SECURITY` with a `tenant_isolation` policy.
+
+Fields: `base_url`, `auth_type` (CHECK IN `BASIC`, `BEARER`), `username`, `credential_secret` (encrypted API/personal access token, `text`), `project_key`, `issue_type_id`, `issue_type_name` (default `Task`), `default_labels`, `include_priority`, `enabled`, `last_test_status`, `last_test_message`, `last_tested_at`.
+
+Tenant `V7` also adds three columns to `findings`: `incident_provider` (which ticketing system raised `incident_id`; backfilled to `servicenow` for every pre-existing ticket), `incident_pushed_status` and `incident_pushed_at` (the finding status already reflected on the ticket — the bidirectional-sync loop breaker, backfilled to the finding's current status), plus indexes `idx_findings_incident_provider` and `idx_findings_incident_push_pending`.
+
+---
+
 ### `github_sbom_sources`
 
 Scheduled GitHub SBOM ingestion jobs.
@@ -1143,7 +1165,7 @@ Automatic linking (`AiBomDeploymentLinkingService`) only matches `MODEL` resourc
 
 **`ai_bom_correlation_paths`** (tenant `V2`) — multiple supporting paths per association, with source/BOM revision, ordered component/relationship IDs, stable reference/relationship keys, terminal inventory component, match method, fingerprint, lifecycle, and historical evidence. Uniqueness on `(tenant_id, declared_resource_id, link_id, fingerprint)` makes repeated delivery idempotent. Both dependency edge types are traversed, with path-local cycle guards and configurable depth/node/edge/path limits.
 
-**`ai_bom_correlation_gaps`** (tenant `V2`) — unresolved uncertainty keyed by source-scoped resource and reason, optionally naming a component/reference; a finding or link is not required. Recomputed gaps retain identity, disappear from current readers when resolved, and can protect prior support when absence cannot be established. The two new tables enforce tenant RLS. V1 remains unchanged; the independent packaged targets are now platform V8 and tenant V6.
+**`ai_bom_correlation_gaps`** (tenant `V2`) — unresolved uncertainty keyed by source-scoped resource and reason, optionally naming a component/reference; a finding or link is not required. Recomputed gaps retain identity, disappear from current readers when resolved, and can protect prior support when absence cannot be established. The two new tables enforce tenant RLS. V1 remains unchanged; the independent packaged targets are now platform V8 and tenant V8.
 
 **`ai_bom_provenance_facts`** (`V8`) — durable storage for the `provenance.ai_bom_present` fact (registered in the platform fact catalog by `postgres_reset/V5`), deliberately not `ai_grid_facts` (that table requires a connector-observed artifact/snapshot/run, which a BOM-only asset never has). Fields: `asset_id`, `source_id`, `bom_id` (the document version that produced the projection), `fact_key` (default `provenance.ai_bom_present`), `value_boolean`, `evidence_class` (default `BOM_DOCUMENT`, distinct from provider-configuration evidence classes — a document assertion must not satisfy a policy meaning to require observed configuration), `bom_format`, `spec_version`, `document_ingested_at`, `projected_at`, `projection_version`. Unique on `(tenant_id, asset_id, fact_key)`. The platform-side fact definition (`postgres_reset/V1__platform_schema.sql`) registers `provenance.ai_bom_present` with `allowed_workflow_uses_json=["COVERAGE_CONTEXT"]` and deliberately *not* `POSTURE_FINDING` — a document's existence is not a posture claim, and allowing it as a finding input would enable the BOM coverage policies that are meant to stay disabled (see `business-logic-guide.md`).
 
@@ -1192,7 +1214,7 @@ Backs the `com.prototype.vulnwatch.aisecurity` module (19 controllers, 71 servic
 
 **A note on the version numbers below:** a one-time migration-history reset consolidated the prior numbered history into `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql` (see "Tenant Schema Control Plane" further down). Historical `V<n>` citations describe pre-reset provenance; current post-reset V2 additions are called out explicitly.
 
-Historical module checkpoints used platform/tenant V3 and later V5/V11 before the development reset. Those are provenance, not current packaged targets or deployed-upgrade proof. `MigrationCatalogTest` now pins independent platform V8 / tenant V6; required tenant range is V6–V6, next platform V9 / tenant V7. Post-reset tenant V2 is AI-BOM correlation evidence, V3 invitation boundaries, V4 owned work/delivery, and V5 bounded retention progress.
+Historical module checkpoints used platform/tenant V3 and later V5/V11 before the development reset. Those are provenance, not current packaged targets or deployed-upgrade proof. `MigrationCatalogTest` now pins independent platform V8 / tenant V8; required tenant range is V8–V8, next platform V9 / tenant V9. Post-reset tenant V2 is AI-BOM correlation evidence, V3 invitation boundaries, V4 owned work/delivery, and V5 bounded retention progress.
 
 ### Tenant schema tables (pre-reset provenance: `V45`–`V64`)
 
@@ -1224,7 +1246,7 @@ Governance-only — no tenant data. `platform.ai_grid_policy_distribution` (`V67
 
 ### Known anomalies
 
-Historical pre-reset guard/version mismatches no longer describe the current catalog. Current migration files retain their guard comments; packaged heads are platform V8 / tenant V6. The required tenant floor/maximum is V6–V6. Historical runtime tables/vocabularies are retained, but runtime producers, activity facts, ingestion/readiness/receipt reads and evaluation remain excluded; retained schema is not collection permission.
+Historical pre-reset guard/version mismatches no longer describe the current catalog. Current migration files retain their guard comments; packaged heads are platform V8 / tenant V8. The required tenant floor/maximum is V8–V8. Historical runtime tables/vocabularies are retained, but runtime producers, activity facts, ingestion/readiness/receipt reads and evaluation remain excluded; retained schema is not collection permission.
 
 The last observed deployed backend predates the reset. Actual deployed histories remain unverified; fresh local V5→V6 results establish only that reset-history transition. Preserve applied files/history and rehearse a separately authorized data-preserving transition and rollback/roll-forward on a representative clone; see [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
@@ -1726,7 +1748,7 @@ There are **two independent Flyway migration lines**, never applied by the same 
 | Platform/reset | `postgres_reset/` | `public` and `platform`, plus an empty `tenant_default` schema | `public.flyway_schema_history` | Each file must open with a `-- migration-guard: platform-only` comment; `PostgresResetMigrationGuardTest` enforces this so tenant-schema DDL can't leak into the shared line by accident. |
 | Tenant | `tenant/` | Every tenant schema (`tenant_default` and each `tenant_<id>`), one Flyway run per schema | `<schema>.tenant_schema_history` | Tenant V1 is the reset baseline; this independent line owns tenant DDL and may use `${tenantId}` / `${tenantSchema}` placeholders. The platform-only guard must not be applied to tenant DDL. |
 
-Current latest: platform `V8__reviewed_intelligence_publication.sql` and tenant `V6__intelligence_revision_and_finding_eligibility.sql`, each following its own immutable V1 baseline. The next platform migration is V9 and the next tenant migration is V7. Tenant request compatibility remains V6–V6. Startup/readiness also require the retained platform work structures, the V6 waiting-state constraint, the schedule-occurrence index and the reviewed-intelligence structures; this structural check does not certify deployed migration history or rollback compatibility.
+Current latest: platform `V8__reviewed_intelligence_publication.sql` and tenant `V8__gcp_cloud_discovery.sql`, each following its own immutable V1 baseline. The next platform migration is V9 and the next tenant migration is V9. Tenant request compatibility remains V8–V8. Startup/readiness also require the retained platform work structures, the V6 waiting-state constraint, the schedule-occurrence index and the reviewed-intelligence structures; this structural check does not certify deployed migration history or rollback compatibility.
 
 **Rollout mechanics** (`TenantSchemaMigrationService.migrateAll()`, mirrored by `ProductionBootstrapCli` for the standalone production bootstrap path):
 1. Hold a Postgres advisory lock (`scout-tenant-schema-migrator` / `scout-production-bootstrap`, 30s timeout) so only one migration run proceeds at a time.

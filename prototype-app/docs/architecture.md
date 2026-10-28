@@ -53,7 +53,7 @@ Three ingestion paths populate the inventory:
 
 **CMDB sync:**
 - ServiceNow CMDB → `ServiceNowCmdbSyncService` → CI records → `Asset`, `Ci`, `CiAlias`
-- SCCM/MECM live JDBC is contained at configuration/test/admission/worker/client boundaries; existing inventory is retained, with no fixture substitution.
+- SCCM/MECM runs live JDBC against operator-approved SQL Server hosts (`SccmJdbcPolicy`, `SCCM_ALLOWED_HOSTS`), through durable `SCCM_CMDB` ingestion jobs; there is no fixture substitution.
 - Runs every 5 minutes for scheduled syncs
 
 **AWS Discovery:**
@@ -168,7 +168,7 @@ Per-tenant DDL is no longer applied by the application's own startup Flyway run.
 
 `TenantSchemaMigrationService` drives the rollout: hold a Postgres advisory lock → migrate the `tenant_default` template and compute a SHA-256 **structural fingerprint** (normalized dump of every column/constraint/index/sequence/RLS policy) → migrate one canary tenant → migrate the rest in batches of 10, comparing each tenant's post-migration fingerprint against the template and failing (`DRIFTED`) rather than silently diverging. Every step is recorded in `platform.tenant_schema_versions`, surfaced by `TenantSchemaStatusService`/`TenantSchemaStatusController` (`GET /api/platform/tenant-schema-status`, shown in the Platform Console) and by `TenantSchemaReadinessHealthIndicator` (an actuator health contributor gated behind `app.tenancy.enforce-schema-version=true`).
 
-The required/supported tenant range is V6–V6; a lower configured floor cannot bypass it. With schema enforcement enabled, startup/readiness fail on missing required platform work structures/SELECT grants, V6 waiting-state constraint, schedule-occurrence index or reviewed-intelligence structures. Individual incompatible tenants are blocked at entry while compatible tenants remain usable; readiness reports their count. These are read-only checks, not startup migration ownership. The last observed deployed backend predates the development history reset; actual histories and upgrade/rollback compatibility remain unverified. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
+The required/supported tenant range is V8–V8; a lower configured floor cannot bypass it. With schema enforcement enabled, startup/readiness fail on missing required platform work structures/SELECT grants, V6 waiting-state constraint, schedule-occurrence index or reviewed-intelligence structures. Individual incompatible tenants are blocked at entry while compatible tenants remain usable; readiness reports their count. These are read-only checks, not startup migration ownership. The last observed deployed backend predates the development history reset; actual histories and upgrade/rollback compatibility remain unverified. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
 For production, the same rollout runs from `ProductionBootstrapCli` — a standalone `main()` that skips Spring/JPA entirely — invoked by a temporary Render "migrator" web service (`backend/scripts/run-render-migration.sh`) rather than the long-running API service. See [Deployment](#deployment) below; see [bootstrap wrapper](../backend/scripts/run-render-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
@@ -184,7 +184,7 @@ For production, the same rollout runs from `ProductionBootstrapCli` — a standa
 
 `JwtTenantAuthenticationService` revalidates current stored global grants and tenant membership/support. Human claims cannot create grants or memberships; stale owner claims are rejected after revocation. Machine JWTs require SERVICE_ACCOUNT-only roles, explicit tenant and an active same-tenant registry entry matching the verified subject. A key ID alone is not a credential. API-key/creator-key role escalation remains local compatibility only and is rejected by deployed validation. See [backend authentication](backend.md#authentication).
 
-`SecurityConfig` exposes only the listed public health/info, login/setup/CSRF and invitation/demo exchanges. Other API/actuator routes require authentication plus their route/service authorization. Fix Intelligence is denyAll and directly unavailable. Setup-cookie password submission requires CSRF; header CSRF bypass is granted only after verified authentication. See [public/protected endpoints](backend.md#public-and-protected-endpoints).
+`SecurityConfig` exposes only the listed public health/info, login/setup/CSRF and invitation/demo exchanges. Other API/actuator routes require authentication plus their route/service authorization. `/api/fix-intelligence/**` requires authentication; its writes are role-checked in `FixIntelligenceController`. Setup-cookie password submission requires CSRF; header CSRF bypass is granted only after verified authentication. See [public/protected endpoints](backend.md#public-and-protected-endpoints).
 
 ### Role Hierarchy
 

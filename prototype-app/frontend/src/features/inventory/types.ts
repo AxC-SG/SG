@@ -21,6 +21,7 @@ export type InventoryViewKey =
   | 'overview'
   | 'software-identities'
   | 'hosts'
+  | 'cloud-resources'
   | 'container-images'
   | 'sbom'
   | 'bom-components'

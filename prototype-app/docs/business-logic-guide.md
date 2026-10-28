@@ -94,7 +94,7 @@ SBOMs arrive via three paths:
 
 ### CMDB Sync (SCCM/MECM)
 
-SCCM live JDBC is contained by `SccmPilotPolicy` at save/test, admission, scheduling, queued execution and query boundaries. The frontend exposes retained status without live controls. No mock inventory substitutes for customer ingestion. Historical full-sweep implementation remains in source but is unavailable; re-enablement requires separate backend/product review and network/credential/completeness qualification.
+SCCM/MECM is a live inventory source. `SccmCmdbSyncService` admits one run per configuration under the configuration-row lock, enqueues a durable `SCCM_CMDB` ingestion job, and the worker reads active hosts and their installed software from the tenant's SCCM SQL Server (`v_R_System` joined to `v_GS_INSTALLED_SOFTWARE`), derives discovery rows per publisher and product, and ingests through the shared CMDB pipeline. `SccmJdbcPolicy` gates every connection: only `jdbc:sqlserver://host[:port]` with a short property allowlist, host listed in `SCCM_ALLOWED_HOSTS`, SQL Server authentication, no loopback/link-local/metadata address. No mock inventory substitutes for customer ingestion.
 
 ### AWS Discovery
 
@@ -516,6 +516,6 @@ See [durable work and delivery](backend.md#durable-work-scheduling-and-delivery)
 
 Local archives remain unavailable before file access; canonical descriptions and raw payloads stay in PostgreSQL and historical files/references remain untouched. Bounded retention observes existing holds/references and progress/audit rules from the [cleanup matrix](<../Working Knowledge/AWS/PHASE_3_CLEANUP_MATRIX.md>); no additional period or destructive tenant purge is authorized.
 
-**P30 containment:** unsupported Patch Management cards, detail mounts and mock form modules have been retired, removing their input/credential logging. Old query IDs/direct paths cannot mount them. Fix Intelligence routes/API and unfinished tenant OSV/runtime paths retain their independent containment. See [repair evidence](<../Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>).
+**P30 containment:** unsupported Patch Management cards, detail mounts and mock form modules have been retired, removing their input/credential logging. Old query IDs/direct paths cannot mount them. Fix Intelligence and the live patch connectors (`patch-sccm`, `patch-intune`, `patch-bigfix`, `patch-tanium`) replaced them on tenant V9; unfinished tenant OSV/runtime paths retain their independent containment. See [repair evidence](<../Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>).
 
 Packaged migration heads are platform V6 / tenant V5, with required tenant range V5–V5; next versions are platform V7 / tenant V6. Preserve every applied migration. The last observed deployed backend predates the reset baselines; actual deployed history and a data-preserving upgrade/rollback remain unverified. [Release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>) requires exact candidate/environment/result/date/reviewer evidence; local tests and reconciled prose do not close the formal register.

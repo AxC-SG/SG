@@ -104,8 +104,23 @@ html[data-ui='2'] .nav-btn.active::before {
 html[data-ui='2'] .nav-expand-toggle {
   width: 20px;
   height: 20px;
+  min-height: 0;
   border-radius: 4px;
   color: var(--dp-text-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+html[data-ui='2'] .nav-destination {
+  flex: 1;
+  align-self: stretch;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
 }
 
 html[data-ui='2'] .nav-expand-toggle:hover {

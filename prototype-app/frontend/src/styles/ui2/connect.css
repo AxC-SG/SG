@@ -800,3 +800,17 @@ html[data-ui='2'] .ui2-connect-family .page-grid > .panel .form-section + .form-
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Copyable command blocks on provider connector pages (GCP role grants). */
+html[data-ui='2'] .ui2-connect-family .code-block {
+  margin: var(--dp-space-2) 0 0;
+  padding: var(--dp-space-3);
+  overflow-x: auto;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface-2);
+  color: var(--dp-text);
+  font-family: var(--dp-mono);
+  font-size: var(--dp-text-xs);
+  white-space: pre;
+}

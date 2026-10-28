@@ -30,6 +30,7 @@ styles/index.css
     governance.css
     connect.css
     experience.css
+    fix-intelligence.css
     tables.css
     @xyflow/react/dist/style.css
 ```
@@ -48,6 +49,7 @@ styles/index.css
 | `ui2/governance.css` | Tenant/platform policies, administration and platform console presentation |
 | `ui2/connect.css` | Connector catalog/forms, runs and configuration presentation |
 | `ui2/experience.css` | Dashboards, campaigns, operations and auth-entry presentation |
+| `ui2/fix-intelligence.css` | Fix Intelligence list/detail/forms and embedded Remediation options panels, anchored on `.ui2-fix-family` |
 | `ui2/tables.css` | Eager shared table and column controls; follows family presentation |
 | XYFlow vendor CSS | Unmodified package styles, explicitly imported last; preserve graph checks when changing precedence |
 

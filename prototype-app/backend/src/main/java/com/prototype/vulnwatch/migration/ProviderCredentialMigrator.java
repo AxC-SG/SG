@@ -18,6 +18,9 @@ public final class ProviderCredentialMigrator {
             new Target("azure_discovery_configs", "client_secret"),
             new Target("sccm_cmdb_configs", "credential_secret"),
             new Target("servicenow_cmdb_configs", "credential_secret"),
+            new Target("jira_ticketing_configs", "credential_secret"),
+            new Target("gcp_discovery_configs", "credential_secret"),
+            new Target("patch_connector_configs", "credential_secret"),
             new Target("ai_security_connector_configs", "external_id_ciphertext"),
             new Target("ai_security_azure_credential_profiles", "active_secret_ciphertext"),
             new Target("ai_security_azure_credential_profiles", "pending_secret_ciphertext"));

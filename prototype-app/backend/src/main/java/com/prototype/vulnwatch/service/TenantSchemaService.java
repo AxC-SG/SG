@@ -28,11 +28,11 @@ public class TenantSchemaService {
     @Value("${app.tenancy.enforce-schema-version:false}")
     private boolean enforceSchemaVersion;
 
-    @Value("${app.tenancy.minimum-compatible-schema-version:6}")
-    private int minimumCompatibleSchemaVersion;
+    @Value("${app.tenancy.minimum-compatible-schema-version:9}")
+    private int minimumCompatibleSchemaVersion = TenantSchemaCompatibility.REQUIRED_MINIMUM;
 
-    @Value("${app.tenancy.maximum-compatible-schema-version:6}")
-    private int maximumCompatibleSchemaVersion=5;
+    @Value("${app.tenancy.maximum-compatible-schema-version:9}")
+    private int maximumCompatibleSchemaVersion = TenantSchemaCompatibility.SUPPORTED_MAXIMUM;
 
     public TenantSchemaService(
             @Qualifier("platformJdbcTemplate") JdbcTemplate platformJdbcTemplate,

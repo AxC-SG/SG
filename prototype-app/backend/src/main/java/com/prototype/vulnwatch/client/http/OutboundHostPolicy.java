@@ -28,6 +28,8 @@ public final class OutboundHostPolicy {
             "osv=api.osv.dev",
             "msrc=api.msrc.microsoft.com",
             "azure-management=management.azure.com",
+            "gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com",
+            "intune=graph.microsoft.com,login.microsoftonline.com",
             "csaf-microsoft=msrc.microsoft.com",
             "csaf-redhat=security.access.redhat.com",
             "csaf-cisa=www.cisa.gov"
@@ -56,7 +58,8 @@ public final class OutboundHostPolicy {
         return new OutboundHostPolicy(
                 "test=example.test;github=example.test,api.github.com;nvd=example.test,services.nvd.nist.gov;epss=example.test;eol=example.test,endoflife.date;"
                         + "openai=example.test;resend=example.test;kev=example.test;jvn=example.test;"
-                        + "euvd=example.test;servicenow=example.test;sbom-endpoint=example.test;"
+                        + "euvd=example.test;servicenow=example.test;jira=example.test;sbom-endpoint=example.test;gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com;"
+                        + "intune=graph.microsoft.com,login.microsoftonline.com;"
                         + "csaf-test=example.test;paced=example.test;euvd=example.test,euvdservices.enisa.europa.eu",
                 host -> {
                     try {

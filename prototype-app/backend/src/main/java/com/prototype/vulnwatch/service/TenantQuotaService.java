@@ -5,6 +5,7 @@ import com.prototype.vulnwatch.repo.AuditEventRepository;
 import com.prototype.vulnwatch.repo.AwsDiscoveryConfigRepository;
 import com.prototype.vulnwatch.repo.AwsDiscoveryTargetRepository;
 import com.prototype.vulnwatch.repo.IngestionJobRepository;
+import com.prototype.vulnwatch.repo.JiraTicketingConfigRepository;
 import com.prototype.vulnwatch.repo.SccmCmdbConfigRepository;
 import com.prototype.vulnwatch.repo.ServiceAccountRepository;
 import com.prototype.vulnwatch.repo.ServiceNowCmdbConfigRepository;
@@ -24,6 +25,7 @@ public class TenantQuotaService {
     private final AwsDiscoveryTargetRepository awsDiscoveryTargetRepository;
     private final SccmCmdbConfigRepository sccmCmdbConfigRepository;
     private final ServiceNowCmdbConfigRepository serviceNowCmdbConfigRepository;
+    private final JiraTicketingConfigRepository jiraTicketingConfigRepository;
     private final ServiceAccountRepository serviceAccountRepository;
     private final AuditEventRepository auditEventRepository;
     private final IngestionJobRepository ingestionJobRepository;
@@ -31,6 +33,9 @@ public class TenantQuotaService {
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final AuditEventService auditEventService;
     private final IngestionJobMetricsService ingestionJobMetricsService;
+    private com.prototype.vulnwatch.repo.GcpDiscoveryConfigRepository gcpDiscoveryConfigRepository;
+    private com.prototype.vulnwatch.repo.GcpDiscoveryTargetRepository gcpDiscoveryTargetRepository;
+    private com.prototype.vulnwatch.repo.PatchConnectorConfigRepository patchConnectorConfigRepository;
     private final int sbomRateLimitWindowSeconds;
     private final int sbomRateLimitMaxAcceptedJobs;
     private final int sbomAdmissionMaxActiveJobs;
@@ -40,6 +45,7 @@ public class TenantQuotaService {
             AwsDiscoveryTargetRepository awsDiscoveryTargetRepository,
             SccmCmdbConfigRepository sccmCmdbConfigRepository,
             ServiceNowCmdbConfigRepository serviceNowCmdbConfigRepository,
+            JiraTicketingConfigRepository jiraTicketingConfigRepository,
             ServiceAccountRepository serviceAccountRepository,
             AuditEventRepository auditEventRepository,
             IngestionJobRepository ingestionJobRepository,
@@ -55,6 +61,7 @@ public class TenantQuotaService {
         this.awsDiscoveryTargetRepository = awsDiscoveryTargetRepository;
         this.sccmCmdbConfigRepository = sccmCmdbConfigRepository;
         this.serviceNowCmdbConfigRepository = serviceNowCmdbConfigRepository;
+        this.jiraTicketingConfigRepository = jiraTicketingConfigRepository;
         this.serviceAccountRepository = serviceAccountRepository;
         this.auditEventRepository = auditEventRepository;
         this.ingestionJobRepository = ingestionJobRepository;
@@ -182,12 +189,34 @@ public class TenantQuotaService {
         assertCanExportRows(tenant, requestedRows);
     }
 
+    /** GCP repositories are injected after construction so existing callers keep their signature. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setGcpDiscoveryRepositories(
+            com.prototype.vulnwatch.repo.GcpDiscoveryConfigRepository configs,
+            com.prototype.vulnwatch.repo.GcpDiscoveryTargetRepository targets
+    ) {
+        this.gcpDiscoveryConfigRepository = configs;
+        this.gcpDiscoveryTargetRepository = targets;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPatchConnectorConfigRepository(com.prototype.vulnwatch.repo.PatchConnectorConfigRepository repository) {
+        this.patchConnectorConfigRepository = repository;
+    }
+
     private long countConnectors(Tenant tenant) {
         return tenantSchemaExecutionService.run(tenant, () ->
                 (awsDiscoveryConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "aws").isPresent() ? 1L : 0L)
                         + awsDiscoveryTargetRepository.countByTenant_Id(tenant.getId())
                         + (sccmCmdbConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "sccm").isPresent() ? 1L : 0L)
                         + (serviceNowCmdbConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "servicenow").isPresent() ? 1L : 0L)
+                        // Ticketing connectors consume the tenant's connector allowance too;
+                        // omitting Jira here would let a tenant at its limit add one for free.
+                        + jiraTicketingConfigRepository.countByTenant_Id(tenant.getId())
+                        // GCP counts like AWS: the connector plus each project target.
+                        + (gcpDiscoveryConfigRepository == null ? 0L : gcpDiscoveryConfigRepository.countByTenant_Id(tenant.getId()))
+                        + (gcpDiscoveryTargetRepository == null ? 0L : gcpDiscoveryTargetRepository.countByTenant_Id(tenant.getId()))
+                        + (patchConnectorConfigRepository == null ? 0L : patchConnectorConfigRepository.countByTenant_Id(tenant.getId()))
         );
     }
 

@@ -119,6 +119,9 @@ public class IngestionAttemptService {
         if (java.util.Set.of("GITHUB_REPOSITORY","GITHUB_GHCR").contains(type)) {table="github_sbom_sources";key="sourceId";}
         else if ("AWS_DISCOVERY".equals(type)) {table="aws_discovery_configs";key="configId";}
         else if ("SERVICENOW_CMDB".equals(type)) {table="servicenow_cmdb_configs";key="configId";}
+        else if ("SCCM_CMDB".equals(type)) {table="sccm_cmdb_configs";key="configId";}
+        else if ("GCP_DISCOVERY".equals(type)) {table="gcp_discovery_configs";key="configId";}
+        else if ("PATCH_SYNC".equals(type)) {table="patch_connector_configs";key="configId";}
         if (table!=null && payload.hasNonNull(key)) jdbc.query("select id from "+table+" where id=? for update",(rs,row) -> rs.getObject(1,UUID.class),UUID.fromString(payload.path(key).asText()));
     }
     public boolean lockExpiredJob(UUID jobId) {

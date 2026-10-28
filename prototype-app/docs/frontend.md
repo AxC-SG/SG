@@ -33,6 +33,8 @@ The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.laz
 
 **New development:** follow [the UI development standard](ui-development-standard.md) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
+Expandable sidebar rows use sibling native buttons: the label navigates, while the chevron toggles the section and exposes `aria-expanded`. Keep these controls separate so keyboard and screen-reader users can expand a section without navigating. `App.test.tsx` covers this behavior; the browser accessibility sweep checks it across themes and widths.
+
 ---
 
 ## 2. Application Structure
@@ -97,7 +99,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 | `/exposure` | `ExposureDashboardPage` | Risk-focused exec overview (Overview tab) |
 | `/findings` | `FindingsPage` | Active findings list with server+client-side filters |
 | `/findings/:displayId` | `FindingDetailPage` | Single finding detail, workflow, and AI remediation |
-| `/fix-intelligence/*` | Redirect to `/findings` | Synthetic Fix Intelligence is unavailable |
+| `/fix-intelligence/:view?`, `/fix-intelligence/details/:fixId` | `FixIntelligencePage`, `FixDetailPage` (`src/features/fix-intelligence/`) | Views: `all`, `patches`, `workarounds`, `compensating-controls` |
 
 | `/operations/:operationsView?` | `OperationalDashboardPage` | Default `pipeline`; also `platform-health` (the `quality` view now redirects to `/inventory` with quality-tab search params instead of rendering here — see note below) |
 | `/vuln-repo` | `VulnRepoDashboardPage` | Vulnerability Repository dashboard |
@@ -156,7 +158,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 ---
 
-Generic Azure and SCCM pages show disabled/read-only status; their APIs independently refuse changes/tests/runs. `/fix-intelligence/*` redirects to `/findings`. Unsupported patch cards/forms have been retired as documented [in the connector inventory](#connect-srcfeaturesconnect); old query IDs and direct paths cannot mount them.
+The generic Azure page shows disabled/read-only status and its API independently refuses changes/tests/runs. `SccmConnectorPage` is a live form (SQL authentication, no mock mode, save/test/run). `PatchConnectorPage` serves the live `patch-sccm`, `patch-intune`, `patch-bigfix` and `patch-tanium` cards. The earlier unsupported patch cards/forms have been retired as documented [in the connector inventory](#connect-srcfeaturesconnect); old query IDs and direct paths cannot mount them.
 
 ## 3. Authentication and Auth Flow
 
@@ -217,7 +219,7 @@ All role checks must go through these helpers — never read `actor.roles` direc
 
 ### Entitlements (distinct from roles)
 
-`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables SCCM JDBC, generic Azure, runtime evidence or pilot generative assistance.
+`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables generic Azure, runtime evidence or pilot generative assistance.
 
 `src/features/auth/entitlements.ts` introduces a second, orthogonal access concept alongside roles: **entitlements** are per-tenant, plan-based feature flags (e.g. `ai.security`) rather than per-user permissions. `canUseEntitlement(actor, key)` checks the actor's entitlement snapshot from the backend and **fails closed** — an entitlement not explicitly present/enabled is treated as disabled. `AI_ENTITLEMENT_KEYS` currently gates the entire AI Security / AI Grid feature surface (routes, nav items, `AiInventoryOverviewStrip`). Role helpers (`hasRole`, etc.) still govern *what an authenticated user with access can do*; entitlements govern *whether the tenant's plan includes the feature at all*.
 
@@ -318,7 +320,7 @@ Files: `types.ts`, `queries.ts`
 
 **Connector catalog card-grid rework (`ConnectPage`, `/connect/sources`):** the catalog no longer stacks connectors in a fixed two-column list; cards center in an auto-fill grid (the scoped `ui2/connect-base.css` and `ui2/connect.css` own its responsive layout; both load eagerly through the UI 2 entry, so it must not rely on a retired or lazy stylesheet). Cards show each connector's real vendor mark as inline SVG (Microsoft's four squares, the `aws` wordmark, Azure's triangle, ServiceNow's `NOW` tile, BigFix's slate-blue "b", Tanium's red-disc "T") rather than a generic icon-well glyph, so no third-party logo files are committed to the repo. There's no room in the card for a stacked "Last sync · 2h ago" / "Failed · …" line, so connector health now lives on the status dot's `title`/`aria-label` — assert against the accessible label in tests, not card body text, when checking a failed-connector state.
 
-Two connector-card sections render under `sources`: **Inventory** (CMDB, cloud, and entitlement-gated static AI sources) and **BOM Management** (`sbom-endpoint`, `bom-management`). Unsupported Patch Management IDs/cards and detail branches were removed; `SccmPatchConnectorPage`, `BigFixPatchConnectorPage`, `TaniumPatchConnectorPage` and the unused `PatchConnectorPage` mock catalog were retired, removing all their input/credential logging. The URL is the single selection source: only catalog IDs are accepted, invalid IDs are removed without dropping other query parameters, and direct unsupported `/connect/:connectView` paths normalize to Sources. Catalog, query, app-route and in-page navigation regressions cover this containment. See [repair evidence](<../Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>). Backend patch scaffolding remains unwired.
+Three connector-card sections render under `sources`: **Inventory** (CMDB, cloud — including `gcp-discovery` / `GcpDiscoveryConnectorPage` — and entitlement-gated static AI sources), **BOM Management** (`sbom-endpoint`, `bom-management`) and **Incident & Ticketing Tools** (`jira-ticketing`, rendered by `JiraTicketingConnectorPage` using `useJiraTicketingConfigQuery` / `useTicketingProviderStatusQuery`; its card health comes from the last connection test via `buildTicketingConnectorStatus`, not a sync timestamp). Ticket creation from the CVE workbench and AI finding detail uses the provider-neutral `cveWorkbenchApi.createCveTickets` / `api.createFindingTicket`, and the UI labels each ticket with the provider named in the response. Unsupported Patch Management IDs/cards and detail branches were removed; `SccmPatchConnectorPage`, `BigFixPatchConnectorPage`, `TaniumPatchConnectorPage` and the unused `PatchConnectorPage` mock catalog were retired, removing all their input/credential logging. The URL is the single selection source: only catalog IDs are accepted, invalid IDs are removed without dropping other query parameters, and direct unsupported `/connect/:connectView` paths normalize to Sources. Catalog, query, app-route and in-page navigation regressions cover this containment. See [repair evidence](<../Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>). Backend patch scaffolding remains unwired.
 
 ### operations (`src/features/operations/`)
 

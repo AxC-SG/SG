@@ -405,12 +405,12 @@ async function cveJourney(theme) {
       await settle(page);
       const status = await page.getByRole('status').first().innerText().catch(() => '');
       const creates = calls(requests, cvePath('/manual-finding'), 'POST');
-      const tickets = calls(requests, cvePath('/servicenow-incident'), 'POST');
+      const tickets = calls(requests, cvePath('/ticket'), 'POST');
       // First run creates findings and reports the ServiceNow failure; re-runs get the duplicate result.
       // The workbench appends its own 'Created N.' to the server message, whose wording varies.
       const duplicate = /already open .*No duplicates created/i.test(status);
       check(tag(duplicate ? 'duplicate result reported, nothing re-created' : 'creation succeeds and ticket failure is reported'),
-        duplicate ? creates.length === 1 && tickets.length === 0 : /Created [1-9]\d*\b/.test(status) && /ServiceNow ticket failed/.test(status), status);
+        duplicate ? creates.length === 1 && tickets.length === 0 : /Created [1-9]\d*\b/.test(status) && /Ticket creation failed/.test(status), status);
       check(tag('ticket failure does not duplicate creation'), creates.length === 1 && tickets.length <= 1, `${creates.length}/${tickets.length}`);
       check(tag('creation payload keeps CVE + Fix mode and existing-finding behaviour'), bodyOf(creates[0])?.findingCreationMode === 'CVE_FIX' && bodyOf(creates[0])?.existingFindingBehavior === 'ADD_TO_EXISTING', JSON.stringify(bodyOf(creates[0]))?.slice(0, 200));
       check(tag('ServiceNow ticket fails locally as not configured (no delivery)'), tickets.length === 0 || (await statusOf(tickets[0])) === 503, `${await statusOf(tickets[0])}`);
@@ -459,8 +459,8 @@ async function cveJourney(theme) {
   await page.getByText('Forbidden', { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => null);
   check(tag('platform-scoped intel detail denies tenant user in place'), await visible(page.getByText('Forbidden', { exact: true })) && errors.length === 0, here(page));
 
-  // The ServiceNow 503 is the intended "not configured" ticket failure exercised above.
-  const unexpected = failures.filter((failure) => !/\/servicenow-incident$/.test(failure));
+  // The ticketing 503 is the intended "not configured" ticket failure exercised above.
+  const unexpected = failures.filter((failure) => !/\/(servicenow-incident|ticket)$/.test(failure));
   check(tag('no unexpected 5xx API responses'), unexpected.length === 0, unexpected.join(' | '));
   check(tag('no page errors'), errors.length === 0, errors.join(' | '));
   await context.close();

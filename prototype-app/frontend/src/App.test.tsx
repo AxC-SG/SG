@@ -372,36 +372,63 @@ describe('App test persona switcher', () => {
     vi.spyOn(api, 'getAzureDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAzureDiscoveryConfig>>);
     vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
     vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
+    const { fixIntelligenceApi } = await import('./features/fix-intelligence/api');
+    vi.spyOn(fixIntelligenceApi, 'getPatchConnector').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof fixIntelligenceApi.getPatchConnector>>);
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { default: App } = await import('./App');
     const { container } = renderWithProviders(<App />, { route });
-    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /BigFix|Tanium|Test Connection|Save Configuration/ })).not.toBeInTheDocument();
+    // The first case also pays for lazily loading the Connect page.
+    expect(await screen.findByRole('heading', { name: 'Inventory' }, { timeout: 5000 })).toBeInTheDocument();
+    // Retired mock IDs fall back to the catalog; they never open a connector form.
+    expect(screen.queryByRole('button', { name: /Test Connection|Save Configuration/ })).not.toBeInTheDocument();
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(log).not.toHaveBeenCalled();
   });
 
-  it('removes synthetic Fix Intelligence navigation while retained workflows remain reachable', async () => {
+  it('shows Fix Intelligence navigation for tenant users', async () => {
     const auth = await import('./features/auth/api');
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/exposure' });
     expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
-    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Fix Intelligence/ }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
   });
 
-  it.each([
-    '/fix-intelligence',
-    pathForFixIntelligenceView('patches'),
-    '/fix-intelligence/details/fix-1',
-  ])('redirects retired Fix Intelligence URLs to findings: %s', async (route) => {
+  it('expands sidebar sections independently from navigation without nested buttons', async () => {
     const auth = await import('./features/auth/api');
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
     const { default: App } = await import('./App');
-    renderWithProviders(<><App /><LocationProbe /></>, { route });
+    const { container } = renderWithProviders(<><App /><LocationProbe /></>, { route: '/exposure' });
+    const toggle = await screen.findByRole('button', { name: 'Expand Fix Intelligence sections' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle.parentElement).toBe(screen.getByRole('button', { name: 'Fix Intelligence' }).parentElement);
+    expect(container.querySelector('button button, button [role="button"]')).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/);
+    expect(screen.getByRole('button', { name: 'Collapse Fix Intelligence sections' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Patches' })).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByRole('button', { name: 'Patches' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Findings' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/findings$/));
-    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['/fix-intelligence', '/fix-intelligence/all'],
+    [pathForFixIntelligenceView('patches'), '/fix-intelligence/patches'],
+    ['/fix-intelligence/details/fix-1', '/fix-intelligence/details/fix-1'],
+  ])('opens Fix Intelligence routes: %s', async (route, expected) => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const fixtures = await import('./features/fix-intelligence/fixtures');
+    const { fixIntelligenceApi } = await import('./features/fix-intelligence/api');
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(fixtures.summary());
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(fixtures.page([fixtures.listItem()]));
+    vi.spyOn(fixIntelligenceApi, 'detail').mockResolvedValue(fixtures.detail({ title: 'Disable SMBv1' }));
+    const { default: App } = await import('./App');
+    renderWithProviders(<><App /><LocationProbe /></>, { route });
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`^${expected}$`)));
+    expect((await screen.findAllByRole('button', { name: /Fix Intelligence/ }, { timeout: 5000 })).length).toBeGreaterThan(0);
   });
 });

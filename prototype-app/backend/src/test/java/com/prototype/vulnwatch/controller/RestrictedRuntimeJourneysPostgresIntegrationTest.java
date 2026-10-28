@@ -135,7 +135,7 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.entitlements['ai.security']").value(true));
         mvc.perform(get("/api/ai-systems").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
         // An entitlement cannot re-enable independent server containment.
-        for (String path : List.of("azure-discovery", "sccm-cmdb")) {
+        for (String path : List.of("azure-discovery")) {
             mvc.perform(post("/api/connectors/" + path + "/test").header("Authorization", "Bearer " + token))
                     .andExpect(status().isGone());
         }

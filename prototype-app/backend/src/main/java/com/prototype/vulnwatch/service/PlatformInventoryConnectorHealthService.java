@@ -21,6 +21,7 @@ public class PlatformInventoryConnectorHealthService {
     private final ServiceNowCmdbConfigRepository serviceNowCmdbConfigRepository;
     private final SccmCmdbConfigRepository sccmCmdbConfigRepository;
     private final AwsDiscoveryConfigRepository awsDiscoveryConfigRepository;
+    private com.prototype.vulnwatch.repo.GcpDiscoveryConfigRepository gcpDiscoveryConfigRepository;
 
     @Autowired
     public PlatformInventoryConnectorHealthService(
@@ -51,6 +52,11 @@ public class PlatformInventoryConnectorHealthService {
                 serviceNowCmdbConfigRepository, sccmCmdbConfigRepository, awsDiscoveryConfigRepository);
     }
 
+    @Autowired(required = false)
+    public void setGcpDiscoveryConfigRepository(com.prototype.vulnwatch.repo.GcpDiscoveryConfigRepository repository) {
+        this.gcpDiscoveryConfigRepository = repository;
+    }
+
     public List<InventoryConnectorHealthResponse> listInventoryConnectorHealth() {
         return TenantContext.runAsPlatform(() -> {
             List<InventoryConnectorHealthResponse> responses = new ArrayList<>();
@@ -75,6 +81,12 @@ public class PlatformInventoryConnectorHealthService {
                             .ifPresent(config -> responses.add(toResponse(tenant, "aws", config.isEnabled(),
                                     config.isAutoSyncEnabled(), config.getLastTestStatus(), config.getLastTestMessage(),
                                     config.getLastTestedAt(), config.getLastSyncAt())));
+                    if (gcpDiscoveryConfigRepository != null) {
+                        gcpDiscoveryConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "gcp")
+                                .ifPresent(config -> responses.add(toResponse(tenant, "gcp", config.isEnabled(),
+                                        config.isAutoSyncEnabled(), config.getLastTestStatus(), config.getLastTestMessage(),
+                                        config.getLastTestedAt(), config.getLastSyncAt())));
+                    }
                     return null;
                 });
             }

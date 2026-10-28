@@ -106,7 +106,10 @@ public class IngestionJobWorkerService {
                         );
                         var allClaimed = new java.util.ArrayList<>(claimed);
                         for (String connector : List.of(IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
-                                IngestionJobService.JOB_TYPE_SERVICENOW_CMDB)) {
+                                IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
+                                IngestionJobService.JOB_TYPE_SCCM_CMDB,
+                                IngestionJobService.JOB_TYPE_GCP_DISCOVERY,
+                                IngestionJobService.JOB_TYPE_PATCH_SYNC)) {
                             if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("ingestion-job-worker.claim")) break;
                             allClaimed.addAll(ingestionJobService.claimPendingJobsByType(tenant, connector, 1, 1));
                         }
@@ -161,7 +164,10 @@ public class IngestionJobWorkerService {
                 if (IngestionJobService.JOB_TYPE_GITHUB_REPOSITORY.equals(job.getJobType())
                         || IngestionJobService.JOB_TYPE_GITHUB_GHCR.equals(job.getJobType())
                         || IngestionJobService.JOB_TYPE_AWS_DISCOVERY.equals(job.getJobType())
-                        || IngestionJobService.JOB_TYPE_SERVICENOW_CMDB.equals(job.getJobType())) {
+                        || IngestionJobService.JOB_TYPE_SERVICENOW_CMDB.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_SCCM_CMDB.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_GCP_DISCOVERY.equals(job.getJobType())
+                        || IngestionJobService.JOB_TYPE_PATCH_SYNC.equals(job.getJobType())) {
                     executeGithubBatch(tenant, jobId);
                     return null;
                 }
