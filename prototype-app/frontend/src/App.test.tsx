@@ -79,8 +79,8 @@ describe('App test persona switcher', () => {
     expect(client.getStoredAuthToken()).toBe('valid-session');
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByRole('button', { name: 'Open account menu' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open account menu' }));
+    expect(await screen.findByRole('button', { name: 'Customer A TENANT ADMIN: Open account menu' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Customer A TENANT ADMIN: Open account menu' }));
     expect(await screen.findByRole('menuitem', { name: 'Log out' })).toBeInTheDocument();
     expect(screen.getByText('admin-a@example.test')).toBeInTheDocument();
   });
