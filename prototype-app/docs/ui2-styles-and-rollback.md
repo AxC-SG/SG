@@ -39,6 +39,8 @@ The import order lives in `src/styles/ui2/index.css`. `ui2/scope.test.ts` fails 
 
 Per-slice gate: `npm run lint && npm run typecheck && npm run test:coverage`, then the journeys and visual runs.
 
+Accessible control names must include their visible text. The account menu includes the workspace and role, exposure funnel stages include the count and supporting metric, and policy links retain the visible “Open policy” wording before the policy name. Axe-core 4.14 checks these through `label-content-name-mismatch`; run `npm run e2e:sweep -- --checks accessibility --widths 390,768,1280,1440` to compare both themes against the reviewed baseline.
+
 ## Checkpoint archives
 
 `Working Knowledge/New UI 2.0/checkpoints/`:

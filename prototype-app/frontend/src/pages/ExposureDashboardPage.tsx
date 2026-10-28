@@ -119,7 +119,7 @@ function ExposureFunnelWidget({
               key={stage.label}
               style={{ cursor: 'pointer' }}
               role="button"
-              aria-label={`${stage.label}: ${fmt(stage.value)}`}
+              aria-label={`${stage.label} ${fmt(stage.value)} ${stage.sub}`}
               onClick={() => onNavigate(stage.path)}
             >
               <polygon
