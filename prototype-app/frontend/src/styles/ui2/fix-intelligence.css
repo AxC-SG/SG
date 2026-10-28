@@ -4,6 +4,12 @@
 
 html[data-ui='2'] .ui2-fix-family.fi-page {
   gap: var(--dp-space-4);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-header {
@@ -12,10 +18,18 @@ html[data-ui='2'] .ui2-fix-family .fi-header {
   align-items: flex-start;
   gap: var(--dp-space-4);
   flex-wrap: wrap;
+  padding-bottom: var(--dp-space-4);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-header h2 {
-  margin: 0 0 var(--dp-space-1);
+  margin: var(--dp-space-1) 0;
+  color: var(--dp-text);
+  font-family: var(--dp-font);
+  font-size: var(--dp-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-header p {
@@ -85,13 +99,19 @@ html[data-ui='2'] .ui2-fix-family .fi-ecosystem-count {
 
 html[data-ui='2'] .ui2-fix-family .fi-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
   gap: var(--dp-space-4);
   align-items: start;
 }
 
 html[data-ui='2'] .ui2-fix-family :is(.fi-table-panel, .fi-distribution) {
+  min-width: 0;
   padding: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-panel {
+  padding: 0;
+  overflow: hidden;
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-distribution h3 {
@@ -102,7 +122,7 @@ html[data-ui='2'] .ui2-fix-family .fi-filters {
   display: flex;
   gap: var(--dp-space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--dp-space-3);
+  align-items: flex-end;
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-search {
@@ -115,8 +135,8 @@ html[data-ui='2'] .ui2-fix-family .fi-table td {
 
 html[data-ui='2'] .ui2-fix-family .fi-status-tag {
   margin-left: var(--dp-space-2);
-  padding: 1px 6px;
-  border-radius: 999px;
+  padding: 0 var(--dp-space-2);
+  border-radius: var(--dp-radius-lg);
   border: 1px solid var(--dp-border-strong);
   color: var(--dp-text-2);
   font-size: var(--dp-text-xs);
@@ -204,8 +224,8 @@ html[data-ui='2'] .ui2-fix-family .fi-cve-list {
 
 html[data-ui='2'] .ui2-fix-family .fi-kev {
   margin-left: var(--dp-space-2);
-  padding: 0 6px;
-  border-radius: 999px;
+  padding: 0 var(--dp-space-2);
+  border-radius: var(--dp-radius-lg);
   font-size: var(--dp-text-xs);
   font-weight: 700;
   color: var(--dp-critical);
@@ -289,5 +309,151 @@ html[data-ui='2'] .ui2-fix-family.fi-context li {
 @media (max-width: 960px) {
   html[data-ui='2'] .ui2-fix-family :is(.fi-body, .fi-detail-grid) {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Page structure, labelled toolbar, and contained tables follow the UI 2 reference. */
+html[data-ui='2'] .ui2-fix-family :is(.fi-eyebrow, .fi-section-caption, .fi-context-note) {
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 400;
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.fi-section-caption, .fi-context-note) {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-section-caption {
+  margin-bottom: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpi--critical .fi-kpi-value {
+  color: var(--dp-critical);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-kpi--high .fi-kpi-value {
+  color: var(--dp-high);
+}
+
+html[data-ui='2'] .ui2-fix-family a {
+  color: var(--dp-accent);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-4);
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-fix-family h3 {
+  margin: 0 0 var(--dp-space-3);
+  color: var(--dp-text);
+  font-size: var(--dp-text-lg);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-section-heading h3 {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-scroll table {
+  min-width: 720px;
+  margin: 0;
+  table-layout: auto;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-scroll th {
+  background: var(--dp-surface-2);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-scroll :is(th, td) {
+  padding: var(--dp-space-3);
+  border-color: var(--dp-border);
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-scroll .mono {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-pagination {
+  padding: var(--dp-space-3) var(--dp-space-4);
+  margin: 0;
+  border-top: 1px solid var(--dp-border);
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-panel > :is(.notice, p) {
+  margin: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .severity-row {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) 72px;
+  gap: var(--dp-space-2);
+  align-items: center;
+}
+
+html[data-ui='2'] .ui2-fix-family .severity-value {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.severity-bar-none, .severity-bar-unknown) {
+  background: var(--dp-text-3);
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.fi-header > div, .fi-detail-grid > *, .fi-meta dd) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-fix-family.fi-context li {
+  padding: var(--dp-space-3) 0;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+@media (max-width: 600px) {
+  html[data-ui='2'] .ui2-fix-family .fi-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-ui='2'] .ui2-fix-family .fi-filters > .fi-field {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  html[data-ui='2'] .ui2-fix-family .fi-meta {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui='2'] .ui2-fix-family .fi-form-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

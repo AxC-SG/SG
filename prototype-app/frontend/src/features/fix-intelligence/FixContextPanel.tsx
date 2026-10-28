@@ -27,8 +27,11 @@ export function FixContextPanel({ cveId, assetId }: Props): React.ReactElement |
   return (
     <section className="panel fi-context ui2-fix-family" aria-label="Remediation options">
       <h2>Remediation options</h2>
-      {contextQuery.isLoading && <p className="muted">Loading fixes…</p>}
-      {contextQuery.isError && <p className="muted">Fix Intelligence is unavailable right now.</p>}
+      {contextQuery.isLoading && <p className="muted" role="status">Loading fixes…</p>}
+      {contextQuery.isError && <div className="notice error fi-error" role="alert">
+        <span>Fix Intelligence is unavailable right now.</span>
+        <button type="button" className="btn" disabled={contextQuery.isFetching} onClick={() => void contextQuery.refetch()}>Retry remediation options</button>
+      </div>}
       {contextQuery.isSuccess && fixes.length === 0 && (
         <p className="muted">No patch, workaround or compensating control is recorded for this {assetId && !cveId ? 'asset' : 'CVE'}.</p>
       )}

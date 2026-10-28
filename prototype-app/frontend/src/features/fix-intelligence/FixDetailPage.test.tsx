@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api } from '../../api/client';
+import { api, ApiError } from '../../api/client';
 import { ActorContextState } from '../auth/context';
 import type { ActorContext } from '../auth/types';
 import { renderWithProviders } from '../../test/test-utils';
@@ -103,8 +103,18 @@ describe('FixDetailPage', () => {
   });
 
   it('shows not found for a missing fix', async () => {
-    vi.spyOn(fixIntelligenceApi, 'detail').mockRejectedValue(new Error('Fix not found'));
+    vi.spyOn(fixIntelligenceApi, 'detail').mockRejectedValue(new ApiError('Fix not found', 404));
     renderPage();
     expect(await screen.findByText('This fix was not found.')).toBeInTheDocument();
+  });
+
+  it('distinguishes a service failure from a missing fix and offers a retry', async () => {
+    const load = vi.spyOn(fixIntelligenceApi, 'detail').mockRejectedValueOnce(new ApiError('Unavailable', 503))
+      .mockResolvedValue(detail());
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('This fix could not be loaded.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry fix' }));
+    expect(await screen.findByText('Disable SMBv1')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 });

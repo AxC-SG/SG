@@ -18,10 +18,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Fix Intelligence and patch connector routes through real HTTP, so role checks are exercised. */
 @PostgresControllerIntegrationTest
+@TestPropertySource(properties = "app.tenancy.enforce-schema-version=true")
 class FixIntelligenceControllerPostgresIntegrationTest {
 
     private static final LocalPostgresTestDatabase.DatabaseConfig DATABASE =
@@ -42,9 +44,15 @@ class FixIntelligenceControllerPostgresIntegrationTest {
 
     @Test
     void readsAreOpenAndSummaryNeverDividesByZero() throws Exception {
-        mockMvc.perform(authedGet("/api/fix-intelligence/summary?view=patches"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalFixes").value(0));
+        for (String view : new String[]{"all", "patches", "workarounds", "compensating-controls"}) {
+            mockMvc.perform(authedGet("/api/fix-intelligence/summary?view=" + view))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalFixes").isNumber())
+                    .andExpect(jsonPath("$.severityDistribution").isArray());
+            mockMvc.perform(authedGet("/api/fix-intelligence/fixes?view=" + view))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items").isArray());
+        }
         mockMvc.perform(authedGet("/api/fix-intelligence/fixes/{id}", UUID.randomUUID()))
                 .andExpect(status().isNotFound());
         mockMvc.perform(authedGet("/api/fix-intelligence/fixes?view=bogus"))

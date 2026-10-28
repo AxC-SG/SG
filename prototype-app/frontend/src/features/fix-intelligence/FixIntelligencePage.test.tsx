@@ -93,4 +93,31 @@ describe('FixIntelligencePage', () => {
     await screen.findByText(/No patches yet/);
     expect(screen.queryByRole('button', { name: /New / })).not.toBeInTheDocument();
   });
+
+  it('keeps metrics unavailable on a summary failure and allows recovery without losing rows', async () => {
+    const loadSummary = vi.spyOn(fixIntelligenceApi, 'summary')
+      .mockRejectedValueOnce(new Error('Unavailable'))
+      .mockResolvedValue(summary({ totalFixes: 12 }));
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(page([listItem()]));
+    renderPage('all');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Fix summary could not be loaded');
+    expect(screen.getByText('Total Fixes').nextSibling).toHaveTextContent('—');
+    expect(screen.getByRole('link', { name: 'KB5034441' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry summary' }));
+    await waitFor(() => expect(screen.getByText('Total Fixes').nextSibling).toHaveTextContent('12'));
+    expect(loadSummary).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears active filters and distinguishes filtered results from an empty patch catalog', async () => {
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(summary());
+    const list = vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(page([]));
+    renderPage('patches');
+    await screen.findByText(/No patches yet/);
+    fireEvent.change(screen.getByLabelText('Severity'), { target: { value: 'HIGH' } });
+    expect(await screen.findByText('No fixes match these filters.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined })));
+    expect(screen.getByLabelText('Severity')).toHaveValue('');
+  });
 });

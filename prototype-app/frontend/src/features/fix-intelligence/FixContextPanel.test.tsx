@@ -1,5 +1,5 @@
 import React from 'react';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/test-utils';
 import { fixIntelligenceApi } from './api';
@@ -39,5 +39,14 @@ describe('FixContextPanel', () => {
     const { container } = renderWithProviders(<FixContextPanel />);
     expect(container).toBeEmptyDOMElement();
     expect(context).not.toHaveBeenCalled();
+  });
+
+  it('can recover remediation options after a service failure', async () => {
+    vi.spyOn(fixIntelligenceApi, 'context').mockRejectedValueOnce(new Error('Unavailable'))
+      .mockResolvedValue({ cveId: null, assetId: 'asset-1', fixes: [] });
+    renderWithProviders(<FixContextPanel assetId="asset-1" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('unavailable right now');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry remediation options' }));
+    expect(await screen.findByText(/recorded for this asset/)).toBeInTheDocument();
   });
 });

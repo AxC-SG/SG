@@ -138,6 +138,11 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
         <legend>Assets in scope ({assetIds.length} selected)</legend>
         <input className="input" type="search" placeholder="Filter assets" aria-label="Filter assets"
                value={assetSearch} onChange={(event) => setAssetSearch(event.target.value)} />
+        {assetsQuery.isLoading && <p className="muted" role="status">Loading assets…</p>}
+        {assetsQuery.isError && <div className="notice error fi-error" role="alert">
+          <span>Assets could not be loaded. Retry before changing the scope.</span>
+          <button type="button" className="btn" onClick={() => void assetsQuery.refetch()}>Retry assets</button>
+        </div>}
         <div className="fi-asset-list">
           {matchingAssets.map((asset) => (
             <label key={asset.id} className="fi-asset-option">
