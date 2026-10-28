@@ -1010,33 +1010,24 @@ function AppShell() {
     onSubItemClick: (key: string) => void
   ): React.ReactNode => (
     <React.Fragment key={tab}>
-      <button
+      <div
         className={activeTab === tab ? 'nav-btn active' : 'nav-btn'}
-        onClick={() => navigateToTab(tab)}
       >
-        <span className="nav-label">{titleForTab(tab)}</span>
-        <span
+        <button type="button" className="nav-label nav-destination" onClick={() => navigateToTab(tab)}>
+          {titleForTab(tab)}
+        </button>
+        <button
+          type="button"
           className="nav-expand-toggle"
-          role="button"
-          tabIndex={0}
+          aria-expanded={expanded}
           aria-label={expanded ? `Collapse ${titleForTab(tab)} sections` : `Expand ${titleForTab(tab)} sections`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleExpanded();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              event.stopPropagation();
-              onToggleExpanded();
-            }
-          }}
+          onClick={onToggleExpanded}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             {expanded ? <path d="M6 15l6-6 6 6" /> : <path d="M6 9l6 6 6-6" />}
           </svg>
-        </span>
-      </button>
+        </button>
+      </div>
       {expanded && (
         <div className="nav-sub-list">
           {subItems.map((item) => (

@@ -33,6 +33,8 @@ The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.laz
 
 **New development:** follow [the UI development standard](ui-development-standard.md) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
+Expandable sidebar rows use sibling native buttons: the label navigates, while the chevron toggles the section and exposes `aria-expanded`. Keep these controls separate so keyboard and screen-reader users can expand a section without navigating. `App.test.tsx` covers this behavior; the browser accessibility sweep checks it across themes and widths.
+
 ---
 
 ## 2. Application Structure

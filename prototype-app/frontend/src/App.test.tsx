@@ -395,6 +395,25 @@ describe('App test persona switcher', () => {
     expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
   });
 
+  it('expands sidebar sections independently from navigation without nested buttons', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    const { container } = renderWithProviders(<><App /><LocationProbe /></>, { route: '/exposure' });
+    const toggle = await screen.findByRole('button', { name: 'Expand Fix Intelligence sections' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle.parentElement).toBe(screen.getByRole('button', { name: 'Fix Intelligence' }).parentElement);
+    expect(container.querySelector('button button, button [role="button"]')).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/);
+    expect(screen.getByRole('button', { name: 'Collapse Fix Intelligence sections' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Patches' })).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByRole('button', { name: 'Patches' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Findings' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/findings$/));
+  });
+
   it.each([
     ['/fix-intelligence', '/fix-intelligence/all'],
     [pathForFixIntelligenceView('patches'), '/fix-intelligence/patches'],
