@@ -1,6 +1,6 @@
 # VulnWatch Prototype
 
-Last updated: 2026-10-21
+Last updated: 2026-10-28 (UI 2.0 documentation alignment)
 
 VulnWatch is a Spring Boot + React prototype for SBOM ingestion, vulnerability intelligence ingestion, deterministic CPE-based correlation, and tenant-scoped finding projection and workflow.
 
@@ -13,6 +13,11 @@ VulnWatch is a Spring Boot + React prototype for SBOM ingestion, vulnerability i
 | [Business Logic Guide](docs/business-logic-guide.md) | Domain concepts, pipeline flows, finding lifecycle, EOL tracking |
 | [Database](docs/database.md) | Schema design, table inventory, migration strategy |
 | [Frontend](docs/frontend.md) | React app structure, routes, components, state management |
+| [UI development standard](docs/ui-development-standard.md) | Required new-screen architecture, component reuse, consistency and approval for departures |
+| [UI 2 styles and rollback](docs/ui2-styles-and-rollback.md) | CSS ownership/order, browser gates, presentation boundary and verified rollback artifacts |
+| [UI 2.0 migration record](<Working Knowledge/New UI 2.0/README.md>) | Previous state, implemented plans, current state and retained evidence |
+
+UI 2.0 is the only tenant/platform/auth presentation. Future screens extend the shared system; changes to shared patterns need user approval during development with pros/cons and an app-wide consistency plan. Public `/demo` content retains its intentional separate presentation boundary.
 
 Current prerequisite contracts and local verification: [implementation closure](<Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>). [Review handoff](<Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>) records the local P30 patch-form repair, exact commit/CI steps and environment qualification. The formal register remains open; nothing here authorizes deployment or shared-database changes.
 
@@ -142,3 +147,5 @@ npm run lint && npm run typecheck && npm run test:coverage
 Backend: `mvn -q verify` — Surefire units + JaCoCo coverage floor + SpotBugs. `mvn -Ppostgres-it verify` additionally runs the PostgreSQL Failsafe integration gate (the default profile does not execute those cases).
 
 Frontend: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage`.
+
+Browser CI additionally builds the UI 2 artifact, runs fixture journeys, visual tests and affected-route/axe checks in the pinned Playwright image. The scheduled workflow runs the full responsive sweep. Live-backend and release qualification remain separately evidenced; see the browser gate guide above.

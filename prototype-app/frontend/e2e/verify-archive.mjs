@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Verifies a checkpoint archive against its per-file manifest (path and sha256).
 // Extracts into a scratch folder, so the archive itself is never modified. This is an archive
-// integrity check; verify-baseline.py checks behaviour baselines and is a different tool.
+// integrity check for the retained source baseline and frozen rollback build.
 //
 // Usage: node e2e/verify-archive.mjs [manifest.json]
 // Default: checkpoints/P0-baseline-frontend-src-manifest.json
@@ -31,7 +31,8 @@ const scratch = mkdtempSync(path.join(os.tmpdir(), 'verify-archive-'));
 try {
   const extract = spawnSync('tar', ['-xzf', archive, '-C', scratch], { stdio: 'inherit' });
   if (extract.status !== 0) throw new Error('tar extraction failed');
-  const root = path.join(scratch, manifest.root);
+  // The source archive has a named root; the frozen build manifest uses paths from tar root.
+  const root = path.join(scratch, manifest.root ?? '.');
   const actual = new Map(walk(root).map((file) => [path.relative(root, file).split(path.sep).join('/'), file]));
   for (const { path: rel, sha256: expected } of manifest.files) {
     const file = actual.get(rel);

@@ -1,5 +1,5 @@
-/* UI 2.0 design tokens, translated from the design reference
- * (Working Knowledge/New UI 2.0/design-reference/src/design-preview/styles/tokens.css).
+/* UI 2.0 canonical design tokens. Development rules and ownership:
+ * prototype-app/docs/ui-development-standard.md and ui2-styles-and-rollback.md.
  *
  * Scoped to the app route boundary (src/lib/presentationBoundary.ts). The
  * Google Fonts import is not carried over because the deployed CSP (font-src 'self')
