@@ -8,7 +8,28 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      application: ${{ steps.select.outputs.application }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 .github/scripts/classify-changes.py
+
+  ci-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/scripts/test-ci-contracts.py
+      - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
+
   migration-validation:
     runs-on: ubuntu-latest
     steps:
@@ -83,6 +104,8 @@ jobs:
           retention-days: 14
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -103,6 +126,8 @@ jobs:
   # Fixture-backed browser checks for UI 2. The image tag must equal the
   # pinned @playwright/test version; check-playwright-image.mjs fails the job otherwise.
   frontend-e2e:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
@@ -150,6 +175,8 @@ jobs:
           retention-days: 14
 
   backend:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -164,6 +191,8 @@ jobs:
       - run: mvn -q verify
 
   backend-postgres:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-latest
     env:
       APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED: "false"
@@ -226,3 +255,15 @@ jobs:
         run: docker build -f prototype-app/backend/Dockerfile -t vulnwatch-backend:${{ github.sha }} prototype-app/backend
       - name: Build frontend image
         run: docker build -f prototype-app/frontend/Dockerfile.ci -t vulnwatch-frontend:${{ github.sha }} prototype-app/frontend
+
+  required:
+    name: Quality gate
+    if: always()
+    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres, images]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce all expected results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 .github/scripts/check-quality-gate.py

@@ -2,11 +2,6 @@ name: Performance Governance
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/performance-governance.yml"
-      - "prototype-app/backend/**"
-      - "prototype-app/scripts/**"
-      - "prototype-app/docs/**"
   workflow_dispatch:
     inputs:
       seed_demo_data:
@@ -20,8 +15,24 @@ on:
   schedule:
     - cron: "15 5 * * *"
 
+permissions:
+  contents: read
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      performance: ${{ steps.select.outputs.performance }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 .github/scripts/classify-changes.py
+
   certify:
+    needs: changes
+    if: needs.changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -86,3 +97,26 @@ jobs:
           name: performance-governance-${{ github.run_id }}
           path: ${{ runner.temp }}/performance-governance
           retention-days: 14
+
+  required:
+    name: Performance gate
+    if: always()
+    needs: [changes, certify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce expected certification result
+        env:
+          SELECTION_RESULT: ${{ needs.changes.result }}
+          APPLICABLE: ${{ needs.changes.outputs.performance }}
+          CERTIFICATION_RESULT: ${{ needs.certify.result }}
+        run: |
+          test "$SELECTION_RESULT" = success
+          if [ "$APPLICABLE" = true ]; then
+            test "$CERTIFICATION_RESULT" = success
+          elif [ "$APPLICABLE" = false ]; then
+            test "$CERTIFICATION_RESULT" = skipped
+            echo 'Performance certification is not applicable to these changes.'
+          else
+            echo 'Missing performance selection' >&2
+            exit 1
+          fi
