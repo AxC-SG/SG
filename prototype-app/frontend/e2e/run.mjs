@@ -10,6 +10,7 @@
 // The UI 2 candidate is served from its artifact folder and port. Output goes to
 // e2e/.results/<version>/. The process exits non-zero when any step fails.
 import { spawn } from 'node:child_process';
+import { runPool } from './runner-pool.mjs';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,20 +81,25 @@ const visualSteps = async (extraArgs = [], env = {}) => {
 if (command === 'journeys') {
   for (const version of versions) {
     await withServer(version, async (base, out) => {
-      for (const journey of JOURNEYS) {
-        await journeyStep(version, journey, base, out);
-      }
+      await runPool(JOURNEYS, Number(process.env.E2E_JOURNEY_WORKERS ?? 1),
+        (journey) => journeyStep(version, journey, base, out));
     });
   }
 } else if (command === 'sweep') {
   const widths = args.widths ?? '390,768,1280,1440';
+  const checks = args.checks ?? 'all';
+  if (!['all', 'routes', 'accessibility'].includes(checks)) throw new Error('Unknown sweep checks; use all, routes or accessibility');
   for (const version of versions) {
     await withServer(version, async (base, out) => {
-      for (const theme of THEMES) {
-        await step(`${version} route sweep (${theme})`, path.join(here, 'route-sweep.mjs'), ['--base', base, '--out', path.join(out, 'sweep'), '--label', `${version}_${theme}`, '--theme', theme, '--widths', widths]);
+      if (checks !== 'accessibility') {
+        for (const theme of THEMES) {
+          await step(`${version} route sweep (${theme})`, path.join(here, 'route-sweep.mjs'), ['--base', base, '--out', path.join(out, 'sweep'), '--label', `${version}_${theme}`, '--theme', theme, '--widths', widths]);
+        }
       }
-      await axe(version, base, out, ['--widths', widths]);
-      await axeCompare(version, out);
+      if (checks !== 'routes') {
+        await axe(version, base, out, ['--widths', widths]);
+        await axeCompare(version, out, ['--widths', widths]);
+      }
     });
   }
 } else if (command === 'visual') {
@@ -111,7 +117,7 @@ if (command === 'journeys') {
         const affectedOut = path.join(out, 'affected');
         mkdirSync(affectedOut, { recursive: true });
         await axe(version, base, affectedOut, ['--routes', args.routes, '--widths', AFFECTED_WIDTHS]);
-        await axeCompare(version, affectedOut, ['--routes', args.routes]);
+        await axeCompare(version, affectedOut, ['--routes', args.routes, '--widths', AFFECTED_WIDTHS]);
       });
     }
   }
@@ -128,7 +134,7 @@ if (command === 'journeys') {
         for (const journey of JOURNEYS) {
           await journeyStep(version, journey, base, out, { E2E_KNOWN_FAILURES: journeyBaseline(version), E2E_KNOWN_FAILURES_UPDATE: '1' });
         }
-        await axe(version, base, out);
+        await axe(version, base, out, ['--widths', '390,768,1280,1440']);
         await step(`${version} axe baseline update`, path.join(here, 'axe-compare.mjs'),
           ['--run', path.join(out, `${version}_axe.json`), '--baseline', path.join(here, 'axe-baseline', `${version}.json`), '--update']);
       });

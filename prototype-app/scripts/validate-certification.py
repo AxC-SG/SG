@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -13,8 +14,12 @@ def positive(value):
     return int(value)
 
 
+def reject_constant(value):
+    raise ValueError(f"invalid JSON numeric constant: {value}")
+
+
 def read_json(path):
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(), parse_constant=reject_constant)
     if not isinstance(data, dict):
         raise ValueError(f"{path}: expected a JSON object")
     return data
@@ -56,6 +61,24 @@ def scorecard(path):
             raise ValueError(f"{key}: missing measurements or failed entry")
         if key == "routeItems" and any(type(item.get("requestCount")) is not int or item["requestCount"] < 1 for item in items):
             raise ValueError("routeItems: missing request samples")
+        if key in ("routeItems", "resourceItems"):
+            names = [item.get("key") for item in items]
+            if any(not isinstance(name, str) or not name for name in names) or len(set(names)) != len(names):
+                raise ValueError(f"{key}: invalid or duplicate keys")
+            fields = ("currentP95Ms", "currentP99Ms") if key == "routeItems" else ("currentValue",)
+            for item in items:
+                for field in fields:
+                    value = item.get(field)
+                    if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+                        raise ValueError(f"{key}: invalid measurement {field}")
+    config = Path(__file__).parent
+    required_paths = {row[1].split("?")[0] for row in csv.reader((config / "performance-routes.tsv").read_text().splitlines(), delimiter="\t")}
+    paths = [item.get("path") for item in data["routeItems"]]
+    if not required_paths.issubset(set(paths)) or len(set(paths)) != len(paths):
+        raise ValueError("scorecard is missing required routes or has duplicate paths")
+    required_resources = set(json.loads((config / "certification-resources.json").read_text()))
+    if not required_resources.issubset({item["key"] for item in data["resourceItems"]}):
+        raise ValueError("scorecard is missing required resources")
 
 
 def reports(directory, require_slo):

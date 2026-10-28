@@ -32,28 +32,7 @@ routes_file="$OUT_DIR/routes.tsv"
 samples_file="$OUT_DIR/route-samples.tsv"
 summary_file="$OUT_DIR/route-summary.tsv"
 
-cat >"$routes_file" <<'EOF'
-dashboard-summary	/api/dashboard
-dashboard-applicable-software	/api/dashboard/applicable-software?page=0&size=10
-dashboard-impacted-cves	/api/dashboard/impacted-cves?page=0&size=10
-dashboard-cve-inventory-map	/api/dashboard/cve-inventory-map?limit=5
-findings-list	/api/findings?page=0&size=25
-findings-summary	/api/findings/summary
-findings-distributions	/api/findings/distributions
-findings-backlog-health	/api/findings/backlog-health
-findings-filters	/api/findings/filters
-findings-projection-status	/api/findings/projection-status
-inventory-components	/api/inventory/components?page=0&size=25
-inventory-component-filters	/api/inventory/components/filters
-software-identities	/api/inventory/software-identities?page=0&size=25
-software-identity-funnel	/api/inventory/software-identities/funnel
-vulnerability-intelligence-list	/api/vulnerability-intelligence?page=0&size=25
-vulnerability-intelligence-filters	/api/vulnerability-intelligence/filters
-vuln-repo-dashboard	/api/vuln-repo/dashboard
-vuln-repo-vulnerabilities	/api/vuln-repo/vulnerabilities?page=0&size=25
-vuln-repo-org-cves	/api/vuln-repo/org-cves?page=0&size=25
-vuln-repo-org-cves-status	/api/vuln-repo/org-cves/status
-EOF
+cp "$SCRIPT_DIR/performance-routes.tsv" "$routes_file"
 
 printf 'route\titeration\tstatus\trequest_id\tserver_timing\tclassification\n' >"$samples_file"
 

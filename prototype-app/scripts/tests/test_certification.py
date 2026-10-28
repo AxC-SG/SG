@@ -18,19 +18,24 @@ spec.loader.exec_module(validation)
 def card():
     return dict(overallCompliant=True, routeFailureCount=0, routeNoDataCount=0,
                 freshnessFailureCount=0, resourceFailureCount=0, resourceNoDataCount=0,
-                routeItems=[dict(key="route", compliant=True, status="PASS", requestCount=3)],
-                resourceItems=[dict(key="resource", compliant=True, status="PASS")],
+                routeItems=[dict(key=row[0], path=row[1].split("?")[0], compliant=True,
+                                 status="PASS", requestCount=3, currentP95Ms=1, currentP99Ms=1)
+                            for row in csv.reader((SCRIPTS / "performance-routes.tsv").read_text().splitlines(), delimiter="\t")],
+                resourceItems=[dict(key=key, compliant=True, status="PASS", currentValue=0)
+                               for key in json.loads((SCRIPTS / "certification-resources.json").read_text())],
                 freshnessItems=[dict(compliant=True)])
 
 
 class CertificationTest(unittest.TestCase):
     def run_fixture(self, scenario="healthy", enterprise=True, strict=None, iterations="1"):
+        counts = {}
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args):
                 pass
 
             def do_GET(self):
                 path = self.path.split("?")[0]
+                counts[path] = counts.get(path, 0) + 1
                 status, body = 200, {}
                 if path == "/api/operations/performance-scorecard":
                     body = card()
@@ -41,6 +46,12 @@ class CertificationTest(unittest.TestCase):
                         del body["resourceItems"]
                     elif scenario == "resource-no-data":
                         body["resourceItems"][0]["status"] = "NO_DATA"
+                    elif scenario == "partial-routes":
+                        body["routeItems"].pop()
+                    elif scenario == "partial-resources":
+                        body["resourceItems"].pop()
+                    elif scenario == "invalid-metric":
+                        body["resourceItems"][0]["currentValue"] = None
                     elif scenario == "malformed":
                         body = "invalid-json"
                 elif path == "/api/slo/status":
@@ -61,7 +72,7 @@ class CertificationTest(unittest.TestCase):
                     if scenario == "auth-skip":
                         status, body = 403, dict(message="Tenant context is required")
                 # Status endpoints must remain valid to isolate sampling from scorecard checks.
-                if path in ["/api/vuln-repo/org-cves/status", "/api/findings/projection-status"]:
+                if counts[path] > 1 and path in ["/api/vuln-repo/org-cves/status", "/api/findings/projection-status"]:
                     status = 200
                 payload = body if isinstance(body, str) else json.dumps(body, separators=(",", ":"))
                 self.send_response(status)
@@ -80,8 +91,6 @@ class CertificationTest(unittest.TestCase):
                            SETTLE_MAX_WAIT_SECONDS="0",
                            BASELINE_ITERATIONS=iterations, ITERATIONS=iterations,
                            MAX_WAIT_SECONDS="1", POLL_INTERVAL_SECONDS="1")
-                env["ROUTE_AUTH_MODE"] = "api-key"
-                env["ROUTE_AUTH_MODE"] = "api-key"
                 env["ROUTE_AUTH_MODE"] = "api-key"
                 if strict is not None:
                     env["CERTIFICATION_STRICT"] = strict
@@ -108,10 +117,10 @@ class CertificationTest(unittest.TestCase):
         result, summary, samples = self.run_fixture("http-500")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Baseline status: FAIL", summary)
-        self.assertIn("500", samples)
+        self.assertEqual(samples.count("\t500\t"), 20)
 
     def test_strict_rejects_auth_and_missing_or_invalid_measurements(self):
-        for scenario in ["auth-skip", "no-data", "resource-no-data", "malformed", "missing-items"]:
+        for scenario in ["auth-skip", "no-data", "resource-no-data", "malformed", "missing-items", "partial-routes", "partial-resources", "invalid-metric"]:
             with self.subTest(scenario=scenario):
                 result, summary, _ = self.run_fixture(scenario)
                 self.assertNotEqual(result.returncode, 0)

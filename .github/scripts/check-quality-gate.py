@@ -18,6 +18,13 @@ def failures(needs):
         allowed = {"success", "skipped"} if name in APPLICATION_JOBS and application == "false" else {"success"}
         if result not in allowed:
             errors.append(f"{name}: {result or 'missing'}")
+    routes = needs.get("changes", {}).get("outputs", {}).get("routes")
+    if application == "true" and not routes:
+        errors.append("browser route selection is missing")
+    sweep = needs.get("frontend-sweep", {}).get("result")
+    expected_sweep = "success" if application == "true" and routes == "FULL_SWEEP" else "skipped"
+    if sweep != expected_sweep:
+        errors.append(f"frontend-sweep: {sweep or 'missing'} (expected {expected_sweep})")
     return errors
 
 

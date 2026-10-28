@@ -5,26 +5,30 @@ on:
   push:
     branches:
       - main
-      - master
   schedule:
     - cron: '0 6 * * 1'  # Weekly on Monday at 06:00 UTC
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   filesystem:
     name: Trivy filesystem gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify Spring advisory applicability
         run: |
           python3 .github/scripts/test-spring-advisory-applicability.py
           python3 .github/scripts/check-spring-advisory-applicability.py
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
@@ -35,7 +39,7 @@ jobs:
         run: mvn -q -DskipTests dependency:go-offline
 
       - name: Run Trivy on filesystem
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -51,7 +55,7 @@ jobs:
 
       - name: Retain filesystem scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: trivy-filesystem-${{ github.run_id }}
           path: trivy-fs.sarif
@@ -61,17 +65,18 @@ jobs:
   images:
     name: Trivy images gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify Spring advisory applicability
         run: |
           python3 .github/scripts/test-spring-advisory-applicability.py
           python3 .github/scripts/check-spring-advisory-applicability.py
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: prototype-app/backend
           file: prototype-app/backend/Dockerfile
@@ -82,7 +87,7 @@ jobs:
           cache-to: type=gha,scope=backend,mode=max
 
       - name: Scan backend image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: vulnwatch-backend:${{ github.sha }}
@@ -94,7 +99,7 @@ jobs:
           exit-code: '0'
 
       - name: Build frontend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: prototype-app/frontend
           file: prototype-app/frontend/Dockerfile.ci
@@ -107,7 +112,7 @@ jobs:
         run: docker image inspect vulnwatch-backend:${{ github.sha }} vulnwatch-frontend:${{ github.sha }} --format '{{json .}}' > image-identities.jsonl
 
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: vulnwatch-frontend:${{ github.sha }}
@@ -125,7 +130,7 @@ jobs:
 
       - name: Retain image scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: trivy-images-${{ github.run_id }}
           path: |
