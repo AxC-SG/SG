@@ -51,6 +51,7 @@ public class FixRecordService {
     private final ObjectMapper objectMapper;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private TransactionTemplate writeTransactionTemplate;
+    private com.prototype.vulnwatch.repo.FixRecordCveRepository fixRecordCveRepository;
 
     public FixRecordService(
             FixRecordRepository fixRecordRepository,
@@ -72,6 +73,12 @@ public class FixRecordService {
         this.openAiClient = openAiClient;
         this.objectMapper = objectMapper;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+    }
+
+    /** CVE links for Fix Intelligence; injected after construction so existing callers keep their signature. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setFixRecordCveRepository(com.prototype.vulnwatch.repo.FixRecordCveRepository fixRecordCveRepository) {
+        this.fixRecordCveRepository = fixRecordCveRepository;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -114,6 +121,8 @@ public class FixRecordService {
             List<FixRecord> existing = fixRecordRepository.findByCveIdOrderByCreatedAtAsc(cveId)
                     .stream()
                     .filter(r -> FixRecord.RecommendationSource.ANALYST.name().equals(r.getRecommendationSource()))
+                    // Fix Intelligence workarounds and controls are lifecycle-managed, not Workbench entries.
+                    .filter(r -> !r.isManaged())
                     .toList();
             fixRecordRepository.deleteAll(existing);
 
@@ -139,7 +148,7 @@ public class FixRecordService {
                 r.setSoftwareEntitiesJson(toJson(List.of(entity)));
                 r.setSourceUrlsJson("[]");
                 r.setGeneratedAt(Instant.now());
-                saved.add(fixRecordRepository.save(r));
+                saved.add(persistRecommendation(r, null));
             }
             return saved.stream().map(this::toResponse).toList();
         }));
@@ -236,7 +245,8 @@ public class FixRecordService {
         List<String> relatedCveIds = findRelatedCveIds(tenant, cveId, softwareMap, fixedVersionsFromIntel);
 
         // ── 6. Delete previous records; generate fresh ───────────────────────
-        fixRecordRepository.deleteByCveId(cveId);
+        // Only this generator's own records are replaced; patch-tool and Fix Intelligence records stay.
+        fixRecordRepository.deleteByCveIdAndManagedFalse(cveId);
 
         // One fix record per distinct software product (versions of same product share one record)
         Map<String, Map<String, SoftwareContext>> byProduct = new LinkedHashMap<>();
@@ -265,7 +275,7 @@ public class FixRecordService {
                         fix = buildFallbackFix(tenant, cveId, vulnerability, productMap, referenceUrls, relatedCveIds);
                         fix.setOsHint(osFamily);
                     }
-                    records.add(fixRecordRepository.save(fix));
+                    records.add(persistRecommendation(fix, vulnerability.getSeverity()));
                 }
             } else {
                 // Platform-agnostic (or single OS): one fix per product
@@ -276,19 +286,67 @@ public class FixRecordService {
                 if (fix == null) {
                     fix = buildFallbackFix(tenant, cveId, vulnerability, productMap, referenceUrls, relatedCveIds);
                 }
-                records.add(fixRecordRepository.save(fix));
+                records.add(persistRecommendation(fix, vulnerability.getSeverity()));
             }
         }
 
         if (records.isEmpty()) {
-            records.add(fixRecordRepository.save(
-                    buildFallbackFix(tenant, cveId, vulnerability, softwareMap, referenceUrls, relatedCveIds)));
+            records.add(persistRecommendation(
+                    buildFallbackFix(tenant, cveId, vulnerability, softwareMap, referenceUrls, relatedCveIds),
+                    vulnerability.getSeverity()));
         }
 
         return records.stream().map(this::toResponse).toList();
     }
 
     // ── private helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Saves a Workbench recommendation with its Fix Intelligence classification (title,
+     * ecosystem, severity) and links every CVE it names, so it appears in Fix Intelligence
+     * alongside patch-tool records.
+     */
+    private FixRecord persistRecommendation(FixRecord record, String vulnerabilitySeverity) {
+        if (record.getTitle() == null) record.setTitle(record.getSummary());
+        if (record.getEcosystem() == null) record.setEcosystem(ecosystemFor(record.getOsHint()));
+        if (record.getSeverity() == null) record.setSeverity(normalizeSeverity(vulnerabilitySeverity));
+        FixRecord saved = fixRecordRepository.save(record);
+        if (fixRecordCveRepository != null) {
+            Set<String> cves = new LinkedHashSet<>();
+            if (saved.getCveId() != null) cves.add(saved.getCveId());
+            cves.addAll(parseStringList(saved.getRelatedCveIdsJson()));
+            for (String cve : cves) {
+                if (cve == null || !cve.matches("^CVE-\\d{4}-\\d{4,}$")) continue;
+                if (fixRecordCveRepository.findByFixIdAndCveId(saved.getId(), cve).isEmpty()) {
+                    com.prototype.vulnwatch.domain.FixRecordCve link = new com.prototype.vulnwatch.domain.FixRecordCve();
+                    link.setTenant(saved.getTenant());
+                    link.setFixId(saved.getId());
+                    link.setCveId(cve);
+                    link.setSource("RECOMMENDATION");
+                    link.setConfidence("MEDIUM");
+                    link.setCreatedAt(Instant.now());
+                    fixRecordCveRepository.save(link);
+                }
+            }
+        }
+        return saved;
+    }
+
+    static FixRecord.Ecosystem ecosystemFor(String osHint) {
+        if (osHint == null) return FixRecord.Ecosystem.CROSS_PLATFORM;
+        return switch (osHint.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "windows" -> FixRecord.Ecosystem.WINDOWS;
+            case "linux" -> FixRecord.Ecosystem.LINUX;
+            case "macos" -> FixRecord.Ecosystem.MACOS;
+            default -> FixRecord.Ecosystem.CROSS_PLATFORM;
+        };
+    }
+
+    static String normalizeSeverity(String severity) {
+        if (severity == null) return null;
+        String upper = severity.trim().toUpperCase(java.util.Locale.ROOT);
+        return Set.of("CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE").contains(upper) ? upper : null;
+    }
 
     /**
      * Find other CVEs in the tenant that affect the same software packages and

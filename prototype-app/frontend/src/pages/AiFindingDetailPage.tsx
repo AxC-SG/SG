@@ -6,7 +6,7 @@ import { pathForAiFindings, pathForInventoryAiAsset, pathForPolicyDetail } from 
 import { useActor } from '../features/auth/context';
 import { hasRole } from '../features/auth/roles';
 import { severityClassName, formatLabel } from '../features/cve-workbench/formatting';
-import type { ServiceNowIncidentResponse } from '../features/cve-workbench/types';
+import type { FindingTicketResponse } from '../features/connect/types';
 import { InventoryOverviewPanel, type OverviewField } from '../features/inventory/InventoryOverviewPanel';
 
 type AiFindingDetailPageProps = {
@@ -55,7 +55,7 @@ export function AiFindingDetailPage({ findingId }: AiFindingDetailPageProps) {
   const canManageWorkflow = hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST');
   const canCreateIncident = hasRole(actor, 'PLATFORM_OWNER') || hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST');
   const [tab, setTab] = React.useState<AiFindingDetailTab>('overview');
-  const [incidentResult, setIncidentResult] = React.useState<ServiceNowIncidentResponse | null>(null);
+  const [incidentResult, setIncidentResult] = React.useState<FindingTicketResponse | null>(null);
   const returnTo = searchParams.get('returnTo')?.trim() || (
     typeof location.state === 'object' && location.state && 'returnTo' in location.state
       ? String((location.state as { returnTo?: string }).returnTo ?? '').trim()
@@ -87,12 +87,12 @@ export function AiFindingDetailPage({ findingId }: AiFindingDetailPageProps) {
     mutationFn: () => {
       const current = findingQuery.data;
       if (!current) throw new Error('Finding not loaded yet');
-      return api.createFindingIncident(findingId, {
-        findingTitle: current.title,
+      // Provider-neutral: the backend routes this to ServiceNow or Jira depending on which
+      // connector the tenant has active, and names the system in its response.
+      return api.createFindingTicket(findingId, {
+        title: current.title,
         severity: current.severity,
-        inKev: false,
         priority: current.severity,
-        affectedAssets: [],
       });
     },
     onSuccess: (response) => setIncidentResult(response),
@@ -222,14 +222,15 @@ export function AiFindingDetailPage({ findingId }: AiFindingDetailPageProps) {
           {incidentMutation.isError && (
             <div className="notice error">Incident could not be created: {String(incidentMutation.error)}</div>
           )}
-          {incidentResult && incidentResult.status === 'created' && (
+          {incidentResult && (
             <div className="notice success">
-              Incident {incidentResult.incidentNumber} created.
-              {incidentResult.url && <> <a href={incidentResult.url} target="_blank" rel="noreferrer">Open in ServiceNow →</a></>}
+              {incidentResult.providerName} ticket {incidentResult.ticketKey} created.
+              {incidentResult.url && (
+                <> <a href={incidentResult.url} target="_blank" rel="noreferrer">
+                  Open in {incidentResult.providerName} →
+                </a></>
+              )}
             </div>
-          )}
-          {incidentResult && incidentResult.status === 'error' && (
-            <div className="notice error">{incidentResult.message}</div>
           )}
           {workflowMutation.isError && (
             <div className="notice error">Status could not be updated: {String(workflowMutation.error)}</div>

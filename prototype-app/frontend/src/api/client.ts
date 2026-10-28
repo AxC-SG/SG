@@ -67,6 +67,19 @@ import type {
   ServiceNowCmdbConfig,
   ServiceNowCmdbConfigRequest,
   ServiceNowCmdbConnectionTest,
+  CloudResourceFilters,
+  CloudResourcePage,
+  GcpConnectionTestResponse,
+  GcpDiscoveryConfig,
+  GcpDiscoveryConfigRequest,
+  GcpDiscoveryTarget,
+  GcpDiscoveryTargetRequest,
+  CreateFindingTicketRequest,
+  FindingTicketResponse,
+  JiraConnectionTest,
+  JiraTicketingConfig,
+  JiraTicketingConfigRequest,
+  TicketingProviderStatus,
   SyncRun,
   SyncTriggerResponse,
   VexAssertionRepairSummary,
@@ -1320,6 +1333,66 @@ export const api = {
   triggerServiceNowCmdbSync: () => request<SyncTriggerResponse>('/connectors/servicenow-cmdb/sync', {
     method: 'POST'
   }),
+  getJiraTicketingConfig: () => request<JiraTicketingConfig>('/connectors/jira-ticketing'),
+  saveJiraTicketingConfig: (payload: JiraTicketingConfigRequest) =>
+    request<JiraTicketingConfig>('/connectors/jira-ticketing', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+  testJiraTicketingConnection: () => request<JiraConnectionTest>('/connectors/jira-ticketing/test', {
+    method: 'POST'
+  }),
+  getTicketingProviderStatus: () => request<TicketingProviderStatus>('/ticketing/status'),
+  /**
+   * Raises a ticket in whichever system the tenant has active, and names it in the response.
+   * Prefer this over createFindingIncident, whose ServiceNow-shaped response cannot say which
+   * system actually holds the ticket.
+   */
+  createFindingTicket: (findingId: string, payload: CreateFindingTicketRequest) =>
+    request<FindingTicketResponse>(`/findings/${encodeURIComponent(findingId)}/ticket`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  getGcpDiscoveryConfig: () => request<GcpDiscoveryConfig>('/connectors/gcp-discovery'),
+  saveGcpDiscoveryConfig: (payload: GcpDiscoveryConfigRequest) => request<GcpDiscoveryConfig>('/connectors/gcp-discovery', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  testGcpDiscoveryConnection: () => request<GcpConnectionTestResponse>('/connectors/gcp-discovery/test', {
+    method: 'POST'
+  }),
+  triggerGcpDiscoverySync: () => request<SyncTriggerResponse>('/connectors/gcp-discovery/sync', {
+    method: 'POST'
+  }),
+  listGcpDiscoveryTargets: () => request<GcpDiscoveryTarget[]>('/connectors/gcp-discovery/targets'),
+  createGcpDiscoveryTarget: (payload: GcpDiscoveryTargetRequest) => request<GcpDiscoveryTarget>('/connectors/gcp-discovery/targets', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  updateGcpDiscoveryTarget: (targetId: string, payload: GcpDiscoveryTargetRequest) =>
+    request<GcpDiscoveryTarget>(`/connectors/gcp-discovery/targets/${encodeURIComponent(targetId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+  deleteGcpDiscoveryTarget: (targetId: string) => request<void>(`/connectors/gcp-discovery/targets/${encodeURIComponent(targetId)}`, {
+    method: 'DELETE'
+  }),
+  testGcpDiscoveryTarget: (targetId: string) =>
+    request<GcpConnectionTestResponse>(`/connectors/gcp-discovery/targets/${encodeURIComponent(targetId)}/test`, {
+      method: 'POST'
+    }),
+  triggerGcpDiscoveryTargetSync: (targetId: string) =>
+    request<SyncTriggerResponse>(`/connectors/gcp-discovery/targets/${encodeURIComponent(targetId)}/sync`, {
+      method: 'POST'
+    }),
+  listCloudResources: (filters: CloudResourceFilters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value) !== '') params.set(key, String(value));
+    });
+    const query = params.toString();
+    return request<CloudResourcePage>(`/cloud-resources${query ? `?${query}` : ''}`);
+  },
   getSccmCmdbConfig: () => request<SccmCmdbConfig>('/connectors/sccm-cmdb'),
   saveSccmCmdbConfig: (payload: SccmCmdbConfigRequest) => request<SccmCmdbConfig>('/connectors/sccm-cmdb', {
     method: 'PUT',

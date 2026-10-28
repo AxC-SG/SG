@@ -48,7 +48,7 @@ The servlet `TenantResolutionFilter` supplies only explicitly enabled local head
 
 The route summary above comes from `SecurityConfig`; controller roles, support restrictions and service-level capability checks also apply.
 
-`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables SCCM JDBC, generic Azure, runtime evidence or pilot generative assistance.
+`TenantEntitlementService` uses one effective resolver for backend enforcement and the `/me` snapshot. Corrected precedence is an active tenant override, then plan value, then disabled default; expired overrides fall through. LEGACY and SHADOW retain legacy allow behavior; ENFORCE applies corrected decisions only to explicit tenant UUIDs or `slug:<tenant-slug>` cohort entries. Outside that cohort behavior remains SHADOW; null/platform snapshots are empty. Wildcards and invalid modes/cohorts are rejected. Deployed pilot startup requires ENFORCE and a named cohort (committed default `slug:scoutgrid-internal-pilot`); effective deployed settings still need qualification. Roles, lifecycle, provider availability and independent containment remain additional checks: an entitlement never enables generic Azure, runtime evidence or pilot generative assistance.
 
 ## Durable work, scheduling and delivery
 
@@ -270,7 +270,8 @@ Backed by `vulnerability_intel_summary` + `vulnerability_intel_observations` pro
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/servicenow/assignment-groups` | List assignment groups from ServiceNow |
-| POST | `/{cveId}/servicenow-incident` | Create ServiceNow incident(s) for a CVE |
+| POST | `/{cveId}/servicenow-incident` | Create remediation ticket(s) for a CVE — path and response shape unchanged, but routed to the tenant's active ticketing system (Jira overrides ServiceNow) |
+| POST | `/{cveId}/ticket` | Provider-neutral equivalent; each response names the system holding the ticket |
 
 ### Dashboards
 
@@ -501,13 +502,41 @@ The independent CVE Workbench `FixRecordService` remains subject to normal autho
 | GET | `/{executionId}/timeline` | Bounded metadata-only event timeline for one execution |
 | GET | `/{executionId}/relationships` | Inventory relationships correlated to one execution |
 
-**AiGridFindingIncidentController — `/api/findings`** — `POST /{findingId}/servicenow-incident` (not AI-specific despite living in this package; reuses the shared `ServiceNowIncidentService`).
+**AiGridFindingIncidentController — `/api/findings`** — `POST /{findingId}/servicenow-incident` (not AI-specific despite living in this package; kept for existing clients and routed through `TicketingService`, so it lands in whichever system the tenant has active).
+
+**FindingTicketController** — `GET /api/ticketing/status` (active provider, configured providers, and which ones the active provider overrides) and `POST /api/findings/{findingId}/ticket` (`PLATFORM_OWNER`/`TENANT_ADMIN`/`SECURITY_ANALYST`; provider-neutral body, response names the provider, key, URL and status).
 
 **AiGridOperationsGovernanceController — `/api/ai-governance`** — tenant scan budget & retention operations. Reads `TENANT_ADMIN`+`SECURITY_ANALYST`; writes `PLATFORM_OWNER`/`TENANT_ADMIN`. `GET`/`PUT /budget`, `PUT /cadence`, `POST /budget-alerts/{id}/acknowledge`, `GET /retention`, `PUT /retention/policies`, `POST /retention/holds[/…/release]`, `POST /retention/sweep`.
 
 **AiGridPolicyCatalogController — `/api/platform/ai-grid/policies`** (`PLATFORM_OWNER` only) — policy package import/distribution/rollout and portfolio. `GET /` list, `GET /{policyId}/versions/{version}` detail, `PUT /{policyId}/distribution`.
 
 **AiGridValidationGovernanceController — `/api/platform/ai-grid/validation`** (`PLATFORM_OWNER` only) — answer-key/precision/bias review, policy-ID lifecycle, and R1/R2 release certification. `GET/POST /answer-keys[...]`, `POST /precision-reviews[...]`, `POST /policies/{id}/approve`, `POST /policies/{id}/dev-deploy`, `POST /policies/{id}/publish`, `POST /policies/{id}/deprecate`, and `POST /release-bindings/{id}/revoke`; legacy version-keyed digest/readiness/publish routes return an explicit migration error. DEV is reachable only through `dev-deploy` with a cohort and pinned approved version; `publish` performs CANARY (`publishAll=false`) or GA (`publishAll=true`). The catalog distribution endpoint intentionally rejects DEV and exposure-increasing writes. `GET/POST /releases/r1/*`, `GET/POST /releases/r2/*` remain available.
+
+### GCP Cloud Discovery
+
+**GcpDiscoveryController — `/api/connectors/gcp-discovery`** (same shape, roles, audit events and demo block as AWS): `GET /`, `PUT /` (body `credentialJson` = the customer's service account key, required on first save, write-only, omitted to keep the stored key; first save adds the key's project as a target), `POST /test`, `POST /sync`, `GET /sync/status`, `GET/POST /targets`, `PUT/DELETE /targets/{id}`, `POST /targets/{id}/test`, `POST /targets/{id}/sync`. Writes require `TENANT_ADMIN`/`INVENTORY_ADMIN`.
+
+Credentials: the key is validated by `GcpServiceAccountKey` (only `service_account` keys with `token_uri` = `https://oauth2.googleapis.com/token` and the `googleapis.com` universe), encrypted with `CredentialEncryptionService`, and exchanged for 1-hour tokens by `GoogleGcpTokenSource`. A connector without a key refuses test, admission and execution.
+
+Collection (`GcpDiscoveryClient`, REST through `OutboundHttpClient` provider `gcp`): Compute `aggregated/instances` (with `returnPartialSuccess`; unreachable zones make the listing incomplete), VM Manager inventories per zone, Cloud Asset `searchAllResources` for the selected types, and Resource Manager `testIamPermissions` for the per-permission test. Listings stop after 200 pages and are then incomplete. `GcpDiscoverySyncService` mirrors AWS: configuration-row admission lock, one active run per tenant, durable `GCP_DISCOVERY` ingestion jobs, each project succeeding or failing independently. `GcpResourceIngestionService` marks assets INACTIVE only for types listed completely and non-empty in the run.
+
+**CloudResourceController — `GET /api/cloud-resources`** — paged list of assets with cloud metadata (any provider) with optional `provider`, `accountId`, `region`, `resourceType`, `state`, `search` (wildcards escaped), `page`, `size` (max 200), plus facet counts. Tenant-scoped by the request schema.
+
+### Ticketing framework and Jira connector
+
+`com.prototype.vulnwatch.ticketing` puts every ticketing system behind `TicketingProvider` (`ServiceNowTicketingProvider`, an adapter over `ServiceNowIncidentService`, and `JiraTicketingProvider`). `TicketingService` owns eligibility, CVE asset grouping and the write-back to `findings` (`incident_id`, `incident_status`, `incident_provider`, `incident_pushed_status`, `incident_pushed_at`), so a provider never writes findings itself. `TicketingProviderRegistry` decides where **new** tickets go — the configured provider with the highest `TicketingSystem.precedence()`, so Jira overrides ServiceNow — while an **existing** ticket stays with the system recorded on its finding (null means ServiceNow, which predates provider tracking).
+
+`FindingIncidentSyncService` (07:00 UTC) syncs both directions per finding: it pulls each ticket's state from its owning system (a resolved ticket resolves the finding through `FindingWorkflowService`) and pushes finding resolve/reopen back to the ticket. `incident_pushed_status` is the loop breaker — both directions write it, so a ticket-driven close is never echoed back.
+
+**JiraTicketingConfigController — `/api/connectors/jira-ticketing`**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Get the tenant's Jira config (the token is write-only; only `hasCredentialSecret` is returned) |
+| PUT | `/` | Save config (`TENANT_ADMIN`/`INVENTORY_ADMIN`; blocked for demo tenants; audited as `connector.jira_ticketing.saved`) |
+| POST | `/test` | Probe credentials (`/rest/api/3/myself`) then project reachability (`/rest/api/3/project/{key}`) |
+
+One Jira connector per tenant (`uk_jira_ticketing_configs_tenant`) and no environment-level fallback. The token is encrypted with `CredentialEncryptionService` and is covered by `ProviderCredentialMigrator`. Outbound calls use the `jira` provider key, which has **no default host**: add the Jira host to the `jira=` entry of `HTTP_OUTBOUND_ALLOWED_HOSTS` or saving is rejected with 400. A Jira connector counts against the tenant connector quota.
 
 ### Connectors
 
@@ -520,7 +549,7 @@ The independent CVE Workbench `FixRecordService` remains subject to normal autho
 | POST | `/test` | Test connection |
 | POST | `/sync` | Trigger sync |
 
-**SccmCmdbController — `/api/connectors/sccm-cmdb`** — saved status is readable, but save/test/sync, scheduling, queued execution and JDBC are contained by `SccmPilotPolicy`. The table below inventories retained routes, not available live ingestion.
+**SccmCmdbController — `/api/connectors/sccm-cmdb`** — save/test/sync (`TENANT_ADMIN`/`INVENTORY_ADMIN`). Save validates the JDBC URL with `SccmJdbcPolicy` (400 with an operator-facing reason; host must be in `SCCM_ALLOWED_HOSTS`), stores the password encrypted, and rejects mock mode and Windows integrated authentication. Sync admission and scheduling use the same configuration-row lock and durable `SCCM_CMDB` ingestion jobs as ServiceNow and AWS.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -840,7 +869,7 @@ Parses CycloneDX and SPDX SBOMs, normalizes component names and versions, resolv
 
 ### CMDB Ingestion (`service/cmdbingestion/`)
 
-ServiceNow CMDB sync: pulls CI records, resolves identity via `CiResolutionService`, writes `assets` and `cis`. SCCM live JDBC is contained; its historical full-sweep code is unavailable. Supported CMDB ingestion writes to `software_instances` and `discovery_models`.
+ServiceNow CMDB sync: pulls CI records, resolves identity via `CiResolutionService`, writes `assets` and `cis`. SCCM/MECM sync reads `v_R_System` joined to `v_GS_INSTALLED_SOFTWARE` over JDBC and ingests through the same CMDB pipeline. Supported CMDB ingestion writes to `software_instances` and `discovery_models`.
 
 ### Vulnerability Ingestion (`service/vulningestion/`)
 
@@ -977,13 +1006,13 @@ All cron times below are UTC. The [schedule matrix](<../Working Knowledge/AWS/PH
 | `02:30` daily | JVN sync |
 | `02:45` daily | OSV advisory sync (`OsvPlatformService`) |
 | Disabled | Unfinished per-tenant OSV correlation (`OsvTenantService`) |
-| `07:00` daily | ServiceNow incident status sync |
+| `07:00` daily | Bidirectional ticket sync (ServiceNow and Jira) |
 | `02:00` Sunday | EOL catalog refresh (stage 1) |
 | `03:00` Sunday | EOL release data (stage 2) |
 | `03:30` Sunday | EOL slug resolution (stage 3) |
 | `04:00` Sunday | EOL denormalization (stage 4) |
 | Every 5 min | GitHub SBOM sources |
-| Every 5 min | Enabled ServiceNow / AWS Discovery scheduled syncs; SCCM and generic Azure contained |
+| Every 5 min | Enabled ServiceNow / SCCM / AWS / GCP Discovery scheduled syncs; generic Azure contained |
 | Every 15 min | Reopen expired suppressions |
 | Every 2 sec | Drain `finding_delta_queue` (batches of 100) |
 | Every 2 sec | Poll `ingestion_jobs` queue (`IngestionJobWorkerService`) |

@@ -114,15 +114,15 @@ Tenant/demo invitations use hashed records, fragment links with POST exchange, a
 
 ## Database Setup
 
-Current packaged heads are **platform V8 / tenant V6**, with required tenant range V6–V6. Next versions are platform V9 / tenant V7. Preserve every applied migration; add the next version and update `MigrationCatalogTest`. `mvn clean` removes stale build resources, not database history. Startup/readiness checks shared work structures and grants; individual incompatible tenants remain blocked without taking compatible tenants offline.
+Current packaged heads are **platform V8 / tenant V8**, with required tenant range V8–V8. Next versions are platform V9 / tenant V9. Preserve every applied migration; add the next version and update `MigrationCatalogTest`. `mvn clean` removes stale build resources, not database history. Startup/readiness checks shared work structures and grants; individual incompatible tenants remain blocked without taking compatible tenants offline.
 
 The last observed deployed backend predates the development migration-history reset. Actual deployed histories are unverified. Fresh local V5→V6 checks do not establish deployed upgrade or rollback compatibility. Inspect actual histories read-only and rehearse an authorized representative-clone transition with backup/restore and candidate/rollback digests. Never reset a shared database, replay baselines over existing tables or use `flyway:repair` to disguise differing histories. See [release qualification](<Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
 ## Capability scope
 
-Generic Azure, SCCM JDBC, local archive file operations, tenant OSV correlation, synthetic Fix Intelligence, runtime evidence, pilot generative assistance and destructive tenant purge remain unavailable. Static AWS/Azure/Copilot AI inventory and deterministic assessment are independently retained under roles, entitlements and provider controls. The deployed pilot requires ENFORCE and the named cohort; entitlement allow does not override containment.
+Generic Azure, local archive file operations, tenant OSV correlation, synthetic Fix Intelligence, runtime evidence, pilot generative assistance and destructive tenant purge remain unavailable. Static AWS/Azure/Copilot AI inventory and deterministic assessment are independently retained under roles, entitlements and provider controls. The deployed pilot requires ENFORCE and the named cohort; entitlement allow does not override containment.
 
-Unsupported Patch Management cards and mock forms have been retired, including their input-logging handlers. Old connector query IDs and direct paths cannot mount them. Supported inventory/BOM and static AI connectors remain; SCCM JDBC and generic Azure retain disabled/read-only status. [Repair evidence](<Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>) records the new regressions and local verification.
+Unsupported Patch Management cards and mock forms have been retired, including their input-logging handlers. Old connector query IDs and direct paths cannot mount them. Supported inventory/BOM and static AI connectors remain; generic Azure retains disabled/read-only status; SCCM/MECM is a live connector (SQL Server authentication, operator-approved hosts only). [Repair evidence](<Working Knowledge/AWS/DOCUMENTATION_RECONCILIATION.md#p30-frontend-repair>) records the new regressions and local verification.
 
 ## Tests
 

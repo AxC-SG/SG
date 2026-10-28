@@ -22,17 +22,20 @@ public class SccmCmdbConfigService {
     private final SccmQueryService sccmQueryService;
     private final TenantQuotaService tenantQuotaService;
     private final CredentialEncryptionService credentialEncryptionService;
+    private final SccmJdbcPolicy jdbcPolicy;
 
     public SccmCmdbConfigService(
             SccmCmdbConfigRepository sccmCmdbConfigRepository,
             SccmQueryService sccmQueryService,
             TenantQuotaService tenantQuotaService,
-            CredentialEncryptionService credentialEncryptionService
+            CredentialEncryptionService credentialEncryptionService,
+            SccmJdbcPolicy jdbcPolicy
     ) {
         this.sccmCmdbConfigRepository = sccmCmdbConfigRepository;
         this.sccmQueryService = sccmQueryService;
         this.tenantQuotaService = tenantQuotaService;
         this.credentialEncryptionService = credentialEncryptionService;
+        this.jdbcPolicy = jdbcPolicy;
     }
 
     @Transactional(readOnly = true)
@@ -42,7 +45,6 @@ public class SccmCmdbConfigService {
 
     @Transactional
     public SccmCmdbConfigResponse save(Tenant tenant, SccmCmdbConfigRequest request) {
-        SccmPilotPolicy.requireEnabled();
         SccmCmdbConfig config = findConfig(tenant)
                 .orElseGet(() -> {
                     tenantQuotaService.assertCanCreateConnector(tenant, "sccm");
@@ -58,8 +60,17 @@ public class SccmCmdbConfigService {
 
     @Transactional
     public SccmConnectionTestResponse test(Tenant tenant) {
-        SccmPilotPolicy.requireEnabled();
         SccmCmdbConfig config = requireConfig(tenant);
+        // Surface a policy rejection as such, rather than as a generic "unable to connect".
+        SccmJdbcPolicy.ValidatedUrl target = validateUrl(config.getJdbcUrl());
+        if (config.getAuthType() == SccmAuthType.WINDOWS_AUTH) {
+            throw new ResponseStatusException(BAD_REQUEST, WINDOWS_AUTH_UNSUPPORTED);
+        }
+        try {
+            jdbcPolicy.assertSafeTarget(target.host());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(BAD_REQUEST, ex.getMessage());
+        }
 
         Instant testedAt = Instant.now();
         boolean[] results = sccmQueryService.testConnection(config);
@@ -68,9 +79,7 @@ public class SccmCmdbConfigService {
         boolean success = systemViewReachable && softwareViewReachable;
 
         String message;
-        if (config.isMockMode()) {
-            message = "SCCM mock mode: connection test always succeeds. No real SQL Server connection was attempted.";
-        } else if (success) {
+        if (success) {
             message = "SCCM connection succeeded. v_R_System and v_GS_INSTALLED_SOFTWARE are reachable.";
         } else if (systemViewReachable) {
             message = "SCCM connection partial: v_R_System reachable but v_GS_INSTALLED_SOFTWARE was not.";
@@ -107,9 +116,31 @@ public class SccmCmdbConfigService {
 
     // ── Private helpers ────────────────────────────────────────────────────────────────────────
 
+    private static final String WINDOWS_AUTH_UNSUPPORTED =
+            "Windows integrated authentication is not supported; use SQL Server authentication";
+
+    private SccmJdbcPolicy.ValidatedUrl validateUrl(String jdbcUrl) {
+        try {
+            return jdbcPolicy.validate(jdbcUrl);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(BAD_REQUEST, ex.getMessage());
+        }
+    }
+
     private void apply(SccmCmdbConfig config, SccmCmdbConfigRequest request) {
+        if (request.mockMode() != null && request.mockMode()) {
+            // Fixture rows must never substitute for a customer's real inventory.
+            throw new ResponseStatusException(BAD_REQUEST, "SCCM mock mode is not supported");
+        }
+        SccmAuthType authType = parseAuthType(request.authType());
+        if (authType == SccmAuthType.WINDOWS_AUTH) {
+            throw new ResponseStatusException(BAD_REQUEST, WINDOWS_AUTH_UNSUPPORTED);
+        }
+        if (hasText(request.jdbcUrl())) {
+            validateUrl(request.jdbcUrl());
+        }
         config.setJdbcUrl(trimToNull(request.jdbcUrl()));
-        config.setAuthType(parseAuthType(request.authType()));
+        config.setAuthType(authType);
         config.setUsername(trimToNull(request.username()));
         if (hasText(request.credentialSecret())) {
             config.setCredentialSecret(credentialEncryptionService.encrypt(request.credentialSecret().trim()));
@@ -118,7 +149,7 @@ public class SccmCmdbConfigService {
         config.setDatabaseName(defaultIfBlank(request.databaseName(), "CM_P01"));
         config.setFetchSize(request.fetchSize() == null ? 500 : Math.max(1, request.fetchSize()));
         config.setQueryTimeoutSeconds(request.queryTimeoutSeconds() == null ? 120 : Math.max(1, request.queryTimeoutSeconds()));
-        config.setMockMode(request.mockMode() != null && request.mockMode());
+        config.setMockMode(false);
         config.setEnabled(request.enabled() == null || request.enabled());
         config.setAutoSyncEnabled(request.autoSyncEnabled() != null && request.autoSyncEnabled());
         config.setIntervalMinutes(request.intervalMinutes() == null ? 1440 : Math.max(5, request.intervalMinutes()));
@@ -148,8 +179,7 @@ public class SccmCmdbConfigService {
                     null
             );
         }
-        boolean configured = hasText(config.getJdbcUrl())
-                && (config.isMockMode() || hasText(config.getCredentialSecret()));
+        boolean configured = hasText(config.getJdbcUrl()) && hasText(config.getCredentialSecret());
         return new SccmCmdbConfigResponse(
                 config.getId(),
                 config.getSourceSystem(),

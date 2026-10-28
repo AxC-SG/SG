@@ -215,14 +215,16 @@ describe('AiFindingDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Re-open' })).toBeInTheDocument();
   });
 
-  it('creates a ServiceNow incident and shows the incident number on success', async () => {
+  it('creates a ticket in the active system and shows its key on success', async () => {
     vi.spyOn(api, 'getAiSecurityFinding').mockResolvedValue(buildFinding());
     vi.spyOn(api, 'listAiGridPolicyDetails').mockResolvedValue([buildPolicy()]);
-    const createIncident = vi.spyOn(api, 'createFindingIncident').mockResolvedValue({
-      incidentNumber: 'INC0012345',
-      sysId: 'sys-1',
+    const createTicket = vi.spyOn(api, 'createFindingTicket').mockResolvedValue({
+      provider: 'servicenow',
+      providerName: 'ServiceNow',
+      ticketKey: 'INC0012345',
+      ticketId: 'sys-1',
       url: 'https://example.service-now.com/inc/sys-1',
-      status: 'created',
+      status: 'New',
       message: 'Incident created',
     });
 
@@ -230,10 +232,39 @@ describe('AiFindingDetailPage', () => {
     await screen.findByText('AIF-101B8AF0');
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Incident' }));
-    await waitFor(() => expect(createIncident).toHaveBeenCalledWith('finding-1', expect.objectContaining({
-      findingTitle: 'Azure RAI policy contains a non-blocking filter',
+    await waitFor(() => expect(createTicket).toHaveBeenCalledWith('finding-1', expect.objectContaining({
+      title: 'Azure RAI policy contains a non-blocking filter',
       severity: 'HIGH',
     })));
     expect(await screen.findByText(/INC0012345/)).toBeInTheDocument();
+  });
+
+  /**
+   * The success notice must name the system that actually holds the ticket. Hardcoding
+   * ServiceNow would mislabel every Jira ticket and send users to the wrong tool.
+   */
+  it('names Jira when Jira raised the ticket', async () => {
+    vi.spyOn(api, 'getAiSecurityFinding').mockResolvedValue(buildFinding());
+    vi.spyOn(api, 'listAiGridPolicyDetails').mockResolvedValue([buildPolicy()]);
+    vi.spyOn(api, 'createFindingTicket').mockResolvedValue({
+      provider: 'jira',
+      providerName: 'Jira',
+      ticketKey: 'SEC-42',
+      ticketId: '10042',
+      url: 'https://acme.atlassian.net/browse/SEC-42',
+      status: 'Open',
+      message: 'Issue SEC-42 created successfully in Jira',
+    });
+
+    renderAsTenantAdmin(<AiFindingDetailPage findingId="finding-1" />);
+    await screen.findByText('AIF-101B8AF0');
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Incident' }));
+
+    expect(await screen.findByText(/Jira ticket SEC-42 created/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open in Jira/i })).toHaveAttribute(
+      'href',
+      'https://acme.atlassian.net/browse/SEC-42'
+    );
   });
 });

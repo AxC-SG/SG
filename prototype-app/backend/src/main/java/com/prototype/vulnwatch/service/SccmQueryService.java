@@ -22,21 +22,21 @@ import org.springframework.stereotype.Service;
 /**
  * Extracts hardware/software inventory rows from an SCCM SQL Server database.
  *
- * <p>In MOCK mode no real SQL Server connection is attempted; realistic fixture rows are returned
- * instead, allowing the rest of the ingestion pipeline to be exercised without infrastructure.
- *
- * <p>In LIVE mode a JDBC connection is opened directly via {@link DriverManager} (not a Spring
- * DataSource) because connection details are stored per-tenant in the database, not in
- * application.yml.
+ * <p>A JDBC connection is opened directly via {@link DriverManager} (not a Spring DataSource)
+ * because connection details are stored per-tenant in the database, not in application.yml.
+ * Every connection first passes {@link SccmJdbcPolicy}, so a tenant can only reach a database
+ * host the operator has approved, with SQL Server authentication and a vetted URL.
  */
 @Service
 public class SccmQueryService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SccmQueryService.class);
     private final CredentialEncryptionService credentialEncryptionService;
+    private final SccmJdbcPolicy jdbcPolicy;
 
-    public SccmQueryService(CredentialEncryptionService credentialEncryptionService) {
+    public SccmQueryService(CredentialEncryptionService credentialEncryptionService, SccmJdbcPolicy jdbcPolicy) {
         this.credentialEncryptionService = credentialEncryptionService;
+        this.jdbcPolicy = jdbcPolicy;
     }
 
     /**
@@ -72,15 +72,14 @@ public class SccmQueryService {
     // ── Public API ─────────────────────────────────────────────────────────────────────────────
 
     /**
-     * Fetches install rows for the given config.  Returns mock data when {@code mockMode} is true.
+     * Fetches install rows for the given config from the tenant's SCCM database.
      *
      * <p>Each row map contains the keys expected by {@code CmdbInventoryIngestionRunner}:
      * {@code computer_name}, {@code sys_id}, {@code display_name}, {@code publisher},
      * {@code version}, {@code install_date}, {@code version_evidence}.
      */
     public List<Map<String, String>> fetchInstallRows(SccmCmdbConfig config) throws Exception {
-        SccmPilotPolicy.requireEnabled();
-        LOG.info("SCCM live mode: executing install query against {}", safeJdbcUrl(config.getJdbcUrl()));
+        LOG.info("SCCM: executing install query against {}", safeJdbcUrl(config.getJdbcUrl()));
         return executeQuery(config, INSTALL_SQL);
     }
 
@@ -120,7 +119,6 @@ public class SccmQueryService {
      * @return a two-element boolean array: {@code [systemViewReachable, softwareViewReachable]}
      */
     public boolean[] testConnection(SccmCmdbConfig config) {
-        SccmPilotPolicy.requireEnabled();
         boolean systemOk = false;
         boolean softwareOk = false;
         try (Connection conn = openConnection(config)) {
@@ -142,6 +140,43 @@ public class SccmQueryService {
             LOG.warn("SCCM connection test failed: {}", e.getMessage());
         }
         return new boolean[]{systemOk, softwareOk};
+    }
+
+    /** Rows from a fixed query, and whether the row cap cut the result short. */
+    public record QueryRows(List<Map<String, String>> rows, boolean truncated) {}
+
+    /**
+     * Runs one of the caller's fixed SQL statements (never tenant input) through the same
+     * policy-checked connection as inventory sync, stopping at {@code maxRows}.
+     */
+    public QueryRows queryRows(SccmCmdbConfig config, String sql, int maxRows) throws Exception {
+        List<Map<String, String>> rows = new ArrayList<>();
+        boolean truncated = false;
+        try (Connection conn = openConnection(config);
+             Statement stmt = conn.createStatement()) {
+            stmt.setFetchSize(config.getFetchSize() == null ? 500 : Math.max(1, config.getFetchSize()));
+            stmt.setQueryTimeout(config.getQueryTimeoutSeconds() == null ? 120 : Math.max(1, config.getQueryTimeoutSeconds()));
+            stmt.setMaxRows(maxRows + 1);
+            try (ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSetMetaData meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
+                while (rs.next()) {
+                    if (rows.size() >= maxRows) {
+                        truncated = true;
+                        break;
+                    }
+                    Map<String, String> row = new LinkedHashMap<>();
+                    for (int i = 1; i <= colCount; i++) {
+                        String value = rs.getString(i);
+                        if (value != null) {
+                            row.put(meta.getColumnLabel(i).toLowerCase(Locale.ROOT), value.trim());
+                        }
+                    }
+                    rows.add(row);
+                }
+            }
+        }
+        return new QueryRows(rows, truncated);
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────────────────────
@@ -173,28 +208,30 @@ public class SccmQueryService {
     }
 
     private Connection openConnection(SccmCmdbConfig config) throws Exception {
-        SccmPilotPolicy.requireEnabled();
-        String url = config.getJdbcUrl();
-        if (url == null || url.isBlank()) {
-            throw new IllegalStateException("SCCM JDBC URL is not configured");
+        // Re-checked on every connection: the allowlist, or what the host resolves to, may have
+        // changed since the configuration was saved.
+        SccmJdbcPolicy.ValidatedUrl target = jdbcPolicy.validate(config.getJdbcUrl());
+        jdbcPolicy.assertSafeTarget(target.host());
+        if (config.getAuthType() == SccmAuthType.WINDOWS_AUTH) {
+            // Integrated authentication would present the backend host's own identity to a
+            // tenant-chosen server, so one tenant could act with credentials that are not theirs.
+            throw new IllegalStateException(
+                    "Windows integrated authentication is not supported; use SQL Server authentication");
+        }
+        String username = config.getUsername();
+        String password = credentialEncryptionService.decrypt(config.getCredentialSecret());
+        if (username == null || username.isBlank()) {
+            throw new IllegalStateException("SCCM username is required for SQL_AUTH");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException("SCCM password/secret is required for SQL_AUTH");
         }
         Properties props = new Properties();
-        if (config.getAuthType() == SccmAuthType.WINDOWS_AUTH) {
-            props.setProperty("integratedSecurity", "true");
-            props.setProperty("authenticationScheme", "NativeAuthentication");
-        } else {
-            String username = config.getUsername();
-            String password = credentialEncryptionService.decrypt(config.getCredentialSecret());
-            if (username == null || username.isBlank()) {
-                throw new IllegalStateException("SCCM username is required for SQL_AUTH");
-            }
-            if (password == null || password.isBlank()) {
-                throw new IllegalStateException("SCCM password/secret is required for SQL_AUTH");
-            }
-            props.setProperty("user", username.trim());
-            props.setProperty("password", password);
-        }
-        return DriverManager.getConnection(url.trim(), props);
+        props.setProperty("user", username.trim());
+        props.setProperty("password", password);
+        // Bound the connect phase; an unreachable host must not hold a worker for the driver default.
+        props.setProperty("loginTimeout", "15");
+        return DriverManager.getConnection(target.url(), props);
     }
 
     private String blankToEmpty(String value) {

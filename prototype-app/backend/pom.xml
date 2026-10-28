@@ -77,6 +77,14 @@
             <version>12.6.5.jre11</version>
         </dependency>
 
+        <!-- Google auth — GCP Cloud Discovery platform identity and per-tenant service account
+             impersonation. Resource APIs are called over REST through OutboundHttpClient. -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.30.0</version>
+        </dependency>
+
         <!-- AWS SDK v2 — Cloud Discovery -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>

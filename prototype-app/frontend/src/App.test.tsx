@@ -365,23 +365,26 @@ describe('App test persona switcher', () => {
     vi.spyOn(api, 'getAzureDiscoveryConfig').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof api.getAzureDiscoveryConfig>>);
     vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
     vi.spyOn(api, 'getVulnIntelSourcesSummary').mockResolvedValue({ sources: {} } as Awaited<ReturnType<typeof api.getVulnIntelSourcesSummary>>);
+    const { fixIntelligenceApi } = await import('./features/fix-intelligence/api');
+    vi.spyOn(fixIntelligenceApi, 'getPatchConnector').mockResolvedValue({ configured: false } as Awaited<ReturnType<typeof fixIntelligenceApi.getPatchConnector>>);
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { default: App } = await import('./App');
     const { container } = renderWithProviders(<App />, { route });
-    expect(await screen.findByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Patch Management' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /BigFix|Tanium|Test Connection|Save Configuration/ })).not.toBeInTheDocument();
+    // The first case also pays for lazily loading the Connect page.
+    expect(await screen.findByRole('heading', { name: 'Inventory' }, { timeout: 5000 })).toBeInTheDocument();
+    // Retired mock IDs fall back to the catalog; they never open a connector form.
+    expect(screen.queryByRole('button', { name: /Test Connection|Save Configuration/ })).not.toBeInTheDocument();
     expect(container.querySelector('input[type="password"]')).toBeNull();
     expect(log).not.toHaveBeenCalled();
   });
 
-  it('removes synthetic Fix Intelligence navigation while retained workflows remain reachable', async () => {
+  it('shows Fix Intelligence navigation for tenant users', async () => {
     const auth = await import('./features/auth/api');
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/exposure' });
     expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
-    expect(screen.queryByText('Fix Intelligence')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Fix Intelligence/ }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
   });
 });

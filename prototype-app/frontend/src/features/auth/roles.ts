@@ -61,3 +61,13 @@ export function canViewReadOnly(actor: ActorContext | null): boolean {
 function normalizeRole(role: string): string {
   return role.replace(/^ROLE_/, '').trim().toUpperCase().replace(/[-\s]+/g, '_');
 }
+
+/** Create and edit workarounds and compensating controls (mirrors the backend @PreAuthorize). */
+export function canManageFixControls(actor: ActorContext | null): boolean {
+  return !isPlatformScopeOnly(actor) && hasAnyRole(actor, ['TENANT_ADMIN', 'SECURITY_ANALYST']);
+}
+
+/** Approve or retire a control; the backend also refuses the proposer's own approval. */
+export function canApproveFixControls(actor: ActorContext | null): boolean {
+  return !isPlatformScopeOnly(actor) && hasRole(actor, 'TENANT_ADMIN');
+}

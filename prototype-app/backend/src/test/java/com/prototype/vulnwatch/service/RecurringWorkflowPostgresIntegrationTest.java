@@ -162,10 +162,11 @@ class RecurringWorkflowPostgresIntegrationTest {
         var config = new ServiceNowCmdbConfigService.ServiceNowRuntimeConfig("https://example.test", ServiceNowAuthType.BASIC,
                 "offline", "offline", null, null, null, null, null, null, null, 10, true, false, 60);
         when(incidentConfig.resolveRuntimeConfig(any())).thenReturn(Optional.of(config));
-        when(incidentProvider.getIncidentStatus(config, "INC-OFFLINE")).thenReturn("CLOSED");
+        // The ticketing provider reads the raw state code; 7 is ServiceNow's "Closed".
+        when(incidentProvider.fetchIncidentStateCode(config, "INC-OFFLINE")).thenReturn(Optional.of("7"));
         List<Integer> changed = overlap(() -> incidents.syncAll().updated());
         assertEquals(1, changed.stream().mapToInt(Integer::intValue).sum());
-        scoped.run(tenant, () -> assertEquals("CLOSED", jdbc.queryForObject("select incident_status from findings", String.class)));
+        scoped.run(tenant, () -> assertEquals("Closed", jdbc.queryForObject("select incident_status from findings", String.class)));
     }
 
     @Test void overlappingLegacyBackfillCreatesOneSourceAndReconciliationOnlyObserves() throws Exception {

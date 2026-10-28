@@ -5,9 +5,12 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import { PerformanceInstrumentation } from './lib/performanceMonitoring';
 import type { InventoryViewKey } from './features/inventory/types';
 import { AI_ARTIFACT_CATEGORIES, legacyAgentRosterRedirect, combinedNativeKindFilterValue } from './features/ai-security/categories';
-import type { AdminRouteView, AppTab, ConfigurationsRouteView, ConnectRouteView, VulnerabilityIntelRouteView } from './app/routes';
+import type { AdminRouteView, AppTab, ConfigurationsRouteView, ConnectRouteView, FixIntelligenceRouteView, VulnerabilityIntelRouteView } from './app/routes';
+import { FIX_VIEWS } from './features/fix-intelligence/format';
 import {
   activeTabForPath,
+  normalizeFixIntelligenceRouteView,
+  pathForFixIntelligenceView,
   buildLegacyCompatiblePath,
   normalizeAdminRouteView,
   normalizeConfigurationsRouteView,
@@ -51,6 +54,12 @@ const ExposureDashboardPage = React.lazy(async () => ({
 }));
 const FindingsPage = React.lazy(async () => ({
   default: (await import('./pages/FindingsPage')).FindingsPage
+}));
+const FixIntelligencePage = React.lazy(async () => ({
+  default: (await import('./features/fix-intelligence/FixIntelligencePage')).FixIntelligencePage
+}));
+const FixDetailPage = React.lazy(async () => ({
+  default: (await import('./features/fix-intelligence/FixDetailPage')).FixDetailPage
 }));
 const AiFindingsPage = React.lazy(async () => ({
   default: (await import('./pages/AiFindingsPage')).AiFindingsPage
@@ -129,6 +138,9 @@ const HostAssetDetailPage = React.lazy(async () => ({
 }));
 const InventoryPage = React.lazy(async () => ({
   default: (await import('./pages/InventoryPage')).InventoryPage
+}));
+const CloudResourcesPage = React.lazy(async () => ({
+  default: (await import('./pages/CloudResourcesPage')).CloudResourcesPage
 }));
 const InventoryComponentViewsPage = React.lazy(async () => ({
   default: (await import('./pages/InventoryComponentViewsPage')).InventoryComponentViewsPage
@@ -242,6 +254,7 @@ const BOTTOM_NAV_TABS: AppTab[] = [];
 const INVENTORY_PILL_ORDER: Array<{ key: InventoryViewKey; label: string; countKey?: 'hosts' | 'software' | 'containerImages' | 'applications' | 'bomInventory' }> = [
   { key: 'overview', label: 'Overview' },
   { key: 'hosts', label: 'Hosts', countKey: 'hosts' },
+  { key: 'cloud-resources', label: 'Cloud Resources' },
   { key: 'software-identities', label: 'Software Entities', countKey: 'software' },
   { key: 'container-images', label: 'Container Images', countKey: 'containerImages' },
   { key: 'sbom', label: 'Applications', countKey: 'applications' },
@@ -351,6 +364,13 @@ function ExposureDashboardRoute() {
   return <ExposureDashboardPage />;
 }
 
+
+function FixIntelligenceRoute() {
+  const { view } = useParams();
+  const normalized = normalizeFixIntelligenceRouteView(view);
+  if (view !== normalized) return <Navigate to={pathForFixIntelligenceView(normalized)} replace />;
+  return <FixIntelligencePage view={normalized} />;
+}
 
 function FindingsRoute() {
   const navigate = useNavigate();
@@ -544,6 +564,9 @@ function InventoryRoute() {
   }
   if (selectedView === 'bom-inventory') {
     return <BomInventoryPage />;
+  }
+  if (selectedView === 'cloud-resources') {
+    return <CloudResourcesPage />;
   }
   if (selectedView === 'ai') {
     return <AiSecurityRoute><AiInventoryPage /></AiSecurityRoute>;
@@ -804,6 +827,7 @@ function AppShell() {
   const [inventoryNavExpanded, setInventoryNavExpanded] = React.useState(false);
   const [aiInventoryNavExpanded, setAiInventoryNavExpanded] = React.useState(false);
   const [findingsNavExpanded, setFindingsNavExpanded] = React.useState(false);
+  const [fixNavExpanded, setFixNavExpanded] = React.useState(false);
   const [adminNavExpanded, setAdminNavExpanded] = React.useState(false);
   const [configurationsNavExpanded, setConfigurationsNavExpanded] = React.useState(false);
 
@@ -830,13 +854,13 @@ function AppShell() {
       return ['vuln-repo', 'connect', 'platform', 'end-of-life', 'platform-policies'] satisfies AppTab[];
     }
     if (canManageTenant(actor)) {
-      const tabs: AppTab[] = ['exposure', 'findings', 'vuln-repo', 'campaigns', 'inventory', 'connect', 'admin', 'configurations'];
+      const tabs: AppTab[] = ['exposure', 'findings', 'fix-intelligence', 'vuln-repo', 'campaigns', 'inventory', 'connect', 'admin', 'configurations'];
       if (aiSecurityEnabled) tabs.splice(2, 0, 'policies');
       return tabs;
     }
     const tabs: AppTab[] = ['exposure'];
     if (canRunSecurityWorkflow(actor) || canViewReadOnly(actor)) {
-      tabs.push('findings', 'vuln-repo', 'campaigns', 'inventory');
+      tabs.push('findings', 'fix-intelligence', 'vuln-repo', 'campaigns', 'inventory');
       if (aiSecurityEnabled) tabs.push('policies');
     }
     if (canAccessPlatformConsole(actor)) {
@@ -953,7 +977,7 @@ function AppShell() {
     return titleForTab(activeTab);
   }, [activeTab, location.pathname]);
 
-  const tenantScopedTabs = new Set<AppTab>(['exposure', 'findings', 'policies', 'inventory', 'admin', 'configurations']);
+  const tenantScopedTabs = new Set<AppTab>(['exposure', 'findings', 'fix-intelligence', 'policies', 'inventory', 'admin', 'configurations']);
   if (actor && isPlatformScope && tenantScopedTabs.has(activeTab)) {
     return <Navigate to={pathForPlatformView('tenants')} replace state={{ platformMessage: 'Select a tenant to continue.' }} />;
   }
@@ -1058,6 +1082,16 @@ function AppShell() {
                   ],
                   (key) => key === 'ai' ? location.pathname.startsWith('/findings/ai') : location.pathname === '/findings',
                   (key) => navigate(key === 'ai' ? pathForAiFindings() : '/findings')
+                );
+              }
+              if (tab === 'fix-intelligence') {
+                return renderExpandableNavButton(
+                  tab,
+                  fixNavExpanded,
+                  () => setFixNavExpanded((current) => !current),
+                  FIX_VIEWS,
+                  (key) => activeTab === 'fix-intelligence' && pathSegments[1] === key,
+                  (key) => navigate(pathForFixIntelligenceView(key as FixIntelligenceRouteView))
                 );
               }
               if (tab === 'inventory') {
@@ -1256,7 +1290,8 @@ function AppShell() {
               <Route path="/findings/ai/:findingId" element={<AiFindingDetailRoute />} />
               <Route path="/findings/ai" element={<AiSecurityRoute><AiFindingsPage /></AiSecurityRoute>} />
               <Route path="/findings" element={<FindingsRoute />} />
-              <Route path="/fix-intelligence/*" element={<Navigate to="/findings" replace />} />
+              <Route path="/fix-intelligence/details/:fixId" element={<FixDetailPage />} />
+              <Route path="/fix-intelligence/:view?" element={<FixIntelligenceRoute />} />
               <Route path="/policies" element={<AiSecurityRoute><AiPoliciesPage /></AiSecurityRoute>} />
               <Route path="/policies/:policyId" element={<AiSecurityRoute><AiPolicyDetailRoute /></AiSecurityRoute>} />
               <Route path="/platform/ai-policies/:policyId" element={<PlatformAiPolicyDetailRoute />} />

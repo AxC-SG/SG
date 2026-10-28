@@ -11,6 +11,7 @@ import type { HostAssetSummary } from '../features/inventory/api-types';
 import { useRiskPolicyQuery } from '../features/cve-workbench/queries';
 import { computeFindingPriorityScore, riskScoreLabel } from '../lib/riskScoring';
 import { useActor } from '../features/auth/context';
+import { FixContextPanel } from '../features/fix-intelligence/FixContextPanel';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -888,6 +889,7 @@ export function FindingDetailPage() {
 
           {/* ── RIGHT: CVE + Remediation ──────────────────────────────── */}
           <div className="fd3-col fd3-col-right">
+            <FixContextPanel cveId={currentFinding.vulnerabilityId} assetId={hostAssetId} />
 
             <Panel title="Vulnerability">
               <div className="fd3-kv-table">

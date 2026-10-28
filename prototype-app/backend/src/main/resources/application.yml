@@ -218,8 +218,8 @@ app:
       honor-retry-after: ${HTTP_OUTBOUND_HONOR_RETRY_AFTER:true}
       retry-on-network-errors: ${HTTP_OUTBOUND_RETRY_ON_NETWORK_ERRORS:true}
       # Semicolon-separated provider=exact.hostname mappings. Dynamic providers
-      # (servicenow and sbom-endpoint) must be explicitly configured per deployment.
-      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov;osv=api.osv.dev;msrc=api.msrc.microsoft.com;azure-management=management.azure.com}
+      # (servicenow, jira and sbom-endpoint) must be explicitly configured per deployment.
+      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov;osv=api.osv.dev;msrc=api.msrc.microsoft.com;azure-management=management.azure.com;gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com;intune=graph.microsoft.com,login.microsoftonline.com}
   openai:
     api-key: ${OPENAI_API_KEY:}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
@@ -328,6 +328,18 @@ app:
     release-refresh-cron: ${EOL_RELEASE_REFRESH_CRON:0 0 3 * * SUN}
     resolve-mappings-cron: ${EOL_RESOLVE_MAPPINGS_CRON:0 30 3 * * SUN}
     denormalize-cron: ${EOL_DENORMALIZE_CRON:0 0 4 * * SUN}
+  sccm:
+    # Comma-separated exact SQL Server host names tenants may point the SCCM connector at.
+    # Empty approves nothing, so the connector is configurable but cannot connect until an
+    # operator names the hosts. Private addresses are allowed; loopback/link-local are not.
+    allowed-hosts: ${SCCM_ALLOWED_HOSTS:}
+  patch:
+    # Days of fix asset status history kept (fix_asset_events).
+    event-retention-days: ${PATCH_EVENT_RETENTION_DAYS:400}
+    bigfix:
+      # Comma-separated exact BigFix server host names tenants may connect to. Empty approves
+      # nothing. Private addresses are allowed; loopback, link-local and metadata are not.
+      allowed-hosts: ${BIGFIX_ALLOWED_HOSTS:}
   cmdb:
     servicenow:
       base-url: ${CMDB_SERVICENOW_BASE_URL:}

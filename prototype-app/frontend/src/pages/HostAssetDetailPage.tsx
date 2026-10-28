@@ -13,6 +13,7 @@ import { severityClassName } from '../features/cve-workbench/formatting';
 import type { HostAssetDetail } from '../features/inventory/api-types';
 import { useHostAssetDetailQuery } from '../features/inventory/queries';
 import { readHostAssetIdFromSearch } from '../features/inventory/searchState';
+import { FixContextPanel } from '../features/fix-intelligence/FixContextPanel';
 
 type HostAssetDetailPageProps = {
   assetId?: string | null;
@@ -635,6 +636,8 @@ function HostDetailSections({ assetId, hostDetail, loadingDetail }: HostDetailSe
           {hostDetail.host.environment && <span className="cvd-signal-pill">{hostDetail.host.environment}</span>}
         </div>
       </div>
+
+      <FixContextPanel assetId={hostDetail.host.assetId} />
 
       <div className="fd3-tab-bar" role="tablist" aria-label="Host detail sections">
         <button

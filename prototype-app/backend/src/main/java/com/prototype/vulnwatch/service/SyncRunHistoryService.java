@@ -205,6 +205,8 @@ public class SyncRunHistoryService {
                 || "SERVICENOW_CMDB".equals(normalizedType)
                 || "SCCM_CMDB".equals(normalizedType)
                 || "AWS_DISCOVERY".equals(normalizedType)
+                || "GCP_DISCOVERY".equals(normalizedType)
+                || normalizedType.startsWith("PATCH_")
                 || "AZURE_DISCOVERY".equals(normalizedType)
                 || AI_INVENTORY_RUN_TYPES.contains(normalizedType);
     }
