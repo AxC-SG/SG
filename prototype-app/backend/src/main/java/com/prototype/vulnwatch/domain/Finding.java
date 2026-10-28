@@ -155,13 +155,40 @@ public class Finding {
     @Column(name = "owner_group", length = 255)
     private String ownerGroup;
 
-    /** ServiceNow incident number linked to this finding (e.g. INC0010005) */
+    /** Ticket identifier in the originating system (e.g. INC0010005, or a Jira key like SEC-42) */
     @Column(name = "incident_id", length = 64)
     private String incidentId;
 
-    /** Last known status of the linked ServiceNow incident (e.g. New, In Progress, Resolved) */
+    /** Last known status of the linked ticket, in the originating system's own vocabulary */
     @Column(name = "incident_status", length = 64)
     private String incidentStatus;
+
+    /**
+     * Which ticketing system raised {@link #incidentId}, as
+     * {@link com.prototype.vulnwatch.ticketing.TicketingSystem#key()}.
+     *
+     * <p>Recorded per finding rather than inferred from the tenant's current connector: after a
+     * tenant switches from ServiceNow to Jira, historical findings still hold ServiceNow
+     * incident numbers, and status sync has to keep polling ServiceNow for those. Null means
+     * the ticket predates provider tracking and is treated as ServiceNow.
+     */
+    @Column(name = "incident_provider", length = 32)
+    private String incidentProvider;
+
+    /**
+     * The finding status already reflected on the ticket.
+     *
+     * <p>This is the loop breaker for bidirectional sync. The push side only acts when
+     * {@link #status} differs from this value, and both directions write it: when a resolved
+     * ticket closes the finding, the pull side records the status here in the same
+     * transaction, so the push side does not immediately echo that same change back to the
+     * ticket that caused it.
+     */
+    @Column(name = "incident_pushed_status", length = 32)
+    private String incidentPushedStatus;
+
+    @Column(name = "incident_pushed_at")
+    private Instant incidentPushedAt;
 
     @Column
     private Instant firstObservedAt = Instant.now();
@@ -532,6 +559,30 @@ public class Finding {
 
     public void setIncidentStatus(String incidentStatus) {
         this.incidentStatus = incidentStatus;
+    }
+
+    public String getIncidentProvider() {
+        return incidentProvider;
+    }
+
+    public void setIncidentProvider(String incidentProvider) {
+        this.incidentProvider = incidentProvider;
+    }
+
+    public String getIncidentPushedStatus() {
+        return incidentPushedStatus;
+    }
+
+    public void setIncidentPushedStatus(String incidentPushedStatus) {
+        this.incidentPushedStatus = incidentPushedStatus;
+    }
+
+    public Instant getIncidentPushedAt() {
+        return incidentPushedAt;
+    }
+
+    public void setIncidentPushedAt(Instant incidentPushedAt) {
+        this.incidentPushedAt = incidentPushedAt;
     }
 
     public String getSeverityOverride() {

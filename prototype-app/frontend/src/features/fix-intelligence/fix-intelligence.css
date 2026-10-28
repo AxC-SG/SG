@@ -1,0 +1,277 @@
+.fi-page {
+  gap: var(--space-4);
+}
+
+.fi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.fi-header h2 {
+  margin: 0 0 var(--space-1);
+}
+
+.fi-header p {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.fi-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.fi-kpi {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+}
+
+.fi-kpi-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.fi-kpi-value {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--title);
+}
+
+.fi-ecosystem-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.fi-ecosystem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.fi-ecosystem.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.fi-ecosystem-count {
+  font-weight: 700;
+  color: var(--title);
+}
+
+.fi-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.fi-table-panel,
+.fi-distribution {
+  padding: var(--space-4);
+}
+
+.fi-distribution h3 {
+  margin-top: 0;
+}
+
+.fi-filters {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.fi-search {
+  flex: 1 1 260px;
+}
+
+.fi-table td {
+  overflow-wrap: anywhere;
+}
+
+.fi-status-tag {
+  margin-left: var(--space-2);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.fi-severity-none {
+  background: var(--panel-muted);
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.fi-empty {
+  padding: var(--space-5) 0;
+  text-align: center;
+}
+
+.fi-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+.fi-tags,
+.fi-actions,
+.fi-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fi-form-actions {
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.fi-back {
+  justify-self: start;
+}
+
+.fi-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.fi-detail-grid > .panel,
+.fi-page > section.panel {
+  padding: var(--space-4);
+}
+
+.fi-text-block h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.fi-plain-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fi-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.fi-meta dt {
+  color: var(--muted);
+}
+
+.fi-meta dd {
+  margin: 0;
+}
+
+.fi-cve-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.fi-kev {
+  margin-left: var(--space-2);
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--critical);
+  border: 1px solid color-mix(in srgb, var(--critical) 40%, transparent);
+}
+
+.fi-form {
+  padding: var(--space-4);
+}
+
+.fi-form h3 {
+  margin-top: 0;
+}
+
+.fi-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.fi-field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.fi-field--wide {
+  grid-column: 1 / -1;
+}
+
+.fi-asset-scope {
+  margin-top: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fi-asset-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.fi-asset-option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.fi-context {
+  padding: var(--space-4);
+}
+
+.fi-context ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fi-context li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 960px) {
+  .fi-body,
+  .fi-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

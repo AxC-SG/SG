@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api, apiRequest } from '../../api/client';
 import { RUN_QUEUE_REFRESH_INTERVAL_MS } from '../../lib/polling';
-import type { SyncRun, VulnerabilitySourceSystem } from './types';
+import type { CloudResourceFilters, SyncRun, VulnerabilitySourceSystem } from './types';
 
 export type SyncRunsQueryParams = Parameters<typeof api.listSyncRuns>[0];
 type QueryPollingOption = number | false | undefined;
@@ -71,10 +71,52 @@ export function useGithubSbomSourcesQuery() {
   });
 }
 
+export function useJiraTicketingConfigQuery() {
+  return useQuery({
+    queryKey: ['jira-ticketing-config'],
+    queryFn: api.getJiraTicketingConfig
+  });
+}
+
+/**
+ * Which ticketing system new tickets go to. Drives the override notice on both ticketing
+ * connectors, so it must refetch after either connector is saved.
+ */
+export function useTicketingProviderStatusQuery() {
+  return useQuery({
+    queryKey: ['ticketing-provider-status'],
+    queryFn: api.getTicketingProviderStatus
+  });
+}
+
 export function useServiceNowCmdbConfigQuery() {
   return useQuery({
     queryKey: ['service-now-cmdb-config'],
     queryFn: api.getServiceNowCmdbConfig
+  });
+}
+
+export function useGcpDiscoveryConfigQuery() {
+  return useQuery({
+    queryKey: ['gcp-discovery-config'],
+    queryFn: api.getGcpDiscoveryConfig
+  });
+}
+
+export function useGcpDiscoveryTargetsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['gcp-discovery-targets'],
+    queryFn: api.listGcpDiscoveryTargets,
+    enabled
+  });
+}
+
+/** Cloud Resources inventory across AWS, Azure and GCP; keeps the previous page while filters change. */
+export function useCloudResourcesQuery(filters: CloudResourceFilters) {
+  return useQuery({
+    queryKey: ['cloud-resources', filters],
+    queryFn: () => api.listCloudResources(filters),
+    placeholderData: keepPreviousData
   });
 }
 

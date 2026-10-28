@@ -29,7 +29,7 @@ class MigrationCatalogTest {
         PackagedMigrationCatalog.Targets targets = PackagedMigrationCatalog.resolve();
 
         assertEquals(8, targets.platformTarget());
-        assertEquals(6, targets.tenantTarget());
+        assertEquals(9, targets.tenantTarget());
     }
 
     @Test
@@ -91,7 +91,7 @@ class MigrationCatalogTest {
             assertEquals(List.of("V1__platform_schema.sql", "V2__invitation_token_hashes.sql", "V3__durable_work_and_delivery.sql", "V4__feed_continuity_watermarks.sql", "V5__scheduled_sync_occurrences.sql", "V6__rollout_assessment_waiting.sql", "V7__reserved_internal_tenant_and_setup_delivery.sql", "V8__reviewed_intelligence_publication.sql"), platform
                     .filter(path -> path.toString().endsWith(".sql"))
                     .map(path -> path.getFileName().toString()).sorted().toList());
-            assertEquals(List.of("V1__tenant_schema.sql", "V2__ai_bom_correlation_evidence.sql", "V3__credential_and_invitation_boundaries.sql", "V4__owned_durable_work.sql", "V5__bounded_retention_progress.sql", "V6__intelligence_revision_and_finding_eligibility.sql"), tenant
+            assertEquals(List.of("V1__tenant_schema.sql", "V2__ai_bom_correlation_evidence.sql", "V3__credential_and_invitation_boundaries.sql", "V4__owned_durable_work.sql", "V5__bounded_retention_progress.sql", "V6__intelligence_revision_and_finding_eligibility.sql", "V7__ticketing_framework.sql", "V8__gcp_cloud_discovery.sql", "V9__fix_intelligence_and_patch_management.sql"), tenant
                     .filter(path -> path.toString().endsWith(".sql"))
                     .map(path -> path.getFileName().toString()).sorted().toList());
         }

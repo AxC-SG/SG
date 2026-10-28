@@ -85,6 +85,9 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     @Autowired private AzureDiscoverySyncService azure;
     @Autowired private ServiceNowCmdbSyncService serviceNow;
     @Autowired private SccmCmdbSyncService sccm;
+    @Autowired private com.prototype.vulnwatch.repo.GcpDiscoveryConfigRepository gcpConfigs;
+    @Autowired private com.prototype.vulnwatch.repo.GcpDiscoveryTargetRepository gcpTargets;
+    @Autowired private GcpDiscoverySyncService gcp;
     @Autowired private com.prototype.vulnwatch.repo.IngestionJobRepository jobs;
     @Autowired private IngestionJobWorkerService worker;
     @Autowired private GithubSbomSourceService github;
@@ -97,20 +100,6 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     void captureOnly() {
         reset(queue);
         when(workspace.getWorkspace()).thenAnswer(invocation -> tenants.resolveTenantUuid(TenantContext.getCurrentTenantId()));
-    }
-
-    @org.junit.jupiter.api.Test
-    void disabledSccmRejectsAdmissionWithoutQueueingOrCrossTenantStatus() throws Exception {
-        Tenant first = configuredTenant(Connector.SCCM_CMDB, true);
-        Tenant second = configuredTenant(Connector.SCCM_CMDB, true);
-        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
-                () -> trigger(first, Connector.SCCM_CMDB));
-        assertEquals(410, error.getStatusCode().value());
-        assertTrue(tenantRuns(first, Connector.SCCM_CMDB).isEmpty());
-        assertTrue(tenantRuns(second, Connector.SCCM_CMDB).isEmpty());
-        assertEndpointStatus(first, Connector.SCCM_CMDB, false);
-        assertEndpointStatus(second, Connector.SCCM_CMDB, false);
-        org.mockito.Mockito.verifyNoInteractions(queue);
     }
 
     @org.junit.jupiter.api.Test
@@ -128,7 +117,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = Connector.class, names = {"AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
     void tenantsHaveIndependentAdmissionAndStatus(Connector connector) throws Exception {
         Tenant first = configuredTenant(connector, false);
         Tenant second = configuredTenant(connector, false);
@@ -151,7 +140,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = Connector.class, names = {"AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
     void sameConfigurationWaitsForUncommittedAdmissionAndReusesOneRun(Connector connector) throws Exception {
         Tenant tenant = configuredTenant(connector, false);
         Tenant independentTenant = configuredTenant(connector, false);
@@ -191,7 +180,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Connector.class, names = {"SCCM_CMDB","AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = Connector.class, names = {"AZURE_DISCOVERY"}, mode = EnumSource.Mode.EXCLUDE)
     void scheduledDueTimeAndActiveRunsAreIndependentPerTenant(Connector connector) {
         Tenant recent = configuredTenant(connector, true);
         Tenant due = configuredTenant(connector, true);
@@ -252,7 +241,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value=Connector.class,names={"AWS_DISCOVERY","SERVICENOW_CMDB"})
+    @EnumSource(value=Connector.class,names={"AWS_DISCOVERY","SERVICENOW_CMDB","SCCM_CMDB","GCP_DISCOVERY"})
     void exhaustedAttemptTerminatesLinkedRunAndAllowsNewAdmission(Connector connector) {
         Tenant tenant=configuredTenant(connector,false);
         UUID prior=trigger(tenant,connector).runId();
@@ -324,8 +313,24 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
                     SccmCmdbConfig config = new SccmCmdbConfig();
                     config.setTenant(configured);
                     config.setJdbcUrl("jdbc:sqlserver://example.invalid");
+                    config.setUsername("controlled-test-login");
+                    config.setCredentialSecret("controlled-test-double");
                     config.setAutoSyncEnabled(autoSync);
                     sccmConfigs.saveAndFlush(config);
+                }
+                case GCP_DISCOVERY -> {
+                    var config = new com.prototype.vulnwatch.domain.GcpDiscoveryConfig();
+                    config.setTenant(configured);
+                    config.setServiceAccountEmail("reader@controlled-project.iam.gserviceaccount.com");
+                    config.setCredentialSecret("controlled-test-double");
+                    config.setAutoSyncEnabled(autoSync);
+                    config = gcpConfigs.saveAndFlush(config);
+                    var target = new com.prototype.vulnwatch.domain.GcpDiscoveryTarget();
+                    target.setTenant(configured);
+                    target.setConfig(config);
+                    target.setProjectId("controlled-project");
+                    target.setResourceTypesJson("[\"COMPUTE_INSTANCE\"]");
+                    gcpTargets.saveAndFlush(target);
                 }
             }
         });
@@ -338,6 +343,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
             case AZURE_DISCOVERY -> azure.trigger();
             case SERVICENOW_CMDB -> serviceNow.trigger();
             case SCCM_CMDB -> sccm.trigger();
+            case GCP_DISCOVERY -> gcp.trigger();
         });
     }
 
@@ -347,6 +353,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
             case AZURE_DISCOVERY -> azure.hasActiveRun();
             case SERVICENOW_CMDB -> serviceNow.hasActiveRun();
             case SCCM_CMDB -> sccm.hasActiveRun();
+            case GCP_DISCOVERY -> gcp.hasActiveRun();
         });
     }
 
@@ -356,6 +363,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
             case AZURE_DISCOVERY -> azure.runScheduledSyncs();
             case SERVICENOW_CMDB -> serviceNow.runScheduledSyncs();
             case SCCM_CMDB -> sccm.runScheduledSyncs();
+            case GCP_DISCOVERY -> gcp.runScheduledSyncs();
         }
     }
 
@@ -375,6 +383,8 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
                         .ifPresent(config -> config.setAutoSyncEnabled(enabled));
                 case SCCM_CMDB -> sccmConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "sccm")
                         .ifPresent(config -> config.setAutoSyncEnabled(enabled));
+                case GCP_DISCOVERY -> gcpConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "gcp")
+                        .ifPresent(config -> config.setAutoSyncEnabled(enabled));
             }
         }));
     }
@@ -387,12 +397,14 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
             case AWS_DISCOVERY -> new AwsDiscoveryController(workspace, null, aws, null, null, null);
             case AZURE_DISCOVERY -> new AzureDiscoveryController(workspace, null, null, azure, null, null);
             case SCCM_CMDB -> new SccmCmdbController(workspace, null, sccm, null, null);
+            case GCP_DISCOVERY -> new com.prototype.vulnwatch.controller.GcpDiscoveryController(workspace, null, gcp, null, null, null);
             default -> throw new IllegalStateException();
         };
         String path = switch (connector) {
             case AWS_DISCOVERY -> "aws-discovery";
             case AZURE_DISCOVERY -> "azure-discovery";
             case SCCM_CMDB -> "sccm-cmdb";
+            case GCP_DISCOVERY -> "gcp-discovery";
             default -> throw new IllegalStateException();
         };
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
@@ -419,5 +431,5 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
         }
     }
 
-    private enum Connector { AWS_DISCOVERY, AZURE_DISCOVERY, SERVICENOW_CMDB, SCCM_CMDB }
+    private enum Connector { AWS_DISCOVERY, AZURE_DISCOVERY, SERVICENOW_CMDB, SCCM_CMDB, GCP_DISCOVERY }
 }

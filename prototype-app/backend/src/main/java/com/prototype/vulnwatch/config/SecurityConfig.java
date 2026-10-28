@@ -77,7 +77,6 @@ public class SecurityConfig {
                         .hasAnyRole("PLATFORM_OWNER", "TENANT_ADMIN", "INVENTORY_ADMIN", "SECURITY_ANALYST", "READ_ONLY_AUDITOR")
                         .requestMatchers("/api/platform/**").hasRole("PLATFORM_OWNER")
                         .requestMatchers("/api/operations/**").hasRole("PLATFORM_OWNER")
-                        .requestMatchers("/api/fix-intelligence", "/api/fix-intelligence/**").denyAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(apiKeyAuthenticationFilter, CsrfFilter.class)

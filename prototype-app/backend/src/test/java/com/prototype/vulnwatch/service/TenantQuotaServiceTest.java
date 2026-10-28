@@ -14,6 +14,7 @@ import com.prototype.vulnwatch.repo.AuditEventRepository;
 import com.prototype.vulnwatch.repo.AwsDiscoveryConfigRepository;
 import com.prototype.vulnwatch.repo.AwsDiscoveryTargetRepository;
 import com.prototype.vulnwatch.repo.IngestionJobRepository;
+import com.prototype.vulnwatch.repo.JiraTicketingConfigRepository;
 import com.prototype.vulnwatch.repo.SccmCmdbConfigRepository;
 import com.prototype.vulnwatch.repo.ServiceAccountRepository;
 import com.prototype.vulnwatch.repo.ServiceNowCmdbConfigRepository;
@@ -38,6 +39,9 @@ class TenantQuotaServiceTest {
     SccmCmdbConfigRepository sccmCmdbConfigRepository;
     @Mock
     ServiceNowCmdbConfigRepository serviceNowCmdbConfigRepository;
+
+    @Mock
+    private JiraTicketingConfigRepository jiraTicketingConfigRepository;
     @Mock
     ServiceAccountRepository serviceAccountRepository;
     @Mock
@@ -62,6 +66,7 @@ class TenantQuotaServiceTest {
                 awsDiscoveryTargetRepository,
                 sccmCmdbConfigRepository,
                 serviceNowCmdbConfigRepository,
+                jiraTicketingConfigRepository,
                 serviceAccountRepository,
                 auditEventRepository,
                 ingestionJobRepository,

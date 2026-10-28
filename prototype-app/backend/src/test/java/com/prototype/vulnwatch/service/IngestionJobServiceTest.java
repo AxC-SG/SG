@@ -211,7 +211,10 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,
                         IngestionJobService.JOB_TYPE_AI_GRID_RUNTIME_ADAPTER,
                         IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION,
-                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB)
+                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
+                        IngestionJobService.JOB_TYPE_SCCM_CMDB,
+                        IngestionJobService.JOB_TYPE_GCP_DISCOVERY,
+                        IngestionJobService.JOB_TYPE_PATCH_SYNC)
         )).thenReturn(0L);
         when(ingestionJobRepository.pollPendingExcludingJobTypes(
                 List.of(
@@ -220,7 +223,10 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,
                         IngestionJobService.JOB_TYPE_AI_GRID_RUNTIME_ADAPTER,
                         IngestionJobService.JOB_TYPE_AI_GRID_BOM_PROJECTION,
-                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB),
+                        IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
+                        IngestionJobService.JOB_TYPE_SCCM_CMDB,
+                        IngestionJobService.JOB_TYPE_GCP_DISCOVERY,
+                        IngestionJobService.JOB_TYPE_PATCH_SYNC),
                 2
         )).thenReturn(List.of(first, second));
 

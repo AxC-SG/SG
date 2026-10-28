@@ -12,6 +12,8 @@ public interface FixRecordRepository extends JpaRepository<FixRecord, UUID> {
 
     List<FixRecord> findByCveIdOrderByCreatedAtAsc(String cveId);
 
+    java.util.Optional<FixRecord> findByFixTypeAndExternalKey(String fixType, String externalKey);
+
     @Query(
             value = """
                     SELECT *
@@ -29,4 +31,8 @@ public interface FixRecordRepository extends JpaRepository<FixRecord, UUID> {
 
     @Modifying
     void deleteByCveId(String cveId);
+
+    /** Workbench regeneration replaces only its own (unmanaged) records. */
+    @Modifying
+    void deleteByCveIdAndManagedFalse(String cveId);
 }

@@ -17,8 +17,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -37,7 +35,7 @@ public class SccmCmdbSyncService {
     private final SyncRunRepository syncRunRepository;
     private final CmdbIngestionService cmdbIngestionService;
     private final ObjectMapper objectMapper;
-    private final TaskExecutor integrationQueueExecutor;
+    private final IngestionJobService jobs;
     private final TransactionTemplate transactionTemplate;
     private final WorkspaceService workspaceService;
     private final TenantService tenantService;
@@ -51,11 +49,11 @@ public class SccmCmdbSyncService {
             SyncRunRepository syncRunRepository,
             CmdbIngestionService cmdbIngestionService,
             ObjectMapper objectMapper,
-            @Qualifier("integrationQueueExecutor") TaskExecutor integrationQueueExecutor,
             TransactionTemplate transactionTemplate,
             WorkspaceService workspaceService,
             TenantService tenantService,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantSchemaExecutionService tenantSchemaExecutionService,
+            IngestionJobService jobs
     ) {
         this.sccmCmdbConfigRepository = sccmCmdbConfigRepository;
         this.sccmCmdbConfigService = sccmCmdbConfigService;
@@ -63,7 +61,7 @@ public class SccmCmdbSyncService {
         this.syncRunRepository = syncRunRepository;
         this.cmdbIngestionService = cmdbIngestionService;
         this.objectMapper = objectMapper;
-        this.integrationQueueExecutor = integrationQueueExecutor;
+        this.jobs = jobs;
         this.transactionTemplate = transactionTemplate;
         this.workspaceService = workspaceService;
         this.tenantService = tenantService;
@@ -78,14 +76,14 @@ public class SccmCmdbSyncService {
     }
 
     public SyncTriggerResponse trigger() {
-        SccmPilotPolicy.requireEnabled();
         var tenant = workspaceService.getWorkspace();
-        ClaimedRun claimed = tenantSchemaExecutionService.run(
-                tenant,
-                () -> transactionTemplate.execute(status -> claimManualRun(tenant))
-        );
+        ClaimedRun claimed = jobs.withAdmission(tenant, () -> {
+            ClaimedRun admitted = claimManualRun(tenant);
+            if (!admitted.reusedActiveRun()) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_SCCM_CMDB,
+                    admitted.configId(), admitted.runId(), "manual", null);
+            return admitted;
+        });
         if (!claimed.reusedActiveRun()) {
-            integrationQueueExecutor.execute(() -> executeRun(tenant.getId(), claimed.configId(), claimed.runId(), "manual"));
             return new SyncTriggerResponse(claimed.runId(), "queued", "SCCM CMDB sync queued");
         }
         return new SyncTriggerResponse(claimed.runId(), "running", "SCCM CMDB sync is already queued or running");
@@ -93,8 +91,6 @@ public class SccmCmdbSyncService {
 
     @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
-        // Contained for the assisted pilot, including configurations saved before containment.
-        if (isPilotDisabled()) return;
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("sccm-cmdb.run-scheduled-syncs")) {
             return;
         }
@@ -111,14 +107,18 @@ public class SccmCmdbSyncService {
             return scheduledConfigs;
         });
         for (ConfigRef configRef : configs) {
-            ClaimedRun claimed = tenantSchemaExecutionService.run(configRef.tenantId(), () -> {
-                SccmCmdbConfig config = sccmCmdbConfigRepository.findById(configRef.configId()).orElse(null);
-                return transactionTemplate.execute(status -> config == null ? null : claimScheduledRun(config));
-            });
-            if (claimed == null) {
-                continue;
+            try {
+                var tenant = tenantService.resolveTenantUuid(configRef.tenantId());
+                jobs.withAdmission(tenant, () -> {
+                    SccmCmdbConfig config = sccmCmdbConfigRepository.findById(configRef.configId()).orElse(null);
+                    ClaimedRun claimed = config == null ? null : claimScheduledRun(config);
+                    if (claimed != null) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_SCCM_CMDB,
+                            claimed.configId(), claimed.runId(), "scheduled", null);
+                    return null;
+                });
+            } catch (RuntimeException failure) {
+                LOG.warn("Scheduled connector {} admission deferred", configRef.configId());
             }
-            integrationQueueExecutor.execute(() -> executeRun(configRef.tenantId(), claimed.configId(), claimed.runId(), "scheduled"));
         }
     }
 
@@ -127,10 +127,6 @@ public class SccmCmdbSyncService {
         var tenant = workspaceService.getWorkspace();
         return !syncRunRepository.findActiveRunsByTenantAndSyncType(
                 tenant.getId(), SYNC_TYPE_SCCM_CMDB, List.of("queued", "running")).isEmpty();
-    }
-
-    private boolean isPilotDisabled() {
-        return true;
     }
 
     // ── Run claiming ───────────────────────────────────────────────────────────────────────────
@@ -150,7 +146,6 @@ public class SccmCmdbSyncService {
     }
 
     private ClaimedRun claimRunForConfig(SccmCmdbConfig config, String triggerMode, boolean allowReuseActiveRun) {
-        SccmPilotPolicy.requireEnabled();
         // The configuration row is the admission lock, including when no run exists yet.
         // Tenant context and the transaction are established by every caller before this lock.
         config = sccmCmdbConfigRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
@@ -182,8 +177,7 @@ public class SccmCmdbSyncService {
         run.setMetadataJson(toJson(Map.of(
                 "triggerMode", triggerMode,
                 "sourceSystem", defaultIfBlank(config.getSourceSystem(), "sccm"),
-                "jdbcUrl", defaultIfBlank(config.getJdbcUrl(), ""),
-                "mockMode", config.isMockMode()
+                "jdbcUrl", defaultIfBlank(config.getJdbcUrl(), "")
         )));
         run = syncRunRepository.save(run);
         return new ClaimedRun(config.getId(), run.getId(), false);
@@ -206,11 +200,10 @@ public class SccmCmdbSyncService {
 
     // ── Execution ──────────────────────────────────────────────────────────────────────────────
 
-    private void executeRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
+    public void executeQueuedRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markRunRunning(runId, triggerMode);
             try {
-                SccmPilotPolicy.requireEnabled();
                 SccmCmdbConfig config = sccmCmdbConfigRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("SCCM CMDB config not found: " + configId));
 
@@ -333,7 +326,9 @@ public class SccmCmdbSyncService {
     private boolean isConfigured(SccmCmdbConfig config) {
         return config != null
                 && config.getTenant() != null
-                && (config.isMockMode() || hasText(config.getJdbcUrl()));
+                && hasText(config.getJdbcUrl())
+                && hasText(config.getUsername())
+                && hasText(config.getCredentialSecret());
     }
 
     private SyncRun requireRun(UUID runId) {

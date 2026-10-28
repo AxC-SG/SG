@@ -73,6 +73,9 @@ class IngestionJobExecutionServiceTest {
                 ingestionJobService,
                 org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
                 org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(SccmCmdbSyncService.class),
+                org.mockito.Mockito.mock(GcpDiscoverySyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.service.patch.PatchSyncService.class),
                 org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 
@@ -109,6 +112,9 @@ class IngestionJobExecutionServiceTest {
                 ingestionJobService,
                 org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
                 org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(SccmCmdbSyncService.class),
+                org.mockito.Mockito.mock(GcpDiscoverySyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.service.patch.PatchSyncService.class),
                 org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 
@@ -133,6 +139,9 @@ class IngestionJobExecutionServiceTest {
                 ingestionJobService,
                 org.mockito.Mockito.mock(AwsDiscoverySyncService.class),
                 org.mockito.Mockito.mock(ServiceNowCmdbSyncService.class),
+                org.mockito.Mockito.mock(SccmCmdbSyncService.class),
+                org.mockito.Mockito.mock(GcpDiscoverySyncService.class),
+                org.mockito.Mockito.mock(com.prototype.vulnwatch.service.patch.PatchSyncService.class),
                 org.mockito.Mockito.mock(com.prototype.vulnwatch.repo.SyncRunRepository.class)
         );
 

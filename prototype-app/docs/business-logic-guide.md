@@ -86,7 +86,7 @@ SBOMs arrive via three paths:
 
 ### CMDB Sync (SCCM/MECM)
 
-SCCM live JDBC is contained by `SccmPilotPolicy` at save/test, admission, scheduling, queued execution and query boundaries. The frontend exposes retained status without live controls. No mock inventory substitutes for customer ingestion. Historical full-sweep implementation remains in source but is unavailable; re-enablement requires separate backend/product review and network/credential/completeness qualification.
+SCCM/MECM is a live inventory source. `SccmCmdbSyncService` admits one run per configuration under the configuration-row lock, enqueues a durable `SCCM_CMDB` ingestion job, and the worker reads active hosts and their installed software from the tenant's SCCM SQL Server (`v_R_System` joined to `v_GS_INSTALLED_SOFTWARE`), derives discovery rows per publisher and product, and ingests through the shared CMDB pipeline. `SccmJdbcPolicy` gates every connection: only `jdbc:sqlserver://host[:port]` with a short property allowlist, host listed in `SCCM_ALLOWED_HOSTS`, SQL Server authentication, no loopback/link-local/metadata address. No mock inventory substitutes for customer ingestion.
 
 ### AWS Discovery
 

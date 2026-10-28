@@ -71,6 +71,7 @@ const INVENTORY_VIEWS = new Set<InventoryViewKey>([
   'overview',
   'software-identities',
   'hosts',
+  'cloud-resources',
   'container-images',
   'sbom',
   'bom-components',

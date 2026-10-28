@@ -16,7 +16,7 @@ public interface IngestionJobRepository extends JpaRepository<IngestionJob, UUID
 
     @Query(value = """
             select * from ingestion_jobs where status='RUNNING'
-              and job_type in ('REMOTE_ENDPOINT','GITHUB_REPOSITORY','GITHUB_GHCR','AWS_DISCOVERY','SERVICENOW_CMDB','AI_SECURITY_AWS_BEDROCK','AI_SECURITY_AZURE_DISCOVERY','AI_SECURITY_COPILOT_STUDIO','AI_GRID_BOM_PROJECTION')
+              and job_type in ('REMOTE_ENDPOINT','GITHUB_REPOSITORY','GITHUB_GHCR','AWS_DISCOVERY','SERVICENOW_CMDB','SCCM_CMDB','GCP_DISCOVERY','PATCH_SYNC','AI_SECURITY_AWS_BEDROCK','AI_SECURITY_AZURE_DISCOVERY','AI_SECURITY_COPILOT_STUDIO','AI_GRID_BOM_PROJECTION')
               and lease_expires_at <= clock_timestamp()
               order by lease_expires_at, id limit :limit
             """, nativeQuery = true)

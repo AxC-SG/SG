@@ -111,7 +111,8 @@ class InventoryConnectorTenantScopingTest {
                 sccmCmdbConfigRepository,
                 sccmQueryService,
                 tenantQuotaService,
-                credentialEncryptionService
+                credentialEncryptionService,
+                new SccmJdbcPolicy("acme")
         );
 
         when(sccmCmdbConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "sccm"))
