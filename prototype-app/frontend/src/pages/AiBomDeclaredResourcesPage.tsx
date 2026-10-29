@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { InventoryShell } from '../features/inventory/InventoryShell';
 import { pathForAiBomDeclaredResourceDetail } from '../app/routes';
 
@@ -38,11 +39,16 @@ export function AiBomDeclaredResourcesPage() {
             </p>
           </div>
         </div>
-        {setupActionsQuery.isLoading ? (
-          <div className="empty-state"><p>Loading setup actions…</p></div>
-        ) : setupActions.length === 0 ? (
-          <div className="empty-state"><p>No outstanding AI-BOM coverage work.</p></div>
-        ) : (
+        <AsyncSection
+          state={!setupActionsQuery.data ? (setupActionsQuery.isError ? 'error' : 'pending') : setupActions.length === 0 ? 'empty' : 'ready'}
+          loadingLabel="Loading setup actions…"
+          emptyMessage="No outstanding AI-BOM coverage work."
+          errorMessage="Coverage setup actions could not be loaded."
+          refreshError={setupActionsQuery.isError && setupActionsQuery.data ? 'Setup actions could not be refreshed; showing the last loaded list.' : undefined}
+          onRetry={() => void setupActionsQuery.refetch()}
+          retryLabel="Retry setup actions"
+          retrying={setupActionsQuery.isFetching}
+        >
           <table className="data-table">
             <thead><tr><th>Priority</th><th>Category</th><th>Title</th><th>Detail</th></tr></thead>
             <tbody>
@@ -59,7 +65,7 @@ export function AiBomDeclaredResourcesPage() {
               ))}
             </tbody>
           </table>
-        )}
+        </AsyncSection>
       </section>
 
       <section className="panel ai-security-table-panel">
@@ -69,11 +75,16 @@ export function AiBomDeclaredResourcesPage() {
             <p className="panel-caption">Every model or dataset declared by an uploaded AI-BOM.</p>
           </div>
         </div>
-        {resourcesQuery.isLoading ? (
-          <div className="empty-state"><p>Loading declared resources…</p></div>
-        ) : resources.length === 0 ? (
-          <div className="empty-state"><p>No AI-BOM has declared a model or dataset yet.</p></div>
-        ) : (
+        <AsyncSection
+          state={!resourcesQuery.data ? (resourcesQuery.isError ? 'error' : 'pending') : resources.length === 0 ? 'empty' : 'ready'}
+          loadingLabel="Loading declared resources…"
+          emptyMessage="No AI-BOM has declared a model or dataset yet."
+          errorMessage="Declared resources could not be loaded."
+          refreshError={resourcesQuery.isError && resourcesQuery.data ? 'Declared resources could not be refreshed; showing the last loaded list.' : undefined}
+          onRetry={() => void resourcesQuery.refetch()}
+          retryLabel="Retry declared resources"
+          retrying={resourcesQuery.isFetching}
+        >
           <table className="data-table">
             <thead><tr><th>Name</th><th>Kind</th><th>Version</th><th>Deployment</th><th>Last declared</th></tr></thead>
             <tbody>
@@ -88,7 +99,7 @@ export function AiBomDeclaredResourcesPage() {
               ))}
             </tbody>
           </table>
-        )}
+        </AsyncSection>
       </section>
     </InventoryShell>
   );

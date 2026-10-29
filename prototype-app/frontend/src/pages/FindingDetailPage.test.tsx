@@ -1,11 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { api } from '../api/client';
+import { ApiError, api } from '../api/client';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { Finding } from '../features/findings/types';
 import { renderWithProviders } from '../test/test-utils';
+import { fixIntelligenceApi } from '../features/fix-intelligence/api';
 import { FindingDetailPage } from './FindingDetailPage';
 
 const FINDING: Finding = {
@@ -133,5 +134,59 @@ describe('FindingDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Defer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Under Investigation/ })).not.toBeInTheDocument();
     expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
+  });
+  it('loads the finding directly when opened by URL without router state', async () => {
+    const lookup = vi.spyOn(api, 'getFinding').mockResolvedValue(FINDING);
+    vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockRejectedValue(new Error('skip'));
+    vi.spyOn(cveWorkbenchApi, 'getSavedAiSolution').mockRejectedValue(new Error('skip'));
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+
+    renderWithProviders(<FindingDetailPage findingRef={FINDING.id} />);
+
+    expect(screen.getByRole('heading', { name: 'Loading finding' })).toBeInTheDocument();
+    expect((await screen.findAllByText('F-001')).length).toBeGreaterThan(0);
+    expect(lookup).toHaveBeenCalledWith(FINDING.id);
+  });
+
+  it('explains a missing finding without claiming the link works', async () => {
+    vi.spyOn(api, 'getFinding').mockRejectedValue(new ApiError('Not found', 404));
+
+    renderWithProviders(<FindingDetailPage findingRef="F-10420" />);
+
+    expect(await screen.findByRole('heading', { name: 'Finding not found' })).toBeInTheDocument();
+    expect(screen.getByText(/No finding matches F-10420/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry finding' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Back to Findings/ })).toBeInTheDocument();
+  });
+
+  it('shows a denied state for a finding outside the actor scope', async () => {
+    vi.spyOn(api, 'getFinding').mockRejectedValue(new ApiError('Forbidden', 403));
+
+    renderWithProviders(<FindingDetailPage findingRef={FINDING.id} />);
+
+    expect(await screen.findByRole('heading', { name: 'Finding not accessible' })).toBeInTheDocument();
+    expect(screen.getByText('You do not have access to this finding in the current workspace.')).toBeInTheDocument();
+  });
+
+  it('offers retry when the finding lookup fails for another reason', async () => {
+    const lookup = vi.spyOn(api, 'getFinding').mockRejectedValue(new ApiError('Server error', 500));
+
+    renderWithProviders(<FindingDetailPage findingRef={FINDING.id} />);
+
+    expect(await screen.findByRole('heading', { name: 'Finding could not be loaded' }, { timeout: 5000 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry finding' }));
+    await waitFor(() => expect(lookup.mock.calls.length).toBeGreaterThan(1));
+  });
+  it('keeps the finding visible when the remediation options panel fails', async () => {
+    vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockRejectedValue(new Error('skip'));
+    vi.spyOn(cveWorkbenchApi, 'getSavedAiSolution').mockRejectedValue(new Error('skip'));
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(fixIntelligenceApi, 'context').mockRejectedValue(new Error('down'));
+
+    renderWithFinding(FINDING);
+
+    expect(await screen.findByText('Fix Intelligence is unavailable right now.')).toBeInTheDocument();
+    expect(screen.getAllByText('F-001').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Retry remediation options' })).toBeInTheDocument();
   });
 });

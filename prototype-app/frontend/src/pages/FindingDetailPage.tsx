@@ -1,8 +1,10 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Finding } from '../features/findings/types';
 import { pathForVulnRepoView, pathForInventoryHostAsset, pathForInventoryViewWithSearch, type VulnerabilityIntelRouteView } from '../app/routes';
-import { apiRequest, api } from '../api/client';
+import { ApiError, apiRequest, api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { AiSolutionApiResponse } from '../features/cve-workbench/api';
@@ -183,7 +185,13 @@ function FixDescriptionDetail({ description }: { description: string }) {
 
 type ActionType = 'create-incident' | 'defer' | 'resolve' | 'under-investigation' | 'false-positive' | 'reopen';
 
-export function FindingDetailPage() {
+function isAccessOrMissing(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 403 || error.status === 404);
+}
+
+// findingRef is the route identifier. Router state still supplies the record when present; otherwise the
+// record is looked up directly. The lookup accepts UUIDs today; display-ID lookup is owned by N01.
+export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) {
   const actor = useActor();
   const navigate = useNavigate();
   const location = useLocation();
@@ -192,6 +200,12 @@ export function FindingDetailPage() {
   const finding = (location.state as { finding?: Finding } | null)?.finding ?? null;
   const returnTo = searchParams.get('returnTo') || '/findings';
   const policyQuery = useRiskPolicyQuery();
+  const lookupQuery = useQuery({
+    queryKey: ['finding-detail', findingRef],
+    queryFn: () => api.getFinding(findingRef!),
+    enabled: !finding && !!findingRef,
+    retry: (failureCount, error) => !isAccessOrMissing(error) && failureCount < 2,
+  });
 
   // ── local state ────────────────────────────────────────────────────────────
   const [currentFinding, setCurrentFinding] = React.useState<Finding | null>(finding);
@@ -229,6 +243,14 @@ export function FindingDetailPage() {
   const [loadingCveDetail, setLoadingCveDetail] = React.useState(false);
   const [loadingAiSolution, setLoadingAiSolution] = React.useState(false);
   const [loadingHostContext, setLoadingHostContext] = React.useState(false);
+
+  const lookedUpFinding = lookupQuery.data;
+  React.useEffect(() => {
+    if (!lookedUpFinding) return;
+    setCurrentFinding((current) => current ?? lookedUpFinding);
+    setAssignedTo((current) => current || (lookedUpFinding.assignedTo ?? ''));
+    setAssignmentGroup((current) => current || (lookedUpFinding.ownerGroup ?? ''));
+  }, [lookedUpFinding]);
 
   const findingVulnId = currentFinding?.vulnerabilityId;
   const findingAssetIdentifier = currentFinding?.assetIdentifier;
@@ -274,14 +296,37 @@ export function FindingDetailPage() {
   }, [findingAssetIdentifier, findingAssetName]);
 
   if (!currentFinding) {
+    const lookupError = lookupQuery.error;
+    const status = lookupError instanceof ApiError ? lookupError.status : null;
+    const heading = !findingRef ? 'Finding not available'
+      : lookupQuery.isPending || lookedUpFinding ? 'Loading finding'
+      : status === 404 ? 'Finding not found'
+      : status === 403 ? 'Finding not accessible'
+      : 'Finding could not be loaded';
     return (
       <div className="page-grid ui2-experience-family">
         <section className="panel">
           <div style={{ padding: 48, textAlign: 'center' }}>
-            <h2 style={{ marginBottom: 12 }}>Finding not available</h2>
-            <p style={{ color: 'var(--dp-text-2)', marginBottom: 16 }}>
-              Navigate here from the Findings list or the CVE Assessment Workbench.
-            </p>
+            <h2 style={{ marginBottom: 12 }}>{heading}</h2>
+            {!findingRef ? (
+              <p style={{ color: 'var(--dp-text-2)', marginBottom: 16 }}>
+                Navigate here from the Findings list or the CVE Assessment Workbench.
+              </p>
+            ) : (
+              <div style={{ marginBottom: 16 }}>
+                <AsyncSection
+                  state={lookupQuery.isPending || lookedUpFinding ? 'pending' : isAccessOrMissing(lookupError) ? 'unavailable' : 'error'}
+                  loadingLabel={`Loading ${findingRef}…`}
+                  unavailableMessage={status === 403
+                    ? 'You do not have access to this finding in the current workspace.'
+                    : `No finding matches ${findingRef}. Links that use a display ID can currently be opened only from the Findings list or the CVE Assessment Workbench.`}
+                  errorMessage="The finding could not be loaded."
+                  onRetry={() => void lookupQuery.refetch()}
+                  retryLabel="Retry finding"
+                  retrying={lookupQuery.isFetching}
+                />
+              </div>
+            )}
             <button className="btn btn-secondary" onClick={() => navigate(returnTo)}>← Back to Findings</button>
           </div>
         </section>

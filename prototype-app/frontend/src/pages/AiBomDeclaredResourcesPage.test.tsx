@@ -87,4 +87,17 @@ describe('AiBomDeclaredResourcesPage', () => {
     expect(await screen.findByText('No AI-BOM has declared a model or dataset yet.')).toBeInTheDocument();
     expect(screen.getByText('No outstanding AI-BOM coverage work.')).toBeInTheDocument();
   });
+  it('reports failed setup actions and resources instead of showing them as empty', async () => {
+    const actions = vi.spyOn(api, 'listAiBomSetupActions').mockRejectedValue(new Error('down'));
+    vi.spyOn(api, 'listAiBomDeclaredResources').mockRejectedValue(new Error('down'));
+
+    renderWithProviders(<AiBomDeclaredResourcesPage />, { route: '/inventory/ai/declared-resources' });
+
+    expect(await screen.findByText('Coverage setup actions could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByText('Declared resources could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No outstanding AI-BOM coverage work.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No AI-BOM has declared a model or dataset yet.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry setup actions' }));
+    await waitFor(() => expect(actions).toHaveBeenCalledTimes(2));
+  });
 });

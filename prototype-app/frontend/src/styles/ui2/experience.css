@@ -112,6 +112,13 @@ html[data-ui='2'] .ui2-experience-family .exec-kpi:hover {
   box-shadow: var(--dp-shadow-lg);
 }
 
+/* A non-navigating KPI keeps the card look without a clickable lift. */
+html[data-ui='2'] .ui2-experience-family .exec-kpi--static:hover {
+  border-color: var(--dp-border);
+  transform: none;
+  box-shadow: var(--dp-shadow-sm);
+}
+
 /* The label is the first visual line, as in the reference; DOM order is unchanged. */
 html[data-ui='2'] .ui2-experience-family .exec-kpi-label {
   display: flex;

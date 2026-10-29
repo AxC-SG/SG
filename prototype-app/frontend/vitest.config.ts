@@ -21,13 +21,13 @@ export default mergeConfig(viteConfig, defineConfig({
         'src/**/*.d.ts',
       ],
       // Global line-coverage floor. Ratchet up as page/widget tests are added.
-      // Ratcheted 2026-10-29 after AsyncSection/MetricValue coverage.
-      // Two-worker run: lines 53.43%, statements 50.74%, functions 42.54%, branches 42.17%.
+      // Ratcheted 2026-10-29 after Stage 1b state-adoption coverage.
+      // Two-worker run: lines 53.48%, statements 50.76%, functions 42.64%, branches 42.33%.
       thresholds: {
-        lines: 53.3,
-        statements: 50.6,
-        functions: 42.4,
-        branches: 42.1
+        lines: 53.4,
+        statements: 50.7,
+        functions: 42.6,
+        branches: 42.3
       }
     }
   }

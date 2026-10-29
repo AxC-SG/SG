@@ -133,9 +133,9 @@ for (const theme of themes) {
   await settle(page);
   check(tag('exploit callout opens KEV intelligence'), new URL(page.url()).pathname === '/vuln-repo/vulnerabilities' && params(page).inKev === 'true', here(page));
   await goto(page, '/exposure');
-  await page.getByRole('button', { name: 'View EOL →' }).click();
-  await settle(page);
-  check(tag('EOL insight redirects tenant to exposure'), here(page) === '/exposure', here(page));
+  check(tag('EOL insight has no self-looping action'), (await page.getByRole('button', { name: /View (near-)?EOL/ }).count()) === 0);
+  check(tag('EOL insight explains missing lifecycle view'), (await page.getByText('Lifecycle detail view not available yet').count()) >= 1);
+  check(tag('EOL KPI is not a navigation control'), (await page.locator('button.exec-kpi', { hasText: 'EOL Software' }).count()) === 0);
   check(tag('no page errors on exposure'), errors.length === 0, errors);
 
   // ── CVE dashboard (/vuln-repo) ────────────────────────────────────────────

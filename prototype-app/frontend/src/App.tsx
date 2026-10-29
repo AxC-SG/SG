@@ -399,7 +399,7 @@ function FindingDetailRoute() {
   if (!displayId) {
     return <Navigate to="/findings" replace />;
   }
-  return <FindingDetailPage />;
+  return <FindingDetailPage key={displayId} findingRef={displayId} />;
 }
 
 function AiFindingDetailRoute() {

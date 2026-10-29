@@ -150,17 +150,34 @@ Remaining axe entries (known-baseline, not new): color-contrast (22 pages), head
 
 Stage 1a (U01 shared contract) is **integrated, not verified**: `AsyncSection` and `MetricValue` exist with 15 Vitest tests covering pending, ready, first-load error/retry, retry-in-flight, empty versus filtered-empty, unavailable, cached-data refresh failure, stale/refreshing, independent secondary failure, valid zero, formatted value, missing-as-unavailable and pending metric. No page adopts them yet. `test:coverage` passes 875/875; floors ratcheted to the two-worker measurement. The keyboard/screen-reader check per shared contract is pending reference acceptance in Stage 3.
 
+### Stage 1b implementation record — October 29, 2026
+
+Screenshot comparison is deferred to the final verification step by user decision, so every item below is **integrated, not verified**.
+
+| Item | Change | Evidence |
+|---|---|---|
+| U01 · Exposure | Each KPI uses `MetricValue` with its own dependency, so a failed findings, CVE or EOL summary shows `—` with a reason instead of `0`. Grid Exposure always renders its panel with loading, error/retry and empty states (it was silently hidden). Funnel, remediation progress, critical CVEs, software and asset lists each get an `AsyncSection` tied to their real dependency. "Good posture" and "risk posture is healthy" appear only after every source has loaded; a missing source is reported with retry. Cached data stays visible with a refresh-failure notice. | `ExposureDashboardPage.test.tsx`: failed CVE summary, valid zero/healthy-only-when-loaded, grid failure/retry, refresh failure with cached values |
+| U01 · AI action queue / AI findings | Action queue failure no longer reads "No AI actions require review"; AI findings and software-vulnerability list errors gain retry. Domain-specific empty designs kept. | `AiFindingsPage.test.tsx`: queue failure/retry, findings failure/retry |
+| U01 · Declared resources | Setup actions and declared resources each report failure with retry instead of "no outstanding work"/"nothing declared"; cached-refresh failure keeps the list. | `AiBomDeclaredResourcesPage.test.tsx`: both sources failing |
+| U01 · `FixContextPanel` | Adopted `AsyncSection` (pending, error/retry, empty, cached refresh failure); finding detail stays populated when the panel fails. Workbench tab gating remains Stage 4. | `FixContextPanel.test.tsx`; `FindingDetailPage.test.tsx` independent secondary failure |
+| U07 · Finding detail | Without router state, the page now looks the record up from the route identifier (`api.getFinding`) and shows loading, not found (404), not accessible (403) and error/retry states, keeping Back. The route remounts per record. UUID links open directly; display-ID links still show "not found" until **N01**, so U07 is **not resolved**. | `FindingDetailPage.test.tsx`: direct UUID entry, 404, 403, 500/retry |
+| U08 · Exposure EOL | EOL KPI and EOL/near-EOL insights no longer navigate to `/end-of-life` (which redirected tenants back to Exposure). They state "Lifecycle detail view not available yet" until **N02** supplies a destination, so U08's self-loop is removed but the successful path is **not resolved**. Experience journey check updated from asserting the loop to asserting its absence. | `ExposureDashboardPage.test.tsx` EOL test; `e2e/experience-journey.mjs` |
+
+Gates on the Stage 1b candidate: lint (2 existing warnings), typecheck, build, coverage 888/888 with floors ratcheted, `e2e:build`, and journeys 6/6 with 743/743 checks (experience 206, including the new EOL checks). Screenshot comparison deferred.
+
+No mutation exists on these Stage 1b surfaces, so "truthful mutation feedback" carries to the families that own mutations (U10, U13–U15, U17).
+
 #### Pending steps after October 29
 
 | # | Step | Owner | Blocker / trigger |
 |---|---|---|---|
-| 1 | Commit Stage 0/1a on `feat/ui-plan-stage0-1a` as two commits: (a) `AsyncSection`/`MetricValue` + tests + `primitives.css`; (b) plan, register, proposal, UI standard and coverage floors. Exclude `backend/backend.log`. | Frontend developer | Awaiting user approval to commit |
+| 1 | Commit Stage 0/1a on `feat/ui-plan-stage0-1a` as two commits: (a) `AsyncSection`/`MetricValue` + tests + `primitives.css`; (b) plan, register, proposal, UI standard and coverage floors. Exclude `backend/backend.log`. | Frontend developer | **Done**: `4f6a48f2`, `d2d24951` |
 | 2 | Run `e2e:visual` and `e2e:affected` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` image (CI or local Docker) and record the result here. | Frontend developer / QA | **Deferred by user decision (October 29) to the final verification step**, after implementation stages; Docker and the pinned image are not available locally. Slices are not marked verified until this runs |
 | 3 | Capture the U07 browser direct-entry/new-tab case (route, role, viewport/theme, expected/actual, evidence path); source reproduction is already recorded. | QA | None |
 | 4 | Decide on a reviewed axe-baseline refresh so the 1584 resolved entries are removed; do not combine it with a feature slice. | Frontend lead + UI reviewer | Reviewer decision |
 | 5 | Attach the remaining known axe entries and the new U03 (Cloud Resources orphan nav) and U14 (configurations 768px overflow) findings to their roots as adoption subtasks. | Frontend lead | None |
 | 6 | Frontend lead re-estimates Stages 1b–6f from the Stage 0 evidence, preserving order and scope. | Frontend lead | None |
-| 7 | Stage 1b: adopt AsyncSection/MetricValue in Exposure, AI action queue and declared resources; truthful mutation feedback; U07/U08 visible fallback states (not recorded as resolved while N01/N02 are open). Adopt `FixContextPanel` as a U01 consumer before Stage 3. | Feature frontend | Steps 1–2 |
+| 7 | Stage 1b: adopt AsyncSection/MetricValue in Exposure, AI action queue and declared resources; truthful mutation feedback; U07/U08 visible fallback states (not recorded as resolved while N01/N02 are open). Adopt `FixContextPanel` as a U01 consumer before Stage 3. | Feature frontend | **Integrated** (see Stage 1b record); verification with step 2 |
 | 8 | Start N01 (finding UUID/display-ID lookup), N02 (tenant EOL destination) and N07a (router exit guards) in parallel; they gate U07/U08 resolution and Stage 4 exit-guard acceptance. | Non-UI owners | Separate authorization under the non-UI ledger |
 | 9 | Continue Stages 2a → 6f in the staged order, with a review stop and evidence record at each exit gate. | Per stage table | Previous stage accepted |
 
