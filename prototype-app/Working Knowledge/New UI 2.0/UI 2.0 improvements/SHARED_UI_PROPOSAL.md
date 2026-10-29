@@ -122,7 +122,8 @@ Use reversible component/shell and family-adoption commits. If a shared change r
 | Original six Exposure/shell requests | User-requested design direction retained |
 | Navigation Option B | User selected Separate Intelligence; implementation pending |
 | Workbench six peer tabs | User selected six peer tabs; parent drafts, inactive-panel unmount and tab/task URLs specified in the plan |
-| Shared control/header/table contracts and exact candidate values | Proposed, not implemented; scoped implementation decision pending |
+| AsyncSection and MetricValue (U01, Stage 1a) | User approved October 29, 2026 (reason: one state contract to stop false healthy/empty UI; alternative per-page markup rejected; rollback: revert the component commit, no page adopts it before Stage 1b). Implemented in `components/AsyncSection.tsx` and `components/MetricValue.tsx` with `.async-section-notice`, `.metric-value` and `.ui2-sr-only` in `ui2/primitives.css`; recorded in the UI development standard. Page adoption pending Stage 1b |
+| Remaining shared control/header/table contracts and exact candidate values | Proposed, not implemented; scoped implementation decision pending |
 | Mobile read-only restriction | Not selected; retain supported capabilities |
 | New chart tokens | Candidate specification only; contextual contrast evidence pending |
 

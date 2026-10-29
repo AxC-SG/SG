@@ -1,10 +1,12 @@
 # UI implementation plan and adoption ledger
 
-Updated October 28, 2026. Scope: visible elements, navigation behavior, layout, labels, feedback, keyboard accessibility and responsive presentation. Non-UI implementation work is independently ranked in the [non-UI ledger](NON_UI_IMPROVEMENTS_LEDGER.md). No application changes or test passes are recorded by this documentation revision.
+Updated October 29, 2026 (Fix Intelligence reconciliation after PR #41). Scope: visible elements, navigation behavior, layout, labels, feedback, keyboard accessibility and responsive presentation. Non-UI implementation work is independently ranked in the [non-UI ledger](NON_UI_IMPROVEMENTS_LEDGER.md). No application changes or test passes are recorded by this documentation revision.
 
 ## Locked decisions and scope
 
-The user selected **Separate Intelligence** and **six peer Workbench tabs** during planning. Remediation contains Vulnerability Findings, AI Findings and Campaigns; Intelligence contains Vulnerability Repository; Assets contains Inventory and AI Inventory; Exposure and Policies are standalone. The Workbench highlights Vulnerability Repository. A single-item Intelligence group is deliberate; do not invent future links. Policies retains `ai.security`.
+The user selected **Separate Intelligence** and **six peer Workbench tabs** during planning. Remediation contains Vulnerability Findings, AI Findings and Campaigns; Intelligence contains Vulnerability Repository; Assets contains Inventory and AI Inventory; Exposure, Policies and Fix Intelligence are standalone. The Workbench highlights Vulnerability Repository; `/fix-intelligence/*` routes, including fix detail, highlight Fix Intelligence. A single-item Intelligence group is deliberate; do not invent future links. Policies retains `ai.security`.
+
+Fix Intelligence shipped after this plan was first written (PR #41, merge `f9e17e02`). The user selected **standalone Fix Intelligence** on October 29. It already renders as its own expandable top-level entry between Findings and Vulnerability Repository (`App.tsx`), with All Fixes, Patches, Workarounds and Compensating Controls sub-items, visible to tenant admin, security-workflow and read-only actors and hidden in platform scope. U03 keeps this standalone disclosure and its sub-items; it is not moved into Remediation or Intelligence.
 
 Use parent-owned Workbench drafts with inactive panels unmounted; validated `tab`/`task` query parameters; full exit protection through the separately tracked N07a router prerequisite; and in-place discard confirmation inside an existing dialog. Width and input capability are independent. The detailed contracts below supersede earlier ambiguous descriptions. These are plan decisions, not completed application changes.
 
@@ -34,6 +36,7 @@ Track a shared fix once under U01–U06, then each consumer as an adoption check
 | <a id="U14"></a>U14 | P1 · policy/config UI · L | Scope/parameter/exception forms, dirty/save cues, rule summaries and readable lifecycle/tenant cohort controls. | U01/U03/U04/U06; N03/N04/N11 for domain decisions | Governance frontend / not started |
 | <a id="U15"></a>U15 | P1 · connectors/admin/platform · L | Consistent catalog/detail forms, validation, status/result feedback, run details, invite and account dialogs. | Shared roots; N04/N12 where API outcome is incomplete | Connect/admin frontend / not started |
 | <a id="U16"></a>U16 | P1 auth; P2 marketing · M | Labelled login/setup/invite/request states and actionable recovery; readable public pages and CTA hierarchy. | Reuse behavior without tenant-shell duplication; N11 capability decisions | Auth/public frontend / not started |
+| <a id="U17"></a>U17 | P1 · Fix Intelligence · M | List views (All/Patches/Workarounds/Compensating Controls), fix detail, `FixControlForm` and the embedded `FixContextPanel` adopt shared state, table, dialog and header conventions; lifecycle actions (approve/retire) have clear eligibility and result feedback. | U01–U06; U03 standalone navigation; U09/U10 acceptance; no lifecycle/role changes (approve/retire stay `TENANT_ADMIN`, approver ≠ proposer) | Fix Intelligence frontend + designer / not started |
 
 Stage 1a introduces AsyncSection and MetricValue before Stage 1b adopts them, avoiding throwaway page implementations. U07/U08 repairs remain independent of the wider visual redesign once their contracts are available. Do not delay a currently reproducible production defect for a whole-app refresh; an exceptional emergency patch is explicitly re-adopted under U01 rather than treated as the long-term reference.
 
@@ -56,12 +59,13 @@ Effort bands are initial focused **person-days including implementation and slic
 | 6c | U14 policies + seven configuration sections | 5–8 days | Dirty/save/validation, rule/scope controls and lifecycle UI verified without domain changes. |
 | 6d | U15 connectors, administration and platform | 6–10 days | Catalog/detail/run/status feedback, management controls and dialogs verified. |
 | 6e | U16 public/auth residual work only | 0.5–3 days | Do not redo recent theme/header fixes; close reproduced residual gaps and prove no regression. |
+| 6f | U17 Fix Intelligence list/detail/form adoption | 3–5 days | List/detail states, table, control-form dirty/save and lifecycle action feedback verified; `FixContextPanel` already adopted in Stages 1b/3. |
 
 ### Stage 0 — current inputs, not retired migration evidence
 
 Use current `frontend/e2e/` fixtures, routes, journeys, visual/axe baselines, package scripts and `.github/workflows/`. Source inspection confirmed that candidate build/sweep does not require deleted `BEHAVIOR_BASELINE_2026-10-24.json`, `VERIFICATION_RESULTS_2026-10-24.md` or removed intermediate checkpoint reports. Archive integrity checking is separate and uses retained archives/manifests; do not delete those or reintroduce obsolete reports.
 
-Record existing public/auth fixes from commits `2f5abf42`, `6bb3376e`, `26c3bc26`, `1faab124` and `eedc8a08` as **implemented historically; current regression qualification pending**. Reproduce remaining gaps before adding work. Implementation already present is not scheduled again, and historical evidence is not a new candidate pass.
+Record existing public/auth fixes from commits `2f5abf42`, `6bb3376e`, `26c3bc26`, `1faab124` and `eedc8a08` as **implemented historically; current regression qualification pending**. Record Fix Intelligence UI 2 alignment from PR #41 (`a873bdac`, `b6a9d93c`, `a1f87f03`: `styles/ui2/fix-intelligence.css`, `e2e/fix-fixtures.mjs`, the `fix` route group in `e2e/routes.mjs` and fix-intelligence baselines at 1280/390px in both themes) the same way. Fix Intelligence has no dedicated family journey; only `experience-journey.mjs` touches it, so U17 either extends that journey or the plan keeps the existing six family journeys unchanged. Reproduce remaining gaps before adding work. Implementation already present is not scheduled again, and historical evidence is not a new candidate pass.
 
 ### Stages 1–3 — shared reference contracts
 
@@ -70,6 +74,12 @@ AsyncSection is presentation-only with explicit state and feature-provided retry
 Header ownership is atomic: the shell renders one shared H1 using route-scoped header data; feature pages register title/actions without rendering another H1. Unadopted routes retain the shell fallback. Remove duplicate feature H1s in the same shell slice, including nested InventoryShell/Copilot landmarks. Match registrations to pathname/record identity and clear mismatched registrations immediately; use a pre-paint layout registration so navigation cannot briefly reuse the previous record title. Auth/public routes continue to own a single header/main in their own shell. Suspense/error states use the same route header owner.
 
 Findings list keeps its existing selection/saved-queue semantics; do not mechanically replace the bespoke table if that would drop behavior. Adopt the same readable widths, keyboard links, control hierarchy and state conventions. Finding detail uses contextual loading/missing/denied/error presentation until supported identifier lookup is resolved under N01.
+
+`FixContextPanel` ("Remediation options", `GET /api/fix-intelligence/context`) is a shared embedded section on finding detail (U07/U09), the Workbench Overview tab (U10) and host detail (U12). Adopt it once as a U01 consumer before Stage 3 so the Findings reference covers its independent secondary failure: the panel may fail or be empty while the rest of the page stays populated. Fixes are context only and never imply a finding status change. In the Workbench, gate its fetch to the active Overview tab, and keep the Workbench **Fixes** tab (CVE-scoped editable fix guidance) visibly distinct from the Fix Intelligence module (tenant fix records) in labels and links.
+
+### Stage 6f — Fix Intelligence
+
+Current source already shows summary/list loading and error notices and normalizes invalid views with a replace redirect; keep that URL behavior and move the states onto AsyncSection/MetricValue rather than redesigning them. The list table adopts U02 and the header adopts U03. Fix detail keeps its loading/missing/error states, its read-only presentation for patch-tool and recommendation records, and Approve disabled for the proposer. Reproduce whether Retire lacks a confirmation step before tracking it under U04. `FixControlForm` adopts dirty/save/validation cues; editing an ACTIVE control returns it to PROPOSED, and the UI must say so before save rather than change that rule.
 
 ### Stage 4 — Workbench state, location and exit behavior
 
@@ -106,7 +116,7 @@ The [page register](application-page-review-register-2026-10-28.md) maps every m
 
 ## Current evidence gate
 
-Source recheck on October 28 (documentation only; no new runs): `HEAD eedc8a08` plus the existing uncommitted checkout. Confirmed finding router-state dependency, EOL redirect, table width shrinking, dialog naming gap, inconsistent query/action feedback and workbench draft-only notification behavior. This is not an immutable tested artifact. At implementation, record the exact candidate commit, relevant working-tree diff or content hashes, fixture version and environment.
+Source recheck on October 28 (documentation only; no new runs): `HEAD eedc8a08` plus the existing uncommitted checkout. October 29 recheck at `HEAD 9f3321f6` (documentation only; no new runs) added the Fix Intelligence findings above. Confirmed finding router-state dependency, EOL redirect, table width shrinking, dialog naming gap, inconsistent query/action feedback and workbench draft-only notification behavior. This is not an immutable tested artifact. At implementation, record the exact candidate commit, relevant working-tree diff or content hashes, fixture version and environment.
 
 Fresh browser evidence remains **pending**. The UI implementation owner must:
 
@@ -117,6 +127,42 @@ Fresh browser evidence remains **pending**. The UI implementation owner must:
 5. Add keyboard, zoom and workbench transition checks missing from the representative sweep. Any live write/persistence verification belongs to separately identified disposable test data and the non-UI dependencies.
 
 Use the [canonical browser instructions](../../../docs/ui2-styles-and-rollback.md#browser-gates). Do not fake the Playwright image environment, loosen assertions/tolerances, or update baselines just to remove failures. A pass against known axe/journey baselines is a regression comparison, not zero defects. If an environment check cannot run, record the missing prerequisite and leave that evidence pending.
+
+### Stage 0 evidence record — October 29, 2026
+
+Candidate: `main` at `9f3321f6` on branch `feat/ui-plan-stage0-1a`; the only unrelated working-tree change is `backend/backend.log`. Local macOS, Node 24.13.1, `@playwright/test` 1.63.0 outside the pinned image. Commands run from `prototype-app/frontend`.
+
+| Check | Result |
+|---|---|
+| `lint`, `typecheck`, `build`, `test:unit` | Pass (lint: 2 existing warnings in `ConfigurationsPage.tsx`; unit 860/860 before Stage 1a) |
+| `e2e:build` | Pass; data-ui boundary on 15 direct routes and 20 public/history checks |
+| `e2e:journeys` | 6/6 families, 739/739 checks, 0 known, 0 new failures |
+| `e2e:sweep -- --widths 390,768,1280,1440` | Pass. 384 page checks per theme (88 via navigation), 0 page/console errors, 0 unexpected requests. Axe compare: 761 current, 2345 baseline, **0 new**, 1584 resolved (mostly sidebar `nested-interactive`, fixed in `a1f87f03`) |
+| `e2e:visual`, `e2e:affected` | **Pending**: Docker and the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` image are not available locally |
+
+Reproduced candidates:
+- **U07:** finding detail reads its record only from router state (`FindingDetailPage.tsx:192`), so direct URL or new-tab entry has no record. Confirmed in source; the browser direct-entry case is still to be captured.
+- **U08:** tenant `EndOfLifeRoute` redirects to `/exposure` (`App.tsx:594`) while Exposure EOL actions target `/end-of-life` (`ExposureDashboardPage.tsx:359`, `:375`, `:454`). Self-loop confirmed in source.
+- **U03 (new):** sweep reports `/inventory/cloud-resources` as an orphan nav destination at 1440px for TENANT_ADMIN+SECURITY_ANALYST and PLATFORM_OWNER+TENANT_ADMIN, both themes.
+- **U14 (new):** document overflow at 768px on `/configurations/sla` and `/configurations/suppress`, TENANT_ADMIN+SECURITY_ANALYST, both themes.
+
+Remaining axe entries (known-baseline, not new): color-contrast (22 pages), heading-order (32), label (4), empty-table-header (8), aria-required-children (8), select-name (4), scrollable-region-focusable (10), nested-interactive (2), landmark-complementary-is-top-level (2), aria-prohibited-attr (2). Attach them to U01–U06 roots during qualification. The axe baseline still lists 1584 resolved entries; refresh it only as a reviewed change, not as part of Stage 1a.
+
+Stage 1a (U01 shared contract) is **integrated, not verified**: `AsyncSection` and `MetricValue` exist with 15 Vitest tests covering pending, ready, first-load error/retry, retry-in-flight, empty versus filtered-empty, unavailable, cached-data refresh failure, stale/refreshing, independent secondary failure, valid zero, formatted value, missing-as-unavailable and pending metric. No page adopts them yet. `test:coverage` passes 875/875; floors ratcheted to the two-worker measurement. The keyboard/screen-reader check per shared contract is pending reference acceptance in Stage 3.
+
+#### Pending steps after October 29
+
+| # | Step | Owner | Blocker / trigger |
+|---|---|---|---|
+| 1 | Commit Stage 0/1a on `feat/ui-plan-stage0-1a` as two commits: (a) `AsyncSection`/`MetricValue` + tests + `primitives.css`; (b) plan, register, proposal, UI standard and coverage floors. Exclude `backend/backend.log`. | Frontend developer | Awaiting user approval to commit |
+| 2 | Run `e2e:visual` and `e2e:affected` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` image (CI or local Docker) and record the result here. | Frontend developer / QA | **Deferred by user decision (October 29) to the final verification step**, after implementation stages; Docker and the pinned image are not available locally. Slices are not marked verified until this runs |
+| 3 | Capture the U07 browser direct-entry/new-tab case (route, role, viewport/theme, expected/actual, evidence path); source reproduction is already recorded. | QA | None |
+| 4 | Decide on a reviewed axe-baseline refresh so the 1584 resolved entries are removed; do not combine it with a feature slice. | Frontend lead + UI reviewer | Reviewer decision |
+| 5 | Attach the remaining known axe entries and the new U03 (Cloud Resources orphan nav) and U14 (configurations 768px overflow) findings to their roots as adoption subtasks. | Frontend lead | None |
+| 6 | Frontend lead re-estimates Stages 1b–6f from the Stage 0 evidence, preserving order and scope. | Frontend lead | None |
+| 7 | Stage 1b: adopt AsyncSection/MetricValue in Exposure, AI action queue and declared resources; truthful mutation feedback; U07/U08 visible fallback states (not recorded as resolved while N01/N02 are open). Adopt `FixContextPanel` as a U01 consumer before Stage 3. | Feature frontend | Steps 1–2 |
+| 8 | Start N01 (finding UUID/display-ID lookup), N02 (tenant EOL destination) and N07a (router exit guards) in parallel; they gate U07/U08 resolution and Stage 4 exit-guard acceptance. | Non-UI owners | Separate authorization under the non-UI ledger |
+| 9 | Continue Stages 2a → 6f in the staged order, with a review stop and evidence record at each exit gate. | Per stage table | Previous stage accepted |
 
 ## Bounded verification matrix
 
@@ -154,7 +200,7 @@ Introduce header assertions on adopted routes immediately; retain baseline-only 
 
 ### Navigation-specific regression and rollback
 
-Update AppShell/access/active-route tests, typed route-helper expectations, sidebar disclosure/link locators in route sweep, and any of the six family journeys using navigation labels. Refresh the current authenticated shell/header light/dark desktop/mobile baselines as one reviewed slice. Assert that all Workbench tabs, CVE/assets/software/intelligence detail routes select Vulnerability Repository, while campaign routes select Campaigns.
+Update AppShell/access/active-route tests, typed route-helper expectations, sidebar disclosure/link locators in route sweep, and any of the six family journeys using navigation labels. Refresh the current authenticated shell/header light/dark desktop/mobile baselines as one reviewed slice. Assert that all Workbench tabs, CVE/assets/software/intelligence detail routes select Vulnerability Repository, all `/fix-intelligence/*` routes including `/fix-intelligence/details/:fixId` select Fix Intelligence with the matching sub-item, and campaign routes select Campaigns. Include Fix Intelligence visibility in the access assertions: shown for tenant admin, analyst and read-only auditor; hidden in platform scope.
 
 Do not add a feature-flag system. Keep the shell and router changes as separately reversible slices. If navigation/access/active state regresses, revert the responsible slice and its paired tests/snapshots, retain independent state fixes, then rerun the access/navigation/public-boundary smoke set. Deployment/production artifact rollback remains the existing release process and is not executed by this plan.
 

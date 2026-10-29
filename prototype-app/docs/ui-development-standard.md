@@ -35,6 +35,8 @@ The current design system combines React components and shared CSS classes. It d
 | Exclusive local view choice | `components/SegmentedControl.tsx` | Uses `aria-pressed`; route navigation still uses route links/helpers |
 | Filter discovery and grouping | `components/FilterBuilder.tsx`, `MultiGroupBy.tsx` | Reuse where their interaction model fits; retain feature-specific request and grouping semantics |
 | Metric and freshness feedback | `components/StatCard.tsx`, `PageFreshnessStatus.tsx` | Reuse existing tones, captions, last-update and refresh/delay treatment |
+| Section data states | `components/AsyncSection.tsx` | Presentation-only. The feature passes `state` (`pending`, `ready`, `empty`, `filtered-empty`, `error`, `unavailable`), its own retry/clear actions and truthful copy; `refreshError`/`staleMessage` keep cached data visible. One AsyncSection per independent dependency, so a secondary failure never hides a populated sibling |
+| Metric availability | `components/MetricValue.tsx` | The feature passes `availability` separately from `value`: valid zero renders `0`, unavailable renders `—` with an accessible reason, pending renders a placeholder. Never map missing data to zero to feed it |
 | Inline help | `components/InfoTooltip.tsx`, `MetricInfoIcon.tsx` | Keep labels and essential instructions visible; verify help remains available by keyboard |
 | Route failure | `components/RouteErrorBoundary.tsx` | Follow the existing route wrapper pattern; query errors still need feature-level messages and retry |
 | Shared charts | `features/widgets/FplWidgets.tsx` (`DonutChart`, `HBarChart`, `WidgetCard`) | Preserve metric scope and textual meaning; use the same semantic colors |
