@@ -652,8 +652,8 @@ html[data-ui='2'] .ui2-connect-family .ai-security-page {
   padding: 0;
 }
 
-html[data-ui='2'] .ui2-connect-family .ai-security-page > header h1,
-html[data-ui='2'] .ui2-connect-family.ai-security-page > header h1 {
+html[data-ui='2'] .ui2-connect-family .ai-security-page > header h2,
+html[data-ui='2'] .ui2-connect-family.ai-security-page > header h2 {
   margin: 0;
   color: var(--dp-text);
   font-size: var(--dp-text-2xl);
@@ -662,7 +662,7 @@ html[data-ui='2'] .ui2-connect-family.ai-security-page > header h1 {
 }
 
 /* Inside the catalog frame the frame title already names the connector. */
-html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .ai-security-page > header h1 {
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .ai-security-page > header h2 {
   font-size: var(--dp-text-xl);
 }
 

@@ -3,15 +3,76 @@ import {
   activeTabForPath,
   appendSearchToPath,
   buildLegacyCompatiblePath,
+  navDestinationForPath,
   normalizePlatformRouteView,
   pathForConnectView,
   pathForInventoryViewWithSearch,
   pathForOperationsView,
   pathForTab,
-  pathForVulnRepoView
+  pathForVulnRepoView,
+  routeTitleForPath
 } from './routes';
 
 describe('routes', () => {
+  it.each([
+    ['/exposure', 'exposure'],
+    ['/findings', 'vulnerability-findings'],
+    ['/findings/F-10420', 'vulnerability-findings'],
+    ['/findings/ai', 'ai-findings'],
+    ['/findings/ai/vulnerabilities', 'ai-findings'],
+    ['/findings/ai/exposures/exposure-1', 'ai-findings'],
+    ['/vuln-repo/campaigns', 'campaigns'],
+    ['/vuln-repo/campaigns/campaign-1', 'campaigns'],
+    ['/fix-intelligence/all', 'fix-intelligence'],
+    ['/fix-intelligence/details/fix-1', 'fix-intelligence'],
+    ['/vuln-repo', 'vuln-repo'],
+    ['/vuln-repo/vulnerabilities', 'vuln-repo'],
+    ['/vuln-repo/org-cves', 'vuln-repo'],
+    ['/vuln-repo/org-cves/CVE-2024-0001', 'vuln-repo'],
+    ['/vuln-repo/org-cves/CVE-2024-0001/assets', 'vuln-repo'],
+    ['/vuln-repo/org-cves/CVE-2024-0001/software', 'vuln-repo'],
+    ['/vuln-repo/host-assets/host-1', 'vuln-repo'],
+    ['/vuln-repo/software-assets', 'vuln-repo'],
+    ['/vuln-repo/intel/CVE-2024-0001', 'vuln-repo'],
+    ['/vulnerability-intelligence/org-cves/CVE-2024-0001', 'vuln-repo'],
+    ['/inventory', 'inventory'],
+    ['/inventory/cloud-resources', 'inventory'],
+    ['/inventory/hosts/host-1', 'inventory'],
+    ['/inventory/ai', 'ai-inventory'],
+    ['/inventory/ai/declared-resources/resource-1', 'ai-inventory'],
+    ['/policies/policy-1', 'policies'],
+    ['/connect/copilot-studio', 'connect'],
+    ['/configurations/triage', 'configurations'],
+    ['/admin/audit', 'admin'],
+    ['/platform/tenants', 'platform'],
+    ['/platform/eol', 'end-of-life'],
+    ['/platform/ai-policies/policy-1', 'platform-policies'],
+    ['/platform/operations', 'platform-operations'],
+    ['/authorized-workspaces', null],
+    ['/findingsx', null],
+  ])('selects one sidebar destination for %s', (pathname, expected) => {
+    expect(navDestinationForPath(pathname)).toBe(expected);
+  });
+
+  it('gives every shell route a fallback title', () => {
+    expect(routeTitleForPath('/exposure')).toBe('Exposure Dashboard');
+    expect(routeTitleForPath('/findings/F-1')).toBe('Vulnerability Findings');
+    expect(routeTitleForPath('/findings/ai/finding-1')).toBe('AI Findings');
+    expect(routeTitleForPath('/vuln-repo/campaigns/c-1')).toBe('Campaigns');
+    expect(routeTitleForPath('/fix-intelligence/details/fix-1')).toBe('Fix Intelligence');
+    expect(routeTitleForPath('/vuln-repo/org-cves/CVE-1')).toBe('Vulnerability Repository');
+    expect(routeTitleForPath('/inventory/ai/agents')).toBe('AI Inventory');
+    expect(routeTitleForPath('/policies')).toBe('Policies');
+    expect(routeTitleForPath('/admin/users')).toBe('Tenant Administration');
+    expect(routeTitleForPath('/platform/tenants')).toBe('Tenant Management');
+    expect(routeTitleForPath('/platform/vuln-intel')).toBe('Vulnerability Intelligence');
+    expect(routeTitleForPath('/platform/operations')).toBe('Operations');
+    expect(routeTitleForPath('/platform/eol')).toBe('End-of-Life');
+    expect(routeTitleForPath('/platform/ai-policies')).toBe('Policy Distribution');
+    expect(routeTitleForPath('/authorized-workspaces')).toBe('Authorized Workspaces');
+    expect(routeTitleForPath('/')).toBe('Overview');
+  });
+
   it('maps top-level tabs to canonical paths', () => {
     expect(pathForTab('dashboard')).toBe('/');
     expect(pathForTab('operations')).toBe('/operations/pipeline');

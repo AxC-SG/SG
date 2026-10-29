@@ -23,7 +23,7 @@ export function InventoryShell({
       <header className="inventory-shell-header">
         <div className="inventory-shell-heading">
           {eyebrow ? <span className="inventory-shell-eyebrow">{eyebrow}</span> : null}
-          <h1 className="inventory-shell-title">{title}</h1>
+          <h2 className="inventory-shell-title">{title}</h2>
           {description ? <p className="inventory-shell-description">{description}</p> : null}
         </div>
         {actions ? <div className="inventory-shell-actions">{actions}</div> : null}

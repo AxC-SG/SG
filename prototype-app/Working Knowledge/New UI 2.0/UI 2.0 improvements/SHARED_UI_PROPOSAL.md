@@ -120,10 +120,11 @@ Use reversible component/shell and family-adoption commits. If a shared change r
 |---|---|
 | UI-only feedback + separate non-UI ledger | User requested; applied to this documentation revision |
 | Original six Exposure/shell requests | User-requested design direction retained |
-| Navigation Option B | User selected Separate Intelligence; implementation pending |
+| Navigation Option B | User selected Separate Intelligence. Implemented in Stage 2a (October 29, 2026) with standalone Fix Intelligence, per the user's Stage 2a task: `app/SidebarNav.tsx`, `navDestinationForPath`, lucide icons, link destinations and sibling disclosures. Integrated, not verified (screenshot comparison deferred) |
 | Workbench six peer tabs | User selected six peer tabs; parent drafts, inactive-panel unmount and tab/task URLs specified in the plan |
 | AsyncSection and MetricValue (U01, Stage 1a) | User approved October 29, 2026 (reason: one state contract to stop false healthy/empty UI; alternative per-page markup rejected; rollback: revert the component commit, no page adopts it before Stage 1b). Implemented in `components/AsyncSection.tsx` and `components/MetricValue.tsx` with `.async-section-notice`, `.metric-value` and `.ui2-sr-only` in `ui2/primitives.css`; recorded in the UI development standard. Page adoption pending Stage 1b |
-| Remaining shared control/header/table contracts and exact candidate values | Proposed, not implemented; scoped implementation decision pending |
+| Shell-owned route header (PageHeader contract) and U03 shell values | Implemented in Stage 2a as directed by the user's Stage 2a task (single shell H1, pathname-keyed pre-paint registration, accessible drawer and account menu; 40/36px rows, 18px icons, 22px title, 24px gutter at ≥960px, 44px coarse-pointer targets, 36px icon controls). Recorded in the UI development standard. Retained exception: the drawer still switches at `max-width: 960px` in `app-base.css` (960px exactly is drawer, not the ≥960 sidebar convention); owner shell frontend, removal when the `app-base.css` 960 block is migrated to min-width rules |
+| Remaining shared control/table contracts (DataTable, Dialog, Chart interaction) | Proposed, not implemented; Stage 2b |
 | Mobile read-only restriction | Not selected; retain supported capabilities |
 | New chart tokens | Candidate specification only; contextual contrast evidence pending |
 

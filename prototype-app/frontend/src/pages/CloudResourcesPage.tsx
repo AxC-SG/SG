@@ -60,7 +60,7 @@ export function CloudResourcesPage() {
   const totalPages = data?.totalPages ?? 0;
 
   return (
-    <section className="panel">
+    <section className="panel ui2-inventory-family">
       <div className="panel-header">
         <div>
           <h2 className="cloud-resources-title">Cloud Resources</h2>

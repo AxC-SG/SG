@@ -2,6 +2,7 @@ import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { usePageHeader } from '../app/pageHeaderState';
 import type { AiGridPlatformPolicyDetail, AiGridPolicyDistribution } from '../features/ai-security/types';
 import { formatLabel, severityClassName } from '../features/cve-workbench/formatting';
 
@@ -30,7 +31,7 @@ function Overview({ policy, detail, onGovernance }: { policy: AiGridPolicyDistri
       <div className="cvd2-overview-main">
         <div className="cvd2-panel"><div className="cvd-ov-left">
           <div className="cvd-ov-meta"><span className="cvd-status-pill cvd-status-ok">{policy.lifecycle}</span><span className="cvd-ov-meta-eval">· Platform catalog policy</span></div>
-          <div className="cvd-ov-first-seen">{policy.policyId}</div><h1 className="cvd-ov-cve-id">{policy.name}</h1>
+          <div className="cvd-ov-first-seen">{policy.policyId}</div><h2 className="cvd-ov-cve-id">{policy.name}</h2>
           <div className="cvd-ov-badges"><span className={severityClassName(policy.severity)}>{policy.severity}</span><span className="cvd-signal-pill">{formatLabel(policy.provider)}</span><span className="cvd-signal-pill">{policy.defaultSelection}</span><span className="cvd-signal-pill">{formatLabel(policy.rolloutStage)}</span></div>
         </div><p className="cvd-ov-description">{detail?.description ?? 'Loading policy intent…'}</p>
         <div className="cvd-ov-divider" /><div className="cvd-ov-links"><span className="cvd-ov-link">Platform-owned definition →</span><button type="button" className="cvd-ov-link" onClick={onGovernance}>Open governance controls →</button></div>
@@ -57,6 +58,7 @@ export function PlatformAiPolicyDetailPage({ policyId }: { policyId: string }) {
   const [tab, setTab] = React.useState<'overview' | 'governance'>('overview'); const [note, setNote] = React.useState(''); const [reason, setReason] = React.useState(''); const [cohort, setCohort] = React.useState<string[]>([]); const [actionMessage, setActionMessage] = React.useState<string | null>(null);
   const catalog = useQuery({ queryKey: ['platform-ai-grid-policies'], queryFn: () => api.listPlatformAiGridPolicies() });
   const policy = (catalog.data ?? []).find((item) => item.policyId === policyId);
+  usePageHeader(policy ? { title: policy.name } : null);
   const detail = useQuery({ queryKey: ['platform-ai-grid-policy-detail', policyId, policy?.version], queryFn: () => api.getPlatformAiGridPolicyDetail(policyId, policy!.version), enabled: Boolean(policy) });
   const tenants = useQuery({ queryKey: ['platform-ai-grid-active-tenants'], queryFn: api.listTenants });
   const refresh = () => { void client.invalidateQueries({ queryKey: ['platform-ai-grid-policies'] }); void client.invalidateQueries({ queryKey: ['platform-ai-grid-policy-detail', policyId] }); };

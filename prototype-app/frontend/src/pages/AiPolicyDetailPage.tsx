@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { usePageHeader } from '../app/pageHeaderState';
 import { useActor } from '../features/auth/context';
 import { hasRole } from '../features/auth/roles';
 import { formatDate, formatLabel, severityClassName } from '../features/cve-workbench/formatting';
@@ -277,6 +278,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
     lifecycle: policyMetadata.lifecycle,
     inactiveReason: null,
   } : null);
+  usePageHeader(policy ? { title: policy.name } : null);
   const allFindings = React.useMemo(() => findingsQuery.data?.items ?? [], [findingsQuery.data?.items]);
   const visibleFindings = React.useMemo(() => (
     findingsStatusFilter ? allFindings.filter((finding) => finding.status === findingsStatusFilter) : allFindings
@@ -481,7 +483,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                     )}
                   </div>
                   <div className="cvd-ov-first-seen">{policy.id}</div>
-                  <h1 className="cvd-ov-cve-id">{policy.name}</h1>
+                  <h2 className="cvd-ov-cve-id">{policy.name}</h2>
                   <div className="cvd-ov-badges">
                     <span className={severityClassName(policy.severity)}>{policy.severity}</span>
                     <span className="cvd-signal-pill">Coverage {Math.round(policy.decisionCoverage * 100)}%</span>

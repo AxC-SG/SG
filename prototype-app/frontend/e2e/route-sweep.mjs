@@ -4,7 +4,8 @@
 //
 // For each page it records the final URL, whether the rendered content sits under a UI 2.0
 // presentation root (an orphan is legacy presentation on an active route), page errors and
-// horizontal overflow at each width (default 1440px and 390px). Run against the UI 2.0 build;
+// horizontal overflow at each width (default 1440px and 390px). Authenticated routes must have
+// exactly one visible H1 and one main landmark, both owned by the shell (U03). Run against the UI 2.0 build;
 // on the legacy build every route reports as orphan by design (no family roots are styled there).
 // Fixture-backed only: this is NOT authenticated staging evidence.
 //
@@ -46,13 +47,13 @@ const FAMILY_ROOTS = [
 const opsActor = { ...actor, roles: ['PLATFORM_OWNER', 'TENANT_ADMIN'], platformScope: false, actingAsPlatformOwner: true };
 
 const tenantRoutes = [
-  '/exposure', '/findings', '/findings/F-10420', '/findings/ai', '/findings/ai/vulnerabilities', '/findings/ai/exposures',
+  '/exposure', '/findings', '/findings/F-10420', '/findings/00000000-0000-4000-8000-000000000001', '/findings/ai', '/findings/ai/vulnerabilities', '/findings/ai/exposures',
   '/findings/ai/exposures/exposure-1', '/findings/ai/ai-finding-1', '/policies', `/policies/${PRIMARY_POLICY_ID}`,
   '/vuln-repo', '/vuln-repo/vulnerabilities', `/vuln-repo/intel/${PRIMARY_CVE}`, '/vuln-repo/org-cves', `/vuln-repo/org-cves/${PRIMARY_CVE}`,
   `/vuln-repo/org-cves/${PRIMARY_CVE}/assets`, `/vuln-repo/org-cves/${PRIMARY_CVE}/software`,
   '/vuln-repo/software-assets?softwareIdentityId=sw-1&software=log4j-core', `/vuln-repo/host-assets/${PRIMARY_HOST_ID}`,
   '/vuln-repo/campaigns', `/vuln-repo/campaigns/${PRIMARY_CAMPAIGN_ID}`,
-  '/inventory', '/inventory/overview', '/inventory/hosts', `/inventory/hosts/${PRIMARY_HOST_ID}`, '/inventory/software-identities',
+  '/inventory', '/inventory/overview', '/inventory/hosts', '/inventory/cloud-resources', `/inventory/hosts/${PRIMARY_HOST_ID}`, '/inventory/software-identities',
   `/inventory/software-identities/${PRIMARY_SOFTWARE_IDENTITY_ID}`, '/inventory/container-images', '/inventory/sbom',
   '/inventory/bom-components', '/inventory/bom-inventory', '/inventory/ai', '/inventory/ai/agents', '/inventory/ai/agent-versions',
   '/inventory/ai/assets', '/inventory/ai/knowledge-data', '/inventory/ai/mcp', '/inventory/ai/declared-resources',
@@ -102,11 +103,13 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
           family: Boolean(document.querySelector('main.public-demo-shell')?.matches(roots)) || Boolean(content.querySelector(roots)),
           roots: [...new Set([...content.querySelectorAll(roots)].slice(0, 4).map((el) => [...el.classList].find((name) => /family|fpl-root|fd3-page|cve-assessment-page|-shell$/.test(name))))],
           overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+          h1: [...document.querySelectorAll('h1')].filter((el) => el.getClientRects().length > 0).length,
+          main: document.querySelectorAll('main, [role="main"]').length,
           text: rendered.map((child) => child.textContent ?? '').join(' ').trim().slice(0, 80),
         };
       }, FAMILY_ROOTS);
       const url = new URL(page.url());
-      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), width, via, route, final: url.pathname + url.search, ...state, errors, consoleErrors, externalRequests });
+      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), authenticated: !unauthenticated, width, via, route, final: url.pathname + url.search, ...state, errors, consoleErrors, externalRequests });
       errors = [];
       consoleErrors = [];
       externalRequests = [];
@@ -151,14 +154,16 @@ const erroring = rows.filter((row) => row.errors.length > 0);
 const consoleErroring = rows.filter((row) => row.consoleErrors.length > 0);
 const external = rows.filter((row) => row.externalRequests.length > 0);
 const flagged = rows.filter((row) => row.ui !== '2');
+const headerless = rows.filter((row) => row.authenticated && (row.h1 !== 1 || row.main !== 1));
 console.log(`${label}: ${rows.length} page checks (${rows.filter((row) => row.via === 'nav').length} via navigation); `
   + `${orphans.length} orphan, ${overflowing.length} overflow, ${erroring.length} with page errors, ${consoleErroring.length} with console errors, `
-  + `${external.length} with unexpected requests, ${flagged.length} without data-ui=2`);
+  + `${external.length} with unexpected requests, ${flagged.length} without data-ui=2, ${headerless.length} without exactly one H1/main`);
 for (const row of orphans) console.log(`ORPHAN ${row.actor} ${row.width} ${row.via} ${row.route} -> ${row.final} :: ${row.text}`);
 for (const row of overflowing) console.log(`OVERFLOW ${row.actor} ${row.width} ${row.route} -> ${row.final}`);
 for (const row of erroring) console.log(`ERROR ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.errors.join(' | ')}`);
 for (const row of consoleErroring) console.log(`CONSOLE ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.consoleErrors.join(' | ')}`);
+for (const row of headerless) console.log(`HEADER ${row.actor} ${row.width} ${row.via} ${row.route} -> ${row.final} :: ${row.h1} h1, ${row.main} main`);
 for (const row of external) console.log(`REQUEST ${row.actor} ${row.width} ${row.route} -> ${row.final} :: ${row.externalRequests.join(' | ')}`);
 // Orphans and overflow are reported for review; legacy builds report every route as orphan by design.
-process.exitCode = erroring.length || consoleErroring.length || external.length ? 1 : 0;
+process.exitCode = erroring.length || consoleErroring.length || external.length || headerless.length ? 1 : 0;
 failOnUnexpectedApi();

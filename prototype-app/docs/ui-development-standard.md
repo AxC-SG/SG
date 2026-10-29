@@ -29,7 +29,8 @@ The current design system combines React components and shared CSS classes. It d
 
 | Need | Existing implementation | Usage rule |
 |---|---|---|
-| Shell, tenant/platform navigation, theme | `src/App.tsx` (`AppShell`) and `src/app/routes.ts` | Register lazy routes and typed path helpers; extend the existing navigation and access gates |
+| Shell, tenant/platform navigation, theme | `src/App.tsx` (`AppShell`), `src/app/SidebarNav.tsx`, `src/app/AccountMenu.tsx` and `src/app/routes.ts` | Register lazy routes and typed path helpers; extend the existing navigation and access gates. Navigation (Option B) uses non-clickable group headings, real route links with `aria-current` and sibling disclosure buttons; `navDestinationForPath` selects exactly one destination per route. Groups left empty by role/entitlement filtering are omitted |
+| Route title (H1) | `src/app/pageHeaderState.ts` (`usePageHeader`), `src/app/PageHeader.tsx` (`PageHeaderProvider`) | The shell renders the only authenticated H1 and `main`; `routeTitleForPath` is the fallback. A page that knows a better title (record name, CVE ID) calls `usePageHeader({ title, actions? })`, passing `null` until the record is known. Registration is pathname-keyed and applied in a layout effect, so the previous record's title never appears on the next route. Feature pages and panels use `h2` and below; do not add another `h1` or `main` |
 | Dense tabular data | `components/DataTable.tsx` | Reuse column visibility/order/width controls and give each table a stable, unique `storageKey`; feature owns paging, filters, selection and actions |
 | Confirmation | `components/ConfirmDialog.tsx` | Native modal dialog; reuse confirm/cancel/disabled behavior, provide an accessible dialog name and check keyboard focus/return behavior |
 | Exclusive local view choice | `components/SegmentedControl.tsx` | Uses `aria-pressed`; route navigation still uses route links/helpers |

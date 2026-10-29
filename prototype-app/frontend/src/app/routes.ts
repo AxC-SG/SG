@@ -463,6 +463,82 @@ export function activeTabForPath(pathname: string): AppTab {
   return 'dashboard';
 }
 
+// One sidebar destination per route. Workbench, CVE, asset, software and intelligence routes
+// belong to Vulnerability Repository; campaigns and every /fix-intelligence/* route have their own.
+export type NavDestination =
+  | 'exposure'
+  | 'vulnerability-findings'
+  | 'ai-findings'
+  | 'campaigns'
+  | 'fix-intelligence'
+  | 'vuln-repo'
+  | 'inventory'
+  | 'ai-inventory'
+  | 'policies'
+  | 'operations'
+  | 'connect'
+  | 'configurations'
+  | 'admin'
+  | 'platform'
+  | 'end-of-life'
+  | 'platform-policies'
+  | 'platform-operations';
+
+export function navDestinationForPath(pathname: string): NavDestination | null {
+  if (under(pathname, '/exposure')) return 'exposure';
+  if (under(pathname, '/findings/ai')) return 'ai-findings';
+  if (under(pathname, '/findings')) return 'vulnerability-findings';
+  if (under(pathname, '/fix-intelligence')) return 'fix-intelligence';
+  if (under(pathname, '/vuln-repo/campaigns')) return 'campaigns';
+  if (under(pathname, '/vuln-repo') || under(pathname, '/vulnerability-intelligence')) return 'vuln-repo';
+  if (under(pathname, '/inventory/ai')) return 'ai-inventory';
+  if (under(pathname, '/inventory')) return 'inventory';
+  if (under(pathname, '/policies')) return 'policies';
+  if (under(pathname, '/operations')) return 'operations';
+  if (under(pathname, '/connect')) return 'connect';
+  if (under(pathname, '/configurations')) return 'configurations';
+  if (under(pathname, '/admin')) return 'admin';
+  if (under(pathname, '/platform/eol') || under(pathname, '/end-of-life')) return 'end-of-life';
+  if (under(pathname, '/platform/ai-policies')) return 'platform-policies';
+  if (under(pathname, '/platform/operations')) return 'platform-operations';
+  if (under(pathname, '/platform')) return 'platform';
+  return null;
+}
+
+// Shell-owned route title, used until (and unless) the page registers its own.
+export function routeTitleForPath(pathname: string): string {
+  if (pathname === '/authorized-workspaces') return 'Authorized Workspaces';
+  if (under(pathname, '/platform')) {
+    const view = normalizePlatformRouteView(pathname.split('/')[2]);
+    if (view === 'vuln-intel') return 'Vulnerability Intelligence';
+    if (view === 'operations') return 'Operations';
+  }
+  switch (navDestinationForPath(pathname)) {
+    case 'exposure':
+      return 'Exposure Dashboard';
+    case 'vulnerability-findings':
+      return 'Vulnerability Findings';
+    case 'ai-findings':
+      return 'AI Findings';
+    case 'policies':
+      return 'Policies';
+    case 'admin':
+      return 'Tenant Administration';
+    case 'platform':
+      return 'Tenant Management';
+    case 'platform-operations':
+      return 'Operations';
+    case null:
+      return titleForTab('dashboard');
+    default:
+      return titleForTab(activeTabForPath(pathname));
+  }
+}
+
+function under(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 export function titleForTab(tab: AppTab): string {
   switch (tab) {
     case 'exposure':
