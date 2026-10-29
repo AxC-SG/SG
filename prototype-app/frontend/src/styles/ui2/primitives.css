@@ -273,3 +273,29 @@ html[data-ui='2'] .confirm-dialog {
   background: var(--dp-surface);
   box-shadow: var(--dp-shadow-lg);
 }
+
+/* ── Async section and metric states (AsyncSection, MetricValue) ──────── */
+html[data-ui='2'] .async-section-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .metric-value.metric-pending,
+html[data-ui='2'] .metric-value.metric-unavailable {
+  color: var(--dp-text-3);
+}
+
+html[data-ui='2'] .ui2-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
