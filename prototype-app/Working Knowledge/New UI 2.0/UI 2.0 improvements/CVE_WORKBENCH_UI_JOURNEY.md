@@ -87,7 +87,7 @@ Tab navigation needs selected/current semantics and logical keyboard behavior; t
 
 ## Adoption and evidence record
 
-Owner: CVE feature frontend + UI designer, with QA for J01–J18. Status: **review documented; implementation and fresh interactive evidence pending**. Dependencies: shared roots U01/U03/U04/U05/U06, N07a for complete exit guarding, and other explicitly linked non-UI contracts only when necessary. No live assessment, finding creation, ticket creation or notification was performed by this review.
+Owner: CVE feature frontend + UI designer, with QA for J01–J18. Status: **Stage 4 integrated, not verified** (see the [Stage 4 record](UI_IMPLEMENTATION_PLAN.md#stage-4-implementation-record--october-29-2026)): six peer tabs, validated `tab`/`task` URL, parent-owned drafts, guarded in-Workbench exits and dirty-only `beforeunload`. J01–J18 QA and the N07a-dependent exits remain pending. Dependencies: shared roots U01/U03/U04/U05/U06, N07a for complete exit guarding, and other explicitly linked non-UI contracts only when necessary. No live assessment, finding creation, ticket creation or notification was performed by this review.
 
 Acceptance requires the representative Findings slice first, then all applicable transition scenarios with current candidate/role/fixture/environment and evidence attached. Record intentionally unsupported scenarios as unsupported, not passes. Underlying data/eligibility/persistence fixes are closed in the separate ledger; UI closure confirms the user-facing behavior, not a hidden backend guarantee.
 
