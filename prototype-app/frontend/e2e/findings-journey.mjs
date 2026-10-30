@@ -194,7 +194,8 @@ for (const theme of themes) {
 // ── Entitlement unavailable ──────────────────────────────────────────────────
 const denied = await newPage('dark', 1440, { ...actor, entitlements: { 'ai.security': false } });
 await denied.page.goto(`${base}/findings/ai`, { waitUntil: 'networkidle' });
-check('ai findings redirect without entitlement', new URL(denied.page.url()).pathname === '/exposure', denied.page.url().replace(base, ''));
+const redirected = await denied.page.waitForURL((url) => url.pathname === '/exposure', { timeout: 10000 }).then(() => true, () => false);
+check('ai findings redirect without entitlement', redirected, denied.page.url().replace(base, ''));
 await denied.context.close();
 
 await browser.close();

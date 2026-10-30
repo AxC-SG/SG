@@ -326,7 +326,7 @@ describe('ExposureDashboardPage', () => {
     const { container } = renderWithProviders(<ExposureDashboardPage />);
 
     await screen.findByRole('heading', { name: 'Grid Exposure' });
-    const headings = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
     expect(headings).toEqual([
       'Grid Exposure', 'Remediation Progress', 'Critical CVEs Requiring Action', 'Where Attention Is Required',
       'Most Exposed Software', 'Critical Exposed Assets', 'CVE Exposure Funnel',

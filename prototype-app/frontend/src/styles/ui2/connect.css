@@ -420,7 +420,7 @@ html[data-ui='2'] .ui2-connect-family .config-section-head {
   border: 0;
 }
 
-html[data-ui='2'] .ui2-connect-family .config-section-head-text h3 {
+html[data-ui='2'] .ui2-connect-family .config-section-head-text h2 {
   margin: 0;
   color: var(--dp-text);
   font-size: var(--dp-text-2xl);

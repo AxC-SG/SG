@@ -433,16 +433,14 @@ function TenantDashboard() {
           {error ? <div className="notice error">Using cached dashboard data while refresh failed: {error}</div> : null}
 
           <div className="stats-grid vuln-repo-dashboard-stats-grid">
-            <button
-              type="button"
-              className="vuln-repo-dashboard-stat-button"
-              onClick={() => navigate(vulnRepoVulnerabilityPath({ applicable: true, createdSinceDays: 7 }))}
-            >
+            <div className="vuln-repo-dashboard-stat-button">
               <div className="stat-card stat-neutral">
-                <div className="stat-title-row">
-                  <div className="stat-title">Added This Week</div>
-                </div>
-                <div className="stat-value">{formatNumber(dashboard.summaryCards.trackedAddedLastWeek)}</div>
+                <button type="button" className="btn-link vuln-repo-dashboard-primary-action" onClick={() => navigate(vulnRepoVulnerabilityPath({ applicable: true, createdSinceDays: 7 }))}>
+                  <div className="stat-title-row">
+                    <div className="stat-title">Added This Week</div>
+                  </div>
+                  <div className="stat-value">{formatNumber(dashboard.summaryCards.trackedAddedLastWeek)}</div>
+                </button>
                 <div className="stat-caption">
                   <>
                     <div>{formatNumber(dashboard.summaryCards.applicableAddedLastWeek)} applicable</div>
@@ -469,7 +467,7 @@ function TenantDashboard() {
                   </button>
                 </div>
               </div>
-            </button>
+            </div>
             <div className="vuln-repo-dashboard-stat-button vuln-repo-dashboard-funnel-card">
               <div className="stat-card">
                 <div className="stat-card-label">CVE Funnel</div>
@@ -514,16 +512,14 @@ function TenantDashboard() {
               </div>
             </div>
             {dashboard ? (
-              <button
-                type="button"
-                className="vuln-repo-dashboard-stat-button"
-                onClick={() => navigate(vulnRepoVulnerabilityPath({ impactedOnly: true, hasFindings: false }))}
-              >
+              <div className="vuln-repo-dashboard-stat-button">
                 <div className="stat-card stat-critical">
-                  <div className="stat-title-row">
-                    <div className="stat-title">Needs Attention</div>
-                  </div>
-                  <div className="stat-value">{formatNumber(dashboard.summaryCards.needsAttentionCount)}</div>
+                  <button type="button" className="btn-link vuln-repo-dashboard-primary-action" onClick={() => navigate(vulnRepoVulnerabilityPath({ impactedOnly: true, hasFindings: false }))}>
+                    <div className="stat-title-row">
+                      <div className="stat-title">Needs Attention</div>
+                    </div>
+                    <div className="stat-value">{formatNumber(dashboard.summaryCards.needsAttentionCount)}</div>
+                  </button>
                   <div className="stat-caption">Investigated CVEs awaiting remediation workflow</div>
                   <div className="vuln-repo-attention-subscores">
                     <button
@@ -550,7 +546,7 @@ function TenantDashboard() {
                     </button>
                   </div>
                 </div>
-              </button>
+              </div>
             ) : null}
             {riskOverviewCard}
           </div>

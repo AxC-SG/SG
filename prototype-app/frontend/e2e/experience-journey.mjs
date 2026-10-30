@@ -312,8 +312,10 @@ for (const theme of themes) {
   await legacy.context.close();
   const analyst = await newPage(theme, 1440, analystActor);
   await goto(analyst.page, '/');
+  await analyst.page.waitForURL((url) => url.pathname === '/exposure');
   check(tag('analyst home is exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   await goto(analyst.page, '/operations');
+  await analyst.page.waitForURL((url) => url.pathname === '/exposure');
   check(tag('analyst operations redirects to exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   check(tag('analyst /operations has no operations nav'), (await analyst.page.locator('nav').getByText('Operations', { exact: true }).count()) === 0);
   await analyst.context.close();

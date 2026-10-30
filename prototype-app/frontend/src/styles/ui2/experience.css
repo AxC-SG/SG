@@ -53,7 +53,9 @@ html[data-ui='2'] .ui2-experience-family .panel > .panel-header {
   background: transparent;
 }
 
+html[data-ui='2'] .ui2-experience-family .panel-header h2,
 html[data-ui='2'] .ui2-experience-family .panel-header h3 {
+  margin: 0;
   color: var(--dp-text);
   font-family: var(--dp-font);
   font-size: var(--dp-text-lg);
@@ -1143,4 +1145,13 @@ html[data-ui='2'] .ui2-experience-family .grid-exposure-col-total { width: 56px;
 html[data-ui='2'] .ui2-experience-family .exec-pair .grid-exposure-row-label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Dashboard headline actions sit beside, rather than contain, their secondary actions. */
+html[data-ui='2'] .ui2-experience-family .vuln-repo-dashboard-primary-action {
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
 }

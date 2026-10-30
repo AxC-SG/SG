@@ -1994,9 +1994,9 @@
   color: var(--dp-text-2);
 }
 :where(html[data-ui='2']) .campaign-status-badge.active {
-  color: #21d07a;
-  border-color: color-mix(in srgb, #21d07a 30%, transparent);
-  background: color-mix(in srgb, #21d07a 12%, transparent);
+  color: var(--dp-success);
+  border-color: color-mix(in srgb, var(--dp-success) 30%, transparent);
+  background: color-mix(in srgb, var(--dp-success) 12%, transparent);
 }
 :where(html[data-ui='2']) .campaign-status-badge.paused {
   color: var(--dp-accent);

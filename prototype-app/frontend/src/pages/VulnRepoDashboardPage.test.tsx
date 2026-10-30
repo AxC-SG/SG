@@ -1,4 +1,5 @@
-import { screen, waitFor } from '@testing-library/react';
+import { useLocation } from 'react-router-dom';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import type { VulnRepoDashboard } from '../features/vuln-repo-dashboard/types';
@@ -39,10 +40,36 @@ function buildVulnRepoDashboard(overrides: Partial<VulnRepoDashboard> = {}): Vul
   };
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="destination">{location.pathname}{location.search}</output>;
+}
+
 describe('VulnRepoDashboardPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  it('keeps headline and secondary dashboard actions independent and keyboard accessible', async () => {
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard());
+    const { container } = renderWithProviders(<><VulnRepoDashboardPage /><LocationProbe /></>);
+    await screen.findByText('Added This Week');
+    expect(container.querySelector('button button')).toBeNull();
+    const actions: Array<[RegExp, string]> = [
+      [/Added This Week/, 'applicable=true&createdSinceDays=7'],
+      [/impacted after investigation/, 'impactedOnly=true&createdSinceDays=7'],
+      [/in CISA KEV/, 'inKev=true&createdSinceDays=7'],
+      [/Needs Attention/, 'impactedOnly=true&hasFindings=false'],
+      [/critical CVEs uninvestigated/, 'severity=CRITICAL&applicable=true'],
+      [/KEV CVEs need reinvestigation/, 'inKev=true&applicable=true'],
+    ];
+    for (const [name, query] of actions) {
+      const button = screen.getByRole('button', { name });
+      expect(button).not.toBeDisabled();
+      fireEvent.click(button);
+      expect(screen.getByTestId('destination')).toHaveTextContent(`/vuln-repo/vulnerabilities?${query}`);
+    }
   });
 
   it('renders loading state while data is pending', () => {
