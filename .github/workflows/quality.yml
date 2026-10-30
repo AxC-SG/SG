@@ -19,28 +19,12 @@ jobs:
     timeout-minutes: 10
     outputs:
       application: ${{ steps.select.outputs.application }}
-      routes: ${{ steps.routes.outputs.routes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: select
         run: python3 .github/scripts/classify-changes.py
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-      - id: routes
-        working-directory: prototype-app/frontend
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          APPLICATION: ${{ steps.select.outputs.application }}
-        run: |
-          routes=NONE
-          if [ "$EVENT_NAME" = pull_request ] && [ "$APPLICATION" = true ]; then
-            routes=$(node e2e/select-affected.mjs --base "origin/$BASE_REF")
-          fi
-          echo "routes=$routes" >> "$GITHUB_OUTPUT"
 
 
   ci-contracts:
@@ -162,8 +146,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # Fixture-backed browser checks for UI 2. The image tag must equal the
-  # pinned @playwright/test version; check-playwright-image.mjs fails the job otherwise.
+  # Fixture-backed user journeys for UI 2. Visual and route/accessibility sweeps run
+  # nightly in frontend-e2e-sweep.yml. The image tag must equal the pinned
+  # @playwright/test version; check-playwright-image.mjs fails the job otherwise.
   frontend-e2e:
     needs: changes
     if: needs.changes.outputs.application == 'true'
@@ -181,24 +166,15 @@ jobs:
         working-directory: prototype-app/frontend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: prototype-app/frontend/package-lock.json
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: npm ci
       - run: node e2e/check-playwright-image.mjs
       - run: npm run e2e:build
       - run: npm run e2e:journeys
-      - run: npm run e2e:visual
-      - name: Affected routes at 390 and 1280px
-        if: github.event_name == 'pull_request' && needs.changes.outputs.routes != 'NONE' && needs.changes.outputs.routes != 'FULL_SWEEP'
-        env:
-          ROUTES: ${{ needs.changes.outputs.routes }}
-        run: npm run e2e:affected -- --routes "$ROUTES"
       - name: Retain e2e results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -209,53 +185,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-
-  frontend-sweep:
-    needs: changes
-    if: needs.changes.outputs.application == 'true' && needs.changes.outputs.routes == 'FULL_SWEEP'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
-    env:
-      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
-      E2E_VERSIONS: ui2
-    defaults:
-      run:
-        working-directory: prototype-app/frontend
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: prototype-app/frontend/package-lock.json
-      - run: npm ci
-      - run: node e2e/check-playwright-image.mjs
-      - run: npm run e2e:build
-      - name: Audit all accessibility widths
-        run: npm run e2e:sweep -- --checks accessibility --widths 390,768,1280,1440
-      - name: Retain accessibility qualification evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: frontend-accessibility-${{ github.run_id }}
-          path: prototype-app/frontend/e2e/.results/ui2
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
-      - name: Sweep all route widths
-        if: ${{ !cancelled() }}
-        run: npm run e2e:sweep -- --checks routes --widths 390,768,1280,1440
-      - name: Retain full sweep evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: frontend-full-sweep-${{ github.run_id }}
-          path: prototype-app/frontend/e2e/.results
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
 
   backend:
     needs: changes
@@ -358,7 +287,7 @@ jobs:
   required:
     name: Quality gate
     if: always()
-    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, frontend-sweep, backend, backend-postgres]
+    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
