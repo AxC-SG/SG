@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { AsyncSection } from '../components/AsyncSection';
 import { InventoryShell } from '../features/inventory/InventoryShell';
@@ -8,7 +8,6 @@ import { pathForAiBomDeclaredResourceDetail } from '../app/routes';
 const PRIORITY_ORDER: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
 export function AiBomDeclaredResourcesPage() {
-  const navigate = useNavigate();
   const setupActionsQuery = useQuery({
     queryKey: ['ai-bom-setup-actions'],
     queryFn: api.listAiBomSetupActions,
@@ -53,13 +52,10 @@ export function AiBomDeclaredResourcesPage() {
             <thead><tr><th>Priority</th><th>Category</th><th>Title</th><th>Detail</th></tr></thead>
             <tbody>
               {setupActions.map((action) => (
-                <tr
-                  key={`${action.category}-${action.evidenceId}`}
-                  onClick={() => navigate(pathForAiBomDeclaredResourceDetail(action.evidenceId))}
-                >
+                <tr key={`${action.category}-${action.evidenceId}`}>
                   <td><strong>{action.priority}</strong></td>
                   <td>{action.category.replace(/_/g, ' ')}</td>
-                  <td>{action.title}</td>
+                  <td><Link to={pathForAiBomDeclaredResourceDetail(action.evidenceId)}>{action.title}</Link></td>
                   <td>{action.detail}</td>
                 </tr>
               ))}
@@ -89,8 +85,8 @@ export function AiBomDeclaredResourcesPage() {
             <thead><tr><th>Name</th><th>Kind</th><th>Version</th><th>Deployment</th><th>Last declared</th></tr></thead>
             <tbody>
               {resources.map((resource) => (
-                <tr key={resource.id} onClick={() => navigate(pathForAiBomDeclaredResourceDetail(resource.id))}>
-                  <td>{resource.name}</td>
+                <tr key={resource.id}>
+                  <td><Link to={pathForAiBomDeclaredResourceDetail(resource.id)}>{resource.name}</Link></td>
                   <td>{resource.resourceKind}</td>
                   <td>{resource.version ?? '—'}</td>
                   <td><span className="status-pill">{resource.deploymentState}</span></td>

@@ -55,8 +55,9 @@ describe('Platform feed catalog', () => {
     fireEvent.change(screen.getByLabelText('Interval in hours'), { target: { value: '36' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save interval' }));
     await waitFor(() => expect(intelligenceApi.saveSchedule).toHaveBeenCalledWith('KEV', true, 36));
+    expect(await screen.findByText('Schedule saved: every 36 hours.')).toHaveAttribute('role', 'status');
     fireEvent.click(screen.getByRole('button', { name: 'Run integration now' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Integration queued. Ready for ingestion');
+    expect((await screen.findByText('Integration queued.')).closest('[role="status"]')).toHaveTextContent('Integration queued. Ready for ingestion');
     expect(api.syncKev).toHaveBeenCalledOnce();
     expect(api.syncNvd).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Back to sources' }));

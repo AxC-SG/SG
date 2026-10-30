@@ -1,7 +1,7 @@
 import { screen, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useLocation } from 'react-router-dom';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { mockElementDimensionsForReactFlow } from '../features/ai-security/test-support';
 import type { AiSecurityArtifact, AiSecurityFinding, AiSecurityPolicy } from '../features/ai-security/types';
 import { renderWithProviders } from '../test/test-utils';
@@ -281,7 +281,7 @@ describe('AiAssetDetailPage', () => {
   });
 
   it('shows a not-found state for an unknown artifact', async () => {
-    vi.spyOn(api, 'getAiSecurityArtifact').mockRejectedValue(new Error('not found'));
+    vi.spyOn(api, 'getAiSecurityArtifact').mockRejectedValue(new ApiError('not found', 404));
     vi.spyOn(api, 'listAiGridPolicyDetails').mockResolvedValue([]);
     vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [], page: 0, size: 200, total: 0 });
     vi.spyOn(api, 'getAiSecurityGraph').mockResolvedValue({ nodes: [], edges: [], truncated: false });
@@ -289,5 +289,42 @@ describe('AiAssetDetailPage', () => {
     renderWithProviders(<AiAssetDetailPage artifactId="does-not-exist" />);
 
     expect(await screen.findByText(/could not be found/)).toBeInTheDocument();
+  });
+
+  it('distinguishes a failed asset lookup from a missing asset and offers retry', async () => {
+    const getArtifact = vi.spyOn(api, 'getAiSecurityArtifact').mockRejectedValueOnce(new Error('boom')).mockResolvedValue(buildArtifact());
+    vi.spyOn(api, 'listAiGridPolicyDetails').mockResolvedValue([]);
+    vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [], page: 0, size: 200, total: 0 });
+    vi.spyOn(api, 'getAiSecurityGraph').mockResolvedValue({ nodes: [], edges: [], truncated: false });
+
+    renderWithProviders(<AiAssetDetailPage artifactId="artifact-1" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This AI asset could not be loaded.');
+    expect(screen.queryByText(/could not be found/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('claims-triage-agent45800')).toBeInTheDocument();
+    expect(getArtifact).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports failed policy and finding sources instead of an empty tab, and links policy names', async () => {
+    vi.spyOn(api, 'getAiSecurityArtifact').mockResolvedValue(buildArtifact());
+    const listPolicies = vi.spyOn(api, 'listAiGridPolicyDetails').mockRejectedValueOnce(new Error('boom')).mockResolvedValue([buildPolicy()]);
+    vi.spyOn(api, 'listAiSecurityFindings').mockRejectedValue(new Error('boom'));
+    vi.spyOn(api, 'getAiSecurityGraph').mockResolvedValue({ nodes: [], edges: [], truncated: false });
+
+    renderWithProviders(<AiAssetDetailPage artifactId="artifact-1" />);
+    await screen.findByText('claims-triage-agent45800');
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Findings—/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Findings could not be loaded.');
+    expect(screen.queryByText('No findings are currently attached to this AI asset.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Policies/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Policies could not be loaded.');
+    expect(screen.queryByText('No policies currently cover this artifact type.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry policies' }));
+    const policyLink = await screen.findByRole('link', { name: 'Public bot endpoint exposed' });
+    expect(policyLink).toHaveAttribute('href', '/policies/AZURE_BOT_PUBLIC_ENDPOINT');
+    expect(listPolicies).toHaveBeenCalledTimes(2);
   });
 });

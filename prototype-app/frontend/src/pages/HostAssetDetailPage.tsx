@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { pathForVulnRepoView, pathForFindingsWithFilters, pathForFindingDetail } from '../app/routes';
 import { api } from '../api/client';
+import { usePageHeader } from '../app/pageHeaderState';
 import {
   DataTable,
   type DataTableColumn,
@@ -442,7 +443,7 @@ function formatPercent(value?: number): string {
 
 function buildApplicableCveRows(
   applicableCves: HostAssetDetail['applicableCves'],
-  onCveClick?: (cveId: string) => void
+  returnTo?: string
 ): DataTableRow[] {
   return applicableCves.map((cve) => {
     const cveId = cve.externalId ?? cve.vulnerabilityId ?? null;
@@ -450,14 +451,14 @@ function buildApplicableCveRows(
       id: cve.stateId,
       cells: {
         cve: {
-          content: onCveClick && cveId ? (
-            <button
-              type="button"
+          content: returnTo != null && cveId ? (
+            <Link
               className="org-cve-link-btn mono"
-              onClick={() => onCveClick(cveId)}
+              to={pathForVulnRepoView('org-cves', cveId)}
+              state={{ returnTo }}
             >
               {cveId}
-            </button>
+            </Link>
           ) : (
             <span className="mono">{cveId ?? '-'}</span>
           )
@@ -505,9 +506,10 @@ type HostDetailSectionsProps = {
   assetId: string | null;
   hostDetail: HostAssetDetail | null;
   loadingDetail: boolean;
+  loadFailed?: boolean;
 };
 
-function HostDetailSections({ assetId, hostDetail, loadingDetail }: HostDetailSectionsProps) {
+function HostDetailSections({ assetId, hostDetail, loadingDetail, loadFailed = false }: HostDetailSectionsProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<HostDetailTab>('software');
@@ -553,8 +555,8 @@ function HostDetailSections({ assetId, hostDetail, loadingDetail }: HostDetailSe
     [hostDetail, findingsReturnTo]
   );
   const applicableCveRows = React.useMemo(
-    () => buildApplicableCveRows(hostDetail?.applicableCves ?? [], handleCveClick),
-    [hostDetail?.applicableCves, handleCveClick]
+    () => buildApplicableCveRows(hostDetail?.applicableCves ?? [], location.pathname + location.search),
+    [hostDetail?.applicableCves, location.pathname, location.search]
   );
 
   const needsAttention = React.useMemo<AttentionItem[]>(() => {
@@ -618,6 +620,8 @@ function HostDetailSections({ assetId, hostDetail, loadingDetail }: HostDetailSe
     return <div className="empty-state"><p>Loading host detail...</p></div>;
   }
   if (!hostDetail) {
+    // The page-level error notice already explains a failed lookup; do not also claim the detail is absent.
+    if (loadFailed) return null;
     return <div className="empty-state"><p>No host detail is available for the selected asset.</p></div>;
   }
 
@@ -863,13 +867,12 @@ function HostDetailSections({ assetId, hostDetail, loadingDetail }: HostDetailSe
           ) : (
             <div id="host-findings">
               <div className="host-findings-actions">
-                <button
-                  type="button"
+                <Link
                   className="btn btn-secondary btn-sm"
-                  onClick={() => navigate(pathForFindingsWithFilters({ assetName: hostDetail?.host.name ?? undefined }))}
+                  to={pathForFindingsWithFilters({ assetName: hostDetail?.host.name ?? undefined })}
                 >
                   View all in Findings →
-                </button>
+                </Link>
               </div>
               <div className="table-scroll">
                 <DataTable
@@ -902,6 +905,7 @@ export function HostAssetDetailPage({ assetId, onClose }: HostAssetDetailPagePro
   const loadingDetail = hostDetailQuery.isLoading && !selectedHost;
   const refreshingDetail = hostDetailQuery.isFetching && !!selectedHost;
   const error = hostDetailQuery.error instanceof Error ? hostDetailQuery.error.message : '';
+  usePageHeader(selectedHost ? { title: selectedHost.host.name } : null);
   const latestDataUpdate = React.useMemo(() => latestFreshnessValue([
     hostDetailQuery.dataUpdatedAt,
     selectedHost?.host.lastInventoryAt,
@@ -947,8 +951,20 @@ export function HostAssetDetailPage({ assetId, onClose }: HostAssetDetailPagePro
         isRefreshing={refreshingDetail}
         refreshLabel="Refreshing host detail while keeping current context visible…"
       />
-      {error && <div className="notice error">{error}</div>}
-      <HostDetailSections assetId={selectedAssetId} hostDetail={selectedHost} loadingDetail={loadingDetail} />
+      {error && (
+        <div className="notice error async-section-notice" role="alert">
+          <span>{error}</span>
+          <button type="button" className="btn btn-sm" disabled={hostDetailQuery.isFetching} onClick={() => void hostDetailQuery.refetch()}>
+            {hostDetailQuery.isFetching ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      )}
+      <HostDetailSections
+        assetId={selectedAssetId}
+        hostDetail={selectedHost}
+        loadingDetail={loadingDetail}
+        loadFailed={Boolean(error)}
+      />
     </section>
   );
 }

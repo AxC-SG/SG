@@ -12,6 +12,7 @@ import type {
   SyncTriggerResponse
 } from '../features/connect/types';
 import { useSccmCmdbConfigQuery } from '../features/connect/queries';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 import { formatTimestamp } from '../lib/time';
 
 function connectHref(view: 'run-history'): string {
@@ -71,6 +72,8 @@ export function SccmConnectorPage() {
   const [testing, setTesting] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [error, setError] = React.useState('');
+  // Shown only after an explicit Save; Test and Run report their own outcome.
+  const [saveNotice, setSaveNotice] = React.useState('');
   const [syncResult, setSyncResult] = React.useState<SyncTriggerResponse | null>(null);
   const [showSecret, setShowSecret] = React.useState(false);
 
@@ -90,6 +93,7 @@ export function SccmConnectorPage() {
   const saveConnector = async (): Promise<SccmCmdbConfig | null> => {
     setSaving(true);
     setError('');
+    setSaveNotice('');
     try {
       const payload: SccmCmdbConfigRequest = {
         ...form,
@@ -160,6 +164,9 @@ export function SccmConnectorPage() {
   if (sccmConfigQuery.isPending && !config) {
     return <section className="panel">Loading SCCM / MECM connector...</section>;
   }
+  if (sccmConfigQuery.isError && !sccmConfigQuery.data) {
+    return <ConnectorConfigLoadError connectorName="SCCM / MECM" error={sccmConfigQuery.error} onRetry={() => void sccmConfigQuery.refetch()} retrying={sccmConfigQuery.isFetching} />;
+  }
 
   return (
     <section className="panel">
@@ -183,6 +190,7 @@ export function SccmConnectorPage() {
       )}
 
       {displayError && <div className="notice error">{displayError}</div>}
+      {saveNotice && !displayError && <div className="notice success" role="status">{saveNotice}</div>}
 
       {/* ── SECTION 1: Connection ── */}
       <div className="form-section">
@@ -306,7 +314,7 @@ export function SccmConnectorPage() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => void saveConnector()}
+          onClick={() => void saveConnector().then((saved) => { if (saved) setSaveNotice('Connector settings saved.'); })}
           disabled={!canManageConnector || saving || testing}
         >
           {saving ? 'Saving...' : 'Save Connector'}

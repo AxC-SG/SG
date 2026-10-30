@@ -69,4 +69,25 @@ describe('CloudResourcesPage', () => {
 
     expect(await screen.findByText(/Connect AWS or GCP/)).toBeInTheDocument();
   });
+
+  it('reports a failed load with retry and separates a filtered-empty result from no resources', async () => {
+    const list = vi.spyOn(api, 'listCloudResources')
+      .mockRejectedValueOnce(new Error('Gateway timeout'))
+      .mockResolvedValueOnce(page())
+      .mockResolvedValue(page({ items: [], totalItems: 0, totalPages: 0 }));
+    renderWithProviders(<CloudResourcesPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load cloud resources. Gateway timeout');
+    expect(screen.queryByText(/Connect AWS or GCP/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry cloud resources' }));
+    expect(await screen.findByText('Showing 1–2 of 2 resources')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'gcp' } });
+    expect(await screen.findByText('No cloud resources match the current filters.')).toBeInTheDocument();
+    expect(screen.queryByText(/Connect AWS or GCP/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByText(/Connect AWS or GCP/)).toBeInTheDocument();
+    expect(list.mock.lastCall?.[0]).toEqual(expect.objectContaining({ page: 0 }));
+    expect(list.mock.lastCall?.[0]?.provider).toBeUndefined();
+  });
 });

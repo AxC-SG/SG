@@ -60,6 +60,18 @@ describe('SourcesPage', () => {
     });
   });
 
+  it('says run history could not be loaded instead of "No sync run recorded yet"', async () => {
+    vi.spyOn(api, 'listSyncRuns').mockRejectedValue(new Error('runs offline'));
+    vi.spyOn(api, 'getVulnerabilitySourceFilterConfig').mockResolvedValue({
+      sourceSystem: 'nvd', configured: true, isVulnerable: false, hasKev: false, knownRansomwareCampaignUse: false
+    });
+
+    renderWithProviders(<SourcesPage focusSource="nvd" showQueue={false} />);
+
+    expect((await screen.findAllByText(/Run history could not be loaded\./)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/No sync run recorded yet/)).not.toBeInTheDocument();
+  });
+
   it('shows clearer queued sync feedback for platform-triggered source actions', async () => {
     vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
     vi.spyOn(api, 'saveVulnerabilitySourceFilterConfig').mockResolvedValue({

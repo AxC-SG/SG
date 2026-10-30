@@ -23,6 +23,7 @@ import {
   useUpdateTenantMemberMutation,
 } from '../features/admin/queries';
 import { api } from '../api/client';
+import { Dialog } from '../components/Dialog';
 import { parseTenantInviteCsv, type ParsedBulkInviteRow } from '../features/admin/csv';
 import type { AuditEvent, ServiceAccount, TenantBulkInviteResponse, TenantInvite, TenantMember } from '../features/admin/types';
 import { canExportAudit, canManageServiceAccounts, canManageTenant, canManageUsers } from '../features/auth/roles';
@@ -287,16 +288,9 @@ export function UserManagementPage() {
   const [bulkInviteSummary, setBulkInviteSummary] = React.useState<TenantBulkInviteResponse | null>(null);
 
   const inviteEmailRef = React.useRef<HTMLInputElement | null>(null);
-  const inviteOpenerRef = React.useRef<HTMLButtonElement | null>(null);
   const bulkInviteFileRef = React.useRef<HTMLInputElement | null>(null);
-  const bulkInviteOpenerRef = React.useRef<HTMLButtonElement | null>(null);
 
   const serviceNameRef = React.useRef<HTMLInputElement | null>(null);
-  const serviceOpenerRef = React.useRef<HTMLButtonElement | null>(null);
-  // Focus returns to a dialog's opener only after that dialog was open, not on the first render.
-  const inviteWasOpenRef = React.useRef(false);
-  const bulkInviteWasOpenRef = React.useRef(false);
-  const serviceWasOpenRef = React.useRef(false);
 
   const setActiveView = React.useCallback(
     (next: AdminRouteView) => {
@@ -329,11 +323,23 @@ export function UserManagementPage() {
 
   const captionParts: string[] = [];
   if (authQuery.data?.tenantName) captionParts.push(authQuery.data.tenantName);
-  captionParts.push(`${members.length} member${members.length === 1 ? '' : 's'}`);
-  captionParts.push(`${invites.length} invite${invites.length === 1 ? '' : 's'}`);
-  captionParts.push(`${privilegedCount} privileged`);
-  captionParts.push(`${serviceAccounts.length} service account${serviceAccounts.length === 1 ? '' : 's'}`);
-  captionParts.push(`${auditEvents.length} event${auditEvents.length === 1 ? '' : 's'}`);
+  // A count appears only once its list has loaded; a pending or failed list must not read as zero.
+  if (membersQuery.data) {
+    captionParts.push(`${members.length} member${members.length === 1 ? '' : 's'}`);
+  }
+  if (invitesQuery.data) captionParts.push(`${invites.length} invite${invites.length === 1 ? '' : 's'}`);
+  if (membersQuery.data) captionParts.push(`${privilegedCount} privileged`);
+  if (serviceAccountsQuery.data) {
+    captionParts.push(`${serviceAccounts.length} service account${serviceAccounts.length === 1 ? '' : 's'}`);
+  }
+  if (auditEventsQuery.data) captionParts.push(`${auditEvents.length} event${auditEvents.length === 1 ? '' : 's'}`);
+  const unloadedLists = [
+    membersQuery.isError && 'members',
+    invitesQuery.isError && 'invites',
+    serviceAccountsQuery.isError && 'service accounts',
+    auditEventsQuery.isError && 'audit events',
+  ].filter(Boolean);
+  if (unloadedLists.length > 0) captionParts.push(`${unloadedLists.join(', ')} unavailable`);
 
   const openInvite = React.useCallback(() => {
     if (!mayManageUsers) return;
@@ -362,61 +368,6 @@ export function UserManagementPage() {
   const closeService = React.useCallback(() => {
     setServiceOpen(false);
   }, []);
-
-  React.useEffect(() => {
-    if (!inviteOpen) {
-      if (inviteWasOpenRef.current) inviteOpenerRef.current?.focus();
-      inviteWasOpenRef.current = false;
-      return;
-    }
-    inviteWasOpenRef.current = true;
-    inviteEmailRef.current?.focus();
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        closeInvite();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [inviteOpen, closeInvite]);
-
-  React.useEffect(() => {
-    if (!bulkInviteOpen) {
-      if (bulkInviteWasOpenRef.current) bulkInviteOpenerRef.current?.focus();
-      bulkInviteWasOpenRef.current = false;
-      return;
-    }
-    bulkInviteWasOpenRef.current = true;
-    bulkInviteFileRef.current?.focus();
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        closeBulkInvite();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [bulkInviteOpen, closeBulkInvite]);
-
-  React.useEffect(() => {
-    if (!serviceOpen) {
-      if (serviceWasOpenRef.current) serviceOpenerRef.current?.focus();
-      serviceWasOpenRef.current = false;
-      return;
-    }
-    serviceWasOpenRef.current = true;
-    serviceNameRef.current?.focus();
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        closeService();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [serviceOpen, closeService]);
-
 
   if (!authQuery.isLoading && !mayAccessTenantAdministration) {
     return <Navigate to="/exposure" replace />;
@@ -534,7 +485,6 @@ export function UserManagementPage() {
               Audit log
             </button>
             <button
-              ref={inviteOpenerRef}
               type="button"
               className="btn btn-primary btn-sm"
               onClick={openInvite}
@@ -758,7 +708,6 @@ export function UserManagementPage() {
                       New invite
                     </button>
                     <button
-                      ref={bulkInviteOpenerRef}
                       type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={openBulkInvite}
@@ -891,7 +840,7 @@ export function UserManagementPage() {
                       onClick={() => setSelectedRole(roleKey)}
                     >
                       <strong>{roleKey}</strong>
-                      <span>{memberCountByRole[roleKey]} members</span>
+                      <span>{membersQuery.data ? `${memberCountByRole[roleKey]} members` : 'Member count unavailable'}</span>
                       <small>{ROLE_DESCRIPTIONS[roleKey]}</small>
                     </button>
                   ))}
@@ -940,7 +889,6 @@ export function UserManagementPage() {
                       />
                     </label>
                     <button
-                      ref={serviceOpenerRef}
                       type="button"
                       className="btn btn-primary btn-sm"
                       onClick={openService}
@@ -1086,259 +1034,256 @@ export function UserManagementPage() {
         </div>
       </section>
 
-      {inviteOpen && (
-        <div className="um-modal-backdrop" role="presentation" onClick={closeInvite}>
-          <section
-            className="um-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="invite-user-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <form onSubmit={handleInviteSubmit} style={{ display: 'contents' }}>
-              <div className="um-modal-head">
-                <div>
-                  <h3 id="invite-user-title">Invite User</h3>
-                  <p>Sends a time-bound email invite. After acceptance, the user sets a password and becomes an active tenant member.</p>
-                </div>
-                <button
-                  type="button"
-                  className="um-icon-button"
-                  aria-label="Close invite dialog"
-                  onClick={closeInvite}
-                >
-                  <Icon name="close" />
-                </button>
-              </div>
-              {createInvite.isError && (
-                <div className="notice error" role="alert">
-                  <strong>Could not send invite.</strong> {createInvite.error instanceof Error ? createInvite.error.message : 'Unknown error'}
-                </div>
-              )}
-              <div className="um-form-grid">
-                <label>
-                  Email
-                  <input
-                    ref={inviteEmailRef}
-                    name="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    required
-                    autoComplete="email"
-                  />
-                </label>
-                <label>
-                  Display name
-                  <input
-                    name="displayName"
-                    type="text"
-                    placeholder="Name (optional)"
-                    autoComplete="name"
-                  />
-                </label>
-                <label>
-                  Role
-                  <select name="role" defaultValue="SECURITY_ANALYST" required>
-                    {ROLE_KEYS.map((roleKey) => (
-                      <option
-                        key={roleKey}
-                        value={backendRoleForRoleKey(roleKey)}
-                      >
-                        {roleKey}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Tenant
-                  <input value={tenantName} disabled readOnly />
-                </label>
-              </div>
-              <div className="um-modal-actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={closeInvite}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={createInvite.isPending || !tenantId}>
-                  {createInvite.isPending ? 'Sending…' : 'Send invite'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+      <Dialog
+        isOpen={inviteOpen}
+        labelledBy="invite-user-title"
+        onClose={closeInvite}
+        busy={createInvite.isPending}
+        busyMessage="Sending the invite… this dialog can be closed when the request finishes."
+        initialFocusRef={inviteEmailRef}
+        className="um-modal"
+      >
+        <form onSubmit={handleInviteSubmit} style={{ display: 'contents' }}>
+          <div className="um-modal-head">
+            <div>
+              <h3 id="invite-user-title">Invite User</h3>
+              <p>Sends a time-bound email invite. After acceptance, the user sets a password and becomes an active tenant member.</p>
+            </div>
+            <button
+              type="button"
+              className="um-icon-button"
+              aria-label="Close invite dialog"
+              disabled={createInvite.isPending}
+              onClick={closeInvite}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          {createInvite.isError && (
+            <div className="notice error" role="alert">
+              <strong>Could not send invite.</strong> {createInvite.error instanceof Error ? createInvite.error.message : 'Unknown error'}
+            </div>
+          )}
+          <div className="um-form-grid">
+            <label>
+              Email
+              <input
+                ref={inviteEmailRef}
+                name="email"
+                type="email"
+                placeholder="name@example.com"
+                required
+                autoComplete="email"
+              />
+            </label>
+            <label>
+              Display name
+              <input
+                name="displayName"
+                type="text"
+                placeholder="Name (optional)"
+                autoComplete="name"
+              />
+            </label>
+            <label>
+              Role
+              <select name="role" defaultValue="SECURITY_ANALYST" required>
+                {ROLE_KEYS.map((roleKey) => (
+                  <option
+                    key={roleKey}
+                    value={backendRoleForRoleKey(roleKey)}
+                  >
+                    {roleKey}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Tenant
+              <input value={tenantName} disabled readOnly />
+            </label>
+          </div>
+          <div className="um-modal-actions">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={createInvite.isPending} onClick={closeInvite}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={createInvite.isPending || !tenantId}>
+              {createInvite.isPending ? 'Sending…' : 'Send invite'}
+            </button>
+          </div>
+        </form>
+      </Dialog>
 
-      {bulkInviteOpen && (
-        <div className="um-modal-backdrop" role="presentation" onClick={closeBulkInvite}>
-          <section
-            className="um-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-invite-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <form onSubmit={handleBulkInviteSubmit} style={{ display: 'contents' }}>
-              <div className="um-modal-head">
-                <div>
-                  <h3 id="bulk-invite-title">Import Users from CSV</h3>
-                  <p>Upload a CSV with <code>email</code>, optional <code>displayName</code>, and optional <code>role</code>. Supported role labels: Admin, Analyst, Viewer.</p>
-                </div>
-                <button
-                  type="button"
-                  className="um-icon-button"
-                  aria-label="Close bulk invite dialog"
-                  onClick={closeBulkInvite}
-                >
-                  <Icon name="close" />
-                </button>
-              </div>
-              {createBulkInvites.isError && (
-                <div className="notice error" role="alert">
-                  <strong>Could not import users.</strong> {createBulkInvites.error instanceof Error ? createBulkInvites.error.message : 'Unknown error'}
-                </div>
+      <Dialog
+        isOpen={bulkInviteOpen}
+        labelledBy="bulk-invite-title"
+        onClose={closeBulkInvite}
+        busy={createBulkInvites.isPending}
+        busyMessage="Importing users… this dialog can be closed when the request finishes."
+        initialFocusRef={bulkInviteFileRef}
+        className="um-modal"
+      >
+        <form onSubmit={handleBulkInviteSubmit} style={{ display: 'contents' }}>
+          <div className="um-modal-head">
+            <div>
+              <h3 id="bulk-invite-title">Import Users from CSV</h3>
+              <p>Upload a CSV with <code>email</code>, optional <code>displayName</code>, and optional <code>role</code>. Supported role labels: Admin, Analyst, Viewer.</p>
+            </div>
+            <button
+              type="button"
+              className="um-icon-button"
+              aria-label="Close bulk invite dialog"
+              disabled={createBulkInvites.isPending}
+              onClick={closeBulkInvite}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          {createBulkInvites.isError && (
+            <div className="notice error" role="alert">
+              <strong>Could not import users.</strong> {createBulkInvites.error instanceof Error ? createBulkInvites.error.message : 'Unknown error'}
+            </div>
+          )}
+          <div className="um-form-grid">
+            <label className="um-detail-full">
+              CSV file
+              <input
+                ref={bulkInviteFileRef}
+                name="bulkInviteFile"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleBulkInviteFileChange}
+              />
+            </label>
+            <label>
+              Template columns
+              <input value="email,displayName,role" disabled readOnly />
+            </label>
+            <label>
+              Tenant
+              <input value={tenantName} disabled readOnly />
+            </label>
+          </div>
+          {bulkInviteFileName && (
+            <div className="notice" role="status">
+              <strong>{bulkInviteFileName}</strong> parsed with {bulkInviteRows.length} valid row{bulkInviteRows.length === 1 ? '' : 's'}.
+            </div>
+          )}
+          {bulkInviteErrors.length > 0 && (
+            <div className="notice error" role="alert">
+              <strong>CSV validation issues.</strong> {bulkInviteErrors.join(' ')}
+            </div>
+          )}
+          {bulkInviteRows.length > 0 && (
+            <div className="um-table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Email</th>
+                    <th>Display name</th>
+                    <th>Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkInviteRows.slice(0, 25).map((row) => (
+                    <tr key={`${row.rowNumber}-${row.email}`}>
+                      <td>{row.rowNumber}</td>
+                      <td>{row.email}</td>
+                      <td>{row.displayName}</td>
+                      <td>{formatRole(row.role)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {bulkInviteRows.length > 25 && (
+                <p className="panel-caption">Showing first 25 rows of {bulkInviteRows.length} parsed invites.</p>
               )}
-              <div className="um-form-grid">
-                <label className="um-detail-full">
-                  CSV file
-                  <input
-                    ref={bulkInviteFileRef}
-                    name="bulkInviteFile"
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={handleBulkInviteFileChange}
-                  />
-                </label>
-                <label>
-                  Template columns
-                  <input value="email,displayName,role" disabled readOnly />
-                </label>
-                <label>
-                  Tenant
-                  <input value={tenantName} disabled readOnly />
-                </label>
-              </div>
-              {bulkInviteFileName && (
-                <div className="notice" role="status">
-                  <strong>{bulkInviteFileName}</strong> parsed with {bulkInviteRows.length} valid row{bulkInviteRows.length === 1 ? '' : 's'}.
-                </div>
-              )}
-              {bulkInviteErrors.length > 0 && (
-                <div className="notice error" role="alert">
-                  <strong>CSV validation issues.</strong> {bulkInviteErrors.join(' ')}
-                </div>
-              )}
-              {bulkInviteRows.length > 0 && (
-                <div className="um-table-scroll">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Row</th>
-                        <th>Email</th>
-                        <th>Display name</th>
-                        <th>Role</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bulkInviteRows.slice(0, 25).map((row) => (
-                        <tr key={`${row.rowNumber}-${row.email}`}>
-                          <td>{row.rowNumber}</td>
-                          <td>{row.email}</td>
-                          <td>{row.displayName}</td>
-                          <td>{formatRole(row.role)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {bulkInviteRows.length > 25 && (
-                    <p className="panel-caption">Showing first 25 rows of {bulkInviteRows.length} parsed invites.</p>
-                  )}
-                </div>
-              )}
-              <div className="um-modal-actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={closeBulkInvite}>Cancel</button>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  disabled={createBulkInvites.isPending || !tenantId || bulkInviteRows.length === 0 || bulkInviteErrors.length > 0}
-                >
-                  {createBulkInvites.isPending ? 'Importing…' : `Send ${bulkInviteRows.length || ''} invite${bulkInviteRows.length === 1 ? '' : 's'}`.trim()}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+            </div>
+          )}
+          <div className="um-modal-actions">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={createBulkInvites.isPending} onClick={closeBulkInvite}>Cancel</button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={createBulkInvites.isPending || !tenantId || bulkInviteRows.length === 0 || bulkInviteErrors.length > 0}
+            >
+              {createBulkInvites.isPending ? 'Importing…' : `Send ${bulkInviteRows.length || ''} invite${bulkInviteRows.length === 1 ? '' : 's'}`.trim()}
+            </button>
+          </div>
+        </form>
+      </Dialog>
 
-      {serviceOpen && (
-        <div className="um-modal-backdrop" role="presentation" onClick={closeService}>
-          <section
-            className="um-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="service-account-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <form onSubmit={handleServiceSubmit} style={{ display: 'contents' }}>
-              <div className="um-modal-head">
-                <div>
-                  <h3 id="service-account-title">Create Service Account</h3>
-                  <p>Issues a machine identity scoped to the current tenant. The Key ID is the credential the integration presents.</p>
-                </div>
-                <button
-                  type="button"
-                  className="um-icon-button"
-                  aria-label="Close service account dialog"
-                  onClick={closeService}
-                >
-                  <Icon name="close" />
-                </button>
-              </div>
-              {createServiceAccount.isError && (
-                <div className="notice error" role="alert">
-                  <strong>Could not create service account.</strong> {createServiceAccount.error instanceof Error ? createServiceAccount.error.message : 'Unknown error'}
-                </div>
-              )}
-              <div className="um-form-grid">
-                <label>
-                  Name
-                  <input
-                    ref={serviceNameRef}
-                    name="name"
-                    type="text"
-                    placeholder="github-sbom-ingest"
-                    required
-                  />
-                </label>
-                <label>
-                  Key ID
-                  <input
-                    name="keyId"
-                    type="text"
-                    placeholder="key-abc123"
-                    required
-                  />
-                </label>
-                <label>
-                  Role
-                  <select name="role" defaultValue="INTEGRATION_WRITER" required>
-                    <option value="INTEGRATION_WRITER">Integration Writer</option>
-                    <option value="WORKFLOW_WRITER">Workflow Writer</option>
-                    <option value="AUDIT_EXPORTER">Audit Exporter</option>
-                    <option value="VIEWER">Viewer</option>
-                  </select>
-                </label>
-                <label>
-                  Tenant
-                  <input value={tenantName} disabled readOnly />
-                </label>
-              </div>
-              <div className="um-modal-actions">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={closeService}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={createServiceAccount.isPending}>
-                  {createServiceAccount.isPending ? 'Creating…' : 'Create account'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+      <Dialog
+        isOpen={serviceOpen}
+        labelledBy="service-account-title"
+        onClose={closeService}
+        busy={createServiceAccount.isPending}
+        busyMessage="Creating the service account… this dialog can be closed when the request finishes."
+        initialFocusRef={serviceNameRef}
+        className="um-modal"
+      >
+        <form onSubmit={handleServiceSubmit} style={{ display: 'contents' }}>
+          <div className="um-modal-head">
+            <div>
+              <h3 id="service-account-title">Create Service Account</h3>
+              <p>Issues a machine identity scoped to the current tenant. The Key ID is the credential the integration presents.</p>
+            </div>
+            <button
+              type="button"
+              className="um-icon-button"
+              aria-label="Close service account dialog"
+              disabled={createServiceAccount.isPending}
+              onClick={closeService}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          {createServiceAccount.isError && (
+            <div className="notice error" role="alert">
+              <strong>Could not create service account.</strong> {createServiceAccount.error instanceof Error ? createServiceAccount.error.message : 'Unknown error'}
+            </div>
+          )}
+          <div className="um-form-grid">
+            <label>
+              Name
+              <input
+                ref={serviceNameRef}
+                name="name"
+                type="text"
+                placeholder="github-sbom-ingest"
+                required
+              />
+            </label>
+            <label>
+              Key ID
+              <input
+                name="keyId"
+                type="text"
+                placeholder="key-abc123"
+                required
+              />
+            </label>
+            <label>
+              Role
+              <select name="role" defaultValue="INTEGRATION_WRITER" required>
+                <option value="INTEGRATION_WRITER">Integration Writer</option>
+                <option value="WORKFLOW_WRITER">Workflow Writer</option>
+                <option value="AUDIT_EXPORTER">Audit Exporter</option>
+                <option value="VIEWER">Viewer</option>
+              </select>
+            </label>
+            <label>
+              Tenant
+              <input value={tenantName} disabled readOnly />
+            </label>
+          </div>
+          <div className="um-modal-actions">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={createServiceAccount.isPending} onClick={closeService}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={createServiceAccount.isPending}>
+              {createServiceAccount.isPending ? 'Creating…' : 'Create account'}
+            </button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

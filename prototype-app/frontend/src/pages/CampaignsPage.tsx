@@ -1,6 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
+import { Dialog } from '../components/Dialog';
+import { ActiveFilterChips, ResultScope, type ActiveFilter } from '../components/QueueControls';
 import { useActor } from '../features/auth/context';
 import type { TenantMember } from '../features/admin/types';
 import type { OrgSpecificCveExposureRecord } from '../features/cve-workbench/types';
@@ -12,6 +15,7 @@ import type {
   CampaignStatus,
   CampaignSummary,
 } from '../features/campaigns/types';
+import type { CampaignLaunchState } from '../features/campaigns/deliveryOutcome';
 
 type StatusTab = {
   label: string;
@@ -19,33 +23,6 @@ type StatusTab = {
 };
 
 type ScopeMode = 'cves' | 'software' | 'assets';
-type NotifyTemplate = 'exception_followup' | 'escalation' | 'nearing_due_date' | 'new_security_campaign';
-
-const WIZARD_NOTIFY_TEMPLATES: Record<NotifyTemplate, { label: string; subject: string; body: string }> = {
-  exception_followup: {
-    label: 'Exception Follow-up',
-    subject: 'Exception Request Update — Remediation Campaign',
-    body: 'Hi {{owner_name}},\n\nThis is a follow-up regarding an open exception request for this remediation campaign.\n\n• Affected assets: {{asset_count}}\n• Exception due date: {{due_date}}\n• Severity: {{severity}}\n\nThe exception is currently pending review. Please ensure it is approved or rejected promptly to avoid delays.\n\nThank you,\nSecurity Operations',
-  },
-  escalation: {
-    label: 'Escalation',
-    subject: 'ESCALATION: Remediation Overdue — Immediate Attention Required',
-    body: 'Hi {{owner_name}},\n\nThis is an escalation notice for an overdue remediation campaign. Immediate attention is required.\n\n• Affected assets: {{asset_count}}\n• Overdue since: {{due_date}}\n• Severity: {{severity}}\n\nThe remediation deadline has passed and affected systems remain unpatched. Leadership has been notified.\n\nPlease provide an updated remediation plan within 24 hours.\n\nThank you,\nSecurity Operations',
-  },
-  nearing_due_date: {
-    label: 'Nearing Due Date',
-    subject: 'Action Required: Remediation Due {{due_date}}',
-    body: 'Hi {{owner_name}},\n\nThis is a reminder that the remediation deadline is approaching.\n\n• Affected assets: {{asset_count}}\n• Severity: {{severity}}\n• Due date: {{due_date}}\n\nPlease ensure all affected systems are remediated before the due date to avoid an SLA breach.\n\nIf you require additional time, please submit an exception request as soon as possible.\n\nThank you,\nSecurity Operations',
-  },
-  new_security_campaign: {
-    label: 'Attention Required: New Security Campaign',
-    subject: 'Attention Required: New Security Campaign Launched',
-    body: 'Hi {{owner_name}},\n\nA new security remediation campaign has been launched that requires your immediate attention.\n\n• Affected assets: {{asset_count}}\n• Severity: {{severity}}\n• Target due date: {{due_date}}\n\nPlease review the campaign details and begin remediation of affected systems as soon as possible.\n\nEarly action reduces risk exposure and helps your team meet the remediation SLA.\n\nThank you,\nSecurity Operations',
-  },
-};
-
-const WIZARD_NOTIFY_VARIABLES = ['{{owner_name}}', '{{asset_count}}', '{{due_date}}', '{{severity}}'] as const;
-
 type WizardForm = {
   name: string;
   summary: string;
@@ -139,13 +116,6 @@ export function CampaignsPage() {
   const [wizardForm, setWizardForm] = React.useState<WizardForm>(() => createDefaultForm());
   const [wizardBusy, setWizardBusy] = React.useState(false);
   const [wizardError, setWizardError] = React.useState<string | null>(null);
-  const [notifyToast, setNotifyToast] = React.useState<{ count: number } | null>(null);
-  const [showWizardNotify, setShowWizardNotify] = React.useState(false);
-  const [wizardNotifyTemplate, setWizardNotifyTemplate] = React.useState<NotifyTemplate>('nearing_due_date');
-  const [wizardNotifySubject, setWizardNotifySubject] = React.useState('');
-  const [wizardNotifyBody, setWizardNotifyBody] = React.useState('');
-  const [wizardNotifySent, setWizardNotifySent] = React.useState(false);
-  const wizardNotifyBodyRef = React.useRef<HTMLTextAreaElement>(null);
   const [groupOptions, setGroupOptions] = React.useState<string[]>([]);
   const [groupSearch, setGroupSearch] = React.useState('');
   const [members, setMembers] = React.useState<TenantMember[]>([]);
@@ -288,43 +258,42 @@ export function CampaignsPage() {
     );
   }, [campaigns, search]);
 
+  // Counts are known only for what the current request covered: the All list covers every status,
+  // a status tab covers only itself. Other tabs show no count rather than a false zero.
   const countsByTab = React.useMemo(() => {
     const counts = new Map<StatusTab['value'], number>();
+    if (loading || error) return counts;
+    if (activeTab !== 'ALL') {
+      counts.set(activeTab, campaigns.length);
+      return counts;
+    }
     counts.set('ALL', campaigns.length);
     STATUS_TABS.forEach((tab) => {
       if (tab.value === 'ALL') return;
       counts.set(tab.value, campaigns.filter((campaign) => campaign.status === tab.value).length);
     });
     return counts;
-  }, [campaigns]);
+  }, [campaigns, activeTab, loading, error]);
+
+  const listState: AsyncSectionState = loading
+    ? 'pending'
+    : error
+      ? 'error'
+      : campaigns.length === 0
+        ? activeTab === 'ALL' ? 'empty' : 'filtered-empty'
+        : filteredCampaigns.length === 0 ? 'filtered-empty' : 'ready';
+  const activeTabLabel = STATUS_TABS.find((tab) => tab.value === activeTab)?.label ?? 'All Campaigns';
+  const searchFilters: ActiveFilter[] = search.trim()
+    ? [{ key: 'search', label: 'Search', value: search.trim(), onRemove: () => setSearch('') }]
+    : [];
+
+  function clearListFilters(): void {
+    setSearch('');
+    setActiveTab('ALL');
+  }
 
   function toggleSelection(list: string[], value: string): string[] {
     return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
-  }
-
-  // Wizard notify template effect
-  React.useEffect(() => {
-    if (!showWizardNotify) return;
-    setWizardNotifySubject(WIZARD_NOTIFY_TEMPLATES[wizardNotifyTemplate].subject);
-    setWizardNotifyBody(WIZARD_NOTIFY_TEMPLATES[wizardNotifyTemplate].body);
-  }, [wizardNotifyTemplate, showWizardNotify]);
-
-  // Open wizard notify
-  function openWizardNotify(): void {
-    setWizardNotifySent(false);
-    setWizardNotifyTemplate('nearing_due_date');
-    setWizardNotifySubject(WIZARD_NOTIFY_TEMPLATES.nearing_due_date.subject);
-    setWizardNotifyBody(WIZARD_NOTIFY_TEMPLATES.nearing_due_date.body);
-    setShowWizardNotify(true);
-  }
-
-  function insertWizardVariable(v: string): void {
-    const el = wizardNotifyBodyRef.current;
-    if (!el) { setWizardNotifyBody((prev) => `${prev} ${v}`); return; }
-    const start = el.selectionStart ?? wizardNotifyBody.length;
-    const end = el.selectionEnd ?? wizardNotifyBody.length;
-    setWizardNotifyBody(wizardNotifyBody.slice(0, start) + v + wizardNotifyBody.slice(end));
-    setTimeout(() => { el.focus(); el.setSelectionRange(start + v.length, start + v.length); }, 0);
   }
 
   function resetWizard(): void {
@@ -336,7 +305,6 @@ export function CampaignsPage() {
     setOrgCves([]); setCvesLoading(false); setCveSearchInput(''); setCveSearchQuery(''); setCvePage(0); setCveTotalPages(1); setCveTotalItems(0);
     setSoftwareItems([]); setSoftwareLoading(false); setSoftwareSearchInput(''); setSoftwareSearchQuery(''); setSoftwarePage(0); setSoftwareTotalPages(1); setSoftwareTotalItems(0);
     setAssetItems([]); setAssetsLoading(false); setAssetSearchInput(''); setAssetPage(0);
-    setShowWizardNotify(false); setWizardNotifySent(false);
   }
 
   function openWizard(): void {
@@ -375,11 +343,9 @@ export function CampaignsPage() {
         triggerPolicy: wizardForm.watchlistTriggerPolicy,
         active: true,
       }));
-    // Backend requires at least one CVE; if none selected send a placeholder CVE list from
-    // whatever the org has so the record is created. Scope is always editable post-launch.
-    const cveIds = wizardForm.scopeMode === 'cves' && wizardForm.selectedCves.length > 0
-      ? wizardForm.selectedCves
-      : wizardForm.selectedCves.length > 0 ? wizardForm.selectedCves : [];
+    // The create request carries CVE scope only; launch is blocked until at least one CVE is chosen,
+    // which is the server's own rule. Software and asset picks are not part of the request.
+    const cveIds = wizardForm.selectedCves;
 
     const payload: CampaignCreateRequest = {
       name: wizardForm.name.trim() || 'Untitled Campaign',
@@ -398,12 +364,8 @@ export function CampaignsPage() {
     try {
       const created = await api.createCampaign(payload);
       closeWizard();
-      await loadCampaigns();
-      if (payload.notifyGroups && payload.notifyGroups.length > 0) {
-        setNotifyToast({ count: payload.notifyGroups.length });
-        setTimeout(() => setNotifyToast(null), 4500);
-      }
-      navigate(`/vuln-repo/campaigns/${created.summary.id}`);
+      const launchState: CampaignLaunchState = { launchedDeliveries: created.deliveryAttempts ?? [] };
+      navigate(`/vuln-repo/campaigns/${created.summary.id}`, { state: launchState });
     } catch (err) {
       setWizardError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -411,126 +373,158 @@ export function CampaignsPage() {
     }
   }
 
-  // Scope selection label for summary
-  function scopeSummaryLabel(): string {
-    const mode = wizardForm.scopeMode;
-    const count = scopeSelectionCount();
-    if (mode === 'cves') return `${count} CVE${count !== 1 ? 's' : ''}`;
-    if (mode === 'software') return `${count} software item${count !== 1 ? 's' : ''}`;
-    return `${count} asset${count !== 1 ? 's' : ''}`;
-  }
+  const cveCount = wizardForm.selectedCves.length;
+  const unsentScopeCount = wizardForm.selectedSoftwareIds.length + wizardForm.selectedAssetIds.length;
+  const canLaunch = cveCount > 0 && !wizardBusy;
+  const launchSubject = `[Campaign launched] ${wizardForm.name.trim() || 'Untitled Campaign'}`;
+  const selectedMembers = members.filter((member) => wizardForm.selectedWatchlistIds.includes(member.id));
+
+  const nowMs = Date.now();
 
   return (
     <div className="campaigns-page ui2-experience-family">
       <div className="campaigns-tab-row">
-        <div className="campaigns-tab-group">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className={activeTab === tab.value ? 'campaign-tab active' : 'campaign-tab'}
-              onClick={() => setActiveTab(tab.value)}
-            >
-              <span>{tab.label}</span>
-              <span className="campaign-tab-count">{countsByTab.get(tab.value) ?? 0}</span>
-            </button>
-          ))}
+        <div className="campaigns-tab-group" role="group" aria-label="Campaign status">
+          {STATUS_TABS.map((tab) => {
+            const count = countsByTab.get(tab.value);
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                className={activeTab === tab.value ? 'campaign-tab active' : 'campaign-tab'}
+                aria-pressed={activeTab === tab.value}
+                onClick={() => setActiveTab(tab.value)}
+              >
+                <span>{tab.label}</span>
+                {count != null && <span className="campaign-tab-count">{count}</span>}
+              </button>
+            );
+          })}
         </div>
         <button type="button" className="btn btn-primary" onClick={openWizard}>
           New Campaign
         </button>
       </div>
 
-<div className="campaigns-filter-row">
+      <div className="campaigns-filter-row">
         <input
           className="input"
           type="search"
+          aria-label="Search campaigns"
           placeholder="Search campaigns, CVEs, or summary"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
       </div>
-
-      {error && <div className="notice error">{error}</div>}
+      <ActiveFilterChips filters={searchFilters} />
 
       <div className="campaigns-body campaigns-body--full">
-        <section className="panel campaigns-list-panel campaigns-list-panel--full">
-          {loading ? (
-            <div className="notice">Loading campaigns...</div>
-          ) : filteredCampaigns.length === 0 ? (
-            <div className="campaign-empty">
-              <h3>No campaigns yet</h3>
-              <p>Create the first remediation campaign to turn CVE scope into an operational rollout.</p>
-            </div>
-          ) : (
-            <table className="campaigns-table">
-              <thead>
-                <tr>
-                  <th>Campaign</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Assets</th>
-                  <th>Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCampaigns.map((campaign) => (
-                  <tr
-                    key={campaign.id}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/vuln-repo/campaigns/${campaign.id}`)}
-                  >
-                    <td>
-                      <div className="campaign-name-cell">
-                        <strong>{campaign.name}</strong>
-                        <span>{campaign.cveIds.join(', ')}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={statusBadgeClass(campaign.status)}>{formatStatus(campaign.status)}</span>
-                    </td>
-                    <td>
-                      <div className="campaign-progress-cell">
-                        <div className="campaign-progress-bar">
-                          <div style={{ width: `${campaign.completionPercent}%` }} />
-                        </div>
-                        <span>{campaign.completionPercent}%</span>
-                      </div>
-                    </td>
-                    <td>{campaign.assetCount}</td>
-                    <td>{formatDate(campaign.dueAt)}</td>
+        <section className="panel campaigns-list-panel campaigns-list-panel--full" aria-label="Campaigns">
+          <AsyncSection
+            state={listState}
+            loadingLabel="Loading campaigns…"
+            errorMessage={`Campaigns could not be loaded: ${error ?? 'unknown error'}`}
+            onRetry={() => void loadCampaigns()}
+            emptyTitle="No campaigns yet"
+            emptyMessage="Create the first remediation campaign to turn CVE scope into an operational rollout."
+            filteredEmptyMessage={campaigns.length === 0
+              ? `No campaigns in ${activeTabLabel}.`
+              : 'No campaigns match the search.'}
+            onClearFilters={clearListFilters}
+          >
+            <ResultScope
+              offset={0}
+              count={filteredCampaigns.length}
+              total={campaigns.length}
+              noun="campaign"
+              filtered={searchFilters.length > 0}
+            />
+            <div className="campaigns-table-scroll" role="region" aria-label="Campaign list" tabIndex={0}>
+              <table className="campaigns-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Campaign</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Progress</th>
+                    <th scope="col">Assets</th>
+                    <th scope="col">Due</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {filteredCampaigns.map((campaign) => {
+                    const closed = campaign.status === 'CLOSED' || campaign.status === 'CANCELLED';
+                    const dueMs = campaign.dueAt ? new Date(campaign.dueAt).getTime() : Number.NaN;
+                    const overdueDays = !closed && Number.isFinite(dueMs) && dueMs < nowMs
+                      ? Math.ceil((nowMs - dueMs) / 86_400_000)
+                      : null;
+                    return (
+                      <tr key={campaign.id}>
+                        <td>
+                          <div className="campaign-name-cell">
+                            <Link className="campaign-name-link" to={`/vuln-repo/campaigns/${encodeURIComponent(campaign.id)}`}>
+                              {campaign.name}
+                            </Link>
+                            <span>{campaign.cveIds.join(', ')}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={statusBadgeClass(campaign.status)}>{formatStatus(campaign.status)}</span>
+                        </td>
+                        <td>
+                          <div className="campaign-progress-cell">
+                            <div className="campaign-progress-bar" aria-hidden="true">
+                              <div style={{ width: `${campaign.completionPercent}%` }} />
+                            </div>
+                            <span>{campaign.completionPercent}%</span>
+                          </div>
+                          <span className="campaign-progress-detail">
+                            {campaign.totalFindings === 0
+                              ? 'No findings yet'
+                              : `${campaign.resolvedFindings} of ${campaign.totalFindings} findings resolved`}
+                          </span>
+                        </td>
+                        <td>{campaign.assetCount}</td>
+                        <td>
+                          <span>{formatDate(campaign.dueAt)}</span>
+                          {overdueDays != null && (
+                            <span className="campaign-due-overdue">Overdue by {overdueDays} day{overdueDays !== 1 ? 's' : ''}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </AsyncSection>
         </section>
       </div>
 
       {/* ── New Campaign Wizard ──────────────────────────────────────────── */}
       {wizardOpen && (
-        <div className="campaign-modal-backdrop" role="presentation" onClick={closeWizard}>
-          <section className="campaign-modal cw-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <Dialog isOpen labelledBy="cw-title" onClose={closeWizard} busy={wizardBusy} busyMessage="Launching the campaign… this dialog can be closed when the request finishes." className="campaign-modal cw-modal">
 
             {/* Header */}
             <div className="cw-header">
               <div className="cw-header-title">
                 <span className="cw-header-icon">⚡</span>
                 <div>
-                  <h3>New Campaign</h3>
+                  <h3 id="cw-title">New Campaign</h3>
                   <p className="cw-header-sub">Define scope, notify the right teams, and launch a remediation sprint.</p>
                 </div>
               </div>
-              <button type="button" className="cd-delete-btn" style={{ opacity: 1, fontSize: 18, padding: '6px 10px' }} onClick={closeWizard}>✕</button>
+              <button type="button" className="cd-delete-btn" style={{ opacity: 1, fontSize: 18, padding: '6px 10px' }} aria-label="Close" disabled={wizardBusy} onClick={closeWizard}>✕</button>
             </div>
 
             {/* Step rail */}
-            <div className="cw-step-rail">
+            <div className="cw-step-rail" role="group" aria-label="Wizard steps">
               {WIZARD_STEPS.map((step, index) => (
                 <React.Fragment key={step}>
                   <button
                     type="button"
                     className={`cw-step${wizardStep === index ? ' cw-step--active' : ''}${wizardStep > index ? ' cw-step--done' : ''}`}
+                    aria-current={wizardStep === index ? 'step' : undefined}
+                    disabled={wizardBusy}
                     onClick={() => setWizardStep(index)}
                   >
                     <span className="cw-step-num">
@@ -799,6 +793,11 @@ export function CampaignsPage() {
                       ? <span><strong>{scopeSelectionCount()}</strong> {wizardForm.scopeMode === 'cves' ? `CVE${scopeSelectionCount() !== 1 ? 's' : ''}` : wizardForm.scopeMode === 'software' ? `software item${scopeSelectionCount() !== 1 ? 's' : ''}` : `asset${scopeSelectionCount() !== 1 ? 's' : ''}`} selected</span>
                       : <span style={{ color: 'var(--dp-text-2)' }}>Nothing selected yet</span>}
                   </div>
+                  {wizardForm.scopeMode !== 'cves' && (
+                    <p className="cw-launch-note-muted">
+                      Only CVE scope is saved when the campaign launches. Software and asset selections here are not part of the launch request.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -808,27 +807,10 @@ export function CampaignsPage() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <h4 style={{ margin: 0 }}>Notify Groups</h4>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {wizardNotifySent && (
-                          <span style={{ fontSize: 11, color: '#21d07a' }}>✓ Sent</span>
-                        )}
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ fontSize: 13, background: 'var(--dp-accent)', color: '#fff', padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                          onClick={openWizardNotify}
-                        >
-                          ✉ Compose Notification
-                          {wizardForm.selectedGroups.length > 0 && (
-                            <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 999, padding: '1px 6px', fontSize: 11, fontWeight: 700 }}>
-                              {wizardForm.selectedGroups.length}
-                            </span>
-                          )}
-                        </button>
-                      </div>
                     </div>
                     <input
                       type="search"
+                      aria-label="Search groups"
                       placeholder="Search groups…"
                       value={groupSearch}
                       onChange={(e) => setGroupSearch(e.target.value)}
@@ -840,6 +822,7 @@ export function CampaignsPage() {
                           key={group}
                           type="button"
                           className={wizardForm.selectedGroups.includes(group) ? 'campaign-chip active' : 'campaign-chip'}
+                          aria-pressed={wizardForm.selectedGroups.includes(group)}
                           onClick={() => setWizardForm((f) => ({ ...f, selectedGroups: toggleSelection(f.selectedGroups, group) }))}
                         >
                           {group}
@@ -877,6 +860,7 @@ export function CampaignsPage() {
                             key={member.id}
                             type="button"
                             className={selected ? 'campaign-choice-card active' : 'campaign-choice-card'}
+                            aria-pressed={selected}
                             onClick={() => setWizardForm((f) => ({ ...f, selectedWatchlistIds: toggleSelection(f.selectedWatchlistIds, member.id) }))}
                           >
                             <strong>{member.displayName || member.email || member.subject}</strong>
@@ -901,10 +885,8 @@ export function CampaignsPage() {
                         <span className="cw-launch-kpi-lbl">Campaign name</span>
                       </div>
                       <div className="cw-launch-kpi">
-                        <span className="cw-launch-kpi-val">{scopeSummaryLabel()}</span>
-                        <span className="cw-launch-kpi-lbl">
-                          {wizardForm.scopeMode === 'cves' ? 'CVE scope' : wizardForm.scopeMode === 'software' ? 'Software scope' : 'Asset scope'}
-                        </span>
+                        <span className="cw-launch-kpi-val">{cveCount} CVE{cveCount !== 1 ? 's' : ''}</span>
+                        <span className="cw-launch-kpi-lbl">CVE scope</span>
                       </div>
                       <div className="cw-launch-kpi">
                         <span className="cw-launch-kpi-val">{wizardForm.selectedGroups.length}</span>
@@ -919,19 +901,59 @@ export function CampaignsPage() {
                         <span className="cw-launch-kpi-lbl">Target due date</span>
                       </div>
                     </div>
-                    {wizardForm.scopeMode === 'cves' && wizardForm.selectedCves.length > 0 && (
+                    {cveCount > 0 && (
                       <div className="cw-launch-cve-chips">
                         {wizardForm.selectedCves.map((id) => (
                           <span key={id} className="cw-launch-cve-chip mono">{id}</span>
                         ))}
                       </div>
                     )}
-                    {wizardForm.scopeMode !== 'cves' && (
-                      <p style={{ fontSize: 12, color: 'var(--dp-text-2)', marginTop: 10 }}>
-                        Software and asset scope can be managed in full from the campaign workspace after launch.
+                    {cveCount === 0 && (
+                      <div className="notice warning cw-launch-validation" role="alert">
+                        <span>Select at least one CVE on the Scope step. A campaign cannot launch without CVE scope.</span>
+                        <button type="button" className="btn btn-sm" onClick={() => { switchScopeTab('cves'); setWizardStep(1); }}>
+                          Choose CVEs
+                        </button>
+                      </div>
+                    )}
+                    {unsentScopeCount > 0 && (
+                      <p className="cw-launch-note-muted">
+                        {unsentScopeCount} software or asset selection{unsentScopeCount !== 1 ? 's are' : ' is'} not included in the launch request; only CVE scope is saved.
                       </p>
                     )}
                   </div>
+
+                  {/* Launch notification preview: what the server records at launch, in place of a second modal. */}
+                  <section className="full cw-launch-notify" aria-labelledby="cw-launch-notify-title">
+                    <h4 id="cw-launch-notify-title">Launch notifications</h4>
+                    {wizardForm.selectedGroups.length === 0 && selectedMembers.length === 0 ? (
+                      <p className="cw-launch-note-muted">No recipients selected. Add notify groups or watchlist members on the Watchlist step.</p>
+                    ) : (
+                      <>
+                        <p className="cw-launch-note-muted">
+                          Subject: <span className="mono">{launchSubject}</span>
+                        </p>
+                        <ul className="cw-launch-recipients">
+                          {wizardForm.selectedGroups.map((group) => (
+                            <li key={`group-${group}`}>
+                              <strong>{group}</strong>
+                              <span>Notify group · no email address on record</span>
+                            </li>
+                          ))}
+                          {selectedMembers.map((member) => (
+                            <li key={`member-${member.id}`}>
+                              <strong>{member.displayName || member.email || member.subject}</strong>
+                              <span>Watchlist · {member.email || 'no email address on record'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="cw-launch-note-muted">
+                          Launching records one notification per recipient. Email is queued only for recipients with an email address; the others are recorded as skipped. The campaign shows what was recorded.
+                        </p>
+                      </>
+                    )}
+                  </section>
+
                   <label className="full" htmlFor="campaign-launch-note">
                     <span style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Launch Note <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span></span>
                     <textarea
@@ -949,7 +971,7 @@ export function CampaignsPage() {
             {/* Footer */}
             <div className="cw-footer">
               {wizardStep > 0 && (
-                <button type="button" className="btn btn-secondary" onClick={() => setWizardStep((s) => Math.max(0, s - 1))}>
+                <button type="button" className="btn btn-secondary" disabled={wizardBusy} onClick={() => setWizardStep((s) => Math.max(0, s - 1))}>
                   Back
                 </button>
               )}
@@ -958,126 +980,14 @@ export function CampaignsPage() {
                   Next
                 </button>
               ) : (
-                <button type="button" className="btn btn-primary" disabled={wizardBusy} onClick={() => void submitWizard()}>
+                <button type="button" className="btn btn-primary" disabled={!canLaunch} onClick={() => void submitWizard()}>
                   {wizardBusy ? 'Launching…' : 'Launch Campaign'}
                 </button>
               )}
             </div>
-          </section>
-        </div>
+        </Dialog>
       )}
 
-      {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
-      {showWizardNotify && (
-        <div className="cd-notify-overlay" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setShowWizardNotify(false); }}>
-          <div className="cd-notify-modal" role="dialog" aria-modal="true">
-            <div className="cd-notify-modal-header">
-              <span className="cd-notify-modal-title">
-                <span>✉</span>
-                <span>Compose Notification — {wizardForm.selectedGroups.length} group{wizardForm.selectedGroups.length !== 1 ? 's' : ''}</span>
-              </span>
-              <button type="button" className="fd3-modal-close" onClick={() => setShowWizardNotify(false)}>✕</button>
-            </div>
-
-            {wizardNotifySent ? (
-              <div className="cd-notify-success">
-                <div className="cd-notify-success-icon">✓</div>
-                <h3>Notifications sent!</h3>
-                <p>{wizardForm.selectedGroups.length} group{wizardForm.selectedGroups.length !== 1 ? 's' : ''} notified via email.</p>
-                <button type="button" className="btn btn-primary" onClick={() => setShowWizardNotify(false)}>Done</button>
-              </div>
-            ) : (
-              <div className="cd-notify-body">
-                {/* Left: recipients */}
-                <div className="cd-notify-left">
-                  <div className="cd-notify-left-header">
-                    <span className="cd-notify-left-title">Recipients</span>
-                    <span className="cd-notify-left-count">{wizardForm.selectedGroups.length} selected</span>
-                  </div>
-                  <div className="cd-notify-recipients-list">
-                    {wizardForm.selectedGroups.map((g) => (
-                      <div key={g} className="cd-notify-recipient-row" style={{ cursor: 'default' }}>
-                        <div className="cd-notify-recipient-info">
-                          <span className="cd-avatar cd-avatar--sm">
-                            {g.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')}
-                          </span>
-                          <div>
-                            <div className="cd-notify-recipient-name">{g}</div>
-                            <div className="cd-notify-recipient-role">Notify group</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Right: compose */}
-                <div className="cd-notify-right">
-                  <div className="cd-notify-template-row">
-                    <span className="cd-notify-template-label">Template</span>
-                    <select
-                      className="cd-notify-template-select"
-                      value={wizardNotifyTemplate}
-                      onChange={(e) => setWizardNotifyTemplate(e.target.value as NotifyTemplate)}
-                    >
-                      {(Object.entries(WIZARD_NOTIFY_TEMPLATES) as [NotifyTemplate, { label: string }][]).map(([key, tpl]) => (
-                        <option key={key} value={key}>{tpl.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="cd-notify-field">
-                    <label className="cd-notify-field-label">Subject</label>
-                    <input
-                      className="cd-notify-subject-input"
-                      value={wizardNotifySubject}
-                      onChange={(e) => setWizardNotifySubject(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="cd-notify-field">
-                    <label className="cd-notify-field-label">Message</label>
-                    <textarea
-                      ref={wizardNotifyBodyRef}
-                      className="cd-notify-body-textarea"
-                      value={wizardNotifyBody}
-                      onChange={(e) => setWizardNotifyBody(e.target.value)}
-                      rows={9}
-                    />
-                  </div>
-
-                  <div className="cd-notify-vars-row">
-                    <span className="cd-notify-vars-label">Insert variable:</span>
-                    {WIZARD_NOTIFY_VARIABLES.map((v) => (
-                      <button key={v} type="button" className="cd-notify-var-chip" onClick={() => insertWizardVariable(v)}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="cd-notify-send-row">
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => setWizardNotifySent(true)}
-                    >
-                      Send email to {wizardForm.selectedGroups.length} group{wizardForm.selectedGroups.length !== 1 ? 's' : ''}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Post-creation notify toast */}
-      {notifyToast && (
-        <div className="campaigns-notify-toast">
-          <span className="campaigns-notify-toast-icon">✓</span>
-          <span>Notifications sent to {notifyToast.count} group{notifyToast.count !== 1 ? 's' : ''}</span>
-        </div>
-      )}
     </div>
   );
 }

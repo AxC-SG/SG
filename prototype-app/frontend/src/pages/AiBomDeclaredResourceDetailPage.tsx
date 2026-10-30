@@ -121,7 +121,12 @@ export function AiBomDeclaredResourceDetailPage({ resourceId }: AiBomDeclaredRes
     return <InventoryShell title="Declared AI Resource" legacyClassName="ai-security-page"><div className="empty-state"><p>Loading…</p></div></InventoryShell>;
   }
   if (detailQuery.isError || !detailQuery.data) {
-    return <InventoryShell title="Declared AI Resource" legacyClassName="ai-security-page"><div className="notice error">This declared resource could not be loaded.</div></InventoryShell>;
+    return <InventoryShell title="Declared AI Resource" legacyClassName="ai-security-page"><div className="notice error async-section-notice" role="alert">
+      <span>This declared resource could not be loaded.</span>
+      <button type="button" className="btn btn-sm" disabled={detailQuery.isFetching} onClick={() => void detailQuery.refetch()}>
+        {detailQuery.isFetching ? 'Retrying…' : 'Retry'}
+      </button>
+    </div></InventoryShell>;
   }
 
   const detail = detailQuery.data;
@@ -258,8 +263,8 @@ export function AiBomDeclaredResourceDetailPage({ resourceId }: AiBomDeclaredRes
             <thead><tr><th>Finding</th><th>Package</th><th>Severity</th><th>Status</th></tr></thead>
             <tbody>
               {findings.map((finding) => (
-                <tr key={finding.id} onClick={() => navigate(pathForFindingDetail(finding.displayId || finding.id))}>
-                  <td>{finding.displayId}</td>
+                <tr key={finding.id}>
+                  <td><Link to={pathForFindingDetail(finding.displayId || finding.id)}>{finding.displayId}</Link></td>
                   <td>{finding.packageName}<small>{finding.packageVersion}</small></td>
                   <td><span className={`severity-badge ${finding.severity.toLowerCase()}`}>{finding.severity}</span></td>
                   <td><span className="status-pill">{finding.status.replace(/_/g, ' ')}</span></td>

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { pathForInventoryAiAsset } from '../app/routes';
+import { AsyncSection } from '../components/AsyncSection';
 import { PageFreshnessStatus } from '../components/PageFreshnessStatus';
+import { Pager, ResultScope } from '../components/QueueControls';
 import type { AiProvider, AiSecurityArtifact } from '../features/ai-security/types';
 import { InventoryShell } from '../features/inventory/InventoryShell';
 
@@ -23,7 +25,6 @@ function sensitivityLabel(value: string): string {
 }
 
 export function AiKnowledgeMcpInventoryPage({ kind }: { kind: InventoryKind }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [provider, setProvider] = React.useState<'' | AiProvider>('');
@@ -46,6 +47,20 @@ export function AiKnowledgeMcpInventoryPage({ kind }: { kind: InventoryKind }) {
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
   const isKnowledge = kind === 'knowledge-data';
+  const hasUserFilters = Boolean(provider || artifactRole || postureFilter || secondaryFilter || tertiaryFilter || active !== 'ALL');
+  const clearFilters = () => {
+    setProvider('');
+    setActive('ALL');
+    setArtifactRole('');
+    setPostureFilter('');
+    setSecondaryFilter('');
+    setTertiaryFilter('');
+    setPage(0);
+  };
+  const listState = query.isPending ? 'pending'
+    : query.isError && !query.data ? 'error'
+      : items.length === 0 && hasUserFilters ? 'filtered-empty'
+        : 'ready';
 
   React.useEffect(() => {
     setArtifactRole(searchParams.get('artifactRole') ?? '');
@@ -64,7 +79,7 @@ export function AiKnowledgeMcpInventoryPage({ kind }: { kind: InventoryKind }) {
       <PageFreshnessStatus updatedAt={summaryQuery.data?.lastCompleteSnapshotAt} />
       <div className="inventory-fpl-toolbar">
         <label className="findings-filter-chip"><span className="panel-caption">Provider</span>
-          <select value={provider} onChange={(event) => setProvider(event.target.value as '' | AiProvider)}>
+          <select value={provider} onChange={(event) => { setProvider(event.target.value as '' | AiProvider); setPage(0); }}>
             <option value="">All providers</option><option value="AWS">AWS</option><option value="AZURE">Azure</option><option value="MICROSOFT_COPILOT">Microsoft Copilot</option>
           </select>
         </label>
@@ -97,25 +112,62 @@ export function AiKnowledgeMcpInventoryPage({ kind }: { kind: InventoryKind }) {
           </select>
         </label>
         <label className="findings-filter-chip"><span className="panel-caption">State</span>
-          <select value={active} onChange={(event) => setActive(event.target.value as 'ALL' | 'true' | 'false')}>
+          <select value={active} onChange={(event) => { setActive(event.target.value as 'ALL' | 'true' | 'false'); setPage(0); }}>
             <option value="ALL">All</option><option value="true">Active</option><option value="false">Inactive</option>
           </select>
         </label>
       </div>
-      {query.isLoading ? <section className="panel"><div className="empty-state"><p>Loading inventory…</p></div></section>
-        : query.isError ? <section className="panel"><div className="notice error">Inventory could not be loaded.</div></section>
-          : items.length === 0 ? <section className="ai-security-empty"><div className="ai-security-empty-mark">AI</div>
-            <h3>No {isKnowledge ? 'knowledge or data' : 'MCP'} artifacts discovered</h3>
-            <p>Unsupported and incomplete provider coverage remains visible in the discovery run history.</p>
-          </section>
-            : <section className="panel ai-security-table-panel"><div className="panel-header"><p className="panel-caption">{items.length} of {total} artifacts shown</p></div><table className="data-table"><thead><tr>
-              <th>Name</th><th>Type</th><th>Provider</th><th>{isKnowledge ? 'Posture' : 'Endpoint / authentication'}</th><th>Observed</th>
-            </tr></thead><tbody>{items.map((item) => <tr key={item.id} onClick={() => navigate(pathForInventoryAiAsset(item.id, `${location.pathname}${location.search}`))}>
-              <td><strong>{item.name}</strong></td><td>{item.artifactType.replace(/_/g, ' ')}</td><td>{item.provider}</td>
-              <td>{isKnowledge ? `${attribute(item, 'sourceType')} · ${sensitivityLabel(item.piiScanStatus)}`
-                : `${attribute(item, 'endpointHost')} · ${attribute(item, 'configuredAuthType') !== 'Unknown' ? attribute(item, 'configuredAuthType') : attribute(item, 'inboundAuthType')}`}</td>
-              <td>{new Date(item.lastObservedAt).toLocaleString()}</td>
-            </tr>)}</tbody></table><div className="pagination-row"><button type="button" className="btn btn-secondary" disabled={page === 0 || query.isFetching} onClick={() => setPage((value) => value - 1)}>Previous</button><span className="panel-caption pagination-caption">Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</span><button type="button" className="btn btn-secondary" disabled={query.isFetching || (page + 1) * pageSize >= total} onClick={() => setPage((value) => value + 1)}>Next</button></div></section>}
+      {listState !== 'ready' ? (
+        <section className="panel">
+          <AsyncSection
+            state={listState}
+            loadingLabel="Loading inventory…"
+            errorMessage="Inventory could not be loaded."
+            onRetry={() => void query.refetch()}
+            retryLabel="Retry inventory"
+            retrying={query.isFetching}
+            filteredEmptyMessage={`No ${isKnowledge ? 'knowledge or data' : 'MCP'} artifacts match the current filters.`}
+            onClearFilters={clearFilters}
+          />
+        </section>
+      ) : items.length === 0 ? (
+        <section className="ai-security-empty">
+          <div className="ai-security-empty-mark">AI</div>
+          <h3>No {isKnowledge ? 'knowledge or data' : 'MCP'} artifacts discovered</h3>
+          <p>Unsupported and incomplete provider coverage remains visible in the discovery run history.</p>
+        </section>
+      ) : (
+        <section className="panel ai-security-table-panel">
+          <div className="panel-header">
+            <ResultScope offset={page * pageSize} count={items.length} total={total} noun="artifact" filtered={hasUserFilters} />
+          </div>
+          {query.isError && (
+            <div className="notice warning" role="status">Inventory could not be refreshed; showing the last loaded page.</div>
+          )}
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead><tr>
+                <th>Name</th><th>Type</th><th>Provider</th><th>{isKnowledge ? 'Posture' : 'Endpoint / authentication'}</th><th>Observed</th>
+              </tr></thead>
+              <tbody>{items.map((item) => <tr key={item.id}>
+                <td><Link to={pathForInventoryAiAsset(item.id, `${location.pathname}${location.search}`)}><strong>{item.name}</strong></Link></td>
+                <td>{item.artifactType.replace(/_/g, ' ')}</td><td>{item.provider}</td>
+                <td>{isKnowledge ? `${attribute(item, 'sourceType')} · ${sensitivityLabel(item.piiScanStatus)}`
+                  : `${attribute(item, 'endpointHost')} · ${attribute(item, 'configuredAuthType') !== 'Unknown' ? attribute(item, 'configuredAuthType') : attribute(item, 'inboundAuthType')}`}</td>
+                <td>{new Date(item.lastObservedAt).toLocaleString()}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <Pager
+            page={page}
+            totalPages={Math.max(1, Math.ceil(total / pageSize))}
+            onPrevious={() => setPage((value) => value - 1)}
+            onNext={() => setPage((value) => value + 1)}
+            disabled={query.isFetching}
+            label={`${isKnowledge ? 'Knowledge and data' : 'MCP'} inventory pages`}
+          />
+        </section>
+      )}
     </InventoryShell>
   );
 }

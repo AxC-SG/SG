@@ -1,11 +1,13 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ApplicationRiskSummary, type BomComponentDetail, type BomComponentSummaryItem } from '../../api/client';
 import { cveWorkbenchApi } from '../cve-workbench/api';
 import type { Finding } from '../findings/types';
 import { timeAgo } from '../../lib/time';
 import { pathForVulnRepoView, pathForFindingDetail } from '../../app/routes';
+import { AsyncSection } from '../../components/AsyncSection';
+import { Dialog } from '../../components/Dialog';
 
 // ── Shared pills / badges ────────────────────────────────────────────────────
 
@@ -207,12 +209,14 @@ function RiskBar({ score, level }: { score: number; level: string }) {
 function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp }: { d: BomComponentDetail; relatedAssetIds: string[]; assetIdToComponentId: Record<string, string>; onSelectApp?: (app: ApplicationRiskSummary) => void }) {
   const [selectedAssetIds, setSelectedAssetIds] = React.useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = React.useState(false);
+  const [createdMessage, setCreatedMessage] = React.useState<string | null>(null);
 
-  const { data: appRisk, isPending, isError } = useQuery({
+  const appRiskQuery = useQuery({
     queryKey: ['application-risk'],
     queryFn: () => api.getApplicationRisk(),
     staleTime: 60_000,
   });
+  const { data: appRisk, isPending, isError } = appRiskQuery;
 
   // Show all applications that contain a component with the same package (relatedAssetIds includes all assetIds for this purl)
   const relatedSet = new Set(relatedAssetIds.length > 0 ? relatedAssetIds : [d.assetId]);
@@ -231,7 +235,13 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
   if (isError) {
     return (
       <div className="panel" style={{ padding: 32 }}>
-        <p style={{ color: 'var(--dp-critical)' }}>Could not load application details.</p>
+        <AsyncSection
+          state="error"
+          errorMessage="Could not load application details."
+          onRetry={() => void appRiskQuery.refetch()}
+          retryLabel="Retry application details"
+          retrying={appRiskQuery.isFetching}
+        />
       </div>
     );
   }
@@ -267,6 +277,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
 
   return (
     <>
+      {createdMessage && <div className="notice success" role="status" style={{ marginBottom: 12 }}>{createdMessage}</div>}
       <div className="panel">
         {/* Selection toolbar */}
         {selectedAssetIds.size > 0 && (
@@ -300,6 +311,7 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                     onChange={toggleAll}
                     style={{ cursor: 'pointer', accentColor: 'var(--dp-accent)' }}
                     title="Select all"
+                    aria-label="Select all applications"
                   />
                 </th>
                 <th>Application</th>
@@ -331,13 +343,20 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
                       checked={selectedAssetIds.has(row.assetId)}
                       onChange={() => toggleRow(row.assetId)}
                       style={{ cursor: 'pointer', accentColor: 'var(--dp-accent)' }}
+                      aria-label={`Select ${row.assetName}`}
                     />
                   </td>
                   <td>
-                    <div
-                      style={{ fontWeight: 600, color: 'var(--dp-accent)', textDecoration: 'underline', cursor: 'pointer' }}
-                      onClick={e => { e.stopPropagation(); onSelectApp?.(row); }}
-                    >{row.assetName}</div>
+                    {onSelectApp ? (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        style={{ fontWeight: 600 }}
+                        onClick={e => { e.stopPropagation(); onSelectApp(row); }}
+                      >{row.assetName}</button>
+                    ) : (
+                      <div style={{ fontWeight: 600 }}>{row.assetName}</div>
+                    )}
                     <div className="mono panel-caption" style={{ fontSize: 10 }}>{row.assetIdentifier}</div>
                   </td>
                   <td>
@@ -392,7 +411,10 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
           selectedApps={selectedApps}
           assetIdToComponentId={assetIdToComponentId}
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => setShowCreateModal(false)}
+          onCreated={(message) => {
+            setCreatedMessage(message ?? null);
+            setShowCreateModal(false);
+          }}
         />
       )}
     </>
@@ -402,7 +424,6 @@ function ApplicationsTab({ d, relatedAssetIds, assetIdToComponentId, onSelectApp
 // ── Vulnerabilities tab ───────────────────────────────────────────────────────
 
 function VulnerabilitiesTab({ d }: { d: BomComponentDetail }) {
-  const navigate = useNavigate();
   const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
   const sorted = [...d.cves].sort((a, b) =>
     (severityOrder[a.severity ?? ''] ?? 9) - (severityOrder[b.severity ?? ''] ?? 9)
@@ -427,12 +448,10 @@ function VulnerabilitiesTab({ d }: { d: BomComponentDetail }) {
         </thead>
         <tbody>
           {sorted.map(cve => (
-            <tr
-              key={cve.cveId}
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate(pathForVulnRepoView('org-cves', cve.externalId))}
-            >
-              <td className="mono" style={{ fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--dp-accent)', textDecoration: 'underline' }}>{cve.externalId}</td>
+            <tr key={cve.cveId}>
+              <td className="mono" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <Link to={pathForVulnRepoView('org-cves', cve.externalId)}>{cve.externalId}</Link>
+              </td>
               <td><SeverityPill severity={cve.severity} /></td>
               <td>{cve.cvssScore != null ? cve.cvssScore.toFixed(1) : '—'}</td>
               <td>{cve.epssScore != null ? `${(cve.epssScore * 100).toFixed(2)}%` : '—'}</td>
@@ -517,7 +536,7 @@ function LifecycleTab({ d }: { d: BomComponentDetail }) {
 // ── Findings tab ─────────────────────────────────────────────────────────────
 
 function FindingsTab({ d, onCountLoaded }: { d: BomComponentDetail; onCountLoaded?: (count: number) => void }) {
-  const { data, isPending, isError } = useQuery({
+  const findingsQuery = useQuery({
     queryKey: ['findings', 'component', d.packageName, d.ecosystem],
     queryFn: () => api.listFindings({
       packageName: d.packageName,
@@ -526,6 +545,7 @@ function FindingsTab({ d, onCountLoaded }: { d: BomComponentDetail; onCountLoade
     }),
   });
 
+  const { data, isPending, isError } = findingsQuery;
   React.useEffect(() => {
     if (data) onCountLoaded?.(data.items?.length ?? 0);
   }, [data, onCountLoaded]);
@@ -541,7 +561,13 @@ function FindingsTab({ d, onCountLoaded }: { d: BomComponentDetail; onCountLoade
   if (isError) {
     return (
       <div className="panel" style={{ padding: 32 }}>
-        <p style={{ color: 'var(--dp-critical)' }}>Failed to load findings.</p>
+        <AsyncSection
+          state="error"
+          errorMessage="Failed to load findings."
+          onRetry={() => void findingsQuery.refetch()}
+          retryLabel="Retry findings"
+          retrying={findingsQuery.isFetching}
+        />
       </div>
     );
   }
@@ -647,6 +673,7 @@ function FindingConfigModal({
     () => new Set(d.cves.map(c => c.externalId))
   );
   const queryClient = useQueryClient();
+  const fieldId = React.useId();
 
   const severityOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
   const sortedCves = [...d.cves].sort((a, b) =>
@@ -711,25 +738,18 @@ function FindingConfigModal({
   });
 
   return (
-    <>
-      {/* backdrop — click to close */}
-      <div
-        style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 119 }}
-        role="presentation"
-        onClick={onClose}
-      />
-
-      {/* right-side drawer */}
-      <aside
-        className="panel cve-findings-config-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Create Findings"
-      >
+    <Dialog
+      isOpen
+      labelledBy={`${fieldId}-title`}
+      onClose={onClose}
+      busy={mutation.isPending}
+      busyMessage="Creating findings… this panel can be closed when the request finishes."
+      className="panel cve-findings-config-panel"
+    >
         {/* Header */}
         <div className="cve-findings-modal-header">
           <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700 }}>Create Findings</h3>
+            <h3 id={`${fieldId}-title`} style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700 }}>Create Findings</h3>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--dp-text-2)' }}>
               Configure scope and metadata for <strong>{d.packageName}</strong>.
             </p>
@@ -738,6 +758,7 @@ function FindingConfigModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
+            disabled={mutation.isPending}
             style={{
               background: 'color-mix(in srgb, var(--dp-critical) 10%, transparent)',
               border: 'none',
@@ -758,7 +779,7 @@ function FindingConfigModal({
         {/* Scrollable body */}
         <div className="cve-findings-modal-grid">
           {mutation.isError && (
-            <div className="notice error" style={{ marginBottom: 12 }}>
+            <div className="notice error" role="alert" style={{ marginBottom: 12 }}>
               {mutation.error instanceof Error ? mutation.error.message : 'Failed to create findings.'}
             </div>
           )}
@@ -789,15 +810,15 @@ function FindingConfigModal({
 
           {/* Finding title — full width */}
           <div className="cw-field">
-            <label className="cw-label">Finding title</label>
-            <input className="cw-input" value={title} onChange={e => setTitle(e.target.value)} />
+            <label className="cw-label" htmlFor={`${fieldId}-name`}>Finding title</label>
+            <input id={`${fieldId}-name`} className="cw-input" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
           {/* Priority + Due date — 2-col */}
           <div className="cve-findings-modal-row">
             <div className="cw-field">
-              <label className="cw-label">Priority</label>
-              <select className="cw-input" value={priority} onChange={e => setPriority(e.target.value)}>
+              <label className="cw-label" htmlFor={`${fieldId}-priority`}>Priority</label>
+              <select id={`${fieldId}-priority`} className="cw-input" value={priority} onChange={e => setPriority(e.target.value)}>
                 <option value="CRITICAL">Critical</option>
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
@@ -805,15 +826,15 @@ function FindingConfigModal({
               </select>
             </div>
             <div className="cw-field">
-              <label className="cw-label">Due date</label>
-              <input type="date" className="cw-input" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+              <label className="cw-label" htmlFor={`${fieldId}-due`}>Due date</label>
+              <input id={`${fieldId}-due`} type="date" className="cw-input" value={dueDate} onChange={e => setDueDate(e.target.value)} />
             </div>
           </div>
 
           {/* Tags — full width */}
           <div className="cw-field">
-            <label className="cw-label">Tags</label>
-            <input className="cw-input" placeholder="e.g. internet-facing, patching" value={tags} onChange={e => setTags(e.target.value)} />
+            <label className="cw-label" htmlFor={`${fieldId}-tags`}>Tags</label>
+            <input id={`${fieldId}-tags`} className="cw-input" placeholder="e.g. internet-facing, patching" value={tags} onChange={e => setTags(e.target.value)} />
           </div>
 
           {/* CVEs */}
@@ -849,8 +870,9 @@ function FindingConfigModal({
 
           {/* Notes */}
           <div className="cw-field">
-            <label className="cw-label">Notes</label>
+            <label className="cw-label" htmlFor={`${fieldId}-notes`}>Notes</label>
             <textarea
+              id={`${fieldId}-notes`}
               className="cw-input cw-textarea"
               placeholder="Describe remediation approach or ticket creation context…"
               value={notes}
@@ -874,8 +896,7 @@ function FindingConfigModal({
             {mutation.isPending ? 'Creating…' : `Create Findings (${selectedCveIds.size * (selectedApps && selectedApps.length > 0 ? selectedApps.length : 1)})`}
           </button>
         </div>
-      </aside>
-    </>
+    </Dialog>
   );
 }
 
@@ -912,11 +933,12 @@ export function BomComponentDetailPanel({
   const [activeTab, setActiveTab] = React.useState<Tab>('overview');
   const [liveFindingCount, setLiveFindingCount] = React.useState<number>(seed.findingCount);
 
-  const { data, isPending, isError } = useQuery({
+  const detailQuery = useQuery({
     queryKey: ['bom-component-detail', componentId],
     queryFn: () => api.getBomComponentDetail(componentId),
   });
 
+  const { data, isPending, isError } = detailQuery;
   const d = data;
 
   const tabs: { key: Tab; label: string }[] = [
@@ -970,16 +992,15 @@ export function BomComponentDetailPanel({
       </div>
 
       {/* Loading / error for detail fetch */}
-      {isPending && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dp-text-2)', fontSize: 13, marginBottom: 12 }}>
-          <div className="loading-spinner" style={{ width: 14, height: 14 }} />
-          Loading details…
-        </div>
-      )}
-      {isError && (
-        <div style={{ color: 'var(--dp-critical)', fontSize: 13, marginBottom: 12 }}>
-          Failed to load component details.
-        </div>
+      {(isPending || (isError && !d)) && (
+        <AsyncSection
+          state={isPending ? 'pending' : 'error'}
+          loadingLabel="Loading details…"
+          errorMessage="Failed to load component details."
+          onRetry={() => void detailQuery.refetch()}
+          retryLabel="Retry component details"
+          retrying={detailQuery.isFetching}
+        />
       )}
 
       {/* Tabs */}

@@ -1,6 +1,9 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { usePageHeader } from '../../app/pageHeaderState';
+import { AsyncSection } from '../../components/AsyncSection';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useActor } from '../auth/context';
 import { canApproveFixControls, canManageFixControls } from '../auth/roles';
 import { ApiError } from '../../api/client';
@@ -24,6 +27,9 @@ export function FixDetailPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [editing, setEditing] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
+  const [actionResult, setActionResult] = React.useState<string | null>(null);
+  const [confirmingRetire, setConfirmingRetire] = React.useState(false);
+  const [retireError, setRetireError] = React.useState<string | null>(null);
 
   const detailQuery = useQuery({
     queryKey: ['fix-intelligence', 'detail', fixId],
@@ -34,24 +40,38 @@ export function FixDetailPage(): React.ReactElement {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['fix-intelligence'] });
   const approve = useMutation({
     mutationFn: () => fixIntelligenceApi.approve(fixId),
-    onSuccess: () => { setActionError(null); void refresh(); },
+    onMutate: () => { setActionError(null); setActionResult(null); },
+    onSuccess: (updated) => { setActionResult(`Fix approved. Status: ${titleCase(updated.status)}.`); void refresh(); },
     onError: (failure: Error) => setActionError(failure.message)
   });
+  // A failed retire keeps the dialog open with the server's reason; success closes it and reports the result.
   const retire = useMutation({
     mutationFn: () => fixIntelligenceApi.retire(fixId),
-    onSuccess: () => { setActionError(null); void refresh(); },
-    onError: (failure: Error) => setActionError(failure.message)
+    onMutate: () => { setRetireError(null); setActionError(null); setActionResult(null); },
+    onSuccess: (updated) => {
+      setConfirmingRetire(false);
+      setActionResult(`Fix retired. Status: ${titleCase(updated.status)}.`);
+      void refresh();
+    },
+    onError: (failure: Error) => setRetireError(failure.message)
   });
 
-  if (detailQuery.isLoading) return <div className="page-grid fi-page ui2-fix-family"><p className="muted" role="status">Loading fix…</p></div>;
-  if (detailQuery.isError || !detailQuery.data) {
+  // The shell owns the route H1; the fix title replaces the fallback once the record is known.
+  usePageHeader(detailQuery.data ? { title: detailQuery.data.title } : null);
+
+  if (!detailQuery.data) {
+    const notFound = detailQuery.error instanceof ApiError && detailQuery.error.status === 404;
     return (
       <div className="page-grid fi-page ui2-fix-family">
-        <div className="notice error fi-error" role="alert">
-          <span>{detailQuery.error instanceof ApiError && detailQuery.error.status === 404 ? 'This fix was not found.' : 'This fix could not be loaded.'}</span>
-          <button type="button" className="btn" disabled={detailQuery.isFetching} onClick={() => void detailQuery.refetch()}>Retry fix</button>
-        </div>
-        <Link to="/fix-intelligence/all">Back to Fix Intelligence</Link>
+        <AsyncSection
+          state={detailQuery.isError ? 'error' : 'pending'}
+          loadingLabel="Loading fix…"
+          errorMessage={notFound ? 'This fix was not found.' : 'This fix could not be loaded.'}
+          onRetry={() => void detailQuery.refetch()}
+          retryLabel="Retry fix"
+          retrying={detailQuery.isFetching}
+        />
+        {detailQuery.isError && <Link to="/fix-intelligence/all">Back to Fix Intelligence</Link>}
       </div>
     );
   }
@@ -61,6 +81,7 @@ export function FixDetailPage(): React.ReactElement {
   const canEdit = fix.editable && fix.status !== 'RETIRED' && canManageFixControls(actor);
   const canApprove = fix.editable && fix.status === 'PROPOSED' && canApproveFixControls(actor);
   const canRetire = fix.editable && fix.status !== 'RETIRED' && canApproveFixControls(actor);
+  const eligibility = lifecycleEligibility(fix, isOwnProposal, canApproveFixControls(actor));
 
   return (
     <div className="page-grid fi-page ui2-fix-family">
@@ -68,7 +89,6 @@ export function FixDetailPage(): React.ReactElement {
       <header className="fi-header">
         <div>
           <span className="fi-eyebrow mono">{fix.displayId}</span>
-          <h2>{fix.title}</h2>
           <div className="fi-tags">
             <span className={severityClass(fix.severity)}>{fix.severity ? titleCase(fix.severity) : 'Unrated'}</span>
             <span className="status-pill">{fixTypeLabel(fix.fixType)}</span>
@@ -84,18 +104,38 @@ export function FixDetailPage(): React.ReactElement {
               type="button"
               className="btn btn-primary"
               disabled={isOwnProposal || approve.isPending}
-              title={isOwnProposal ? 'Another administrator must approve your proposal' : undefined}
+              aria-describedby={eligibility ? 'fi-lifecycle-eligibility' : undefined}
               onClick={() => approve.mutate()}
             >
-              Approve
+              {approve.isPending ? 'Approving…' : 'Approve'}
             </button>
           )}
           {canRetire && (
-            <button type="button" className="btn" disabled={retire.isPending} onClick={() => retire.mutate()}>Retire</button>
+            <button type="button" className="btn" disabled={retire.isPending} onClick={() => { setRetireError(null); setConfirmingRetire(true); }}>Retire</button>
           )}
         </div>
       </header>
+      {eligibility && <p id="fi-lifecycle-eligibility" className="fi-eligibility">{eligibility}</p>}
       {actionError && <div className="notice error" role="alert">{actionError}</div>}
+      {actionResult && <div className="notice success" role="status">{actionResult}</div>}
+      <ConfirmDialog
+        isOpen={confirmingRetire}
+        title="Retire this fix?"
+        message={(
+          <>
+            <p>
+              {fix.title} will be retired. A retired fix can no longer be edited, approved or retired from this page.
+              Fixes are remediation context only, so no finding status changes.
+            </p>
+            {retireError && <div className="notice error" role="alert">{retireError}</div>}
+          </>
+        )}
+        confirmLabel="Retire fix"
+        busy={retire.isPending}
+        busyMessage="Retiring fix…"
+        onConfirm={() => retire.mutate()}
+        onCancel={() => setConfirmingRetire(false)}
+      />
       {!fix.editable && (
         <p className="muted">
           {fix.origin === 'PATCH_TOOL'
@@ -109,13 +149,17 @@ export function FixDetailPage(): React.ReactElement {
           defaultType={isControlType(fix.fixType) ? fix.fixType as ControlFixType : 'WORKAROUND'}
           existing={fix}
           onCancel={() => setEditing(false)}
-          onSaved={() => setEditing(false)}
+          onSaved={(saved) => {
+            setEditing(false);
+            setActionError(null);
+            setActionResult(`Changes saved. Status: ${titleCase(saved.status)}.`);
+          }}
         />
       )}
 
       <div className="fi-detail-grid">
         <section className="panel">
-          <h3>Overview</h3>
+          <h2>Overview</h2>
           {/* Imported and analyst text is rendered as plain text, never as HTML. */}
           <TextBlock label="Description" value={fix.description} />
           <TextBlock label="How to apply" value={fix.installationInstructions} />
@@ -138,7 +182,7 @@ export function FixDetailPage(): React.ReactElement {
         </section>
 
         <section className="panel">
-          <h3>CVEs ({fix.cves.length})</h3>
+          <h2>CVEs ({fix.cves.length})</h2>
           {fix.cves.length === 0 && <p className="muted">No CVEs linked.</p>}
           <ul className="fi-cve-list">
             {fix.cves.map((cve) => (
@@ -155,7 +199,7 @@ export function FixDetailPage(): React.ReactElement {
       {fix.patchSources.length > 0 && <PatchSources fix={fix} />}
 
       <section className="panel">
-        <h3>Assets ({fix.assetTotal})</h3>
+        <h2>Assets ({fix.assetTotal})</h2>
         {fix.assets.length === 0 && <p className="muted">No assets are tracked for this fix.</p>}
         {fix.assets.length > 0 && (
           <div className="fi-table-scroll" role="region" aria-label="Assets for this fix" tabIndex={0}>
@@ -188,7 +232,7 @@ export function FixDetailPage(): React.ReactElement {
 function PatchSources({ fix }: { fix: FixDetail }): React.ReactElement {
   return (
     <section className="panel">
-      <h3>Patch sources</h3>
+      <h2>Patch sources</h2>
       <div className="fi-table-scroll" role="region" aria-label="Patch sources" tabIndex={0}>
         <table className="data-table">
           <thead><tr><th>Tool</th><th>Tool ID</th><th>KB</th><th>Vendor severity</th><th>Released</th><th>Link</th></tr></thead>
@@ -214,11 +258,22 @@ function PatchSources({ fix }: { fix: FixDetail }): React.ReactElement {
   );
 }
 
+/** Why lifecycle actions are or are not available, stated up front instead of only in a tooltip. */
+function lifecycleEligibility(fix: FixDetail, isOwnProposal: boolean, isTenantAdmin: boolean): string | null {
+  if (!fix.editable) return null;
+  if (fix.status === 'RETIRED') return 'This fix is retired. It can no longer be edited, approved or retired.';
+  if (fix.status === 'DRAFT') return 'Draft. Submit it for approval before it can be approved.';
+  if (fix.status !== 'PROPOSED') return null;
+  if (isOwnProposal) return 'You proposed this fix, so another tenant administrator must approve it.';
+  if (!isTenantAdmin) return 'Awaiting approval. A tenant administrator other than the proposer can approve it.';
+  return null;
+}
+
 function TextBlock({ label, value }: { label: string; value: string | null | undefined }): React.ReactElement | null {
   if (!value) return null;
   return (
     <div className="fi-text-block">
-      <h4>{label}</h4>
+      <h3>{label}</h3>
       <p className="fi-plain-text">{value}</p>
     </div>
   );

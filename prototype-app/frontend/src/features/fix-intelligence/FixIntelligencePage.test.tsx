@@ -1,7 +1,10 @@
 import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api/client';
+import { PageHeaderProvider } from '../../app/PageHeader';
+import { useRouteHeader } from '../../app/pageHeaderState';
 import { ActorContextState } from '../auth/context';
 import type { ActorContext } from '../auth/types';
 import { renderWithProviders } from '../../test/test-utils';
@@ -10,10 +13,19 @@ import { ANALYST, AUDITOR, TENANT_ADMIN, listItem, page, summary } from './fixtu
 import { FixIntelligencePage } from './FixIntelligencePage';
 import type { FixView } from './types';
 
+// Stands in for the shell, which renders the only route H1 from the page's registration.
+function ShellTitle() {
+  const { pathname } = useLocation();
+  return <h1>{useRouteHeader(pathname, 'Fix Intelligence').title}</h1>;
+}
+
 function renderPage(view: FixView, actor: ActorContext = TENANT_ADMIN) {
   return renderWithProviders(
     <ActorContextState.Provider value={actor}>
-      <FixIntelligencePage view={view} />
+      <PageHeaderProvider>
+        <ShellTitle />
+        <FixIntelligencePage view={view} />
+      </PageHeaderProvider>
     </ActorContextState.Provider>
   );
 }
@@ -82,7 +94,7 @@ describe('FixIntelligencePage', () => {
     unmount();
 
     renderPage('workarounds', AUDITOR);
-    await screen.findByText('Workarounds');
+    await screen.findByRole('heading', { level: 1, name: 'Workarounds' });
     expect(screen.queryByRole('button', { name: 'New workaround' })).not.toBeInTheDocument();
   });
 
@@ -119,5 +131,62 @@ describe('FixIntelligencePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined })));
     expect(screen.getByLabelText('Severity')).toHaveValue('');
+  });
+
+  it('registers the view as the route title and renders no feature H1', async () => {
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(summary());
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(page([listItem()]));
+    renderPage('patches');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Patches' })).toBeInTheDocument();
+    await screen.findByText('KB5034441');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Fix catalog' })).toBeInTheDocument();
+  });
+
+  it('shows loading metrics as pending, not zero, and states the result scope', async () => {
+    let resolveSummary: (value: ReturnType<typeof summary>) => void = () => undefined;
+    vi.spyOn(fixIntelligenceApi, 'summary').mockReturnValue(new Promise((resolve) => { resolveSummary = resolve; }));
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue({ ...page([listItem()]), totalItems: 120, totalPages: 3 });
+    renderPage('all');
+
+    expect(screen.getByText('Total Fixes').nextSibling).toHaveTextContent('Loading');
+    expect(screen.getByText('Total Fixes').nextSibling).not.toHaveTextContent('0');
+    expect(await screen.findByText('Showing 1–1 of 120 fixes')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Fix pages' })).toHaveTextContent('Page 1 of 3');
+    resolveSummary(summary({ totalFixes: 0 }));
+    await waitFor(() => expect(screen.getByText('Total Fixes').nextSibling).toHaveTextContent('0'));
+  });
+
+  it('links each fix through a real link rather than a clickable row', async () => {
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(summary());
+    vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(page([listItem()]));
+    renderPage('all');
+    const link = await screen.findByRole('link', { name: 'KB5034441' });
+    expect(link).toHaveAttribute('href', '/fix-intelligence/details/fix-1');
+    expect(link.closest('tr')).not.toHaveAttribute('tabindex');
+  });
+
+  it('offers a retry when the fix list fails and keeps the filters', async () => {
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(summary());
+    const list = vi.spyOn(fixIntelligenceApi, 'list')
+      .mockRejectedValueOnce(new Error('Unavailable'))
+      .mockResolvedValue(page([listItem()]));
+    renderPage('all');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Fixes could not be loaded.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry fixes' }));
+    expect(await screen.findByRole('link', { name: 'KB5034441' })).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows active filters as removable chips', async () => {
+    vi.spyOn(fixIntelligenceApi, 'summary').mockResolvedValue(summary());
+    const list = vi.spyOn(fixIntelligenceApi, 'list').mockResolvedValue(page([listItem()]));
+    renderPage('all');
+    await screen.findByText('KB5034441');
+    fireEvent.change(screen.getByLabelText('Severity'), { target: { value: 'CRITICAL' } });
+    const chips = screen.getByRole('group', { name: 'Active fix filters' });
+    fireEvent.click(within(chips).getByRole('button', { name: 'Remove filter Severity: Critical' }));
+    expect(screen.getByLabelText('Severity')).toHaveValue('');
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined })));
   });
 });

@@ -67,15 +67,15 @@ describe('AiBomDeclaredResourcesPage', () => {
     expect(screen.getAllByText('llama-3').length).toBeGreaterThan(0);
   });
 
-  it('navigates to the declared resource detail page when a setup action is clicked', async () => {
+  it('links setup actions and declared resources to the declared resource detail page', async () => {
     vi.spyOn(api, 'listAiBomSetupActions').mockResolvedValue([buildSetupAction()]);
-    vi.spyOn(api, 'listAiBomDeclaredResources').mockResolvedValue([]);
+    vi.spyOn(api, 'listAiBomDeclaredResources').mockResolvedValue([buildResource()]);
 
     renderWithProviders(<AiBomDeclaredResourcesPage />, { route: '/inventory/ai/declared-resources' });
 
-    fireEvent.click(await screen.findByText('Unverified declared resource: llama-3'));
-
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/inventory/ai/declared-resources/resource-1'));
+    expect(await screen.findByRole('link', { name: 'Unverified declared resource: llama-3' }))
+      .toHaveAttribute('href', '/inventory/ai/declared-resources/resource-1');
+    expect(await screen.findByRole('link', { name: 'llama-3' })).toHaveAttribute('href', '/inventory/ai/declared-resources/resource-1');
   });
 
   it('shows an empty state when nothing has been declared', async () => {

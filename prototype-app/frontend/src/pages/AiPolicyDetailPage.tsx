@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { usePageHeader } from '../app/pageHeaderState';
 import { useActor } from '../features/auth/context';
 import { hasRole } from '../features/auth/roles';
@@ -300,8 +301,12 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
   }, [configuration, policyId, queryClient]);
 
 
+  // Saved acknowledgements state only what the API confirmed: the configuration was stored. Assessment progress is the separate status notice.
+  const [scopeSaved, setScopeSaved] = React.useState(false);
+  const [parametersSaved, setParametersSaved] = React.useState(false);
   const [draftScope, setDraftScope] = React.useState<DraftScope | null>(null);
-  const [scopeDirty, setScopeDirty] = React.useState(false);
+  const [scopeDirty, setScopeDirtyState] = React.useState(false);
+  const setScopeDirty = (dirty: boolean) => { setScopeDirtyState(dirty); if (dirty) setScopeSaved(false); };
   React.useEffect(() => {
     if (configuration && !scopeDirty) {
       setDraftScope({
@@ -313,7 +318,8 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
   }, [configuration, scopeDirty]);
 
   const [draftParameters, setDraftParameters] = React.useState<Record<string, string>>({});
-  const [parametersDirty, setParametersDirty] = React.useState(false);
+  const [parametersDirty, setParametersDirtyState] = React.useState(false);
+  const setParametersDirty = (dirty: boolean) => { setParametersDirtyState(dirty); if (dirty) setParametersSaved(false); };
   React.useEffect(() => {
     if (configuration && !parametersDirty) {
       const next: Record<string, string> = {};
@@ -334,6 +340,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
     onSuccess: (data) => {
       queryClient.setQueryData(['ai-security-policy-configuration', policyId], data);
       setScopeDirty(false);
+      setScopeSaved(true);
       refreshAfterConfigChange();
     },
   });
@@ -343,6 +350,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
     onSuccess: (data) => {
       queryClient.setQueryData(['ai-security-policy-configuration', policyId], data);
       setParametersDirty(false);
+      setParametersSaved(true);
       refreshAfterConfigChange();
     },
   });
@@ -420,11 +428,21 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
     setExceptionConditions((current) => current.filter((_, conditionIndex) => conditionIndex !== index));
   };
 
-  if (policiesQuery.isLoading && policyMetadataQuery.isLoading) {
-    return <section className="panel"><div className="empty-state"><p>Loading policy…</p></div></section>;
+  // "Not found" only after both sources have answered; a source still loading is not a missing policy.
+  if (!policy && (policiesQuery.isLoading || policyMetadataQuery.isLoading)) {
+    return <section className="panel"><AsyncSection state="pending" loadingLabel="Loading policy…" /></section>;
   }
-  if (policiesQuery.isError && policyMetadataQuery.isError) {
-    return <section className="panel"><div className="notice error">AI Security policies could not be loaded.</div></section>;
+  if (!policy && policiesQuery.isError && policyMetadataQuery.isError) {
+    return (
+      <section className="panel">
+        <AsyncSection
+          state="error"
+          errorMessage="AI Security policies could not be loaded."
+          onRetry={() => { void policiesQuery.refetch(); void policyMetadataQuery.refetch(); }}
+          retrying={policiesQuery.isFetching || policyMetadataQuery.isFetching}
+        />
+      </section>
+    );
   }
   if (!policy) {
     return (
@@ -452,6 +470,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
           <span>{policy.lifecycle === 'DEPRECATED' ? 'Deprecated · inactive' : policy.enabled ? 'Enabled' : 'Disabled'}</span>
         </label>
       </div>
+      {mutation.isError ? <p className="notice error" role="alert">The policy could not be {mutation.variables?.enabled ? 'enabled' : 'disabled'}. Its previous state is unchanged.</p> : null}
 
       <div className="cvd2-tab-bar">
         <button type="button" className={`cvd2-tab${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>
@@ -613,7 +632,12 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
           configQuery.isLoading || !draftScope ? (
             <div className="empty-state"><p>Loading configuration…</p></div>
           ) : configQuery.isError || !configuration ? (
-            <div className="notice error">This policy's configuration could not be loaded.</div>
+            <AsyncSection
+              state="error"
+              errorMessage="This policy's configuration could not be loaded."
+              onRetry={() => void configQuery.refetch()}
+              retrying={configQuery.isFetching}
+            />
           ) : (
             <div className="cvd2-overview-body ai-policy-governance">
               <div className="cvd2-overview-main">
@@ -622,6 +646,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                   <div className="cvd-tech-attrs">
                     <div className="cvd-tech-attr"><span className="cvd-tech-attr-label">Platform baseline</span><span className="cvd-tech-attr-value">{configuration.governance.platformPolicyVersion ?? '—'} · {formatLabel(configuration.governance.platformLifecycle ?? '—')}</span></div>
                     <div className="cvd-tech-attr"><span className="cvd-tech-attr-label">Tenant state</span><span className="cvd-tech-attr-value">{formatLabel(configuration.governance.configurationSource)}</span></div>
+                    <div className="cvd-tech-attr"><span className="cvd-tech-attr-label">Tenant configuration</span><span className="cvd-tech-attr-value">{configuration.governance.tenantConfigurable ? 'Permitted by platform' : 'Platform controlled'}</span></div>
                   </div>
                   <p className="panel-caption">The platform owns the policy definition and release lifecycle. This tenant can configure scope, exceptions, and parameters only when the platform permits it.</p>
                 </div>
@@ -763,10 +788,14 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                     <div className="ai-policy-scope-preview">
                       <span>
                         <strong>{configuration.matchedArtifactCount} of {configuration.totalArtifactCount}</strong>{' '}
-                        eligible artifact{configuration.totalArtifactCount === 1 ? '' : 's'} currently match this scope
+                        eligible artifact{configuration.totalArtifactCount === 1 ? '' : 's'} currently match {scopeDirty ? 'the saved scope' : 'this scope'}
                       </span>
+                      {scopeDirty ? <span className="panel-caption"> · The match count updates after you save.</span> : null}
                     </div>
 
+                    {scopeMutation.isError ? (
+                      <p className="notice error" role="alert">The scope could not be saved. Your changes are kept; try again.</p>
+                    ) : null}
                     <div className="button-row" style={{ marginTop: 12 }}>
                       <button
                         type="button"
@@ -776,13 +805,25 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                       >
                         {scopeMutation.isPending ? 'Saving…' : 'Save scope'}
                       </button>
+                      {scopeDirty ? (
+                        <button type="button" className="btn btn-secondary" disabled={scopeMutation.isPending} onClick={() => { setScopeDirty(false); scopeMutation.reset(); }}>
+                          Discard scope changes
+                        </button>
+                      ) : null}
+                      <span role="status" aria-live="polite" className="panel-caption">
+                        {scopeDirty ? 'Unsaved scope changes' : scopeSaved ? 'Scope saved.' : ''}
+                      </span>
                     </div>
+                    {!canManage ? <p className="panel-caption">Read-only: your role cannot change this policy's scope, exceptions or parameters.</p> : null}
                   </div>
                 </div>
 
                 <div className="cvd2-panel">
                   <div className="cvd2-panel-hdr">Exceptions · {configuration.exceptions.length}</div>
                   <div className="ai-policy-config-body">
+                    {removeExceptionMutation.isError ? (
+                      <p className="notice error" role="alert">The exception could not be removed. Try again.</p>
+                    ) : null}
                     {configuration.exceptions.length === 0 ? (
                       <p className="card-note">No per-artifact overrides yet.</p>
                     ) : (
@@ -921,6 +962,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                         </select>
                         <input
                           type="text"
+                          aria-label="Exception reason (optional)"
                           placeholder="Reason (optional)"
                           value={exceptionReason}
                           onChange={(event) => setExceptionReason(event.target.value)}
@@ -933,6 +975,9 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                         >
                           {addExceptionRuleMutation.isPending ? 'Applying…' : '+ Apply exception rule'}
                         </button>
+                        {addExceptionRuleMutation.isError ? (
+                          <p className="notice error" role="alert">The exception rule could not be applied. Your conditions are kept; try again.</p>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -955,6 +1000,7 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                               <div className="panel-caption">Platform default: {formatLabel(param.defaultValue)}</div>
                             </div>
                             <select
+                              aria-label={param.label}
                               value={draftParameters[param.key] ?? param.value}
                               disabled={!canManage}
                               onChange={(event) => {
@@ -977,7 +1023,18 @@ export function AiPolicyDetailPage({ policyId }: { policyId: string }) {
                           >
                             {parametersMutation.isPending ? 'Saving…' : 'Save parameters'}
                           </button>
+                          {parametersDirty ? (
+                            <button type="button" className="btn btn-secondary" disabled={parametersMutation.isPending} onClick={() => { setParametersDirty(false); parametersMutation.reset(); }}>
+                              Discard parameter changes
+                            </button>
+                          ) : null}
+                          <span role="status" aria-live="polite" className="panel-caption">
+                            {parametersDirty ? 'Unsaved parameter changes' : parametersSaved ? 'Parameters saved.' : ''}
+                          </span>
                         </div>
+                        {parametersMutation.isError ? (
+                          <p className="notice error" role="alert">The parameters could not be saved. Your changes are kept; try again.</p>
+                        ) : null}
                       </>
                     )}
                   </div>

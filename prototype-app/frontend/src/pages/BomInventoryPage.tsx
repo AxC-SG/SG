@@ -7,7 +7,10 @@ import {
   type BomLineageItem,
   type BomWorkflowSummary,
 } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
+import { Pager } from '../components/QueueControls';
 import { timeAgo } from '../lib/time';
 
 function BomTypeTag({ bomType }: { bomType: string }) {
@@ -114,7 +117,35 @@ function LineagePanel({ items }: { items: BomLineageItem[] }) {
   );
 }
 
+// The one deletion confirmation for BOM records, from the list and from detail. The dialog stays open on failure.
+function RemoveBomDialog({ isOpen, busy, error, onConfirm, onCancel }: {
+  isOpen: boolean;
+  busy: boolean;
+  error: unknown;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <ConfirmDialog
+      isOpen={isOpen}
+      title="Remove BOM record?"
+      message={(
+        <>
+          <p className="panel-caption">This will remove the BOM record and all linked components. This cannot be undone.</p>
+          {error ? <p className="form-error" role="alert">{error instanceof Error ? error.message : 'The BOM record could not be removed.'}</p> : null}
+        </>
+      )}
+      confirmLabel="Remove"
+      busy={busy}
+      busyMessage="Removing the BOM record… this dialog can be closed when the request finishes."
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
+  );
+}
+
 function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void }) {
+  const [confirmingRemove, setConfirmingRemove] = React.useState(false);
   const detailQuery = useQuery({
     queryKey: ['bom-detail', bomId],
     queryFn: () => api.getBomDetail(bomId),
@@ -160,20 +191,32 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
             className="btn btn-danger btn-sm"
             disabled={deleteMutation.isPending}
             onClick={() => {
-              if (window.confirm('Remove this BOM record and all its linked components? This cannot be undone.')) {
-                deleteMutation.mutate();
-              }
+              deleteMutation.reset();
+              setConfirmingRemove(true);
             }}
           >
             {deleteMutation.isPending ? 'Removing…' : 'Remove'}
           </button>
         )}
       </div>
+      <RemoveBomDialog
+        isOpen={confirmingRemove}
+        busy={deleteMutation.isPending}
+        error={deleteMutation.error}
+        onConfirm={() => deleteMutation.mutate()}
+        onCancel={() => setConfirmingRemove(false)}
+      />
 
-      {detailQuery.isPending && <p className="loading-text">Loading…</p>}
-      {detailQuery.isError && <p className="form-error">{(detailQuery.error as Error).message}</p>}
-      {lineageQuery.isError && <p className="form-error">{(lineageQuery.error as Error).message}</p>}
-      {deleteMutation.isError && <p className="form-error">{(deleteMutation.error as Error).message}</p>}
+      {(detailQuery.isPending || (detailQuery.isError && !detail)) && (
+        <AsyncSection
+          state={detailQuery.isPending ? 'pending' : 'error'}
+          errorMessage={detailQuery.error instanceof Error ? detailQuery.error.message : 'BOM detail could not be loaded.'}
+          onRetry={() => void detailQuery.refetch()}
+          retryLabel="Retry BOM detail"
+          retrying={detailQuery.isFetching}
+        />
+      )}
+      {lineageQuery.isError && <p className="form-error" role="alert">{(lineageQuery.error as Error).message}</p>}
 
       {detail && (
         <>
@@ -509,36 +552,13 @@ export function BomInventoryPage() {
         refreshLabel="Refreshing BOM inventory while keeping current results visible…"
       />
 
-      {/* Delete confirmation modal */}
-      {confirmDelete && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 999,
-          background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div className="panel" style={{ padding: 28, maxWidth: 420, width: '90%' }}>
-            <h4 style={{ marginBottom: 10 }}>Remove BOM record?</h4>
-            <p className="panel-caption" style={{ marginBottom: 20 }}>
-              This will remove the BOM record and all linked components. This cannot be undone.
-            </p>
-            {deleteMutation.isError && (
-              <p className="form-error" style={{ marginBottom: 12 }}>
-                {(deleteMutation.error as Error).message}
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
-              <button
-                type="button"
-                className="btn btn-danger btn-sm"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(confirmDelete)}
-              >
-                {deleteMutation.isPending ? 'Removing…' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RemoveBomDialog
+        isOpen={confirmDelete != null}
+        busy={deleteMutation.isPending}
+        error={deleteMutation.error}
+        onConfirm={() => { if (confirmDelete) deleteMutation.mutate(confirmDelete); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {!inventoryQuery.isPending && allItems.length > 0 && summary && (
         <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
@@ -565,10 +585,16 @@ export function BomInventoryPage() {
 
       {inventoryQuery.isPending && <p className="loading-text">Loading…</p>}
       {inventoryQuery.isError && (
-        <p className="form-error">{(inventoryQuery.error as Error).message}</p>
+        <div className="notice error async-section-notice" role="alert">
+          <span>{(inventoryQuery.error as Error).message}</span>
+          <button type="button" className="btn btn-sm" disabled={inventoryQuery.isFetching} onClick={() => void inventoryQuery.refetch()}>
+            {inventoryQuery.isFetching ? 'Retrying…' : 'Retry BOM inventory'}
+          </button>
+        </div>
       )}
 
-      {!inventoryQuery.isPending && allItems.length === 0 && (
+      {/* A failed list is not an empty inventory. */}
+      {!inventoryQuery.isPending && !inventoryQuery.isError && allItems.length === 0 && (
         <div className="empty-state">
           <p>No BOM records ingested yet. Use the BOM Ingestion connector to get started.</p>
         </div>
@@ -648,6 +674,7 @@ export function BomInventoryPage() {
                             type="button"
                             className="btn btn-ghost btn-sm"
                             title="View BOM detail"
+                            aria-label={`View BOM detail for ${item.supplier ?? item.serialNumber ?? item.id}`}
                             style={{ padding: '3px 8px', fontSize: 13 }}
                             onClick={() => setSelectedBomId(item.id)}
                           >
@@ -656,12 +683,16 @@ export function BomInventoryPage() {
                           <button
                             type="button"
                             title="Delete this BOM record"
+                            aria-label={`Remove BOM record ${item.supplier ?? item.serialNumber ?? item.id}`}
                             style={{
                               padding: '3px 8px', fontSize: 13, cursor: 'pointer',
                               background: 'none', border: '1px solid var(--dp-border)',
                               borderRadius: 6, color: 'var(--dp-critical)',
                             }}
-                            onClick={() => setConfirmDelete(item.id)}
+                            onClick={() => {
+                              deleteMutation.reset();
+                              setConfirmDelete(item.id);
+                            }}
                           >
                             ✕
                           </button>
@@ -677,17 +708,17 @@ export function BomInventoryPage() {
               <div className="empty-state"><p>No BOM records match the current filter.</p></div>
             )}
 
-            {allItems.length === 50 && (
-              <div className="pagination-row">
-                {page > 0 && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPage(page - 1)}>
-                    Previous
-                  </button>
-                )}
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPage(page + 1)}>
-                  Next
-                </button>
-              </div>
+            {/* The source reports no total; a full page is the only signal that another may exist (N05). */}
+            {(page > 0 || allItems.length === 50) && (
+              <Pager
+                page={page}
+                totalPages={null}
+                hasNext={allItems.length === 50}
+                onPrevious={() => setPage(page - 1)}
+                onNext={() => setPage(page + 1)}
+                disabled={inventoryQuery.isFetching}
+                label="BOM inventory pages"
+              />
             )}
           </div>
         </>

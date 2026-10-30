@@ -178,6 +178,22 @@ describe('PlatformConsolePage tenant privacy boundary', () => {
     expect(screen.getByText('No tenants currently impacted')).toBeInTheDocument();
   });
 
+  it('reports failed attention and connector-issue loads instead of an all-clear', async () => {
+    mockOperationsApi();
+    vi.spyOn(api, 'getOperationalTenantAttention').mockRejectedValue(new Error('attention offline'));
+    vi.spyOn(api, 'getOperationalConnectorIssues').mockRejectedValue(new Error('issues offline'));
+
+    renderPlatformOperations();
+
+    expect(await screen.findByText('Tenant attention could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByText('Connector issues could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No tenant currently requires attention')).not.toBeInTheDocument();
+    expect(screen.queryByText('No tenants currently impacted')).not.toBeInTheDocument();
+    const attentionMetric = screen.getAllByText('Tenants Needing Attention')[0].closest('.noise-summary-item') as HTMLElement;
+    expect(attentionMetric).toHaveTextContent('Signal unavailable');
+    expect(attentionMetric.querySelector('.noise-summary-value')).not.toHaveTextContent(/^0$/);
+  });
+
   it('issues a setup link for a platform user from the users panel', async () => {
     vi.spyOn(api, 'listPlatformUsers').mockResolvedValue([{
       userId: 'user-1',

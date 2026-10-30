@@ -15,6 +15,8 @@ import {
 import type { VulnerabilitySourceFilterConfig, VulnerabilitySourceFilterConfigRequest, VulnerabilitySourceSystem } from '../features/connect/types';
 import { useRiskPolicyQuery } from '../features/cve-workbench/queries';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
+import { AsyncSection } from '../components/AsyncSection';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   type AgentConfidenceLevel,
   type AssetInventoryCriterion,
@@ -64,7 +66,7 @@ const TRIAGE_SIGNALS: TriageSignalDef[] = [
     label: 'Exploitability',
     icon: '⚡',
     businessReason:
-      'High EPSS score or inclusion in KEV means attackers are actively weaponizing this CVE now — not someday. Every day without a patch is active exposure.',
+      'KEV inclusion confirms the CVE is exploited in the wild. A high EPSS score is a probability that exploitation will be observed, not a confirmation. Both raise the urgency of patching.',
     urgencyTag: 'EPSS > 0.5 or in KEV',
   },
   {
@@ -490,6 +492,13 @@ export function ConfigurationsPage() {
   const [policy, setPolicy] = React.useState<RiskPolicy | null>(null);
   const [policyMessage, setPolicyMessage] = React.useState('');
   const [policySaving, setPolicySaving] = React.useState(false);
+  // Local edits not yet saved. A ref mirrors it so a background refetch never overwrites a draft.
+  const [policyDirty, setPolicyDirtyState] = React.useState(false);
+  const policyDirtyRef = React.useRef(false);
+  const setPolicyDirty = (dirty: boolean) => {
+    policyDirtyRef.current = dirty;
+    setPolicyDirtyState(dirty);
+  };
   const [autoCloseExecuting, setAutoCloseExecuting] = React.useState(false);
   const activeSection = normalizeConfigurationsRouteView(params.configView);
 
@@ -501,6 +510,10 @@ export function ConfigurationsPage() {
   const [ownershipRules, setOwnershipRules] = React.useState<OwnershipRule[]>([]);
   const [ownershipGroups, setOwnershipGroups] = React.useState<string[]>([]);
   const [ownershipLoading, setOwnershipLoading] = React.useState(true);
+  const [ownershipLoadError, setOwnershipLoadError] = React.useState(false);
+  const [ownershipDeleteId, setOwnershipDeleteId] = React.useState<string | null>(null);
+  const [ownershipDeleting, setOwnershipDeleting] = React.useState(false);
+  const [ownershipDeleteError, setOwnershipDeleteError] = React.useState('');
   const [ownershipExecutingId, setOwnershipExecutingId] = React.useState<string | null>(null);
   const [ownershipShowForm, setOwnershipShowForm] = React.useState(false);
   const [ownershipEditingId, setOwnershipEditingId] = React.useState<string | null>(null);
@@ -646,7 +659,7 @@ export function ConfigurationsPage() {
   }, [parsedFindingsColumns, simFindingsValues]);
 
   React.useEffect(() => {
-    if (riskPolicyQuery.data) {
+    if (riskPolicyQuery.data && !policyDirtyRef.current) {
       // Use functional update so we can preserve findingsScoreConfig from
       // the previous local state if the server response doesn't include it
       // (e.g. backend running pre-V1079 code or column not yet in response).
@@ -665,16 +678,23 @@ export function ConfigurationsPage() {
     }
   }, [riskPolicyQuery.data]);
 
-  React.useEffect(() => {
+  // A failed list load is an error with Retry, never "No ownership rules defined yet".
+  const loadOwnershipRules = React.useCallback(() => {
+    setOwnershipLoading(true);
+    setOwnershipLoadError(false);
     api.listOwnershipRules()
       .then((rules) => setOwnershipRules(rules))
-      .catch(() => setOwnershipRules([]))
+      .catch(() => { setOwnershipRules([]); setOwnershipLoadError(true); })
       .finally(() => setOwnershipLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    loadOwnershipRules();
 
     api.listAssignmentGroups()
       .then((groups) => setOwnershipGroups(Array.from(new Set(groups)).sort((a, b) => a.localeCompare(b))))
       .catch(() => setOwnershipGroups([]));
-  }, []);
+  }, [loadOwnershipRules]);
 
   React.useEffect(() => {
     if (!ownershipGroupOpen) return;
@@ -697,6 +717,20 @@ export function ConfigurationsPage() {
   const updatePolicy = (key: keyof RiskPolicy, value: number | boolean | string): void => {
     if (!policy) return;
     setPolicy({ ...policy, [key]: value });
+    setPolicyDirty(true);
+  };
+
+  // Restores the last saved configuration (or the local defaults when the API never answered).
+  const discardPolicyChanges = (): void => {
+    const data = riskPolicyQuery.data;
+    setPolicy(data
+      ? applyTriageDefaults({
+        ...data,
+        findingsScoreConfig: data.findingsScoreConfig ?? localStorage.getItem('findings-score-config') ?? DEFAULT_FINDINGS_SCORE_CONFIG_JSON,
+      })
+      : DEFAULT_RISK_POLICY);
+    setPolicyDirty(false);
+    setPolicyMessage('');
   };
 
   const savePolicy = async (): Promise<void> => {
@@ -722,7 +756,13 @@ export function ConfigurationsPage() {
       localStorage.setItem('findings-score-config', updated.findingsScoreConfig ?? DEFAULT_FINDINGS_SCORE_CONFIG_JSON);
       queryClient.setQueryData(['risk-policy'], updated);
       setPolicy(updated);
-      setPolicyMessage('Configuration saved');
+      setPolicyDirty(false);
+      // The risk-policy API does not store the six triage weights (frontend-only fields), so the
+      // acknowledgement on that section says so instead of claiming they were saved.
+      const triageStored = (raw as unknown as Record<string, unknown>).triageExploitabilityWeight != null;
+      setPolicyMessage(activeSection === 'triage' && !triageStored
+        ? 'Other settings saved. The server does not store prioritization weights, so they were reset to their defaults.'
+        : 'Configuration saved');
     } catch (e) {
       setPolicyMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -799,7 +839,7 @@ export function ConfigurationsPage() {
   ]);
 
   if (!policy) {
-    return <div className="panel">Loading configuration...</div>;
+    return <div className="panel"><p role="status">Loading configuration…</p></div>;
   }
 
   const sectionErrors = (key: ConfigNavKey): PolicyValidationError[] => {
@@ -830,11 +870,26 @@ export function ConfigurationsPage() {
           >
             {policySaving ? 'Saving…' : 'Save'}
           </button>
-          {policyMessage && activeSection === sectionKey && (
-            <span className="field-hint" style={{ marginLeft: 10, color: /saved|updated|ran now/i.test(policyMessage) ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
-              {policyMessage}
+          {policyDirty && canEditRiskPolicy && (
+            <button type="button" className="btn btn-secondary" onClick={discardPolicyChanges} disabled={policySaving}>
+              Discard changes
+            </button>
+          )}
+          {policyDirty && (
+            <span className="field-hint config-dirty-cue" style={{ marginLeft: 10, color: 'var(--dp-medium)', fontWeight: 600 }}>
+              Unsaved changes
             </span>
           )}
+          {!canEditRiskPolicy && (
+            <span className="field-hint" style={{ marginLeft: 10 }}>Read-only: your role cannot change this configuration.</span>
+          )}
+          <span role="status" aria-live="polite">
+            {policyMessage && activeSection === sectionKey && (
+              <span className="field-hint" style={{ marginLeft: 10, color: /saved|updated|ran now/i.test(policyMessage) ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
+                {policyMessage}
+              </span>
+            )}
+          </span>
         </div>
       </>
     );
@@ -850,6 +905,11 @@ export function ConfigurationsPage() {
           matching items to the top of the recommended work queue. Set a signal to{' '}
           <span className="mono">0</span> to ignore it entirely.
         </p>
+      </div>
+
+      <div className="notice" role="note" style={{ marginBottom: 12 }}>
+        The server does not store these weights yet. Changes here update the simulator below only; prioritization
+        elsewhere in the app does not use them, and Save resets them to their defaults.
       </div>
 
       <div className="triage-signal-list">
@@ -905,7 +965,7 @@ export function ConfigurationsPage() {
         <div className="score-sim-body">
           <div className="score-sim-inputs">
             <div className="score-sim-input-row">
-              <label>EPSS Score (exploitation probability)</label>
+              <label htmlFor="triage-sim-epss">EPSS score (probability of exploitation, not confirmed)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="range"
@@ -913,6 +973,7 @@ export function ConfigurationsPage() {
                   max={1}
                   step={0.01}
                   value={triageSimEpss}
+                  id="triage-sim-epss"
                   onChange={(e) => setTriageSimEpss(Number(e.target.value))}
                   style={{ flex: 1 }}
                 />
@@ -920,7 +981,7 @@ export function ConfigurationsPage() {
               </div>
             </div>
             <div className="score-sim-input-row">
-              <label>Assets affected</label>
+              <label htmlFor="triage-sim-assets">Assets affected</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="range"
@@ -928,6 +989,7 @@ export function ConfigurationsPage() {
                   max={50}
                   step={1}
                   value={triageSimAssets}
+                  id="triage-sim-assets"
                   onChange={(e) => setTriageSimAssets(Number(e.target.value))}
                   style={{ flex: 1 }}
                 />
@@ -935,7 +997,7 @@ export function ConfigurationsPage() {
               </div>
             </div>
             <div className="score-sim-input-row">
-              <label>Days until SLA breach</label>
+              <label htmlFor="triage-sim-sla-days">Days until SLA breach</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="range"
@@ -943,6 +1005,7 @@ export function ConfigurationsPage() {
                   max={30}
                   step={1}
                   value={triageSimSlaDays}
+                  id="triage-sim-sla-days"
                   onChange={(e) => setTriageSimSlaDays(Number(e.target.value))}
                   style={{ flex: 1 }}
                 />
@@ -1042,6 +1105,22 @@ export function ConfigurationsPage() {
 
   // ── Risk Score section ─────────────────────────────────────────────────────
   // ── SLA section ────────────────────────────────────────────────────────────
+  // The matrix wraps instead of using fixed minimum column widths, so it never widens the page
+  // (the 768px document overflow). Each field names its tier and unit.
+  const slaTiers: Array<{
+    tier: string;
+    thresholdLabel: string;
+    thresholdField?: 'criticalThreshold' | 'highThreshold';
+    fixedBoundary?: string;
+    daysField: 'criticalSlaDays' | 'highSlaDays' | 'mediumSlaDays' | 'lowSlaDays';
+  }> = [
+    { tier: 'Critical Risk', thresholdLabel: `Score ≥ ${policy.criticalThreshold} → Critical`, thresholdField: 'criticalThreshold', daysField: 'criticalSlaDays' },
+    { tier: 'High Risk', thresholdLabel: `Score ≥ ${policy.highThreshold} → High`, thresholdField: 'highThreshold', daysField: 'highSlaDays' },
+    { tier: 'Medium Risk', thresholdLabel: 'Score ≥ 4.0 → Medium', fixedBoundary: 'Fixed tier boundary at 4.0', daysField: 'mediumSlaDays' },
+    { tier: 'Low Risk', thresholdLabel: 'Score < 4.0 → Low', fixedBoundary: 'Fixed tier boundary below 4.0', daysField: 'lowSlaDays' },
+  ];
+  const exampleDue = new Date(Date.now() + policy.criticalSlaDays * 86_400_000);
+
   const renderSla = () => (
     <div className="config-section-body">
       <div className="config-section-intro">
@@ -1051,139 +1130,71 @@ export function ConfigurationsPage() {
         </p>
       </div>
 
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ marginBottom: 8, minWidth: 0 }}>
         <div className="config-subsection-label">Risk Tier SLA Matrix</div>
         <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
-          Configure the score threshold and remediation deadline on the same row for each tier.
+          Configure the score threshold and remediation deadline on the same row for each tier. A finding
+          whose score is at or above a tier's minimum falls in that tier; the High minimum cannot exceed the Critical minimum.
         </p>
         <div style={{ display: 'grid', gap: 12 }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(180px, 1.15fr) minmax(240px, 1fr) minmax(180px, 0.9fr) minmax(220px, 1fr)',
-              gap: 16,
-              padding: '0 16px',
-              color: 'var(--dp-text-2)',
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            <div>Tier</div>
-            <div>Threshold</div>
-            <div>SLA</div>
-            <div>Base Days</div>
-          </div>
-          {[
-            {
-              tier: 'Critical Risk',
-              thresholdLabel: `Score ≥ ${policy.criticalThreshold} → Critical`,
-              thresholdControl: (
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={10}
-                  value={policy.criticalThreshold}
-                  onChange={(e) => updatePolicy('criticalThreshold', Number(e.target.value))}
-                />
-              ),
-              slaLabel: `Remediate within ${policy.criticalSlaDays} days`,
-              slaControl: (
-                <input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={policy.criticalSlaDays}
-                  onChange={(e) => updatePolicy('criticalSlaDays', Number(e.target.value))}
-                />
-              ),
-            },
-            {
-              tier: 'High Risk',
-              thresholdLabel: `Score ≥ ${policy.highThreshold} → High`,
-              thresholdControl: (
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={10}
-                  value={policy.highThreshold}
-                  onChange={(e) => updatePolicy('highThreshold', Number(e.target.value))}
-                />
-              ),
-              slaLabel: `Remediate within ${policy.highSlaDays} days`,
-              slaControl: (
-                <input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={policy.highSlaDays}
-                  onChange={(e) => updatePolicy('highSlaDays', Number(e.target.value))}
-                />
-              ),
-            },
-            {
-              tier: 'Medium Risk',
-              thresholdLabel: 'Score ≥ 4.0 → Medium',
-              thresholdControl: <div className="field-hint">Fixed tier boundary</div>,
-              slaLabel: `Remediate within ${policy.mediumSlaDays} days`,
-              slaControl: (
-                <input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={policy.mediumSlaDays}
-                  onChange={(e) => updatePolicy('mediumSlaDays', Number(e.target.value))}
-                />
-              ),
-            },
-            {
-              tier: 'Low Risk',
-              thresholdLabel: 'Score < 4.0 → Low',
-              thresholdControl: <div className="field-hint">Fixed tier boundary</div>,
-              slaLabel: `Remediate within ${policy.lowSlaDays} days`,
-              slaControl: (
-                <input
-                  type="number"
-                  min={0}
-                  max={365}
-                  value={policy.lowSlaDays}
-                  onChange={(e) => updatePolicy('lowSlaDays', Number(e.target.value))}
-                />
-              ),
-            },
-          ].map((row) => (
-            <div
+          {slaTiers.map((row) => (
+            <fieldset
               key={row.tier}
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(180px, 1.15fr) minmax(240px, 1fr) minmax(180px, 0.9fr) minmax(220px, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
                 gap: 16,
                 alignItems: 'start',
+                minWidth: 0,
+                margin: 0,
                 padding: '14px 16px',
                 border: '1px solid var(--dp-border)',
                 borderRadius: 12,
                 background: 'var(--dp-surface)',
               }}
             >
+              <legend className="ui2-sr-only">{row.tier}</legend>
               <div>
                 <div style={{ fontWeight: 700, color: 'var(--dp-text)', marginBottom: 6 }}>{row.tier}</div>
                 <div className="field-hint">{row.thresholdLabel}</div>
               </div>
+              {row.thresholdField ? (
+                <label style={{ display: 'grid', gap: 6, margin: 0 }}>
+                  <span className="field-hint">Minimum score (0–10)</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={10}
+                    aria-label={`${row.tier} minimum score (0–10)`}
+                    value={policy[row.thresholdField]}
+                    onChange={(e) => updatePolicy(row.thresholdField!, Number(e.target.value))}
+                  />
+                </label>
+              ) : (
+                <div className="field-hint">{row.fixedBoundary}</div>
+              )}
               <label style={{ display: 'grid', gap: 6, margin: 0 }}>
-                {row.thresholdControl}
+                <span className="field-hint">Remediate within (days, 0–365)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  aria-label={`${row.tier} remediate within (days, 0–365)`}
+                  value={policy[row.daysField]}
+                  onChange={(e) => updatePolicy(row.daysField, Number(e.target.value))}
+                />
               </label>
-              <div>
-                <div className="field-hint">{row.slaLabel}</div>
+              <div className="field-hint" style={{ alignSelf: 'center' }}>
+                Remediate within {policy[row.daysField]} day{policy[row.daysField] === 1 ? '' : 's'}
               </div>
-              <label style={{ display: 'grid', gap: 6, margin: 0 }}>
-                {row.slaControl}
-              </label>
-            </div>
+            </fieldset>
           ))}
         </div>
+        <p className="field-hint" style={{ marginTop: 12 }}>
+          Example: with these values, a Critical Risk finding detected today is due within {policy.criticalSlaDays} day
+          {policy.criticalSlaDays === 1 ? '' : 's'} (by {Number.isNaN(exampleDue.getTime()) ? '—' : exampleDue.toLocaleDateString()}), before any asset-criticality adjustment.
+        </p>
       </div>
 
       {renderSaveRow("sla")}
@@ -1297,6 +1308,11 @@ export function ConfigurationsPage() {
           >
             {autoCloseExecuting ? 'Executing…' : 'Execute Now'}
           </button>
+          {policyDirty && (
+            <span className="field-hint" style={{ marginLeft: 10 }}>
+              Execute Now uses the saved settings, not your unsaved changes.
+            </span>
+          )}
         </div>
       </div>
 
@@ -1416,15 +1432,27 @@ export function ConfigurationsPage() {
   );
 
   const deleteOwnershipRule = (id: string) => {
-    if (!window.confirm('Delete this ownership rule?')) return;
+    setOwnershipDeleteError('');
+    setOwnershipDeleteId(id);
+  };
+
+  // The dialog stays open (and names the failure) when the delete is rejected.
+  const confirmDeleteOwnershipRule = () => {
+    const id = ownershipDeleteId;
+    if (!id) return;
+    setOwnershipDeleting(true);
+    setOwnershipDeleteError('');
     api.deleteOwnershipRule(id)
       .then(() => {
         setOwnershipRules((prev) => prev.filter((r) => r.id !== id));
         if (ownershipEditingId === id) {
           cancelOwnershipForm();
         }
+        setOwnershipDeleteId(null);
+        setOwnershipMessage('Ownership rule deleted.');
       })
-      .catch(() => setOwnershipMessage('Failed to delete ownership rule.'));
+      .catch(() => setOwnershipDeleteError('The ownership rule could not be deleted. Try again.'))
+      .finally(() => setOwnershipDeleting(false));
   };
 
   const executeOwnershipRule = (id: string) => {
@@ -1446,18 +1474,27 @@ export function ConfigurationsPage() {
       </div>
 
       {ownershipMessage && (
-        <div className="notice" style={{ marginBottom: 16 }}>
+        <div className="notice" role="status" style={{ marginBottom: 16 }}>
           {ownershipMessage}
         </div>
       )}
 
-      {ownershipLoading ? (
-        <div className="inline-note" style={{ marginBottom: 16 }}>Loading ownership configuration…</div>
-      ) : null}
-
-      {!ownershipShowForm && ownershipRules.length > 0 && !ownershipLoading && (
-        <div style={{ marginBottom: 20 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+      {!ownershipShowForm && (
+        <AsyncSection
+          state={ownershipLoading ? 'pending' : ownershipLoadError ? 'error' : ownershipRules.length === 0 ? 'empty' : 'ready'}
+          loadingLabel="Loading ownership rules…"
+          errorMessage="Ownership rules could not be loaded."
+          onRetry={loadOwnershipRules}
+          emptyMessage="No ownership rules defined yet."
+        >
+        <div
+          className="config-table-scroll"
+          role="region"
+          aria-label="Ownership rules"
+          tabIndex={0}
+          style={{ marginBottom: 20, maxWidth: '100%', overflowX: 'auto' }}
+        >
+          <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--dp-border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px 0' }}>Name</th>
@@ -1494,12 +1531,7 @@ export function ConfigurationsPage() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {!ownershipShowForm && ownershipRules.length === 0 && !ownershipLoading && (
-        <div className="inline-note" style={{ marginBottom: 16 }}>
-          No ownership rules defined yet.
-        </div>
+        </AsyncSection>
       )}
 
       {ownershipShowForm ? (
@@ -1916,10 +1948,15 @@ export function ConfigurationsPage() {
             className="btn btn-secondary"
             onClick={recomputeFindingsScores}
             disabled={!canEditRiskPolicy || recomputeInProgress}
-            title="Recompute risk scores for all open findings using the current Findings Score config"
+            title="Recompute risk scores for all open findings using the saved Findings Score config"
           >
             {recomputeInProgress ? 'Recalculating…' : 'Recalculate Findings'}
           </button>
+          {policyDirty && (
+            <span className="field-hint" style={{ marginLeft: 10 }}>
+              Recalculation uses the saved configuration, not your unsaved changes.
+            </span>
+          )}
           {recomputeMessage && (
             <span className="field-hint" style={{ marginLeft: 10, color: recomputeMessage.includes('updated') ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
               {recomputeMessage}
@@ -2071,7 +2108,8 @@ export function ConfigurationsPage() {
   return (
     <div className="panel ui2-connect-family">
       <div className="panel-header">
-        <h3>Configurations</h3>
+        {/* The shell renders the route H1; this panel heading sits one level below it. */}
+        <h2>Configurations</h2>
         <span className="panel-caption">
           Findings Score, S.AI prioritization, SLA, and workflow automation
         </span>
@@ -2087,6 +2125,16 @@ export function ConfigurationsPage() {
             </div>
           </div>
 
+          {/* Stays visible on every section: the values shown are local defaults, not the tenant's saved configuration. */}
+          {riskPolicyQuery.error && !riskPolicyQuery.data && ['triage', 'sla', 'automation', 'findings-score'].includes(activeSection) && (
+            <div className="notice error" role="alert">
+              The saved configuration could not be loaded, so local defaults are shown. Saving will retry the API.{' '}
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => void riskPolicyQuery.refetch()} disabled={riskPolicyQuery.isFetching}>
+                {riskPolicyQuery.isFetching ? 'Retrying…' : 'Retry'}
+              </button>
+            </div>
+          )}
+
           {activeSection === 'triage' && renderTriage()}
           {activeSection === 'sla' && renderSla()}
           {activeSection === 'automation' && renderAutomation()}
@@ -2096,6 +2144,25 @@ export function ConfigurationsPage() {
           {activeSection === 'auto-findings' && renderAutoFindings()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={ownershipDeleteId != null}
+        title="Delete ownership rule?"
+        message={(
+          <>
+            <p>
+              This permanently deletes <strong>{ownershipRules.find((rule) => rule.id === ownershipDeleteId)?.name ?? 'this rule'}</strong>.
+              It will no longer route matching records.
+            </p>
+            {ownershipDeleteError && <p className="notice error" role="alert">{ownershipDeleteError}</p>}
+          </>
+        )}
+        confirmLabel="Delete rule"
+        busy={ownershipDeleting}
+        busyMessage="Deleting ownership rule…"
+        onConfirm={confirmDeleteOwnershipRule}
+        onCancel={() => { setOwnershipDeleteId(null); setOwnershipDeleteError(''); }}
+      />
     </div>
   );
 }
@@ -2241,12 +2308,22 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
   const [executeMsg, setExecuteMsg] = React.useState<Record<string, string>>({});
   const [executingId, setExecutingId] = React.useState<string | null>(null);
   const [reopeningAllId, setReopeningAllId] = React.useState<string | null>(null);
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState('');
+  const [listMessage, setListMessage] = React.useState('');
 
-  React.useEffect(() => {
+  const loadRules = React.useCallback(() => {
+    setLoading(true);
+    setError('');
     api.listSuppressionRules()
       .then((data) => { setRules(data); setLoading(false); })
       .catch((e) => { setError(e instanceof Error ? e.message : String(e)); setLoading(false); });
   }, []);
+
+  React.useEffect(() => {
+    loadRules();
+  }, [loadRules]);
 
   const conditions = parseConditions(form.conditionsJson);
 
@@ -2367,6 +2444,8 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
         setRules((prev) => [...prev, created]);
         setSaveMsg('Created');
         setShowForm(false);
+        // The form closes on create, so the acknowledgement moves to the list.
+        setListMessage(`Suppression rule "${created.name}" created in state ${created.state}.`);
       }
     } catch (e) {
       setSaveMsg(e instanceof Error ? e.message : String(e));
@@ -2375,18 +2454,42 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
     }
   };
 
-  const deleteRule = async (id: string) => {
-    if (!window.confirm('Delete this suppression rule?')) return;
+  const deleteRule = (id: string) => {
+    setDeleteError('');
+    setListMessage('');
+    setDeleteId(id);
+  };
+
+  // A rejected delete keeps the dialog open with the reason instead of replacing the whole list with an error.
+  const confirmDeleteRule = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    setDeleteError('');
     try {
-      await api.deleteSuppressionRule(id);
-      setRules((prev) => prev.filter((r) => r.id !== id));
+      await api.deleteSuppressionRule(deleteId);
+      setRules((prev) => prev.filter((r) => r.id !== deleteId));
+      setDeleteId(null);
+      setListMessage('Suppression rule deleted.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
     }
   };
 
-  if (loading) return <div className="config-section-body"><p>Loading…</p></div>;
-  if (error) return <div className="config-section-body"><div className="notice error">{error}</div></div>;
+  if (loading || error) {
+    return (
+      <div className="config-section-body">
+        <AsyncSection
+          state={loading ? 'pending' : 'error'}
+          loadingLabel="Loading suppression rules…"
+          errorMessage={`Suppression rules could not be loaded. ${error}`}
+          onRetry={loadRules}
+        />
+      </div>
+    );
+  }
+  const ruleToDelete = rules.find((rule) => rule.id === deleteId);
 
   return (
     <div className="config-section-body">
@@ -2396,12 +2499,24 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
           <strong>Finding</strong> records when all (or any) specified conditions match.
           Rules are evaluated in execution order.
         </p>
+        <p>
+          Suppressing a record hides it from active work without marking it fixed; it is not a resolution.
+          Reopen All returns a rule's suppressed records to active work.
+        </p>
       </div>
 
-      {/* Existing rules list */}
+      {listMessage && <div className="notice" role="status" style={{ marginBottom: 12 }}>{listMessage}</div>}
+
+      {/* Existing rules list — scrolls inside its own region so the page never widens. */}
       {rules.length > 0 && !showForm && (
-        <div style={{ marginBottom: 20 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+        <div
+          className="config-table-scroll"
+          role="region"
+          aria-label="Suppression rules"
+          tabIndex={0}
+          style={{ marginBottom: 20, maxWidth: '100%', overflowX: 'auto' }}
+        >
+          <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--dp-border)', color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.71rem', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '4px 8px 6px 0' }}>Name</th>
@@ -2617,11 +2732,13 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
               {saving ? 'Saving…' : editingId ? 'Update Rule' : 'Create Rule'}
             </button>
             <button type="button" className="btn btn-secondary" onClick={cancelForm} disabled={saving}>Close</button>
-            {saveMsg && (
-              <span className="field-hint" style={{ marginLeft: 10, color: saveMsg === 'Saved' || saveMsg === 'Created' ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
-                {saveMsg}
-              </span>
-            )}
+            <span role="status" aria-live="polite">
+              {saveMsg && (
+                <span className="field-hint" style={{ marginLeft: 10, color: saveMsg === 'Saved' || saveMsg === 'Created' ? 'var(--dp-low)' : 'var(--dp-critical)' }}>
+                  {saveMsg}
+                </span>
+              )}
+            </span>
           </div>
         </div>
       ) : canEdit && (
@@ -2631,6 +2748,28 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteId != null}
+        title="Delete suppression rule?"
+        message={(
+          <>
+            <p>This permanently deletes <strong>{ruleToDelete?.name ?? 'this rule'}</strong>.</p>
+            {(ruleToDelete?.suppressedCount ?? 0) > 0 && (
+              <p>
+                It currently lists {ruleToDelete?.suppressedCount} suppressed record{ruleToDelete?.suppressedCount === 1 ? '' : 's'}.
+                Reopen All is the action that returns them to active work.
+              </p>
+            )}
+            {deleteError && <p className="notice error" role="alert">{deleteError}</p>}
+          </>
+        )}
+        confirmLabel="Delete rule"
+        busy={deleting}
+        busyMessage="Deleting suppression rule…"
+        onConfirm={() => void confirmDeleteRule()}
+        onCancel={() => { setDeleteId(null); setDeleteError(''); }}
+      />
     </div>
   );
 }

@@ -7,7 +7,18 @@ import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { Finding } from '../features/findings/types';
 import { renderWithProviders } from '../test/test-utils';
 import { fixIntelligenceApi } from '../features/fix-intelligence/api';
+import { ActorContextState } from '../features/auth/context';
+import type { ActorContext } from '../features/auth/types';
 import { FindingDetailPage } from './FindingDetailPage';
+
+const ANALYST: ActorContext = {
+  creator: false,
+  principal: 'analyst@example.com',
+  userId: 'user-1',
+  tenantId: 'tenant-1',
+  tenantName: 'Acme Security',
+  roles: ['ROLE_SECURITY_ANALYST'],
+};
 
 const FINDING: Finding = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -35,14 +46,16 @@ const FINDING: Finding = {
   updatedAt: '2026-04-25T00:00:00Z',
 };
 
-function renderWithFinding(finding: Finding) {
+function renderWithFinding(finding: Finding, actor: ActorContext | null = ANALYST) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } }
   });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[{ pathname: '/findings/F-001', state: { finding } }]}>
-        <FindingDetailPage />
+        <ActorContextState.Provider value={actor}>
+          <FindingDetailPage />
+        </ActorContextState.Provider>
       </MemoryRouter>
     </QueryClientProvider>
   );
@@ -120,6 +133,24 @@ describe('FindingDetailPage', () => {
     // CVE ID surfaces from the finding
     expect(await screen.findByText(/CVE-2026-1234/)).toBeInTheDocument();
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
+  });
+
+  it('shows a read-only explanation instead of workflow actions for an auditor', () => {
+    renderWithFinding(FINDING, { ...ANALYST, roles: ['ROLE_READ_ONLY_AUDITOR'] });
+    expect(screen.getByText('Read-only access: workflow actions are not available.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Create Incident/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '← Back to Findings' })).toBeInTheDocument();
+  });
+
+  it('opens workflow actions in a named dialog with labelled fields', () => {
+    renderWithFinding(FINDING);
+    fireEvent.click(screen.getByRole('button', { name: 'Defer' }));
+    const dialog = screen.getByRole('dialog', { name: 'Defer Finding' });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByLabelText('Reason')).toBeInTheDocument();
+    expect(screen.getByLabelText('Expires')).toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('hides workflow action buttons when the finding is already RESOLVED', () => {

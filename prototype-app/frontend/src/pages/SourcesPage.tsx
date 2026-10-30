@@ -341,6 +341,10 @@ export function SourcesPage({
   const loadingRuns = syncRunsQuery.isLoading;
   const refreshingRuns = syncRunsQuery.isFetching;
   const loadingVexRepairSummary = vexRepairSummaryQuery.isLoading;
+  // A failed run or summary load is not "never run".
+  const runsUnavailable = syncRunsQuery.isError && !syncRunsQuery.data;
+  const vexRepairSummaryUnavailable = vexRepairSummaryQuery.isError && !vexRepairSummaryQuery.data;
+  const RUNS_UNAVAILABLE = 'Run history could not be loaded.';
   const refreshingVexRepairSummary = vexRepairSummaryQuery.isFetching;
   const loadingSourceFilters = sourceFilterConfigQuery.isLoading && sourceFilterConfigQuery.data == null;
   const { refetch: refetchSyncRuns } = syncRunsQuery;
@@ -816,7 +820,7 @@ export function SourcesPage({
                 <div className="panel-caption">{new Date(orderedVisibleRuns[0].startedAt).toLocaleString()}</div>
               </>
             ) : (
-              <div className="panel-caption">{loadingRuns ? 'Loading...' : 'No sync run recorded yet'}</div>
+              <div className="panel-caption">{loadingRuns ? 'Loading...' : runsUnavailable ? RUNS_UNAVAILABLE : 'No sync run recorded yet'}</div>
             )}
           </div>
         </div>
@@ -1036,7 +1040,7 @@ export function SourcesPage({
         <div className="connector-status-grid section-block">
           <div className="connector-status-card">
             <div className="connector-status-label">{connectorRunLabel}</div>
-            <div className="connector-status-value">{renderSyncRunSummary(latestConnectorRun, 'No sync run recorded yet.')}</div>
+            <div className="connector-status-value">{renderSyncRunSummary(latestConnectorRun, runsUnavailable ? RUNS_UNAVAILABLE : 'No sync run recorded yet.')}</div>
           </div>
         </div>
       )}
@@ -1064,7 +1068,9 @@ export function SourcesPage({
             </div>
           ) : (
             <div className="empty-state">
-              <p>{loadingVexRepairSummary ? 'Loading VEX repair summary...' : 'No VEX repair summary available yet.'}</p>
+              <p>{loadingVexRepairSummary
+                ? 'Loading VEX repair summary...'
+                : vexRepairSummaryUnavailable ? 'The VEX repair summary could not be loaded.' : 'No VEX repair summary available yet.'}</p>
             </div>
           )}
           {vexRepairSummary?.latestBackfillComparison && (
@@ -1180,7 +1186,12 @@ export function SourcesPage({
               Processing jobs track internal maintenance work like persisted VEX repair and rollout backfills. They do not represent upstream feed fetches.
             </div>
           )}
-                {orderedVisibleRuns.length === 0 ? (
+                {runsUnavailable ? (
+            <div className="notice error" role="alert">
+              {RUNS_UNAVAILABLE}{' '}
+              <button type="button" className="btn btn-sm" onClick={() => void refetchSyncRuns()}>Retry</button>
+            </div>
+          ) : orderedVisibleRuns.length === 0 ? (
             <div className="empty-state">
               <p>{focusSource === 'processing'
                 ? 'No processing jobs have been recorded yet.'

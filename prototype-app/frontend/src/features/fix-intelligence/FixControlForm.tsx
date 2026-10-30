@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { fixIntelligenceApi } from './api';
 import { ECOSYSTEM_ORDER, SEVERITY_ORDER, ecosystemLabel, fixTypeLabel, titleCase } from './format';
 import type { ControlFixType, FixControlRequest, FixDetail } from './types';
@@ -36,6 +37,16 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
   );
   const [assetSearch, setAssetSearch] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [invalidField, setInvalidField] = React.useState<'title' | 'cves' | null>(null);
+  const [confirmingDiscard, setConfirmingDiscard] = React.useState(false);
+  const errorId = React.useId();
+  const activeNoticeId = React.useId();
+
+  // Dirty compares the editable values with what the form opened with; the asset filter is not a change.
+  const values = JSON.stringify([fixType, title, description, severity, ecosystem, instructions, rollback, verification, residualRisk, cveText, [...assetIds].sort()]);
+  const [initialValues] = React.useState(values);
+  const dirty = values !== initialValues;
+  const editingActive = existing?.status === 'ACTIVE';
 
   const assetsQuery = useQuery({ queryKey: ['fix-intelligence', 'scope-assets'], queryFn: api.listAssets });
   const matchingAssets = React.useMemo(() => {
@@ -58,9 +69,10 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
   const submit = (propose: boolean) => {
     const cveIds = cveText.split(/[\s,]+/).map((value) => value.trim().toUpperCase()).filter(Boolean);
     const invalid = cveIds.find((cve) => !CVE_PATTERN.test(cve));
-    if (!title.trim()) return setError('A title is required.');
-    if (invalid) return setError(`${invalid} is not a CVE ID.`);
+    if (!title.trim()) { setInvalidField('title'); return setError('A title is required.'); }
+    if (invalid) { setInvalidField('cves'); return setError(`${invalid} is not a CVE ID.`); }
     setError(null);
+    setInvalidField(null);
     mutation.mutate({
       fixType,
       title: title.trim(),
@@ -83,9 +95,11 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
 
   return (
     <section className="panel fi-form" aria-label={existing ? 'Edit fix' : 'New fix'}>
-      <h3>{existing ? `Edit ${fixTypeLabel(existing.fixType).toLowerCase()}` : 'New fix'}</h3>
-      {existing?.status === 'ACTIVE' && (
-        <p className="notice">Saving changes to an active control sends it back for approval.</p>
+      <h2>{existing ? `Edit ${fixTypeLabel(existing.fixType).toLowerCase()}` : 'New fix'}</h2>
+      {editingActive && (
+        <p id={activeNoticeId} className="notice warning">
+          This control is active. Saving any change returns it to Proposed, and it must be approved again by a tenant administrator.
+        </p>
       )}
       <div className="fi-form-grid">
         <label className="fi-field">Type
@@ -96,8 +110,12 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
             ))}
           </select>
         </label>
-        <label className="fi-field fi-field--wide">Title
-          <input className="input" value={title} maxLength={500} onChange={(event) => setTitle(event.target.value)} />
+        <label className="fi-field fi-field--wide">
+          <span>Title <span className="muted">(required)</span></span>
+          <input className="input" value={title} maxLength={500} aria-required="true"
+                 aria-invalid={invalidField === 'title' || undefined}
+                 aria-describedby={invalidField === 'title' ? errorId : undefined}
+                 onChange={(event) => setTitle(event.target.value)} />
         </label>
         <label className="fi-field">Severity
           <select className="input" value={severity} onChange={(event) => setSeverity(event.target.value)}>
@@ -118,6 +136,8 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
         </label>
         <label className="fi-field fi-field--wide">CVEs (comma separated)
           <input className="input" value={cveText} placeholder="CVE-2024-21412, CVE-2024-21413"
+                 aria-invalid={invalidField === 'cves' || undefined}
+                 aria-describedby={invalidField === 'cves' ? errorId : undefined}
                  onChange={(event) => setCveText(event.target.value)} />
         </label>
         <label className="fi-field fi-field--wide">Description
@@ -154,14 +174,28 @@ export function FixControlForm({ defaultType, existing, onCancel, onSaved }: Pro
         </div>
       </fieldset>
 
-      {error && <div className="notice error" role="alert">{error}</div>}
+      {error && <div id={errorId} className="notice error" role="alert">{error}</div>}
       <div className="fi-form-actions">
-        <button type="button" className="btn" onClick={onCancel} disabled={mutation.isPending}>Cancel</button>
-        <button type="button" className="btn" onClick={() => submit(false)} disabled={mutation.isPending}>Save draft</button>
-        <button type="button" className="btn btn-primary" onClick={() => submit(true)} disabled={mutation.isPending}>
+        {mutation.isPending
+          ? <span className="fi-dirty" role="status">Saving…</span>
+          : dirty && <span className="fi-dirty">Unsaved changes</span>}
+        <button type="button" className="btn" onClick={() => (dirty ? setConfirmingDiscard(true) : onCancel())} disabled={mutation.isPending}>Cancel</button>
+        <button type="button" className="btn" onClick={() => submit(false)} disabled={mutation.isPending}
+                aria-describedby={editingActive ? activeNoticeId : undefined}>Save draft</button>
+        <button type="button" className="btn btn-primary" onClick={() => submit(true)} disabled={mutation.isPending}
+                aria-describedby={editingActive ? activeNoticeId : undefined}>
           Submit for approval
         </button>
       </div>
+      <ConfirmDialog
+        isOpen={confirmingDiscard}
+        title="Discard unsaved changes?"
+        message="Your changes to this fix have not been saved."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={() => { setConfirmingDiscard(false); onCancel(); }}
+        onCancel={() => setConfirmingDiscard(false)}
+      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { DonutChart, HBarChart, WidgetCard } from './FplWidgets';
+import { ChartLegend, DonutChart, HBarChart, WidgetCard } from './FplWidgets';
 import type { DonutSeg, HBarItem } from './FplWidgets';
 
 function seg(key: string, value: number, onClick?: () => void): DonutSeg {
@@ -156,5 +156,47 @@ describe('WidgetCard', () => {
       <WidgetCard title="Test"><span /></WidgetCard>
     );
     expect(container.firstChild).not.toHaveClass('fpl-widget--active');
+  });
+});
+
+// ── Chart interaction contract (U05) ─────────────────────────────────────────
+
+describe('chart interaction', () => {
+  it('summarises donut values as text for assistive technology', () => {
+    render(<DonutChart segs={[seg('Critical', 5), seg('High', 3)]} centerLabel="open" />);
+    expect(screen.getByRole('img', { name: '8 open: Critical 5, High 3' })).toBeInTheDocument();
+  });
+
+  it('renders interactive bars as buttons whose pressed state names the active filter', () => {
+    const onClick = vi.fn();
+    render(<HBarChart items={[bar('Critical', 12, onClick), bar('High', 8, onClick)]} activeKey="High" />);
+    expect(screen.getByRole('button', { name: /Critical\s*12/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /High\s*8/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps non-interactive bars as plain text', () => {
+    render(<HBarChart items={[bar('Critical', 12)]} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
+  });
+
+  it('gives legends real buttons as the keyboard equivalent of chart segments', () => {
+    const onClick = vi.fn();
+    render(<ChartLegend items={[{ key: 'c', label: 'Critical', value: 1200, color: '#f00', active: true, onClick }]} />);
+    const button = screen.getByRole('button', { name: /Critical\s*1,200/ });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('announces an active widget filter and offers a labelled reset', () => {
+    const onReset = vi.fn();
+    const { rerender } = render(<WidgetCard title="Lifecycle Status" onReset={onReset}><span /></WidgetCard>);
+    expect(screen.queryByRole('button', { name: 'Clear Lifecycle Status filter' })).not.toBeInTheDocument();
+
+    rerender(<WidgetCard title="Lifecycle Status" active onReset={onReset}><span /></WidgetCard>);
+    expect(screen.getByText('(filter applied)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Lifecycle Status filter' }));
+    expect(onReset).toHaveBeenCalledOnce();
   });
 });

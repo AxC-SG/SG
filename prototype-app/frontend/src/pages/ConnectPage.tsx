@@ -78,9 +78,28 @@ type InventoryConnectorStatus = {
   isFailed: boolean;
   demoDisabled: boolean;
   lastSyncAt?: string;
-  /** Overrides the default sync-oriented dot tooltip for connectors that never sync. */
+  /** Overrides the default sync-oriented status text for connectors that never sync. */
   label?: string;
+  /** The status could not be read, so neither health nor "not configured" may be claimed. */
+  unknown?: boolean;
 };
+
+type ConfigQueryState = { data?: unknown; isPending: boolean; isError: boolean };
+
+// A card whose configuration is still loading, or failed to load, must not read as "Not configured".
+function unresolvedConnectorStatus(query: ConfigQueryState | undefined, demoDisabled: boolean): InventoryConnectorStatus | null {
+  if (!query) {
+    return { hasSynced: false, isFailed: false, demoDisabled, unknown: true, label: 'Open to view status' };
+  }
+  if (query.data != null) return null;
+  if (query.isError) {
+    return { hasSynced: false, isFailed: false, demoDisabled, unknown: true, label: 'Status unavailable — configuration could not be loaded' };
+  }
+  if (query.isPending) {
+    return { hasSynced: false, isFailed: false, demoDisabled, unknown: true, label: 'Checking status…' };
+  }
+  return null;
+}
 
 /* ── Inline SVG connector icons ─────────────────────────────────────────────
    Cross-platform consistent icons replacing OS-dependent emoji.
@@ -440,13 +459,18 @@ function EuvdConnectorPanel() {
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState('');
+  const [messageIsError, setMessageIsError] = React.useState(false);
+  // A failed status read is not "never run" and not zero records.
+  const [loadFailed, setLoadFailed] = React.useState(false);
 
   const loadStatus = React.useCallback(async () => {
     try {
       const summary: VulnIntelSourcesSummary = await api.getVulnIntelSourcesSummary();
+      setLoadFailed(false);
       setStatus(summary?.sources?.EUVD ?? summary?.sources?.euvd ?? null);
     } catch {
       setStatus(null);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -455,15 +479,17 @@ function EuvdConnectorPanel() {
   React.useEffect(() => { void loadStatus(); }, [loadStatus]);
 
   const executeSync = async () => {
-    if (!canSync) { setMessage('Platform owner access is required to execute EUVD sync.'); return; }
+    if (!canSync) { setMessage('Platform owner access is required to execute EUVD sync.'); setMessageIsError(true); return; }
     setBusy(true);
     setMessage('');
+    setMessageIsError(false);
     try {
       const response = await api.syncEuvd();
       setMessage((response as { message?: string }).message || 'EUVD sync queued.');
       await loadStatus();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'EUVD sync failed.');
+      setMessageIsError(true);
     } finally {
       setBusy(false);
     }
@@ -479,7 +505,7 @@ function EuvdConnectorPanel() {
       </div>
       <div style={{ padding: '16px 24px', display: 'grid', gap: 16 }}>
         {message && (
-          <div className="notice">{message}</div>
+          <div className={messageIsError ? 'notice error' : 'notice success'} role={messageIsError ? 'alert' : 'status'}>{message}</div>
         )}
         <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface-2)', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -497,17 +523,19 @@ function EuvdConnectorPanel() {
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Status</div>
               <div style={{ fontWeight: 700, marginTop: 4, textTransform: 'capitalize' }}>
-                {loading ? 'Loading…' : (status?.status ?? 'never')}
+                {loading ? 'Loading…' : loadFailed ? 'Status unavailable' : (status?.status ?? 'never')}
               </div>
             </div>
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Last completed</div>
-              <div style={{ fontWeight: 700, marginTop: 4 }}>{formatInstantConnect(status?.completedAt)}</div>
+              <div style={{ fontWeight: 700, marginTop: 4 }}>{loadFailed ? '—' : formatInstantConnect(status?.completedAt)}</div>
             </div>
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Fetched / Inserted / Updated</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>
-                {(status?.recordsFetched ?? 0).toLocaleString()} / {(status?.recordsInserted ?? 0).toLocaleString()} / {(status?.recordsUpdated ?? 0).toLocaleString()}
+                {status
+                  ? `${(status.recordsFetched ?? 0).toLocaleString()} / ${(status.recordsInserted ?? 0).toLocaleString()} / ${(status.recordsUpdated ?? 0).toLocaleString()}`
+                  : '—'}
               </div>
             </div>
           </div>
@@ -527,13 +555,18 @@ function JvnConnectorPanel() {
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
   const [message, setMessage] = React.useState('');
+  const [messageIsError, setMessageIsError] = React.useState(false);
+  // A failed status read is not "never run" and not zero records.
+  const [loadFailed, setLoadFailed] = React.useState(false);
 
   const loadStatus = React.useCallback(async () => {
     try {
       const summary: VulnIntelSourcesSummary = await api.getVulnIntelSourcesSummary();
+      setLoadFailed(false);
       setStatus(summary?.sources?.['japan-vulndb'] ?? summary?.sources?.JVN ?? null);
     } catch {
       setStatus(null);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -542,15 +575,17 @@ function JvnConnectorPanel() {
   React.useEffect(() => { void loadStatus(); }, [loadStatus]);
 
   const executeSync = async () => {
-    if (!canSync) { setMessage('Platform owner access is required to execute JVN sync.'); return; }
+    if (!canSync) { setMessage('Platform owner access is required to execute JVN sync.'); setMessageIsError(true); return; }
     setBusy(true);
     setMessage('');
+    setMessageIsError(false);
     try {
       const response = await api.syncJvn();
       setMessage((response as { message?: string }).message || 'JVN sync queued.');
       await loadStatus();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'JVN sync failed.');
+      setMessageIsError(true);
     } finally {
       setBusy(false);
     }
@@ -566,7 +601,7 @@ function JvnConnectorPanel() {
       </div>
       <div style={{ padding: '16px 24px', display: 'grid', gap: 16 }}>
         {message && (
-          <div className="notice">{message}</div>
+          <div className={messageIsError ? 'notice error' : 'notice success'} role={messageIsError ? 'alert' : 'status'}>{message}</div>
         )}
         <div style={{ border: '1px solid var(--dp-border)', borderRadius: 8, background: 'var(--dp-surface-2)', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -584,17 +619,19 @@ function JvnConnectorPanel() {
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Status</div>
               <div style={{ fontWeight: 700, marginTop: 4, textTransform: 'capitalize' }}>
-                {loading ? 'Loading…' : (status?.status ?? 'never')}
+                {loading ? 'Loading…' : loadFailed ? 'Status unavailable' : (status?.status ?? 'never')}
               </div>
             </div>
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Last completed</div>
-              <div style={{ fontWeight: 700, marginTop: 4 }}>{formatInstantConnect(status?.completedAt)}</div>
+              <div style={{ fontWeight: 700, marginTop: 4 }}>{loadFailed ? '—' : formatInstantConnect(status?.completedAt)}</div>
             </div>
             <div style={{ border: '1px solid var(--dp-border)', borderRadius: 6, background: 'var(--dp-bg)', padding: 12 }}>
               <div className="field-hint">Fetched / Inserted / Updated</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>
-                {(status?.recordsFetched ?? 0).toLocaleString()} / {(status?.recordsInserted ?? 0).toLocaleString()} / {(status?.recordsUpdated ?? 0).toLocaleString()}
+                {status
+                  ? `${(status.recordsFetched ?? 0).toLocaleString()} / ${(status.recordsInserted ?? 0).toLocaleString()} / ${(status.recordsUpdated ?? 0).toLocaleString()}`
+                  : '—'}
               </div>
             </div>
           </div>
@@ -977,18 +1014,34 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
                   ) : (
                     <div className="connect-card-grid">
                       {section.connectors.map((connector) => {
+                        const patchIndex = PATCH_CONNECTORS.findIndex((item) => item.id === connector.id);
+                        const configQuery: ConfigQueryState | undefined =
+                          connector.id === 'servicenow-cmdb' ? serviceNowConfigQuery :
+                          connector.id === 'sccm-cmdb' ? sccmConfigQuery :
+                          connector.id === 'aws-discovery' ? awsConfigQuery :
+                          connector.id === 'azure-discovery' ? azureConfigQuery :
+                          connector.id === 'gcp-discovery' ? gcpConfigQuery :
+                          connector.id === 'jira-ticketing' ? jiraTicketingConfigQuery :
+                          patchIndex >= 0 ? patchConfigQueries[patchIndex] :
+                          undefined;
                         const status =
-                          connector.id === 'servicenow-cmdb' ? buildInventoryConnectorStatus(snConfig, inventoryConnectorsDisabledForDemo) :
+                          // Generic Azure collection is paused for the pilot (N11); its settings stay read-only.
+                          connector.id === 'azure-discovery' && !inventoryConnectorsDisabledForDemo
+                            ? { hasSynced: false, isFailed: false, demoDisabled: false, unknown: true, label: 'Paused for the pilot — read-only' } :
+                          unresolvedConnectorStatus(configQuery, inventoryConnectorsDisabledForDemo) ??
+                          (connector.id === 'servicenow-cmdb' ? buildInventoryConnectorStatus(snConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'sccm-cmdb' ? buildInventoryConnectorStatus(sccmConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'aws-discovery' ? buildInventoryConnectorStatus(awsConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'azure-discovery' ? buildInventoryConnectorStatus(azureConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'gcp-discovery' ? buildInventoryConnectorStatus(gcpConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id === 'jira-ticketing' ? buildTicketingConnectorStatus(jiraTicketingConfig, inventoryConnectorsDisabledForDemo) :
                           connector.id.startsWith('patch-') ? patchStatus(connector.id) :
-                          buildInventoryConnectorStatus(null, inventoryConnectorsDisabledForDemo);
+                          buildInventoryConnectorStatus(null, inventoryConnectorsDisabledForDemo));
                         const lastSync = timeAgo(status.lastSyncAt);
 
-                        const dotClass = status.isFailed ? 'connect-source-dot--fail' :
+                        const dotClass = status.demoDisabled ? 'connect-source-dot--warn' :
+                                         status.unknown ? 'connect-source-dot--unknown' :
+                                         status.isFailed ? 'connect-source-dot--fail' :
                                          status.hasSynced ? 'connect-source-dot--ok' :
                                          'connect-source-dot--warn';
                         const statusTitle = status.demoDisabled ? 'Unavailable in 7-day demo'
@@ -1008,17 +1061,10 @@ function TenantConnectPage({ initialView = 'sources', onViewChange }: ConnectPag
                             <div className="connect-source-body">
                               <div className="connect-source-name-row">
                                 <span className="connect-source-name">{connector.name}</span>
-                                {/* The dot is the only place connector health appears in this
-                                    layout, so its title carries the detail the old stacked card
-                                    showed as text. Dropping it would lose at-a-glance sync
-                                    state for every connector. */}
-                                <span
-                                  className={`connect-source-dot ${dotClass}`}
-                                  title={statusTitle}
-                                  aria-label={statusTitle}
-                                  role="img"
-                                />
+                                {/* Colour alone is not a status; the text below names it. */}
+                                <span className={`connect-source-dot ${dotClass}`} aria-hidden="true" />
                               </div>
+                              <div className="connect-source-status">{statusTitle}</div>
                               <div className="panel-caption">{connector.summary}</div>
                             </div>
                           </button>

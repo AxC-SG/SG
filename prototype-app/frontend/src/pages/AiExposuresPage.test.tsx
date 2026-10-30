@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -26,5 +26,22 @@ describe('AiExposuresPage', () => {
     expect(await screen.findByText('Externally reachable AI path to sensitive data')).toBeInTheDocument();
     expect(screen.getByText('EXPOSURE HYPOTHESIS')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Externally reachable AI path to sensitive data' }))
+      .toHaveAttribute('href', '/findings/ai/exposures/exposure-1');
+  });
+
+  it('reports a failed exposure list with retry instead of an empty table', async () => {
+    const list = vi.spyOn(api, 'listAiGridExposures')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ nextCursor: null, items: [] });
+    vi.spyOn(api, 'listAiExposurePriorities').mockResolvedValue([]);
+
+    renderWithProviders(<AiExposuresPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Exposures could not be loaded.');
+    expect(screen.queryByText('No exposure paths observed.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry exposures' }));
+    expect(await screen.findByText('No exposure paths observed.')).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(2);
   });
 });

@@ -8,7 +8,20 @@
   padding-top: 34px;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  min-width: 0;
+}
+
+/* Columns keep their readable minimum; the labelled region scrolls instead of the document. */
+:where(html[data-ui='2']) .resizable-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+:where(html[data-ui='2']) .resizable-table-scroll:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: 2px;
 }
 
 :where(html[data-ui='2']) .table-column-controls {
@@ -42,8 +55,9 @@
   position: absolute;
   right: 0;
   top: 34px;
-  width: 244px;
-  max-height: 320px;
+  z-index: 20;
+  width: min(300px, calc(100vw - 32px));
+  max-height: 360px;
   overflow: auto;
   border: 1px solid var(--dp-border-strong);
   border-radius: var(--dp-radius-sm);
@@ -60,15 +74,71 @@
   margin: 0 0 6px;
 }
 
+:where(html[data-ui='2']) .table-settings-note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dp-text-2);
+}
+
+:where(html[data-ui='2']) .table-settings-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
 :where(html[data-ui='2']) .table-settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 2px;
+  font-size: 13px;
+  color: var(--dp-text);
+  white-space: normal;
+}
+
+:where(html[data-ui='2']) .table-settings-toggle {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  padding: 5px 2px;
-  font-size: 0.82rem;
+  min-width: 0;
+}
+
+:where(html[data-ui='2']) .table-settings-actions {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+:where(html[data-ui='2']) .table-settings-action {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dp-text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+:where(html[data-ui='2']) .table-settings-action:hover:not(:disabled) {
+  border-color: var(--dp-border);
   color: var(--dp-text);
-  white-space: normal;
+}
+
+:where(html[data-ui='2']) .table-settings-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (any-pointer: coarse) {
+  :where(html[data-ui='2']) .table-settings-action {
+    min-width: 44px;
+    height: 44px;
+  }
 }
 
 :where(html[data-ui='2']) .table-settings-item input {
@@ -146,6 +216,17 @@
 }
 
 :where(html[data-ui='2']) th.resizable-header:hover .col-resizer::after,
-:where(html[data-ui='2']) .col-resizer:hover::after {
+:where(html[data-ui='2']) .col-resizer:hover::after,
+:where(html[data-ui='2']) .col-resizer:focus-visible::after {
   opacity: 1;
+}
+
+:where(html[data-ui='2']) .col-resizer:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: -2px;
+}
+
+/* Keep the last handle inside the scroll region so it never creates a scrollbar by itself. */
+:where(html[data-ui='2']) .resizable-table-scroll th:last-child .col-resizer {
+  right: 0;
 }

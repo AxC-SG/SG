@@ -376,12 +376,7 @@ function FixIntelligenceRoute() {
 }
 
 function FindingsRoute() {
-  const navigate = useNavigate();
-  return (
-    <FindingsPage
-      onOpenCveWorkbench={(vulnerabilityId) => navigate(pathForVulnRepoView('org-cves', vulnerabilityId))}
-    />
-  );
+  return <FindingsPage />;
 }
 
 

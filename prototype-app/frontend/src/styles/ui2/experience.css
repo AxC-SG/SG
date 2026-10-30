@@ -748,6 +748,15 @@ html[data-ui='2'] .ui2-experience-family .public-form-panel .btn-primary:disable
   opacity: 0.5;
 }
 
+html[data-ui='2'] .ui2-experience-family .public-form-panel .field-hint,
+html[data-ui='2'] .ui2-experience-family .public-form-panel .auth-link-recovery p {
+  margin: 0;
+  color: var(--dp-text-3);
+  font-size: var(--dp-text-sm);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 /* Test personas (reference `.dp-auth-personas`). */
 html[data-ui='2'] .ui2-experience-family .public-form-panel .section-block {
   display: grid;
@@ -833,6 +842,205 @@ html[data-ui='2'] .ui2-experience-family .cd-team-row {
   min-width: 440px;
 }
 
+/* ── Campaigns adoption (U13) ─────────────────────────────────────────
+ * List: real row links, readable progress/due cues and an internal scroll region.
+ * Detail: one primary lifecycle action plus a secondary menu, action-local feedback,
+ * local-only scope notices and the recorded-notification list. */
+html[data-ui='2'] .ui2-experience-family .campaigns-table-scroll {
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-table {
+  min-width: 720px;
+}
+
+html[data-ui='2'] .ui2-experience-family .campaigns-list-panel .queue-result-scope {
+  margin: 0;
+  padding: 10px 16px;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.campaign-name-link, .cd-row-link) {
+  color: var(--dp-accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.campaign-progress-detail, .campaign-due-overdue) {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--dp-text-xs);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .campaign-due-overdue {
+  color: var(--dp-critical);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-validation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-note-muted {
+  margin: 8px 0 0;
+  font-size: var(--dp-text-sm);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-notify {
+  padding: 14px 16px;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-lg);
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-notify h4 {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-recipients {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-recipients li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family .cw-launch-recipients li span {
+  color: var(--dp-text-2);
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-topbar-actions {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-topbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--dp-text-sm);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-lifecycle-menu {
+  position: relative;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-lifecycle-menu-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-lg);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-lifecycle-menu-list[hidden] {
+  display: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-lifecycle-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dp-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-lifecycle-menu-item:is(:hover, :focus-visible) {
+  background: var(--dp-hover);
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-action-feedback, .cd-scope-local-notice) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-scope-dialog-note, .cd-notify-explainer, .cd-stage-summary) {
+  margin: 8px 0;
+  font-size: var(--dp-text-sm);
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-scope-dialog-note {
+  padding: 0 20px;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-row-muted {
+  opacity: 0.75;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-notify-recipients-list, .cd-notify-history) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-notify-history-title {
+  margin: 12px 0 6px;
+  font-size: var(--dp-text-sm);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-notify-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--dp-border);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.cd-notify-history-subject, .cd-notify-history-detail) {
+  display: block;
+  color: var(--dp-text-2);
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-notify-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dp-text-2);
+}
+
+html[data-ui='2'] .ui2-experience-family .cd-delivery-state {
+  padding: 1px 8px;
+  border: 1px solid var(--dp-border);
+  border-radius: 999px;
+  font-size: var(--dp-text-xs);
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   html[data-ui='2'] .ui2-experience-family .exec-two-col,
   html[data-ui='2'] .ui2-experience-family .cd-overview-layout {
@@ -854,4 +1062,95 @@ html[data-ui='2'] .ui2-experience-family .cd-team-row {
     margin-top: 24px;
     padding: 20px;
   }
+}
+
+/* ── Exposure layout (U11) ─────────────────────────────────────────────
+ * Viewport breakpoints from the plan: two KPI columns below 640px, three from 640px, six from 1200px;
+ * Grid Exposure and Remediation stack below 1200px and sit 7:5 from 1200px. */
+html[data-ui='2'] .ui2-experience-family.exec-dashboard .exec-kpi-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-ui='2'] .ui2-experience-family.exec-dashboard .exec-kpi {
+  min-height: 112px;
+}
+
+html[data-ui='2'] .ui2-experience-family.exec-dashboard :is(.exec-kpi-label, .exec-kpi-sub) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-kpi-icon {
+  flex-shrink: 0;
+  color: var(--exp-tone, var(--dp-text-3));
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Short lower cards keep their own height instead of stretching to the taller neighbour. */
+html[data-ui='2'] .ui2-experience-family.exec-dashboard .exec-two-col {
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  html[data-ui='2'] .ui2-experience-family.exec-dashboard .exec-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  html[data-ui='2'] .ui2-experience-family.exec-dashboard .exec-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  html[data-ui='2'] .ui2-experience-family .exec-pair {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+/* Impact-state rows are read-only counts, not drill-downs. */
+html[data-ui='2'] .ui2-experience-family .exec-rem-stacked {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-row--static {
+  grid-template-columns: minmax(120px, 40%) minmax(0, 1fr) auto;
+  cursor: default;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-row--static:hover {
+  background: none;
+}
+
+html[data-ui='2'] .ui2-experience-family :is(.exec-rem-note, .exec-rem-score-explain) {
+  margin: 0 0 16px;
+  white-space: normal;
+}
+
+html[data-ui='2'] .ui2-experience-family .exec-rem-score-explain {
+  margin: 4px 0 0;
+  max-width: 22ch;
+  color: var(--dp-text-3);
+  font-size: 11.5px;
+}
+
+/* Compact Grid Exposure: equal severity columns and a narrow total column. */
+html[data-ui='2'] .ui2-experience-family .exec-pair .grid-exposure-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+html[data-ui='2'] .ui2-experience-family .grid-exposure-col-domain { width: 32%; }
+html[data-ui='2'] .ui2-experience-family .grid-exposure-col-total { width: 56px; }
+
+html[data-ui='2'] .ui2-experience-family .exec-pair .grid-exposure-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

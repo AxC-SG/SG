@@ -6,6 +6,7 @@ import type { Finding } from '../features/findings/types';
 import { DataTable, type DataTableColumn, type DataTableRow } from '../components/DataTable';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryView, pathForVulnRepoView } from '../app/routes';
 import { api } from '../api/client';
+import { usePageHeader } from '../app/pageHeaderState';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { FixRecord, OrgSpecificCveExposureRecord } from '../features/cve-workbench/types';
 import { formatLabel, severityClassName } from '../features/cve-workbench/formatting';
@@ -229,6 +230,7 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
   });
 
   const detail = detailQuery.data ?? null;
+  usePageHeader(detail ? { title: detail.displayName } : null);
   const vulnerabilities = React.useMemo(
     () => vulnerabilitiesQuery.data?.items ?? [],
     [vulnerabilitiesQuery.data?.items]
@@ -584,8 +586,15 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
     return <div className="notice">Loading software identity...</div>;
   }
 
-  if (detailQuery.error instanceof Error) {
-    return <div className="notice error">{detailQuery.error.message}</div>;
+  if (detailQuery.error instanceof Error && !detail) {
+    return (
+      <div className="notice error async-section-notice" role="alert">
+        <span>{detailQuery.error.message}</span>
+        <button type="button" className="btn btn-sm" disabled={detailQuery.isFetching} onClick={() => void detailQuery.refetch()}>
+          {detailQuery.isFetching ? 'Retrying…' : 'Retry'}
+        </button>
+      </div>
+    );
   }
 
   if (!detail) {
@@ -739,7 +748,10 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
               vulnerabilitiesQuery.isLoading ? (
                 <div className="notice">Loading CVEs...</div>
               ) : vulnerabilitiesQuery.error instanceof Error ? (
-                <div className="notice error">{vulnerabilitiesQuery.error.message}</div>
+                <div className="notice error async-section-notice" role="alert">
+                <span>{vulnerabilitiesQuery.error.message}</span>
+                <button type="button" className="btn btn-sm" disabled={vulnerabilitiesQuery.isFetching} onClick={() => void vulnerabilitiesQuery.refetch()}>Retry CVEs</button>
+              </div>
               ) : (
                 <TableOrEmpty rows={vulnerabilityRows} columns={VULNERABILITY_COLUMNS} storageKey={`software-identity-vulnerabilities:v2:${softwareIdentityId}`} empty="No CVEs are currently matched to this software identity." />
               )
@@ -747,14 +759,20 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
               findingsQuery.isLoading ? (
                 <div className="notice">Loading findings...</div>
               ) : findingsQuery.error instanceof Error ? (
-                <div className="notice error">{findingsQuery.error.message}</div>
+                <div className="notice error async-section-notice" role="alert">
+                <span>{findingsQuery.error.message}</span>
+                <button type="button" className="btn btn-sm" disabled={findingsQuery.isFetching} onClick={() => void findingsQuery.refetch()}>Retry findings</button>
+              </div>
               ) : (
                 <TableOrEmpty rows={findingRows} columns={FINDING_COLUMNS} storageKey={`software-identity-findings:v3:${softwareIdentityId}`} empty="No findings are currently tied to this software identity." />
               )
             ) : fixRecordsQuery.isLoading ? (
               <div className="notice">Loading fixes...</div>
             ) : fixRecordsQuery.error instanceof Error ? (
-              <div className="notice error">{fixRecordsQuery.error.message}</div>
+              <div className="notice error async-section-notice" role="alert">
+                <span>{fixRecordsQuery.error.message}</span>
+                <button type="button" className="btn btn-sm" disabled={fixRecordsQuery.isFetching} onClick={() => void fixRecordsQuery.refetch()}>Retry fixes</button>
+              </div>
             ) : !fixRecordsQuery.data || fixRecordsQuery.data.length === 0 ? (
               <div className="notice">No fix records have been generated for this software yet. Generate fixes from the CVE Assessment Workbench.</div>
             ) : (

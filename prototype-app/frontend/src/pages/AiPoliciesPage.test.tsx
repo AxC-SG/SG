@@ -1,4 +1,4 @@
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
@@ -6,6 +6,7 @@ import type { AiGridPolicy } from '../features/ai-security/types';
 import { renderWithProviders } from '../test/test-utils';
 import { AiPoliciesPage } from './AiPoliciesPage';
 import { AiPolicyDetailPage } from './AiPolicyDetailPage';
+import { ActorContextState } from '../features/auth/context';
 
 function PolicyDetailRoute() {
   const params = useParams<{ policyId: string }>();
@@ -190,6 +191,59 @@ describe('AiPoliciesPage', () => {
     expect(screen.getByText(/required connector data is unavailable: azure ai foundry deployment and responsible-ai policy data/i)).toBeInTheDocument();
     expect(screen.queryByText(/assessment:9a8d8d7c/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/capability:FOUNDRY_DEPLOYMENTS_RAI:MISSING/i)).not.toBeInTheDocument();
+  });
+
+  it('links each policy name to its detail page', async () => {
+    vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([buildPolicy()]);
+    renderPoliciesPage();
+
+    const link = await screen.findByRole('link', { name: 'Public knowledge-base S3 source' });
+    expect(link).toHaveAttribute('href', '/policies/AGCF-AWS-001');
+    expect(screen.getByRole('region', { name: 'Policies' })).toBeInTheDocument();
+    expect(screen.getByText('Showing 1–1 of 1 policy')).toBeInTheDocument();
+  });
+
+  it('shows a load failure with Retry and recovers', async () => {
+    vi.spyOn(api, 'listAiGridPolicies').mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([buildPolicy()]);
+    renderPoliciesPage();
+
+    expect(await screen.findByText('AI Security policies could not be loaded.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('link', { name: 'Public knowledge-base S3 source' })).toBeInTheDocument();
+  });
+
+  it('distinguishes an empty catalog from a filtered-empty list', async () => {
+    vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([]);
+    const empty = renderPoliciesPage();
+    expect(await screen.findByText('No policies are available to this tenant yet.')).toBeInTheDocument();
+    expect(screen.queryByText('No policies match the current filters.')).not.toBeInTheDocument();
+    empty.unmount();
+
+    vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([buildPolicy()]);
+    renderPoliciesPage();
+    await screen.findByRole('link', { name: 'Public knowledge-base S3 source' });
+    fireEvent.change(screen.getByLabelText('Search policies'), { target: { value: 'nothing-matches' } });
+    expect(screen.getByText('No policies match the current filters.')).toBeInTheDocument();
+    const chips = screen.getByRole('group', { name: 'Active policy filters' });
+    expect(within(chips).getByText('nothing-matches')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear filters' })[0]);
+    expect(screen.getByRole('link', { name: 'Public knowledge-base S3 source' })).toBeInTheDocument();
+  });
+
+  it('reports a rejected enable/disable instead of failing silently', async () => {
+    vi.spyOn(api, 'listAiGridPolicies').mockResolvedValue([buildPolicy()]);
+    vi.spyOn(api, 'updateAiGridPolicySelection').mockRejectedValue(new Error('denied'));
+    renderWithProviders(
+      <ActorContextState.Provider value={{ creator: false, principal: 'a', userId: 'u', tenantId: 't', tenantName: 'T', roles: ['ROLE_TENANT_ADMIN'] }}>
+        <AiPoliciesPage />
+      </ActorContextState.Provider>,
+      { route: '/policies' },
+    );
+
+    const toggle = await screen.findByRole('checkbox', { name: 'Public knowledge-base S3 source enabled' });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    fireEvent.click(toggle);
+    expect(await screen.findByText('The policy could not be disabled. Its previous state is unchanged.')).toBeInTheDocument();
   });
 
   it('filters rows by severity pill and by search text', async () => {

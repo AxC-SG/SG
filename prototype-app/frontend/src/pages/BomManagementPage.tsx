@@ -730,6 +730,11 @@ export function BomManagementPage({
 
           {cbomPostureQuery.isLoading ? (
             <p className="panel-caption" style={{ padding: '0 16px 16px' }}>Loading CBOM posture…</p>
+          ) : cbomPostureQuery.isError && !cbomPostureQuery.data ? (
+            <div className="notice error" role="alert" style={{ margin: '0 16px 16px' }}>
+              CBOM posture could not be loaded.{' '}
+              <button type="button" className="btn btn-sm" onClick={() => void cbomPostureQuery.refetch()}>Retry</button>
+            </div>
           ) : cbomPosture.length === 0 ? (
             <div className="empty-state" style={{ padding: '16px 16px 24px' }}>
               <p>No CBOM posture available yet. Ingest a CycloneDX CBOM to populate cryptographic assets.</p>
@@ -810,7 +815,11 @@ export function BomManagementPage({
                             </td>
                           </tr>
                         ))}
-                        {(cbomComponentsQuery.data ?? []).length === 0 && (
+                        {cbomComponentsQuery.isError ? (
+                          <tr><td colSpan={8} role="alert">CBOM components for this asset could not be loaded.</td></tr>
+                        ) : cbomComponentsQuery.isPending ? (
+                          <tr><td colSpan={8}>Loading CBOM components…</td></tr>
+                        ) : (cbomComponentsQuery.data ?? []).length === 0 && (
                           <tr><td colSpan={8}>No CBOM components found for this asset.</td></tr>
                         )}
                       </tbody>
@@ -847,7 +856,11 @@ export function BomManagementPage({
                           </div>
                         </div>
                       ))}
-                      {(cbomFindingsQuery.data ?? []).length === 0 && (
+                      {cbomFindingsQuery.isError ? (
+                        <div className="notice error" role="alert">Open CBOM findings could not be loaded.</div>
+                      ) : cbomFindingsQuery.isPending ? (
+                        <p className="panel-caption">Loading open findings…</p>
+                      ) : (cbomFindingsQuery.data ?? []).length === 0 && (
                         <div className="empty-state"><p>No open findings match the current filter.</p></div>
                       )}
                     </div>
@@ -993,7 +1006,13 @@ export function BomManagementPage({
             </div>
           )}
 
-          {githubSources.length === 0 && bomType !== 'VENDOR' && (
+          {githubSourcesQuery.isError && !githubSourcesQuery.data && bomType !== 'VENDOR' && (
+            <div className="notice error" role="alert" style={{ margin: '0 16px 16px' }}>
+              Saved pipelines could not be loaded.{' '}
+              <button type="button" className="btn btn-sm" onClick={() => void githubSourcesQuery.refetch()}>Retry</button>
+            </div>
+          )}
+          {githubSources.length === 0 && !(githubSourcesQuery.isError && !githubSourcesQuery.data) && !githubSourcesQuery.isPending && bomType !== 'VENDOR' && (
             <div className="empty-state" style={{ padding: '16px 16px 24px' }}>
               <p>No saved pipelines yet. Configure a source above and click <strong>Save Pipeline</strong> to schedule recurring ingestion.</p>
             </div>

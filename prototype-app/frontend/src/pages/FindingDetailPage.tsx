@@ -5,6 +5,9 @@ import type { Finding } from '../features/findings/types';
 import { pathForVulnRepoView, pathForInventoryHostAsset, pathForInventoryViewWithSearch, type VulnerabilityIntelRouteView } from '../app/routes';
 import { ApiError, apiRequest, api } from '../api/client';
 import { AsyncSection } from '../components/AsyncSection';
+import { Dialog } from '../components/Dialog';
+import { usePageHeader } from '../app/pageHeaderState';
+import { canRunSecurityWorkflow } from '../features/auth/roles';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { AiSolutionApiResponse } from '../features/cve-workbench/api';
@@ -223,6 +226,10 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
   const [actionDone, setActionDone] = React.useState('');
 
   // action form fields
+  const canMutateFinding = canRunSecurityWorkflow(actor);
+  // The shell owns the route H1; the record title replaces the fallback once the finding is known.
+  usePageHeader(currentFinding ? { title: `Finding ${currentFinding.displayId || currentFinding.id}` } : null);
+
   const [deferReason, setDeferReason] = React.useState('');
   const [deferExpiry, setDeferExpiry] = React.useState('');
   const [fpJustification, setFpJustification] = React.useState('');
@@ -460,15 +467,15 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
       'reopen': 'Re-open Finding',
     };
     return (
-      <div className="fd3-modal-overlay" onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
-        <div className="fd3-modal">
+      <Dialog isOpen labelledBy="fd3-action-title" onClose={closeModal} busy={actionLoading}
+        busyMessage="Updating the finding… this dialog can be closed when the request finishes." className="fd3-modal">
           <div className="fd3-modal-header">
-            <span>{TITLES[actionModal]}</span>
-            <button className="fd3-modal-close" onClick={closeModal}>✕</button>
+            <span id="fd3-action-title">{TITLES[actionModal]}</span>
+            <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeModal} disabled={actionLoading}>✕</button>
           </div>
           <div className="fd3-modal-body">
-            {actionError && <div className="notice error" style={{ marginBottom: 12 }}>{actionError}</div>}
-            {actionDone && !incidentResult && <div className="notice success" style={{ marginBottom: 12 }}>{actionDone}</div>}
+            {actionError && <div className="notice error" role="alert" style={{ marginBottom: 12 }}>{actionError}</div>}
+            {actionDone && !incidentResult && <div className="notice success" role="status" style={{ marginBottom: 12 }}>{actionDone}</div>}
 
             {actionModal === 'create-incident' && !actionDone && (
               <div className="fd3-form">
@@ -477,8 +484,8 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                   <span className="fd3-form-readonly mono">{currentFinding!.displayId || currentFinding!.id} · {currentFinding!.vulnerabilityId}</span>
                 </div>
                 <div className="fd3-form-row">
-                  <label>Priority</label>
-                  <select value={incidentPriority} onChange={e => setIncidentPriority(e.target.value)} className="fd3-form-select">
+                  <label htmlFor="fd3-incident-priority">Priority</label>
+                  <select id="fd3-incident-priority" value={incidentPriority} onChange={e => setIncidentPriority(e.target.value)} className="fd3-form-select">
                     <option value="1">1 - Critical</option>
                     <option value="2">2 - High</option>
                     <option value="3">3 - Moderate</option>
@@ -486,20 +493,20 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                   </select>
                 </div>
                 <div className="fd3-form-row">
-                  <label>Assigned To</label>
-                  <input className="fd3-form-input" value={incidentAssignedTo} onChange={e => setIncidentAssignedTo(e.target.value)} placeholder="username or email" />
+                  <label htmlFor="fd3-incident-assignee">Assigned To</label>
+                  <input id="fd3-incident-assignee" className="fd3-form-input" value={incidentAssignedTo} onChange={e => setIncidentAssignedTo(e.target.value)} placeholder="username or email" />
                 </div>
                 <div className="fd3-form-row">
-                  <label>Assignment Group</label>
-                  <input className="fd3-form-input" value={incidentAssignmentGroup} onChange={e => setIncidentAssignmentGroup(e.target.value)} placeholder="Security Operations" />
+                  <label htmlFor="fd3-incident-group">Assignment Group</label>
+                  <input id="fd3-incident-group" className="fd3-form-input" value={incidentAssignmentGroup} onChange={e => setIncidentAssignmentGroup(e.target.value)} placeholder="Security Operations" />
                 </div>
                 <div className="fd3-form-row">
-                  <label>Due Date</label>
-                  <input type="date" className="fd3-form-input" value={incidentDueDate} onChange={e => setIncidentDueDate(e.target.value)} />
+                  <label htmlFor="fd3-incident-due">Due Date</label>
+                  <input id="fd3-incident-due" type="date" className="fd3-form-input" value={incidentDueDate} onChange={e => setIncidentDueDate(e.target.value)} />
                 </div>
                 <div className="fd3-form-row">
-                  <label>Notes</label>
-                  <textarea className="fd3-form-textarea" rows={3} value={incidentNotes} onChange={e => setIncidentNotes(e.target.value)} placeholder="Remediation context…" />
+                  <label htmlFor="fd3-incident-notes">Notes</label>
+                  <textarea id="fd3-incident-notes" className="fd3-form-textarea" rows={3} value={incidentNotes} onChange={e => setIncidentNotes(e.target.value)} placeholder="Remediation context…" />
                 </div>
               </div>
             )}
@@ -521,8 +528,8 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
               <div className="fd3-form">
                 <p className="fd3-form-desc">Suppress this finding until a specified date.</p>
                 <div className="fd3-form-row">
-                  <label>Reason</label>
-                  <select value={deferReason} onChange={e => setDeferReason(e.target.value)} className="fd3-form-select">
+                  <label htmlFor="fd3-defer-reason">Reason</label>
+                  <select id="fd3-defer-reason" value={deferReason} onChange={e => setDeferReason(e.target.value)} className="fd3-form-select">
                     <option value="">Select reason…</option>
                     <option value="RISK_ACCEPTED">Risk Accepted</option>
                     <option value="COMPENSATING_CONTROL">Compensating Control</option>
@@ -531,8 +538,8 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                   </select>
                 </div>
                 <div className="fd3-form-row">
-                  <label>Expires</label>
-                  <input type="date" className="fd3-form-input" value={deferExpiry} onChange={e => setDeferExpiry(e.target.value)} />
+                  <label htmlFor="fd3-defer-expiry">Expires</label>
+                  <input id="fd3-defer-expiry" type="date" className="fd3-form-input" value={deferExpiry} onChange={e => setDeferExpiry(e.target.value)} />
                 </div>
               </div>
             )}
@@ -549,8 +556,8 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
               <div className="fd3-form">
                 <p className="fd3-form-desc">Mark this finding as a false positive and suppress it.</p>
                 <div className="fd3-form-row">
-                  <label>Justification</label>
-                  <textarea className="fd3-form-textarea" rows={3} value={fpJustification} onChange={e => setFpJustification(e.target.value)} placeholder="Why is this a false positive?" />
+                  <label htmlFor="fd3-fp-justification">Justification</label>
+                  <textarea id="fd3-fp-justification" className="fd3-form-textarea" rows={3} value={fpJustification} onChange={e => setFpJustification(e.target.value)} placeholder="Why is this a false positive?" />
                 </div>
               </div>
             )}
@@ -561,10 +568,10 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
           </div>
           <div className="fd3-modal-footer">
             {actionDone
-              ? <button className="btn btn-secondary" onClick={closeModal}>Close</button>
+              ? <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
               : <>
-                  <button className="btn btn-secondary" onClick={closeModal} disabled={actionLoading}>Cancel</button>
-                  <button className="btn btn-primary" disabled={actionLoading}
+                  <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+                  <button type="button" className="btn btn-primary" disabled={actionLoading}
                     onClick={() => {
                       if (actionModal === 'create-incident') void handleCreateIncident();
                       else if (actionModal === 'defer') void handleDefer();
@@ -584,8 +591,7 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                 </>
             }
           </div>
-        </div>
-      </div>
+      </Dialog>
     );
   }
 
@@ -629,25 +635,29 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
 
       {/* ── top bar ─────────────────────────────────────────────────────── */}
       <div className="fd3-topbar">
-        <button className="fd3-back-btn" onClick={() => navigate(returnTo)}>← Back</button>
+        <button type="button" className="fd3-back-btn" onClick={() => navigate(returnTo)}>← Back to Findings</button>
         <span className="fd3-finding-id mono">{currentFinding.displayId || currentFinding.id}</span>
         <span className={statusCls(currentFinding)}>{statusLabel(currentFinding)}</span>
         {overdue && <span className="fd3-target-missed">⚠ Target Missed</span>}
         <div style={{ flex: 1 }} />
-        <div className="fd3-actions">
-          <button className="fd3-action-btn fd3-action-btn--incident" onClick={() => openModal('create-incident')}>+ Create Incident</button>
+        {!canMutateFinding ? (
+          <span className="fd3-readonly-note" role="note">Read-only access: workflow actions are not available.</span>
+        ) : (
+        <div className="fd3-actions" role="group" aria-label="Finding actions">
+          <button type="button" className="fd3-action-btn fd3-action-btn--incident" onClick={() => openModal('create-incident')}>+ Create Incident</button>
           {currentFinding.status === 'OPEN' && (
             <>
-              <button className="fd3-action-btn" onClick={() => openModal('under-investigation')}>Under Investigation</button>
-              <button className="fd3-action-btn" onClick={() => openModal('defer')}>Defer</button>
-              <button className="fd3-action-btn" onClick={() => openModal('resolve')}>Resolve</button>
-              <button className="fd3-action-btn fd3-action-btn--fp" onClick={() => openModal('false-positive')}>False Positive</button>
+              <button type="button" className="fd3-action-btn" onClick={() => openModal('under-investigation')}>Under Investigation</button>
+              <button type="button" className="fd3-action-btn" onClick={() => openModal('defer')}>Defer</button>
+              <button type="button" className="fd3-action-btn" onClick={() => openModal('resolve')}>Resolve</button>
+              <button type="button" className="fd3-action-btn fd3-action-btn--fp" onClick={() => openModal('false-positive')}>False Positive</button>
             </>
           )}
           {currentFinding.status !== 'OPEN' && (
-            <button className="fd3-action-btn fd3-action-btn--reopen" onClick={() => openModal('reopen')}>Re-open</button>
+            <button type="button" className="fd3-action-btn fd3-action-btn--reopen" onClick={() => openModal('reopen')}>Re-open</button>
           )}
         </div>
+        )}
       </div>
 
       <PageFreshnessStatus

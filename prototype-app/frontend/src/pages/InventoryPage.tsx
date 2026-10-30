@@ -280,24 +280,20 @@ function matchesSearch(record: HostInventoryRecord, query: string): boolean {
 
 function HostRow({
   record,
-  onOpen
+  returnTo
 }: {
   record: HostInventoryRecord;
-  onOpen: (assetId: string) => void;
+  returnTo: string;
 }) {
   return (
-    <tr className="inventory-table-row-clickable" onClick={() => onOpen(record.asset.id)}>
+    <tr>
       <td>
-        <button
-          type="button"
+        <Link
           className="inventory-link-button inventory-link-button-primary"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(record.asset.id);
-          }}
+          to={pathForInventoryHostAsset(record.asset.id, returnTo)}
         >
           {record.asset.name}
-        </button>
+        </Link>
         <div className="panel-caption mono">{record.asset.identifier}</div>
       </td>
       <td>{record.detail.host.environment ?? record.asset.environment ?? '-'}</td>
@@ -619,7 +615,8 @@ export function InventoryPage(_: Props) {
     return chips;
   }, [quickFilter, searchValue, selectedEnvironments, selectedOperatingSystems, selectedSourceSystems]);
 
-  const loading = assetsQuery.isPending || hostDetailsQuery.isPending;
+  // The detail query is disabled when the source has no hosts; that is an empty inventory, not loading.
+  const loading = assetsQuery.isPending || (hostAssets.length > 0 && hostDetailsQuery.isPending);
   const refreshing = (assetsQuery.isFetching || hostDetailsQuery.isFetching) && hostRecords.length > 0;
   const latestDataUpdate = React.useMemo(() => latestFreshnessValue([
     assetsQuery.dataUpdatedAt,
@@ -633,6 +630,12 @@ export function InventoryPage(_: Props) {
     : hostDetailsQuery.error instanceof Error
       ? hostDetailsQuery.error.message
       : null;
+  // With nothing loaded, a failure must not fall through to the "No hosts discovered yet" state.
+  const loadFailed = errorMessage != null && hostRecords.length === 0;
+  const retryLoad = () => {
+    if (assetsQuery.isError) void assetsQuery.refetch();
+    else void hostDetailsQuery.refetch();
+  };
 
   const handleOpenHost = React.useCallback((assetId: string) => {
     navigate(pathForInventoryHostAsset(assetId, `${location.pathname}${location.search}`));
@@ -815,8 +818,16 @@ export function InventoryPage(_: Props) {
       </div>
 
       {errorMessage ? (
-        <div className="inventory-error-banner">
-          Failed to load hosts inventory: {errorMessage}
+        <div className="inventory-error-banner async-section-notice" role="alert">
+          <span>Failed to load hosts inventory: {errorMessage}</span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={assetsQuery.isFetching || hostDetailsQuery.isFetching}
+            onClick={retryLoad}
+          >
+            {assetsQuery.isFetching || hostDetailsQuery.isFetching ? 'Retrying…' : 'Retry'}
+          </button>
         </div>
       ) : null}
 
@@ -851,8 +862,8 @@ export function InventoryPage(_: Props) {
       )}
 
       {loading ? (
-        <div className="empty-state"><p>Loading host inventory…</p></div>
-      ) : (
+        <div className="empty-state" role="status"><p>Loading host inventory…</p></div>
+      ) : loadFailed ? null : (
         <div className="inventory-section-card">
           <div className="inventory-section-header">
             <div>
@@ -894,7 +905,7 @@ export function InventoryPage(_: Props) {
                     </td>
                   </tr>
                 ) : paginatedRecords.map((record) => (
-                  <HostRow key={record.asset.id} record={record} onOpen={handleOpenHost} />
+                  <HostRow key={record.asset.id} record={record} returnTo={`${location.pathname}${location.search}`} />
                 ))}
               </tbody>
             </table>

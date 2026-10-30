@@ -1,6 +1,11 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { usePageHeader } from '../../app/pageHeaderState';
+import { AsyncSection, type AsyncSectionState } from '../../components/AsyncSection';
+import { DataTable, type DataTableColumn, type DataTableRow } from '../../components/DataTable';
+import { MetricValue, type MetricAvailability } from '../../components/MetricValue';
+import { ActiveFilterChips, Pager, ResultScope, type ActiveFilter } from '../../components/QueueControls';
 import { useActor } from '../auth/context';
 import { canManageFixControls } from '../auth/roles';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -18,7 +23,7 @@ import {
   titleCase,
   viewLabel
 } from './format';
-import type { FixSummary, FixView } from './types';
+import type { FixListItem, FixSummary, FixView } from './types';
 
 const PAGE_SIZE = 50;
 const VIEW_DESCRIPTIONS: Record<FixView, string> = {
@@ -27,6 +32,41 @@ const VIEW_DESCRIPTIONS: Record<FixView, string> = {
   workarounds: 'Manage temporary mitigations and configuration changes while permanent fixes are prepared.',
   'compensating-controls': 'Manage additional safeguards and review the residual risk they address.'
 };
+const EMPTY_MESSAGES: Record<FixView, string> = {
+  all: 'No fixes yet. Connect a patch source or create a workaround to get started.',
+  patches: 'No patches yet. Connect a supported patch source under Connectors.',
+  workarounds: 'No workarounds yet. Create a workaround to document a temporary mitigation.',
+  'compensating-controls': 'No compensating controls yet. Create a control to document an additional safeguard.'
+};
+
+const detailPath = (fix: FixListItem) => `/fix-intelligence/details/${encodeURIComponent(fix.id)}`;
+
+function fixColumns(view: FixView): DataTableColumn[] {
+  return [
+    { id: 'id', label: 'ID', header: 'ID', initialSize: 150, minWidth: 120, priority: 'essential' },
+    { id: 'title', label: 'Title', header: 'Title', initialSize: 300, minWidth: 220, priority: 'essential' },
+    { id: 'severity', label: 'Severity', header: 'Severity', initialSize: 110, minWidth: 100, priority: 'essential' },
+    ...(view === 'all' ? [{ id: 'type', label: 'Type', header: 'Type', initialSize: 160, minWidth: 120, priority: 'optional' as const }] : []),
+    { id: 'ecosystem', label: 'Ecosystem', header: 'Ecosystem', initialSize: 130, minWidth: 110, priority: 'optional' },
+    { id: 'source', label: 'Source', header: 'Source', initialSize: 130, minWidth: 100, priority: 'optional' },
+    { id: 'coverage', label: 'Coverage', header: 'Coverage', initialSize: 130, minWidth: 110, priority: 'optional' }
+  ];
+}
+
+function fixRows(items: FixListItem[], view: FixView): DataTableRow[] {
+  return items.map((fix) => ({
+    id: fix.id,
+    cells: {
+      id: { content: <Link to={detailPath(fix)}>{fix.displayId}</Link>, props: { className: 'mono' } },
+      title: { content: <>{fix.title}{fix.status !== 'ACTIVE' && <span className="fi-status-tag">{titleCase(fix.status)}</span>}</> },
+      severity: { content: <span className={severityClass(fix.severity)}>{fix.severity ? titleCase(fix.severity) : 'Unrated'}</span> },
+      ...(view === 'all' ? { type: { content: fixTypeLabel(fix.fixType) } } : {}),
+      ecosystem: { content: ecosystemLabel(fix.ecosystem) },
+      source: { content: fix.sources.length ? fix.sources.map(providerLabel).join(', ') : '—' },
+      coverage: { content: coverageLabel(fix.remediatedAssets, fix.applicableAssets, fix.coveragePercent) }
+    }
+  }));
+}
 
 export function FixIntelligencePage({ view }: { view: FixView }): React.ReactElement {
   const navigate = useNavigate();
@@ -59,14 +99,28 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
   const summary = summaryQuery.data;
   const list = listQuery.data;
   const hasFilters = Boolean(search || severity || ecosystem);
+  // The results reflect the debounced search, so the filtered/unfiltered empty state does too.
+  const resultsFiltered = Boolean(debouncedSearch || severity || ecosystem);
   const clearFilters = () => { setSearch(''); setSeverity(''); setEcosystem(''); setPage(0); };
+
+  // The shell renders the only route H1; the selected view names it.
+  usePageHeader({ title: viewLabel(view) });
+
+  const summaryAvailability: MetricAvailability = summary ? 'available' : summaryQuery.isError ? 'unavailable' : 'pending';
+  const listState: AsyncSectionState = list
+    ? list.items.length > 0 ? 'ready' : resultsFiltered ? 'filtered-empty' : 'empty'
+    : listQuery.isError ? 'error' : 'pending';
+  const activeFilters: ActiveFilter[] = [
+    ...(search ? [{ key: 'search', label: 'Search', value: search, onRemove: () => setSearch('') }] : []),
+    ...(severity ? [{ key: 'severity', label: 'Severity', value: titleCase(severity), onRemove: () => setSeverity('') }] : []),
+    ...(ecosystem ? [{ key: 'ecosystem', label: 'Ecosystem', value: ecosystemLabel(ecosystem), onRemove: () => setEcosystem('') }] : [])
+  ];
 
   return (
     <div className="page-grid fi-page ui2-fix-family">
       <header className="fi-header">
         <div>
           <span className="fi-eyebrow">Fix Intelligence</span>
-          <h2>{viewLabel(view)}</h2>
           <p className="muted">
             {VIEW_DESCRIPTIONS[view]}
           </p>
@@ -91,12 +145,16 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
       )}
 
       {summaryQuery.isError && (
-        <div className="notice error fi-error" role="alert">
-          <span>Fix summary could not be loaded. Try again to refresh the metrics.</span>
-          <button type="button" className="btn" disabled={summaryQuery.isFetching} onClick={() => void summaryQuery.refetch()}>Retry summary</button>
-        </div>
+        <AsyncSection
+          state={summary ? 'ready' : 'error'}
+          errorMessage="Fix summary could not be loaded. Try again to refresh the metrics."
+          refreshError="Fix summary could not be refreshed. Showing the last loaded metrics."
+          onRetry={() => void summaryQuery.refetch()}
+          retryLabel="Retry summary"
+          retrying={summaryQuery.isFetching}
+        />
       )}
-      <KpiCards summary={summary} />
+      <KpiCards summary={summary} availability={summaryAvailability} />
 
       {view === 'patches' && summary && (
         <div className="fi-ecosystem-strip" aria-label="Patches by ecosystem">
@@ -141,100 +199,67 @@ export function FixIntelligencePage({ view }: { view: FixView }): React.ReactEle
             {ECOSYSTEM_ORDER.map((key) => <option key={key} value={key}>{ecosystemLabel(key)}</option>)}
           </select>
         </label>
-        {hasFilters && <button type="button" className="btn" onClick={clearFilters}>Clear filters</button>}
       </div>
+      <ActiveFilterChips filters={activeFilters} onClearAll={hasFilters ? clearFilters : undefined} label="Active fix filters" />
       <div className="fi-body">
         <section className="panel fi-table-panel" aria-label="Fixes">
           <div className="fi-section-heading">
-            <h3>Fix catalog</h3>
-            <span className="muted" role="status">{list ? `${list.totalItems.toLocaleString()} fixes` : listQuery.isError ? 'Unavailable' : 'Loading fixes…'}</span>
+            <h2>Fix catalog</h2>
+            {list && (
+              <ResultScope offset={list.page * list.size} count={list.items.length} total={list.totalItems} noun="fix" pluralNoun="fixes" filtered={resultsFiltered} />
+            )}
           </div>
-          {listQuery.isError && <div className="notice error fi-error" role="alert">
-            <span>Fixes could not be loaded.</span>
-            <button type="button" className="btn" disabled={listQuery.isFetching} onClick={() => void listQuery.refetch()}>Retry fixes</button>
-          </div>}
-          {listQuery.isLoading && <p className="muted">Loading fixes…</p>}
-          {list && list.items.length === 0 && (
-            <p className="muted fi-empty">
-              {hasFilters ? 'No fixes match these filters.'
-                : view === 'patches' ? 'No patches yet. Connect a supported patch source under Connectors.'
-                : view === 'all' ? 'No fixes yet. Connect a patch source or create a workaround to get started.'
-                : view === 'workarounds' ? 'No workarounds yet. Create a workaround to document a temporary mitigation.'
-                : 'No compensating controls yet. Create a control to document an additional safeguard.'}
-            </p>
-          )}
-          {list && list.items.length > 0 && (
-            <div className="fi-table-scroll" role="region" aria-label="Fix results" tabIndex={0}>
-              <table className="data-table fi-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Severity</th>
-                    {view === 'all' && <th>Type</th>}
-                    <th>Ecosystem</th>
-                    <th>Source</th>
-                    <th>Coverage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.items.map((fix) => (
-                    <tr
-                      key={fix.id}
-                      className="table-row-clickable"
-                      tabIndex={0}
-                      onClick={() => navigate(`/fix-intelligence/details/${encodeURIComponent(fix.id)}`)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && event.target === event.currentTarget) navigate(`/fix-intelligence/details/${encodeURIComponent(fix.id)}`);
-                      }}
-                    >
-                      <td className="mono"><Link to={`/fix-intelligence/details/${encodeURIComponent(fix.id)}`} onClick={(event) => event.stopPropagation()}>{fix.displayId}</Link></td>
-                      <td>{fix.title}{fix.status !== 'ACTIVE' && <span className="fi-status-tag">{titleCase(fix.status)}</span>}</td>
-                      <td><span className={severityClass(fix.severity)}>{fix.severity ? titleCase(fix.severity) : 'Unrated'}</span></td>
-                      {view === 'all' && <td>{fixTypeLabel(fix.fixType)}</td>}
-                      <td>{ecosystemLabel(fix.ecosystem)}</td>
-                      <td>{fix.sources.length ? fix.sources.map(providerLabel).join(', ') : '—'}</td>
-                      <td>{coverageLabel(fix.remediatedAssets, fix.applicableAssets, fix.coveragePercent)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <AsyncSection
+            state={listState}
+            loadingLabel="Loading fixes…"
+            emptyMessage={EMPTY_MESSAGES[view]}
+            filteredEmptyMessage="No fixes match these filters."
+            errorMessage="Fixes could not be loaded."
+            refreshError={listQuery.isError && list ? 'Fixes could not be refreshed. Showing the last loaded page.' : undefined}
+            onRetry={() => void listQuery.refetch()}
+            retryLabel="Retry fixes"
+            retrying={listQuery.isFetching}
+          >
+            {list && (
+              <DataTable storageKey={`fix-intelligence-${view}-columns`} columns={fixColumns(view)} rows={fixRows(list.items, view)} label="Fix results" />
+            )}
+          </AsyncSection>
           {list && list.totalPages > 1 && (
-            <div className="fi-pagination">
-              <button type="button" className="btn" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
-              <span className="muted">Page {page + 1} of {list.totalPages} · {list.totalItems} fixes</span>
-              <button type="button" className="btn" disabled={page + 1 >= list.totalPages} onClick={() => setPage(page + 1)}>Next</button>
-            </div>
+            <Pager page={page} totalPages={list.totalPages} onPrevious={() => setPage(page - 1)} onNext={() => setPage(page + 1)} disabled={listQuery.isFetching} label="Fix pages" />
           )}
         </section>
 
         <section className="panel fi-distribution" aria-label="Severity distribution">
-          <h3>Severity distribution</h3>
+          <h2>Severity distribution</h2>
           <p className="fi-section-caption">All fixes in this view</p>
-          <div className="severity-meter">
-            {[...SEVERITY_ORDER, 'UNKNOWN'].map((key) => {
-              const bucket = summary?.severityDistribution.find((item) => item.key === key);
-              const percent = safePercent(bucket?.percent);
-              return (
-                <div key={key} className="severity-row">
-                  <span className="severity-label">{key === 'UNKNOWN' ? 'Unrated' : titleCase(key)}</span>
-                  <div className="severity-bar-track" role="presentation">
-                    <div className={`severity-bar severity-bar-${key.toLowerCase()}`} style={{ width: `${percent}%` }} />
+          <AsyncSection
+            state={summary ? 'ready' : summaryQuery.isError ? 'unavailable' : 'pending'}
+            loadingLabel="Loading severity distribution…"
+            unavailableMessage="Severity distribution is unavailable until the fix summary loads."
+          >
+            <div className="severity-meter">
+              {[...SEVERITY_ORDER, 'UNKNOWN'].map((key) => {
+                const bucket = summary?.severityDistribution.find((item) => item.key === key);
+                const percent = safePercent(bucket?.percent);
+                return (
+                  <div key={key} className="severity-row">
+                    <span className="severity-label">{key === 'UNKNOWN' ? 'Unrated' : titleCase(key)}</span>
+                    <div className="severity-bar-track" role="presentation">
+                      <div className={`severity-bar severity-bar-${key.toLowerCase()}`} style={{ width: `${percent}%` }} />
+                    </div>
+                    <span className="severity-value">{`${bucket?.count ?? 0} · ${percent}%`}</span>
                   </div>
-                  <span className="severity-value">{summary ? `${bucket?.count ?? 0} · ${percent}%` : '—'}</span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </AsyncSection>
         </section>
       </div>
     </div>
   );
 }
 
-function KpiCards({ summary }: { summary: FixSummary | undefined }): React.ReactElement {
+function KpiCards({ summary, availability }: { summary: FixSummary | undefined; availability: MetricAvailability }): React.ReactElement {
   const cards = [
     { label: 'Total Fixes', value: summary?.totalFixes },
     { label: 'Critical Severity', value: summary?.criticalSeverity, tone: 'critical' },
@@ -246,7 +271,9 @@ function KpiCards({ summary }: { summary: FixSummary | undefined }): React.React
       {cards.map((card) => (
         <div key={card.label} className={`panel fi-kpi${card.tone ? ` fi-kpi--${card.tone}` : ''}`} title={card.hint}>
           <span className="fi-kpi-label">{card.label}</span>
-          <span className="fi-kpi-value">{card.value?.toLocaleString() ?? '—'}</span>
+          <span className="fi-kpi-value">
+            <MetricValue availability={availability} value={card.value} unavailableReason="Fix summary unavailable" />
+          </span>
         </div>
       ))}
     </div>

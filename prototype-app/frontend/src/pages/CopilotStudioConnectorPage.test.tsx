@@ -66,8 +66,27 @@ describe('CopilotStudioConnectorPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Run discovery' }));
 
     await waitFor(() => expect(run).toHaveBeenCalledWith('connector-1', expect.anything()));
-    expect(await screen.findByRole('status')).toHaveTextContent(
+    expect(await screen.findByText(
       'Discovery queued (job job-1). Track progress in the ingestion run queue.'
-    );
+    )).toHaveAttribute('role', 'status');
+  });
+
+  it('reports a failed organization list with retry instead of loading forever, and acknowledges a save', async () => {
+    vi.spyOn(api, 'listAiSecurityConnectorFeatureFlags').mockResolvedValue([]);
+    const list = vi.spyOn(api, 'listCopilotStudioConnectors').mockRejectedValueOnce(new Error('dataverse offline')).mockResolvedValue([]);
+    vi.spyOn(api, 'saveCopilotStudioConnector').mockImplementation(async payload => ({
+      id: 'connector-1', ...payload, scheduleCron: payload.scheduleCron ?? '0 0 * * * *',
+      allowedDataverseHosts: payload.allowedDataverseHosts ?? [], createdAt: '2026-09-17T00:00:00Z', updatedAt: '2026-09-17T00:00:00Z',
+    }));
+
+    renderWithProviders(<CopilotStudioConnectorPage />);
+    expect(await screen.findByText('Configured organizations could not be loaded: dataverse offline.')).toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText(/No Copilot Studio organization is configured yet/)).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save connector' }));
+    expect(await screen.findByText('Connector saved.')).toHaveAttribute('role', 'status');
   });
 });

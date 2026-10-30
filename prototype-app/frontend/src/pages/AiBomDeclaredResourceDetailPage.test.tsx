@@ -170,7 +170,19 @@ describe('AiBomDeclaredResourceDetailPage', () => {
 
     renderAs(ANALYST_ACTOR, <AiBomDeclaredResourceDetailPage resourceId="resource-1" />);
 
-    expect(await screen.findByText('F-000007')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'F-000007' })).toHaveAttribute('href', '/findings/F-000007');
+  });
+
+  it('offers retry when the declared resource cannot be loaded', async () => {
+    const load = vi.spyOn(api, 'getAiBomDeclaredResource').mockRejectedValueOnce(new Error('boom')).mockResolvedValue(buildDetail());
+    vi.spyOn(api, 'getAiBomDeclaredResourceFindings').mockResolvedValue([]);
+
+    renderAs(ANALYST_ACTOR, <AiBomDeclaredResourceDetailPage resourceId="resource-1" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This declared resource could not be loaded.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Declaration')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it('qualifies empty results without claiming a completed assessment', async () => {

@@ -138,6 +138,43 @@ function AiArtifactNode({ data }: { data: DependencyGraphNodeData }) {
 
 const NODE_TYPES = { aiArtifact: AiArtifactNode };
 
+// Readable alternative to the canvas: every edge as a row, with the same destination as View Details.
+function RelationshipList({ graph, rootArtifactId, onNodeClick }: {
+  graph: AiSecurityGraph;
+  rootArtifactId?: string;
+  onNodeClick?: (artifactId: string) => void;
+}) {
+  const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+  const endpoint = (artifactId: string, fallbackName: string) => {
+    const name = namesById.get(artifactId) ?? fallbackName;
+    if (artifactId === rootArtifactId) return <span>{name} <span className="panel-caption">(this asset)</span></span>;
+    if (!onNodeClick) return <span>{name}</span>;
+    return <button type="button" className="btn-link" onClick={() => onNodeClick(artifactId)}>{name}</button>;
+  };
+  if (graph.edges.length === 0) {
+    return <div className="empty-state" role="status"><p>No relationships observed.</p></div>;
+  }
+  return (
+    <div className="table-scroll ai-dependency-graph-list">
+      <table className="data-table">
+        <caption className="ui2-sr-only">AI artifact relationships</caption>
+        <thead>
+          <tr><th scope="col">From</th><th scope="col">Relationship</th><th scope="col">To</th></tr>
+        </thead>
+        <tbody>
+          {graph.edges.map((edge) => (
+            <tr key={edge.id}>
+              <td>{endpoint(edge.sourceArtifactId, edge.sourceName)}</td>
+              <td>{formatLabel(edge.relationshipType)}</td>
+              <td>{endpoint(edge.targetArtifactId, edge.targetName)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 type AiDependencyGraphProps = {
   graph: AiSecurityGraph;
   rootArtifactId?: string;
@@ -159,6 +196,7 @@ export function AiDependencyGraph({
   );
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [selectedArtifactId, setSelectedArtifactId] = React.useState<string | null>(null);
+  const [view, setView] = React.useState<'graph' | 'list'>('graph');
   const selectedArtifact = React.useMemo(
     () => graph.nodes.find((node) => node.id === selectedArtifactId) ?? null,
     [graph.nodes, selectedArtifactId],
@@ -181,41 +219,63 @@ export function AiDependencyGraph({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="ai-dependency-graph"
-      role="region"
-      aria-label="AI artifact dependency graph"
-      onKeyDown={handleKeyDown}
-    >
-      <ReactFlowProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={NODE_TYPES}
-          fitView
-          nodesDraggable={false}
-          nodesConnectable={false}
-          onNodeClick={(_event, node) => setSelectedArtifactId(node.id)}
-          onPaneClick={() => setSelectedArtifactId(null)}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </ReactFlowProvider>
-      {selectedArtifact && (
-        <GraphNodeDetailsPopup
-          artifact={selectedArtifact}
-          isRoot={selectedArtifact.id === rootArtifactId}
-          findingsCount={findingsCountByArtifactId[selectedArtifact.id] ?? 0}
-          policies={policies}
-          onDismiss={dismissPopup}
-          onViewDetails={(artifactId) => {
+    <div className="ai-dependency-graph-view">
+      <div className="ai-dependency-graph-toolbar" role="group" aria-label="Relationship view">
+        <button type="button" className="btn btn-secondary btn-sm" aria-pressed={view === 'graph'} onClick={() => setView('graph')}>
+          Graph
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          aria-pressed={view === 'list'}
+          onClick={() => {
             setSelectedArtifactId(null);
-            onNodeClick?.(artifactId);
+            setView('list');
           }}
-        />
+        >
+          List
+        </button>
+      </div>
+      {view === 'list' ? (
+        <RelationshipList graph={graph} rootArtifactId={rootArtifactId} onNodeClick={onNodeClick} />
+      ) : (
+        <div
+          ref={containerRef}
+          className="ai-dependency-graph"
+          role="region"
+          aria-label="AI artifact dependency graph"
+          onKeyDown={handleKeyDown}
+        >
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={NODE_TYPES}
+              fitView
+              nodesDraggable={false}
+              nodesConnectable={false}
+              onNodeClick={(_event, node) => setSelectedArtifactId(node.id)}
+              onPaneClick={() => setSelectedArtifactId(null)}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </ReactFlowProvider>
+          {selectedArtifact && (
+            <GraphNodeDetailsPopup
+              artifact={selectedArtifact}
+              isRoot={selectedArtifact.id === rootArtifactId}
+              findingsCount={findingsCountByArtifactId[selectedArtifact.id] ?? 0}
+              policies={policies}
+              onDismiss={dismissPopup}
+              onViewDetails={(artifactId) => {
+                setSelectedArtifactId(null);
+                onNodeClick?.(artifactId);
+              }}
+            />
+          )}
+        </div>
       )}
       {graph.truncated && <p className="panel-caption">Graph capped for safe rendering.</p>}
     </div>

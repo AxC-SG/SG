@@ -1,4 +1,5 @@
 import React from 'react';
+import { Dialog } from './Dialog';
 
 type Props = {
   isOpen: boolean;
@@ -7,6 +8,8 @@ type Props = {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  busy?: boolean;
+  busyMessage?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -18,59 +21,31 @@ export function ConfirmDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   confirmDisabled = false,
+  busy = false,
+  busyMessage,
   onConfirm,
   onCancel
 }: Props) {
-  const dialogRef = React.useRef<HTMLDialogElement>(null);
-
-  React.useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (isOpen) {
-      if (!dialog.open) {
-        if (typeof dialog.showModal === 'function') {
-          dialog.showModal();
-        } else {
-          dialog.setAttribute('open', '');
-        }
-      }
-    } else {
-      if (dialog.open) {
-        if (typeof dialog.close === 'function') {
-          dialog.close();
-        } else {
-          dialog.removeAttribute('open');
-        }
-      }
-    }
-  }, [isOpen]);
-
-  // Close on backdrop click
-  function handleDialogClick(event: React.MouseEvent<HTMLDialogElement>): void {
-    if (event.target === dialogRef.current) onCancel();
-  }
-
-  if (!isOpen) return null;
-
+  const messageId = React.useId();
   return (
-    <dialog
-      ref={dialogRef}
-      className="confirm-dialog"
-      onClick={handleDialogClick}
-      onCancel={onCancel}
+    <Dialog
+      isOpen={isOpen}
+      title={title}
+      describedBy={messageId}
+      onClose={onCancel}
+      busy={busy}
+      busyMessage={busyMessage}
+      className="confirm-dialog confirm-dialog-content"
     >
-      <div className="confirm-dialog-content">
-        <h4 className="confirm-dialog-title">{title}</h4>
-        <div className="confirm-dialog-message">{message}</div>
-        <div className="confirm-dialog-actions">
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button type="button" className="btn btn-primary" disabled={confirmDisabled} onClick={onConfirm}>
-            {confirmLabel}
-          </button>
-        </div>
+      <div id={messageId} className="confirm-dialog-message">{message}</div>
+      <div className="confirm-dialog-actions">
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" className="btn btn-primary" disabled={confirmDisabled || busy} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
       </div>
-    </dialog>
+    </Dialog>
   );
 }

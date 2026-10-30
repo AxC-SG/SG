@@ -826,6 +826,8 @@
 :where(html[data-ui='2']) .connect-source-dot--ok { background: #22c55e; }
 :where(html[data-ui='2']) .connect-source-dot--warn { background: #d1d5db; }
 :where(html[data-ui='2']) .connect-source-dot--fail { background: #ef4444; }
+:where(html[data-ui='2']) .connect-source-dot--unknown { background: transparent; border: 2px dashed #9ca3af; box-sizing: border-box; }
+:where(html[data-ui='2']) .connect-source-status { font-size: 12px; }
 
 :where(html[data-ui='2']) .connect-source-lastsync {
   font-size: 0.78rem;

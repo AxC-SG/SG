@@ -3,6 +3,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { AiSecurityConnectionTest } from '../features/ai-security/types';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 
 const DEFAULT_REGIONS = ['us-east-1', 'us-west-2'];
 
@@ -27,6 +29,8 @@ export function AiSecurityConnectorPage() {
   const [regions, setRegions] = React.useState(DEFAULT_REGIONS.join(', '));
   const [enabled, setEnabled] = React.useState(true);
   const [testResult, setTestResult] = React.useState<AiSecurityConnectionTest | null>(null);
+  // Each action reports its own outcome; one action's result does not stand in for another's.
+  const [actionNotice, setActionNotice] = React.useState('');
 
   React.useEffect(() => {
     const config = configQuery.data;
@@ -44,23 +48,37 @@ export function AiSecurityConnectorPage() {
       regions: regions.split(',').map((region) => region.trim()).filter(Boolean),
       enabled,
     }),
+    onMutate: () => setActionNotice(''),
     onSuccess: () => {
+      setActionNotice('Connection saved.');
       void queryClient.invalidateQueries({ queryKey: ['ai-security-connector'] });
     },
   });
   const testMutation = useMutation({
     mutationFn: api.testAiSecurityConnector,
+    onMutate: () => { setActionNotice(''); setTestResult(null); },
     onSuccess: setTestResult,
   });
   const runMutation = useMutation({
     mutationFn: api.runAiSecurityConnector,
+    onMutate: () => setActionNotice(''),
     onSuccess: () => {
+      setActionNotice('Discovery queued. Progress appears under Recent runs and in Run History.');
       void queryClient.invalidateQueries({ queryKey: ['ai-security-runs'] });
       void queryClient.invalidateQueries({ queryKey: ['ai-security-artifacts'] });
       void queryClient.invalidateQueries({ queryKey: ['ai-security-summary'] });
       void queryClient.invalidateQueries({ queryKey: ['sync-runs'] });
     },
   });
+
+  if (configQuery.isError && configQuery.data === undefined) {
+    return <ConnectorConfigLoadError connectorName="AWS Bedrock" error={configQuery.error} onRetry={() => void configQuery.refetch()} retrying={configQuery.isFetching} />;
+  }
+
+  const runsState: AsyncSectionState = runsQuery.isPending
+    ? 'pending'
+    : runsQuery.isError && !runsQuery.data ? 'error' : (runsQuery.data ?? []).length === 0 ? 'empty' : 'ready';
+  const actionError = saveMutation.error ?? testMutation.error ?? runMutation.error;
 
   return (
     <div className="ai-connector-layout">
@@ -71,7 +89,7 @@ export function AiSecurityConnectorPage() {
           <p>Read-only inventory and configuration evidence using short-lived AWS credentials.</p>
         </div>
         <span className={`status-pill ${configQuery.data?.enabled ? 'success' : 'muted'}`}>
-          {configQuery.data ? (configQuery.data.enabled ? 'Configured' : 'Disabled') : 'Not configured'}
+          {configQuery.isPending ? 'Checking…' : configQuery.data ? (configQuery.data.enabled ? 'Configured' : 'Disabled') : 'Not configured'}
         </span>
       </section>
 
@@ -83,7 +101,8 @@ export function AiSecurityConnectorPage() {
           <label>External ID<input value={configQuery.data?.externalId ?? ''} readOnly placeholder="Save the connection to generate its External ID" /></label><p className="panel-caption">Add this server-generated External ID to the customer role trust policy before testing or running discovery.</p>
           <label>Regions<input value={regions} onChange={(event) => setRegions(event.target.value)} placeholder="us-east-1, us-west-2" /></label>
           <label className="ai-connector-enabled"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />Enable scheduled discovery</label>
-          {saveMutation.isError && <div className="notice error">{saveMutation.error.message}</div>}
+          {actionError && <div className="notice error" role="alert">{actionError.message}</div>}
+          {actionNotice && !actionError && <div className="notice success" role="status">{actionNotice}</div>}
           {testResult && (
             <div className={`notice ${testResult.success ? 'success' : 'error'}`}>
               <strong>{testResult.message}</strong>
@@ -97,9 +116,9 @@ export function AiSecurityConnectorPage() {
             </div>
           )}
           <div className="ai-connector-actions">
-            <button className="btn btn-primary" type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>Save connection</button>
-            <button className="btn btn-secondary" type="button" onClick={() => testMutation.mutate()} disabled={!configQuery.data || testMutation.isPending}>Test</button>
-            <button className="btn btn-secondary" type="button" onClick={() => runMutation.mutate()} disabled={!configQuery.data?.enabled || runMutation.isPending}>Run discovery</button>
+            <button className="btn btn-primary" type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>{saveMutation.isPending ? 'Saving…' : 'Save connection'}</button>
+            <button className="btn btn-secondary" type="button" onClick={() => testMutation.mutate()} disabled={!configQuery.data || testMutation.isPending}>{testMutation.isPending ? 'Testing…' : 'Test'}</button>
+            <button className="btn btn-secondary" type="button" onClick={() => runMutation.mutate()} disabled={!configQuery.data?.enabled || runMutation.isPending}>{runMutation.isPending ? 'Queuing…' : 'Run discovery'}</button>
           </div>
         </section>
 
@@ -108,9 +127,14 @@ export function AiSecurityConnectorPage() {
             <div><h3>Recent runs</h3><span className="panel-caption">Scope failures retain prior inventory and findings.</span></div>
             <Link className="btn btn-secondary" to="/inventory/ai">View AI Inventory</Link>
           </div>
-          {(runsQuery.data ?? []).length === 0 ? (
-            <div className="empty-state"><p>No AI Security discovery runs yet.</p></div>
-          ) : (
+          <AsyncSection
+            state={runsState}
+            loadingLabel="Loading discovery runs…"
+            emptyMessage="No AI Security discovery runs yet."
+            errorMessage={`Discovery runs could not be loaded${runsQuery.error instanceof Error ? `: ${runsQuery.error.message}` : ''}.`}
+            onRetry={() => void runsQuery.refetch()}
+            retrying={runsQuery.isFetching}
+          >
             <div className="ai-run-list">
               {(runsQuery.data ?? []).slice(0, 10).map((run) => (
                 <article key={run.id}>
@@ -120,6 +144,9 @@ export function AiSecurityConnectorPage() {
                 </article>
               ))}
             </div>
+          </AsyncSection>
+          {scopesQuery.isError && (
+            <div className="notice error" role="alert">Latest scope coverage could not be loaded.</div>
           )}
           {(scopesQuery.data ?? []).length > 0 && (
             <>

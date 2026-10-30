@@ -74,6 +74,17 @@ describe('HostAssetDetailPage', () => {
     );
   });
 
+  it('offers retry on a failed host lookup without also claiming the detail is absent', async () => {
+    const load = vi.spyOn(api, 'getHostAssetDetail').mockRejectedValueOnce(new Error('Gateway timeout')).mockResolvedValue(buildHostDetail());
+    renderWithProviders(<HostAssetDetailPage assetId="asset-1" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Gateway timeout');
+    expect(screen.queryByText('No host detail is available for the selected asset.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('web-prod-01')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it('renders the Ownership section label after data loads', async () => {
     vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue(buildHostDetail());
     renderWithProviders(<HostAssetDetailPage assetId="asset-1" />);

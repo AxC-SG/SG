@@ -1,9 +1,11 @@
 import { shouldPollAiRuns } from '../features/ai-security/assessment';
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { PageFreshnessStatus } from '../components/PageFreshnessStatus';
+import { Pager, ResultScope } from '../components/QueueControls';
 import { AI_ARTIFACT_CATEGORIES, AI_AGENT_VERSION_KINDS, legacyAgentRosterRedirect, combinedNativeKindFilterValue, stripProviderPrefix } from '../features/ai-security/categories';
 import { ProviderLogo } from '../features/ai-security/ProviderLogo';
 import { FindingSeverityChips } from '../features/findings/components/FindingSeverityChips';
@@ -105,6 +107,20 @@ export function AiInventoryAssetsPage() {
     .sort(([, a], [, b]) => b - a)
     .map(([kind, count]) => ({ key: kind, label: stripProviderPrefix(kind), count }));
 
+  // An empty page under a user-chosen filter is a filter result, not an empty AI estate.
+  const hasUserFilters = Boolean(provider || severity || search || subscription || (nativeKind !== ALL_KIND && !isAgentsView && !isOthersView));
+  const clearFilters = () => {
+    setProvider('');
+    setSeverity(undefined);
+    setSearch('');
+    setNativeKind(ALL_KIND);
+    setPage(0);
+  };
+  const listState = artifactsQuery.isPending ? 'pending'
+    : artifactsQuery.isError && !artifactsQuery.data ? 'error'
+      : items.length === 0 && hasUserFilters ? 'filtered-empty'
+        : 'ready';
+
   if (redirect) return <Navigate to={redirect} replace />;
 
   return (
@@ -163,10 +179,19 @@ export function AiInventoryAssetsPage() {
         </button>
       </div>
 
-      {artifactsQuery.isLoading ? (
-        <section className="panel"><div className="empty-state"><p>Loading AI inventory…</p></div></section>
-      ) : artifactsQuery.isError ? (
-        <section className="panel"><div className="notice error">AI inventory could not be loaded.</div></section>
+      {listState !== 'ready' ? (
+        <section className="panel">
+          <AsyncSection
+            state={listState}
+            loadingLabel="Loading AI inventory…"
+            errorMessage="AI inventory could not be loaded."
+            onRetry={() => void artifactsQuery.refetch()}
+            retryLabel="Retry AI inventory"
+            retrying={artifactsQuery.isFetching}
+            filteredEmptyMessage="No AI assets match the current filters."
+            onClearFilters={clearFilters}
+          />
+        </section>
       ) : items.length === 0 ? (
         <section className="ai-security-empty">
           <div className="ai-security-empty-mark">AI</div>
@@ -179,39 +204,51 @@ export function AiInventoryAssetsPage() {
       ) : (
         <section className="panel ai-security-table-panel">
           <div className="panel-header">
-            <div><h3>AI asset inventory</h3><p className="panel-caption">{items.length.toLocaleString()} of {total.toLocaleString()} assets shown</p></div>
+            <div>
+              <h3>AI asset inventory</h3>
+              <ResultScope offset={page * pageSize} count={items.length} total={total} noun="asset" filtered={hasUserFilters} />
+            </div>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr><th>Name</th>{isAgentsView && <th>Deployment</th>}<th>Native type</th><th>Provider</th><th>Account / Region</th><th>Findings</th><th>Policies (Failed/Total)</th></tr>
-            </thead>
-            <tbody>
-              {items.map((artifact) => {
-                const otherFindings = Math.max(0, artifact.totalFindings - artifact.criticalFindings - artifact.highFindings);
-                return (
-                  <tr
-                    key={artifact.id}
-                    onClick={() => navigate(pathForInventoryAiAsset(artifact.id, `${location.pathname}${location.search}`))}
-                  >
-                    <td><strong>{artifact.name}</strong></td>
-                    {isAgentsView && <td title={artifact.deployment?.reasonCode ?? 'NO_EVIDENCE'}>{artifact.deployment?.status === 'SERVED' ? 'Served' : artifact.deployment?.status === 'NOT_CURRENTLY_SERVED' ? 'Not currently served' : 'Deployment unverified'}</td>}
-                    <td>{stripProviderPrefix(artifact.nativeKind)}</td>
-                    <td><ProviderLogo provider={artifact.provider} /></td>
-                    <td>{artifact.accountId}<small>{artifact.region}</small></td>
-                    <td>
-                      <FindingSeverityChips critical={artifact.criticalFindings} high={artifact.highFindings} other={otherFindings} />
-                    </td>
-                    <td><strong>{artifact.policiesFailed.toLocaleString()}/{artifact.policiesTotal.toLocaleString()}</strong></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="pagination-row">
-            <button type="button" className="btn btn-secondary" disabled={page === 0 || artifactsQuery.isFetching} onClick={() => setPage((current) => current - 1)}>Previous</button>
-            <span className="panel-caption pagination-caption">Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</span>
-            <button type="button" className="btn btn-secondary" disabled={artifactsQuery.isFetching || (page + 1) * pageSize >= total} onClick={() => setPage((current) => current + 1)}>Next</button>
+          {artifactsQuery.isError && (
+            <div className="notice warning" role="status">AI inventory could not be refreshed; showing the last loaded page.</div>
+          )}
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr><th>Name</th>{isAgentsView && <th>Deployment</th>}<th>Native type</th><th>Provider</th><th>Account / Region</th><th>Findings</th><th>Policies (Failed/Total)</th></tr>
+              </thead>
+              <tbody>
+                {items.map((artifact) => {
+                  const otherFindings = Math.max(0, artifact.totalFindings - artifact.criticalFindings - artifact.highFindings);
+                  return (
+                    <tr key={artifact.id}>
+                      <td>
+                        <Link to={pathForInventoryAiAsset(artifact.id, `${location.pathname}${location.search}`)}>
+                          <strong>{artifact.name}</strong>
+                        </Link>
+                      </td>
+                      {isAgentsView && <td title={artifact.deployment?.reasonCode ?? 'NO_EVIDENCE'}>{artifact.deployment?.status === 'SERVED' ? 'Served' : artifact.deployment?.status === 'NOT_CURRENTLY_SERVED' ? 'Not currently served' : 'Deployment unverified'}</td>}
+                      <td>{stripProviderPrefix(artifact.nativeKind)}</td>
+                      <td><ProviderLogo provider={artifact.provider} /></td>
+                      <td>{artifact.accountId}<small>{artifact.region}</small></td>
+                      <td>
+                        <FindingSeverityChips critical={artifact.criticalFindings} high={artifact.highFindings} other={otherFindings} />
+                      </td>
+                      <td><strong>{artifact.policiesFailed.toLocaleString()}/{artifact.policiesTotal.toLocaleString()}</strong></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
+          <Pager
+            page={page}
+            totalPages={Math.max(1, Math.ceil(total / pageSize))}
+            onPrevious={() => setPage((current) => current - 1)}
+            onNext={() => setPage((current) => current + 1)}
+            disabled={artifactsQuery.isFetching}
+            label="AI asset pages"
+          />
         </section>
       )}
     </InventoryShell>

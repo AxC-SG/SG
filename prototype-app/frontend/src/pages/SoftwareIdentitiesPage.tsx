@@ -1,8 +1,10 @@
 import React from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { AsyncSection } from '../components/AsyncSection';
+import { Dialog } from '../components/Dialog';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { MultiGroupBy, type MultiGroupByOption } from '../components/MultiGroupBy';
-import { DonutChart, HBarChart, WidgetCard } from '../features/widgets/FplWidgets';
+import { ChartLegend, DonutChart, HBarChart, WidgetCard } from '../features/widgets/FplWidgets';
 import { pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail } from '../app/routes';
 import {
   formatAssetType,
@@ -170,8 +172,8 @@ function inventoryViewForAssetType(assetType?: string): 'hosts' | 'sbom' | 'cont
 // ─── Entity list panel ─────────────────────────────────────────────────────
 
 function EntityListPanel({ panel, onClose }: { panel: NonNullable<ActivePanel>; onClose: () => void }) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const titleId = React.useId();
   const detailQuery = useSoftwareIdentityDetailQuery(panel.identityId, true);
   const detail = detailQuery.data;
 
@@ -198,12 +200,20 @@ function EntityListPanel({ panel, onClose }: { panel: NonNullable<ActivePanel>; 
 
   const cveColCount = panel.type === 'cves' ? COL_SPAN : COL_SPAN - 1;
 
+  const assetPath = (asset: (typeof assets)[number]) => (
+    (asset.assetType ?? '').toUpperCase() === 'HOST'
+      ? pathForInventoryHostAsset(asset.assetId, `${location.pathname}${location.search}`)
+      : pathForInventoryViewWithSearch(inventoryViewForAssetType(asset.assetType), {
+        query: asset.assetIdentifier || asset.assetName,
+        groupBy: ['sourceSystem', 'ecosystem']
+      })
+  );
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel modal-panel-wide" onClick={e => e.stopPropagation()}>
+    <Dialog isOpen labelledBy={titleId} onClose={onClose} className="modal-panel modal-panel-wide si-entity-dialog">
         <div className="panel-header">
           <div>
-            <h3>{title}</h3>
+            <h3 id={titleId}>{title}</h3>
             <p className="panel-caption">{subtitle}</p>
           </div>
           <button
@@ -216,11 +226,12 @@ function EntityListPanel({ panel, onClose }: { panel: NonNullable<ActivePanel>; 
           </button>
         </div>
 
-        {detailQuery.isPending && !detail && (
-          <div className="empty-state"><p>Loading…</p></div>
-        )}
-
-        {detail && (
+        <AsyncSection
+          state={detailQuery.isPending ? 'pending' : detailQuery.isError && !detail ? 'error' : 'ready'}
+          errorMessage="Assets for this software identity could not be loaded."
+          onRetry={() => void detailQuery.refetch()}
+          retrying={detailQuery.isFetching}
+        >
           <div className="inventory-table-shell si-panel-table-shell">
             <table className="inventory-table">
               <thead>
@@ -246,22 +257,9 @@ function EntityListPanel({ panel, onClose }: { panel: NonNullable<ActivePanel>; 
                     </td>
                   </tr>
                 ) : assets.map(asset => (
-                  <tr
-                    key={asset.componentId}
-                    className="inventory-table-row-clickable"
-                    onClick={() => {
-                      if ((asset.assetType ?? '').toUpperCase() === 'HOST') {
-                        navigate(pathForInventoryHostAsset(asset.assetId, `${location.pathname}${location.search}`));
-                        return;
-                      }
-                      navigate(pathForInventoryViewWithSearch(inventoryViewForAssetType(asset.assetType), {
-                        query: asset.assetIdentifier || asset.assetName,
-                        groupBy: ['sourceSystem', 'ecosystem']
-                      }));
-                    }}
-                  >
+                  <tr key={asset.componentId}>
                     <td>
-                      <div className="inventory-primary-text">{asset.assetName}</div>
+                      <Link className="inventory-primary-text" to={assetPath(asset)}>{asset.assetName}</Link>
                       <div className="panel-caption mono">{asset.assetIdentifier}</div>
                     </td>
                     <td><span className="mono">{asset.version || '—'}</span></td>
@@ -285,9 +283,8 @@ function EntityListPanel({ panel, onClose }: { panel: NonNullable<ActivePanel>; 
               </tbody>
             </table>
           </div>
-        )}
-      </div>
-    </div>
+        </AsyncSection>
+    </Dialog>
   );
 }
 
@@ -769,21 +766,19 @@ export function SoftwareIdentitiesPage() {
                 }
               ]}
             />
-            <div className="fpl-widget-legend">
-              <div
-                className={`fpl-legend-row${coverage === 'with-vulnerabilities' ? ' fpl-legend-row--active' : ''}`}
-                onClick={() => toggleCoverage('with-vulnerabilities')}
-              >
-                <span className="fpl-legend-dot" style={{ background: '#ef4444' }} />
-                <span className="fpl-legend-label">With CVEs</span>
-                <strong className="fpl-legend-val">{currentSoftwareStats.withCves.toLocaleString()}</strong>
-              </div>
-              <div className="fpl-legend-row" onClick={() => setCoverage('')}>
-                <span className="fpl-legend-dot" style={{ background: '#22c55e' }} />
-                <span className="fpl-legend-label">Clean</span>
-                <strong className="fpl-legend-val">{currentSoftwareStats.clean.toLocaleString()}</strong>
-              </div>
-            </div>
+            <ChartLegend
+              items={[
+                {
+                  key: 'with-cves',
+                  label: 'With CVEs',
+                  value: currentSoftwareStats.withCves,
+                  color: '#ef4444',
+                  active: coverage === 'with-vulnerabilities',
+                  onClick: () => toggleCoverage('with-vulnerabilities')
+                },
+                { key: 'clean', label: 'Clean', value: currentSoftwareStats.clean, color: '#22c55e', onClick: () => setCoverage('') }
+              ]}
+            />
           </div>
         </WidgetCard>
 
@@ -945,16 +940,13 @@ export function SoftwareIdentitiesPage() {
                         <td>
                           <div className="si-identity-name-cell">
                             <span className={`si-expand-toggle${isExpanded ? ' si-expand-toggle-open' : ''}`}>▶</span>
-                            <button
-                              type="button"
+                            <Link
                               className="btn-link inventory-primary-text"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                navigate(pathForSoftwareIdentityDetail(identity.id));
-                              }}
+                              to={pathForSoftwareIdentityDetail(identity.id)}
+                              onClick={(event) => event.stopPropagation()}
                             >
                               {identity.displayName}
-                            </button>
+                            </Link>
                           </div>
                         </td>
                         <td>

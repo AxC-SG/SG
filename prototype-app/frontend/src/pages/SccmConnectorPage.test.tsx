@@ -92,6 +92,25 @@ describe('SccmConnectorPage', () => {
     }));
     expect(await screen.findByText(/Password saved/)).toBeInTheDocument();
     expect(screen.queryByDisplayValue('s3cret')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Connector settings saved.');
+  });
+
+  it('hides the form behind a retry when the saved settings fail to load, instead of claiming not configured', async () => {
+    const load = vi.spyOn(api, 'getSccmCmdbConfig')
+      .mockRejectedValueOnce(new Error('connector service down'))
+      .mockResolvedValue(config({ configured: true, jdbcUrl: 'jdbc:sqlserver://sccm.corp.example:1433' }));
+    const save = vi.spyOn(api, 'saveSccmCmdbConfig');
+    renderPage();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('The saved SCCM / MECM settings could not be loaded (connector service down)');
+    expect(screen.queryByText(/not yet configured/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save Connector' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByDisplayValue('jdbc:sqlserver://sccm.corp.example:1433')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('shows the server rejection when the host is not approved and does not try to test', async () => {

@@ -382,3 +382,21 @@ html[data-ui='2'] .ui2-inventory-family .cloud-resources-title {
   font-size: var(--dp-text-lg);
   font-weight: 600;
 }
+
+/* Relationship view switch: the list is the readable alternative to the dependency canvas. */
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-toolbar {
+  display: flex;
+  gap: var(--dp-space-2, 8px);
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-toolbar [aria-pressed='true'] {
+  border-color: var(--dp-accent);
+  color: var(--dp-accent);
+}
+
+/* Software identity asset/CVE list keeps its right-side drawer placement inside the shared Dialog scrim. */
+html[data-ui='2'] .ui2-inventory-family .ui2-dialog > .si-entity-dialog {
+  margin-left: auto;
+  height: 100%;
+}

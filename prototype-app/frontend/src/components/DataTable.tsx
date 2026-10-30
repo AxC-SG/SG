@@ -3,9 +3,24 @@ import {
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
-  type ColumnSizingState,
-  type VisibilityState,
 } from '@tanstack/react-table';
+import { DataTableColumnChooser } from './DataTableColumnChooser';
+import {
+  clearColumnPreferences,
+  layoutWidths,
+  moveBefore,
+  moveId,
+  readStoredOrder,
+  readStoredWidths,
+  readVisibilityOverrides,
+  reconcileOrder,
+  resolveVisibility,
+  writeStoredOrder,
+  writeStoredWidths,
+  writeVisibilityOverrides,
+  type ColumnPriority,
+  type VisibilityOverride,
+} from './dataTablePreferences';
 
 export type DataTableColumn = {
   id: string;
@@ -13,6 +28,10 @@ export type DataTableColumn = {
   header: React.ReactNode;
   headerProps?: Omit<React.ThHTMLAttributes<HTMLTableCellElement>, 'children'>;
   initialSize?: number;
+  // Readable floor for this column; the table scrolls internally instead of shrinking below it.
+  minWidth?: number;
+  // essential: identity/action, always shown; optional: hidden below 768px unless the user chose otherwise.
+  priority?: ColumnPriority;
   defaultHidden?: boolean;
 };
 
@@ -33,278 +52,15 @@ type DataTableProps = {
   rows: DataTableRow[];
   minColumnWidth?: number;
   showColumnControls?: boolean;
+  // Names the scroll region when the columns are wider than the available space.
+  label?: string;
 };
 
-const ORDER_KEY_SUFFIX = ':order';
-const HIDDEN_KEY_SUFFIX = ':hidden';
+const RESIZE_STEP = 8;
+const TABLE_DEFAULTS_QUERY = '(min-width: 768px)';
 
 function classNames(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ');
-}
-
-function serializeStoredIds(ids: Iterable<string>): Array<number | string> {
-  return Array.from(ids).map((id) => {
-    const numeric = Number(id);
-    return Number.isInteger(numeric) && String(numeric) === id ? numeric : id;
-  });
-}
-
-function readStoredWidths(storageKey: string): ColumnSizingState {
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object') {
-      return {};
-    }
-
-    const next: ColumnSizingState = {};
-    Object.entries(parsed).forEach(([key, value]) => {
-      const numeric = Number(value);
-      if (Number.isFinite(numeric) && numeric > 0) {
-        next[String(key)] = Math.round(numeric);
-      }
-    });
-    return next;
-  } catch {
-    return {};
-  }
-}
-
-function writeStoredWidths(storageKey: string, widths: ColumnSizingState): void {
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(widths));
-  } catch {
-    // no-op for storage failures
-  }
-}
-
-function readStoredOrder(storageKey: string): string[] | null {
-  try {
-    const raw = window.localStorage.getItem(`${storageKey}${ORDER_KEY_SUFFIX}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return null;
-    const order = parsed
-      .map((value) => String(value))
-      .filter((value) => value.length > 0);
-    return order.length > 0 ? order : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredOrder(storageKey: string, order: string[]): void {
-  try {
-    window.localStorage.setItem(`${storageKey}${ORDER_KEY_SUFFIX}`, JSON.stringify(serializeStoredIds(order)));
-  } catch {
-    // no-op for storage failures
-  }
-}
-
-function readStoredHidden(storageKey: string): Set<string> {
-  try {
-    const raw = window.localStorage.getItem(`${storageKey}${HIDDEN_KEY_SUFFIX}`);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.map((value) => String(value)).filter((value) => value.length > 0));
-  } catch {
-    return new Set();
-  }
-}
-
-function hasStoredHiddenPreference(storageKey: string): boolean {
-  try {
-    return window.localStorage.getItem(`${storageKey}${HIDDEN_KEY_SUFFIX}`) != null;
-  } catch {
-    return false;
-  }
-}
-
-function writeStoredHidden(storageKey: string, hiddenColumns: Set<string>): void {
-  try {
-    window.localStorage.setItem(
-      `${storageKey}${HIDDEN_KEY_SUFFIX}`,
-      JSON.stringify(serializeStoredIds(Array.from(hiddenColumns).sort()))
-    );
-  } catch {
-    // no-op for storage failures
-  }
-}
-
-function arraysEqual(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-  return left.every((value, index) => value === right[index]);
-}
-
-function visibilityEqual(left: VisibilityState, right: VisibilityState): boolean {
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  if (!arraysEqual(leftKeys, rightKeys)) {
-    return false;
-  }
-  return leftKeys.every((key) => left[key] === right[key]);
-}
-
-function sizingEqual(left: ColumnSizingState, right: ColumnSizingState): boolean {
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  if (!arraysEqual(leftKeys, rightKeys)) {
-    return false;
-  }
-  return leftKeys.every((key) => Math.round(left[key] ?? 0) === Math.round(right[key] ?? 0));
-}
-
-function initialColumnOrder(storageKey: string, columns: DataTableColumn[]): string[] {
-  const currentIds = columns.map((column) => column.id);
-  const stored = readStoredOrder(storageKey);
-  if (!stored) {
-    return currentIds;
-  }
-
-  const validIds = new Set(currentIds);
-  const next = stored.filter((id) => validIds.has(id));
-  currentIds.forEach((id) => {
-    if (!next.includes(id)) {
-      next.push(id);
-    }
-  });
-  return next;
-}
-
-function reconcileColumnOrder(order: string[], columns: DataTableColumn[]): string[] {
-  const currentIds = columns.map((column) => column.id);
-  const validIds = new Set(currentIds);
-  const next = order.filter((id) => validIds.has(id));
-  currentIds.forEach((id) => {
-    if (!next.includes(id)) {
-      next.push(id);
-    }
-  });
-  return next;
-}
-
-function buildVisibilityState(storageKey: string, columns: DataTableColumn[]): VisibilityState {
-  const storedHidden = readStoredHidden(storageKey);
-  const hasStoredPreference = hasStoredHiddenPreference(storageKey);
-  const next: VisibilityState = {};
-  columns.forEach((column) => {
-    next[column.id] = hasStoredPreference ? !storedHidden.has(column.id) : !column.defaultHidden;
-  });
-
-  if (columns.length > 0 && columns.every((column) => next[column.id] === false)) {
-    next[columns[0].id] = true;
-  }
-  return next;
-}
-
-function reconcileVisibilityState(
-  current: VisibilityState,
-  storageKey: string,
-  columns: DataTableColumn[]
-): VisibilityState {
-  const fallback = buildVisibilityState(storageKey, columns);
-  const next: VisibilityState = {};
-  columns.forEach((column) => {
-    next[column.id] = column.id in current ? current[column.id] !== false : fallback[column.id] !== false;
-  });
-
-  if (columns.length > 0 && columns.every((column) => next[column.id] === false)) {
-    next[columns[0].id] = true;
-  }
-  return next;
-}
-
-function buildBaseColumnSizing(
-  columns: DataTableColumn[],
-  minColumnWidth: number,
-  basis: ColumnSizingState
-): ColumnSizingState {
-  const next: ColumnSizingState = {};
-  columns.forEach((column) => {
-    const raw = basis[column.id] ?? column.initialSize;
-    if (raw != null && Number.isFinite(raw) && raw > 0) {
-      next[column.id] = Math.max(minColumnWidth, Math.round(raw));
-    }
-  });
-  return next;
-}
-
-function rebalanceColumnSizing(
-  columns: DataTableColumn[],
-  columnVisibility: VisibilityState,
-  basis: ColumnSizingState,
-  containerWidth: number,
-  minColumnWidth: number
-): ColumnSizingState {
-  const visibleColumns = columns.filter((column) => columnVisibility[column.id] !== false);
-  if (visibleColumns.length === 0) {
-    return basis;
-  }
-
-  const next = { ...basis };
-  const visibleBasisTotal = visibleColumns.reduce((sum, column) => {
-    const width = basis[column.id] ?? column.initialSize ?? minColumnWidth;
-    return sum + width;
-  }, 0);
-  const targetTotal = Math.max(1, Math.floor(containerWidth > 0 ? containerWidth : visibleBasisTotal));
-  const perColumnBudget = Math.max(1, Math.floor(targetTotal / visibleColumns.length));
-  const effectiveMinWidth = Math.max(1, Math.min(minColumnWidth, perColumnBudget));
-  const fallbackWidth = perColumnBudget;
-
-  const basisWidths = visibleColumns.map((column) => {
-    const width = basis[column.id] ?? column.initialSize ?? fallbackWidth;
-    return Math.max(1, Math.round(width));
-  });
-
-  const basisTotal = basisWidths.reduce((sum, width) => sum + width, 0);
-  const safeBasisTotal = basisTotal > 0 ? basisTotal : fallbackWidth * visibleColumns.length;
-  const scale = targetTotal / safeBasisTotal;
-
-  const scaled = basisWidths.map((width) => Math.max(effectiveMinWidth, Math.floor(width * scale)));
-  let scaledTotal = scaled.reduce((sum, width) => sum + width, 0);
-
-  if (scaledTotal > targetTotal) {
-    let overflow = scaledTotal - targetTotal;
-    while (overflow > 0) {
-      let reduced = false;
-      for (let index = scaled.length - 1; index >= 0 && overflow > 0; index -= 1) {
-        if (scaled[index] > effectiveMinWidth) {
-          scaled[index] -= 1;
-          overflow -= 1;
-          reduced = true;
-        }
-      }
-      if (!reduced) {
-        break;
-      }
-    }
-    scaledTotal = scaled.reduce((sum, width) => sum + width, 0);
-  }
-
-  if (scaledTotal < targetTotal) {
-    let remaining = targetTotal - scaledTotal;
-    let index = 0;
-    while (remaining > 0) {
-      scaled[index % scaled.length] += 1;
-      remaining -= 1;
-      index += 1;
-    }
-  }
-
-  const finalTotal = scaled.reduce((sum, width) => sum + width, 0);
-  if (finalTotal > targetTotal) {
-    const lastIndex = scaled.length - 1;
-    scaled[lastIndex] = Math.max(1, scaled[lastIndex] - (finalTotal - targetTotal));
-  }
-
-  visibleColumns.forEach((column, index) => {
-    next[column.id] = scaled[index];
-  });
-  return next;
 }
 
 function mergeWidthStyle(size: number, style?: React.CSSProperties): React.CSSProperties {
@@ -314,19 +70,6 @@ function mergeWidthStyle(size: number, style?: React.CSSProperties): React.CSSPr
     minWidth: `${size}px`,
     maxWidth: `${size}px`,
   };
-}
-
-function moveColumn(order: string[], sourceId: string, targetId: string): string[] {
-  const fromIndex = order.indexOf(sourceId);
-  const toIndex = order.indexOf(targetId);
-  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
-    return order;
-  }
-
-  const next = [...order];
-  const [moved] = next.splice(fromIndex, 1);
-  next.splice(toIndex, 0, moved);
-  return next;
 }
 
 function useContainerWidth(ref: React.RefObject<HTMLDivElement>): number {
@@ -358,95 +101,81 @@ function useContainerWidth(ref: React.RefObject<HTMLDivElement>): number {
   return width;
 }
 
-export function DataTable({
+function useNarrowViewport(): boolean {
+  const query = React.useMemo(
+    () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(TABLE_DEFAULTS_QUERY) : null),
+    [],
+  );
+  const [narrow, setNarrow] = React.useState(() => (query ? !query.matches : false));
+  React.useEffect(() => {
+    if (!query) return undefined;
+    const update = () => setNarrow(!query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, [query]);
+  return narrow;
+}
+
+export function DataTable(props: DataTableProps) {
+  // Preferences are read once per storage key; a different key is a different table.
+  return <DataTableView key={props.storageKey} {...props} />;
+}
+
+function DataTableView({
   storageKey,
   columns,
   rows,
   minColumnWidth = 96,
   showColumnControls = true,
+  label,
 }: DataTableProps) {
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const containerWidth = useContainerWidth(wrapperRef);
-  const [menuOpen, setMenuOpen] = React.useState(false);
+  const narrow = useNarrowViewport();
   const [draggedColumnId, setDraggedColumnId] = React.useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = React.useState<string | null>(null);
-  const [columnOrder, setColumnOrder] = React.useState<string[]>(() => initialColumnOrder(storageKey, columns));
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() => buildVisibilityState(storageKey, columns));
-  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() => (
-    buildBaseColumnSizing(columns, minColumnWidth, readStoredWidths(storageKey))
-  ));
+  const [storedOrder, setStoredOrder] = React.useState<string[] | null>(() => readStoredOrder(storageKey));
+  const [overrides, setOverrides] = React.useState<Record<string, VisibilityOverride>>(() => readVisibilityOverrides(storageKey, columns));
+  const [userWidths, setUserWidths] = React.useState<Record<string, number>>(() => readStoredWidths(storageKey));
 
-  React.useEffect(() => {
-    const onPointerDown = (event: MouseEvent): void => {
-      if (!menuOpen) {
-        return;
-      }
-      const target = event.target as Node | null;
-      if (!target || wrapperRef.current?.contains(target)) {
-        return;
-      }
-      setMenuOpen(false);
-    };
+  const columnOrder = React.useMemo(() => reconcileOrder(storedOrder, columns), [columns, storedOrder]);
+  const visibility = React.useMemo(() => resolveVisibility(columns, overrides, narrow), [columns, narrow, overrides]);
+  const minWidths = React.useMemo(() => Object.fromEntries(columns.map((column) => [column.id, column.minWidth ?? minColumnWidth])), [columns, minColumnWidth]);
+  const visibleIds = React.useMemo(() => columnOrder.filter((id) => visibility[id]), [columnOrder, visibility]);
+  const columnSizing = React.useMemo(() => layoutWidths(
+    visibleIds,
+    minWidths,
+    Object.fromEntries(columns.map((column) => [column.id, column.initialSize])),
+    userWidths,
+    containerWidth,
+  ), [columns, containerWidth, minWidths, userWidths, visibleIds]);
+  const tableWidth = visibleIds.reduce((sum, id) => sum + (columnSizing[id] ?? 0), 0);
+  const overflowing = containerWidth > 0 && tableWidth > containerWidth;
 
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [menuOpen]);
+  const persistOrder = React.useCallback((next: string[]): void => {
+    setStoredOrder(next);
+    writeStoredOrder(storageKey, next);
+  }, [storageKey]);
 
-  React.useEffect(() => {
-    setColumnOrder((current) => {
-      const next = reconcileColumnOrder(current, columns);
-      return arraysEqual(current, next) ? current : next;
+  const persistOverrides = React.useCallback((next: Record<string, VisibilityOverride>): void => {
+    setOverrides(next);
+    writeVisibilityOverrides(storageKey, next);
+  }, [storageKey]);
+
+  const setUserWidth = React.useCallback((columnId: string, width: number, persist: boolean): void => {
+    setUserWidths((current) => {
+      const next = { ...current, [columnId]: Math.max(minWidths[columnId] ?? minColumnWidth, Math.round(width)) };
+      if (persist) writeStoredWidths(storageKey, next);
+      return next;
     });
-  }, [columns]);
-
-  React.useEffect(() => {
-    setColumnVisibility((current) => {
-      const next = reconcileVisibilityState(current, storageKey, columns);
-      return visibilityEqual(current, next) ? current : next;
-    });
-  }, [columns, storageKey]);
-
-  React.useEffect(() => {
-    setColumnSizing((current) => {
-      const stored = readStoredWidths(storageKey);
-      const next = buildBaseColumnSizing(columns, minColumnWidth, { ...stored, ...current });
-      return sizingEqual(current, next) ? current : next;
-    });
-  }, [columns, minColumnWidth, storageKey]);
-
-  React.useEffect(() => {
-    if (containerWidth <= 0) {
-      return;
-    }
-    setColumnSizing((current) => {
-      const next = rebalanceColumnSizing(columns, columnVisibility, current, containerWidth, minColumnWidth);
-      return sizingEqual(current, next) ? current : next;
-    });
-  }, [columnVisibility, columns, containerWidth, minColumnWidth]);
-
-  React.useEffect(() => {
-    writeStoredOrder(storageKey, columnOrder);
-  }, [columnOrder, storageKey]);
-
-  React.useEffect(() => {
-    const hidden = new Set(
-      columns
-        .filter((column) => columnVisibility[column.id] === false)
-        .map((column) => column.id)
-    );
-    writeStoredHidden(storageKey, hidden);
-  }, [columnVisibility, columns, storageKey]);
-
-  React.useEffect(() => {
-    writeStoredWidths(storageKey, columnSizing);
-  }, [columnSizing, storageKey]);
+  }, [minColumnWidth, minWidths, storageKey]);
 
   const columnDefs = React.useMemo<ColumnDef<DataTableRow>[]>(() => (
     columns.map((column) => ({
       id: column.id,
       accessorFn: (row) => row.cells[column.id]?.content ?? null,
       header: () => column.header,
-      minSize: minColumnWidth,
       size: columnSizing[column.id] ?? column.initialSize ?? minColumnWidth,
       meta: column,
     }))
@@ -460,167 +189,188 @@ export function DataTable({
     getRowId: (row) => row.id,
     state: {
       columnOrder,
-      columnVisibility,
+      columnVisibility: visibility,
       columnSizing,
     },
-    onColumnOrderChange: setColumnOrder,
-    onColumnVisibilityChange: setColumnVisibility,
-    onColumnSizingChange: setColumnSizing,
-    columnResizeMode: 'onChange',
   });
 
   const orderedColumns = React.useMemo(() => {
     const lookup = new Map(columns.map((column) => [column.id, column]));
-    return table.getAllLeafColumns()
-      .map((column) => lookup.get(column.id))
+    return columnOrder
+      .map((id) => lookup.get(id))
       .filter((column): column is DataTableColumn => column != null);
-  }, [columns, table]);
+  }, [columnOrder, columns]);
 
-  const toggleColumn = React.useCallback((columnId: string): void => {
-    setColumnVisibility((current) => {
-      const visibleIds = columns.filter((column) => current[column.id] !== false).map((column) => column.id);
-      const isVisible = current[columnId] !== false;
-      if (isVisible && visibleIds.length <= 1) {
-        return current;
-      }
+  const toggleColumn = (columnId: string): void => {
+    const column = columns.find((item) => item.id === columnId);
+    if (!column || column.priority === 'essential') return;
+    const isVisible = visibility[columnId];
+    if (isVisible && visibleIds.length <= 1) return;
+    persistOverrides({ ...overrides, [columnId]: { visible: !isVisible, provenance: 'user' } });
+  };
 
-      const next = { ...current, [columnId]: !isVisible };
-      return next;
-    });
-  }, [columns]);
+  const useDefault = (columnId: string): void => {
+    const next = { ...overrides };
+    delete next[columnId];
+    persistOverrides(next);
+  };
+
+  const resetColumns = (): void => {
+    clearColumnPreferences(storageKey);
+    setStoredOrder(null);
+    setOverrides({});
+    setUserWidths({});
+  };
+
+  const startPointerResize = (columnId: string, event: React.PointerEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = columnSizing[columnId] ?? minWidths[columnId];
+    let latest = startWidth;
+    const onMove = (moveEvent: PointerEvent): void => {
+      latest = startWidth + moveEvent.clientX - startX;
+      setUserWidth(columnId, latest, false);
+    };
+    const onUp = (): void => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setUserWidth(columnId, latest, true);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  const keyboardResize = (columnId: string, event: React.KeyboardEvent<HTMLDivElement>): void => {
+    const current = columnSizing[columnId] ?? minWidths[columnId];
+    const delta = event.key === 'ArrowLeft' ? -RESIZE_STEP : event.key === 'ArrowRight' ? RESIZE_STEP : 0;
+    if (delta === 0) return;
+    event.preventDefault();
+    setUserWidth(columnId, current + delta, true);
+  };
 
   return (
     <div className="resizable-table-wrapper" ref={wrapperRef}>
       {showColumnControls && (
-        <div className="table-column-controls">
-          <button
-            type="button"
-            className="table-settings-btn"
-            onClick={() => setMenuOpen((current) => !current)}
-            aria-label="Show or hide columns"
-            title="Show or hide columns"
-            disabled={orderedColumns.length === 0}
-          >
-            ⚙
-          </button>
-          {menuOpen && orderedColumns.length > 0 && (
-            <div className="table-settings-menu" role="menu" aria-label="Column visibility">
-              <div className="table-settings-title">Columns</div>
-              {orderedColumns.map((column) => {
-                const visibleCount = orderedColumns.filter((item) => columnVisibility[item.id] !== false).length;
-                const isVisible = columnVisibility[column.id] !== false;
-                return (
-                  <label key={column.id} className="table-settings-item">
-                    <input
-                      type="checkbox"
-                      checked={isVisible}
-                      onChange={() => toggleColumn(column.id)}
-                      disabled={isVisible && visibleCount <= 1}
-                    />
-                    <span>{column.label}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <DataTableColumnChooser
+          columns={orderedColumns}
+          visibility={visibility}
+          overrides={overrides}
+          onToggle={toggleColumn}
+          onUseDefault={useDefault}
+          onMove={(id, offset) => persistOrder(moveId(columnOrder, id, offset, (value) => visibility[value]))}
+          onReset={resetColumns}
+        />
       )}
 
-      <table className="resizable-table">
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const column = header.column.columnDef.meta as DataTableColumn;
-                const headerProps = column.headerProps ?? {};
-                const isDragging = draggedColumnId === header.column.id;
-                const isDropTarget = dropTargetId === header.column.id && draggedColumnId !== header.column.id;
+      <div
+        className="resizable-table-scroll"
+        role={overflowing ? 'region' : undefined}
+        aria-label={overflowing ? label ?? 'Table, scroll horizontally for more columns' : undefined}
+        tabIndex={overflowing ? 0 : undefined}
+      >
+        <table className="resizable-table" style={{ width: `${Math.max(tableWidth, 1)}px` }}>
+          <thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const column = header.column.columnDef.meta as DataTableColumn;
+                  const headerProps = column.headerProps ?? {};
+                  const size = header.getSize();
+                  const isDragging = draggedColumnId === header.column.id;
+                  const isDropTarget = dropTargetId === header.column.id && draggedColumnId !== header.column.id;
 
-                return (
-                  <th
-                    key={header.id}
-                    {...headerProps}
-                    className={classNames(headerProps.className, 'resizable-header', isDragging && 'is-dragging', isDropTarget && 'drop-target')}
-                    style={mergeWidthStyle(header.getSize(), headerProps.style)}
-                    onDragOver={(event) => {
-                      if (!draggedColumnId || draggedColumnId === header.column.id) {
-                        return;
-                      }
-                      event.preventDefault();
-                      setDropTargetId(header.column.id);
-                    }}
-                    onDragLeave={() => {
-                      if (dropTargetId === header.column.id) {
-                        setDropTargetId(null);
-                      }
-                    }}
-                    onDrop={(event) => {
-                      if (!draggedColumnId) {
-                        return;
-                      }
-                      event.preventDefault();
-                      setColumnOrder((current) => moveColumn(current, draggedColumnId, header.column.id));
-                      setDraggedColumnId(null);
-                      setDropTargetId(null);
-                    }}
-                  >
-                    {column.header}
-                    <button
-                      type="button"
-                      className="col-dragger"
-                      title={`Drag to reorder ${column.label}`}
-                      aria-label={`Drag to reorder ${column.label}`}
-                      draggable
-                      onDragStart={(event) => {
-                        setDraggedColumnId(header.column.id);
-                        if (event.dataTransfer) {
-                          event.dataTransfer.effectAllowed = 'move';
-                          event.dataTransfer.setData('text/plain', header.column.id);
+                  return (
+                    <th
+                      key={header.id}
+                      {...headerProps}
+                      className={classNames(headerProps.className, 'resizable-header', isDragging && 'is-dragging', isDropTarget && 'drop-target')}
+                      style={mergeWidthStyle(size, headerProps.style)}
+                      onDragOver={(event) => {
+                        if (!draggedColumnId || draggedColumnId === header.column.id) {
+                          return;
+                        }
+                        event.preventDefault();
+                        setDropTargetId(header.column.id);
+                      }}
+                      onDragLeave={() => {
+                        if (dropTargetId === header.column.id) {
+                          setDropTargetId(null);
                         }
                       }}
-                      onDragEnd={() => {
+                      onDrop={(event) => {
+                        if (!draggedColumnId) {
+                          return;
+                        }
+                        event.preventDefault();
+                        persistOrder(moveBefore(columnOrder, draggedColumnId, header.column.id));
                         setDraggedColumnId(null);
                         setDropTargetId(null);
                       }}
                     >
-                      ⋮⋮
-                    </button>
-                    <div
-                      className="col-resizer"
-                      role="separator"
-                      aria-label={`Resize ${column.label}`}
-                      onMouseDown={header.getResizeHandler()}
-                      onTouchStart={header.getResizeHandler()}
-                    />
-                  </th>
-                );
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const rowProps = row.original.rowProps ?? {};
-            return (
-              <tr key={row.id} {...rowProps}>
-                {row.getVisibleCells().map((cell) => {
-                  const cellDescriptor = row.original.cells[cell.column.id] ?? { content: null };
-                  const cellProps = cellDescriptor.props ?? {};
-                  return (
-                    <td
-                      key={cell.id}
-                      {...cellProps}
-                      style={mergeWidthStyle(cell.column.getSize(), cellProps.style)}
-                    >
-                      {cellDescriptor.content}
-                    </td>
+                      {column.header}
+                      <button
+                        type="button"
+                        className="col-dragger"
+                        title={`Drag to reorder ${column.label}`}
+                        aria-label={`Drag to reorder ${column.label}`}
+                        tabIndex={-1}
+                        draggable
+                        onDragStart={(event) => {
+                          setDraggedColumnId(header.column.id);
+                          if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('text/plain', header.column.id);
+                          }
+                        }}
+                        onDragEnd={() => {
+                          setDraggedColumnId(null);
+                          setDropTargetId(null);
+                        }}
+                      >
+                        ⋮⋮
+                      </button>
+                      <div
+                        className="col-resizer"
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label={`Resize ${column.label}`}
+                        aria-valuenow={size}
+                        aria-valuemin={minWidths[column.id]}
+                        tabIndex={0}
+                        onPointerDown={(event) => startPointerResize(column.id, event)}
+                        onKeyDown={(event) => keyboardResize(column.id, event)}
+                      />
+                    </th>
                   );
                 })}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => {
+              const rowProps = row.original.rowProps ?? {};
+              return (
+                <tr key={row.id} {...rowProps}>
+                  {row.getVisibleCells().map((cell) => {
+                    const cellDescriptor = row.original.cells[cell.column.id] ?? { content: null };
+                    const cellProps = cellDescriptor.props ?? {};
+                    return (
+                      <td
+                        key={cell.id}
+                        {...cellProps}
+                        style={mergeWidthStyle(cell.column.getSize(), cellProps.style)}
+                      >
+                        {cellDescriptor.content}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

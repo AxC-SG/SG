@@ -1,8 +1,11 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
-import type { Finding } from '../findings/types';
-import { api } from '../../api/client';
+import { ApiError, api } from '../../api/client';
+import { usePageHeader } from '../../app/pageHeaderState';
+import { AsyncSection } from '../../components/AsyncSection';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { Dialog } from '../../components/Dialog';
 import { cveWorkbenchApi } from '../cve-workbench/api';
 import type { OrgSpecificCveExposureRecord } from '../cve-workbench/types';
 import type { Asset } from '../inventory/api-types';
@@ -14,6 +17,7 @@ import type {
   CampaignSoftwareItem,
   CampaignStatus,
 } from './types';
+import { deliveryStateLabel, readLaunchState, summarizeDeliveries } from './deliveryOutcome';
 
 type DetailTab = 'overview' | 'products' | 'assets' | 'findings' | 'exceptions' | 'evidence' | 'activity';
 type AssetAddTab = 'search' | 'tag' | 'class';
@@ -71,6 +75,32 @@ function initials(name: string): string {
     .join('');
 }
 
+// Lifecycle presentation only: the server accepts any transition, so this table orders the existing
+// actions (one primary next step, the rest secondary) without adding or removing a rule.
+const STATUS_ACTION_LABELS: Record<'ACTIVE' | 'PAUSED' | 'IN_REVIEW' | 'BLOCKED' | 'CLOSED', string> = {
+  PAUSED: 'Pause',
+  ACTIVE: 'Resume',
+  IN_REVIEW: 'Move to Review',
+  BLOCKED: 'Mark Blocked',
+  CLOSED: 'Close Campaign',
+};
+type LifecycleTarget = keyof typeof STATUS_ACTION_LABELS;
+const LIFECYCLE_TARGETS: LifecycleTarget[] = ['PAUSED', 'ACTIVE', 'IN_REVIEW', 'BLOCKED', 'CLOSED'];
+
+function primaryTargetFor(status: CampaignStatus): LifecycleTarget | null {
+  if (status === 'DRAFT' || status === 'PAUSED' || status === 'BLOCKED') return 'ACTIVE';
+  if (status === 'ACTIVE') return 'IN_REVIEW';
+  if (status === 'IN_REVIEW') return 'CLOSED';
+  return null;
+}
+
+function actionLabelFor(target: LifecycleTarget, status: CampaignStatus): string {
+  if (target === 'ACTIVE' && status === 'DRAFT') return 'Activate';
+  return STATUS_ACTION_LABELS[target];
+}
+
+// Draft-only: there is no ad-hoc send endpoint (N04), so a composed message is copied for
+// the user to send from their own mail client.
 type NotifyTemplate = 'exception_followup' | 'escalation' | 'nearing_due_date';
 
 const NOTIFY_TEMPLATES: Record<NotifyTemplate, { label: string; subject: string; body: string }> = {
@@ -95,16 +125,32 @@ const NOTIFY_VARIABLES = ['{{owner_name}}', '{{asset_count}}', '{{asset_list}}',
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.pathname;
 
   const [detail, setDetail] = React.useState<CampaignDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [loadError, setLoadError] = React.useState<{ message: string; missing: boolean } | null>(null);
+  const [loadAttempt, setLoadAttempt] = React.useState(0);
   const [tab, setTab] = React.useState<DetailTab>('overview');
+  const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
   const [statusBusy, setStatusBusy] = React.useState<CampaignStatus | null>(null);
+  // Action-local feedback: a failed write is reported next to its control and never replaces the page.
+  const [statusFeedback, setStatusFeedback] = React.useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [lifecycleMenuOpen, setLifecycleMenuOpen] = React.useState(false);
+  const lifecycleMenuRef = React.useRef<HTMLDivElement>(null);
+  const lifecycleMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [confirmClose, setConfirmClose] = React.useState(false);
+  const [closeError, setCloseError] = React.useState<string | null>(null);
   const [noteDraft, setNoteDraft] = React.useState('');
   const [savingNote, setSavingNote] = React.useState(false);
+  const [noteError, setNoteError] = React.useState<string | null>(null);
   const [exceptionStatusBusy, setExceptionStatusBusy] = React.useState<string | null>(null);
+  const [exceptionError, setExceptionError] = React.useState<string | null>(null);
+  // Scope edits (add/remove assets, CVEs, software) have no save endpoint; they stay on this page only (N04).
+  const [scopeEditedLocally, setScopeEditedLocally] = React.useState(false);
+  const [launchState] = React.useState(() => readLaunchState(location.state));
+  const [launchNoticeDismissed, setLaunchNoticeDismissed] = React.useState(false);
 
   // ── Sidebar collapse state ────────────────────────────────────────────────
   const [advisoriesCollapsed, setAdvisoriesCollapsed] = React.useState(false);
@@ -112,11 +158,10 @@ export function CampaignDetailPage() {
 
   // ── Notify modal ──────────────────────────────────────────────────────────
   const [showNotify, setShowNotify] = React.useState(false);
-  const [notifyRecipients, setNotifyRecipients] = React.useState<Set<string>>(new Set());
   const [notifyTemplate, setNotifyTemplate] = React.useState<NotifyTemplate>('nearing_due_date');
-  const [notifySubject, setNotifySubject] = React.useState('');
-  const [notifyBody, setNotifyBody] = React.useState('');
-  const [notifySent, setNotifySent] = React.useState(false);
+  const [notifySubject, setNotifySubject] = React.useState(NOTIFY_TEMPLATES.nearing_due_date.subject);
+  const [notifyBody, setNotifyBody] = React.useState(NOTIFY_TEMPLATES.nearing_due_date.body);
+  const [notifyCopyStatus, setNotifyCopyStatus] = React.useState<'copied' | 'failed' | null>(null);
   const notifyBodyRef = React.useRef<HTMLTextAreaElement>(null);
 
   // ── AI Campaign Insights ──────────────────────────────────────────────────
@@ -249,6 +294,7 @@ export function CampaignDetailPage() {
           }
         : prev,
     );
+    setScopeEditedLocally(true);
     closeAddAssets();
   }
 
@@ -321,6 +367,7 @@ export function CampaignDetailPage() {
         ],
       };
     });
+    setScopeEditedLocally(true);
     closeAddCve();
   }
 
@@ -354,27 +401,16 @@ export function CampaignDetailPage() {
       .finally(() => setSoftwareLoading(false));
   }, [showAddSoftware, softwarePage, softwareSearchQuery]);
 
-  // Initialize notify modal when opened
-  React.useEffect(() => {
-    if (!showNotify) return;
-    setNotifyRecipients(new Set((detail?.notifyGroups ?? []).map((g) => g.id)));
-    setNotifyTemplate('nearing_due_date');
-    setNotifySent(false);
-    setNotifySubject(NOTIFY_TEMPLATES.nearing_due_date.subject);
-    setNotifyBody(NOTIFY_TEMPLATES.nearing_due_date.body);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showNotify]);
-
-  // Update subject/body when template changes
-  React.useEffect(() => {
-    if (!showNotify) return;
-    setNotifySubject(NOTIFY_TEMPLATES[notifyTemplate].subject);
-    setNotifyBody(NOTIFY_TEMPLATES[notifyTemplate].body);
-  }, [notifyTemplate, showNotify]);
-
   function closeNotify() {
     setShowNotify(false);
-    setNotifySent(false);
+    setNotifyCopyStatus(null);
+  }
+
+  function selectNotifyTemplate(next: NotifyTemplate) {
+    setNotifyTemplate(next);
+    setNotifySubject(NOTIFY_TEMPLATES[next].subject);
+    setNotifyBody(NOTIFY_TEMPLATES[next].body);
+    setNotifyCopyStatus(null);
   }
 
   function insertVariable(v: string) {
@@ -387,6 +423,16 @@ export function CampaignDetailPage() {
       el.focus();
       el.setSelectionRange(start + v.length, start + v.length);
     }, 0);
+  }
+
+  async function copyNotifyDraft(recipients: string[]) {
+    const lines = [recipients.length > 0 ? `To: ${recipients.join(', ')}` : null, `Subject: ${notifySubject}`, '', notifyBody];
+    try {
+      await navigator.clipboard.writeText(lines.filter((line) => line !== null).join('\n'));
+      setNotifyCopyStatus('copied');
+    } catch {
+      setNotifyCopyStatus('failed');
+    }
   }
 
   function closeAddSoftware() {
@@ -422,11 +468,13 @@ export function CampaignDetailPage() {
       openFindingCount: sw.openFindingCount,
     }));
     setDetail((prev) => prev ? { ...prev, softwareItems: [...(prev.softwareItems ?? []), ...newItems] } : prev);
+    setScopeEditedLocally(true);
     closeAddSoftware();
   }
 
   // ── Delete helpers ────────────────────────────────────────────────────────
   function deleteAsset(identifier: string | null, name: string | null) {
+    setScopeEditedLocally(true);
     setDetail((prev) => {
       if (!prev) return prev;
       const assets = prev.assets.filter(
@@ -436,6 +484,7 @@ export function CampaignDetailPage() {
     });
   }
   function deleteCve(cveId: string) {
+    setScopeEditedLocally(true);
     setDetail((prev) => {
       if (!prev) return prev;
       return {
@@ -446,50 +495,91 @@ export function CampaignDetailPage() {
     });
   }
   function deleteSoftwareItem(itemId: string) {
+    setScopeEditedLocally(true);
     setDetail((prev) => prev ? { ...prev, softwareItems: (prev.softwareItems ?? []).filter((s) => s.id !== itemId) } : prev);
   }
 
-  const reload = React.useCallback(async () => {
-    if (!id) return;
-    try {
-      const result = await api.getCampaign(id);
-      setDetail(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [id]);
-
   React.useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     api.getCampaign(id)
-      .then((d) => setDetail(d))
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false));
-  }, [id]);
+      .then((d) => { if (!cancelled) setDetail(d); })
+      .catch((err) => {
+        if (cancelled) return;
+        const missing = err instanceof ApiError && (err.status === 403 || err.status === 404);
+        setLoadError({ message: err instanceof Error ? err.message : String(err), missing });
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id, loadAttempt]);
 
-  async function transition(status: CampaignStatus): Promise<void> {
-    if (!id) return;
+  usePageHeader(detail ? { title: detail.summary.name } : null);
+
+  // The secondary lifecycle menu closes on Escape (returning focus) and on any outside press.
+  React.useEffect(() => {
+    if (!lifecycleMenuOpen) return undefined;
+    function onPointer(event: MouseEvent) {
+      if (lifecycleMenuRef.current && !lifecycleMenuRef.current.contains(event.target as Node)) setLifecycleMenuOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setLifecycleMenuOpen(false);
+      lifecycleMenuButtonRef.current?.focus();
+    }
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [lifecycleMenuOpen]);
+
+  async function transition(status: LifecycleTarget): Promise<boolean> {
+    if (!id || !detail) return false;
+    setLifecycleMenuOpen(false);
     setStatusBusy(status);
+    setStatusFeedback(null);
     try {
       const updated = await api.updateCampaignStatus(id, status);
       setDetail(updated);
+      setStatusFeedback({ tone: 'success', text: `Campaign moved to ${formatStatus(updated.summary.status)}.` });
+      return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setStatusFeedback({ tone: 'error', text: `${actionLabelFor(status, detail.summary.status)} failed: ${message}` });
+      return false;
     } finally {
       setStatusBusy(null);
+    }
+  }
+
+  async function confirmCloseCampaign(): Promise<void> {
+    setCloseError(null);
+    const ok = await transition('CLOSED');
+    if (ok) {
+      setConfirmClose(false);
+    } else {
+      setStatusFeedback(null);
+      setCloseError('The campaign was not closed. Check the connection and try again.');
     }
   }
 
   async function submitNote(): Promise<void> {
     if (!id || !noteDraft.trim()) return;
     setSavingNote(true);
+    setNoteError(null);
     try {
       await api.addCampaignNote(id, noteDraft.trim());
       setNoteDraft('');
-      await reload();
+      try {
+        setDetail(await api.getCampaign(id));
+      } catch {
+        setNoteError('Note saved, but the activity list could not be refreshed. Reload to see it.');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setNoteError(`Note not saved: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSavingNote(false);
     }
@@ -498,27 +588,31 @@ export function CampaignDetailPage() {
   async function updateExceptionStatus(exceptionId: string, status: CampaignExceptionStatus): Promise<void> {
     if (!id) return;
     setExceptionStatusBusy(exceptionId + status);
+    setExceptionError(null);
     try {
       const updated = await api.updateCampaignExceptionStatus(id, exceptionId, status);
       setDetail(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setExceptionError(`Exception not updated: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setExceptionStatusBusy(null);
     }
   }
 
-  if (loading) {
-    return <div className="cd-loading ui2-experience-family">Loading campaign…</div>;
-  }
-
-  if (error || !detail) {
+  if (!detail) {
     return (
       <div className="cd-loading ui2-experience-family">
-        <p>{error ?? 'Campaign not found.'}</p>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/vuln-repo/campaigns')}>
-          Back to Campaigns
-        </button>
+        <AsyncSection
+          state={loading ? 'pending' : loadError && !loadError.missing ? 'error' : 'unavailable'}
+          loadingLabel="Loading campaign…"
+          errorMessage={`The campaign could not be loaded: ${loadError?.message ?? 'unknown error'}`}
+          unavailableMessage="Campaign not found, or you do not have access to it."
+          onRetry={() => setLoadAttempt((n) => n + 1)}
+          retrying={loading}
+        />
+        {!loading && (
+          <Link className="btn btn-secondary" to="/vuln-repo/campaigns">Back to Campaigns</Link>
+        )}
       </div>
     );
   }
@@ -661,44 +755,116 @@ export function CampaignDetailPage() {
     { key: 'activity', label: 'Activity' },
   ];
 
+  const primaryTarget = primaryTargetFor(s.status);
+  const secondaryTargets = LIFECYCLE_TARGETS.filter((target) => target !== s.status && target !== primaryTarget);
+  const lifecycleMenuId = `cd-lifecycle-menu-${s.id}`;
+
+  function runLifecycle(target: LifecycleTarget): void {
+    setLifecycleMenuOpen(false);
+    if (target === 'CLOSED') {
+      setCloseError(null);
+      setConfirmClose(true);
+      return;
+    }
+    void transition(target);
+  }
+
+  function onTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number): void {
+    let next = -1;
+    if (event.key === 'ArrowRight') next = (index + 1) % TABS.length;
+    else if (event.key === 'ArrowLeft') next = (index - 1 + TABS.length) % TABS.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = TABS.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    setTab(TABS[next]!.key);
+    tabRefs.current[next]?.focus();
+  }
+
+  const scopeLocalNotice = scopeEditedLocally ? (
+    <div className="notice warning cd-scope-local-notice" role="status">
+      Scope changes on this page are not saved to the campaign. They are lost when the page reloads.
+    </div>
+  ) : null;
+
   return (
     <div className="cd-page ui2-experience-family">
       {/* ── Top bar ───────────────────────────────────────────────── */}
       <div className="cd-topbar">
-        <div className="cd-breadcrumb">
-          <button type="button" className="cd-breadcrumb-link" onClick={() => navigate('/vuln-repo/campaigns')}>
+        <nav className="cd-breadcrumb" aria-label="Breadcrumb">
+          <Link className="cd-breadcrumb-link" to="/vuln-repo/campaigns">
             Campaigns
-          </button>
-          <span className="cd-breadcrumb-sep">/</span>
-          <span className="cd-breadcrumb-current">{s.name}</span>
-        </div>
+          </Link>
+          <span className="cd-breadcrumb-sep" aria-hidden="true">/</span>
+          <span className="cd-breadcrumb-current" aria-current="page">{s.name}</span>
+        </nav>
         <div className="cd-topbar-actions">
-          <button type="button" className="btn btn-secondary" disabled={statusBusy !== null && statusBusy !== 'PAUSED'} onClick={() => void transition('PAUSED')}>
-            {statusBusy === 'PAUSED' ? '…' : 'Pause'}
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={statusBusy !== null && statusBusy !== 'ACTIVE'} onClick={() => void transition('ACTIVE')}>
-            {statusBusy === 'ACTIVE' ? '…' : 'Resume'}
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={statusBusy !== null && statusBusy !== 'IN_REVIEW'} onClick={() => void transition('IN_REVIEW')}>
-            {statusBusy === 'IN_REVIEW' ? '…' : 'Move to Review'}
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={statusBusy !== null && statusBusy !== 'BLOCKED'} onClick={() => void transition('BLOCKED')}>
-            {statusBusy === 'BLOCKED' ? '…' : 'Mark Blocked'}
-          </button>
-          <button type="button" className="btn btn-primary" disabled={statusBusy !== null && statusBusy !== 'CLOSED'} onClick={() => void transition('CLOSED')}>
-            {statusBusy === 'CLOSED' ? 'Closing…' : 'Close Campaign'}
-          </button>
+          <span className="cd-topbar-status">
+            Status <span className={statusBadgeClass(s.status)}>{formatStatus(s.status)}</span>
+          </span>
+          {primaryTarget && (
+            <button type="button" className="btn btn-primary" disabled={statusBusy !== null} onClick={() => runLifecycle(primaryTarget)}>
+              {statusBusy === primaryTarget ? 'Updating…' : actionLabelFor(primaryTarget, s.status)}
+            </button>
+          )}
+          {secondaryTargets.length > 0 && (
+            <div className="cd-lifecycle-menu" ref={lifecycleMenuRef}>
+              <button
+                ref={lifecycleMenuButtonRef}
+                type="button"
+                className="btn btn-secondary"
+                aria-expanded={lifecycleMenuOpen}
+                aria-controls={lifecycleMenuId}
+                disabled={statusBusy !== null}
+                onClick={() => setLifecycleMenuOpen((open) => !open)}
+              >
+                {statusBusy !== null && statusBusy !== primaryTarget ? 'Updating…' : 'More actions'}
+              </button>
+              <ul id={lifecycleMenuId} className="cd-lifecycle-menu-list" hidden={!lifecycleMenuOpen} aria-label="Lifecycle actions">
+                {secondaryTargets.map((target) => (
+                  <li key={target}>
+                    <button type="button" className="cd-lifecycle-menu-item" onClick={() => runLifecycle(target)}>
+                      {actionLabelFor(target, s.status)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
+      {statusFeedback && (
+        <div
+          className={`notice ${statusFeedback.tone === 'error' ? 'error' : 'success'} cd-action-feedback`}
+          role={statusFeedback.tone === 'error' ? 'alert' : 'status'}
+        >
+          {statusFeedback.text}
+        </div>
+      )}
+      {launchState && !launchNoticeDismissed && (
+        <div className="notice cd-action-feedback" role="status">
+          <span>
+            Campaign launched. {summarizeDeliveries(launchState.launchedDeliveries)} Queued notifications are accepted for sending, not confirmed as delivered.
+          </span>
+          <button type="button" className="btn btn-sm" onClick={() => setLaunchNoticeDismissed(true)}>Dismiss</button>
+        </div>
+      )}
 
       {/* ── Sub-nav tabs ─────────────────────────────────────────── */}
-      <div className="cd-tabnav">
-        {TABS.map(({ key, label, count }) => (
+      <div className="cd-tabnav" role="tablist" aria-label="Campaign sections">
+        {TABS.map(({ key, label, count }, index) => (
           <button
             key={key}
+            ref={(node) => { tabRefs.current[index] = node; }}
             type="button"
+            role="tab"
+            id={`cd-tab-${key}`}
+            aria-selected={tab === key}
+            aria-controls="cd-tab-panel"
+            tabIndex={tab === key ? 0 : -1}
             className={tab === key ? 'cd-tab active' : 'cd-tab'}
             onClick={() => setTab(key)}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
           >
             {label}
             {count != null && (
@@ -710,10 +876,9 @@ export function CampaignDetailPage() {
         ))}
       </div>
 
-      {error && <div className="notice error" style={{ margin: '0 24px 12px' }}>{error}</div>}
 
       {/* ── Tab content ──────────────────────────────────────────── */}
-      <div className="cd-body">
+      <div className="cd-body" role="tabpanel" id="cd-tab-panel" aria-labelledby={`cd-tab-${tab}`}>
         {tab === 'overview' && (
           <div className="cd-overview-layout">
             {/* ── Main column ── */}
@@ -830,6 +995,10 @@ export function CampaignDetailPage() {
               {/* Campaign lifecycle stage rail */}
               <div className="cd-stage-card">
                 <div className="cd-group-section-label">CAMPAIGN STAGE</div>
+                <p className="cd-stage-summary">
+                  Stage {stageIdx + 1} of {LIFECYCLE_STAGES.length}: {LIFECYCLE_STAGES[stageIdx]!.label}
+                  {s.status === 'BLOCKED' ? ' (blocked)' : ''}
+                </p>
                 <div className="cd-stage-rail">
                   {LIFECYCLE_STAGES.map((stage, i) => {
                     const isDone = i < stageIdx;
@@ -838,7 +1007,7 @@ export function CampaignDetailPage() {
                     return (
                       <React.Fragment key={stage.label}>
                         {i > 0 && <div className={`cd-stage-connector${isDone ? ' done' : ''}`} />}
-                        <div className={[
+                        <div aria-current={isActive ? 'step' : undefined} className={[
                           'cd-stage',
                           isActive ? 'cd-stage--active' : '',
                           isDone ? 'cd-stage--done' : '',
@@ -1005,6 +1174,8 @@ export function CampaignDetailPage() {
                     className="cd-sidebar-collapse-btn"
                     onClick={() => setAdvisoriesCollapsed((c) => !c)}
                     title={advisoriesCollapsed ? 'Expand' : 'Collapse'}
+                    aria-label={advisoriesCollapsed ? 'Expand advisories' : 'Collapse advisories'}
+                    aria-expanded={!advisoriesCollapsed}
                   >
                     <span className={`cd-sidebar-chevron${advisoriesCollapsed ? ' collapsed' : ''}`}>›</span>
                   </button>
@@ -1074,6 +1245,8 @@ export function CampaignDetailPage() {
                       className="cd-sidebar-collapse-btn"
                       onClick={() => setNotifyCollapsed((c) => !c)}
                       title={notifyCollapsed ? 'Expand' : 'Collapse'}
+                      aria-label={notifyCollapsed ? 'Expand notify groups' : 'Collapse notify groups'}
+                      aria-expanded={!notifyCollapsed}
                     >
                       <span className={`cd-sidebar-chevron${notifyCollapsed ? ' collapsed' : ''}`}>›</span>
                     </button>
@@ -1082,7 +1255,8 @@ export function CampaignDetailPage() {
                       <button
                         type="button"
                         className="cd-sidebar-icon-btn"
-                        title="Compose notification"
+                        title="Notifications"
+                        aria-label="Notifications"
                         onClick={() => setShowNotify(true)}
                       >
                         ✉
@@ -1119,6 +1293,7 @@ export function CampaignDetailPage() {
                 + Add Software
               </button>
             </div>
+            {scopeLocalNotice}
             <table className="data-table cd-findings-table">
               <thead>
                 <tr>
@@ -1135,9 +1310,9 @@ export function CampaignDetailPage() {
                 {productRows.map((pr) => {
                   const pctDone = pr.total > 0 ? Math.round((pr.resolved / pr.total) * 100) : 0;
                   return (
-                    <tr key={pr.name} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForInventoryViewWithSearch('software-identities', { query: pr.name }))}>
+                    <tr key={pr.name}>
                       <td>
-                        <strong style={{ fontSize: 13, color: 'var(--dp-accent)' }}>{pr.name}</strong>
+                        <Link className="cd-row-link" to={pathForInventoryViewWithSearch('software-identities', { query: pr.name })}>{pr.name}</Link>
                       </td>
                       <td style={{ fontSize: 13 }}>{pr.assets.size}</td>
                       <td style={{ fontSize: 13 }}>{pr.total}</td>
@@ -1160,10 +1335,10 @@ export function CampaignDetailPage() {
                   );
                 })}
                 {(detail.softwareItems ?? []).map((sw) => (
-                  <tr key={sw.id} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForSoftwareIdentityDetail(sw.id))}>
+                  <tr key={sw.id}>
                     <td>
                       <div>
-                        <strong style={{ fontSize: 13, color: 'var(--dp-accent)' }}>{sw.displayName}</strong>
+                        <Link className="cd-row-link" to={pathForSoftwareIdentityDetail(sw.id)}>{sw.displayName}</Link>
                         {sw.vendor && <div style={{ fontSize: 11, color: 'var(--dp-text-2)', marginTop: 2 }}>{sw.vendor}</div>}
                       </div>
                     </td>
@@ -1173,7 +1348,7 @@ export function CampaignDetailPage() {
                     <td><span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span></td>
                     <td><span style={{ color: 'var(--dp-text-2)', fontSize: 12 }}>—</span></td>
                     <td>
-                      <button type="button" className="cd-delete-btn" title="Remove" onClick={(e) => { e.stopPropagation(); deleteSoftwareItem(sw.id); }}>✕</button>
+                      <button type="button" className="cd-delete-btn" title="Remove" aria-label={`Remove ${sw.displayName}`} onClick={() => deleteSoftwareItem(sw.id)}>✕</button>
                     </td>
                   </tr>
                 ))}
@@ -1194,6 +1369,7 @@ export function CampaignDetailPage() {
                 + Add Assets
               </button>
             </div>
+            {scopeLocalNotice}
             <table className="data-table cd-assets-table">
               <thead>
                 <tr>
@@ -1214,14 +1390,14 @@ export function CampaignDetailPage() {
                   const maxSev = assetFindings.find((f) => f.severity)?.severity;
                   const ownerGroup = assetFindings.find((f) => f.ownerGroup)?.ownerGroup;
                   return (
-                    <tr
-                      key={`${a.assetIdentifier}-${a.assetName}`}
-                      style={{ cursor: a.assetId ? 'pointer' : undefined }}
-                      onClick={() => a.assetId && navigate(pathForInventoryHostAsset(a.assetId))}
-                    >
+                    <tr key={`${a.assetIdentifier}-${a.assetName}`}>
                       <td>
                         <div className="cd-asset-cell">
-                          <strong className="cd-asset-name">{a.assetName || a.assetIdentifier || 'Asset'}</strong>
+                          {a.assetId ? (
+                            <Link className="cd-asset-name cd-row-link" to={pathForInventoryHostAsset(a.assetId)}>{a.assetName || a.assetIdentifier || 'Asset'}</Link>
+                          ) : (
+                            <strong className="cd-asset-name">{a.assetName || a.assetIdentifier || 'Asset'}</strong>
+                          )}
                           {a.assetIdentifier && (
                             <span className="cd-asset-ci mono">{a.assetIdentifier}</span>
                           )}
@@ -1241,7 +1417,8 @@ export function CampaignDetailPage() {
                       </td>
                       <td>
                         <button type="button" className="cd-delete-btn" title="Remove asset"
-                          onClick={(e) => { e.stopPropagation(); deleteAsset(a.assetIdentifier, a.assetName); }}>✕</button>
+                          aria-label={`Remove ${a.assetName || a.assetIdentifier || 'asset'}`}
+                          onClick={() => deleteAsset(a.assetIdentifier, a.assetName)}>✕</button>
                       </td>
                     </tr>
                   );
@@ -1271,23 +1448,20 @@ export function CampaignDetailPage() {
                 {activeFindings.map((f) => {
                   const cveId = f.vulnerabilityId ?? detail.summary.cveIds[0] ?? null;
                   return (
-                    <tr
-                      key={`${f.displayId}-${f.assetIdentifier}`}
-                      style={{ cursor: f.findingId && f.displayId ? 'pointer' : undefined }}
-                      onClick={() => {
-                        if (!f.findingId || !f.displayId) return;
-                        void api.getFinding(f.findingId).then((finding: Finding) => {
-                          navigate(pathForFindingDetail(f.displayId!), { state: { finding } });
-                        });
-                      }}
-                    >
+                    <tr key={`${f.displayId}-${f.assetIdentifier}`}>
                       <td>
-                        <span className="cd-finding-id-link mono">{f.displayId || '—'}</span>
+                        {f.findingId ? (
+                          <Link className="cd-finding-id-link mono" to={pathForFindingDetail(f.findingId, returnTo)}>{f.displayId || f.findingId}</Link>
+                        ) : (
+                          <span className="mono">{f.displayId || '—'}</span>
+                        )}
                       </td>
-                      <td onClick={(e) => { if (cveId) { e.stopPropagation(); navigate(pathForVulnRepoView('org-cves', cveId)); } }}>
-                        <span className="mono" style={{ fontSize: 12, color: 'var(--dp-accent)', cursor: cveId ? 'pointer' : undefined }}>
-                          {cveId || '—'}
-                        </span>
+                      <td>
+                        {cveId ? (
+                          <Link className="mono cd-row-link" to={pathForVulnRepoView('org-cves', cveId)}>{cveId}</Link>
+                        ) : (
+                          <span className="mono">—</span>
+                        )}
                       </td>
                       <td>
                         <div>
@@ -1325,6 +1499,7 @@ export function CampaignDetailPage() {
 
         {tab === 'exceptions' && (
           <div className="cd-tab-body">
+            {exceptionError && <div className="notice error cd-action-feedback" role="alert">{exceptionError}</div>}
             <table className="data-table cd-findings-table">
               <thead>
                 <tr>
@@ -1425,23 +1600,20 @@ export function CampaignDetailPage() {
                     {suppressedFindings.map((f) => {
                       const cveId = f.vulnerabilityId ?? detail.summary.cveIds[0] ?? null;
                       return (
-                        <tr
-                          key={`sup-${f.displayId}-${f.assetIdentifier}`}
-                          style={{ cursor: f.findingId && f.displayId ? 'pointer' : undefined, opacity: 0.75 }}
-                          onClick={() => {
-                            if (!f.findingId || !f.displayId) return;
-                            void api.getFinding(f.findingId).then((finding: Finding) => {
-                              navigate(pathForFindingDetail(f.displayId!), { state: { finding } });
-                            });
-                          }}
-                        >
+                        <tr key={`sup-${f.displayId}-${f.assetIdentifier}`} className="cd-row-muted">
                           <td>
-                            <span className="cd-finding-id-link mono">{f.displayId || '—'}</span>
+                            {f.findingId ? (
+                              <Link className="cd-finding-id-link mono" to={pathForFindingDetail(f.findingId, returnTo)}>{f.displayId || f.findingId}</Link>
+                            ) : (
+                              <span className="mono">{f.displayId || '—'}</span>
+                            )}
                           </td>
-                          <td onClick={(e) => { if (cveId) { e.stopPropagation(); navigate(pathForVulnRepoView('org-cves', cveId)); } }}>
-                            <span className="mono" style={{ fontSize: 12, color: 'var(--dp-accent)', cursor: cveId ? 'pointer' : undefined }}>
-                              {cveId || '—'}
-                            </span>
+                          <td>
+                            {cveId ? (
+                              <Link className="mono cd-row-link" to={pathForVulnRepoView('org-cves', cveId)}>{cveId}</Link>
+                            ) : (
+                              <span className="mono">—</span>
+                            )}
                           </td>
                           <td>
                             <strong style={{ fontSize: 13 }}>{f.assetName || f.assetIdentifier || '—'}</strong>
@@ -1497,6 +1669,7 @@ export function CampaignDetailPage() {
                   + Add CVE
                 </button>
               </div>
+              {scopeLocalNotice}
               <table className="data-table cd-findings-table">
                 <thead>
                   <tr>
@@ -1514,11 +1687,9 @@ export function CampaignDetailPage() {
                     const pctDone = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
                     const evStatus = resolvedCount === totalCount && totalCount > 0 ? 'RESOLVED' : 'OPEN';
                     return (
-                      <tr key={cveId} style={{ cursor: 'pointer' }} onClick={() => navigate(pathForVulnRepoView('org-cves', cveId))}>
+                      <tr key={cveId}>
                         <td>
-                          <span className="mono" style={{ fontSize: 13, color: 'var(--dp-accent)', fontWeight: 700 }}>
-                            {cveId}
-                          </span>
+                          <Link className="mono cd-row-link" to={pathForVulnRepoView('org-cves', cveId)}>{cveId}</Link>
                         </td>
                         <td>
                           {sev
@@ -1535,7 +1706,8 @@ export function CampaignDetailPage() {
                         </td>
                         <td>
                           <button type="button" className="cd-delete-btn" title="Remove CVE"
-                            onClick={(e) => { e.stopPropagation(); deleteCve(cveId); }}>✕</button>
+                            aria-label={`Remove ${cveId}`}
+                            onClick={() => deleteCve(cveId)}>✕</button>
                         </td>
                       </tr>
                     );
@@ -1576,6 +1748,7 @@ export function CampaignDetailPage() {
             <div className="cd-tab-body">
               <div className="cd-note-compose">
                 <textarea
+                  aria-label="Campaign note"
                   value={noteDraft}
                   onChange={(e) => setNoteDraft(e.target.value)}
                   placeholder="Add a note for resolvers and stakeholders…"
@@ -1589,6 +1762,7 @@ export function CampaignDetailPage() {
                   {savingNote ? 'Saving…' : 'Add Note'}
                 </button>
               </div>
+              {noteError && <div className="notice error cd-action-feedback" role="alert">{noteError}</div>}
               <div className="cd-activity-list">
                 {feed.map((item) => (
                   <div key={`${item.kind}-${item.id}`} className="cd-activity-row">
@@ -1643,12 +1817,12 @@ export function CampaignDetailPage() {
         const addLabel = previewCount > 0 ? `Add ${previewCount} Asset${previewCount !== 1 ? 's' : ''}` : 'Add Assets';
 
         return (
-          <div className="fd3-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeAddAssets(); }}>
-            <div className="fd3-modal cd-asset-picker-modal">
+          <Dialog isOpen labelledBy="cd-add-assets-title" onClose={closeAddAssets} className="fd3-modal cd-asset-picker-modal">
               <div className="fd3-modal-header">
-                <span>Add Assets to Campaign</span>
-                <button className="fd3-modal-close" onClick={closeAddAssets}>✕</button>
+                <span id="cd-add-assets-title">Add Assets to Campaign</span>
+                <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddAssets}>✕</button>
               </div>
+              <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
 
               {/* Tab selector */}
               <div className="cd-asset-tab-bar">
@@ -1820,26 +1994,25 @@ export function CampaignDetailPage() {
                       : <span style={{ color: 'var(--dp-text-2)' }}>No assets matched</span>}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-secondary" onClick={closeAddAssets}>Cancel</button>
-                  <button className="btn btn-primary" disabled={previewCount === 0} onClick={submitAddAssets}>
+                  <button type="button" className="btn btn-secondary" onClick={closeAddAssets}>Cancel</button>
+                  <button type="button" className="btn btn-primary" disabled={previewCount === 0} onClick={submitAddAssets}>
                     {addLabel}
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+          </Dialog>
         );
       })()}
 
       {/* ── Add CVE modal ────────────────────────────────────────────── */}
       {/* ── Add Software modal ───────────────────────────────────────── */}
       {showAddSoftware && (
-        <div className="fd3-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeAddSoftware(); }}>
-          <div className="fd3-modal cd-asset-picker-modal">
+        <Dialog isOpen labelledBy="cd-add-software-title" onClose={closeAddSoftware} className="fd3-modal cd-asset-picker-modal">
             <div className="fd3-modal-header">
-              <span>Add Software to Campaign</span>
-              <button className="fd3-modal-close" onClick={closeAddSoftware}>✕</button>
+              <span id="cd-add-software-title">Add Software to Campaign</span>
+              <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddSoftware}>✕</button>
             </div>
+            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addSoftwareError && <div className="notice error" style={{ marginBottom: 10 }}>{addSoftwareError}</div>}
               <div className="cd-asset-search-wrap">
@@ -1908,23 +2081,22 @@ export function CampaignDetailPage() {
                   : <span style={{ color: 'var(--dp-text-2)' }}>No software selected</span>}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" onClick={closeAddSoftware}>Cancel</button>
-                <button className="btn btn-primary" disabled={selectedSoftwareMap.size === 0} onClick={submitAddSoftware}>
+                <button type="button" className="btn btn-secondary" onClick={closeAddSoftware}>Cancel</button>
+                <button type="button" className="btn btn-primary" disabled={selectedSoftwareMap.size === 0} onClick={submitAddSoftware}>
                   {selectedSoftwareMap.size > 0 ? `Add ${selectedSoftwareMap.size} Item${selectedSoftwareMap.size !== 1 ? 's' : ''}` : 'Add Software'}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {showAddCve && (
-        <div className="fd3-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeAddCve(); }}>
-          <div className="fd3-modal cd-asset-picker-modal">
+        <Dialog isOpen labelledBy="cd-add-cve-title" onClose={closeAddCve} className="fd3-modal cd-asset-picker-modal">
             <div className="fd3-modal-header">
-              <span>Add CVE to Campaign</span>
-              <button className="fd3-modal-close" onClick={closeAddCve}>✕</button>
+              <span id="cd-add-cve-title">Add CVE to Campaign</span>
+              <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddCve}>✕</button>
             </div>
+            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addCveError && <div className="notice error" style={{ marginBottom: 10 }}>{addCveError}</div>}
 
@@ -2000,149 +2172,168 @@ export function CampaignDetailPage() {
                   : <span style={{ color: 'var(--dp-text-2)' }}>No CVEs selected</span>}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" onClick={closeAddCve}>Cancel</button>
-                <button className="btn btn-primary" disabled={selectedCveMap.size === 0} onClick={submitAddCve}>
+                <button type="button" className="btn btn-secondary" onClick={closeAddCve}>Cancel</button>
+                <button type="button" className="btn btn-primary" disabled={selectedCveMap.size === 0} onClick={submitAddCve}>
                   {selectedCveMap.size > 0 ? `Add ${selectedCveMap.size} CVE${selectedCveMap.size !== 1 ? 's' : ''}` : 'Add CVE'}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
-      {/* ── Notify Modal ─────────────────────────────────────────────────── */}
+      {/* ── Notifications dialog ─────────────────────────────────────────
+          There is no ad-hoc send endpoint, so this shows who is notified and what the server
+          recorded; it never claims a delivery the server has not reported (N04). */}
       {showNotify && (
-        <div className="cd-notify-overlay" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) closeNotify(); }}>
-          <div className="cd-notify-modal" role="dialog" aria-modal="true">
+        <Dialog isOpen labelledBy="cd-notify-title" onClose={closeNotify} className="cd-notify-modal">
             <div className="cd-notify-modal-header">
-              <span className="cd-notify-modal-title">
-                <span>✉</span>
+              <span className="cd-notify-modal-title" id="cd-notify-title">
+                <span aria-hidden="true">✉</span>
                 <span>Notify Teams — {s.name}</span>
               </span>
-              <button type="button" className="fd3-modal-close" onClick={closeNotify}>✕</button>
+              <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeNotify}>✕</button>
             </div>
-
-            {notifySent ? (
-              <div className="cd-notify-success">
-                <div className="cd-notify-success-icon">✓</div>
-                <h3>Notifications sent!</h3>
-                <p>{notifyRecipients.size} group{notifyRecipients.size !== 1 ? 's' : ''} notified via email.</p>
-                <button type="button" className="btn btn-primary" onClick={closeNotify}>Done</button>
-              </div>
-            ) : (
-              <div className="cd-notify-body">
-                {/* Left panel: Recipients */}
-                <div className="cd-notify-left">
-                  <div className="cd-notify-left-header">
-                    <span className="cd-notify-left-title">Recipients</span>
-                    <span className="cd-notify-left-count">{notifyRecipients.size} selected</span>
-                  </div>
-                  <div className="cd-notify-filters">
-                    <button type="button" className="cd-notify-filter-btn active"
-                      onClick={() => setNotifyRecipients(new Set(detail.notifyGroups.map((g) => g.id)))}>
-                      All teams
-                    </button>
-                    <button type="button" className="cd-notify-filter-btn"
-                      onClick={() => setNotifyRecipients(new Set(detail.notifyGroups.slice(0, 1).map((g) => g.id)))}>
-                      Impacted only
-                    </button>
-                    <button type="button" className="cd-notify-filter-btn"
-                      onClick={() => setNotifyRecipients(new Set())}>
-                      Clear
-                    </button>
-                  </div>
-                  <div className="cd-notify-recipients-list">
-                    {detail.notifyGroups.length === 0 && (
-                      <div className="cd-notify-empty">No notify groups configured for this campaign.</div>
-                    )}
-                    {detail.notifyGroups.map((g) => (
-                      <label key={g.id} className="cd-notify-recipient-row">
-                        <input
-                          type="checkbox"
-                          checked={notifyRecipients.has(g.id)}
-                          onChange={() => {
-                            setNotifyRecipients((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(g.id)) next.delete(g.id); else next.add(g.id);
-                              return next;
-                            });
-                          }}
-                        />
-                        <div className="cd-notify-recipient-info">
-                          <span className="cd-avatar cd-avatar--sm">{initials(g.groupName)}</span>
-                          <div>
-                            <div className="cd-notify-recipient-name">{g.groupName}</div>
-                            {g.roleLabel && <div className="cd-notify-recipient-role">{g.roleLabel}</div>}
-                            {g.groupEmail && <div className="cd-notify-recipient-email">{g.groupEmail}</div>}
+            <div className="cd-notify-body">
+              <div className="cd-notify-left">
+                <div className="cd-notify-left-header">
+                  <span className="cd-notify-left-title">Recipients</span>
+                  <span className="cd-notify-left-count">{detail.notifyGroups.length} group{detail.notifyGroups.length !== 1 ? 's' : ''}</span>
+                </div>
+                <ul className="cd-notify-recipients-list">
+                  {detail.notifyGroups.length === 0 && (
+                    <li className="cd-notify-empty">No notify groups configured for this campaign.</li>
+                  )}
+                  {detail.notifyGroups.map((g) => (
+                    <li key={g.id} className="cd-notify-recipient-row">
+                      <div className="cd-notify-recipient-info">
+                        <span className="cd-avatar cd-avatar--sm" aria-hidden="true">{initials(g.groupName)}</span>
+                        <div>
+                          <div className="cd-notify-recipient-name">{g.groupName}</div>
+                          {g.roleLabel && <div className="cd-notify-recipient-role">{g.roleLabel}</div>}
+                          <div className="cd-notify-recipient-email">
+                            {g.notificationsPaused ? 'Notifications paused' : g.groupEmail || 'No email address on record'}
                           </div>
                         </div>
-                      </label>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="cd-notify-right">
+                <p className="cd-notify-explainer">
+                  Sending a custom message from the app is not available. Status changes, notes and exception updates are queued automatically
+                  for groups that have an email address and are not paused, and for watchlist members whose trigger policy matches.
+                </p>
+                <h3 className="cd-notify-history-title">Recorded notifications</h3>
+                {detail.deliveryAttempts.length === 0 ? (
+                  <p className="cd-notify-empty">No notifications have been recorded for this campaign yet.</p>
+                ) : (
+                  <ul className="cd-notify-history">
+                    {detail.deliveryAttempts.map((attempt) => (
+                      <li key={attempt.id} className="cd-notify-history-row">
+                        <div>
+                          <strong>{attempt.targetLabel}</strong>
+                          <span className="cd-notify-history-subject">{attempt.subject}</span>
+                          {attempt.detail && <span className="cd-notify-history-detail">{attempt.detail}</span>}
+                        </div>
+                        <div className="cd-notify-history-meta">
+                          <span className={`cd-delivery-state cd-delivery-state--${attempt.deliveryState.toLowerCase()}`}>
+                            {deliveryStateLabel(attempt.deliveryState)}
+                          </span>
+                          <span>{formatDate(attempt.createdAt)}</span>
+                        </div>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
+                )}
+                <p className="cd-notify-explainer">Queued means accepted for sending; it does not confirm delivery.</p>
+
+                <h3 className="cd-notify-history-title">Draft a message</h3>
+                <p className="cd-notify-explainer">
+                  Compose a message here and copy it into your own email. The app does not deliver or record this draft.
+                </p>
+                <div className="cd-notify-template-row">
+                  <label className="cd-notify-template-label" htmlFor="cd-notify-template">Template</label>
+                  <select
+                    id="cd-notify-template"
+                    className="cd-notify-template-select"
+                    value={notifyTemplate}
+                    onChange={(e) => selectNotifyTemplate(e.target.value as NotifyTemplate)}
+                  >
+                    {(Object.entries(NOTIFY_TEMPLATES) as [NotifyTemplate, { label: string }][]).map(([key, tpl]) => (
+                      <option key={key} value={key}>{tpl.label}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Right panel: Compose */}
-                <div className="cd-notify-right">
-                  <div className="cd-notify-template-row">
-                    <span className="cd-notify-template-label">Template</span>
-                    <select
-                      className="cd-notify-template-select"
-                      value={notifyTemplate}
-                      onChange={(e) => setNotifyTemplate(e.target.value as NotifyTemplate)}
-                    >
-                      {(Object.entries(NOTIFY_TEMPLATES) as [NotifyTemplate, { label: string }][]).map(([key, tpl]) => (
-                        <option key={key} value={key}>{tpl.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="cd-notify-field">
+                  <label className="cd-notify-field-label" htmlFor="cd-notify-subject">Subject</label>
+                  <input
+                    id="cd-notify-subject"
+                    className="cd-notify-subject-input"
+                    value={notifySubject}
+                    onChange={(e) => { setNotifySubject(e.target.value); setNotifyCopyStatus(null); }}
+                  />
+                </div>
 
-                  <div className="cd-notify-field">
-                    <label className="cd-notify-field-label">Subject</label>
-                    <input
-                      className="cd-notify-subject-input"
-                      value={notifySubject}
-                      onChange={(e) => setNotifySubject(e.target.value)}
-                    />
-                  </div>
+                <div className="cd-notify-field">
+                  <label className="cd-notify-field-label" htmlFor="cd-notify-message">Message</label>
+                  <textarea
+                    id="cd-notify-message"
+                    ref={notifyBodyRef}
+                    className="cd-notify-body-textarea"
+                    value={notifyBody}
+                    onChange={(e) => { setNotifyBody(e.target.value); setNotifyCopyStatus(null); }}
+                    rows={10}
+                  />
+                </div>
 
-                  <div className="cd-notify-field">
-                    <label className="cd-notify-field-label">Message</label>
-                    <textarea
-                      ref={notifyBodyRef}
-                      className="cd-notify-body-textarea"
-                      value={notifyBody}
-                      onChange={(e) => setNotifyBody(e.target.value)}
-                      rows={10}
-                    />
-                  </div>
-
-                  <div className="cd-notify-vars-row">
-                    <span className="cd-notify-vars-label">Insert variable:</span>
-                    {NOTIFY_VARIABLES.map((v) => (
-                      <button key={v} type="button" className="cd-notify-var-chip" onClick={() => insertVariable(v)}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="cd-notify-send-row">
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={notifyRecipients.size === 0}
-                      onClick={() => setNotifySent(true)}
-                    >
-                      {notifyRecipients.size > 0
-                        ? `Send email to ${notifyRecipients.size} group${notifyRecipients.size !== 1 ? 's' : ''}`
-                        : 'Select recipients to send'}
+                <div className="cd-notify-vars-row">
+                  <span className="cd-notify-vars-label">Insert variable:</span>
+                  {NOTIFY_VARIABLES.map((v) => (
+                    <button key={v} type="button" className="cd-notify-var-chip" onClick={() => insertVariable(v)}>
+                      {v}
                     </button>
-                  </div>
+                  ))}
+                </div>
+
+                <div className="cd-notify-send-row">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => void copyNotifyDraft(detail.notifyGroups
+                      .filter((g) => !g.notificationsPaused && g.groupEmail)
+                      .map((g) => g.groupEmail as string))}
+                  >
+                    Copy draft
+                  </button>
+                  <span role="status" className="cd-notify-copy-status">
+                    {notifyCopyStatus === 'copied' && 'Draft copied to the clipboard. Nothing was sent.'}
+                    {notifyCopyStatus === 'failed' && 'The draft could not be copied. Select the text and copy it manually.'}
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+        </Dialog>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmClose}
+        title="Close this campaign?"
+        message={(
+          <>
+            <p>{s.name} will move to Closed. The status change is recorded and queued as a notification for eligible watchlist members and notify groups.</p>
+            {closeError && <p className="notice error" role="alert">{closeError}</p>}
+          </>
+        )}
+        confirmLabel="Close Campaign"
+        cancelLabel="Keep open"
+        busy={statusBusy === 'CLOSED'}
+        busyMessage="Closing the campaign…"
+        onConfirm={() => void confirmCloseCampaign()}
+        onCancel={() => { setConfirmClose(false); setCloseError(null); }}
+      />
     </div>
   );
 }

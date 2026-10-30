@@ -1,8 +1,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { categoryForNativeKind } from '../features/ai-security/categories';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
+import { usePageHeader } from '../app/pageHeaderState';
+import { AsyncSection } from '../components/AsyncSection';
 import { pathForInventoryAiAsset, pathForInventoryView, pathForPolicyDetail } from '../app/routes';
 import { AiBaselineSection } from '../features/ai-security/AiBaselineSection';
 import { AiDependencyGraph } from '../features/ai-security/AiDependencyGraph';
@@ -127,6 +129,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
   });
 
   const artifact = artifactQuery.data ?? null;
+  usePageHeader(artifact ? { title: artifact.name } : null);
   const isLogicalAgent = categoryForNativeKind(artifact?.nativeKind ?? '')?.key === 'AGENTS';
   const [versionPage, setVersionPage] = React.useState(0);
   React.useEffect(() => { setVersionPage(0); }, [artifactId]);
@@ -254,10 +257,18 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
   }
 
   if (artifactQuery.isError || !artifact) {
+    // A missing asset and a failed lookup read differently; only the failure can be retried.
+    const notFound = !artifactQuery.isError
+      || (artifactQuery.error instanceof ApiError && (artifactQuery.error.status === 404 || artifactQuery.error.status === 403));
     return (
       <section className="ai-asset-detail-page ui2-inventory-family">
-        <div className="empty-state">
-          <p>This AI asset could not be found.</p>
+        <div className="empty-state" role={notFound ? 'status' : 'alert'}>
+          <p>{notFound ? 'This AI asset could not be found.' : 'This AI asset could not be loaded.'}</p>
+          {!notFound && (
+            <button type="button" className="btn btn-sm" disabled={artifactQuery.isFetching} onClick={() => void artifactQuery.refetch()}>
+              {artifactQuery.isFetching ? 'Retrying…' : 'Retry'}
+            </button>
+          )}
           <button type="button" className="btn btn-secondary" onClick={handleClose}>← Back to AI Inventory</button>
         </div>
       </section>
@@ -299,14 +310,14 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
           className={`fd3-tab${tab === 'policies' ? ' fd3-tab--active' : ''}`}
           onClick={() => setTab('policies')}
         >
-          Policies<span className="fd3-tab-count">{applicablePolicies.length}</span>
+          Policies<span className="fd3-tab-count">{policiesQuery.isError && !policiesQuery.data ? '—' : applicablePolicies.length}</span>
         </button>
         <button
           type="button"
           className={`fd3-tab${tab === 'findings' ? ' fd3-tab--active' : ''}`}
           onClick={() => setTab('findings')}
         >
-          Findings<span className="fd3-tab-count">{artifactFindings.length}</span>
+          Findings<span className="fd3-tab-count">{findingsQuery.isError && !findingsQuery.data ? '—' : artifactFindings.length}</span>
         </button>
         <button
           type="button"
@@ -396,9 +407,17 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
           )}
 
           {tab === 'policies' && (
-            applicablePolicies.length === 0 ? (
-              <div className="empty-state"><p>No policies currently cover this artifact type.</p></div>
-            ) : (
+            <AsyncSection
+              state={policiesQuery.isPending ? 'pending'
+                : policiesQuery.isError && !policiesQuery.data ? 'error'
+                  : applicablePolicies.length === 0 ? 'empty' : 'ready'}
+              loadingLabel="Loading policies…"
+              emptyMessage="No policies currently cover this artifact type."
+              errorMessage="Policies could not be loaded."
+              onRetry={() => void policiesQuery.refetch()}
+              retryLabel="Retry policies"
+              retrying={policiesQuery.isFetching}
+            >
               <div className="table-scroll">
                 <table className="data-table">
                   <thead>
@@ -415,9 +434,9 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
                       const policyFindings = artifactFindings.filter((finding) => finding.policyId === policy.id);
                       const openForPolicy = policyFindings.filter((finding) => finding.status === 'OPEN').length;
                       return (
-                        <tr key={policy.id} onClick={() => navigate(pathForPolicyDetail(policy.id))}>
+                        <tr key={policy.id}>
                           <td>
-                            <strong>{policy.name}</strong>
+                            <Link to={pathForPolicyDetail(policy.id)}><strong>{policy.name}</strong></Link>
                             <small className="mono">{policy.id} · v{policy.version}</small>
                           </td>
                           <td><span className={severityClassName(policy.severity)}>{policy.severity}</span></td>
@@ -429,14 +448,14 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
                               <button
                                 type="button"
                                 className="ai-policy-findings-link"
-                                onClick={(event) => { event.stopPropagation(); setTab('findings'); }}
+                                onClick={() => setTab('findings')}
                               >
                                 <strong>{openForPolicy}</strong><span> open · {policyFindings.length} total</span>
                               </button>
                             )}
                           </td>
                           <td>
-                            <label className="ai-policy-switch" onClick={(event) => event.stopPropagation()}>
+                            <label className="ai-policy-switch">
                               <input
                                 type="checkbox"
                                 checked={policy.enabled}
@@ -452,13 +471,21 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
                   </tbody>
                 </table>
               </div>
-            )
+            </AsyncSection>
           )}
 
           {tab === 'findings' && (
-            artifactFindings.length === 0 ? (
-              <div className="empty-state"><p>No findings are currently attached to this AI asset.</p></div>
-            ) : (
+            <AsyncSection
+              state={findingsQuery.isPending ? 'pending'
+                : findingsQuery.isError && !findingsQuery.data ? 'error'
+                  : artifactFindings.length === 0 ? 'empty' : 'ready'}
+              loadingLabel="Loading findings…"
+              emptyMessage="No findings are currently attached to this AI asset."
+              errorMessage="Findings could not be loaded."
+              onRetry={() => void findingsQuery.refetch()}
+              retryLabel="Retry findings"
+              retrying={findingsQuery.isFetching}
+            >
               <div className="table-scroll">
                 <table className="data-table">
                   <thead>
@@ -471,13 +498,9 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
                         <tr key={finding.id}>
                           <td><strong>{finding.displayId}</strong><small>{finding.title}</small></td>
                           <td>
-                            <button
-                              type="button"
-                              className="ai-policy-findings-link"
-                              onClick={() => navigate(pathForPolicyDetail(finding.policyId))}
-                            >
+                            <Link className="ai-policy-findings-link" to={pathForPolicyDetail(finding.policyId)}>
                               {policy?.name ?? finding.policyId}
-                            </button>
+                            </Link>
                             <br /><small className="mono">v{finding.policyVersion}</small>
                           </td>
                           <td><span className={severityClassName(finding.severity)}>{finding.severity}</span></td>
@@ -489,7 +512,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
                   </tbody>
                 </table>
               </div>
-            )
+            </AsyncSection>
           )}
 
           {tab === 'relationships' && (

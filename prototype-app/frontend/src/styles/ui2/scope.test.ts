@@ -167,7 +167,7 @@ describe('UI 2.0 stylesheet scope', () => {
       .flatMap((rule) => rule.selectors).filter((selector) => /^(?:a)?\.(?:cve-|cvd-|cvd2-|org-cve-|investigation-|notify-)/.test(selector)));
     expect(retired).toEqual([]);
     const shared = sharedSelectors();
-    expect(shared).toContain('.confirm-dialog::backdrop');
+    expect(shared).toContain('.confirm-dialog');
     expect(shared).toContain('.segmented-control');
     expect(shared).toContain('.col-toggle');
     expect(selectors(sheets['./inventory-base.css'])).toContain(":where(html[data-ui='2']) .inventory-overview-shell .vuln-repo-dashboard-panel");
@@ -364,7 +364,8 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(declared('./app-base.css', prefix + 'body')['font-family']).toBe('var(--dp-font)');
     expect(declared('./app-base.css', prefix + '.sidebar').position).toBe('sticky');
     expect(declared('./app-base.css', prefix + '.modal-overlay').position).toBe('fixed');
-    expect(declared('./app-base.css', prefix + '.confirm-dialog::backdrop').background).toBeDefined();
+    expect(declared('./app-base.css', prefix + '.confirm-dialog').background).toBeDefined();
+    expect(declared('./primitives.css', "html[data-ui='2'] .ui2-dialog[open]").position).toBe('fixed');
     expect(declared('./tables.css', prefix + '.table-settings-btn:disabled').cursor).toBe('not-allowed');
     expect(declared('./tables.css', prefix + 'table.resizable-table')['table-layout']).toBe('fixed');
     expect(rules(sheets['./app-base.css']).some((rule) => rule.media && rule.selectors.includes(prefix + '.app-shell'))).toBe(true);

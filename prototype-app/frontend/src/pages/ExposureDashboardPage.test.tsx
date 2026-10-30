@@ -212,7 +212,7 @@ describe('ExposureDashboardPage', () => {
 
     renderWithProviders(<ExposureDashboardPage />);
 
-    expect(await screen.findByText('Infrastructure (Hosts)')).toBeInTheDocument();
+    expect(await screen.findByText('Hosts')).toBeInTheDocument();
     expect(screen.getByText('Grid Exposure')).toBeInTheDocument();
     expect(screen.getByText('Applications')).toBeInTheDocument();
     expect(screen.queryByText(/AI Assets/i)).not.toBeInTheDocument();
@@ -226,7 +226,7 @@ describe('ExposureDashboardPage', () => {
 
     renderWithProviders(<ExposureDashboardPage />);
 
-    const hostRow = (await screen.findByText('Infrastructure (Hosts)')).closest('tr');
+    const hostRow = (await screen.findByText('Hosts')).closest('tr');
     expect(hostRow).not.toBeNull();
     const criticalCell = hostRow!.querySelector('.grid-exposure-cell--high .grid-exposure-cell-btn');
     expect(criticalCell).not.toBeNull();
@@ -315,5 +315,45 @@ describe('ExposureDashboardPage', () => {
 
     expect(await screen.findByText('Findings summary could not be refreshed; showing the last loaded values.')).toBeInTheDocument();
     expect(screen.getByText('17')).toBeInTheDocument();
+  });
+
+  it('orders the layout as KPIs, Grid Exposure with Remediation, attention lists, software and assets, then the funnel', async () => {
+    vi.spyOn(api, 'getExposureSummary').mockResolvedValue(buildDashboard());
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard());
+    vi.spyOn(api, 'getEolSummary').mockResolvedValue(buildEolSummary());
+    vi.spyOn(api, 'getGridExposure').mockResolvedValue(buildGridExposure());
+
+    const { container } = renderWithProviders(<ExposureDashboardPage />);
+
+    await screen.findByRole('heading', { name: 'Grid Exposure' });
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      'Grid Exposure', 'Remediation Progress', 'Critical CVEs Requiring Action', 'Where Attention Is Required',
+      'Most Exposed Software', 'Critical Exposed Assets', 'CVE Exposure Funnel',
+    ]);
+    const pair = container.querySelector('.exec-pair');
+    expect(pair?.children).toHaveLength(2);
+    expect(pair?.textContent).toContain('Grid Exposure');
+    expect(pair?.textContent).toContain('Remediation Progress');
+    expect(container.querySelectorAll('.exec-kpi-icon')).toHaveLength(6);
+  });
+
+  it('labels remediation rows as read-only CVE counts and explains the security score', async () => {
+    vi.spyOn(api, 'getExposureSummary').mockResolvedValue(buildDashboard({ averageOpenRiskScore: 6.4 }));
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard({
+      resolutionStatus: { unresolvedCount: 12, resolvedCount: 30, inProgressCount: 4, acceptedRiskCount: 2 },
+    }));
+    vi.spyOn(api, 'getEolSummary').mockResolvedValue(buildEolSummary());
+    vi.spyOn(api, 'getGridExposure').mockResolvedValue(buildGridExposure());
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    const rows = await screen.findByRole('list', { name: 'CVE records by impact state' });
+    expect(rows).toHaveTextContent('Impacted or unknown12 CVEs');
+    expect(rows).toHaveTextContent('With accepted-risk findings2 CVEs');
+    expect(rows.querySelector('button')).toBeNull();
+    expect(screen.getByText(/Counts are CVEs, not findings/)).toBeVisible();
+    expect(screen.getByText('36')).toBeInTheDocument();
+    expect(screen.getByText(/100 minus the average open-finding risk score/)).toBeVisible();
   });
 });

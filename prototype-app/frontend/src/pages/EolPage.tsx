@@ -6,6 +6,7 @@ import {
   type DataTableColumn,
   type DataTableRow
 } from '../components/DataTable';
+import { MetricValue } from '../components/MetricValue';
 import { EolBadge } from '../components/EolBadge';
 import { EolDetailDrawer } from '../components/EolDetailDrawer';
 import type { SyncTriggerResponse } from '../features/connect/types';
@@ -262,7 +263,14 @@ function AtRiskTab({ eolMappingReviewHref }: { eolMappingReviewHref: string }) {
             className={`eol-risk-stat ${className} ${filter === key ? 'active' : ''}`}
             onClick={() => setFilter(key === filter ? 'all' : key as AtRiskFilter)}
           >
-            <strong className="eol-risk-stat-value">{(value ?? 0).toLocaleString()}</strong>
+            {/* A pending or failed summary is not zero packages at risk. */}
+            <strong className="eol-risk-stat-value">
+              <MetricValue
+                availability={summary ? 'available' : summaryQuery.isPending ? 'pending' : 'unavailable'}
+                value={value}
+                unavailableReason="EOL summary unavailable"
+              />
+            </strong>
             <span className="eol-risk-stat-label">{label}</span>
           </button>
         ))}
@@ -372,6 +380,10 @@ function CatalogTab() {
     if (page !== activePage) setPage(activePage);
   }, [activePage, page]);
 
+  // Catalog counts come from the product list itself, so they are unknown until it has loaded.
+  const catalogValue = (value: number) => (
+    <MetricValue availability={productsQuery.data ? 'available' : loading ? 'pending' : 'unavailable'} value={value} unavailableReason="Catalog unavailable" />
+  );
   const catalogStats = React.useMemo(() => ({
     products: products.length,
     lifecycleReady: products.filter(p => (p.releaseCount ?? 0) > 0).length,
@@ -500,11 +512,11 @@ function CatalogTab() {
   return (
     <>
       <div className="ingestion-summary-grid">
-        <div className="summary-card"><strong>Products</strong><span>{catalogStats.products.toLocaleString()}</span></div>
-        <div className="summary-card"><strong>Lifecycle Ready</strong><span>{catalogStats.lifecycleReady.toLocaleString()}</span></div>
-        <div className="summary-card"><strong>CPE Tagged</strong><span>{catalogStats.cpeMapped.toLocaleString()}</span></div>
-        <div className="summary-card"><strong>PURL Tagged</strong><span>{catalogStats.purlMapped.toLocaleString()}</span></div>
-        <div className="summary-card"><strong>Aliases</strong><span>{catalogStats.aliases.toLocaleString()}</span></div>
+        <div className="summary-card"><strong>Products</strong><span>{catalogValue(catalogStats.products)}</span></div>
+        <div className="summary-card"><strong>Lifecycle Ready</strong><span>{catalogValue(catalogStats.lifecycleReady)}</span></div>
+        <div className="summary-card"><strong>CPE Tagged</strong><span>{catalogValue(catalogStats.cpeMapped)}</span></div>
+        <div className="summary-card"><strong>PURL Tagged</strong><span>{catalogValue(catalogStats.purlMapped)}</span></div>
+        <div className="summary-card"><strong>Aliases</strong><span>{catalogValue(catalogStats.aliases)}</span></div>
       </div>
 
       <div className="toolbar eol-catalog-toolbar">
@@ -539,7 +551,7 @@ function CatalogTab() {
         <div className="panel-caption" style={{ padding: '24px 0' }}>Loading...</div>
       ) : (
         <>
-          {pageItems.length === 0 ? (
+          {error && !productsQuery.data ? null : pageItems.length === 0 ? (
             <div className="panel-caption" style={{ padding: '32px 0' }}>
               {query.trim().length > 0 ? 'No products matched your search.' : 'No EOL products have been ingested yet.'}
             </div>

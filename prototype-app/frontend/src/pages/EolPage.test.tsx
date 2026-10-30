@@ -108,4 +108,16 @@ describe('EolPage', () => {
       expect(api.getEolPackageStatuses).toHaveBeenCalled();
     });
   });
+
+  it('shows the at-risk counts as unavailable, not zero, when the EOL summary fails', async () => {
+    vi.spyOn(api, 'getEolSummary').mockRejectedValue(new Error('summary offline'));
+    vi.spyOn(api, 'getEolPackageStatuses').mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 25 } as never);
+    vi.spyOn(api, 'listEolProducts').mockResolvedValue([]);
+
+    renderWithProviders(<EolPage />);
+
+    await waitFor(() => expect(screen.getAllByText('EOL summary unavailable')).toHaveLength(4));
+    const endOfLife = screen.getByText('End of Life').closest('button')!;
+    expect(endOfLife).not.toHaveTextContent('0');
+  });
 });

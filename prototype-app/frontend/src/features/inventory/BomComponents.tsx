@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ApplicationRiskSummary, type BomComponentSummaryItem } from '../../api/client';
+import { AsyncSection } from '../../components/AsyncSection';
 import { FindingSeverityChips } from '../findings/components/FindingSeverityChips';
 import { BomComponentDetailPanel } from './BomComponentDetailPanel';
 import { ApplicationDetailPanel } from './ApplicationDetailPanel';
@@ -266,7 +267,7 @@ export function BomComponents() {
   const [widgetFilter, setWidgetFilter] = React.useState<WidgetFilter>('all');
   const [page, setPage] = React.useState(0);
 
-  const { data, isPending, isError } = useQuery({
+  const componentsQuery = useQuery({
     queryKey: ['bom-components'],
     queryFn: async () => {
       const all: BomComponentSummaryItem[] = [];
@@ -278,6 +279,7 @@ export function BomComponents() {
       }
     },
   });
+  const { data, isPending, isError } = componentsQuery;
 
   const items = React.useMemo(() => data ?? [], [data]);
 
@@ -358,7 +360,13 @@ export function BomComponents() {
   if (isError) {
     return (
       <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'var(--dp-critical)' }}>Failed to load BOM components.</p>
+        <AsyncSection
+          state="error"
+          errorMessage="Failed to load BOM components."
+          onRetry={() => void componentsQuery.refetch()}
+          retryLabel="Retry BOM components"
+          retrying={componentsQuery.isFetching}
+        />
       </div>
     );
   }

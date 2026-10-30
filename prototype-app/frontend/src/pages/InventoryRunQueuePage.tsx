@@ -5,6 +5,7 @@ import {
   type DataTableColumn,
   type DataTableRow
 } from '../components/DataTable';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
 import { useIngestionJobsQuery, useSyncRunsQuery } from '../features/connect/queries';
 import type { SyncRun } from '../features/connect/types';
 import type { IngestionJob } from '../api/client';
@@ -367,9 +368,25 @@ export function InventoryRunQueuePage() {
   const loading = (inventoryRunsQuery.isPending && !inventoryRunsQuery.data)
     || (ingestionJobsQuery.isPending && !ingestionJobsQuery.data);
   const refreshing = inventoryRunsQuery.isFetching || ingestionJobsQuery.isFetching;
-  const queryError = inventoryRunsQuery.error ?? ingestionJobsQuery.error;
-  const error = queryError instanceof Error ? queryError.message : '';
   const queueRows = React.useMemo(() => buildRunRows(inventoryRuns), [inventoryRuns]);
+  const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
+  // A failed list never reads as "no runs": either list failing with nothing to show is an error,
+  // and a partial or background failure keeps the rows that did load with a warning.
+  const runsFailed = inventoryRunsQuery.isError;
+  const jobsFailed = ingestionJobsQuery.isError;
+  const failureNotes = [
+    runsFailed && `Inventory sync runs could not be loaded: ${errorText(inventoryRunsQuery.error)}.`,
+    jobsFailed && `Queued AI collection jobs could not be loaded: ${errorText(ingestionJobsQuery.error)}.`,
+  ].filter(Boolean).join(' ');
+  const queueState: AsyncSectionState = loading
+    ? 'pending'
+    : (runsFailed || jobsFailed) && queueRows.length === 0
+      ? 'error'
+      : queueRows.length === 0 ? 'empty' : 'ready';
+  const retry = () => {
+    void inventoryRunsQuery.refetch();
+    void ingestionJobsQuery.refetch();
+  };
 
   return (
     <section className="panel">
@@ -395,15 +412,16 @@ export function InventoryRunQueuePage() {
         </div>
       </div>
 
-      {error && <div className="notice error">{error}</div>}
-
-      {loading ? (
-        <div className="notice">Loading inventory-source runs...</div>
-      ) : queueRows.length === 0 ? (
-        <div className="empty-state">
-          <p>No inventory-source runs have been recorded yet.</p>
-        </div>
-      ) : (
+      <AsyncSection
+        state={queueState}
+        loadingLabel="Loading inventory-source runs..."
+        emptyMessage="No inventory-source runs have been recorded yet."
+        errorMessage={`The run queue could not be loaded. ${failureNotes}`}
+        refreshError={failureNotes ? `${failureNotes} Showing the runs that did load.` : undefined}
+        onRetry={retry}
+        retrying={refreshing}
+        isRefreshing={refreshing}
+      >
         <div className="table-scroll">
           <DataTable
             storageKey="inventory-run-queue-runs-table-widths"
@@ -411,7 +429,7 @@ export function InventoryRunQueuePage() {
             rows={queueRows}
           />
         </div>
-      )}
+      </AsyncSection>
     </section>
   );
 }

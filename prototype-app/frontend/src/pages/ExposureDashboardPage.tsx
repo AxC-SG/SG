@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BellRing, Bug, CalendarX, Flame, ListChecks, ShieldAlert, type LucideIcon } from 'lucide-react';
 import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
 import { MetricValue, type MetricAvailability } from '../components/MetricValue';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
@@ -34,6 +36,15 @@ function availabilityOf(query: DependencyQuery): MetricAvailability {
 function sectionStateOf(query: DependencyQuery, isEmpty: boolean): AsyncSectionState {
   if (!query.data) return query.isError ? 'error' : 'pending';
   return isEmpty ? 'empty' : 'ready';
+}
+
+function KpiLabel({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className="exec-kpi-label">
+      <Icon className="exec-kpi-icon" size={16} aria-hidden="true" focusable="false" />
+      {children}
+    </div>
+  );
 }
 
 // N02 owns the tenant lifecycle destination; until it exists, EOL signals explain instead of looping back to Exposure.
@@ -186,7 +197,7 @@ function ExposureFunnelWidget({
 }
 
 const ASSET_TYPE_LABELS: Record<string, string> = {
-  HOST: 'Infrastructure (Hosts)',
+  HOST: 'Hosts',
   CLOUD_RESOURCE: 'Cloud Resources',
   APPLICATION: 'Applications',
   CONTAINER_IMAGE: 'Container Images',
@@ -218,6 +229,11 @@ function GridExposureWidget({
 
   return (
       <table className="grid-exposure-table">
+        <colgroup>
+          <col className="grid-exposure-col-domain" />
+          {GRID_SEVERITY_COLUMNS.map((col) => <col key={col.key} className="grid-exposure-col-severity" />)}
+          <col className="grid-exposure-col-total" />
+        </colgroup>
         <thead>
           <tr>
             <th>Asset Domain</th>
@@ -230,7 +246,7 @@ function GridExposureWidget({
         <tbody>
           {rows.map((row) => (
             <tr key={row.assetType}>
-              <td className="grid-exposure-row-label">{ASSET_TYPE_LABELS[row.assetType] ?? row.assetType}</td>
+              <td className="grid-exposure-row-label" title={ASSET_TYPE_LABELS[row.assetType] ?? row.assetType}>{ASSET_TYPE_LABELS[row.assetType] ?? row.assetType}</td>
               {GRID_SEVERITY_COLUMNS.map((col) => {
                 const count = row[col.key];
                 const band = gridCellBand(count, max);
@@ -334,7 +350,6 @@ export function ExposureDashboardPage() {
   const inProgress     = vuln?.resolutionStatus.inProgressCount ?? 0;
   const resolved       = vuln?.resolutionStatus.resolvedCount ?? 0;
   const accepted       = vuln?.resolutionStatus.acceptedRiskCount ?? 0;
-  const totalStatus    = unresolved + inProgress + resolved + accepted;
 
   // ── EOL ───────────────────────────────────────────────────────────
   const eolCount       = eol?.eolCount ?? 0;
@@ -419,12 +434,15 @@ export function ExposureDashboardPage() {
     : 'empty';
   const retryMissingSignals = () => missingSignals.forEach(({ query }) => void query.refetch());
 
+  // Organization CVE records by impact state, plus CVEs with a suppressed finding counted separately (N03).
+  // They are CVEs, not findings, and the accepted-risk row can overlap the others, so no total or drill-down is implied.
   const remediationBars = [
-    { label: 'Unresolved',     value: unresolved, cls: 'exec-rem--open',       path: pathForFindingsWithFilters({ status: ['OPEN'] }) },
-    { label: 'In Progress',    value: inProgress, cls: 'exec-rem--in-progress', path: pathForFindingsWithFilters({ status: ['IN_PROGRESS'] }) },
-    { label: 'Resolved',       value: resolved,   cls: 'exec-rem--resolved',    path: pathForFindingsWithFilters({ status: ['RESOLVED'] }) },
-    { label: 'Accepted Risk',  value: accepted,   cls: 'exec-rem--accepted',    path: pathForFindingsWithFilters({ status: ['ACCEPTED_RISK'] }) },
+    { label: 'Impacted or unknown', value: unresolved, cls: 'exec-rem--open' },
+    { label: 'Under investigation', value: inProgress, cls: 'exec-rem--in-progress' },
+    { label: 'Fixed or not impacted', value: resolved, cls: 'exec-rem--resolved' },
+    { label: 'With accepted-risk findings', value: accepted, cls: 'exec-rem--accepted' },
   ];
+  const maxStatus = Math.max(unresolved, inProgress, resolved, accepted, 1);
 
   return (
     <div className="page-grid exec-dashboard ui2-experience-family">
@@ -452,7 +470,7 @@ export function ExposureDashboardPage() {
           onClick={() => navigate(pathForFindingsWithFilters({ severity: ['CRITICAL'], status: ['OPEN'] }))}
         >
           <div className="exec-kpi-value"><MetricValue availability={dashAvail} value={dash?.criticalFindings} unavailableReason="Findings summary unavailable" /></div>
-          <div className="exec-kpi-label">Critical Findings</div>
+          <KpiLabel icon={ShieldAlert}>Critical Findings</KpiLabel>
           <div className="exec-kpi-sub">Active open findings</div>
         </button>
         <button
@@ -461,7 +479,7 @@ export function ExposureDashboardPage() {
           onClick={() => navigate(pathForFindingsWithFilters({ status: ['OPEN'] }))}
         >
           <div className="exec-kpi-value"><MetricValue availability={dashAvail} value={dash?.openFindings} unavailableReason="Findings summary unavailable" /></div>
-          <div className="exec-kpi-label">Open Findings</div>
+          <KpiLabel icon={ListChecks}>Open Findings</KpiLabel>
           <div className="exec-kpi-sub">All severities</div>
         </button>
         <button
@@ -470,7 +488,7 @@ export function ExposureDashboardPage() {
           onClick={() => navigate(vulnPath({ impactedOnly: true, includeAll: true }))}
         >
           <div className="exec-kpi-value"><MetricValue availability={vulnAvail} value={vuln?.summaryCards.impactedInvestigationDoneCount} unavailableReason="CVE summary unavailable" /></div>
-          <div className="exec-kpi-label">Impacted CVEs</div>
+          <KpiLabel icon={Bug}>Impacted CVEs</KpiLabel>
           <div className="exec-kpi-sub">{vuln ? `${fmt(impactedCrit)} critical · ${fmt(impactedHigh)} high` : 'Severity split unavailable'}</div>
         </button>
         <button
@@ -479,8 +497,8 @@ export function ExposureDashboardPage() {
           onClick={() => navigate(vulnPath({ inKev: true, includeAll: true }))}
         >
           <div className="exec-kpi-value"><MetricValue availability={vulnAvail} value={vuln?.summaryCards.impactedKevCount} unavailableReason="CVE summary unavailable" /></div>
-          <div className="exec-kpi-label">CISA KEV Exposure</div>
-          <div className="exec-kpi-sub">Active exploits in the wild</div>
+          <KpiLabel icon={Flame}>CISA KEV Exposure</KpiLabel>
+          <div className="exec-kpi-sub">Impacted CVEs listed in CISA KEV</div>
         </button>
         <button
           type="button"
@@ -488,72 +506,42 @@ export function ExposureDashboardPage() {
           onClick={() => navigate('/vuln-repo/vulnerabilities?impactedOnly=true&hasFindings=false')}
         >
           <div className="exec-kpi-value"><MetricValue availability={vulnAvail} value={vuln?.summaryCards.needsAttentionCount} unavailableReason="CVE summary unavailable" /></div>
-          <div className="exec-kpi-label">Needs Attention</div>
-          <div className="exec-kpi-sub">Awaiting remediation workflow</div>
+          <KpiLabel icon={BellRing}>Needs Attention</KpiLabel>
+          <div className="exec-kpi-sub">Impacted CVEs with no findings yet</div>
         </button>
         <div className={`exec-kpi exec-kpi--static exec-kpi--${eolCount > 0 ? 'warn' : 'neutral'}`}>
           <div className="exec-kpi-value"><MetricValue availability={eolAvail} value={eol?.eolCount} unavailableReason="End-of-life summary unavailable" /></div>
-          <div className="exec-kpi-label">EOL Software</div>
-          <div className="exec-kpi-sub">{!eol ? 'Lifecycle split unavailable' : nearEolCount > 0 ? `${fmt(nearEolCount)} nearing EOL` : 'No patch available'}</div>
+          <KpiLabel icon={CalendarX}>EOL Software</KpiLabel>
+          <div className="exec-kpi-sub">{!eol ? 'Lifecycle split unavailable' : nearEolCount > 0 ? `${fmt(nearEolCount)} nearing EOL` : 'None nearing EOL'}</div>
           <div className="exec-kpi-sub">{EOL_VIEW_UNAVAILABLE}</div>
         </div>
       </div>
 
-      {/* ── Row 1b: Grid Exposure ── */}
-      <section className="panel">
-        <div className="panel-header">
-          <h3>Grid Exposure</h3>
-          <span className="panel-caption">Open findings across your Scout Grid, by asset domain and severity</span>
-        </div>
-        <AsyncSection
-          state={sectionStateOf(gridExposureQ, (gridExposureQ.data?.rows.length ?? 0) === 0)}
-          loadingLabel="Loading grid exposure…"
-          emptyMessage="No asset domains report open findings yet."
-          errorMessage="Grid exposure could not be loaded."
-          onRetry={retry(gridExposureQ)}
-          retryLabel="Retry grid exposure"
-          retrying={gridExposureQ.isFetching}
-        >
-          {gridExposureQ.data && <GridExposureWidget rows={gridExposureQ.data.rows} onNavigate={navigate} />}
-        </AsyncSection>
-      </section>
-
-      {/* ── Row 2: CVE Trends + Remediation Progress ── */}
-      <div className="exec-two-col">
-
-        {/* CVE Exposure Funnel */}
-        {vuln ? (
-          <ExposureFunnelWidget
-            tracked={tracked}
-            applicable={applicable}
-            impacted={impacted}
-            remediation={remediation}
-            addedWeek={addedWeek}
-            impactedWeek={impactedWeek}
-            onNavigate={navigate}
-          />
-        ) : (
-          <section className="panel">
-            <div className="panel-header">
-              <h3>CVE Exposure Funnel</h3>
-              <span className="panel-caption">Volume reduction from intelligence intake to active remediation</span>
-            </div>
-            <AsyncSection
-              state={sectionStateOf(vulnQ, false)}
-              loadingLabel="Loading CVE exposure…"
-              errorMessage="CVE exposure could not be loaded."
-              onRetry={retry(vulnQ)}
-              retryLabel="Retry CVE summary"
-              retrying={vulnQ.isFetching}
-            />
-          </section>
-        )}
+      {/* ── Row 2: Grid Exposure + Remediation (7:5 at 1200px and wider, stacked below) ── */}
+      <div className="exec-pair">
+        <section className="panel">
+          <div className="panel-header">
+            <h3>Grid Exposure</h3>
+            <span className="panel-caption">Open findings across your Scout Grid, by asset domain and severity</span>
+          </div>
+          <AsyncSection
+            state={sectionStateOf(gridExposureQ, (gridExposureQ.data?.rows.length ?? 0) === 0)}
+            loadingLabel="Loading grid exposure…"
+            emptyMessage="No asset domains report open findings yet."
+            errorMessage="Grid exposure could not be loaded."
+            onRetry={retry(gridExposureQ)}
+            retryLabel="Retry grid exposure"
+            retrying={gridExposureQ.isFetching}
+          >
+            {gridExposureQ.data && <GridExposureWidget rows={gridExposureQ.data.rows} onNavigate={navigate} />}
+          </AsyncSection>
+        </section>
 
         {/* Remediation Progress */}
         <section className="panel">
           <div className="panel-header">
             <h3>Remediation Progress</h3>
-            <span className="panel-caption">Critical CVE finding status breakdown</span>
+            <span className="panel-caption">Organization CVE records by impact state, all severities</span>
           </div>
 
           <AsyncSection
@@ -564,22 +552,21 @@ export function ExposureDashboardPage() {
             retryLabel="Retry CVE summary"
             retrying={vulnQ.isFetching}
           >
-          <div className="exec-rem-stacked">
+          <ul className="exec-rem-stacked" aria-label="CVE records by impact state">
             {remediationBars.map((bar) => (
-              <button
-                key={bar.label}
-                type="button"
-                className="exec-rem-row"
-                onClick={() => navigate(bar.path)}
-              >
+              <li key={bar.label} className="exec-rem-row exec-rem-row--static">
                 <span className="exec-rem-label">{bar.label}</span>
-                <div className="exec-rem-track">
-                  <div className={`exec-rem-bar ${bar.cls}`} style={{ width: `${pct(bar.value, totalStatus)}%` }} />
+                <div className="exec-rem-track" aria-hidden="true">
+                  <div className={`exec-rem-bar ${bar.cls}`} style={{ width: `${pct(bar.value, maxStatus)}%` }} />
                 </div>
-                <span className="exec-rem-count">{fmt(bar.value)}</span>
-              </button>
+                <span className="exec-rem-count">{fmt(bar.value)} CVEs</span>
+              </li>
             ))}
-          </div>
+          </ul>
+          <p className="panel-caption exec-rem-note">
+            Counts are CVEs, not findings. The accepted-risk row counts CVEs with a suppressed finding and can overlap the
+            other rows, so the rows are not a total. Bars are scaled to the largest row.
+          </p>
           </AsyncSection>
 
           <AsyncSection
@@ -595,6 +582,7 @@ export function ExposureDashboardPage() {
               <div className="exec-rem-score">{securityScore}</div>
               <div className="exec-rem-score-label">Security Score</div>
               <div className="exec-rem-score-sub">/ 100 · avg risk {avgRisk.toFixed(1)}</div>
+              <p className="exec-rem-score-explain">100 minus the average open-finding risk score (0–10) × 10. Higher is better.</p>
             </div>
             <div className="exec-rem-breakdown">
               {[
@@ -622,7 +610,7 @@ export function ExposureDashboardPage() {
         </section>
       </div>
 
-      {/* ── Row 3: Critical CVEs + Insights ── */}
+      {/* ── Row 3: Critical CVEs + Attention ── */}
       <div className="exec-two-col">
 
         {/* Critical CVEs requiring action */}
@@ -712,14 +700,14 @@ export function ExposureDashboardPage() {
                 onClick={() => navigate(vulnPath({ inKev: true, includeAll: true }))}
               >
                 <span className="exec-exploit-num">{fmt(exploitCves)}</span>
-                <span>CVEs with known exploits tracked</span>
+                <span>tracked CVEs with known exploits (KEV or high EPSS). Opens the KEV subset.</span>
               </button>
             </div>
           )}
         </section>
       </div>
 
-      {/* ── Row 4: Top Exposed Software + Impacted Assets ── */}
+      {/* ── Row 4: Most Exposed Software + Exposed Assets ── */}
       <div className="exec-two-col">
 
         {/* Top affected software */}
@@ -819,6 +807,34 @@ export function ExposureDashboardPage() {
           )}
         </section>
       </div>
+
+      {/* ── Row 5: CVE Exposure Funnel ── */}
+      {vuln ? (
+        <ExposureFunnelWidget
+          tracked={tracked}
+          applicable={applicable}
+          impacted={impacted}
+          remediation={remediation}
+          addedWeek={addedWeek}
+          impactedWeek={impactedWeek}
+          onNavigate={navigate}
+        />
+      ) : (
+        <section className="panel">
+          <div className="panel-header">
+            <h3>CVE Exposure Funnel</h3>
+            <span className="panel-caption">Volume reduction from intelligence intake to active remediation</span>
+          </div>
+          <AsyncSection
+            state={sectionStateOf(vulnQ, false)}
+            loadingLabel="Loading CVE exposure…"
+            errorMessage="CVE exposure could not be loaded."
+            onRetry={retry(vulnQ)}
+            retryLabel="Retry CVE summary"
+            retrying={vulnQ.isFetching}
+          />
+        </section>
+      )}
 
     </div>
   );

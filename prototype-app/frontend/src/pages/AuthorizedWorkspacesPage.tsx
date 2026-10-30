@@ -3,6 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, setStoredAuthToken } from '../api/client';
 import { useActor } from '../features/auth/context';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
+
+function listState(query: { isPending: boolean; isError: boolean; data?: unknown[] }, count: number): AsyncSectionState {
+  if (query.isPending) return 'pending';
+  if (query.isError && !query.data) return 'error';
+  return count === 0 ? 'empty' : 'ready';
+}
+
+function errorText(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 function accessLabel(mode: string | null | undefined, role: string): string {
   if (mode === 'DIRECT_PLAYGROUND_MEMBERSHIP') return 'Playground administrator';
@@ -75,16 +86,15 @@ export function AuthorizedWorkspacesPage() {
           Only workspaces where you hold a tenant membership or an accepted support grant are shown here.
         </p>
 
-        {workspacesQuery.isLoading ? <div className="empty-state"><p>Loading authorized workspaces…</p></div> : null}
-        {workspacesQuery.isError ? (
-          <div className="notice error" role="alert">
-            {workspacesQuery.error instanceof Error ? workspacesQuery.error.message : 'Unable to load authorized workspaces'}
-          </div>
-        ) : null}
-        {!workspacesQuery.isLoading && workspaces.length === 0 ? (
-          <div className="empty-state"><p>No workspace access has been granted to this identity.</p></div>
-        ) : null}
-        {workspaces.length > 0 ? (
+        {/* A failed list is not "no access granted". */}
+        <AsyncSection
+          state={listState(workspacesQuery, workspaces.length)}
+          loadingLabel="Loading authorized workspaces…"
+          emptyMessage="No workspace access has been granted to this identity."
+          errorMessage={errorText(workspacesQuery.error, 'Unable to load authorized workspaces')}
+          onRetry={() => void workspacesQuery.refetch()}
+          retrying={workspacesQuery.isFetching}
+        >
           <div className="table-scroll">
             <table className="data-table">
               <thead><tr><th>Workspace</th><th>Access</th><th>Expires</th><th>Action</th></tr></thead>
@@ -122,7 +132,7 @@ export function AuthorizedWorkspacesPage() {
               </tbody>
             </table>
           </div>
-        ) : null}
+        </AsyncSection>
         {(enterWorkspace.isError || returnToPlatform.isError) ? (
           <div className="notice error" role="alert">
             {enterWorkspace.error instanceof Error
@@ -136,9 +146,14 @@ export function AuthorizedWorkspacesPage() {
 
       <section className="panel">
         <div className="section-title-row"><h3>Pending support invitations</h3></div>
-        {pendingInvitations.length === 0 ? (
-          <div className="empty-state"><p>No pending support invitations.</p></div>
-        ) : (
+        <AsyncSection
+          state={listState(invitationsQuery, pendingInvitations.length)}
+          loadingLabel="Loading support invitations…"
+          emptyMessage="No pending support invitations."
+          errorMessage={errorText(invitationsQuery.error, 'Support invitations could not be loaded')}
+          onRetry={() => void invitationsQuery.refetch()}
+          retrying={invitationsQuery.isFetching}
+        >
           <div className="table-scroll">
             <table className="data-table">
               <thead><tr><th>Workspace</th><th>Mode</th><th>Reason</th><th>Expires</th><th>Action</th></tr></thead>
@@ -164,7 +179,7 @@ export function AuthorizedWorkspacesPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </AsyncSection>
         {acceptInvitation.isError ? (
           <div className="notice error" role="alert">
             {acceptInvitation.error instanceof Error ? acceptInvitation.error.message : 'Invitation could not be accepted'}

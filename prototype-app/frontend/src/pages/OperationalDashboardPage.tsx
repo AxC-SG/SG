@@ -53,6 +53,8 @@ import {
 import { MetricInfoIcon } from '../components/MetricInfoIcon';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { StatCard } from '../components/StatCard';
+import { MetricValue } from '../components/MetricValue';
+import { AsyncSection } from '../components/AsyncSection';
 import {
   type PipelinePayload,
   type PlatformHealthPayload,
@@ -552,6 +554,17 @@ function renderPerformanceScorecard(data: PerformanceScorecard) {
   );
 }
 
+// A section that returned no data is unknown, not zero: a missing freshness section must not read as "0 stale".
+function UnavailableStatCard({ title, reason }: { title: string; reason: string }) {
+  return (
+    <div className="stat-card stat-neutral">
+      <div className="stat-title-row"><div className="stat-title">{title}</div></div>
+      <div className="stat-value"><MetricValue availability="unavailable" unavailableReason={reason} /></div>
+      <div className="stat-caption">{reason}</div>
+    </div>
+  );
+}
+
 function renderPipeline(payload: PipelinePayload) {
   const ingestion = payload.ingestion.data;
   const freshness = payload.freshness.data;
@@ -563,7 +576,11 @@ function renderPipeline(payload: PipelinePayload) {
           <StatCard title="Sync Runs (24h)" value={ingestion.syncRunsLast24h ?? 0} description={METRIC_HELP['Sync Runs (24h)']} />
           <StatCard title="Sync Success Rate" value={Math.round(ingestion.syncSuccessRatePercent ?? 0)} caption="Percent" description={METRIC_HELP['Sync Success Rate']} />
           <StatCard title="Queued/Running Sync Jobs" value={ingestion.queueBacklog ?? 0} description={METRIC_HELP['Queued/Running Sync Jobs']} />
-          <StatCard title="Stale Sources" value={freshness?.staleSourceCount ?? 0} tone={(freshness?.staleSourceCount ?? 0) > 0 ? 'critical' : undefined} description={METRIC_HELP['Stale Sources']} />
+          {freshness ? (
+            <StatCard title="Stale Sources" value={freshness.staleSourceCount ?? 0} tone={(freshness.staleSourceCount ?? 0) > 0 ? 'critical' : undefined} description={METRIC_HELP['Stale Sources']} />
+          ) : (
+            <UnavailableStatCard title="Stale Sources" reason="Freshness data unavailable" />
+          )}
         </div>
       ) : null}
 
@@ -591,8 +608,16 @@ function renderPlatformHealth(payload: PlatformHealthPayload) {
             description={METRIC_HELP['Summary Model']}
           />
           <StatCard title="Cache Hit Ratio" value={Math.round(readPath.filterCacheHitRatioPercent)} caption="Percent" description={METRIC_HELP['Cache Hit Ratio']} />
-          <StatCard title="Failing SLOs" value={sloItems.filter((item) => !item.compliant).length} tone={sloItems.some((item) => !item.compliant) ? 'critical' : undefined} description={METRIC_HELP['Failing SLOs']} />
-          <StatCard title="Resource Ceiling Failures" value={performanceScorecard?.resourceFailureCount ?? 0} tone={(performanceScorecard?.resourceFailureCount ?? 0) > 0 ? 'critical' : undefined} description={METRIC_HELP['Resource Ceiling Failures']} />
+          {payload.slo ? (
+            <StatCard title="Failing SLOs" value={sloItems.filter((item) => !item.compliant).length} tone={sloItems.some((item) => !item.compliant) ? 'critical' : undefined} description={METRIC_HELP['Failing SLOs']} />
+          ) : (
+            <UnavailableStatCard title="Failing SLOs" reason="SLO evaluation unavailable" />
+          )}
+          {performanceScorecard ? (
+            <StatCard title="Resource Ceiling Failures" value={performanceScorecard.resourceFailureCount ?? 0} tone={(performanceScorecard.resourceFailureCount ?? 0) > 0 ? 'critical' : undefined} description={METRIC_HELP['Resource Ceiling Failures']} />
+          ) : (
+            <UnavailableStatCard title="Resource Ceiling Failures" reason="Scorecard unavailable" />
+          )}
         </div>
       ) : null}
 
@@ -689,7 +714,14 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
       return (
         <OperationsSectionErrorBoundary viewKey={normalizedView}>
           <div className="page-grid ui2-experience-family">
-            <div className="panel">Operational data may be stale: {error}</div>
+            <div className="panel">
+              <AsyncSection
+                state="ready"
+                refreshError={`The latest refresh failed (${error}). Showing the last loaded operational data, which may be stale.`}
+                onRetry={() => void operationsViewQuery.refetch()}
+                retrying={operationsViewQuery.isFetching}
+              />
+            </div>
             {freshnessStrip}
             {content}
           </div>
@@ -708,7 +740,16 @@ export function OperationalDashboardPage({ selectedView, redirectSearch = '' }: 
         </section>
       );
     }
-    return <div className="panel ui2-experience-family">Failed to load operational section: {error}</div>;
+    return (
+      <div className="panel ui2-experience-family">
+        <AsyncSection
+          state="error"
+          errorMessage={`Failed to load operational section: ${error}`}
+          onRetry={() => void operationsViewQuery.refetch()}
+          retrying={operationsViewQuery.isFetching}
+        />
+      </div>
+    );
   }
 
   if (!payload) {

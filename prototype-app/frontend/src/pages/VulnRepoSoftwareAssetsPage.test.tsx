@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -44,7 +44,7 @@ describe('VulnRepoSoftwareAssetsPage', () => {
 
   it('shows error when softwareIdentityId is missing', () => {
     renderPage('?software=lodash');
-    expect(screen.getByText('Software identity is required.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Software identity is required.');
   });
 
   it('shows loading state while data is fetching', () => {
@@ -101,7 +101,19 @@ describe('VulnRepoSoftwareAssetsPage', () => {
   it('shows open CVEs count as a link when count is greater than zero', async () => {
     vi.spyOn(api, 'getVulnRepoSoftwareAssets').mockResolvedValue(buildDetail());
     renderPage();
-    await waitFor(() => expect(screen.getByRole('button', { name: '2' })).toBeInTheDocument());
+    const link = await screen.findByRole('link', { name: '2' });
+    expect(link.getAttribute('href')).toMatch(/^\/vuln-repo\/host-assets\/asset-1\?returnTo=.+#applicable-cves$/);
+    expect(screen.getByRole('link', { name: 'web-prod-01' }).getAttribute('href')).not.toContain('#');
+  });
+
+  it('offers retry when the query fails', async () => {
+    const load = vi.spyOn(api, 'getVulnRepoSoftwareAssets').mockRejectedValueOnce(new Error('Network error')).mockResolvedValue(buildDetail());
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network error');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('web-prod-01')).toBeInTheDocument();
+    expect(screen.getByText('1 asset is currently associated with this software identity in the repository scope.')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it('shows zero as plain text when openCveCount is 0', async () => {
@@ -110,6 +122,6 @@ describe('VulnRepoSoftwareAssetsPage', () => {
     );
     renderPage();
     await waitFor(() => expect(screen.getByText('web-prod-01')).toBeInTheDocument());
-    expect(screen.queryByRole('button', { name: '0' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '0' })).not.toBeInTheDocument();
   });
 });
