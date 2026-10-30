@@ -423,6 +423,8 @@ Introduce header assertions on adopted routes immediately; retain baseline-only 
 
 ### Snapshot change and approval procedure
 
+October 30 CI follow-up: the pinned Linux visual comparison and targeted Stage 2b–6 snapshot refresh are recorded in [the visual CI repair report](../../../docs/ui2-ci-visual-repair-2026-10-30.md), with a route/diff manifest. The refresh does not claim human designer acceptance, update journey/axe baselines, or close the other qualification items above.
+
 1. Build and compare the current slice against existing baselines in the required pinned environment; retain before/after/diff artifacts. Record the slice commit/diff and selected route list.
 2. The feature developer explains every changed layout/control/state. The designated UI reviewer checks the affected images; QA checks functional/keyboard expectations. Record actual reviewer identity/date/result at review time, not an invented approval now.
 3. Refresh **only the expected visual snapshots for the slice**, using the visual spec's existing E2E_ROUTES/E2E_WIDTHS filters and Playwright's targeted update-snapshots after the image prerequisite check. Preserve a human-approved route/diff manifest. A shell/token change legitimately refreshes all affected authenticated routes together; it does not automatically refresh unrelated public pages.
