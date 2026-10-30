@@ -3,47 +3,286 @@
 > vite --port 5173 --strictPort
 
 
-  VITE v5.4.21  ready in 680 ms
+  VITE v8.3.4  ready in 807 ms
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
-10:09:30 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:32 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:41 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:42 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:44 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:45 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:48 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:09:49 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:10:02 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
-10:10:03 am [vite] http proxy error: /api/me
-AggregateError [ECONNREFUSED]: 
-    at internalConnectMultiple (node:net:1134:18)
-    at afterConnectMultiple (node:net:1715:7)
+  ➜  Local:   http://127.0.0.1:5173/
+9:12:55 pm [vite] (client) hmr update /src/styles/index.css
+9:19:46 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+9:19:46 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+9:19:46 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+10:12:02 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:12:17 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:12:47 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:13:12 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:13:26 pm [vite] (client) hmr update /src/styles/index.css
+10:15:52 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:15:53 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:15:53 pm [vite] (client) hmr update /src/styles/index.css
+10:16:06 pm [vite] (client) hmr update /src/styles/index.css
+10:16:06 pm [vite] (client) hmr update /src/pages/ExposureDashboardPage.tsx
+10:18:19 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+10:18:20 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+10:47:23 pm [vite] (client) hmr update /src/pages/DemoPublicPages.tsx
+10:47:40 pm [vite] (client) hmr update /src/pages/DemoPublicPages.tsx
+10:48:21 pm [vite] (client) hmr update /src/pages/DemoPublicPages.tsx
+10:48:46 pm [vite] (client) hmr update /src/pages/DemoPublicPages.tsx
+10:48:46 pm [vite] (client) hmr update /src/styles/index.css
+10:48:46 pm [vite] (client) hmr update /src/styles/index.css
+10:49:20 pm [vite] (client) hmr update /src/styles/index.css
+10:49:30 pm [vite] (client) hmr update /src/styles/index.css
+10:49:34 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:49:39 pm [vite] (client) hmr update /src/styles/index.css
+10:49:47 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:49:47 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:49:48 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:910:7
+    908 |  
+    909 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    910 |        {showWizardNotify && (
+        |         ^
+    911 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    912 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > mountIndeterminateComponent node_modules/react-dom/cjs/react-dom.development.js:20103:12
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21626:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+ > workLoopSync node_modules/react-dom/cjs/react-dom.development.js:26505:4
+
+10:49:48 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:910:7
+    908 |  
+    909 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    910 |        {showWizardNotify && (
+        |         ^
+    911 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    912 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > mountIndeterminateComponent node_modules/react-dom/cjs/react-dom.development.js:20103:12
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21626:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+ > workLoopSync node_modules/react-dom/cjs/react-dom.development.js:26505:4
+
+10:49:49 pm [vite] (client) [console.error] The above error occurred in the <CampaignsPage> component:
+
+    at CampaignsPage (http://localhost:5173/src/pages/CampaignsPage.tsx?t=1793294387079:104:16)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx?t=1793292366890:1280:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx?t=1793292366890:1087:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, RouteErrorBoundary.
+10:50:16 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:50:20 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:50:22 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:925:7
+    923 |  
+    924 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    925 |        {showWizardNotify && (
+        |         ^
+    926 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    927 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > updateFunctionComponent node_modules/react-dom/cjs/react-dom.development.js:19617:19
+ > mountLazyComponent node_modules/react-dom/cjs/react-dom.development.js:19988:16
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21632:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+
+10:50:22 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:925:7
+    923 |  
+    924 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    925 |        {showWizardNotify && (
+        |         ^
+    926 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    927 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > updateFunctionComponent node_modules/react-dom/cjs/react-dom.development.js:19617:19
+ > mountLazyComponent node_modules/react-dom/cjs/react-dom.development.js:19988:16
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21632:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+
+10:50:22 pm [vite] (client) [console.error] The above error occurred in the <CampaignsPage> component:
+
+    at CampaignsPage (http://localhost:5173/src/pages/CampaignsPage.tsx?t=1793294420775:104:16)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx?t=1793292366890:1280:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx?t=1793292366890:1087:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, RouteErrorBoundary.
+10:50:30 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:50:42 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:50:43 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:962:7
+    960 |  
+    961 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    962 |        {showWizardNotify && (
+        |         ^
+    963 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    964 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > updateFunctionComponent node_modules/react-dom/cjs/react-dom.development.js:19617:19
+ > mountLazyComponent node_modules/react-dom/cjs/react-dom.development.js:19988:16
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21632:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+
+10:50:44 pm [vite] (client) [Unhandled error] ReferenceError: showWizardNotify is not defined
+ > CampaignsPage src/pages/CampaignsPage.tsx:962:7
+    960 |  
+    961 |        {/* ── Wizard Notify Modal ──────────────────────────────────────────── */}
+    962 |        {showWizardNotify && (
+        |         ^
+    963 |          <Dialog isOpen labelledBy="cw-notify-title" onClose={() => setShowWizardNotify(false)} className="cd-notify-m...
+    964 |              <div className="cd-notify-modal-header">
+ > renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:17
+ > updateFunctionComponent node_modules/react-dom/cjs/react-dom.development.js:19617:19
+ > mountLazyComponent node_modules/react-dom/cjs/react-dom.development.js:19988:16
+ > beginWork node_modules/react-dom/cjs/react-dom.development.js:21632:15
+ > HTMLUnknownElement.callCallback node_modules/react-dom/cjs/react-dom.development.js:4164:13
+ > Object.invokeGuardedCallbackDev node_modules/react-dom/cjs/react-dom.development.js:4213:15
+ > invokeGuardedCallback node_modules/react-dom/cjs/react-dom.development.js:4277:30
+ > beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27490:6
+ > performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26596:11
+
+10:50:44 pm [vite] (client) [console.error] The above error occurred in the <CampaignsPage> component:
+
+    at CampaignsPage (http://localhost:5173/src/pages/CampaignsPage.tsx?t=1793294442715:106:16)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx?t=1793292366890:1280:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx?t=1793292366890:1087:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, RouteErrorBoundary.
+10:50:49 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:50:59 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:50:59 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:51:15 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:51:23 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:51:34 pm [vite] (client) hmr update /src/pages/CampaignsPage.tsx
+10:51:38 pm [vite] (client) hmr update /src/pages/ConnectPage.tsx
+10:51:50 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:52:01 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:52:16 pm [vite] (client) hmr update /src/styles/index.css
+10:52:16 pm [vite] (client) hmr update /src/styles/index.css
+10:52:24 pm [vite] (client) hmr update /src/styles/index.css
+10:52:24 pm [vite] (client) hmr update /src/styles/index.css
+10:52:33 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:52:41 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:52:46 pm [vite] (client) hmr update /src/pages/ConnectPage.tsx
+10:52:52 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:52:59 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:53:16 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:53:39 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:54:12 pm [vite] (client) hmr update /src/pages/InventoryRunQueuePage.tsx
+10:54:21 pm [vite] (client) hmr update /src/pages/ConfigurationsPage.tsx
+10:55:51 pm [vite] (client) hmr update /src/pages/AssetsPage.tsx
+10:55:51 pm [vite] (client) hmr update /src/pages/AwsDiscoveryConnectorPage.tsx
+10:55:51 pm [vite] (client) hmr update /src/pages/GcpDiscoveryConnectorPage.tsx
+10:55:51 pm [vite] (client) hmr update /src/pages/JiraTicketingConnectorPage.tsx
+10:55:51 pm [vite] (client) hmr update /src/pages/SccmConnectorPage.tsx
+10:56:49 pm [vite] (client) hmr update /src/styles/index.css
+10:56:53 pm [vite] (client) hmr update /src/styles/index.css
+10:57:11 pm [vite] (client) hmr update /src/pages/AssetsPage.tsx
+10:57:11 pm [vite] (client) hmr update /src/pages/AwsDiscoveryConnectorPage.tsx
+10:57:11 pm [vite] (client) hmr update /src/pages/SccmConnectorPage.tsx
+10:57:11 pm [vite] (client) hmr update /src/pages/JiraTicketingConnectorPage.tsx
+10:57:11 pm [vite] (client) hmr update /src/pages/GcpDiscoveryConnectorPage.tsx
+10:57:11 pm [vite] (client) hmr update /src/styles/index.css
+10:58:14 pm [vite] (client) hmr update /src/pages/AiSecurityConnectorPage.tsx
+11:00:02 pm [vite] (client) hmr update /src/pages/CopilotStudioConnectorPage.tsx
+11:01:08 pm [vite] (client) hmr update /src/pages/AiSecurityAzureConnectorPage.tsx
+11:01:56 pm [vite] (client) hmr update /src/pages/AzureDiscoveryConnectorPage.tsx
+11:09:47 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+11:10:54 pm [vite] (client) hmr update /src/pages/SourcesPage.tsx
+11:16:19 pm [vite] (client) page reload e2e/.artifacts/ui2/index.html
+6:39:24 am [vite] (client) page reload e2e/.artifacts/ui2/index.html
+
+> vulnwatch-frontend@0.1.0 dev
+> vite --port 5173 --strictPort
+
+
+  VITE v8.3.4  ready in 349 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+7:20:26 am [vite] (client) [console.error] Warning: validateDOMNesting(...): <button> cannot appear as a descendant of <button>.
+    at button
+    at div
+    at div
+    at button
+    at div
+    at div
+    at TenantDashboard (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx:680:19)
+    at VulnRepoDashboardPage (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx:1665:16)
+    at VulnRepoDashboardRoute
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx:1280:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx:1087:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
