@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doAnswer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.GithubTokenProvider;
@@ -15,14 +16,20 @@ import com.prototype.vulnwatch.domain.GithubSbomSource;
 import com.prototype.vulnwatch.domain.SyncRun;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.SyncTriggerResponse;
+import com.prototype.vulnwatch.dto.GithubSbomIngestionRequest;
+import com.prototype.vulnwatch.dto.GithubSbomIngestionBatchResponse;
 import com.prototype.vulnwatch.repo.GithubSbomSourceRepository;
 import com.prototype.vulnwatch.repo.SyncRunRepository;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.Consumer;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -174,4 +181,47 @@ class GithubSbomSourceServiceTest {
                 "local-analyst"
         );
     }
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void partialRepositoryBatchCountsOnlySuccessfulAssets(boolean savedSource) throws Exception {
+        UUID runId = UUID.randomUUID();
+        SyncRun run = new SyncRun();
+        run.setTenant(tenant);
+        run.setSyncType(GithubSbomSourceService.SYNC_TYPE_GITHUB_REPOSITORY_SBOM);
+        run.setStatus("queued");
+        ReflectionTestUtils.setField(run, "id", runId);
+        when(syncRunRepository.findById(runId)).thenReturn(Optional.of(run));
+        doAnswer(invocation -> {
+            Consumer<TransactionStatus> work = invocation.getArgument(0);
+            work.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(org.mockito.ArgumentMatchers.any());
+        when(sbomIngestionService.ingestFromGithub(org.mockito.ArgumentMatchers.eq(tenant),
+                org.mockito.ArgumentMatchers.any(GithubSbomIngestionRequest.class)))
+                .thenReturn(new GithubSbomIngestionBatchResponse(9, 9, 2, 7, 2107, 0, List.of()));
+
+        if (savedSource) {
+            UUID sourceId = UUID.randomUUID();
+            GithubSbomSource source = new GithubSbomSource();
+            source.setTenant(tenant);
+            source.setOwner("example");
+            source.setRepo("app");
+            source.setEnabled(true);
+            source.setPath(GithubSbomSourceService.PATH_REPOSITORY_SBOM);
+            when(githubSbomSourceRepository.findByIdForUpdate(sourceId)).thenReturn(Optional.of(source));
+            githubSbomSourceService.executeSource(tenant.getId(), sourceId, runId);
+            assertEquals("PARTIAL_SUCCESS", source.getLastRunStatus());
+        } else {
+            githubSbomSourceService.executeRepositoryRunOnce(tenant.getId(), runId,
+                    new GithubSbomIngestionRequest("example", "app", false, null, null, null, null));
+        }
+
+        var metadata = new ObjectMapper().readTree(run.getMetadataJson());
+        assertEquals("partial_success", run.getStatus());
+        assertEquals(9, metadata.path("assetsDiscovered").asInt());
+        assertEquals(2, metadata.path("assetsIngested").asInt());
+        assertEquals(7, metadata.path("assetsFailed").asInt());
+        assertEquals(2107, metadata.path("componentsIngested").asInt());
+    }
+
 }

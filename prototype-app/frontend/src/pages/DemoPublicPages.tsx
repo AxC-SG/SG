@@ -1,10 +1,8 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { pathForConnectView } from '../app/routes';
 import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
 import { getAuthContextQueryKey } from '../features/auth/queries';
-import { canManageInventorySources, canManageRiskPolicy } from '../features/auth/roles';
 import type { ActorContext } from '../features/auth/types';
 const TEST_PERSONAS_ENABLED = import.meta.env.VITE_ENABLE_TEST_PERSONAS === 'true';
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim()
@@ -1296,14 +1294,6 @@ export function LoginPage() {
     }
     if (actor.roles.some((role) => role.replace(/^ROLE_/, '') === 'PLATFORM_OWNER') && actor.platformScope) {
       navigate('/platform/tenants', { replace: true });
-      return;
-    }
-    if (canManageRiskPolicy(actor)) {
-      navigate('/configurations', { replace: true });
-      return;
-    }
-    if (actor.demo === true && canManageInventorySources(actor)) {
-      navigate(pathForConnectView('sources'), { replace: true });
       return;
     }
     navigate('/exposure', { replace: true });

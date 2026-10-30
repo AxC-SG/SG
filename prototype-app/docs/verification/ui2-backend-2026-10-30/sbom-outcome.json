@@ -1,0 +1,1 @@
+{"syncType" : "GITHUB_REPOSITORY_SBOM", "status" : "partial_success", "errorMessage" : "Failed 7 of 9 repositories", "metadata" : {"scope": "ggkarthik", "assetType": "APPLICATION", "assetsFailed": 7, "sourceSystem": "github", "assetsIngested": 9, "assetsDiscovered": 9, "findingsGenerated": 0, "componentsIngested": 2107}}

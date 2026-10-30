@@ -133,16 +133,6 @@ html[data-ui='2'] .ui2-experience-family .exec-kpi-label {
   text-transform: none;
 }
 
-/* Tone bar (reference `.dp-kpi-bar`) in place of the coloured left border. */
-html[data-ui='2'] .ui2-experience-family .exec-kpi-label::before {
-  content: '';
-  width: 3px;
-  height: 14px;
-  border-radius: 2px;
-  background: var(--exp-tone, var(--dp-text-3));
-  flex-shrink: 0;
-}
-
 html[data-ui='2'] .ui2-experience-family .exec-kpi--critical { --exp-tone: var(--dp-critical); border-left: 1px solid var(--dp-border); }
 html[data-ui='2'] .ui2-experience-family .exec-kpi--warn { --exp-tone: var(--dp-warning); border-left: 1px solid var(--dp-border); }
 html[data-ui='2'] .ui2-experience-family .exec-kpi--neutral { border-left: 1px solid var(--dp-border); }

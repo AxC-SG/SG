@@ -1,0 +1,57 @@
+[
+  {
+    "method": "GET",
+    "path": "/connectors/ai-security/aws",
+    "status": 200,
+    "contentType": null,
+    "bodyBytes": 0
+  },
+  {
+    "method": "GET",
+    "path": "/operations/ingestion-efficiency",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 124,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.114+00:00\",\"status\":403,\"error\":\"Forbidden\",\"path\":\"/api/operations/ingestion-efficiency\"}"
+  },
+  {
+    "method": "GET",
+    "path": "/operations/freshness-drift",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 119,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.117+00:00\",\"status\":403,\"error\":\"Forbidden\",\"path\":\"/api/operations/freshness-drift\"}"
+  },
+  {
+    "method": "GET",
+    "path": "/operations/api-read-path",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 117,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.121+00:00\",\"status\":403,\"error\":\"Forbidden\",\"path\":\"/api/operations/api-read-path\"}"
+  },
+  {
+    "method": "GET",
+    "path": "/operations/metric-catalog",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 118,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.126+00:00\",\"status\":403,\"error\":\"Forbidden\",\"path\":\"/api/operations/metric-catalog\"}"
+  },
+  {
+    "method": "GET",
+    "path": "/operations/performance-scorecard",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 125,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.129+00:00\",\"status\":403,\"error\":\"Forbidden\",\"path\":\"/api/operations/performance-scorecard\"}"
+  },
+  {
+    "method": "GET",
+    "path": "/slo/status",
+    "status": 403,
+    "contentType": "application/json",
+    "bodyBytes": 101,
+    "error": "{\"timestamp\":\"2026-10-30T06:11:31.133691716Z\",\"code\":\"PERMISSION_DENIED\",\"error\":\"Permission denied\"}"
+  }
+]

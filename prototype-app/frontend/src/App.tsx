@@ -352,9 +352,6 @@ function defaultPathForActor(actor: ActorContext | null): string {
   if (actor.roles.some((role) => role.replace(/^ROLE_/, '') === 'PLATFORM_OWNER') && actor.platformScope) {
     return '/platform/tenants';
   }
-  if (canManageRiskPolicy(actor)) {
-    return '/configurations';
-  }
   return '/exposure';
 }
 
@@ -439,6 +436,7 @@ function OperationsRoute() {
   const params = useParams<{ operationsView?: string }>();
   const location = useLocation();
   const actor = useActor();
+  const selectedView = normalizeOperationsRouteView(params.operationsView);
   const isPlatformScope = actor?.platformScope ?? false;
   const platformScopeOwner = canAccessPlatformConsole(actor) && isPlatformScope;
 
@@ -452,7 +450,11 @@ function OperationsRoute() {
     );
   }
 
-  return <OperationalDashboardPage selectedView={normalizeOperationsRouteView(params.operationsView)} redirectSearch={location.search} />;
+  if (!canAccessPlatformConsole(actor) && selectedView !== 'quality') {
+    return <Navigate to="/exposure" replace />;
+  }
+
+  return <OperationalDashboardPage selectedView={selectedView} redirectSearch={location.search} />;
 }
 
 function LegacyVulnerabilityIntelVulnerabilitiesRoute() {
@@ -1081,7 +1083,7 @@ function AppShell() {
             <div className="brand-mark" aria-hidden="true">S</div>
             <div className="brand">Scout</div>
           </div>
-          <SidebarNav sections={navSections} />
+          <SidebarNav key={actor?.tenantId ?? 'platform'} sections={navSections} />
         </aside>
 
         <main className="content">

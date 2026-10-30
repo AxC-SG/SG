@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "Unconfigured AWS connector returns JSON null and permits setup",
+    "Completed GitHub SBOM run renders two ingested assets"
+  ],
+  "aws": {
+    "status": 200,
+    "contentType": "application/json",
+    "body": "null"
+  }
+}

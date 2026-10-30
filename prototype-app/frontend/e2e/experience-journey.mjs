@@ -281,14 +281,14 @@ for (const theme of themes) {
   // ── Legacy redirects and role-based home ─────────────────────────────────
   const legacy = await newPage(theme, 1440);
   for (const [from, expected] of [
-    ['/', '/configurations'],
+    ['/', '/exposure'],
     ['/vulnerability-intelligence?severity=CRITICAL', '/vuln-repo/vulnerabilities?severity=CRITICAL'],
     ['/vulnerability-intelligence/vulnerabilities', '/vuln-repo/vulnerabilities'],
     [`/vulnerability-intelligence/org-cves/${CRITICAL_CVE_ID}`, `/vuln-repo/org-cves/${CRITICAL_CVE_ID}`],
     ['/vuln-repo/policies', '/platform/ai-policies'],
     ['/fix-intelligence', '/fix-intelligence/all'],
     ['/end-of-life', '/exposure'],
-    ['/no-such-route', '/configurations'],
+    ['/no-such-route', '/exposure'],
   ]) {
     await goto(legacy.page, from);
     check(tag(`redirect ${from}`), here(legacy.page) === expected, here(legacy.page));
@@ -296,14 +296,25 @@ for (const theme of themes) {
   // Recorded quirk (unchanged): HomeRoute redirects '/' to the role home before LegacyQueryRedirect
   // runs, so a legacy '/?tab=findings' link opens the role home, not /findings.
   await goto(legacy.page, '/?tab=findings');
-  check(tag('legacy /?tab= link resolves to the role home (recorded quirk)'), here(legacy.page) === '/configurations', here(legacy.page));
+  check(tag('legacy /?tab= link resolves to the role home (recorded quirk)'), here(legacy.page) === '/exposure', here(legacy.page));
   await goto(legacy.page, '/inventory/ai/executions');
   check(tag('redirect /inventory/ai/executions stays in AI inventory'), new URL(legacy.page.url()).pathname.startsWith('/inventory/ai'), here(legacy.page));
+  for (const route of ['/operations/pipeline', '/operations/platform-health']) {
+    legacy.requests.length = 0;
+    await goto(legacy.page, route);
+    check(tag(`tenant admin ${route} redirects to exposure`), here(legacy.page) === '/exposure', here(legacy.page));
+    check(tag(`tenant admin ${route} sends no platform operations requests`),
+      !legacy.requests.some((request) => /^\/(operations|slo)\//.test(apiPath(request.url))));
+  }
+  await goto(legacy.page, '/operations/quality?domain=VEX');
+  check(tag('tenant quality route stays available'), new URL(legacy.page.url()).pathname === '/inventory'
+    && params(legacy.page).inventoryTabs === 'quality-vex', here(legacy.page));
   await legacy.context.close();
   const analyst = await newPage(theme, 1440, analystActor);
   await goto(analyst.page, '/');
   check(tag('analyst home is exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   await goto(analyst.page, '/operations');
+  check(tag('analyst operations redirects to exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   check(tag('analyst /operations has no operations nav'), (await analyst.page.locator('nav').getByText('Operations', { exact: true }).count()) === 0);
   await analyst.context.close();
 
@@ -380,7 +391,7 @@ for (const theme of themes) {
   await fresh.page.getByLabel('Password', { exact: true }).fill('correct-password');
   await fresh.page.getByRole('button', { name: 'Sign in' }).click();
   await settle(fresh.page);
-  check(tag('successful login opens the role home'), here(fresh.page) === '/configurations', here(fresh.page));
+  check(tag('successful login opens the role home'), here(fresh.page) === '/exposure', here(fresh.page));
   await fresh.context.close();
 
   // ── Narrow viewport ─────────────────────────────────────────────────────

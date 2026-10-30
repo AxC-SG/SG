@@ -202,6 +202,10 @@ describe('UI 2.0 stylesheet scope', () => {
     expect(selectors(sheets['./inventory-base.css']).filter((selector) => /\.inventory-(?:nav|flyout)|\.ai-policy-|\.ai-connector-|\.source-focus-/.test(selector))).toEqual([]);
   });
 
+  it('keeps collapsed sidebar sections hidden despite the submenu grid layout', () => {
+    expect(declared('./shell.css', "html[data-ui='2'] .nav-sub-list[hidden]").display).toBe('none');
+  });
+
   it('preserves Governance console, policy and portaled administration controls on direct loads', () => {
     const prefix = ":where(html[data-ui='2']) ";
     expect(declared('./governance-base.css', prefix + '.platform-console-shell').display).toBe('grid');

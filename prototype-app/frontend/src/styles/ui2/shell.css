@@ -175,6 +175,10 @@ html[data-ui='2'] .nav-sub-list {
   border-left: 1px solid var(--dp-border);
 }
 
+html[data-ui='2'] .nav-sub-list[hidden] {
+  display: none;
+}
+
 html[data-ui='2'] .nav-sub-btn {
   display: flex;
   align-items: center;
