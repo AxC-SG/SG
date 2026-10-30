@@ -57,8 +57,7 @@ class ContractsTest(unittest.TestCase):
 
     def needs(self, application="true"):
         result = {key: dict(result="success") for key in gate.APPLICATION_JOBS | gate.ALWAYS_JOBS}
-        result["changes"]["outputs"] = dict(application=application, routes="NONE")
-        result["frontend-sweep"] = dict(result="skipped")
+        result["changes"]["outputs"] = dict(application=application)
         return result
 
     def test_required_results(self):
@@ -68,13 +67,6 @@ class ContractsTest(unittest.TestCase):
                 needs = self.needs()
                 needs[job]["result"] = state
                 self.assertTrue(gate.failures(needs), (job, state))
-
-    def test_full_sweep_is_required_when_selected(self):
-        needs = self.needs()
-        needs["changes"]["outputs"]["routes"] = "FULL_SWEEP"
-        self.assertTrue(gate.failures(needs))
-        needs["frontend-sweep"]["result"] = "success"
-        self.assertEqual(gate.failures(needs), [])
 
     def test_only_explicit_skips_are_allowed(self):
         needs = self.needs("false")
