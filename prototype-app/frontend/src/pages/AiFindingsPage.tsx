@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { pathForAiFindingDetail, pathForAiFindings, pathForFindingDetail } from '../app/routes';
 import { timeAgo } from '../lib/time';
 import type { AiProvider } from '../features/ai-security/types';
@@ -58,10 +59,17 @@ function SoftwareVulnerabilitiesTab() {
         </select>
       </section>
 
-      {findingsQuery.isLoading ? (
-        <section className="panel"><div className="empty-state"><p>Loading software vulnerabilities…</p></div></section>
-      ) : findingsQuery.isError ? (
-        <section className="panel"><div className="notice error">Software vulnerabilities could not be loaded.</div></section>
+      {!findingsQuery.data ? (
+        <section className="panel">
+          <AsyncSection
+            state={findingsQuery.isError ? 'error' : 'pending'}
+            loadingLabel="Loading software vulnerabilities…"
+            errorMessage="Software vulnerabilities could not be loaded."
+            onRetry={() => void findingsQuery.refetch()}
+            retryLabel="Retry software vulnerabilities"
+            retrying={findingsQuery.isFetching}
+          />
+        </section>
       ) : items.length === 0 ? (
         <section className="ai-security-empty">
           <div className="ai-security-empty-mark clean">0</div>
@@ -153,10 +161,17 @@ function PolicyViolationsTab() {
         </label>
       </section>
 
-      {findingsQuery.isLoading ? (
-        <section className="panel"><div className="empty-state"><p>Loading AI findings…</p></div></section>
-      ) : findingsQuery.isError ? (
-        <section className="panel"><div className="notice error">AI findings could not be loaded.</div></section>
+      {!findingsQuery.data ? (
+        <section className="panel">
+          <AsyncSection
+            state={findingsQuery.isError ? 'error' : 'pending'}
+            loadingLabel="Loading AI findings…"
+            errorMessage="AI findings could not be loaded."
+            onRetry={() => void findingsQuery.refetch()}
+            retryLabel="Retry AI findings"
+            retrying={findingsQuery.isFetching}
+          />
+        </section>
       ) : items.length === 0 ? (
         <section className="ai-security-empty">
           <div className="ai-security-empty-mark clean">0</div>
@@ -167,11 +182,22 @@ function PolicyViolationsTab() {
         <>
         <section className="panel ai-security-table-panel">
           <div className="panel-header"><div><h3>Action queue</h3><p className="panel-caption">Open policy findings and validated exposure paths only.</p></div></div>
-          {(actionQueueQuery.data ?? []).length === 0 ? <div className="empty-state"><p>No AI actions require review.</p></div> : <table className="data-table"><thead><tr><th>Priority</th><th>Action</th><th>Owner</th><th>Scope</th><th>Recommended breakpoint</th></tr></thead><tbody>
+          <AsyncSection
+            state={!actionQueueQuery.data ? (actionQueueQuery.isError ? 'error' : 'pending') : actionQueueQuery.data.length === 0 ? 'empty' : 'ready'}
+            loadingLabel="Loading action queue…"
+            emptyMessage="No AI actions require review."
+            errorMessage="The action queue could not be loaded."
+            refreshError={actionQueueQuery.isError && actionQueueQuery.data ? 'The action queue could not be refreshed; showing the last loaded actions.' : undefined}
+            onRetry={() => void actionQueueQuery.refetch()}
+            retryLabel="Retry action queue"
+            retrying={actionQueueQuery.isFetching}
+          >
+          <table className="data-table"><thead><tr><th>Priority</th><th>Action</th><th>Owner</th><th>Scope</th><th>Recommended breakpoint</th></tr></thead><tbody>
             {actionQueueQuery.data?.slice(0, 10).map((item) => <tr key={`${item.kind}-${item.id}`} onClick={() => navigate(item.kind === 'VALIDATED_EXPOSURE' ? `/findings/ai/exposures/${item.id}` : pathForAiFindingDetail(item.id, `${location.pathname}${location.search}`))}>
               <td><strong>{item.priority}</strong><small>{item.severity}</small></td><td>{item.title}<small>{item.kind.replace(/_/g, ' ')}</small></td><td>{item.owner}</td><td>{item.provider}<small>{item.accountId}</small></td><td>{item.remediation}</td>
             </tr>)}
-          </tbody></table>}
+          </tbody></table>
+          </AsyncSection>
         </section>
         <section className="panel ai-security-table-panel">
           <table className="data-table">

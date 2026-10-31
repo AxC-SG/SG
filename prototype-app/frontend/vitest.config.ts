@@ -20,14 +20,12 @@ export default mergeConfig(viteConfig, defineConfig({
         'src/vite-env.d.ts',
         'src/**/*.d.ts',
       ],
-      // Global line-coverage floor. Ratchet up as page/widget tests are added.
-      // Ratcheted 2026-10-25 after direct Findings HTTP contract coverage.
-      // Two-worker run: lines 49.71%, statements 47.22%, functions 39.52%, branches 38.67%.
+      // Ratcheted 2026-10-30 after NVD credential lifecycle and dashboard navigation regressions.
       thresholds: {
-        lines: 49.7,
-        statements: 47.2,
-        functions: 39.5,
-        branches: 38.6
+        lines: 58.7,
+        statements: 56.0,
+        functions: 48.1,
+        branches: 48.0
       }
     }
   }

@@ -11,6 +11,7 @@ import type {
   JiraTicketingConfigRequest
 } from '../features/connect/types';
 import { useJiraTicketingConfigQuery, useTicketingProviderStatusQuery } from '../features/connect/queries';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 import { formatTimestamp } from '../lib/time';
 
 function defaultForm(): JiraTicketingConfigRequest {
@@ -57,6 +58,8 @@ export function JiraTicketingConnectorPage() {
   const [saving, setSaving] = React.useState(false);
   const [testing, setTesting] = React.useState(false);
   const [error, setError] = React.useState('');
+  // Shown only after an explicit Save; Test and Run report their own outcome.
+  const [saveNotice, setSaveNotice] = React.useState('');
   const [showSecret, setShowSecret] = React.useState(false);
 
   React.useEffect(() => {
@@ -74,6 +77,7 @@ export function JiraTicketingConnectorPage() {
   const saveConnector = async (): Promise<JiraTicketingConfig | null> => {
     setSaving(true);
     setError('');
+    setSaveNotice('');
     try {
       const payload: JiraTicketingConfigRequest = {
         ...form,
@@ -121,6 +125,9 @@ export function JiraTicketingConnectorPage() {
   if (jiraConfigQuery.isLoading) {
     return <section className="panel">Loading Jira connector...</section>;
   }
+  if (jiraConfigQuery.isError && !jiraConfigQuery.data) {
+    return <ConnectorConfigLoadError connectorName="Jira" error={jiraConfigQuery.error} onRetry={() => void jiraConfigQuery.refetch()} retrying={jiraConfigQuery.isFetching} />;
+  }
 
   const jiraIsActive = ticketingStatus?.activeProvider === 'jira';
   const overridesServiceNow = jiraIsActive && (ticketingStatus?.overridden ?? []).includes('servicenow');
@@ -156,6 +163,7 @@ export function JiraTicketingConnectorPage() {
       )}
 
       {error && <div className="notice error">{error}</div>}
+      {saveNotice && !error && <div className="notice success" role="status">{saveNotice}</div>}
 
       <div className="form-section">
         <h4 className="form-section-title">Connection</h4>
@@ -330,7 +338,7 @@ export function JiraTicketingConnectorPage() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => void saveConnector()}
+          onClick={() => void saveConnector().then((saved) => { if (saved) setSaveNotice('Connector settings saved.'); })}
           disabled={!canManageConnector || saving || testing}
         >
           {saving ? 'Saving...' : 'Save Connector'}

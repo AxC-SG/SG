@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ApplicationRiskSummary } from '../../api/client';
+import { AsyncSection } from '../../components/AsyncSection';
 import { timeAgo } from '../../lib/time';
 import { ApplicationDetailPanel } from './ApplicationDetailPanel';
 
@@ -313,9 +314,11 @@ function AllApplicationsListView({
               </thead>
               <tbody>
                 {sorted.map(app => (
-                  <tr key={app.assetId} style={{ cursor: 'pointer' }} onClick={() => onSelect(app)}>
+                  <tr key={app.assetId}>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{app.assetName}</div>
+                      <button type="button" className="btn-link" style={{ fontWeight: 600 }} onClick={() => onSelect(app)}>
+                        {app.assetName}
+                      </button>
                       <div className="mono panel-caption" style={{ fontSize: 10 }}>{app.assetIdentifier}</div>
                     </td>
                     <td>
@@ -383,10 +386,11 @@ export function ApplicationsDashboard() {
     setMode('detail');
   };
 
-  const { data, isPending, isError } = useQuery({
+  const appRiskQuery = useQuery({
     queryKey: ['application-risk'],
     queryFn: () => api.getApplicationRisk(),
   });
+  const { data, isPending, isError } = appRiskQuery;
 
   const apps = data ?? [];
 
@@ -401,7 +405,13 @@ export function ApplicationsDashboard() {
   if (isError) {
     return (
       <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'var(--dp-critical)' }}>Failed to load application risk data.</p>
+        <AsyncSection
+          state="error"
+          errorMessage="Failed to load application risk data."
+          onRetry={() => void appRiskQuery.refetch()}
+          retryLabel="Retry application risk"
+          retrying={appRiskQuery.isFetching}
+        />
       </div>
     );
   }

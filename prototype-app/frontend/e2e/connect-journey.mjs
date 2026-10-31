@@ -76,6 +76,17 @@ const card = (page, name) => page.locator('.connect-source-card', { has: page.lo
 for (const theme of themes) {
   const tag = (name) => `${name}_${theme}`;
 
+  const unconfiguredAws = await newPage(theme, 1440);
+  await unconfiguredAws.context.route((url) => url.pathname === '/api/connectors/ai-security/aws',
+    (route) => route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }));
+  await unconfiguredAws.page.goto(`${base}/connect?connectSource=ai-security-aws`, { waitUntil: 'networkidle' });
+  check(tag('unconfigured AWS AI connector shows initial setup'),
+    await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).isVisible()
+    && await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').textContent() === 'Not configured');
+  check(tag('unconfigured AWS AI connector does not show a load error'),
+    await unconfiguredAws.page.getByRole('alert').count() === 0 && unconfiguredAws.errors.length === 0);
+  await unconfiguredAws.context.close();
+
   // ── Catalog: sections, health dots, accordion ──────────────────────────
   const tenant = await newPage(theme, 1440);
   const { page, requests, errors } = tenant;
@@ -86,9 +97,11 @@ for (const theme of themes) {
   const sections = (await page.locator('.connect-source-section-head h4').allTextContents()).join('|');
   check(tag('inventory, BOM, ticketing then patch sections'), sections === 'Inventory|BOM Management|Incident & Ticketing Tools|Patch Management', sections);
   const dot = (name) => card(page, name).locator('.connect-source-dot');
-  check(tag('ServiceNow dot reports last sync'), /^Last sync · /.test(await dot('ServiceNow').getAttribute('aria-label') ?? ''), await dot('ServiceNow').getAttribute('aria-label'));
-  check(tag('SCCM dot reports failure'), /^Last sync failed/.test(await dot('SCCM\\/MECM').getAttribute('aria-label') ?? ''), await dot('SCCM\\/MECM').getAttribute('aria-label'));
-  check(tag('Azure dot reports not configured'), (await dot('Azure').getAttribute('aria-label')) === 'Not configured');
+  // Health is named in visible text; the dot is decorative.
+  const statusText = async (name) => (await card(page, name).locator('.connect-source-status').textContent()) ?? '';
+  check(tag('ServiceNow status reports last sync'), /^Last sync · /.test(await statusText('ServiceNow')), await statusText('ServiceNow'));
+  check(tag('SCCM status reports failure'), /^Last sync failed/.test(await statusText('SCCM\\/MECM')), await statusText('SCCM\\/MECM'));
+  check(tag('Azure status reports paused for the pilot'), (await statusText('Azure')) === 'Paused for the pilot — read-only', await statusText('Azure'));
   check(tag('dot classes carry health'), (await dot('SCCM\\/MECM').getAttribute('class')).includes('connect-source-dot--fail')
     && (await dot('ServiceNow').getAttribute('class')).includes('connect-source-dot--ok'));
   const patchCards = page.locator('.connect-source-section', { has: page.locator('h4', { hasText: 'Patch Management' }) }).locator('.connect-source-card');
@@ -188,7 +201,7 @@ for (const theme of themes) {
 
   // ── Configurations ──────────────────────────────────────────────────────
   await page.goto(`${base}/configurations/sla`, { waitUntil: 'networkidle' });
-  await page.getByText('Critical Risk').waitFor();
+  await page.getByRole('group', { name: 'Critical Risk' }).waitFor();
   check(tag('SLA renders thresholds'), await page.getByText('Score ≥ 9 → Critical').isVisible());
   const thresholdInput = page.locator('.config-content input').first();
   await thresholdInput.fill('8.5');

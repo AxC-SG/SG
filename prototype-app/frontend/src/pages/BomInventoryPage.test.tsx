@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -62,5 +62,34 @@ describe('BomInventoryPage', () => {
     renderWithProviders(<BomInventoryPage />);
     await waitFor(() => expect(screen.getByText('BOM Inventory')).toBeInTheDocument());
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
+  });
+
+  it('reports a failed inventory with retry instead of the no-records state', async () => {
+    vi.spyOn(api, 'getBomDashboard').mockResolvedValue(EMPTY_DASHBOARD);
+    const list = vi.spyOn(api, 'listBomInventory').mockRejectedValueOnce(new Error('Inventory unavailable')).mockResolvedValue([BOM_ITEM]);
+    renderWithProviders(<BomInventoryPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Inventory unavailable');
+    expect(screen.queryByText(/No BOM records ingested yet/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry BOM inventory' }));
+    expect(await screen.findByText('Example Supplier')).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirms removal in one named dialog that stays open with the error when removal fails', async () => {
+    vi.spyOn(api, 'getBomDashboard').mockResolvedValue(EMPTY_DASHBOARD);
+    vi.spyOn(api, 'listBomInventory').mockResolvedValue([BOM_ITEM]);
+    const remove = vi.spyOn(api, 'deleteBom').mockRejectedValueOnce(new Error('Removal blocked')).mockResolvedValue(undefined as never);
+    renderWithProviders(<BomInventoryPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove BOM record Example Supplier' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Remove BOM record?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Removal blocked');
+    expect(screen.getByRole('dialog', { name: 'Remove BOM record?' })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(remove).toHaveBeenCalledTimes(2);
   });
 });

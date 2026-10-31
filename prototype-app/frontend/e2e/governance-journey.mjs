@@ -237,7 +237,7 @@ for (const theme of themes) {
 
   preq.length = 0;
   await pp.locator('.section-block .table-scroll').first().locator('tbody tr', { hasText: 'Acme Corporation' }).getByRole('button', { name: 'Block access' }).click();
-  const dialog = pp.locator('dialog.confirm-dialog');
+  const dialog = pp.locator('dialog .confirm-dialog');
   await dialog.waitFor();
   check(tag('block access asks for confirmation'), await dialog.getByText('Temporarily block all tenant users from Acme Corporation? Tenant data will be retained.').isVisible());
   await shot(pp, tag('platform-block-dialog'));
@@ -286,7 +286,7 @@ for (const theme of themes) {
   await settle(pp);
   check(tag('retry posts the failed rollout'), calls(preq, '/platform/ai-grid/policy-rollouts/rollout-1/retry', 'POST').length === 1);
 
-  await pp.getByRole('button', { name: 'Open policy: Unrestricted agent tool permissions', exact: true }).click();
+  await pp.getByRole('link', { name: 'Open policy: Unrestricted agent tool permissions', exact: true }).click();
   await pp.waitForURL(new RegExp(`/platform/ai-policies/${PRIMARY_PLATFORM_POLICY_ID}`));
   check(tag('open policy navigates to platform detail'), new URL(pp.url()).pathname === `/platform/ai-policies/${PRIMARY_PLATFORM_POLICY_ID}`, here(pp));
   await pp.getByText('Platform Governance').waitFor();
@@ -317,6 +317,10 @@ for (const theme of themes) {
   await pp.goto(`${base}/platform/ai-policies/${APPROVED_PLATFORM_POLICY_ID}`, { waitUntil: 'networkidle' });
   await pp.locator('.cvd2-tab', { hasText: 'Governance' }).click();
   await pp.getByRole('button', { name: 'Publish to all active tenants' }).click();
+  const publishDialog = pp.getByRole('dialog', { name: 'Publish to all active tenants?' });
+  await publishDialog.waitFor();
+  check(tag('publish all is reviewed before sending'), calls(preq, `/platform/ai-grid/validation/policies/${APPROVED_PLATFORM_POLICY_ID}/publish`, 'POST').length === 0);
+  await publishDialog.getByRole('button', { name: 'Publish to all' }).click();
   await settle(pp);
   const publish = calls(preq, `/platform/ai-grid/validation/policies/${APPROVED_PLATFORM_POLICY_ID}/publish`, 'POST').at(-1);
   check(tag('publish all sends publishAll with no cohort'), publish && same(body(publish), { targetTenantIds: [], publishAll: true }), publish?.body);

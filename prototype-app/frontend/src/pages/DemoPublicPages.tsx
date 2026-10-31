@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { pathForConnectView } from '../app/routes';
 import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
 import { getAuthContextQueryKey } from '../features/auth/queries';
-import { canManageInventorySources, canManageRiskPolicy } from '../features/auth/roles';
 import type { ActorContext } from '../features/auth/types';
 const TEST_PERSONAS_ENABLED = import.meta.env.VITE_ENABLE_TEST_PERSONAS === 'true';
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim()
   || (import.meta.env.DEV ? '1x00000000000000000000AA' : '0x4AAAAAAD7ahchhUEu5jKLM');
+// Mirrors the server-side minimum on /auth/setup-password (AuthSetupPasswordRequest).
+const MIN_SETUP_PASSWORD_LENGTH = 12;
 const FREE_EMAIL_DOMAINS = new Set([
   '126.com', '163.com', 'aol.com', 'fastmail.com', 'gmail.com', 'gmx.com', 'gmx.de', 'googlemail.com',
   'hey.com', 'hotmail.co.uk', 'hotmail.com', 'hushmail.com', 'icloud.com', 'inbox.com', 'laposte.net',
@@ -50,11 +50,14 @@ function isCorporateEmail(email: string): boolean {
   return !/^(?:yahoo|hotmail|live)\./.test(domain);
 }
 
+// Why the verification token is absent, so the form can say what to do next.
+type CaptchaClearReason = 'expired' | 'error' | 'reset';
+
 function TurnstileWidget({
   onTokenChange,
   resetKey
 }: {
-  onTokenChange: (token: string | null) => void;
+  onTokenChange: (token: string | null, reason?: CaptchaClearReason) => void;
   resetKey: number;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -71,8 +74,8 @@ function TurnstileWidget({
         theme: 'light',
         size: 'flexible',
         callback: (token) => onTokenChange(token),
-        'expired-callback': () => onTokenChange(null),
-        'error-callback': () => onTokenChange(null)
+        'expired-callback': () => onTokenChange(null, 'expired'),
+        'error-callback': () => onTokenChange(null, 'error')
       });
     };
 
@@ -99,7 +102,7 @@ function TurnstileWidget({
   React.useEffect(() => {
     if (resetKey > 0 && widgetIdRef.current && window.turnstile) {
       window.turnstile.reset(widgetIdRef.current);
-      onTokenChange(null);
+      onTokenChange(null, 'reset');
     }
   }, [onTokenChange, resetKey]);
 
@@ -112,11 +115,15 @@ function TurnstileWidget({
 function PasswordInput({
   label,
   value,
-  onChange
+  onChange,
+  autoComplete,
+  describedBy
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  autoComplete: 'current-password' | 'new-password';
+  describedBy?: string;
 }) {
   const [visible, setVisible] = React.useState(false);
   return (
@@ -125,6 +132,8 @@ function PasswordInput({
       <span className="password-input-wrap">
         <input
           aria-label={label}
+          aria-describedby={describedBy}
+          autoComplete={autoComplete}
           type={visible ? 'text' : 'password'}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -943,10 +952,14 @@ export function ZeroDayBlogPage() {
 
 export function DemoRequestPage() {
   const navigate = useNavigate();
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const [formError, setFormError] = React.useState<{ field: 'terms' | 'email' | 'captcha'; message: string } | null>(null);
   const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
+  const [captchaClearReason, setCaptchaClearReason] = React.useState<CaptchaClearReason | null>(null);
   const [captchaResetKey, setCaptchaResetKey] = React.useState(0);
-  const handleCaptchaToken = React.useCallback((token: string | null) => setCaptchaToken(token), []);
+  const handleCaptchaToken = React.useCallback((token: string | null, reason?: CaptchaClearReason) => {
+    setCaptchaToken(token);
+    setCaptchaClearReason(token ? null : reason ?? null);
+  }, []);
   const requestDemo = useMutation({
     mutationFn: api.createDemoRequest,
     onSuccess: () => navigate('/demo/request/success'),
@@ -959,16 +972,16 @@ export function DemoRequestPage() {
     const formData = new FormData(event.currentTarget);
     const acceptedTerms = formData.get('acceptedTerms') === 'on';
     if (!acceptedTerms) {
-      setFormError('Accept the demo terms to request access.');
+      setFormError({ field: 'terms', message: 'Accept the demo terms to request access.' });
       return;
     }
     const email = String(formData.get('email') ?? '').trim();
     if (!isCorporateEmail(email)) {
-      setFormError('Enter a valid corporate email address.');
+      setFormError({ field: 'email', message: 'Enter a valid corporate email address.' });
       return;
     }
     if (!captchaToken) {
-      setFormError('Complete the CAPTCHA verification before submitting.');
+      setFormError({ field: 'captcha', message: 'Complete the CAPTCHA verification before submitting.' });
       return;
     }
     requestDemo.mutate({
@@ -997,10 +1010,21 @@ export function DemoRequestPage() {
           </div>
         </div>
         <form className="demo-request-form" onSubmit={submit}>
-          <label className="half-width">Full name<input name="fullName" required maxLength={255} /></label>
-          <label className="half-width">Work email<input name="email" type="email" required maxLength={255} /></label>
-          <label className="third-width">Company<input name="company" required maxLength={255} /></label>
-          <label className="third-width">Role<input name="roleTitle" maxLength={255} /></label>
+          <label className="half-width">Full name<input name="fullName" autoComplete="name" required maxLength={255} /></label>
+          <label className="half-width">Work email
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={255}
+              aria-invalid={formError?.field === 'email' || undefined}
+              aria-describedby={formError?.field === 'email' ? 'demo-request-email-hint demo-request-error' : 'demo-request-email-hint'}
+            />
+            <span id="demo-request-email-hint" className="field-hint">Use your company email address. Personal email providers are not accepted.</span>
+          </label>
+          <label className="third-width">Company<input name="company" autoComplete="organization" required maxLength={255} /></label>
+          <label className="third-width">Role<input name="roleTitle" autoComplete="organization-title" maxLength={255} /></label>
           <label className="third-width">Company size
             <select name="companySize" defaultValue="">
               <option value="" disabled>Select size</option>
@@ -1012,16 +1036,37 @@ export function DemoRequestPage() {
           </label>
           <label className="full-width">Notes<textarea name="notes" rows={3} maxLength={2000} /></label>
           <label className="demo-terms full-width">
-            <input name="acceptedTerms" type="checkbox" />
+            <input
+              name="acceptedTerms"
+              type="checkbox"
+              aria-invalid={formError?.field === 'terms' || undefined}
+              aria-describedby={formError?.field === 'terms' ? 'demo-request-error' : undefined}
+            />
             <span>I understand the demo is time-boxed, uses isolated sample-friendly workflows, and may include demo-specific usage limits.</span>
           </label>
           <TurnstileWidget onTokenChange={handleCaptchaToken} resetKey={captchaResetKey} />
+          {!captchaToken && (
+            <p id="demo-request-captcha-status" className="field-hint full-width" role="status">
+              {captchaClearReason === 'expired'
+                ? 'The verification expired. Complete it again to submit your request.'
+                : captchaClearReason === 'error'
+                  ? 'The verification could not be completed. Retry the check above, or reload the page if it does not appear.'
+                  : captchaClearReason === 'reset'
+                    ? 'Your entries are kept. Complete the verification again to resubmit.'
+                    : 'Complete the verification above to enable Submit request.'}
+            </p>
+          )}
           {(formError || requestDemo.isError) && (
-            <div className="notice error full-width" role="alert">
-              {formError ?? (requestDemo.error instanceof Error ? requestDemo.error.message : 'Demo request failed')}
+            <div id="demo-request-error" className="notice error full-width" role="alert">
+              {formError?.message ?? (requestDemo.error instanceof Error ? requestDemo.error.message : 'Demo request failed')}
             </div>
           )}
-          <button className="btn btn-primary" type="submit" disabled={requestDemo.isPending || !captchaToken}>
+          <button
+            className="btn btn-primary"
+            type="submit"
+            disabled={requestDemo.isPending || !captchaToken}
+            aria-describedby={captchaToken ? undefined : 'demo-request-captcha-status'}
+          >
             {requestDemo.isPending ? 'Submitting...' : 'Submit request'}
           </button>
         </form>
@@ -1055,6 +1100,31 @@ function usePrivateLink() {
   return link;
 }
 
+/**
+ * Next step for an unusable invite or setup link. Links only to routes that
+ * exist; there is no self-service re-issue, so the copy names who can help.
+ */
+function AuthLinkRecovery({ message, requestDemo = false }: { message: string; requestDemo?: boolean }) {
+  return (
+    <div className="auth-link-recovery">
+      <p>{message}</p>
+      <div className="button-row">
+        <Link className="btn btn-secondary" to="/login">Go to log in</Link>
+        {requestDemo ? <Link className="btn btn-secondary" to="/demo/request">Request a demo</Link> : null}
+      </div>
+    </div>
+  );
+}
+
+function DemoInviteRecovery() {
+  return (
+    <AuthLinkRecovery
+      requestDemo
+      message="Ask the ScoutGrid team to resend your invite, or submit a new demo request. If you already activated the workspace, log in with your email and password."
+    />
+  );
+}
+
 export function DemoInvitePage() {
   const { token } = usePrivateLink();
   const navigate = useNavigate();
@@ -1083,11 +1153,17 @@ export function DemoInvitePage() {
       <section className="public-form-panel">
         <h1>Demo invite</h1>
         {!token ? (
-          <div className="notice error">This link has expired. Request a new invitation link.</div>
+          <>
+            <div className="notice error" role="alert">This link has expired. Request a new invitation link.</div>
+            <DemoInviteRecovery />
+          </>
         ) : inviteQuery.isLoading ? (
-          <p>Checking invite...</p>
+          <p role="status">Checking invite...</p>
         ) : inviteQuery.isError ? (
-          <div className="notice error">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
+          <>
+            <div className="notice error" role="alert">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
+            <DemoInviteRecovery />
+          </>
         ) : invite ? (
           <>
             <div className={`notice ${deliveryFailed ? 'error' : 'success'}`}>
@@ -1114,7 +1190,7 @@ export function DemoInvitePage() {
                 {acceptInvite.isPending ? 'Activating...' : 'Activate your workspace'}
               </button>
             </div>
-            {acceptInvite.isError && <div className="notice error">{acceptInvite.error instanceof Error ? acceptInvite.error.message : 'Accept failed'}</div>}
+            {acceptInvite.isError && <div className="notice error" role="alert">{acceptInvite.error instanceof Error ? acceptInvite.error.message : 'Accept failed'}</div>}
           </>
         ) : null}
       </section>
@@ -1151,11 +1227,17 @@ export function TenantInvitePage() {
       <section className="public-form-panel">
         <h1>Workspace invite</h1>
         {!token ? (
-          <div className="notice error">This link has expired. Request a new invitation link.</div>
+          <>
+            <div className="notice error" role="alert">This link has expired. Request a new invitation link.</div>
+            <AuthLinkRecovery message="Ask your workspace administrator to send a new invite. If you already accepted it, log in with your email and password." />
+          </>
         ) : inviteQuery.isLoading ? (
-          <p>Checking invite...</p>
+          <p role="status">Checking invite...</p>
         ) : inviteQuery.isError ? (
-          <div className="notice error">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
+          <>
+            <div className="notice error" role="alert">{inviteQuery.error instanceof Error ? inviteQuery.error.message : 'Invite is invalid'}</div>
+            <AuthLinkRecovery message="Ask your workspace administrator to send a new invite. If you already accepted it, log in with your email and password." />
+          </>
         ) : invite ? (
           <>
             <div className={`notice ${deliveryFailed ? 'error' : 'success'}`}>
@@ -1180,7 +1262,7 @@ export function TenantInvitePage() {
                 {acceptInvite.isPending ? 'Activating...' : 'Accept invite'}
               </button>
             </div>
-            {acceptInvite.isError ? <div className="notice error">{acceptInvite.error instanceof Error ? acceptInvite.error.message : 'Accept failed'}</div> : null}
+            {acceptInvite.isError ? <div className="notice error" role="alert">{acceptInvite.error instanceof Error ? acceptInvite.error.message : 'Accept failed'}</div> : null}
           </>
         ) : null}
       </section>
@@ -1212,14 +1294,6 @@ export function LoginPage() {
     }
     if (actor.roles.some((role) => role.replace(/^ROLE_/, '') === 'PLATFORM_OWNER') && actor.platformScope) {
       navigate('/platform/tenants', { replace: true });
-      return;
-    }
-    if (canManageRiskPolicy(actor)) {
-      navigate('/configurations', { replace: true });
-      return;
-    }
-    if (actor.demo === true && canManageInventorySources(actor)) {
-      navigate(pathForConnectView('sources'), { replace: true });
       return;
     }
     navigate('/exposure', { replace: true });
@@ -1304,8 +1378,8 @@ export function LoginPage() {
         )}
         {!setupMode && (
           <form className="auth-token-form dev-token-form" onSubmit={submitLogin}>
-            <label>Email<input type="text" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-            <PasswordInput label="Password" value={password} onChange={setPassword} />
+            <label>Email<input type="email" name="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+            <PasswordInput label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
             <button className="btn btn-primary" type="submit" disabled={loginMutation.isPending || !email.trim() || !password.trim()}>
               {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
             </button>
@@ -1314,13 +1388,27 @@ export function LoginPage() {
         {setupMode && (
           <form className="auth-token-form dev-token-form" onSubmit={submitLogin}>
             {loginEmailParam.trim() ? <p>Account: {loginEmailParam.trim()}</p> : null}
-            <PasswordInput label="New password" value={password} onChange={setPassword} />
-            <button className="btn btn-primary" type="submit" disabled={setupPasswordMutation.isPending || password.trim().length < 8}>
+            <PasswordInput
+              label="New password"
+              autoComplete="new-password"
+              describedBy="setup-password-requirement"
+              value={password}
+              onChange={setPassword}
+            />
+            <span id="setup-password-requirement" className="field-hint">
+              Use at least {MIN_SETUP_PASSWORD_LENGTH} characters.
+            </span>
+            <button className="btn btn-primary" type="submit" disabled={setupPasswordMutation.isPending || password.trim().length < MIN_SETUP_PASSWORD_LENGTH}>
               {setupPasswordMutation.isPending ? 'Saving...' : 'Set password'}
             </button>
           </form>
         )}
         {error && <div className="notice error" role="alert">{error}</div>}
+        {!setupMode && (
+          <p className="field-hint">
+            There is no self-service password reset. If you cannot sign in, ask your workspace administrator, or the ScoutGrid team for a demo workspace, for a new setup link.
+          </p>
+        )}
         {TEST_PERSONAS_ENABLED && (
           <div className="section-block">
             <h2 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Non-production test personas</h2>
@@ -1391,7 +1479,12 @@ export function SetupSessionPage() {
     <PublicDemoShell compact authEntry>
       <section className="public-form-panel">
         <h1>Preparing password setup</h1>
-        {error ? <div className="notice error" role="alert">{error}</div> : <p>Securing your one-time setup session...</p>}
+        {error ? (
+          <>
+            <div className="notice error" role="alert">{error}</div>
+            <AuthLinkRecovery message="Setup links work once. Ask your workspace administrator for a new setup link, or log in if you already set your password." />
+          </>
+        ) : <p role="status">Securing your one-time setup session...</p>}
       </section>
     </PublicDemoShell>
   );
@@ -1426,7 +1519,7 @@ function PublicDemoShell({ children, compact = false, authEntry = false }: { chi
 
   return (
     <main className={`${compact ? 'public-demo-shell compact' : 'public-demo-shell'}${authEntry ? ' ui2-experience-family' : ''}`}>
-      <nav className="public-demo-nav">
+      <nav className="public-demo-nav" aria-label="ScoutGrid site">
         <div className="public-demo-nav-inner">
           <Link to="/demo" className="public-demo-brand">
             <span className="brand-mark">S</span>

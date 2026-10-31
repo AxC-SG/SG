@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { api } from '../api/client';
 import type { AiSecurityAzureConnectionTest } from '../features/ai-security/types';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 
 export function AiSecurityAzureConnectorPage() {
   const queryClient = useQueryClient();
@@ -39,6 +41,7 @@ export function AiSecurityAzureConnectorPage() {
   const [region, setRegion] = React.useState('eastus2');
   const [testResult, setTestResult] = React.useState<AiSecurityAzureConnectionTest | null>(null);
   const [runMessage, setRunMessage] = React.useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = React.useState('');
 
   React.useEffect(() => {
     const config = configQuery.data;
@@ -61,8 +64,10 @@ export function AiSecurityAzureConnectorPage() {
       subscriptionIds,
       region: region || undefined,
     }),
+    onMutate: () => setSaveNotice(''),
     onSuccess: () => {
       setClientSecret('');
+      setSaveNotice('Configuration saved.');
       void queryClient.invalidateQueries({ queryKey: ['ai-security-azure-foundry-config'] });
     },
   });
@@ -83,6 +88,14 @@ export function AiSecurityAzureConnectorPage() {
 
   const error = saveMutation.error ?? testMutation.error ?? runMutation.error;
 
+  if (configQuery.isError && configQuery.data === undefined) {
+    return <ConnectorConfigLoadError connectorName="Azure AI Foundry" error={configQuery.error} onRetry={() => void configQuery.refetch()} retrying={configQuery.isFetching} />;
+  }
+
+  const runsState: AsyncSectionState = runsQuery.isPending
+    ? 'pending'
+    : runsQuery.isError && !runsQuery.data ? 'error' : (runsQuery.data ?? []).length === 0 ? 'empty' : 'ready';
+
   return (
     <div className="ai-connector-layout">
       <section className="ai-security-hero connector">
@@ -92,7 +105,7 @@ export function AiSecurityAzureConnectorPage() {
           <p>Enter connection details, test backend reachability, then start ingestion.</p>
         </div>
         <span className={`status-pill ${configured ? 'success' : 'muted'}`}>
-          {configQuery.isLoading ? 'Loading' : configured ? 'Success' : 'Not configured'}
+          {configQuery.isLoading ? 'Checking…' : configured ? 'Configured' : 'Not configured'}
         </span>
       </section>
 
@@ -147,6 +160,7 @@ export function AiSecurityAzureConnectorPage() {
           <label>Subscription IDs<input value={subscriptionIds} onChange={(event) => setSubscriptionIds(event.target.value)} placeholder="sub-id-1, sub-id-2" /></label>
           <label>Region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="eastus2" /></label>
           {error && <div className="notice error">{error instanceof Error ? error.message : String(error)}</div>}
+          {saveNotice && !error && <div className="notice success" role="status">{saveNotice}</div>}
           {latestSuccessfulRun && (
             <div className="notice success">
               Last run completed with {latestSuccessfulRun.recordsFetched.toLocaleString()} artifact{latestSuccessfulRun.recordsFetched === 1 ? '' : 's'} discovered.
@@ -179,9 +193,15 @@ export function AiSecurityAzureConnectorPage() {
 
         <section className="panel ai-connector-runs">
           <div className="panel-header"><div><h3>Recent runs</h3><span className="panel-caption">Scope failures retain prior inventory and findings.</span></div></div>
-          {(runsQuery.data ?? []).length === 0 ? (
-            <div className="empty-state"><p>No Azure AI Security discovery runs yet.</p></div>
-          ) : (
+          <AsyncSection
+            state={runsState}
+            loadingLabel="Loading discovery runs…"
+            emptyMessage="No Azure AI Security discovery runs yet."
+            errorMessage={`Discovery runs could not be loaded${runsQuery.error instanceof Error ? `: ${runsQuery.error.message}` : ''}.`}
+            refreshError={runsQuery.isError && runsQuery.data ? 'The latest refresh of discovery runs failed. Showing the last loaded runs.' : undefined}
+            onRetry={() => void runsQuery.refetch()}
+            retrying={runsQuery.isFetching}
+          >
             <div className="ai-run-list">
               {(runsQuery.data ?? []).slice(0, 10).map((run) => (
                 <article key={run.id}>
@@ -191,6 +211,9 @@ export function AiSecurityAzureConnectorPage() {
                 </article>
               ))}
             </div>
+          </AsyncSection>
+          {scopesQuery.isError && (
+            <div className="notice error" role="alert">Latest scope completeness could not be loaded.</div>
           )}
           {(scopesQuery.data ?? []).length > 0 && (
             <>

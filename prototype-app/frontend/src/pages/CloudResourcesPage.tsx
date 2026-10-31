@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { pathForInventoryHostAsset } from '../app/routes';
+import { AsyncSection } from '../components/AsyncSection';
+import { Pager, ResultScope } from '../components/QueueControls';
 import type { CloudResource, CloudResourceFacetValue, CloudResourceFilters } from '../features/connect/types';
 import { useCloudResourcesQuery } from '../features/connect/queries';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -58,9 +60,18 @@ export function CloudResourcesPage() {
 
   const page = data?.page ?? 0;
   const totalPages = data?.totalPages ?? 0;
+  const hasFilters = Boolean(search || filters.provider || filters.accountId || filters.region || filters.resourceType || filters.state);
+  const clearFilters = () => {
+    setSearch('');
+    setFilters({ page: 0, size: PAGE_SIZE });
+  };
+  const listState = query.isPending && !data ? 'pending'
+    : query.isError && !data ? 'error'
+      : data && data.items.length === 0 ? (hasFilters ? 'filtered-empty' : 'empty')
+        : 'ready';
 
   return (
-    <section className="panel">
+    <section className="panel ui2-inventory-family">
       <div className="panel-header">
         <div>
           <h2 className="cloud-resources-title">Cloud Resources</h2>
@@ -93,19 +104,29 @@ export function CloudResourcesPage() {
                      onChange={(v) => setFilter('state', v)} format={typeLabel} />
       </div>
 
-      {query.isError && (
-        <div className="notice error" role="alert">
-          Unable to load cloud resources. {query.error instanceof Error ? query.error.message : ''}
+      {query.isError && data && (
+        <div className="notice warning" role="status">
+          Cloud resources could not be refreshed; showing the last loaded page.
         </div>
       )}
 
-      {query.isPending && !data ? (
-        <p role="status">Loading cloud resources…</p>
-      ) : data && data.items.length === 0 ? (
-        <div className="empty-state">
-          <p>No cloud resources match. Connect AWS or GCP under Connect → Sources to discover them.</p>
-        </div>
+      {listState !== 'ready' ? (
+        <AsyncSection
+          state={listState}
+          loadingLabel="Loading cloud resources…"
+          errorMessage={`Unable to load cloud resources. ${query.error instanceof Error ? query.error.message : ''}`.trim()}
+          onRetry={() => void query.refetch()}
+          retryLabel="Retry cloud resources"
+          retrying={query.isFetching}
+          emptyMessage="No cloud resources discovered yet. Connect AWS or GCP under Connect → Sources to discover them."
+          filteredEmptyMessage="No cloud resources match the current filters."
+          onClearFilters={clearFilters}
+        />
       ) : (
+        <>
+        {data && (
+          <ResultScope offset={page * PAGE_SIZE} count={data.items.length} total={data.totalItems} noun="resource" filtered={hasFilters} />
+        )}
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -171,16 +192,18 @@ export function CloudResourcesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {totalPages > 1 && (
-        <div className="button-row section-actions">
-          <button type="button" className="btn btn-secondary" disabled={page <= 0}
-                  onClick={() => setFilters((c) => ({ ...c, page: page - 1 }))}>Previous</button>
-          <span className="panel-caption">Page {page + 1} of {totalPages} · {data?.totalItems} resources</span>
-          <button type="button" className="btn btn-secondary" disabled={page + 1 >= totalPages}
-                  onClick={() => setFilters((c) => ({ ...c, page: page + 1 }))}>Next</button>
-        </div>
+        <Pager
+          page={page}
+          totalPages={totalPages}
+          onPrevious={() => setFilters((c) => ({ ...c, page: page - 1 }))}
+          onNext={() => setFilters((c) => ({ ...c, page: page + 1 }))}
+          disabled={query.isFetching}
+          label="Cloud resource pages"
+        />
       )}
     </section>
   );

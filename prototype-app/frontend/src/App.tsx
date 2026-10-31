@@ -2,13 +2,19 @@ import React from 'react';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Activity, Bot, Boxes, Bug, Building2, CalendarX, Flag, Gauge, Library, Plug, Send, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench } from 'lucide-react';
+import { AccountMenu } from './app/AccountMenu';
+import { PageHeaderProvider } from './app/PageHeader';
+import { usePageHeader, useRouteHeader } from './app/pageHeaderState';
+import { SidebarNav, type NavItem, type NavSection } from './app/SidebarNav';
 import { PerformanceInstrumentation } from './lib/performanceMonitoring';
 import type { InventoryViewKey } from './features/inventory/types';
 import { AI_ARTIFACT_CATEGORIES, legacyAgentRosterRedirect, combinedNativeKindFilterValue } from './features/ai-security/categories';
-import type { AdminRouteView, AppTab, ConfigurationsRouteView, ConnectRouteView, FixIntelligenceRouteView, VulnerabilityIntelRouteView } from './app/routes';
+import type { AdminRouteView, AppTab, ConfigurationsRouteView, ConnectRouteView, VulnerabilityIntelRouteView } from './app/routes';
 import { FIX_VIEWS } from './features/fix-intelligence/format';
 import {
   activeTabForPath,
+  navDestinationForPath,
   normalizeFixIntelligenceRouteView,
   pathForFixIntelligenceView,
   buildLegacyCompatiblePath,
@@ -29,7 +35,8 @@ import {
   pathForPlatformView,
   pathForTab,
   pathForVulnRepoView,
-  titleForTab
+  routeTitleForPath,
+  type NavDestination
 } from './app/routes';
 import { api, ApiError, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken, type TestPersona } from './api/client';
 import { ActorContextState, useActor } from './features/auth/context';
@@ -247,7 +254,6 @@ const EMPTY_TEST_PERSONA_CONTROLS: TestPersonaControls = {
   resetPersona: () => undefined
 };
 const TestPersonaControlsState = React.createContext<TestPersonaControls>(EMPTY_TEST_PERSONA_CONTROLS);
-const BOTTOM_NAV_TABS: AppTab[] = [];
 const INVENTORY_PILL_ORDER: Array<{ key: InventoryViewKey; label: string; countKey?: 'hosts' | 'software' | 'containerImages' | 'applications' | 'bomInventory' }> = [
   { key: 'overview', label: 'Overview' },
   { key: 'hosts', label: 'Hosts', countKey: 'hosts' },
@@ -346,9 +352,6 @@ function defaultPathForActor(actor: ActorContext | null): string {
   if (actor.roles.some((role) => role.replace(/^ROLE_/, '') === 'PLATFORM_OWNER') && actor.platformScope) {
     return '/platform/tenants';
   }
-  if (canManageRiskPolicy(actor)) {
-    return '/configurations';
-  }
   return '/exposure';
 }
 
@@ -370,12 +373,7 @@ function FixIntelligenceRoute() {
 }
 
 function FindingsRoute() {
-  const navigate = useNavigate();
-  return (
-    <FindingsPage
-      onOpenCveWorkbench={(vulnerabilityId) => navigate(pathForVulnRepoView('org-cves', vulnerabilityId))}
-    />
-  );
+  return <FindingsPage />;
 }
 
 
@@ -399,7 +397,7 @@ function FindingDetailRoute() {
   if (!displayId) {
     return <Navigate to="/findings" replace />;
   }
-  return <FindingDetailPage />;
+  return <FindingDetailPage key={displayId} findingRef={displayId} />;
 }
 
 function AiFindingDetailRoute() {
@@ -438,6 +436,7 @@ function OperationsRoute() {
   const params = useParams<{ operationsView?: string }>();
   const location = useLocation();
   const actor = useActor();
+  const selectedView = normalizeOperationsRouteView(params.operationsView);
   const isPlatformScope = actor?.platformScope ?? false;
   const platformScopeOwner = canAccessPlatformConsole(actor) && isPlatformScope;
 
@@ -451,7 +450,11 @@ function OperationsRoute() {
     );
   }
 
-  return <OperationalDashboardPage selectedView={normalizeOperationsRouteView(params.operationsView)} redirectSearch={location.search} />;
+  if (!canAccessPlatformConsole(actor) && selectedView !== 'quality') {
+    return <Navigate to="/exposure" replace />;
+  }
+
+  return <OperationalDashboardPage selectedView={selectedView} redirectSearch={location.search} />;
 }
 
 function LegacyVulnerabilityIntelVulnerabilitiesRoute() {
@@ -474,6 +477,7 @@ function VulnRepoWorkbenchRoute() {
   const location = useLocation();
   const params = useParams<{ cveId?: string }>();
   const hasOpenedDirectRecordRef = React.useRef(false);
+  usePageHeader(params.cveId ? { title: params.cveId } : null);
   const returnTo = typeof location.state === 'object' && location.state && 'returnTo' in location.state
     ? String((location.state as { returnTo?: string }).returnTo ?? '').trim()
     : '';
@@ -821,12 +825,10 @@ function AppShell() {
   const [navOpen, setNavOpen] = React.useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = React.useState(false);
   const [personaDialogOpen, setPersonaDialogOpen] = React.useState(false);
-  const [inventoryNavExpanded, setInventoryNavExpanded] = React.useState(false);
-  const [aiInventoryNavExpanded, setAiInventoryNavExpanded] = React.useState(false);
-  const [findingsNavExpanded, setFindingsNavExpanded] = React.useState(false);
-  const [fixNavExpanded, setFixNavExpanded] = React.useState(false);
-  const [adminNavExpanded, setAdminNavExpanded] = React.useState(false);
-  const [configurationsNavExpanded, setConfigurationsNavExpanded] = React.useState(false);
+  const sidebarRef = React.useRef<HTMLElement>(null);
+  const navToggleRef = React.useRef<HTMLButtonElement>(null);
+  const accountPillRef = React.useRef<HTMLButtonElement>(null);
+  const settingsButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const activeTab = activeTabForPath(location.pathname);
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -921,10 +923,6 @@ function AppShell() {
     }
   }, [personaDialogOpen, testPersonas]);
 
-  const navigateToTab = (tab: AppTab): void => {
-    navigate(pathForTab(tab));
-  };
-
   const displayRole = actor?.roles?.[0]?.replace(/^ROLE_/, '').replace(/_/g, ' ') ?? 'No role';
   const tenantLabel = actor?.tenantName ?? (canAccessPlatformConsole(actor) ? 'Platform' : 'No tenant');
   const actorLabel = actor?.principal ?? actor?.userId ?? 'Unknown user';
@@ -958,21 +956,37 @@ function AppShell() {
     setPersonaDialogOpen(false);
   };
 
-  const pageTitle = React.useMemo(() => {
-    if (activeTab === 'exposure') return 'Exposure Dashboard';
-    if (activeTab === 'admin') return 'Tenant Administration';
-    if (activeTab === 'connect') return 'Connectors';
-    if (activeTab === 'configurations') return 'Configurations';
-    if (activeTab === 'platform') {
-      const view = normalizePlatformRouteView(location.pathname.split('/')[2]);
-      if (view === 'vuln-intel') return 'Vulnerability Intelligence';
-      if (view === 'eol') return 'End-of-Life';
-      if (view === 'operations') return 'Operations';
-      return 'Tenant Management';
+  const header = useRouteHeader(location.pathname, routeTitleForPath(location.pathname));
+  const closeSettingsMenu = React.useCallback(() => setSettingsMenuOpen(false), []);
+
+  // Narrow-width drawer: focus enters on open, Tab stays inside, Escape closes and returns focus.
+  React.useEffect(() => {
+    if (navOpen) sidebarRef.current?.querySelector<HTMLElement>('a[href], button:not([disabled])')?.focus();
+  }, [navOpen]);
+  const closeNavDrawer = (): void => {
+    setNavOpen(false);
+    navToggleRef.current?.focus();
+  };
+  const onSidebarKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
+    if (!navOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeNavDrawer();
+      return;
     }
-    if (activeTab === 'platform-policies') return 'Policy Distribution';
-    return titleForTab(activeTab);
-  }, [activeTab, location.pathname]);
+    if (event.key !== 'Tab') return;
+    const focusable = [...(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])]
+      .filter((element) => !element.closest('[hidden]'));
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
 
   const tenantScopedTabs = new Set<AppTab>(['exposure', 'findings', 'fix-intelligence', 'policies', 'inventory', 'admin', 'configurations']);
   if (actor && isPlatformScope && tenantScopedTabs.has(activeTab)) {
@@ -991,182 +1005,98 @@ function AppShell() {
     return <Navigate to={pathForVulnRepoView('dashboard')} replace />;
   }
 
-  const renderNavButton = (tab: AppTab): React.ReactNode => (
-    <button
-      key={tab}
-      className={activeTab === tab ? 'nav-btn active' : 'nav-btn'}
-      onClick={() => navigateToTab(tab)}
-    >
-      <span className="nav-label">{titleForTab(tab)}</span>
-    </button>
-  );
-
-  const renderExpandableNavButton = (
-    tab: AppTab,
-    expanded: boolean,
-    onToggleExpanded: () => void,
-    subItems: Array<{ key: string; label: string }>,
-    isSubItemActive: (key: string) => boolean,
-    onSubItemClick: (key: string) => void
-  ): React.ReactNode => (
-    <React.Fragment key={tab}>
-      <div
-        className={activeTab === tab ? 'nav-btn active' : 'nav-btn'}
-      >
-        <button type="button" className="nav-label nav-destination" onClick={() => navigateToTab(tab)}>
-          {titleForTab(tab)}
-        </button>
-        <button
-          type="button"
-          className="nav-expand-toggle"
-          aria-expanded={expanded}
-          aria-label={expanded ? `Collapse ${titleForTab(tab)} sections` : `Expand ${titleForTab(tab)} sections`}
-          onClick={onToggleExpanded}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            {expanded ? <path d="M6 15l6-6 6 6" /> : <path d="M6 9l6 6 6-6" />}
-          </svg>
-        </button>
-      </div>
-      {expanded && (
-        <div className="nav-sub-list">
-          {subItems.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={isSubItemActive(item.key) ? 'nav-sub-btn active' : 'nav-sub-btn'}
-              onClick={() => onSubItemClick(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </React.Fragment>
-  );
+  const destination = navDestinationForPath(location.pathname);
+  const has = (tab: AppTab): boolean => visiblePrimaryNavTabs.includes(tab);
+  const navItem = (key: NavDestination, label: string, to: string, icon: NavItem['icon'], children?: NavItem['children']): NavItem =>
+    ({ key, label, to, icon, active: destination === key, children });
+  const aiInventoryParams = new URLSearchParams(location.search);
+  const aiInventoryPath = (key: string): string => {
+    if (key === 'overview') return pathForAiInventoryOverview();
+    if (key === 'mcp-servers') return '/inventory/ai/mcp?artifactRole=MCP_SERVER';
+    if (key === 'data-stores') return '/inventory/ai/knowledge-data?artifactRole=DATA_STORE';
+    if (key === 'AGENTS') return pathForInventoryAiAgents();
+    if (key === 'others') return '/inventory/ai/assets?view=others';
+    const item = AI_INVENTORY_NAV_ITEMS.find((candidate) => candidate.key === key);
+    return `/inventory/ai/assets?nativeKind=${encodeURIComponent(item?.nativeKind ?? '')}`;
+  };
+  const aiInventoryChildActive = (key: string): boolean => {
+    if (key === 'overview') return location.pathname === '/inventory/ai' || location.pathname === '/inventory/ai/overview';
+    if (key === 'mcp-servers') return location.pathname === '/inventory/ai/mcp' && aiInventoryParams.get('artifactRole') === 'MCP_SERVER';
+    if (key === 'data-stores') return location.pathname === '/inventory/ai/knowledge-data' && aiInventoryParams.get('artifactRole') === 'DATA_STORE';
+    if (key === 'AGENTS') return location.pathname === '/inventory/ai/agents';
+    if (key === 'others') return location.pathname === '/inventory/ai/assets' && aiInventoryParams.get('view') === 'others';
+    const item = AI_INVENTORY_NAV_ITEMS.find((candidate) => candidate.key === key);
+    return location.pathname === '/inventory/ai/assets' && aiInventoryParams.get('nativeKind') === item?.nativeKind;
+  };
+  const navSections: NavSection[] = platformScopeOwner
+    ? [
+      { key: 'main', className: 'nav-main-section', groups: [{ key: 'platform', items: [
+        navItem('vuln-repo', 'Vulnerability Repository', pathForTab('vuln-repo'), Library),
+        navItem('platform', 'Tenant Management', pathForTab('platform'), Building2),
+        navItem('end-of-life', 'End-of-Life', pathForTab('end-of-life'), CalendarX),
+        navItem('platform-policies', 'Policy Distribution', pathForTab('platform-policies'), Send),
+      ] }] },
+      { key: 'ops', className: 'nav-ops-section', groups: [{ key: 'operations', items: [
+        navItem('platform-operations', 'Operations', pathForPlatformView('operations'), Activity),
+      ] }] },
+      { key: 'bottom', className: 'nav-bottom-section', groups: [{ key: 'utilities', items: [
+        navItem('connect', 'Connectors', pathForTab('connect'), Plug),
+      ] }] },
+    ]
+    : [
+      { key: 'main', className: 'nav-main-section', groups: [
+        { key: 'exposure', items: has('exposure') ? [navItem('exposure', 'Exposure', pathForTab('exposure'), Gauge)] : [] },
+        { key: 'remediation', heading: 'Remediation', items: [
+          ...(has('findings') ? [navItem('vulnerability-findings', 'Vulnerability Findings', '/findings', Bug)] : []),
+          ...(has('findings') && aiSecurityEnabled ? [navItem('ai-findings', 'AI Findings', pathForAiFindings(), Sparkles)] : []),
+          ...(has('campaigns') ? [navItem('campaigns', 'Campaigns', pathForTab('campaigns'), Flag)] : []),
+        ] },
+        { key: 'fix-intelligence', items: has('fix-intelligence') ? [navItem('fix-intelligence', 'Fix Intelligence', pathForTab('fix-intelligence'), Wrench,
+          FIX_VIEWS.map((view) => ({ key: view.key, label: view.label, to: pathForFixIntelligenceView(view.key), active: destination === 'fix-intelligence' && pathSegments[1] === view.key })))] : [] },
+        { key: 'intelligence', heading: 'Intelligence', items: has('vuln-repo') ? [navItem('vuln-repo', 'Vulnerability Repository', pathForTab('vuln-repo'), Library)] : [] },
+        { key: 'assets', heading: 'Assets', items: [
+          ...(has('inventory') ? [navItem('inventory', 'Inventory', pathForTab('inventory'), Boxes,
+            visibleInventoryPills.map((pill) => ({ key: pill.key, label: pill.label, to: pathForInventoryView(pill.key), active: destination === 'inventory' && activeInventoryView === pill.key })))] : []),
+          ...(aiSecurityEnabled ? [navItem('ai-inventory', 'AI Inventory', pathForAiInventoryOverview(), Bot,
+            AI_INVENTORY_NAV_ITEMS.map((entry) => ({ key: entry.key, label: entry.label, to: aiInventoryPath(entry.key), active: aiInventoryChildActive(entry.key) })))] : []),
+        ] },
+        { key: 'governance', items: [
+          ...(has('policies') ? [navItem('policies', 'Policies', pathForTab('policies'), ShieldCheck)] : []),
+          ...(has('operations') ? [navItem('operations', 'Operational Dashboard', pathForTab('operations'), Activity)] : []),
+        ] },
+      ] },
+      { key: 'bottom', className: 'nav-bottom-section', groups: [{ key: 'utilities', items: [
+        ...(has('connect') ? [navItem('connect', 'Connectors', pathForTab('connect'), Plug)] : []),
+        ...(has('configurations') ? [navItem('configurations', 'Configurations', pathForTab('configurations'), SlidersHorizontal,
+          CONFIGURATIONS_PILL_ORDER.map((pill) => ({ key: pill.key, label: pill.label, to: pathForConfigurationsView(pill.key), active: destination === 'configurations' && activeConfigurationsView === pill.key })))] : []),
+        ...(has('admin') ? [navItem('admin', 'Administration', pathForTab('admin'), Users,
+          ADMIN_PILL_ORDER.map((pill) => ({ key: pill.key, label: pill.label, to: pathForAdminView(pill.key), active: destination === 'admin' && activeAdminView === pill.key })))] : []),
+      ] }] },
+    ];
 
   return (
     <>
       <LegacyQueryRedirect />
       <div className="app-shell">
-        <aside className={navOpen ? 'sidebar open' : 'sidebar'}>
+        <aside id="app-sidebar" ref={sidebarRef} className={navOpen ? 'sidebar open' : 'sidebar'} onKeyDown={onSidebarKeyDown}>
           <div className="brand-block compact">
-            <div className="brand-mark">S</div>
+            <div className="brand-mark" aria-hidden="true">S</div>
             <div className="brand">Scout</div>
           </div>
-
-          <div className="nav-main-section">
-            {visiblePrimaryNavTabs
-              .filter((tab) => tab !== 'policies' && tab !== 'connect' && tab !== 'admin' && tab !== 'configurations')
-              .map((tab) => {
-              if (tab === 'findings' && aiSecurityEnabled) {
-                return renderExpandableNavButton(
-                  tab,
-                  findingsNavExpanded,
-                  () => setFindingsNavExpanded((current) => !current),
-                  [
-                    { key: 'vulnerability', label: 'Vulnerability Findings' },
-                    { key: 'ai', label: 'AI Findings' },
-                  ],
-                  (key) => key === 'ai' ? location.pathname.startsWith('/findings/ai') : location.pathname === '/findings',
-                  (key) => navigate(key === 'ai' ? pathForAiFindings() : '/findings')
-                );
-              }
-              if (tab === 'fix-intelligence') {
-                return renderExpandableNavButton(
-                  tab,
-                  fixNavExpanded,
-                  () => setFixNavExpanded((current) => !current),
-                  FIX_VIEWS,
-                  (key) => activeTab === 'fix-intelligence' && pathSegments[1] === key,
-                  (key) => navigate(pathForFixIntelligenceView(key as FixIntelligenceRouteView))
-                );
-              }
-              if (tab === 'inventory') {
-                return renderExpandableNavButton(
-                  tab,
-                  inventoryNavExpanded,
-                  () => setInventoryNavExpanded((current) => !current),
-                  visibleInventoryPills,
-                  (key) => activeTab === 'inventory' && activeInventoryView === key,
-                  (key) => navigate(pathForInventoryView(key as InventoryViewKey))
-                );
-              }
-              return renderNavButton(tab);
-            })}
-            {visiblePrimaryNavTabs.includes('policies') && renderNavButton('policies')}
-
-            {aiSecurityEnabled && renderExpandableNavButton(
-              'ai',
-              aiInventoryNavExpanded,
-              () => setAiInventoryNavExpanded((current) => !current),
-              AI_INVENTORY_NAV_ITEMS,
-              (key) => {
-                const params = new URLSearchParams(location.search);
-                if (key === 'overview') return location.pathname === '/inventory/ai' || location.pathname === '/inventory/ai/overview';
-                if (key === 'mcp-servers') return location.pathname === '/inventory/ai/mcp' && params.get('artifactRole') === 'MCP_SERVER';
-                if (key === 'data-stores') return location.pathname === '/inventory/ai/knowledge-data' && params.get('artifactRole') === 'DATA_STORE';
-                if (key === 'AGENTS') return location.pathname === '/inventory/ai/agents';
-                if (key === 'others') return location.pathname === '/inventory/ai/assets' && params.get('view') === 'others';
-                const item = AI_INVENTORY_NAV_ITEMS.find((candidate) => candidate.key === key);
-                return location.pathname === '/inventory/ai/assets' && params.get('nativeKind') === item?.nativeKind;
-              },
-              (key) => {
-                if (key === 'overview') return navigate(pathForAiInventoryOverview());
-                if (key === 'mcp-servers') return navigate('/inventory/ai/mcp?artifactRole=MCP_SERVER');
-                if (key === 'data-stores') return navigate('/inventory/ai/knowledge-data?artifactRole=DATA_STORE');
-                if (key === 'AGENTS') return navigate(pathForInventoryAiAgents());
-                if (key === 'others') return navigate('/inventory/ai/assets?view=others');
-                const item = AI_INVENTORY_NAV_ITEMS.find((candidate) => candidate.key === key);
-                return navigate(`/inventory/ai/assets?nativeKind=${encodeURIComponent(item?.nativeKind ?? '')}`);
-              }
-            )}
-
-          </div>
-
-          {platformScopeOwner && (
-            <div className="nav-ops-section">
-              <button
-                className={location.pathname.startsWith('/platform/operations') ? 'nav-btn active' : 'nav-btn'}
-                onClick={() => navigate(pathForPlatformView('operations'))}
-              >
-                <span className="nav-label">Operations</span>
-              </button>
-            </div>
-          )}
-
-          <div className="nav-bottom-section">
-            {BOTTOM_NAV_TABS.map((tab) => renderNavButton(tab))}
-            {visiblePrimaryNavTabs.includes('connect') && renderNavButton('connect')}
-            {visiblePrimaryNavTabs.includes('configurations') && renderExpandableNavButton(
-              'configurations',
-              configurationsNavExpanded,
-              () => setConfigurationsNavExpanded((current) => !current),
-              CONFIGURATIONS_PILL_ORDER,
-              (key) => activeTab === 'configurations' && activeConfigurationsView === key,
-              (key) => navigate(pathForConfigurationsView(key as ConfigurationsRouteView))
-            )}
-            {visiblePrimaryNavTabs.includes('admin') && renderExpandableNavButton(
-              'admin',
-              adminNavExpanded,
-              () => setAdminNavExpanded((current) => !current),
-              ADMIN_PILL_ORDER,
-              (key) => activeTab === 'admin' && activeAdminView === key,
-              (key) => navigate(pathForAdminView(key as AdminRouteView))
-            )}
-          </div>
+          <SidebarNav key={actor?.tenantId ?? 'platform'} sections={navSections} />
         </aside>
 
         <main className="content">
           <header className="topbar">
             <div className="topbar-copy">
               <div className="eyebrow">Enterprise Vulnerability Operations</div>
-              <h1>{pageTitle}</h1>
+              <h1>{header.title}</h1>
+              {header.actions && <div className="topbar-page-actions" role="group" aria-label="Page actions">{header.actions}</div>}
             </div>
             <div className="topbar-actions">
-              <button type="button" className="tenant-context-pill" title={`${actorLabel} · ${displayRole}`}
-                aria-label={`${tenantLabel} ${displayRole}: Open account menu`} aria-expanded={settingsMenuOpen}
-                onClick={() => setSettingsMenuOpen((open) => !open)}>
+              <button type="button" className="tenant-context-pill" title={`${actorLabel} · ${displayRole}`} ref={accountPillRef}
+                aria-label={`${tenantLabel} ${displayRole}: Open account menu`} aria-haspopup="menu" aria-controls="account-menu"
+                aria-expanded={settingsMenuOpen} onClick={() => setSettingsMenuOpen((open) => !open)}>
                 <span>{tenantLabel}{' '}</span>
                 <small>{displayRole}</small>
               </button>
@@ -1182,65 +1112,77 @@ function AppShell() {
                 </div>
               )}
               <button
+                type="button"
+                ref={navToggleRef}
                 className="btn btn-secondary nav-toggle"
+                aria-controls="app-sidebar"
+                aria-expanded={navOpen}
                 onClick={() => setNavOpen((current) => !current)}
               >
                 {navOpen ? 'Close Menu' : 'Menu'}
               </button>
               <div className="settings-menu-wrap">
                 <button
+                  type="button"
+                  ref={settingsButtonRef}
                   className={settingsMenuOpen || ['admin', 'platform'].includes(activeTab) ? 'btn btn-secondary theme-icon-btn active' : 'btn btn-secondary theme-icon-btn'}
                   onClick={() => setSettingsMenuOpen((open) => !open)}
                   aria-label="Open settings menu"
+                  aria-haspopup="menu"
+                  aria-controls="account-menu"
                   aria-expanded={settingsMenuOpen}
                   title="Settings"
                 >
                   <SettingsIcon />
                 </button>
-                {settingsMenuOpen && (
-                  <div className="settings-menu" role="menu">
-                    <div className="settings-menu-header">
-                      <div className="brand-mark settings-menu-mark">S</div>
-                      <strong>Settings</strong>
-                      <span>{actorLabel}</span>
-                    </div>
-                    {testPersonas.enabled && (
-                      <button
-                        type="button"
-                        className="settings-menu-item"
-                        role="menuitem"
-                        onClick={openPersonaDialog}
-                      >
-                        <span>Impersonate User</span>
-                        <small>Open non-production test personas</small>
-                      </button>
-                    )}
-                    {actor?.roles.includes('PLATFORM_OWNER') && (
-                      <button
-                        type="button"
-                        className="settings-menu-item"
-                        role="menuitem"
-                        onClick={() => {
-                          setSettingsMenuOpen(false);
-                          navigate('/authorized-workspaces');
-                        }}
-                      >
-                        <span>Authorized Workspaces</span>
-                        <small>Open only tenant-approved access</small>
-                      </button>
-                    )}
+                <AccountMenu
+                  id="account-menu"
+                  open={settingsMenuOpen}
+                  onClose={closeSettingsMenu}
+                  triggers={[accountPillRef, settingsButtonRef]}
+                  header={<>
+                    <div className="brand-mark settings-menu-mark" aria-hidden="true">S</div>
+                    <strong>Settings</strong>
+                    <span>{actorLabel}</span>
+                  </>}
+                >
+                  {testPersonas.enabled && (
                     <button
                       type="button"
-                      className="settings-menu-item settings-menu-item-logout"
+                      className="settings-menu-item"
                       role="menuitem"
-                      onClick={handleLogout}
+                      onClick={openPersonaDialog}
                     >
-                      <span>Log out</span>
+                      <span>Impersonate User</span>
+                      <small>Open non-production test personas</small>
                     </button>
-                  </div>
-                )}
+                  )}
+                  {actor?.roles.includes('PLATFORM_OWNER') && (
+                    <button
+                      type="button"
+                      className="settings-menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setSettingsMenuOpen(false);
+                        navigate('/authorized-workspaces');
+                      }}
+                    >
+                      <span>Authorized Workspaces</span>
+                      <small>Open only tenant-approved access</small>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="settings-menu-item settings-menu-item-logout"
+                    role="menuitem"
+                    onClick={handleLogout}
+                  >
+                    <span>Log out</span>
+                  </button>
+                </AccountMenu>
               </div>
               <button
+                type="button"
                 className="btn btn-secondary theme-icon-btn"
                 onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
                 aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -1324,7 +1266,7 @@ function AppShell() {
           </RouteErrorBoundary>
         </main>
 
-        {navOpen && <button type="button" className="mobile-nav-backdrop" onClick={() => setNavOpen(false)} aria-label="Close navigation" />}
+        {navOpen && <div className="mobile-nav-backdrop" onClick={closeNavDrawer} aria-hidden="true" />}
       </div>
       {personaDialogOpen && (
         <div className="modal-backdrop" role="presentation" onClick={() => setPersonaDialogOpen(false)}>
@@ -1429,7 +1371,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/*" element={
           <AuthSessionBoundary>
-            <AppShell />
+            <PageHeaderProvider>
+              <AppShell />
+            </PageHeaderProvider>
           </AuthSessionBoundary>
         } />
       </Routes>

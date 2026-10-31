@@ -71,8 +71,9 @@ for (const theme of themes) {
 
   // ── Overview ──────────────────────────────────────────────────────────────
   await page.goto(`${base}/inventory`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'Lifecycle breakdown', exact: true }).waitFor();
   await settle(page);
-  check(tag('overview renders funnel and lifecycle'), await page.getByText('Lifecycle breakdown').first().isVisible());
+  check(tag('overview renders funnel and lifecycle'), await page.getByRole('heading', { name: 'Lifecycle breakdown', exact: true }).isVisible());
   await shot(page, tag('overview'));
 
   // ── Hosts list → detail → return ──────────────────────────────────────────
@@ -87,7 +88,7 @@ for (const theme of themes) {
   await page.getByPlaceholder('hostname, OS, software...').fill('');
   await settle(page);
   await shot(page, tag('hosts'));
-  await page.getByRole('button', { name: 'prod-api-gw-01', exact: true }).first().click();
+  await page.getByRole('link', { name: 'prod-api-gw-01', exact: true }).first().click();
   await page.waitForURL(/\/inventory\/hosts\/host-prod-api-gw-01/);
   check(tag('host row opens detail with returnTo'), here(page) === `/inventory/hosts/${PRIMARY_HOST_ID}?returnTo=%2Finventory%2Fhosts`, here(page));
   await page.getByRole('tab', { name: /Installed software/ }).first().waitFor().catch(() => {});
@@ -128,7 +129,7 @@ for (const theme of themes) {
   check(tag('row expands 4 version rows'), (await page.locator('tr.si-version-row').count()) === 4);
   check(tag('expansion fetches identity detail once'), calls(requests, `/inventory/software-identities/${PRIMARY_SOFTWARE_IDENTITY_ID}`).length === 1);
   await shot(page, tag('software-identities-expanded'));
-  await page.locator('tr.si-identity-row', { hasText: 'log4j-core' }).first().locator('button').first().click();
+  await page.locator('tr.si-identity-row', { hasText: 'log4j-core' }).first().getByRole('link', { name: 'log4j-core', exact: true }).click();
   await page.waitForURL(new RegExp(`/inventory/software-identities/${PRIMARY_SOFTWARE_IDENTITY_ID}`));
   check(tag('identity link opens detail'), new URL(page.url()).pathname === `/inventory/software-identities/${PRIMARY_SOFTWARE_IDENTITY_ID}`, here(page));
   await settle(page);
@@ -169,7 +170,7 @@ for (const theme of themes) {
   await shot(page, tag('ai-overview'));
   requests.length = 0;
   await page.goto(`${base}/inventory/ai/assets`, { waitUntil: 'networkidle' });
-  await page.getByText('50 of 62 assets shown').waitFor();
+  await page.getByText('Showing 1–50 of 62 assets').waitFor();
   await page.getByLabel('Cloud provider').selectOption('AZURE');
   await settle(page);
   const providerCall = calls(requests, '/ai-security/artifact-summaries').at(-1);
@@ -211,6 +212,9 @@ for (const theme of themes) {
   const nodes = await page.locator('.ai-dependency-graph-node').count();
   check(tag('relationship graph renders nodes'), nodes >= 5, String(nodes));
   await shot(page, tag('ai-asset-relationships'));
+  await page.getByRole('button', { name: 'List', exact: true }).click();
+  const relationshipRows = await page.getByRole('table', { name: 'AI artifact relationships' }).locator('tbody tr').count();
+  check(tag('relationship list alternative renders edges'), relationshipRows > 0, String(relationshipRows));
   await page.getByLabel('Close AI asset detail').click();
   await page.waitForURL(/\/inventory\/ai\/assets/);
   check(tag('close AI asset detail returns to list'), new URL(page.url()).pathname === '/inventory/ai/assets', here(page));

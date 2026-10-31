@@ -1,7 +1,8 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import { pathForPlatformPolicyDetail } from '../app/routes';
 import type { AiGridPolicyDistribution, AiGridPolicySelection } from '../features/ai-security/types';
 
@@ -46,7 +47,6 @@ function jsonLabels(value?: string): string {
 }
 
 export function PlatformAiPolicyStudio() {
-  const navigate = useNavigate();
   const client = useQueryClient();
   const [provider, setProvider] = React.useState('ALL');
   const [rollout, setRollout] = React.useState('ALL');
@@ -73,16 +73,24 @@ export function PlatformAiPolicyStudio() {
       && (query.trim() === '' || searchable.includes(query.trim().toLowerCase()));
   }), [catalog.data, owasp, provider, query, rollout, selection]);
   const hasFilters = provider !== 'ALL' || rollout !== 'ALL' || selection !== 'ALL' || owasp !== 'ALL' || query.trim() !== '';
+  const clearFilters = () => { setProvider('ALL'); setRollout('ALL'); setSelection('ALL'); setOwasp('ALL'); setQuery(''); };
+  // The shipping badge reports health only from a loaded status; pending and failed loads say so.
+  const blockerCount = shipping.data?.blockers.length ?? 0;
+  const shippingTone = shipping.isError || blockerCount > 0 ? 'policy-shipping-state policy-shipping-state--blocked' : 'policy-shipping-state';
+  const shippingLabel = shipping.isPending ? 'Checking catalog' : shipping.isError ? 'Status unavailable' : blockerCount ? 'Action needed' : 'Catalog healthy';
+  const shippingValue = shipping.isPending ? 'Loading…' : shipping.isError ? 'Could not load' : blockerCount ? `${blockerCount} blocker${blockerCount === 1 ? '' : 's'}` : 'Ready to ship';
+  const activeRollouts = rollouts.data?.filter((item) => item.status !== 'COMPLETED' && item.status !== 'CANCELED').length;
 
   return <section className="platform-ai-policy-studio">
       <header className="ai-security-hero policies policy-studio-hero"><div>
       <span className="ai-security-kicker">Tenant Management / Policies</span><h2>Policy distribution</h2>
       <p>Ship a governed catalog, make tenant defaults clear, and stage rollout changes from one workspace.</p>
-    </div><div className={shipping.data?.blockers.length ? 'policy-shipping-state policy-shipping-state--blocked' : 'policy-shipping-state'}>
-      <span>{shipping.data?.blockers.length ? 'Action needed' : 'Catalog healthy'}</span>
-      <strong>{shipping.data?.blockers.length ? `${shipping.data.blockers.length} blocker${shipping.data.blockers.length === 1 ? '' : 's'}` : 'Ready to ship'}</strong>
+    </div><div className={shippingTone} role="status">
+      <span>{shippingLabel}</span>
+      <strong>{shippingValue}</strong>
     </div></header>
     <ShippingSummary status={shipping.data} />
+      {shipping.isError ? <div className="notice error" role="alert">Shipping status could not be loaded. <button type="button" className="btn btn-secondary btn-sm" onClick={() => void shipping.refetch()} disabled={shipping.isFetching}>{shipping.isFetching ? 'Retrying…' : 'Retry status'}</button></div> : null}
       {shipping.data?.blockers.length ? <p className="notice error">{shipping.data.blockers.join(' · ')}</p> : null}
     <section className="panel policy-catalog-panel">
       <div className="panel-header policy-catalog-header"><div><h3>Policy catalog</h3><p className="panel-caption">Deploy to dev/test, approve with evidence, then publish to selected tenants or all active tenants. Default selection and tenant rollout are tracked independently.</p></div>
@@ -93,24 +101,35 @@ export function PlatformAiPolicyStudio() {
         <label>Rollout <select value={rollout} onChange={(event) => setRollout(event.target.value)}><option value="ALL">All stages</option>{ROLLOUTS.map((value) => <option key={value} value={value}>{rolloutLabel(value)}</option>)}</select></label>
         <label>Default <select value={selection} onChange={(event) => setSelection(event.target.value)}><option value="ALL">All defaults</option>{DEFAULTS.map((value) => <option key={value}>{value}</option>)}</select></label>
         <label>OWASP <select value={owasp} onChange={(event) => setOwasp(event.target.value)}><option value="ALL">All mappings</option>{frameworkControls.map((control) => <option key={control.controlId}>{control.controlId}</option>)}</select></label>
-        {hasFilters ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setProvider('ALL'); setRollout('ALL'); setSelection('ALL'); setOwasp('ALL'); setQuery(''); }}>Clear filters</button> : null}
+        {hasFilters ? <button type="button" className="btn btn-secondary btn-sm" onClick={clearFilters}>Clear filters</button> : null}
       </div>
-      {catalog.isLoading ? <p role="status">Loading shipped policies…</p> : null}
-      {catalog.isError ? <p className="notice error">The policy catalog could not be loaded.</p> : null}
+      {catalog.isPending || catalog.isError || (catalog.data ?? []).length === 0 ? (
+        <AsyncSection
+          state={catalog.isPending ? 'pending' : catalog.isError ? 'error' : 'empty'}
+          loadingLabel="Loading shipped policies…"
+          errorMessage="The policy catalog could not be loaded."
+          onRetry={() => void catalog.refetch()}
+          retrying={catalog.isFetching}
+          emptyMessage="No policies are in the shipped catalog."
+        />
+      ) : (
       <div className="policy-management-layout">
         <div className="table-scroll policy-catalog-table"><table className="data-table"><thead><tr><th>Policy</th><th>Applicability</th><th>Native types</th><th>Framework mapping</th><th>Availability</th><th>Default selection</th><th>Rollout</th><th>Lifecycle</th><th aria-label="Actions" /></tr></thead>
-          <tbody>{policies.length === 0 ? <tr><td colSpan={9} className="policy-empty-cell">No policies match the selected filters.</td></tr> : policies.map((policy) => <tr key={policy.policyId} className="policy-catalog-row">
+          <tbody>{policies.length === 0 ? <tr><td colSpan={9} className="policy-empty-cell">No policies match the selected filters. <button type="button" className="btn btn-secondary btn-sm" onClick={clearFilters}>Clear filters</button></td></tr> : policies.map((policy) => <tr key={policy.policyId} className="policy-catalog-row">
             <td><strong>{policy.name}</strong><br /><small>{policy.policyId} · {policy.provider} · {policy.severity}</small></td>
             <td>{jsonLabels(policy.artifactTypesJson)}</td><td>{jsonLabels(policy.nativeKindsJson)}</td><td>{frameworkMappings(policy.frameworkMappingsJson, frameworkLabels)}</td><td><span className={statusClass(policy.available ? 'available' : 'unavailable')}>{policy.available ? 'Available' : 'Unavailable'}</span></td>
             <td><span className={statusClass(policy.defaultSelection)}>{policy.defaultSelection}</span><br /><small>Tenant default</small></td><td><span className={statusClass(policy.rolloutStage)}>{rolloutLabel(policy.rolloutStage)}</span></td><td><span className={statusClass(policy.lifecycle)}>{policy.lifecycle}</span></td>
-            <td><button type="button" className="btn btn-secondary btn-sm" aria-label={`Open policy: ${policy.name}`} onClick={() => navigate(pathForPlatformPolicyDetail(policy.policyId))}>Open policy</button></td>
+            <td><Link className="btn btn-secondary btn-sm" aria-label={`Open policy: ${policy.name}`} to={pathForPlatformPolicyDetail(policy.policyId)}>Open policy</Link></td>
           </tr>)}</tbody></table></div>
       </div>
+      )}
     </section>
 
-    <section className="panel policy-rollout-panel"><div className="panel-header"><div><h3>Canary rollout queue</h3><p className="panel-caption">Each canary rollout is created by one policy approval and carries its exact digest and release-decision binding.</p></div><span className="policy-results-count">{rollouts.data?.filter((item) => item.status !== 'COMPLETED' && item.status !== 'CANCELED').length ?? 0} active</span></div>
+    <section className="panel policy-rollout-panel"><div className="panel-header"><div><h3>Canary rollout queue</h3><p className="panel-caption">Each canary rollout is created by one policy approval and carries its exact digest and release-decision binding.</p></div><span className="policy-results-count">{activeRollouts ?? '—'} active</span></div>
+      {retry.isError ? <p className="notice error" role="alert">The rollout could not be retried. Its state is unchanged.</p> : null}
+      {retry.isSuccess ? <p className="notice" role="status">Retry requested. The queue below refreshes with its new state.</p> : null}
       <div className="table-scroll"><table className="data-table"><thead><tr><th>Policy</th><th>Approved digest</th><th>Decision</th><th>State</th><th>Created</th><th>Action</th></tr></thead><tbody>
-        {rollouts.isLoading ? <tr><td colSpan={6}>Loading rollout jobs…</td></tr> : (rollouts.data ?? []).length === 0 ? <tr><td colSpan={6}>No rollout jobs are waiting.</td></tr> : (rollouts.data ?? []).map((item) => <tr key={item.id}><td><strong>{item.policyId}</strong></td><td className="mono">{item.approvedDigest ?? '—'}</td><td className="mono">{item.releaseDecisionId ?? '—'}</td><td><span className={statusClass(item.status)}>{item.status}</span></td><td>{new Date(item.createdAt).toLocaleString()}</td><td><button type="button" className="btn btn-secondary btn-sm" onClick={() => retry.mutate(item.id)} disabled={retry.isPending || item.status === 'COMPLETED' || item.status === 'CANCELED'}>{item.status === 'COMPLETED' ? 'Complete' : item.status === 'CANCELED' ? 'Canceled' : 'Retry'}</button></td></tr>)}
+        {rollouts.isLoading ? <tr><td colSpan={6}>Loading rollout jobs…</td></tr> : rollouts.isError ? <tr><td colSpan={6}><span role="alert">Rollout jobs could not be loaded.</span> <button type="button" className="btn btn-secondary btn-sm" onClick={() => void rollouts.refetch()} disabled={rollouts.isFetching}>{rollouts.isFetching ? 'Retrying…' : 'Retry loading'}</button></td></tr> : (rollouts.data ?? []).length === 0 ? <tr><td colSpan={6}>No rollout jobs are waiting.</td></tr> : (rollouts.data ?? []).map((item) => <tr key={item.id}><td><strong>{item.policyId}</strong></td><td className="mono">{item.approvedDigest ?? '—'}</td><td className="mono">{item.releaseDecisionId ?? '—'}</td><td><span className={statusClass(item.status)}>{item.status}</span></td><td>{new Date(item.createdAt).toLocaleString()}</td><td><button type="button" className="btn btn-secondary btn-sm" onClick={() => retry.mutate(item.id)} disabled={retry.isPending || item.status === 'COMPLETED' || item.status === 'CANCELED'}>{item.status === 'COMPLETED' ? 'Complete' : item.status === 'CANCELED' ? 'Canceled' : 'Retry'}</button></td></tr>)}
       </tbody></table></div>
     </section>
   </section>;

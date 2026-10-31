@@ -102,10 +102,62 @@ describe('UserManagementPage', () => {
     await waitFor(() => expect(invite).toBeEnabled());
     expect(invite).not.toHaveFocus();
 
+    // A pointer click focuses the button in the browser; jsdom needs it explicitly.
+    invite.focus();
     fireEvent.click(invite);
-    await waitFor(() => expect(invite).not.toHaveFocus());
-    fireEvent.keyDown(window, { key: 'Escape' });
+    const dialog = await screen.findByRole('dialog', { name: 'Invite User' });
+    expect(screen.getByRole('textbox', { name: 'Email' })).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() => expect(invite).toHaveFocus());
+  });
+
+  it('keeps the invite dialog open and busy while sending, then retains the input after a failure', async () => {
+    vi.spyOn(api, 'getAuthContext').mockResolvedValue(AUTH_CONTEXT);
+    vi.spyOn(api, 'listTenantMembers').mockResolvedValue([buildMember()]);
+    vi.spyOn(api, 'listTenantInvites').mockResolvedValue([]);
+    vi.spyOn(api, 'listServiceAccounts').mockResolvedValue([]);
+    vi.spyOn(api, 'listAuditEvents').mockResolvedValue([]);
+    let rejectInvite: (error: Error) => void = () => undefined;
+    vi.spyOn(api, 'createTenantInvite').mockImplementation(
+      () => new Promise((_resolve, reject) => { rejectInvite = reject; })
+    );
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(getAuthContextQueryKey('anonymous'), AUTH_CONTEXT);
+    renderWithProviders(<UserManagementPage />, { queryClient });
+
+    const invite = await screen.findByRole('button', { name: /Invite user/ });
+    await waitFor(() => expect(invite).toBeEnabled());
+    fireEvent.click(invite);
+    const dialog = await screen.findByRole('dialog', { name: 'Invite User' });
+    const email = screen.getByRole('textbox', { name: 'Email' });
+    fireEvent.change(email, { target: { value: 'new.user@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invite' }));
+
+    expect(await screen.findByRole('button', { name: 'Sending…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByText(/Sending the invite/)).toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Invite User' })).toBeInTheDocument();
+
+    rejectInvite(new Error('Invite quota reached'));
+    expect(await screen.findByText(/Invite quota reached/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Email' })).toHaveValue('new.user@example.com');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+  });
+
+  it('does not report zero members in the caption or role cards when the member list fails', async () => {
+    vi.spyOn(api, 'getAuthContext').mockResolvedValue(AUTH_CONTEXT);
+    vi.spyOn(api, 'listTenantMembers').mockRejectedValue(new Error('members down'));
+    vi.spyOn(api, 'listTenantInvites').mockResolvedValue([]);
+    vi.spyOn(api, 'listServiceAccounts').mockResolvedValue([]);
+    vi.spyOn(api, 'listAuditEvents').mockResolvedValue([]);
+
+    renderWithProviders(<UserManagementPage />);
+
+    await waitFor(() => expect(screen.getByText(/members unavailable/)).toBeInTheDocument());
+    expect(screen.queryByText(/0 members/)).not.toBeInTheDocument();
+    expect(screen.getByText(/0 invites/)).toBeInTheDocument();
   });
 
   it('renders a member row in the Users table when members are loaded', async () => {

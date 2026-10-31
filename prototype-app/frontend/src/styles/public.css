@@ -1837,6 +1837,20 @@
   min-height: 65px;
 }
 
+/* Requirement/helper text tied to a field via aria-describedby. */
+.public-form-panel .field-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.auth-link-recovery {
+  display: grid;
+  gap: 10px;
+}
+
 .password-input-wrap {
   position: relative;
   display: block;

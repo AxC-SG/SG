@@ -1,0 +1,544 @@
+[
+  {
+    "name": "findings: sign-in leaves /login [dark]",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "findings: URL scope status=OPEN sent [dark]",
+    "ok": true,
+    "detail": "?status=OPEN"
+  },
+  {
+    "name": "findings: list request 200 [dark]",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "name": "findings: page info shows a total [dark]",
+    "ok": true,
+    "detail": "Previous Page 1 of 1 Next \u00b7 Showing 1\u201324 of 24 findings matching the filters"
+  },
+  {
+    "name": "findings: rows rendered within page size [dark]",
+    "ok": true,
+    "detail": "25"
+  },
+  {
+    "name": "findings: widget sends severity=CRITICAL [dark]",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&severity=CRITICAL"
+  },
+  {
+    "name": "findings: aggregates not re-requested with severity [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: narrowed total <= queue total [dark]",
+    "ok": true,
+    "detail": "11 <= 26"
+  },
+  {
+    "name": "findings: widget toggles off, queue total restored [dark]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: status column values accumulate [dark]",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&status=OPEN&status=RESOLVED"
+  },
+  {
+    "name": "findings: filter chip shown [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: clearing chips restores queue total [dark]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: next page sends cursor [dark]",
+    "ok": true,
+    "detail": "?cursor=NjIuMHwxNzk1MjM1MjQ5NDM4fDE3OTMyNDgwNDk0Mzh8NzViZTZlODctOGU3Yy0zNDQzLTk5ZGMtNDMxNTdiZmMyMzcx&limit=25&queueKey=all-findings"
+  },
+  {
+    "name": "findings: page 2 info [dark]",
+    "ok": true,
+    "detail": "Previous Page 2 of 2 Next \u00b7 Showing 26\u201327 of 26 findings"
+  },
+  {
+    "name": "findings: prev returns to page 1 [dark]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: row click selects [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: row click stays on list [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: group-by requests server groups [dark]",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "findings: group cards render [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: finding link opens detail [dark]",
+    "ok": true,
+    "detail": "/findings/DEM-B7A84BFF"
+  },
+  {
+    "name": "findings: detail shows CVE link [dark]",
+    "ok": true,
+    "detail": "CVE-2024-3094"
+  },
+  {
+    "name": "findings: CVE link opens workbench record [dark]",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2024-3094"
+  },
+  {
+    "name": "findings: back from CVE returns to finding [dark]",
+    "ok": true,
+    "detail": "/findings/DEM-B7A84BFF"
+  },
+  {
+    "name": "findings: tab switch issues no writes [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: back returns to findings [dark]",
+    "ok": true,
+    "detail": "/findings"
+  },
+  {
+    "name": "findings: no 5xx API responses [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: no page errors [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: entitled tenant stays on /findings/ai [dark]",
+    "ok": true,
+    "detail": "/findings/ai"
+  },
+  {
+    "name": "ai-findings: default scope status=OPEN [dark]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN"
+  },
+  {
+    "name": "ai-findings: provider filter keeps status scope [dark]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&provider=AWS"
+  },
+  {
+    "name": "ai-findings: deep link severity=CRITICAL serialised with status [dark]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&severity=CRITICAL"
+  },
+  {
+    "name": "ai-findings: empty AI findings state renders without error [dark]",
+    "ok": true,
+    "detail": "AI Findings\nSG Internal\nTENANT ADMIN\nPolicy Violations\nSoftware Vulnerabilities\nConfiguration evidence, separate from CVEs\nAI Findings\n\nDeterministic policy fai"
+  },
+  {
+    "name": "ai-findings: software-vulnerability tab keeps AI-resource constraint [dark]",
+    "ok": true,
+    "detail": "?size=100&status=OPEN&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai-findings: status change retains AI-resource constraint [dark]",
+    "ok": true,
+    "detail": "?size=100&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai-findings: exposures route renders [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: no 5xx API responses [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: no page errors [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: overview renders lifecycle breakdown [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: hosts list renders [dark]",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "inventory: host search narrows [dark]",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "inventory: host opens detail with returnTo [dark]",
+    "ok": true,
+    "detail": "/inventory/hosts/be3025e9-6027-3811-8e40-cd14186093f3?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "inventory: host tabs switch [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: close returns to hosts [dark]",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "inventory: lifecycle facet serialised [dark]",
+    "ok": true,
+    "detail": "http://127.0.0.1:5173/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "inventory: lifecycle facet narrows identities [dark]",
+    "ok": true,
+    "detail": "0 <= 200"
+  },
+  {
+    "name": "inventory: row expands versions [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: expansion fetches identity detail once [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: identity opens detail [dark]",
+    "ok": true,
+    "detail": "/inventory/software-identities/2c3052c0-00fa-3d09-aabd-25346bc68197"
+  },
+  {
+    "name": "inventory: identity detail shows sections [dark]",
+    "ok": true,
+    "detail": "/inventory/software-identities/2c3052c0-00fa-3d09-aabd-25346bc68197"
+  },
+  {
+    "name": "inventory: back returns to identities [dark]",
+    "ok": true,
+    "detail": "/inventory/software-identities"
+  },
+  {
+    "name": "inventory: AI inventory renders for entitled tenant [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: declared resource detail / retired history [dark]",
+    "ok": true,
+    "skipped": true,
+    "detail": "no declared resources projected in this tenant (fixture journey covers it)"
+  },
+  {
+    "name": "inventory: no 5xx API responses [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: no page errors [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: sign-in leaves /login [light]",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "findings: URL scope status=OPEN sent [light]",
+    "ok": true,
+    "detail": "?status=OPEN"
+  },
+  {
+    "name": "findings: list request 200 [light]",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "name": "findings: page info shows a total [light]",
+    "ok": true,
+    "detail": "Previous Page 1 of 1 Next \u00b7 Showing 1\u201324 of 24 findings matching the filters"
+  },
+  {
+    "name": "findings: rows rendered within page size [light]",
+    "ok": true,
+    "detail": "25"
+  },
+  {
+    "name": "findings: widget sends severity=CRITICAL [light]",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&severity=CRITICAL"
+  },
+  {
+    "name": "findings: aggregates not re-requested with severity [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: narrowed total <= queue total [light]",
+    "ok": true,
+    "detail": "11 <= 26"
+  },
+  {
+    "name": "findings: widget toggles off, queue total restored [light]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: status column values accumulate [light]",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&status=OPEN&status=RESOLVED"
+  },
+  {
+    "name": "findings: filter chip shown [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: clearing chips restores queue total [light]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: next page sends cursor [light]",
+    "ok": true,
+    "detail": "?cursor=NjIuMHwxNzk1MjM1MjQ5NDM4fDE3OTMyNDgwNDk0Mzh8NzViZTZlODctOGU3Yy0zNDQzLTk5ZGMtNDMxNTdiZmMyMzcx&limit=25&queueKey=all-findings"
+  },
+  {
+    "name": "findings: page 2 info [light]",
+    "ok": true,
+    "detail": "Previous Page 2 of 2 Next \u00b7 Showing 26\u201327 of 26 findings"
+  },
+  {
+    "name": "findings: prev returns to page 1 [light]",
+    "ok": true,
+    "detail": "Previous Page 1 of 2 Next \u00b7 Showing 1\u201325 of 26 findings"
+  },
+  {
+    "name": "findings: row click selects [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: row click stays on list [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: group-by requests server groups [light]",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "findings: group cards render [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: finding link opens detail [light]",
+    "ok": true,
+    "detail": "/findings/DEM-B7A84BFF"
+  },
+  {
+    "name": "findings: detail shows CVE link [light]",
+    "ok": true,
+    "detail": "CVE-2024-3094"
+  },
+  {
+    "name": "findings: CVE link opens workbench record [light]",
+    "ok": true,
+    "detail": "/vuln-repo/org-cves/CVE-2024-3094"
+  },
+  {
+    "name": "findings: back from CVE returns to finding [light]",
+    "ok": true,
+    "detail": "/findings/DEM-B7A84BFF"
+  },
+  {
+    "name": "findings: tab switch issues no writes [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: back returns to findings [light]",
+    "ok": true,
+    "detail": "/findings"
+  },
+  {
+    "name": "findings: no 5xx API responses [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "findings: no page errors [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: entitled tenant stays on /findings/ai [light]",
+    "ok": true,
+    "detail": "/findings/ai"
+  },
+  {
+    "name": "ai-findings: default scope status=OPEN [light]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN"
+  },
+  {
+    "name": "ai-findings: provider filter keeps status scope [light]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&provider=AWS"
+  },
+  {
+    "name": "ai-findings: deep link severity=CRITICAL serialised with status [light]",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&severity=CRITICAL"
+  },
+  {
+    "name": "ai-findings: empty AI findings state renders without error [light]",
+    "ok": true,
+    "detail": "AI Findings\nSG Internal\nTENANT ADMIN\nPolicy Violations\nSoftware Vulnerabilities\nConfiguration evidence, separate from CVEs\nAI Findings\n\nDeterministic policy fai"
+  },
+  {
+    "name": "ai-findings: software-vulnerability tab keeps AI-resource constraint [light]",
+    "ok": true,
+    "detail": "?size=100&status=OPEN&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai-findings: status change retains AI-resource constraint [light]",
+    "ok": true,
+    "detail": "?size=100&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai-findings: exposures route renders [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: no 5xx API responses [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai-findings: no page errors [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: overview renders lifecycle breakdown [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: hosts list renders [light]",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "inventory: host search narrows [light]",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "inventory: host opens detail with returnTo [light]",
+    "ok": true,
+    "detail": "/inventory/hosts/be3025e9-6027-3811-8e40-cd14186093f3?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "inventory: host tabs switch [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: close returns to hosts [light]",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "inventory: lifecycle facet serialised [light]",
+    "ok": true,
+    "detail": "http://127.0.0.1:5173/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "inventory: lifecycle facet narrows identities [light]",
+    "ok": true,
+    "detail": "0 <= 200"
+  },
+  {
+    "name": "inventory: row expands versions [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: expansion fetches identity detail once [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: identity opens detail [light]",
+    "ok": true,
+    "detail": "/inventory/software-identities/2c3052c0-00fa-3d09-aabd-25346bc68197"
+  },
+  {
+    "name": "inventory: identity detail shows sections [light]",
+    "ok": true,
+    "detail": "/inventory/software-identities/2c3052c0-00fa-3d09-aabd-25346bc68197"
+  },
+  {
+    "name": "inventory: back returns to identities [light]",
+    "ok": true,
+    "detail": "/inventory/software-identities"
+  },
+  {
+    "name": "inventory: AI inventory renders for entitled tenant [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: declared resource detail / retired history [light]",
+    "ok": true,
+    "skipped": true,
+    "detail": "no declared resources projected in this tenant (fixture journey covers it)"
+  },
+  {
+    "name": "inventory: no 5xx API responses [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: no page errors [light]",
+    "ok": true,
+    "detail": ""
+  }
+]

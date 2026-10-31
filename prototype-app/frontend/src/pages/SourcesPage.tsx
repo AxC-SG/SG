@@ -78,14 +78,6 @@ function isNotFoundError(error: unknown): boolean {
   return error.message.includes('[NOT_FOUND]') || error.message.includes('(404)');
 }
 
-function readStoredNvdFullSyncApiKey(): string {
-  try {
-    return window.sessionStorage.getItem(NVD_FULL_SYNC_API_KEY_STORAGE_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
 function maskSecret(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -298,7 +290,7 @@ export function SourcesPage({
   const [messageTone, setMessageTone] = React.useState<'info' | 'success' | 'warning' | 'error'>('info');
   const [busy, setBusy] = React.useState<string | null>(null);
   const [confirmFullSync, setConfirmFullSync] = React.useState(false);
-  const [nvdFullSyncApiKey, setNvdFullSyncApiKey] = React.useState(readStoredNvdFullSyncApiKey);
+  const [nvdFullSyncApiKey, setNvdFullSyncApiKey] = React.useState('');
   const [nvdFullSyncApiKeyRequired, setNvdFullSyncApiKeyRequired] = React.useState(false);
   const activeSourceFilterKey = sourceFilterSourceKey(focusSource);
   const [sourceFilters, setSourceFilters] = React.useState<SourceFilterForm>(
@@ -341,6 +333,10 @@ export function SourcesPage({
   const loadingRuns = syncRunsQuery.isLoading;
   const refreshingRuns = syncRunsQuery.isFetching;
   const loadingVexRepairSummary = vexRepairSummaryQuery.isLoading;
+  // A failed run or summary load is not "never run".
+  const runsUnavailable = syncRunsQuery.isError && !syncRunsQuery.data;
+  const vexRepairSummaryUnavailable = vexRepairSummaryQuery.isError && !vexRepairSummaryQuery.data;
+  const RUNS_UNAVAILABLE = 'Run history could not be loaded.';
   const refreshingVexRepairSummary = vexRepairSummaryQuery.isFetching;
   const loadingSourceFilters = sourceFilterConfigQuery.isLoading && sourceFilterConfigQuery.data == null;
   const { refetch: refetchSyncRuns } = syncRunsQuery;
@@ -426,15 +422,12 @@ export function SourcesPage({
 
   React.useEffect(() => {
     try {
-      if (!currentNvdFullSyncApiKey) {
-        window.sessionStorage.removeItem(NVD_FULL_SYNC_API_KEY_STORAGE_KEY);
-        return;
-      }
-      window.sessionStorage.setItem(NVD_FULL_SYNC_API_KEY_STORAGE_KEY, currentNvdFullSyncApiKey);
+      // Discard plaintext credentials retained by earlier versions. New keys stay in memory.
+      window.sessionStorage.removeItem(NVD_FULL_SYNC_API_KEY_STORAGE_KEY);
     } catch {
-      // Browser-only persistence for the full-sync helper.
+      // Sync must still work when browser storage is unavailable.
     }
-  }, [currentNvdFullSyncApiKey]);
+  }, []);
 
   React.useEffect(() => {
     if (currentNvdFullSyncApiKey && nvdFullSyncApiKeyRequired) {
@@ -816,7 +809,7 @@ export function SourcesPage({
                 <div className="panel-caption">{new Date(orderedVisibleRuns[0].startedAt).toLocaleString()}</div>
               </>
             ) : (
-              <div className="panel-caption">{loadingRuns ? 'Loading...' : 'No sync run recorded yet'}</div>
+              <div className="panel-caption">{loadingRuns ? 'Loading...' : runsUnavailable ? RUNS_UNAVAILABLE : 'No sync run recorded yet'}</div>
             )}
           </div>
         </div>
@@ -1036,7 +1029,7 @@ export function SourcesPage({
         <div className="connector-status-grid section-block">
           <div className="connector-status-card">
             <div className="connector-status-label">{connectorRunLabel}</div>
-            <div className="connector-status-value">{renderSyncRunSummary(latestConnectorRun, 'No sync run recorded yet.')}</div>
+            <div className="connector-status-value">{renderSyncRunSummary(latestConnectorRun, runsUnavailable ? RUNS_UNAVAILABLE : 'No sync run recorded yet.')}</div>
           </div>
         </div>
       )}
@@ -1064,7 +1057,9 @@ export function SourcesPage({
             </div>
           ) : (
             <div className="empty-state">
-              <p>{loadingVexRepairSummary ? 'Loading VEX repair summary...' : 'No VEX repair summary available yet.'}</p>
+              <p>{loadingVexRepairSummary
+                ? 'Loading VEX repair summary...'
+                : vexRepairSummaryUnavailable ? 'The VEX repair summary could not be loaded.' : 'No VEX repair summary available yet.'}</p>
             </div>
           )}
           {vexRepairSummary?.latestBackfillComparison && (
@@ -1093,17 +1088,18 @@ export function SourcesPage({
           <div className="section-block">
             <div className="nvd-api-key-block">
               <div className="nvd-api-key-label-row">
-                <span className="connector-status-label">NVD API Key</span>
+                <label className="connector-status-label" htmlFor="nvd-full-sync-api-key">NVD API Key</label>
                 {currentNvdFullSyncApiKey && (
                   <span className="panel-caption">{maskSecret(currentNvdFullSyncApiKey)}</span>
                 )}
               </div>
               <input
+                id="nvd-full-sync-api-key"
                 ref={nvdFullSyncApiKeyInputRef}
                 type="password"
                 value={nvdFullSyncApiKey}
                 onChange={(event) => setNvdFullSyncApiKey(event.target.value)}
-                placeholder="Paste NVD API key (saved locally in your browser)"
+                placeholder="Paste NVD API key (kept only while this page is open)"
                 autoComplete="off"
               />
               {nvdFullSyncApiKeyRequired && (
@@ -1180,7 +1176,12 @@ export function SourcesPage({
               Processing jobs track internal maintenance work like persisted VEX repair and rollout backfills. They do not represent upstream feed fetches.
             </div>
           )}
-                {orderedVisibleRuns.length === 0 ? (
+                {runsUnavailable ? (
+            <div className="notice error" role="alert">
+              {RUNS_UNAVAILABLE}{' '}
+              <button type="button" className="btn btn-sm" onClick={() => void refetchSyncRuns()}>Retry</button>
+            </div>
+          ) : orderedVisibleRuns.length === 0 ? (
             <div className="empty-state">
               <p>{focusSource === 'processing'
                 ? 'No processing jobs have been recorded yet.'

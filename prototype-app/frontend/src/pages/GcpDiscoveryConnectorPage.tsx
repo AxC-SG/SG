@@ -13,6 +13,7 @@ import type {
   SyncTriggerResponse
 } from '../features/connect/types';
 import { useGcpDiscoveryConfigQuery, useGcpDiscoveryTargetsQuery } from '../features/connect/queries';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 import { grantCommands } from '../features/connect/gcp';
 import { formatTimestamp } from '../lib/time';
 
@@ -60,6 +61,8 @@ export function GcpDiscoveryConnectorPage() {
   const [editingTargetId, setEditingTargetId] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
+  // Shown only after an explicit Save; Test and Run report their own outcome.
+  const [saveNotice, setSaveNotice] = React.useState('');
   const [testResult, setTestResult] = React.useState<GcpConnectionTestResponse | null>(null);
   const [syncResult, setSyncResult] = React.useState<SyncTriggerResponse | null>(null);
   const [grantProject, setGrantProject] = React.useState('');
@@ -90,6 +93,7 @@ export function GcpDiscoveryConnectorPage() {
   };
 
   const saveConnector = async () => {
+    setSaveNotice('');
     const saved = await run('save', () => api.saveGcpDiscoveryConfig({
       credentialJson: credentialJson.trim() ? credentialJson.trim() : undefined,
       enabled: true,
@@ -98,6 +102,7 @@ export function GcpDiscoveryConnectorPage() {
     }));
     if (saved) {
       setCredentialJson('');
+      setSaveNotice('Connector settings saved.');
       queryClient.setQueryData(['gcp-discovery-config'], saved);
       await refresh();
     }
@@ -186,6 +191,9 @@ export function GcpDiscoveryConnectorPage() {
   if (configQuery.isPending && !config) {
     return <section className="panel">Loading GCP Cloud Discovery connector...</section>;
   }
+  if (configQuery.isError && !configQuery.data) {
+    return <ConnectorConfigLoadError connectorName="GCP Cloud Discovery" error={configQuery.error} onRetry={() => void configQuery.refetch()} retrying={configQuery.isFetching} />;
+  }
 
   const queryError = configQuery.error instanceof Error ? configQuery.error.message : '';
   const displayError = error || queryError;
@@ -208,6 +216,7 @@ export function GcpDiscoveryConnectorPage() {
       )}
 
       {displayError && <div className="notice error">{displayError}</div>}
+      {saveNotice && !displayError && <div className="notice success" role="status">{saveNotice}</div>}
 
       <div className="form-section">
         <h4 className="form-section-title">Service Account</h4>

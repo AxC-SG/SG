@@ -225,6 +225,21 @@ html[data-ui='2'] .ui2-connect-family .connect-source-dot--warn {
   box-shadow: inset 0 0 0 2px var(--dp-text-3);
 }
 
+/* Status not read (loading, failed load, paused or summarised only in detail): dashed ring, no health colour. */
+html[data-ui='2'] .ui2-connect-family .connect-source-dot--unknown {
+  background: transparent;
+  box-shadow: none;
+  border: 2px dashed var(--dp-text-3);
+  box-sizing: border-box;
+}
+
+html[data-ui='2'] .ui2-connect-family .connect-source-status {
+  color: var(--dp-text-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 html[data-ui='2'] .ui2-connect-family .connect-source-card--disabled .connect-source-dot {
   background: var(--dp-border-strong);
   box-shadow: none;
@@ -405,7 +420,7 @@ html[data-ui='2'] .ui2-connect-family .config-section-head {
   border: 0;
 }
 
-html[data-ui='2'] .ui2-connect-family .config-section-head-text h3 {
+html[data-ui='2'] .ui2-connect-family .config-section-head-text h2 {
   margin: 0;
   color: var(--dp-text);
   font-size: var(--dp-text-2xl);
@@ -652,8 +667,8 @@ html[data-ui='2'] .ui2-connect-family .ai-security-page {
   padding: 0;
 }
 
-html[data-ui='2'] .ui2-connect-family .ai-security-page > header h1,
-html[data-ui='2'] .ui2-connect-family.ai-security-page > header h1 {
+html[data-ui='2'] .ui2-connect-family .ai-security-page > header h2,
+html[data-ui='2'] .ui2-connect-family.ai-security-page > header h2 {
   margin: 0;
   color: var(--dp-text);
   font-size: var(--dp-text-2xl);
@@ -662,7 +677,7 @@ html[data-ui='2'] .ui2-connect-family.ai-security-page > header h1 {
 }
 
 /* Inside the catalog frame the frame title already names the connector. */
-html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .ai-security-page > header h1 {
+html[data-ui='2'] .ui2-connect-family .connector-page-back-row ~ .ai-security-page > header h2 {
   font-size: var(--dp-text-xl);
 }
 

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import type { Tenant } from '../features/admin/types';
@@ -105,7 +105,13 @@ describe('PlatformAiPolicyDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Approve policy' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Publish canary' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Publish to all active tenants' }));
+    // Publishing beyond a cohort is reviewed in a named dialog before the request is sent.
+    const dialog = await screen.findByRole('dialog', { name: 'Publish to all active tenants?' });
+    expect(within(dialog).getByText(/targets every active tenant \(1 now\)/)).toBeInTheDocument();
+    expect(publish).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Publish to all' }));
     await waitFor(() => expect(publish).toHaveBeenCalledWith('aws.agent-tool-scope', [], true));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(await screen.findByText('Policy publication started.')).toHaveClass('notice', 'success');
 
     const deprecateButton = screen.getByRole('button', { name: 'Deprecate policy' });
@@ -113,6 +119,27 @@ describe('PlatformAiPolicyDetailPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Why this policy is being retired'), { target: { value: 'Superseded' } });
     fireEvent.click(deprecateButton);
     expect(await screen.findByText('Action failed: Deprecation requires a successor')).toHaveClass('notice', 'error');
+  });
+
+  it('explains why each lifecycle action is disabled', async () => {
+    mockCatalog(distribution());
+    renderWithProviders(<PlatformAiPolicyDetailPage policyId="aws.agent-tool-scope" />);
+    await openGovernance();
+
+    expect(screen.getByText('Add an evidence note to approve.')).toBeInTheDocument();
+    expect(screen.getByText(/Publishing is available once the policy is APPROVED/)).toBeInTheDocument();
+    expect(screen.getByText('Add a deprecation reason to deprecate.')).toBeInTheDocument();
+    expect(await screen.findByText('0 of 1 active tenant selected.')).toBeInTheDocument();
+  });
+
+  it('reports a catalog load failure with Retry instead of not found', async () => {
+    vi.spyOn(api, 'listPlatformAiGridPolicies').mockRejectedValue(new Error('down'));
+    vi.spyOn(api, 'listTenants').mockResolvedValue([]);
+    renderWithProviders(<PlatformAiPolicyDetailPage policyId="aws.agent-tool-scope" />);
+    expect(screen.getByText('Loading policy…')).toBeInTheDocument();
+    expect(await screen.findByText('The policy catalog could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText(/was not found/)).not.toBeInTheDocument();
   });
 
   it('shows a not-found state for a policy missing from the catalog', async () => {

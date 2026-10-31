@@ -59,3 +59,24 @@ it('shows only server-authorized workspaces and labels the bootstrap workspace a
   expect(screen.queryByText('Inaccessible Customer')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
 });
+
+it('reports failed workspace and invitation loads with retry instead of "no access" or "no invitations"', async () => {
+  vi.spyOn(api, 'listAuthorizedWorkspaces').mockRejectedValue(new Error('workspaces offline'));
+  vi.spyOn(api, 'listInvitedSupportGrants').mockRejectedValue(new Error('grants offline'));
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <ActorContextState.Provider value={{
+        creator: true, principal: 'owner@example.com', userId: 'owner-subject', tenantId: null, tenantName: null,
+        roles: ['PLATFORM_OWNER'], platformScope: true
+      }}>
+        <MemoryRouter><AuthorizedWorkspacesPage /></MemoryRouter>
+      </ActorContextState.Provider>
+    </QueryClientProvider>
+  );
+
+  expect(await screen.findByText('workspaces offline')).toBeInTheDocument();
+  expect(await screen.findByText('grants offline')).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(2);
+  expect(screen.queryByText('No workspace access has been granted to this identity.')).not.toBeInTheDocument();
+  expect(screen.queryByText('No pending support invitations.')).not.toBeInTheDocument();
+});

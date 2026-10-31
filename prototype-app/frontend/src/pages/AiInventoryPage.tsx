@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
+import { MetricValue, type MetricAvailability } from '../components/MetricValue';
 import { PageFreshnessStatus } from '../components/PageFreshnessStatus';
 import { AI_ARTIFACT_CATEGORIES, isAgentVersionKind, combinedNativeKindFilterValue, stripProviderPrefix } from '../features/ai-security/categories';
 import type { AiSeverityGridRow } from '../features/ai-security/types';
@@ -106,6 +108,19 @@ function findingsPath(params: { severity?: string; nativeKind?: string }): strin
   return query ? `/findings/ai?${query}` : '/findings/ai';
 }
 
+type WidgetQuery = { data?: unknown; isPending: boolean; isError: boolean };
+
+function availabilityOf(query: WidgetQuery): MetricAvailability {
+  if (query.data) return 'available';
+  return query.isPending ? 'pending' : 'unavailable';
+}
+
+// Each widget states its own source: a failed source is never shown as "no findings" or zero.
+function sectionStateOf(query: WidgetQuery, isEmpty: boolean): AsyncSectionState {
+  if (!query.data) return query.isError ? 'error' : 'pending';
+  return isEmpty ? 'empty' : 'ready';
+}
+
 export function AiInventoryPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -162,8 +177,9 @@ export function AiInventoryPage() {
   const providerRows = Object.entries(summary?.providerCounts ?? {}).sort(([, a], [, b]) => b - a);
   const providerMax = Math.max(1, ...providerRows.map(([, count]) => count));
 
-  const incompleteScopes = summary?.incompleteScopes ?? 0;
-  const unsupportedEvidence = coverage?.unsupported ?? 0;
+  const summaryAvail = availabilityOf(summaryQuery);
+  const coverageAvail = availabilityOf(coverageQuery);
+  const gridAvail = availabilityOf(severityGridQuery);
 
   return (
     <InventoryShell
@@ -182,9 +198,14 @@ export function AiInventoryPage() {
               <p className="panel-caption">AI artifacts with an open finding, by artifact category and severity</p>
             </div>
           </div>
-          {displayGridRows.length === 0 ? (
-            <div className="empty-state"><p>No open AI findings to grid.</p></div>
-          ) : (
+          <AsyncSection
+            state={sectionStateOf(severityGridQuery, displayGridRows.length === 0)}
+            loadingLabel="Loading severity grid…"
+            emptyMessage="No open AI findings to grid."
+            errorMessage="The severity grid could not be loaded."
+            onRetry={() => void severityGridQuery.refetch()}
+            retryLabel="Retry severity grid"
+          >
             <table className="grid-exposure-table">
               <thead>
                 <tr>
@@ -221,16 +242,22 @@ export function AiInventoryPage() {
                 ))}
               </tbody>
             </table>
-          )}
+          </AsyncSection>
         </section>
 
         <div className="ai-severity-grid-side">
           <div className="fpl-widget">
             <div className="fpl-widget-title">By Provider</div>
             <div className="fpl-widget-body">
-              {providerRows.length === 0 ? (
-                <p className="panel-caption">No provider data yet.</p>
-              ) : providerRows.map(([providerName, count]) => (
+              <AsyncSection
+                state={sectionStateOf(summaryQuery, providerRows.length === 0)}
+                loadingLabel="Loading providers…"
+                emptyMessage="No provider data yet."
+                errorMessage="Provider counts could not be loaded."
+                onRetry={() => void summaryQuery.refetch()}
+                retryLabel="Retry providers"
+              >
+              {providerRows.map(([providerName, count]) => (
                 <button
                   key={providerName}
                   type="button"
@@ -244,6 +271,7 @@ export function AiInventoryPage() {
                   <strong className="fpl-hbar-val">{count.toLocaleString()}</strong>
                 </button>
               ))}
+              </AsyncSection>
             </div>
           </div>
 
@@ -251,15 +279,15 @@ export function AiInventoryPage() {
             <div className="fpl-widget-title">Coverage Gaps</div>
             <div className="fpl-kpi-grid">
               <div className="fpl-kpi-card">
-                <strong className="fpl-kpi-num">{incompleteScopes.toLocaleString()}</strong>
+                <strong className="fpl-kpi-num"><MetricValue availability={summaryAvail} value={summary?.incompleteScopes} unavailableReason="AI summary unavailable" /></strong>
                 <span className="fpl-kpi-label">Incomplete scopes</span>
               </div>
               <div className="fpl-kpi-card">
-                <strong className="fpl-kpi-num">{unsupportedEvidence.toLocaleString()}</strong>
+                <strong className="fpl-kpi-num"><MetricValue availability={coverageAvail} value={coverage?.unsupported} unavailableReason="Policy coverage unavailable" /></strong>
                 <span className="fpl-kpi-label">Unsupported evidence</span>
               </div>
               <div className="fpl-kpi-card">
-                <strong className="fpl-kpi-num">{(summary?.openFindings ?? 0).toLocaleString()}</strong>
+                <strong className="fpl-kpi-num"><MetricValue availability={summaryAvail} value={summary?.openFindings} unavailableReason="AI summary unavailable" /></strong>
                 <span className="fpl-kpi-label">Open findings</span>
               </div>
             </div>
@@ -277,19 +305,19 @@ export function AiInventoryPage() {
           <div className="fpl-widget-title">Policy Coverage &amp; Risk</div>
           <div className="fpl-kpi-grid">
             <div className="fpl-kpi-card">
-              <strong className="fpl-kpi-num">{Math.round(coverage?.ownerFacingDecisionReachabilityPercent ?? 0)}%</strong>
+              <strong className="fpl-kpi-num"><MetricValue availability={coverageAvail} value={coverage?.ownerFacingDecisionReachabilityPercent} format={(n) => `${Math.round(n)}%`} unavailableReason="Policy coverage unavailable" /></strong>
               <span className="fpl-kpi-label">Policy coverage</span>
             </div>
             <div className="fpl-kpi-card">
-              <strong className="fpl-kpi-num">{(coverage?.evaluatedFail ?? 0).toLocaleString()}</strong>
+              <strong className="fpl-kpi-num"><MetricValue availability={coverageAvail} value={coverage?.evaluatedFail} unavailableReason="Policy coverage unavailable" /></strong>
               <span className="fpl-kpi-label">Failing checks</span>
             </div>
             <div className="fpl-kpi-card">
-              <strong className="fpl-kpi-num">{(coverage?.artifactsFailing ?? 0).toLocaleString()}</strong>
+              <strong className="fpl-kpi-num"><MetricValue availability={coverageAvail} value={coverage?.artifactsFailing} unavailableReason="Policy coverage unavailable" /></strong>
               <span className="fpl-kpi-label">Artifacts failed</span>
             </div>
             <div className="fpl-kpi-card">
-              <strong className="fpl-kpi-num">{(coverage?.unsupported ?? 0).toLocaleString()}</strong>
+              <strong className="fpl-kpi-num"><MetricValue availability={coverageAvail} value={coverage?.unsupported} unavailableReason="Policy coverage unavailable" /></strong>
               <span className="fpl-kpi-label">Unsupported evidence</span>
             </div>
           </div>
@@ -298,9 +326,15 @@ export function AiInventoryPage() {
         <div className="fpl-widget">
           <div className="fpl-widget-title">Top 5 Assets at Risk</div>
           <div className="fpl-widget-body">
-            {topRiskAssets.length === 0 ? (
-              <p className="panel-caption">No AI artifacts have an open finding.</p>
-            ) : topRiskAssets.map((item) => (
+            <AsyncSection
+              state={sectionStateOf(topRiskArtifactsQuery, topRiskAssets.length === 0)}
+              loadingLabel="Loading assets at risk…"
+              emptyMessage="No AI artifacts have an open finding."
+              errorMessage="Assets at risk could not be loaded."
+              onRetry={() => void topRiskArtifactsQuery.refetch()}
+              retryLabel="Retry assets at risk"
+            >
+            {topRiskAssets.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -314,6 +348,7 @@ export function AiInventoryPage() {
                 <strong className="fpl-hbar-val">{item.score}</strong>
               </button>
             ))}
+            </AsyncSection>
           </div>
         </div>
 
@@ -331,7 +366,7 @@ export function AiInventoryPage() {
                 <span className="fpl-hbar-track">
                   <span className="fpl-hbar-fill" style={{ width: `${(severityTotals[column.key] / severityMax) * 100}%` }} />
                 </span>
-                <strong className="fpl-hbar-val">{severityTotals[column.key].toLocaleString()}</strong>
+                <strong className="fpl-hbar-val"><MetricValue availability={gridAvail} value={severityTotals[column.key]} unavailableReason="Severity grid unavailable" /></strong>
               </button>
             ))}
           </div>

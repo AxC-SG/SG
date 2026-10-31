@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
 import { OperationalDashboardPage } from './OperationalDashboardPage';
@@ -98,5 +98,36 @@ describe('OperationalDashboardPage', () => {
     expect(screen.getByText('Runtime Resource Ceilings')).toBeInTheDocument();
     expect(screen.getByText('Findings List')).toBeInTheDocument();
     expect(screen.getByText('DB Pool Active Utilization')).toBeInTheDocument();
+  });
+
+  it('shows stale sources as unavailable, not zero, when the freshness section returns no data', async () => {
+    vi.spyOn(api, 'getOperationalIngestionEfficiency').mockResolvedValue({
+      generatedAt: '2026-07-08T00:00:00Z',
+      data: {
+        sbomIngestionsLast24h: 1, sbomIngestionsPerHour: 0, sbomSuccessRatePercent: 100,
+        syncRunsLast24h: 4, syncSuccessRatePercent: 100, queueBacklog: 0,
+        recordsFetchedLast24h: 10, recordsInsertedLast24h: 5, recordsUpdatedLast24h: 5, sourceBreakdown: [],
+      },
+    });
+    vi.spyOn(api, 'getOperationalFreshnessDrift').mockResolvedValue({ generatedAt: '2026-07-08T00:00:00Z', data: null } as unknown as Awaited<ReturnType<typeof api.getOperationalFreshnessDrift>>);
+
+    renderWithProviders(<OperationalDashboardPage selectedView="pipeline" />, { route: '/operations/pipeline' });
+
+    const card = (await screen.findByText('Stale Sources')).closest('.stat-card') as HTMLElement;
+    expect(within(card).getAllByText('Freshness data unavailable').length).toBeGreaterThan(0);
+    expect(within(card).queryByText('0')).not.toBeInTheDocument();
+  });
+
+  it('offers a retry when the operational section fails to load', async () => {
+    const ingestion = vi.spyOn(api, 'getOperationalIngestionEfficiency').mockRejectedValue(new Error('operations offline'));
+    vi.spyOn(api, 'getOperationalFreshnessDrift').mockResolvedValue({ generatedAt: '2026-07-08T00:00:00Z', data: null } as unknown as Awaited<ReturnType<typeof api.getOperationalFreshnessDrift>>);
+
+    renderWithProviders(<OperationalDashboardPage selectedView="pipeline" />, { route: '/operations/pipeline' });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Failed to load operational section: operations offline');
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    await screen.findByRole('button', { name: /Retry/ });
+    expect(ingestion).toHaveBeenCalledTimes(2);
   });
 });

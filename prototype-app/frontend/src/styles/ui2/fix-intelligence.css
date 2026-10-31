@@ -22,16 +22,6 @@ html[data-ui='2'] .ui2-fix-family .fi-header {
   border-bottom: 1px solid var(--dp-border);
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-header h2 {
-  margin: var(--dp-space-1) 0;
-  color: var(--dp-text);
-  font-family: var(--dp-font);
-  font-size: var(--dp-text-2xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
 html[data-ui='2'] .ui2-fix-family .fi-header p {
   margin: 0;
   max-width: 72ch;
@@ -114,7 +104,7 @@ html[data-ui='2'] .ui2-fix-family .fi-table-panel {
   overflow: hidden;
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-distribution h3 {
+html[data-ui='2'] .ui2-fix-family .fi-distribution h2 {
   margin-top: 0;
 }
 
@@ -127,10 +117,6 @@ html[data-ui='2'] .ui2-fix-family .fi-filters {
 
 html[data-ui='2'] .ui2-fix-family .fi-search {
   flex: 1 1 260px;
-}
-
-html[data-ui='2'] .ui2-fix-family .fi-table td {
-  overflow-wrap: anywhere;
 }
 
 html[data-ui='2'] .ui2-fix-family .fi-status-tag {
@@ -146,18 +132,6 @@ html[data-ui='2'] .ui2-fix-family .fi-severity-none {
   background: var(--dp-surface-2);
   border-color: var(--dp-border);
   color: var(--dp-text-2);
-}
-
-html[data-ui='2'] .ui2-fix-family .fi-empty {
-  padding: var(--dp-space-5) 0;
-  text-align: center;
-}
-
-html[data-ui='2'] .ui2-fix-family .fi-pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--dp-space-3);
 }
 
 html[data-ui='2'] .ui2-fix-family :is(.fi-tags, .fi-actions, .fi-form-actions) {
@@ -187,7 +161,7 @@ html[data-ui='2'] .ui2-fix-family.fi-page > section.panel {
   padding: var(--dp-space-4);
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-text-block h4 {
+html[data-ui='2'] .ui2-fix-family .fi-text-block h3 {
   margin: var(--dp-space-3) 0 var(--dp-space-1);
   font-size: var(--dp-text-sm);
   color: var(--dp-text-2);
@@ -236,7 +210,7 @@ html[data-ui='2'] .ui2-fix-family .fi-form {
   padding: var(--dp-space-4);
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-form h3 {
+html[data-ui='2'] .ui2-fix-family .fi-form h2 {
   margin-top: 0;
 }
 
@@ -348,14 +322,15 @@ html[data-ui='2'] .ui2-fix-family .fi-section-heading {
   border-bottom: 1px solid var(--dp-border);
 }
 
-html[data-ui='2'] .ui2-fix-family h3 {
+/* The shell owns the route H1, so page sections start at h2 with the panel title size. */
+html[data-ui='2'] .ui2-fix-family.fi-page h2 {
   margin: 0 0 var(--dp-space-3);
   color: var(--dp-text);
   font-size: var(--dp-text-lg);
   font-weight: 600;
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-section-heading h3 {
+html[data-ui='2'] .ui2-fix-family .fi-section-heading h2 {
   margin: 0;
 }
 
@@ -392,14 +367,6 @@ html[data-ui='2'] .ui2-fix-family .fi-table-scroll .mono {
   overflow-wrap: anywhere;
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-pagination {
-  padding: var(--dp-space-3) var(--dp-space-4);
-  margin: 0;
-  border-top: 1px solid var(--dp-border);
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
-}
-
 html[data-ui='2'] .ui2-fix-family .fi-error {
   display: flex;
   justify-content: space-between;
@@ -408,8 +375,24 @@ html[data-ui='2'] .ui2-fix-family .fi-error {
   gap: var(--dp-space-3);
 }
 
-html[data-ui='2'] .ui2-fix-family .fi-table-panel > :is(.notice, p) {
+html[data-ui='2'] .ui2-fix-family .fi-table-panel > :is(.notice, p, .empty-state) {
   margin: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-section-heading .queue-result-scope {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-fix-family .fi-table-panel > .pagination-row {
+  padding: var(--dp-space-3) var(--dp-space-4);
+  margin: 0;
+  border-top: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-fix-family :is(.fi-eligibility, .fi-dirty) {
+  margin: 0;
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
 }
 
 html[data-ui='2'] .ui2-fix-family .severity-row {

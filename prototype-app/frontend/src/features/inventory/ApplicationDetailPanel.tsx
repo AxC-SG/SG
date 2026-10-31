@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, type ApplicationCveItem, type ApplicationRiskSummary, type BomComponentSummaryItem } from '../../api/client';
 import { cveWorkbenchApi } from '../cve-workbench/api';
 import { timeAgo } from '../../lib/time';
@@ -325,7 +325,6 @@ function DependsOnTab({ app }: { app: ApplicationRiskSummary }) {
 // ── Vulnerabilities tab ───────────────────────────────────────────────────────
 
 function VulnerabilitiesTab({ app }: { app: ApplicationRiskSummary }) {
-  const navigate = useNavigate();
   const { data: cves, isPending, isError } = useQuery<ApplicationCveItem[]>({
     queryKey: ['app-cves', app.assetId],
     queryFn: () => api.getApplicationCves(app.assetId),
@@ -388,14 +387,9 @@ function VulnerabilitiesTab({ app }: { app: ApplicationRiskSummary }) {
               {sorted.map(c => (
                 <tr key={c.vulnerabilityId}>
                   <td>
-                    <button
-                      type="button"
-                      className="mono"
-                      onClick={() => navigate(`/vuln-repo/org-cves/${encodeURIComponent(c.externalId)}`)}
-                      style={{ fontWeight: 600, color: 'var(--dp-accent)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
+                    <Link className="mono" style={{ fontWeight: 600 }} to={`/vuln-repo/org-cves/${encodeURIComponent(c.externalId)}`}>
                       {c.externalId}
-                    </button>
+                    </Link>
                   </td>
                   <td><SeverityPill severity={c.severity ?? 'UNKNOWN'} /></td>
                   <td>{c.cvssScore != null ? c.cvssScore.toFixed(1) : '—'}</td>

@@ -240,6 +240,9 @@ export function findingsFixtureFor(rawUrl) {
     const scoped = narrow(findings, params);
     return counts(scoped, groupKey(params.get('field') ?? 'severity')).sort((left, right) => right.count - left.count);
   }
+  // Direct finding-detail entry: the backend looks findings up by UUID only (display IDs are N01).
+  const detail = path.match(/^\/findings\/([^/]+)$/);
+  if (detail) return findings.find((finding) => finding.id === decodeURIComponent(detail[1])) ?? NOT_FOUND;
   if (path === '/assets') return [];
   if (path.startsWith('/cve-detail/')) return NOT_FOUND;
   if (path === '/ai-security/findings') {

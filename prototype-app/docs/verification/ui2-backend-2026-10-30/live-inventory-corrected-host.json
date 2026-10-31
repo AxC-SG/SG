@@ -1,0 +1,132 @@
+[
+  {
+    "name": "inventory: overview renders lifecycle breakdown [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: hosts list renders [dark]",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "inventory: host search narrows [dark]",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "inventory: host opens detail with returnTo [dark]",
+    "ok": true,
+    "detail": "/inventory/hosts/be3025e9-6027-3811-8e40-cd14186093f3?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "inventory: host tabs switch [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: close returns to hosts [dark]",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "inventory: lifecycle facet serialised [dark]",
+    "ok": true,
+    "detail": "http://127.0.0.1:5173/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "inventory: lifecycle facet narrows identities [dark]",
+    "ok": true,
+    "detail": "0 <= 200"
+  },
+  {
+    "name": "inventory: row expands versions [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: expansion fetches identity detail once [dark]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: identity opens detail [dark]",
+    "ok": false,
+    "detail": "/inventory/hosts?query=golang.org%2Fx%2Fnet+0.12.0&groupBy=operatingSystem&groupBy=environment"
+  },
+  {
+    "name": "inventory: identity detail shows sections [dark]",
+    "ok": false,
+    "detail": "/inventory/hosts?query=golang.org%2Fx%2Fnet+0.12.0&groupBy=operatingSystem&groupBy=environment"
+  },
+  {
+    "name": "inventory: journey completed [dark]",
+    "ok": false,
+    "detail": "locator.click: Timeout 30000ms exceeded."
+  },
+  {
+    "name": "inventory: overview renders lifecycle breakdown [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: hosts list renders [light]",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "inventory: host search narrows [light]",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "inventory: host opens detail with returnTo [light]",
+    "ok": true,
+    "detail": "/inventory/hosts/be3025e9-6027-3811-8e40-cd14186093f3?returnTo=%2Finventory%2Fhosts"
+  },
+  {
+    "name": "inventory: host tabs switch [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: close returns to hosts [light]",
+    "ok": true,
+    "detail": "/inventory/hosts"
+  },
+  {
+    "name": "inventory: lifecycle facet serialised [light]",
+    "ok": true,
+    "detail": "http://127.0.0.1:5173/api/inventory/software-identities?lifecycle=eol&page=0&size=200"
+  },
+  {
+    "name": "inventory: lifecycle facet narrows identities [light]",
+    "ok": true,
+    "detail": "0 <= 200"
+  },
+  {
+    "name": "inventory: row expands versions [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: expansion fetches identity detail once [light]",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "inventory: identity opens detail [light]",
+    "ok": false,
+    "detail": "/inventory/hosts?query=golang.org%2Fx%2Fnet+0.12.0&groupBy=operatingSystem&groupBy=environment"
+  },
+  {
+    "name": "inventory: identity detail shows sections [light]",
+    "ok": false,
+    "detail": "/inventory/hosts?query=golang.org%2Fx%2Fnet+0.12.0&groupBy=operatingSystem&groupBy=environment"
+  },
+  {
+    "name": "inventory: journey completed [light]",
+    "ok": false,
+    "detail": "locator.click: Timeout 30000ms exceeded."
+  }
+]

@@ -6,6 +6,8 @@ import { pathForFixIntelligenceView } from './app/routes';
 import type { ActorContext } from './features/auth/types';
 import { renderWithProviders } from './test/test-utils';
 
+const sidebar = () => within(screen.getByRole('navigation', { name: 'Primary' }));
+
 function LocationProbe() {
   const location = useLocation();
   return <output data-testid="location">{location.pathname}</output>;
@@ -114,7 +116,7 @@ describe('App test persona switcher', () => {
     ]);
 
     const { default: App } = await import('./App');
-    renderWithProviders(<App />);
+    renderWithProviders(<App />, { route: '/exposure' });
 
     fireEvent.click(await screen.findByLabelText('Open settings menu'));
     expect(screen.getByText('Impersonate User')).toBeInTheDocument();
@@ -203,16 +205,19 @@ describe('App test persona switcher', () => {
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/platform/tenants' });
 
-    expect(await screen.findByRole('button', { name: 'Tenant Management' })).toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Tenant Management' })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByLabelText('Tenant context switcher')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'End-of-Life' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Policy Distribution' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'AI Policies' })).not.toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'End-of-Life' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Policy Distribution' })).toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'Policies' })).not.toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'Fix Intelligence' })).not.toBeInTheDocument();
+    expect(sidebar().queryByRole('group', { name: 'Remediation' })).not.toBeInTheDocument();
     const platformViews = await screen.findByLabelText('Platform views');
     expect(within(platformViews).getByLabelText('Tenant Management')).toBeInTheDocument();
     expect(within(platformViews).queryByText('AI Policy Studio')).not.toBeInTheDocument();
     expect(within(platformViews).queryByLabelText('Operations')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Operations' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Operations' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Open settings menu'));
     expect(screen.queryByText('Tenant Administration')).not.toBeInTheDocument();
@@ -225,10 +230,12 @@ describe('App test persona switcher', () => {
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/platform/tenants' });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Policy Distribution' }));
+    await screen.findByRole('navigation', { name: 'Primary' });
+    fireEvent.click(sidebar().getByRole('link', { name: 'Policy Distribution' }));
 
     expect(await screen.findByRole('heading', { name: 'Policy distribution' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Policy Distribution' })).toHaveClass('active');
+    expect(sidebar().getByRole('link', { name: 'Policy Distribution' })).toHaveAttribute('aria-current', 'page');
+    expect(sidebar().getByRole('link', { name: 'Tenant Management' })).not.toHaveAttribute('aria-current');
     expect(screen.queryByLabelText('Platform views')).not.toBeInTheDocument();
   });
 
@@ -252,6 +259,20 @@ describe('App test persona switcher', () => {
     expect(screen.getByText(/Operations is no longer part of the platform view/i)).toBeInTheDocument();
   });
 
+  it.each(['TENANT_ADMIN', 'INVENTORY_ADMIN', 'SECURITY_ANALYST', 'READ_ONLY_AUDITOR'].flatMap((role) => (
+    ['/operations', '/operations/pipeline', '/operations/platform-health'].map((route) => ({ role, route }))
+  )))('redirects $role away from platform-only $route before requesting operations data', async ({ role, route }) => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, roles: [role] });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const { default: App } = await import('./App');
+    renderWithProviders(<><App /><LocationProbe /></>, { route });
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/));
+    expect(fetchSpy.mock.calls.some(([url]) => /\/api\/(operations|slo)\//.test(String(url)))).toBe(false);
+  });
+
   it('shows only EOL info in the platform subnav for the EOL view', async () => {
     const auth = await import('./features/auth/api');
     const platformOwner: ActorContext = {
@@ -270,7 +291,7 @@ describe('App test persona switcher', () => {
 
     expect(await screen.findByRole('heading', { name: 'End-of-Life' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Platform views')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'End-of-Life' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'End-of-Life' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('redirects legacy end-of-life route into the platform console for platform owners', async () => {
@@ -297,18 +318,21 @@ describe('App test persona switcher', () => {
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
 
     const { default: App } = await import('./App');
-    renderWithProviders(<App />, { route: '/' });
+    renderWithProviders(<><App /><LocationProbe /></>, { route: '/' });
 
-    expect(await screen.findByText('Configurations')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exposure' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Vulnerability Repository' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Campaigns' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Inventory' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Connectors' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Administration' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Configurations' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'End-of-Life' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Configurations' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/));
+    expect(sidebar().getByRole('link', { name: 'Exposure' })).toBeInTheDocument();
+    const remediation = within(sidebar().getByRole('group', { name: 'Remediation' }));
+    expect(remediation.getAllByRole('link').map((link) => link.textContent)).toEqual(['Vulnerability Findings', 'Campaigns']);
+    expect(within(sidebar().getByRole('group', { name: 'Intelligence' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Vulnerability Repository']);
+    expect(within(sidebar().getByRole('group', { name: 'Assets' })).getByRole('link', { name: 'Inventory' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Fix Intelligence' }).closest('[role="group"]')).toBeNull();
+    expect(sidebar().getByRole('link', { name: 'Connectors' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Administration' })).toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'End-of-Life' })).not.toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'Policies' })).not.toBeInTheDocument();
+    expect(sidebar().queryByRole('link', { name: 'AI Inventory' })).not.toBeInTheDocument();
   });
 
   it('redirects platform-scope owners away from tenant administration routes', async () => {
@@ -355,6 +379,26 @@ describe('App test persona switcher', () => {
     expect(screen.queryByText('End-of-Life')).not.toBeInTheDocument();
   });
 
+  it('collapses sidebar sections again when entering a different tenant', async () => {
+    const auth = await import('./features/auth/api');
+    const client = await import('./api/client');
+    const actorSpy = vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    client.setStoredAuthToken('tenant-a-token');
+    const { default: App } = await import('./App');
+    const view = renderWithProviders(<App />, { route: '/exposure' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Expand Inventory sections' }));
+    expect(sidebar().getByRole('button', { name: 'Collapse Inventory sections' })).toHaveAttribute('aria-expanded', 'true');
+
+    actorSpy.mockResolvedValue({ ...TENANT_ADMIN, tenantId: 'tenant-b', tenantName: 'Customer B' });
+    client.setStoredAuthToken('tenant-b-token');
+    view.rerender(<App />);
+
+    await screen.findByRole('button', { name: 'Customer B TENANT ADMIN: Open account menu' });
+    for (const disclosure of sidebar().getAllByRole('button', { name: /^Expand .* sections$/ })) {
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    }
+  });
+
   it.each([
     '/connect/sources?connectSource=sccm-patch',
     '/connect/sources?connectSource=bigfix-patch',
@@ -391,8 +435,8 @@ describe('App test persona switcher', () => {
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/exposure' });
     expect(await screen.findByText('Exposure Dashboard')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Fix Intelligence/ }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Findings' })).toBeInTheDocument();
+    expect(sidebar().getByRole('link', { name: 'Fix Intelligence' })).toHaveAttribute('href', '/fix-intelligence');
+    expect(sidebar().getByRole('link', { name: 'Vulnerability Findings' })).toBeInTheDocument();
   });
 
   it('expands sidebar sections independently from navigation without nested buttons', async () => {
@@ -402,15 +446,22 @@ describe('App test persona switcher', () => {
     const { container } = renderWithProviders(<><App /><LocationProbe /></>, { route: '/exposure' });
     const toggle = await screen.findByRole('button', { name: 'Expand Fix Intelligence sections' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(toggle.parentElement).toBe(screen.getByRole('button', { name: 'Fix Intelligence' }).parentElement);
-    expect(container.querySelector('button button, button [role="button"]')).toBeNull();
+    for (const disclosure of sidebar().getAllByRole('button', { name: /^Expand .* sections$/ })) {
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      expect(document.getElementById(disclosure.getAttribute('aria-controls') ?? '')).not.toBeVisible();
+    }
+    expect(toggle.parentElement).toBe(sidebar().getByRole('link', { name: 'Fix Intelligence' }).parentElement);
+    expect(container.querySelector('button button, button a, a a, a button, a [role="button"]')).toBeNull();
+    // Group headings label their group and are not controls.
+    expect(container.querySelectorAll('.nav-group-heading button, button.nav-group-heading, a.nav-group-heading')).toHaveLength(0);
     fireEvent.click(toggle);
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/);
     expect(screen.getByRole('button', { name: 'Collapse Fix Intelligence sections' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: 'Patches' })).toBeInTheDocument();
+    expect(document.getElementById(toggle.getAttribute('aria-controls') ?? '')).toBeVisible();
+    expect(sidebar().getByRole('link', { name: 'Patches' })).toHaveAttribute('href', '/fix-intelligence/patches');
     fireEvent.click(toggle);
-    expect(screen.queryByRole('button', { name: 'Patches' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Findings' }));
+    expect(sidebar().queryByRole('link', { name: 'Patches' })).not.toBeInTheDocument();
+    fireEvent.click(sidebar().getByRole('link', { name: 'Vulnerability Findings' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/findings$/));
   });
 
@@ -429,6 +480,126 @@ describe('App test persona switcher', () => {
     const { default: App } = await import('./App');
     renderWithProviders(<><App /><LocationProbe /></>, { route });
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`^${expected}$`)));
-    expect((await screen.findAllByRole('button', { name: /Fix Intelligence/ }, { timeout: 5000 })).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('link', { name: 'Fix Intelligence' }, { timeout: 5000 })).toHaveAttribute('aria-current', 'page');
+  });
+  it('groups AI destinations under Remediation and Assets and keeps Policies standalone when entitled', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, entitlements: { 'ai.security': true } });
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    await screen.findByRole('navigation', { name: 'Primary' });
+    expect(within(sidebar().getByRole('group', { name: 'Remediation' })).getAllByRole('link').map((link) => link.textContent))
+      .toEqual(['Vulnerability Findings', 'AI Findings', 'Campaigns']);
+    expect(within(sidebar().getByRole('group', { name: 'Assets' })).getAllByRole('link', { name: /Inventory$/ }).map((link) => link.textContent))
+      .toEqual(['Inventory', 'AI Inventory']);
+    const policies = sidebar().getByRole('link', { name: 'Policies' });
+    expect(policies.closest('[role="group"]')).toBeNull();
+    expect(sidebar().getByRole('link', { name: 'Exposure' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows read-only auditors the workflow destinations, including Fix Intelligence, without tenant utilities', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, roles: ['READ_ONLY_AUDITOR'] });
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    await screen.findByRole('navigation', { name: 'Primary' });
+    for (const name of ['Exposure', 'Vulnerability Findings', 'Campaigns', 'Fix Intelligence', 'Vulnerability Repository', 'Inventory']) {
+      expect(sidebar().getByRole('link', { name })).toBeInTheDocument();
+    }
+    for (const name of ['Connectors', 'Configurations', 'Administration', 'AI Findings', 'Policies']) {
+      expect(sidebar().queryByRole('link', { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it('omits empty groups for actors who only see Exposure', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, roles: [] });
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    await screen.findByRole('navigation', { name: 'Primary' });
+    expect(sidebar().getAllByRole('link').map((link) => link.textContent)).toEqual(['Exposure']);
+    expect(sidebar().queryAllByRole('group')).toHaveLength(0);
+  });
+
+  it('highlights Campaigns, not Vulnerability Repository, on a campaign record', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/vuln-repo/campaigns/campaign-1' });
+    await screen.findByRole('navigation', { name: 'Primary' });
+    expect(sidebar().getByRole('link', { name: 'Campaigns' })).toHaveAttribute('aria-current', 'page');
+    expect(sidebar().getByRole('link', { name: 'Vulnerability Repository' })).not.toHaveAttribute('aria-current');
+    expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual(['Campaigns']);
+  });
+
+  it('renders one shell-owned H1 with the workbench record title under Vulnerability Repository', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/vuln-repo/org-cves/CVE-2024-0001' });
+    expect(await screen.findByRole('heading', { level: 1, name: 'CVE-2024-0001' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(sidebar().getByRole('link', { name: 'Vulnerability Repository' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('opens the navigation drawer with focus inside and closes it with Escape, returning focus', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    const toggle = await screen.findByRole('button', { name: 'Menu' });
+    expect(toggle).toHaveAttribute('aria-controls', 'app-sidebar');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    const drawer = document.getElementById('app-sidebar') as HTMLElement;
+    expect(drawer).toHaveClass('open');
+    expect(screen.getByRole('button', { name: 'Close Menu' })).toHaveAttribute('aria-expanded', 'true');
+    expect(drawer).toContainElement(document.activeElement as HTMLElement);
+    const focusable = [...drawer.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')].filter((element) => !element.closest('[hidden]'));
+    focusable[focusable.length - 1].focus();
+    fireEvent.keyDown(drawer, { key: 'Tab' });
+    expect(document.activeElement).toBe(focusable[0]);
+    fireEvent.keyDown(drawer, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(focusable[focusable.length - 1]);
+    fireEvent.keyDown(drawer, { key: 'Escape' });
+    expect(drawer).not.toHaveClass('open');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Menu' }));
+  });
+
+  it('operates the account menu by keyboard and closes it on Escape or an outside press', async () => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(PLATFORM_OWNER_TENANT_CONTEXT);
+    const { default: App } = await import('./App');
+    renderWithProviders(<App />, { route: '/exposure' });
+    const trigger = await screen.findByRole('button', { name: 'Open settings menu' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    trigger.focus();
+    fireEvent.click(trigger);
+    const menu = screen.getByRole('menu', { name: 'Account' });
+    const items = within(menu).getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent)).toEqual(['Authorized WorkspacesOpen only tenant-approved access', 'Log out']);
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: 'Home' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.click(screen.getByRole('button', { name: /Open account menu/ }));
+    expect(screen.getByRole('menu', { name: 'Account' })).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole('heading', { level: 1 }));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    fireEvent.click(trigger);
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Tab' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
@@ -12,6 +12,7 @@ import {
   DemoRequestPage,
   LoginPage,
   SetupSessionPage,
+  TenantInvitePage,
   ZeroDayBlogPage
 } from './DemoPublicPages';
 
@@ -202,7 +203,7 @@ describe('Demo public pages', () => {
     expect(screen.getByRole('button', { name: /Activate your workspace/i })).toBeEnabled();
   });
 
-  it('routes tenant admins to configurations after credential login', async () => {
+  it.each(['TENANT_ADMIN', 'INVENTORY_ADMIN', 'PLATFORM_OWNER'])('routes tenant %s to Exposure after credential login', async (role) => {
     vi.spyOn(api, 'login').mockResolvedValue({
       token: 'tenant-token',
       tokenType: 'Bearer',
@@ -216,7 +217,7 @@ describe('Demo public pages', () => {
       tenantName: 'Example Co',
       planCode: 'ENTERPRISE',
       demo: true,
-      roles: ['TENANT_ADMIN'],
+      roles: [role],
       platformScope: false
     };
     const getAuthContextSpy = vi.spyOn(api, 'getAuthContext').mockResolvedValue(actor);
@@ -226,7 +227,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<ExposureActorProbe />} />
+        <Route path="/exposure" element={<ExposureActorProbe />} />
         <Route path="/platform/tenants" element={<div>Platform Tenants</div>} />
       </Routes>,
       { queryClient, route: '/login' }
@@ -387,7 +388,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<div>Configurations</div>} />
+        <Route path="/exposure" element={<div>Exposure Dashboard</div>} />
       </Routes>,
       { route: '/login?setup=1&email=alex%40example.com' }
     );
@@ -402,7 +403,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<div>Configurations</div>} />
+        <Route path="/exposure" element={<div>Exposure Dashboard</div>} />
       </Routes>,
       { route: '/login' }
     );
@@ -413,7 +414,7 @@ describe('Demo public pages', () => {
     fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password-123' } });
     fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
 
-    await screen.findByText('Configurations');
+    await screen.findByText('Exposure Dashboard');
     expect(loginSpy).toHaveBeenCalledWith('alex@example.com', 'password-123');
   });
 
@@ -444,6 +445,105 @@ describe('Demo public pages', () => {
     expect(password).toHaveAttribute('type', 'text');
     fireEvent.click(screen.getByRole('button', { name: /Hide password/i }));
     expect(password).toHaveAttribute('type', 'password');
+  });
+
+  it('gives the login fields credential semantics and states the supported recovery', () => {
+    renderWithProviders(<LoginPage />, { route: '/login' });
+
+    const email = screen.getByLabelText(/^Email$/i);
+    expect(email).toHaveAttribute('type', 'email');
+    expect(email).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText(/^Password$/i)).toHaveAttribute('autocomplete', 'current-password');
+    expect(screen.getByText(/no self-service password reset/i)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /forgot|reset/i })).not.toBeInTheDocument();
+  });
+
+  it('states the server password minimum in setup mode and enforces it', () => {
+    renderWithProviders(<LoginPage />, { route: '/login?setup=1&email=alex%40example.com' });
+
+    const password = screen.getByLabelText(/New password/i);
+    expect(password).toHaveAttribute('autocomplete', 'new-password');
+    expect(password).toHaveAccessibleDescription('Use at least 12 characters.');
+    fireEvent.change(password, { target: { value: 'elevenchars' } });
+    expect(screen.getByRole('button', { name: /Set password/i })).toBeDisabled();
+    fireEvent.change(password, { target: { value: 'twelve-chars' } });
+    expect(screen.getByRole('button', { name: /Set password/i })).toBeEnabled();
+  });
+
+  it('offers log in after an invalid setup link', async () => {
+    vi.spyOn(api, 'startPasswordSetupSession').mockRejectedValue(new Error('Password setup link is invalid or expired.'));
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/setup" element={<SetupSessionPage />} />
+      </Routes>,
+      { route: '/setup#token=used-token' }
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('invalid or expired');
+    expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
+  });
+
+  it('announces unusable invite links with supported next steps', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/tenant-invite" element={<TenantInvitePage />} />
+      </Routes>,
+      { route: '/tenant-invite' }
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('This link has expired.');
+    expect(screen.getByText(/Ask your workspace administrator to send a new invite/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
+    expect(screen.queryByRole('link', { name: 'Request a demo' })).not.toBeInTheDocument();
+    cleanup();
+
+    vi.spyOn(api, 'validateDemoInvite').mockRejectedValue(new Error('Invite has expired'));
+    renderWithProviders(
+      <Routes>
+        <Route path="/invite" element={<DemoInvitePage />} />
+      </Routes>,
+      { route: '/invite#token=old-token' }
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invite has expired');
+    expect(screen.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
+  });
+
+  it('explains the corporate email rule and ties the rejection to the field', async () => {
+    renderWithProviders(<DemoRequestPage />, { route: '/demo/request' });
+
+    const email = screen.getByLabelText(/Work email/i);
+    expect(email).toHaveAccessibleDescription(/Personal email providers are not accepted/i);
+    fireEvent.change(screen.getByLabelText(/Full name/i), { target: { value: 'Alex Rivera' } });
+    fireEvent.change(email, { target: { value: 'alex@gmail.com' } });
+    fireEvent.change(screen.getByLabelText(/^Company$/i), { target: { value: 'Example Co' } });
+    fireEvent.click(screen.getByLabelText(/I understand/i));
+    fireEvent.click(screen.getByRole('button', { name: /Submit request/i }));
+
+    await screen.findByRole('alert');
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(email).toHaveAccessibleDescription(/Enter a valid corporate email address/i);
+    expect(email).toHaveValue('alex@gmail.com');
+  });
+
+  it('explains an expired CAPTCHA instead of silently disabling submit', async () => {
+    let expire: (() => void) | undefined;
+    window.turnstile = {
+      render: (_container, options) => {
+        options.callback('test-captcha-token');
+        expire = options['expired-callback'];
+        return 'test-widget';
+      },
+      reset: vi.fn(),
+      remove: vi.fn()
+    };
+    renderWithProviders(<DemoRequestPage />, { route: '/demo/request' });
+
+    expect(screen.getByRole('button', { name: /Submit request/i })).toBeEnabled();
+    act(() => expire?.());
+    const submit = screen.getByRole('button', { name: /Submit request/i });
+    expect(submit).toBeDisabled();
+    expect(submit).toHaveAccessibleDescription(/verification expired/i);
   });
 
   it('marks only authentication entry pages for the UI 2.0 presentation root', () => {

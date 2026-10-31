@@ -2,8 +2,10 @@ import { assessmentMessage, assessmentPending, invalidateAiAssessmentQueries } f
 import { useAssessmentUpdates } from '../features/ai-security/useAssessmentUpdates';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
+import { ActiveFilterChips, ResultScope, type ActiveFilter } from '../components/QueueControls';
 import { pathForPolicyDetail } from '../app/routes';
 import { useActor } from '../features/auth/context';
 import { hasRole } from '../features/auth/roles';
@@ -151,6 +153,11 @@ export function AiPoliciesPage() {
     if (trimmedSearch && !policy.name.toLowerCase().includes(trimmedSearch) && !policy.policyId.toLowerCase().includes(trimmedSearch)) return false;
     return true;
   }), [policies, severityFilter, trimmedSearch]);
+  const activeFilters: ActiveFilter[] = [
+    ...(severityFilter ? [{ key: 'severity', label: 'Severity', value: formatLabel(severityFilter), onRemove: () => setSeverityFilter(null) }] : []),
+    ...(trimmedSearch ? [{ key: 'search', label: 'Search', value: search.trim(), onRemove: () => setSearch('') }] : []),
+  ];
+  const clearFilters = () => { setSeverityFilter(null); setSearch(''); };
   const allVisibleSelected = visiblePolicies.length > 0 && visiblePolicies.every((policy) => selectedPolicyIds.has(policy.policyId));
   const someVisibleSelected = !allVisibleSelected && visiblePolicies.some((policy) => selectedPolicyIds.has(policy.policyId));
   const toggleSelectAllVisible = (checked: boolean) => {
@@ -179,10 +186,17 @@ export function AiPoliciesPage() {
 
       <TenantFrameworkCoverage frameworksQuery={frameworksQuery} coverageQueries={coverageQueries} />
 
-      {policiesQuery.isLoading ? (
-        <section className="panel"><div className="empty-state"><p>Loading policies…</p></div></section>
-      ) : policiesQuery.isError ? (
-        <section className="panel"><div className="notice error">AI Security policies could not be loaded.</div></section>
+      {policiesQuery.isLoading || policiesQuery.isError || policies.length === 0 ? (
+        <section className="panel">
+          <AsyncSection
+            state={policiesQuery.isLoading ? 'pending' : policiesQuery.isError ? 'error' : 'empty'}
+            loadingLabel="Loading policies…"
+            errorMessage="AI Security policies could not be loaded."
+            onRetry={() => void policiesQuery.refetch()}
+            retrying={policiesQuery.isFetching}
+            emptyMessage="No policies are available to this tenant yet."
+          />
+        </section>
       ) : (
         <>
           <div className="ai-policy-toolbar">
@@ -227,12 +241,16 @@ export function AiPoliciesPage() {
             </button>
           </div>
           {executeMutation.isError ? <div className="notice error">Selected policies could not be assessed. Please try again.</div> : null}
+          {mutation.isError ? <div className="notice error" role="alert">The policy could not be {mutation.variables?.selection === 'ENABLED' ? 'enabled' : 'disabled'}. Its previous state is unchanged.</div> : null}
+          <ActiveFilterChips filters={activeFilters} onClearAll={clearFilters} label="Active policy filters" />
+          <ResultScope offset={0} count={visiblePolicies.length} total={policies.length} noun="policy" pluralNoun="policies" filtered={activeFilters.length > 0} />
           {executionOutcome ? <div role="status" className={`notice ${assessmentPending(executionOutcome) ? '' : executionOutcome.assessmentStatus === 'COMPLETE' ? 'success' : ''}`}>{assessmentMessage(executionOutcome)}</div> : null}
           {selectedPolicyIds.size > 0 ? <div className="ai-policy-selection-status">{selectedPolicyIds.size} {selectedPolicyIds.size === 1 ? 'policy' : 'policies'} selected for assessment.</div> : null}
           <div className="panel ai-security-table-panel">
             {visiblePolicies.length === 0 ? (
-              <div className="empty-state"><p>No policies match the current filters.</p></div>
+              <AsyncSection state="filtered-empty" filteredEmptyMessage="No policies match the current filters." onClearFilters={clearFilters} />
             ) : (
+              <div className="table-scroll" role="region" aria-label="Policies" tabIndex={0}>
               <table className="data-table">
                     <thead>
                       <tr>
@@ -263,6 +281,7 @@ export function AiPoliciesPage() {
                           policy={policy}
                           canManage={canManage}
                           saving={mutation.isPending && mutation.variables?.id === policy.policyId}
+                          detailPath={pathForPolicyDetail(policy.policyId)}
                           onOpen={() => navigate(pathForPolicyDetail(policy.policyId))}
                           onSelect={(checked) => mutation.mutate({ id: policy.policyId, selection: checked ? 'ENABLED' : 'DISABLED' })}
                           selected={selectedPolicyIds.has(policy.policyId)}
@@ -276,6 +295,7 @@ export function AiPoliciesPage() {
                       ))}
                     </tbody>
                   </table>
+              </div>
             )}
           </div>
         </>
@@ -388,8 +408,9 @@ function PolicyInsightCard({ label, value, detail, tone }: {
   );
 }
 
-function PolicyRows({ policy, canManage, saving, onOpen, onSelect, selected, onToggleSelected, assessmentState }: {
+function PolicyRows({ policy, canManage, saving, detailPath, onOpen, onSelect, selected, onToggleSelected, assessmentState }: {
   policy: AiGridPolicy;
+  detailPath: string;
   canManage: boolean;
   saving: boolean;
   onOpen: () => void;
@@ -404,6 +425,7 @@ function PolicyRows({ policy, canManage, saving, onOpen, onSelect, selected, onT
   const providers = providerNames(policy.provider);
   return (
     <>
+      {/* Row click is a pointer shortcut; the policy name is the real, keyboard-reachable link. */}
       <tr onClick={onOpen}>
         <td onClick={(event) => event.stopPropagation()}>
           <input
@@ -415,7 +437,7 @@ function PolicyRows({ policy, canManage, saving, onOpen, onSelect, selected, onT
           />
         </td>
         <td>
-          <strong>{policy.name}</strong>
+          <Link to={detailPath} onClick={(event) => event.stopPropagation()}><strong>{policy.name}</strong></Link>
           {conditionalCapabilities.length > 0 ? (
             <span className="ai-policy-capability-flag" title="Requires an optional connector capability"> · needs capability</span>
           ) : null}

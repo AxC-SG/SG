@@ -149,6 +149,28 @@ describe('AiInventoryPage', () => {
 
     expect(navigateMock).toHaveBeenCalledWith('/inventory/ai/assets?provider=AZURE');
   });
+
+  it('shows failed widget sources as unavailable with retry instead of no findings or zero', async () => {
+    mockBaseline();
+    const grid = vi.spyOn(api, 'getAiSeverityGrid').mockRejectedValueOnce(new Error('boom')).mockResolvedValue({ rows: [] });
+    vi.spyOn(api, 'getAiGridCoverage').mockRejectedValue(new Error('boom'));
+    vi.spyOn(api, 'getAiTopRiskArtifacts').mockRejectedValue(new Error('boom'));
+
+    renderWithProviders(<AiInventoryPage />);
+
+    expect(await screen.findByText('The severity grid could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Artifact category' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Assets at risk could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No AI artifacts have an open finding.')).not.toBeInTheDocument();
+    const coverageCard = screen.getByText('Failing checks').closest('.fpl-kpi-card') as HTMLElement;
+    expect(coverageCard).toHaveTextContent('—');
+    expect(coverageCard).not.toHaveTextContent('0');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry severity grid' }));
+    expect(await screen.findByRole('columnheader', { name: 'Artifact category' })).toBeInTheDocument();
+    expect(screen.queryByText('The severity grid could not be loaded.')).not.toBeInTheDocument();
+    expect(grid).toHaveBeenCalledTimes(2);
+  });
 });
 
 function emptySummary() {

@@ -833,3 +833,48 @@ html[data-ui='2'] .vuln-repo-assets-shell td .status-pill {
   html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-main,
   html[data-ui='2'] :is(.cve-assessment-page, .ui2-governance-family) .cvd2-overview-sidebar { flex: none; width: 100%; min-width: 0; }
 }
+
+/* Workbench peer tabs: one row that scrolls inside itself rather than widening the document. */
+html[data-ui='2'] .cve-assessment-page .cve-workbench-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  margin-bottom: 16px;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-workbench-tabs .cvd2-tab:focus-visible {
+  outline: 2px solid var(--dp-accent);
+  outline-offset: -2px;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-workbench-tab-unsaved {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--dp-border);
+  border-radius: 999px;
+  color: var(--dp-text);
+  font-size: var(--dp-text-xs, 11px);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .cve-assessment-page :is(.cve-workbench-save-row, .cve-fixes-header) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-fixes-header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+html[data-ui='2'] .cve-assessment-page .cve-workbench-section-title {
+  margin: 0 0 4px;
+  font-size: var(--dp-text-lg, 16px);
+  font-weight: 600;
+}
+
+@media (any-pointer: coarse) {
+  html[data-ui='2'] .cve-assessment-page .cve-workbench-tabs .cvd2-tab { min-height: 44px; }
+}

@@ -133,4 +133,17 @@ describe('BomComponents', () => {
       expect(screen.getByText('right-pad')).toBeInTheDocument();
     });
   });
+
+  it('reports a failed component load with retry', async () => {
+    const list = vi.spyOn(api, 'listBomComponents')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue([buildComponent()]);
+
+    renderWithProviders(<BomComponents />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load BOM components.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry BOM components' }));
+    expect(await screen.findByText('left-pad')).toBeInTheDocument();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
 });

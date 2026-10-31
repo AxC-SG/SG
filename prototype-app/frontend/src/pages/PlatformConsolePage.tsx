@@ -7,6 +7,7 @@ import { pathForPlatformView } from '../app/routes';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MetricInfoIcon } from '../components/MetricInfoIcon';
+import { MetricValue, type MetricAvailability } from '../components/MetricValue';
 import { EolPage } from './EolPage';
 import { VulnIntelConfigPage } from './VulnIntelConfigPage';
 import { IntegrationRunQueuePage } from './IntegrationRunQueuePage';
@@ -482,6 +483,27 @@ function PlatformOperationsOwnerspace({
       ? 'Some freshness guardrails are outside target, so platform health signals may lag behind recent activity.'
       : null;
 
+  // A signal whose query is pending or failed is unknown, never zero or healthy.
+  const availability = (query: { data?: unknown; isPending: boolean }): MetricAvailability => (
+    query.data != null ? 'available' : query.isPending ? 'pending' : 'unavailable'
+  );
+  const opsMetric = (
+    query: { data?: unknown; isPending: boolean },
+    value: number | null | undefined,
+    format?: (value: number) => string
+  ) => <MetricValue availability={availability(query)} value={value} format={format} unavailableReason="Signal unavailable" />;
+  const listFallback = (query: { data?: unknown; isPending: boolean }, label: string): string | null => (
+    query.data != null ? null : query.isPending ? `Loading ${label}…` : `${label.charAt(0).toUpperCase()}${label.slice(1)} could not be loaded.`
+  );
+  // These endpoints wrap their payload in a section envelope whose data can be absent on its own.
+  const freshnessSection = { data: freshness, isPending: freshnessQuery.isPending };
+  const overviewSection = { data: overview, isPending: overviewQuery.isPending };
+  const readPathSection = { data: readPath, isPending: readPathQuery.isPending };
+  const attentionFallback = listFallback(tenantAttentionQuery, 'tenant attention');
+  const connectorIssuesFallback = listFallback(connectorIssuesQuery, 'connector issues');
+  const freshnessFallback = listFallback(freshnessSection, 'source freshness');
+  const scorecardFallback = listFallback(performanceScorecardQuery, 'the performance scorecard');
+
   const tenantStats = React.useMemo(() => {
     const active = tenants.filter((tenant) => tenant.status === 'ACTIVE').length;
     const trial = tenants.filter((tenant) => tenant.status === 'TRIAL').length;
@@ -615,22 +637,22 @@ function PlatformOperationsOwnerspace({
         <div className="stats-grid">
           <div className="noise-summary-item">
             <div className="noise-summary-label"><MetricLabel label="Tenants With Connector Issues" description={TENANT_EXPERIENCE_METRIC_HELP['Tenants With Connector Issues']} /></div>
-            <div className="noise-summary-value">{formatInteger(tenantsWithConnectorIssues)}</div>
+            <div className="noise-summary-value">{opsMetric(connectorIssuesQuery, tenantsWithConnectorIssues)}</div>
             <div className="platform-ops-metric-scope">All tenants</div>
           </div>
           <div className="noise-summary-item">
             <div className="noise-summary-label"><MetricLabel label="Stale Sources" description={TENANT_EXPERIENCE_METRIC_HELP['Stale Sources']} /></div>
-            <div className="noise-summary-value">{formatInteger(freshness?.staleSourceCount)}</div>
+            <div className="noise-summary-value">{opsMetric(freshnessSection, freshness?.staleSourceCount)}</div>
             <div className="platform-ops-metric-scope">Platform-wide</div>
           </div>
           <div className="noise-summary-item">
             <div className="noise-summary-label"><MetricLabel label="Failing SLOs" description={TENANT_EXPERIENCE_METRIC_HELP['Failing SLOs']} /></div>
-            <div className="noise-summary-value">{formatInteger(performanceScorecard?.freshnessFailureCount)}</div>
+            <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.freshnessFailureCount)}</div>
             <div className="platform-ops-metric-scope">All tenants</div>
           </div>
           <div className="noise-summary-item">
             <div className="noise-summary-label"><MetricLabel label="Tenants Needing Attention" description="Tenants with a lifecycle or connector condition that needs a platform-owner response." /></div>
-            <div className="noise-summary-value">{formatInteger(tenantAttentionRows.length)}</div>
+            <div className="noise-summary-value">{opsMetric(tenantAttentionQuery, tenantAttentionRows.length)}</div>
             <div className="platform-ops-metric-scope">All tenants</div>
           </div>
         </div>
@@ -667,7 +689,11 @@ function PlatformOperationsOwnerspace({
                 <span><MetricLabel label="Last Sync" description={TENANT_EXPERIENCE_METRIC_HELP['Last Sync']} /></span>
                 <span>Next step</span>
               </div>
-              {tenantAttentionRows.length === 0 ? (
+              {attentionFallback ? (
+                <div className="ops-table-row" role={tenantAttentionQuery.isError ? 'alert' : undefined}>
+                  <span>{attentionFallback}</span><span>-</span><span>-</span><span>-</span><span>-</span><span>-</span>
+                </div>
+              ) : tenantAttentionRows.length === 0 ? (
                 <div className="ops-table-row">
                   <span>No tenant</span>
                   <span>-</span>
@@ -701,7 +727,11 @@ function PlatformOperationsOwnerspace({
                 <span><MetricLabel label="Affected Tenants" description={TENANT_EXPERIENCE_METRIC_HELP['Affected Tenants']} /></span>
                 <span>Next step</span>
               </div>
-              {connectorIssueGroups.length === 0 ? (
+              {connectorIssuesFallback ? (
+                <div className="ops-table-row" role={connectorIssuesQuery.isError ? 'alert' : undefined}>
+                  <span>{connectorIssuesFallback}</span><span>-</span><span>-</span><span>-</span>
+                </div>
+              ) : connectorIssueGroups.length === 0 ? (
                 <div className="ops-table-row">
                   <span>No connector</span>
                   <span>0</span>
@@ -735,19 +765,19 @@ function PlatformOperationsOwnerspace({
             <div className="noise-summary-grid">
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Sync Success (24h)" description={TENANT_EXPERIENCE_METRIC_HELP['Sync Success (24h)']} /></div>
-                <div className="noise-summary-value">{formatPercent(overview?.ingestionSuccessRateLast24h)}</div>
+                <div className="noise-summary-value">{opsMetric(overviewSection, overview?.ingestionSuccessRateLast24h, formatPercent)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Stale Sources" description={TENANT_EXPERIENCE_METRIC_HELP['Stale Sources']} /></div>
-                <div className="noise-summary-value">{formatInteger(freshness?.staleSourceCount)}</div>
+                <div className="noise-summary-value">{opsMetric(freshnessSection, freshness?.staleSourceCount)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Suspended / Expired" description={TENANT_EXPERIENCE_METRIC_HELP['Suspended / Expired']} /></div>
-                <div className="noise-summary-value">{formatInteger(tenantStats.suspended)} / {formatInteger(tenantStats.expired)}</div>
+                <div className="noise-summary-value">{opsMetric(tenantsQuery, tenantStats.suspended)} / {opsMetric(tenantsQuery, tenantStats.expired)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Failing Connectors" description={TENANT_EXPERIENCE_METRIC_HELP['Failing Connectors']} /></div>
-                <div className="noise-summary-value">{formatInteger(connectorStats.failing)}</div>
+                <div className="noise-summary-value">{opsMetric(connectorHealthQuery, connectorStats.failing)}</div>
               </div>
             </div>
           </section>
@@ -763,7 +793,11 @@ function PlatformOperationsOwnerspace({
                 <span><MetricLabel label="Data Age" description={TENANT_EXPERIENCE_METRIC_HELP['Data Age']} /></span>
                 <span><MetricLabel label="Tenant Impact" description={TENANT_EXPERIENCE_METRIC_HELP['Tenant Impact']} /></span>
               </div>
-              {(freshness?.sourceFreshness ?? []).filter((row) => row.stale).length === 0 ? (
+              {freshnessFallback ? (
+                <div className="ops-table-row" role={freshnessQuery.isError ? 'alert' : undefined}>
+                  <span>{freshnessFallback}</span><span>-</span><span>-</span><span>-</span>
+                </div>
+              ) : (freshness?.sourceFreshness ?? []).filter((row) => row.stale).length === 0 ? (
                 <div className="ops-table-row">
                   <span>No stale source</span>
                   <span>-</span>
@@ -793,27 +827,27 @@ function PlatformOperationsOwnerspace({
             <div className="noise-summary-grid">
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Critical Issues" description={TENANT_EXPERIENCE_METRIC_HELP['Critical Issues']} /></div>
-                <div className="noise-summary-value">{formatInteger(quality?.criticalIssues)}</div>
+                <div className="noise-summary-value">{opsMetric(qualityQuery, quality?.criticalIssues)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Affecting Active Findings" description={TENANT_EXPERIENCE_METRIC_HELP['Affecting Active Findings']} /></div>
-                <div className="noise-summary-value">{formatInteger(quality?.affectsActiveFindingsCount)}</div>
+                <div className="noise-summary-value">{opsMetric(qualityQuery, quality?.affectsActiveFindingsCount)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Overall Reliability State" description={TENANT_EXPERIENCE_METRIC_HELP['Overall Reliability State']} /></div>
-                <div className="noise-summary-value">{performanceScorecard?.overallCompliant ? 'Healthy' : 'Needs attention'}</div>
+                <div className="noise-summary-value">{performanceScorecard ? (performanceScorecard.overallCompliant ? 'Healthy' : 'Needs attention') : opsMetric(performanceScorecardQuery, null)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Read Model Readiness" description={TENANT_EXPERIENCE_METRIC_HELP['Read Model Readiness']} /></div>
-                <div className="noise-summary-value">{readPath?.summaryReadModelReady ? 'Ready' : 'Rebuilding'}</div>
+                <div className="noise-summary-value">{readPath ? (readPath.summaryReadModelReady ? 'Ready' : 'Rebuilding') : opsMetric(readPathSection, null)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Route Budget Failures" description={TENANT_EXPERIENCE_METRIC_HELP['Route Budget Failures']} /></div>
-                <div className="noise-summary-value">{formatInteger(performanceScorecard?.routeFailureCount)}</div>
+                <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.routeFailureCount)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Resource Ceiling Failures" description={TENANT_EXPERIENCE_METRIC_HELP['Resource Ceiling Failures']} /></div>
-                <div className="noise-summary-value">{formatInteger(performanceScorecard?.resourceFailureCount)}</div>
+                <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.resourceFailureCount)}</div>
               </div>
             </div>
           </section>
@@ -877,15 +911,15 @@ function PlatformOperationsOwnerspace({
             <div className="noise-summary-grid">
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Freshness Guardrail Failures" description={TENANT_EXPERIENCE_METRIC_HELP['Freshness Guardrail Failures']} /></div>
-                <div className="noise-summary-value">{formatInteger(performanceScorecard?.freshnessFailureCount)}</div>
+                <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.freshnessFailureCount)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Route Budget Failures" description={TENANT_EXPERIENCE_METRIC_HELP['Route Budget Failures']} /></div>
-                <div className="noise-summary-value">{formatInteger(performanceScorecard?.routeFailureCount)}</div>
+                <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.routeFailureCount)}</div>
               </div>
               <div className="noise-summary-item">
                 <div className="noise-summary-label"><MetricLabel label="Resource Ceiling Failures" description={TENANT_EXPERIENCE_METRIC_HELP['Resource Ceiling Failures']} /></div>
-                <div className="noise-summary-value">{formatInteger(performanceScorecard?.resourceFailureCount)}</div>
+                <div className="noise-summary-value">{opsMetric(performanceScorecardQuery, performanceScorecard?.resourceFailureCount)}</div>
               </div>
             </div>
             <div className="ops-table">
@@ -895,7 +929,11 @@ function PlatformOperationsOwnerspace({
                 <span><MetricLabel label="Tenant Risk" description={TENANT_EXPERIENCE_METRIC_HELP['Tenant Risk']} /></span>
                 <span><MetricLabel label="Detail" description={TENANT_EXPERIENCE_METRIC_HELP.Detail} /></span>
               </div>
-              {guardrailRows.length === 0 ? (
+              {scorecardFallback ? (
+                <div className="ops-table-row" role={performanceScorecardQuery.isError ? 'alert' : undefined}>
+                  <span>{scorecardFallback}</span><span>-</span><span>-</span><span>-</span>
+                </div>
+              ) : guardrailRows.length === 0 ? (
                 <div className="ops-table-row">
                   <span>No active guardrail</span>
                   <span>Healthy</span>
@@ -1501,6 +1539,7 @@ function TenantLifecyclePanel() {
         )}
         confirmLabel={recoverTenantOwner.isPending ? 'Saving...' : 'Save credential'}
         confirmDisabled={recoverTenantOwner.isPending || ownerRecoveryEmail.trim() === '' || ownerRecoveryPassword.length < 8}
+        busy={recoverTenantOwner.isPending}
         cancelLabel="Cancel"
         onCancel={() => {
           if (!recoverTenantOwner.isPending) {
@@ -1532,6 +1571,7 @@ function TenantLifecyclePanel() {
         )}
         confirmLabel={extendTenant.isPending ? 'Extending...' : 'Extend Tenant'}
         confirmDisabled={extendTenant.isPending || extensionExpiresAt === ''}
+        busy={extendTenant.isPending}
         cancelLabel="Cancel"
         onCancel={() => {
           if (!extendTenant.isPending) {
@@ -1567,6 +1607,7 @@ function TenantLifecyclePanel() {
               : 'Restore Access'
         }
         confirmDisabled={updateTenantStatus.isPending}
+        busy={updateTenantStatus.isPending}
         cancelLabel="Cancel"
         onCancel={() => {
           if (!updateTenantStatus.isPending) {
@@ -1841,6 +1882,7 @@ function DemoRequestsPanel() {
               : `Delete the demo request for ${requestPendingDelete.fullName} at ${requestPendingDelete.company} from the queue?`
         }
         confirmLabel={deleteRequest.isPending ? 'Deleting...' : 'Delete'}
+        busy={deleteRequest.isPending}
         cancelLabel="Cancel"
         onCancel={() => {
           if (!deleteRequest.isPending) {

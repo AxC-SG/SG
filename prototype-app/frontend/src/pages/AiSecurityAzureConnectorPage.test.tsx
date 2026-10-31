@@ -76,7 +76,8 @@ describe('AiSecurityAzureConnectorPage', () => {
       clientSecret: 'super-secret',
       subscriptionIds: 'sub-1',
     })));
-    expect(await screen.findByText('Success')).toBeInTheDocument();
+    expect(await screen.findByText('Configured')).toBeInTheDocument();
+    expect(screen.getByText('Configuration saved.')).toHaveAttribute('role', 'status');
   });
 
   it('shows the latest run artifact count and enables test/execute once configured', async () => {

@@ -13,6 +13,7 @@ import type {
   SyncTriggerResponse
 } from '../features/connect/types';
 import { useServiceNowCmdbConfigQuery } from '../features/connect/queries';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 
 const REVIEW_CATEGORY_QUERY_KEY = 'reviewCategory';
 const DEFAULT_INSTALL_FIELDS = [
@@ -125,6 +126,8 @@ export function AssetsPage() {
   const [testing, setTesting] = React.useState(false);
   const [syncingLive, setSyncingLive] = React.useState(false);
   const [error, setError] = React.useState('');
+  // Shown only after an explicit Save; Test and Run report their own outcome.
+  const [saveNotice, setSaveNotice] = React.useState('');
   const [liveSyncResult, setLiveSyncResult] = React.useState<SyncTriggerResponse | null>(null);
   const [showSecret, setShowSecret] = React.useState(false);
 
@@ -144,6 +147,7 @@ export function AssetsPage() {
   const saveConnector = async (): Promise<ServiceNowCmdbConfig | null> => {
     setSaving(true);
     setError('');
+    setSaveNotice('');
     try {
       const payload: ServiceNowCmdbConfigRequest = {
         ...form,
@@ -223,6 +227,9 @@ export function AssetsPage() {
   if (serviceNowConfigQuery.isPending && !config) {
     return <section className="panel">Loading ServiceNow CMDB connector...</section>;
   }
+  if (serviceNowConfigQuery.isError && !serviceNowConfigQuery.data) {
+    return <ConnectorConfigLoadError connectorName="ServiceNow CMDB" error={serviceNowConfigQuery.error} onRetry={() => void serviceNowConfigQuery.refetch()} retrying={serviceNowConfigQuery.isFetching} />;
+  }
 
   return (
     <section className="panel">
@@ -239,6 +246,7 @@ export function AssetsPage() {
       )}
 
       {displayError && <div className="notice error">{displayError}</div>}
+      {saveNotice && !displayError && <div className="notice success" role="status">{saveNotice}</div>}
 
       {/* Connection status summary */}
       {config?.configured && (
@@ -399,7 +407,7 @@ export function AssetsPage() {
 
       {/* ── Action bar ── */}
       <div className="button-row section-actions sn-action-bar">
-        <button type="button" className="btn btn-primary" onClick={() => void saveConnector()} disabled={!canManageConnector || saving || testing}>
+        <button type="button" className="btn btn-primary" onClick={() => void saveConnector().then((saved) => { if (saved) setSaveNotice('Connector settings saved.'); })} disabled={!canManageConnector || saving || testing}>
           {saving ? 'Saving...' : 'Save Connector'}
         </button>
         <button type="button" className="btn btn-secondary" onClick={() => void testConnection()} disabled={!canManageConnector || testing || saving}>

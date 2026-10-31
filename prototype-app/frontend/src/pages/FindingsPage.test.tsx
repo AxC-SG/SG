@@ -183,6 +183,62 @@ describe('FindingsPage', () => {
     localStorage.clear();
   });
 
+  it('reports a first-load list failure with retry instead of an empty workspace', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    listFindings.mockRejectedValue(new Error('Gateway timeout'));
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+
+    // The queue context settles after the first request, so wait for the request key to stop changing.
+    await waitFor(() => expect(screen.queryAllByText(/Findings could not be loaded: Gateway timeout/)).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(await screen.findByText(/Findings could not be loaded: Gateway timeout/)).toBeInTheDocument();
+    expect(screen.queryByText(/No findings yet/i)).not.toBeInTheDocument();
+    listFindings.mockResolvedValue(pageOf([buildFinding()]));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('F-001')).toBeInTheDocument();
+  });
+
+  it('keeps rows visible when a widget source fails and shows unavailable indicators instead of zero', async () => {
+    const { summary, distributions } = mockFindingsWorkspace();
+    summary.mockRejectedValue(new Error('summary down'));
+    distributions.mockRejectedValue(new Error('distributions down'));
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+
+    expect(await screen.findByText('F-001')).toBeInTheDocument();
+    expect(await screen.findByText('Severity counts could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByText('Key indicators could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByText('Critical Open unavailable')).toBeInTheDocument();
+  });
+
+  it('states the result scope and pages with labelled navigation', async () => {
+    mockFindingsWorkspace();
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    await screen.findByText('F-001');
+    expect(screen.getByText('Showing 1–1 of 1 finding')).toBeInTheDocument();
+    const pager = screen.getByRole('navigation', { name: 'Findings pages' });
+    expect(within(pager).getByText('Page 1 of 1')).toBeInTheDocument();
+    expect(within(pager).getByRole('button', { name: 'Next' })).toBeDisabled();
+  });
+
+  it('opens bulk actions in a named modal that blocks dismissal while the update runs', async () => {
+    mockFindingsWorkspace();
+    let finish: () => void = () => undefined;
+    vi.spyOn(api, 'bulkUpdateFindingWorkflow').mockImplementation(() => new Promise((resolve) => { finish = () => resolve(undefined as never); }));
+    renderWithProviders(<ActorContextState.Provider value={ACTOR}><FindingsPage /></ActorContextState.Provider>, { route: '/findings?queue=all-findings' });
+    await screen.findByText('F-001');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    expect(screen.getByText(/1 selected on this page/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Resolve 1 Finding' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Resolve' }));
+    expect(await within(dialog).findByText(/Updating the selected findings/)).toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Resolve 1 Finding' })).toBeInTheDocument();
+    finish();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
   it('preserves repeated deep-link filters and an explicit queue in the server request', async () => {
     const { listFindings } = mockFindingsWorkspace();
     renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings&severity=HIGH&severity=CRITICAL&status=OPEN&creationSource=MANUAL&creationSource=invalid&vulnerabilityId=CVE-2026&packageName=openssl&assetName=web-prod&assetType=HOST&assetType=CONTAINER' });
@@ -204,8 +260,9 @@ describe('FindingsPage', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Open' }));
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: ['HIGH', 'CRITICAL'], status: ['OPEN'] })));
     fireEvent.mouseDown(document.body);
-    const chip = screen.getByText('Severity: HIGH, CRITICAL').closest('.fpl-chip')!;
-    fireEvent.click(within(chip as HTMLElement).getByRole('button', { name: 'Remove filter' }));
+    const chips = screen.getByRole('group', { name: 'Active filters' });
+    expect(within(chips).getByRole('button', { name: 'Remove filter Status: Open' })).toBeInTheDocument();
+    fireEvent.click(within(chips).getByRole('button', { name: 'Remove filter Severity: HIGH, CRITICAL' }));
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ severity: undefined, status: ['OPEN'] })));
   });
 
@@ -264,8 +321,8 @@ describe('FindingsPage', () => {
     listFindings.mockResolvedValue({ ...pageOf([buildFinding()]), totalItems: 50, totalPages: 2, nextCursor: 'cursor-page-2' });
     renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
     await screen.findByText('F-001');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Next →' })).toBeEnabled());
-    fireEvent.click(screen.getByRole('button', { name: 'Next →' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'cursor-page-2' })));
     let finish!: (value: FindingPage) => void;
     listFindings.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
@@ -274,18 +331,17 @@ describe('FindingsPage', () => {
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ vulnerabilityId: 'CVE-2026', cursor: undefined })));
     expect(screen.getByText('F-001')).toBeInTheDocument();
     finish(pageOf([buildFinding()]));
-    await waitFor(() => expect(screen.getByRole('button', { name: '← Prev' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled());
   });
 
   it('selects rows without navigating and leaves finding/CVE links outside selection', async () => {
     mockFindingsWorkspace();
-    const openCve = vi.fn();
-    renderWithProviders(<ActorContextState.Provider value={ACTOR}><FindingsPage onOpenCveWorkbench={openCve} /></ActorContextState.Provider>);
+    renderWithProviders(<ActorContextState.Provider value={ACTOR}><FindingsPage /></ActorContextState.Provider>);
     const link = await screen.findByRole('link', { name: 'F-001' });
     fireEvent.click(link.closest('tr')!);
     expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'CVE-2026-1234' }));
-    expect(openCve).toHaveBeenCalledWith('CVE-2026-1234');
+    // The CVE is a real link, so it opens in a new tab and never toggles selection.
+    expect(screen.getByRole('link', { name: 'CVE-2026-1234' })).toHaveAttribute('href', '/vuln-repo/org-cves/CVE-2026-1234');
     expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
     expect(link).toHaveAttribute('href', '/findings/F-001');
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeEnabled();
@@ -295,7 +351,7 @@ describe('FindingsPage', () => {
     const { listFindings } = mockFindingsWorkspace();
     renderWithProviders(<FindingsPage />, { route: '/findings?queue=critical-open&severity=CRITICAL&status=OPEN&assetType=HOST' });
     await screen.findByText('F-001');
-    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({ queueKey: 'critical-open', severity: undefined, status: undefined, assetType: undefined })));
   });
 
@@ -587,7 +643,7 @@ describe('FindingsPage', () => {
     await screen.findByText('F-001');
     fireEvent.click(screen.getByRole('checkbox', { name: /Select row/i }));
     fireEvent.click(screen.getByTitle(/More actions/i));
-    fireEvent.click(screen.getByRole('button', { name: /Defer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Defer$/i }));
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'PENDING_PATCH' } });
     fireEvent.change(document.querySelector('.fd3-modal input[type="date"]') as HTMLInputElement, { target: { value: '2026-06-30' } });
     fireEvent.click(document.querySelector('.fd3-modal .btn-primary') as HTMLButtonElement);

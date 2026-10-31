@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -139,5 +139,39 @@ describe('SoftwareIdentitiesPage', () => {
     vi.spyOn(api, 'getSoftwareIdentityFunnel').mockResolvedValue(EMPTY_FUNNEL);
     renderWithProviders(<SoftwareIdentitiesPage />);
     await waitFor(() => expect(screen.getByText('Lodash')).toBeInTheDocument());
+  });
+
+  it('opens the CVE exposure list as a named dialog with retry and real asset links', async () => {
+    vi.spyOn(api, 'listSoftwareIdentities').mockResolvedValue({
+      ...EMPTY_PAGE,
+      content: [buildIdentity({ openVulnerabilityCount: 3 })],
+      totalElements: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(api, 'getSoftwareIdentityFunnel').mockResolvedValue(EMPTY_FUNNEL);
+    const detail = vi.spyOn(api, 'getSoftwareIdentityDetail')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({
+        assets: [{
+          componentId: 'c-1', assetId: 'host-1', assetName: 'web-prod-01', assetIdentifier: 'web-prod-01.local',
+          version: '4.17.20', assetType: 'HOST', openVulnerabilityCount: 3, openFindingCount: 1,
+          isEol: false, eolDaysRemaining: null, eolDate: null,
+        }],
+      } as unknown as Awaited<ReturnType<typeof api.getSoftwareIdentityDetail>>);
+    renderWithProviders(<SoftwareIdentitiesPage />, { route: '/inventory/software-identities' });
+
+    const row = (await screen.findByRole('link', { name: 'lodash' })).closest('tr') as HTMLElement;
+    expect(screen.getByRole('link', { name: 'lodash' })).toHaveAttribute('href', '/inventory/software-identities/si-1');
+    fireEvent.click(within(row).getByRole('button', { name: '3' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'CVE Exposure — lodash' });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Assets for this software identity could not be loaded.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Retry' }));
+    const assetLink = await within(dialog).findByRole('link', { name: 'web-prod-01' });
+    expect(assetLink.getAttribute('href')).toMatch(/^\/inventory\/hosts\/host-1\?returnTo=/);
+    expect(detail).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close panel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

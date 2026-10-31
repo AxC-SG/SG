@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -106,11 +106,30 @@ describe('InventoryPage', () => {
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
   });
 
-  it('shows empty state when no hosts are returned', async () => {
+  it('shows the empty inventory state when no hosts are returned instead of loading forever', async () => {
     vi.spyOn(api, 'listAssets').mockResolvedValue([]);
     renderWithProviders(<InventoryPage selectedView="hosts" />);
-    // With no HOST assets hostDetailsQuery stays isPending (disabled), loading stays true;
-    // we assert the loading state persists as expected behaviour for empty asset list.
     expect(screen.getByText('Loading host inventory…')).toBeInTheDocument();
+    expect(await screen.findByText('No hosts discovered yet')).toBeInTheDocument();
+    expect(screen.queryByText('Loading host inventory…')).not.toBeInTheDocument();
+  });
+
+  it('does not present a failed load as an empty inventory and offers retry', async () => {
+    const list = vi.spyOn(api, 'listAssets').mockRejectedValueOnce(new Error('Assets unavailable')).mockResolvedValue([buildAsset()]);
+    vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue(buildHostDetail());
+    renderWithProviders(<InventoryPage selectedView="hosts" />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load hosts inventory: Assets unavailable');
+    expect(screen.queryByText('No hosts discovered yet')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  });
+
+  it('links each host name to host detail with a return path', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([buildAsset()]);
+    vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue(buildHostDetail());
+    renderWithProviders(<InventoryPage selectedView="hosts" />, { route: '/inventory/hosts' });
+    const link = await screen.findByRole('link', { name: 'web-prod-01' });
+    expect(link.getAttribute('href')).toMatch(/^\/inventory\/hosts\/[^?]+\?returnTo=%2Finventory%2Fhosts$/);
   });
 });

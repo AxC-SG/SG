@@ -149,4 +149,27 @@ describe('AiFindingsPage', () => {
       hasAffectedAiResource: true,
     }));
   });
+  it('reports an action queue failure with retry instead of claiming nothing needs review', async () => {
+    vi.spyOn(api, 'listAiSecurityFindings').mockResolvedValue({ items: [buildFinding()], page: 0, size: 100, total: 1 });
+    const queue = vi.spyOn(api, 'listAiActionQueue').mockRejectedValue(new Error('down'));
+
+    renderWithProviders(<AiFindingsPage />, { route: '/findings/ai' });
+
+    expect(await screen.findByText('The action queue could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No AI actions require review.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry action queue' }));
+    await waitFor(() => expect(queue).toHaveBeenCalledTimes(2));
+  });
+
+  it('offers retry when AI findings fail to load', async () => {
+    const list = vi.spyOn(api, 'listAiSecurityFindings').mockRejectedValue(new Error('down'));
+    vi.spyOn(api, 'listAiActionQueue').mockResolvedValue([]);
+
+    renderWithProviders(<AiFindingsPage />, { route: '/findings/ai' });
+
+    expect(await screen.findByText('AI findings could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No matching AI findings')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI findings' }));
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  });
 });

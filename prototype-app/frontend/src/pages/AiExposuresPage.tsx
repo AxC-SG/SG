@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { AsyncSection } from '../components/AsyncSection';
 import type { AiGridExposureSummary } from '../features/ai-security/types';
 
 function readableJson(value: string): string {
@@ -24,8 +25,19 @@ function ExposureDetail({ exposureId }: { exposureId: string }) {
       ]);
     },
   });
-  if (detail.isLoading) return <section className="panel"><p>Loading exposure…</p></section>;
-  if (detail.isError || !detail.data) return <section className="panel"><p>Exposure could not be loaded.</p></section>;
+  if (detail.isPending || detail.isError || !detail.data) {
+    return (
+      <section className="panel">
+        <AsyncSection
+          state={detail.isPending ? 'pending' : 'error'}
+          loadingLabel="Loading exposure…"
+          errorMessage="Exposure could not be loaded."
+          onRetry={() => void detail.refetch()}
+          retrying={detail.isFetching}
+        />
+      </section>
+    );
+  }
   const { exposure: summary, observations, associations } = detail.data;
   return (
     <section className="ai-security-page ai-exposure-detail ui2-findings-family">
@@ -50,6 +62,7 @@ function ExposureDetail({ exposureId }: { exposureId: string }) {
       <section className="panel"><h3>Affected subjects</h3><ul>{associations.map((item, index) => (
         <li key={`${item.role}-${item.systemId ?? item.artifactId}-${index}`}>{item.role}: <span className="mono">{item.systemId ?? item.artifactId}</span></li>
       ))}</ul></section>
+      {disposition.isError && <div className="notice error" role="alert">The exposure disposition could not be saved. Try again.</div>}
       <div className="button-row"><button type="button" className="btn btn-primary" disabled={disposition.isPending} onClick={() => disposition.mutate('ACCEPTED')}>Accept exposure</button>
         <button type="button" className="btn btn-secondary" disabled={disposition.isPending} onClick={() => disposition.mutate('FALSE_POSITIVE')}>Mark false positive</button></div>
     </section>
@@ -58,7 +71,6 @@ function ExposureDetail({ exposureId }: { exposureId: string }) {
 
 export function AiExposuresPage() {
   const { exposureId } = useParams<{ exposureId?: string }>();
-  const navigate = useNavigate();
   const [cursor, setCursor] = React.useState<string | undefined>();
   const exposures = useQuery({ queryKey: ['ai-grid-exposures', cursor], queryFn: () => api.listAiGridExposures(cursor) });
   const priorities = useQuery({ queryKey: ['ai-exposure-priorities'], queryFn: api.listAiExposurePriorities });
@@ -67,12 +79,19 @@ export function AiExposuresPage() {
   return <section className="ai-security-page ui2-findings-family"><header className="ai-security-hero findings"><div>
     <span className="ai-security-kicker">Cross-system paths backed by temporal evidence</span><h2>AI Exposures</h2>
     <p>Hypotheses remain separate until trusted evidence validates the complete path.</p></div></header>
-    {exposures.isLoading ? <section className="panel"><p>Loading exposures…</p></section> : exposures.isError ? <section className="panel"><p>Exposures could not be loaded.</p></section> :
+    {exposures.isPending || (exposures.isError && !exposures.data) ? <section className="panel"><AsyncSection
+      state={exposures.isPending ? 'pending' : 'error'}
+      loadingLabel="Loading exposures…"
+      errorMessage="Exposures could not be loaded."
+      onRetry={() => void exposures.refetch()}
+      retryLabel="Retry exposures"
+      retrying={exposures.isFetching}
+    /></section> :
       <section className="panel ai-security-table-panel"><table className="data-table"><thead><tr><th>Exposure</th><th>Priority</th><th>State</th><th>Owner</th><th>Confidence</th><th>Systems</th><th>Observed</th></tr></thead><tbody>
         {items.map((item) => {
           const priority = priorities.data?.find((candidate) => candidate.id === item.id);
-          return <tr key={item.id} tabIndex={0} onClick={() => navigate(`/findings/ai/exposures/${item.id}`)} onKeyDown={(event) => { if (event.key === 'Enter') navigate(`/findings/ai/exposures/${item.id}`); }}>
-          <td><span className={`severity-badge ${item.severity.toLowerCase()}`}>{item.severity}</span><strong>{item.title}</strong><small>{item.correlationId}</small></td>
+          return <tr key={item.id}>
+          <td><span className={`severity-badge ${item.severity.toLowerCase()}`}>{item.severity}</span><Link to={`/findings/ai/exposures/${encodeURIComponent(item.id)}`}><strong>{item.title}</strong></Link><small>{item.correlationId}</small></td>
           <td>{priority ? <><strong>{priority.priority}</strong><small>{priority.severityPoints}+{priority.confidencePoints}+{priority.publicExposurePoints}+{priority.criticalityPoints}+{priority.recencyPoints}</small></> : '—'}</td>
           <td><span className="status-pill">{item.state.replace(/_/g, ' ')}</span></td><td>{priority?.owner ?? 'Unowned'}</td><td>{Math.round(item.confidence * 100)}%</td><td>{item.affectedSystems}</td><td>{new Date(item.lastObservedAt).toLocaleString()}</td>
         </tr>;

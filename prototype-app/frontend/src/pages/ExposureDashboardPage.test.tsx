@@ -1,4 +1,5 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import type { Dashboard, GridExposure } from '../features/dashboard/types';
@@ -211,8 +212,8 @@ describe('ExposureDashboardPage', () => {
 
     renderWithProviders(<ExposureDashboardPage />);
 
-    expect(await screen.findByText('Grid Exposure')).toBeInTheDocument();
-    expect(screen.getByText('Infrastructure (Hosts)')).toBeInTheDocument();
+    expect(await screen.findByText('Hosts')).toBeInTheDocument();
+    expect(screen.getByText('Grid Exposure')).toBeInTheDocument();
     expect(screen.getByText('Applications')).toBeInTheDocument();
     expect(screen.queryByText(/AI Assets/i)).not.toBeInTheDocument();
   });
@@ -225,8 +226,7 @@ describe('ExposureDashboardPage', () => {
 
     renderWithProviders(<ExposureDashboardPage />);
 
-    await screen.findByText('Grid Exposure');
-    const hostRow = screen.getByText('Infrastructure (Hosts)').closest('tr');
+    const hostRow = (await screen.findByText('Hosts')).closest('tr');
     expect(hostRow).not.toBeNull();
     const criticalCell = hostRow!.querySelector('.grid-exposure-cell--high .grid-exposure-cell-btn');
     expect(criticalCell).not.toBeNull();
@@ -239,5 +239,121 @@ describe('ExposureDashboardPage', () => {
     expect(navigatedParams.getAll('assetType')).toEqual(['HOST']);
     expect(navigatedParams.getAll('severity')).toEqual(['CRITICAL']);
     expect(navigatedParams.getAll('status')).toEqual(['OPEN']);
+  });
+  function mockAll(overrides: {
+    dash?: () => Promise<Dashboard>;
+    vuln?: () => Promise<VulnRepoDashboard>;
+    eol?: () => Promise<EolSummary>;
+    grid?: () => Promise<GridExposure>;
+  } = {}) {
+    return {
+      dash: vi.spyOn(api, 'getExposureSummary').mockImplementation(overrides.dash ?? (() => Promise.resolve(buildDashboard()))),
+      vuln: vi.spyOn(api, 'getVulnRepoDashboard').mockImplementation(overrides.vuln ?? (() => Promise.resolve(buildVulnRepoDashboard()))),
+      eol: vi.spyOn(api, 'getEolSummary').mockImplementation(overrides.eol ?? (() => Promise.resolve(buildEolSummary({ eolCount: 0, nearEolCount: 0 })))),
+      grid: vi.spyOn(api, 'getGridExposure').mockImplementation(overrides.grid ?? (() => Promise.resolve(buildGridExposure()))),
+    };
+  }
+
+  it('does not present a failed CVE summary as zero or as healthy posture', async () => {
+    const mocks = mockAll({ vuln: () => Promise.reject(new Error('down')) });
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    expect(await screen.findByText('Critical CVEs could not be loaded.')).toBeInTheDocument();
+    expect(screen.getAllByText('CVE summary unavailable').length).toBe(3);
+    expect(screen.queryByText('No critical unresolved CVEs — good posture.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No active attention signals — risk posture is healthy.')).not.toBeInTheDocument();
+    expect(screen.getByText('Attention signals could not be loaded: CVE summary.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Retry CVE summary' })[0]);
+    expect(mocks.vuln).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows healthy empty copy and valid zeros only after every source has loaded', async () => {
+    mockAll({ dash: () => Promise.resolve(buildDashboard({ criticalFindings: 0 })) });
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    expect(await screen.findByText('No critical unresolved CVEs — good posture.')).toBeInTheDocument();
+    expect(screen.getByText('No active attention signals — risk posture is healthy.')).toBeInTheDocument();
+    expect(screen.queryByText(/unavailable$/)).not.toBeInTheDocument();
+  });
+
+  it('reports a grid exposure failure with retry instead of hiding the panel', async () => {
+    const mocks = mockAll({ grid: () => Promise.reject(new Error('down')) });
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    expect(await screen.findByText('Grid exposure could not be loaded.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry grid exposure' }));
+    expect(mocks.grid).toHaveBeenCalledTimes(2);
+  });
+
+  it('explains the missing lifecycle view instead of navigating EOL signals back to Exposure', async () => {
+    mockAll({ eol: () => Promise.resolve(buildEolSummary({ eolCount: 12 })) });
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    expect(await screen.findByText(/end-of-life software components in your environment/)).toBeInTheDocument();
+    expect(screen.getAllByText('Lifecycle detail view not available yet').length).toBe(2);
+    expect(screen.queryByRole('button', { name: /View EOL/ })).not.toBeInTheDocument();
+    expect(screen.getByText('EOL Software').closest('button')).toBeNull();
+    expect(navigateMock).not.toHaveBeenCalledWith('/end-of-life');
+  });
+
+  it('keeps cached values visible when a refresh fails', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    mockAll({ dash: () => Promise.resolve(buildDashboard({ openFindings: 17 })) });
+
+    renderWithProviders(<ExposureDashboardPage />, { queryClient });
+    expect(await screen.findByText('17')).toBeInTheDocument();
+
+    vi.spyOn(api, 'getExposureSummary').mockRejectedValue(new Error('down'));
+    await act(async () => {
+      await queryClient.refetchQueries();
+    });
+
+    expect(await screen.findByText('Findings summary could not be refreshed; showing the last loaded values.')).toBeInTheDocument();
+    expect(screen.getByText('17')).toBeInTheDocument();
+  });
+
+  it('orders the layout as KPIs, Grid Exposure with Remediation, attention lists, software and assets, then the funnel', async () => {
+    vi.spyOn(api, 'getExposureSummary').mockResolvedValue(buildDashboard());
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard());
+    vi.spyOn(api, 'getEolSummary').mockResolvedValue(buildEolSummary());
+    vi.spyOn(api, 'getGridExposure').mockResolvedValue(buildGridExposure());
+
+    const { container } = renderWithProviders(<ExposureDashboardPage />);
+
+    await screen.findByRole('heading', { name: 'Grid Exposure' });
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      'Grid Exposure', 'Remediation Progress', 'Critical CVEs Requiring Action', 'Where Attention Is Required',
+      'Most Exposed Software', 'Critical Exposed Assets', 'CVE Exposure Funnel',
+    ]);
+    const pair = container.querySelector('.exec-pair');
+    expect(pair?.children).toHaveLength(2);
+    expect(pair?.textContent).toContain('Grid Exposure');
+    expect(pair?.textContent).toContain('Remediation Progress');
+    expect(container.querySelectorAll('.exec-kpi-icon')).toHaveLength(6);
+  });
+
+  it('labels remediation rows as read-only CVE counts and explains the security score', async () => {
+    vi.spyOn(api, 'getExposureSummary').mockResolvedValue(buildDashboard({ averageOpenRiskScore: 6.4 }));
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard({
+      resolutionStatus: { unresolvedCount: 12, resolvedCount: 30, inProgressCount: 4, acceptedRiskCount: 2 },
+    }));
+    vi.spyOn(api, 'getEolSummary').mockResolvedValue(buildEolSummary());
+    vi.spyOn(api, 'getGridExposure').mockResolvedValue(buildGridExposure());
+
+    renderWithProviders(<ExposureDashboardPage />);
+
+    const rows = await screen.findByRole('list', { name: 'CVE records by impact state' });
+    expect(rows).toHaveTextContent('Impacted or unknown12 CVEs');
+    expect(rows).toHaveTextContent('With accepted-risk findings2 CVEs');
+    expect(rows.querySelector('button')).toBeNull();
+    expect(screen.getByText(/Counts are CVEs, not findings/)).toBeVisible();
+    expect(screen.getByText('36')).toBeInTheDocument();
+    expect(screen.getByText(/100 minus the average open-finding risk score/)).toBeVisible();
   });
 });

@@ -96,7 +96,11 @@ async function requestFrom(page, pathname, action, method = null) {
   await page.waitForTimeout(400);
   return request ? { url: new URL(request.url()), request, response } : null;
 }
-const pageInfo = async (page) => (await page.locator('.fpl-page-info').innerText().catch(() => '')).replace(/\s+/g, ' ');
+// Pager ("Page 1 of 3") and result scope ("Showing 1–25 of 62 findings") joined, so totalOf still reads "62 findings".
+const pageInfo = async (page) => [
+  await page.getByRole('navigation', { name: 'Findings pages' }).innerText().catch(() => ''),
+  await page.locator('.fpl-list-bar .queue-result-scope').innerText().catch(() => ''),
+].join(' · ').replace(/\s+/g, ' ');
 const totalOf = (info) => Number((/([\d,]+) findings?/.exec(info) ?? [])[1]?.replace(/,/g, '') ?? NaN);
 
 async function findingsJourney(theme) {
@@ -151,19 +155,19 @@ async function findingsJourney(theme) {
   }
   await page.keyboard.press('Escape');
   await page.mouse.click(1300, 40);
-  check(tag('filter chip shown'), (await page.locator('.fpl-chip').count()) >= 1);
-  const clearAll = page.locator('.fpl-chip-clear');
-  await requestFrom(page, '/findings', () => clearAll.count().then((count) => (count ? clearAll.click() : page.locator('.fpl-chip button').first().click())));
+  const chips = page.getByRole('group', { name: 'Active filters' });
+  check(tag('filter chip shown'), (await chips.locator('.queue-filter-chip').count()) >= 1);
+  await requestFrom(page, '/findings', () => chips.getByRole('button', { name: 'Clear filters' }).click());
   await page.waitForTimeout(600);
   check(tag('clearing chips restores queue total'), totalOf(await pageInfo(page)) === queueTotal, await pageInfo(page));
 
   // Cursor next/back/reset (only when the live queue has more than one page).
-  const next = page.getByRole('button', { name: 'Next →' });
+  const next = page.getByRole('button', { name: 'Next' });
   if (await next.isEnabled().catch(() => false)) {
     const nextRequest = await requestFrom(page, '/findings', () => next.click());
     check(tag('next page sends cursor'), Boolean(nextRequest?.url.searchParams.get('cursor')), nextRequest?.url.search);
     check(tag('page 2 info'), /Page 2 of/.test(await pageInfo(page)), await pageInfo(page));
-    await page.getByRole('button', { name: '← Prev' }).click();
+    await page.getByRole('button', { name: 'Previous' }).click();
     await page.waitForTimeout(800);
     check(tag('prev returns to page 1'), /Page 1 of/.test(await pageInfo(page)), await pageInfo(page));
   } else {
@@ -477,14 +481,14 @@ async function inventoryJourney(theme) {
   await hostRows.first().waitFor({ timeout: 15000 });
   const hosts = await hostRows.count();
   check(tag('hosts list renders'), hosts > 0, String(hosts));
-  const hostButton = hostRows.first().getByRole('button').first();
-  const hostName = (await hostButton.innerText()).trim();
+  const hostLink = hostRows.first().getByRole('link').first();
+  const hostName = (await hostLink.innerText()).trim();
   await page.getByPlaceholder('hostname, OS, software...').fill(hostName);
   await settle(page);
   check(tag('host search narrows'), (await hostRows.count()) >= 1 && (await hostRows.count()) <= hosts, String(await hostRows.count()));
   await page.getByPlaceholder('hostname, OS, software...').fill('');
   await settle(page);
-  await page.getByRole('button', { name: hostName, exact: true }).first().click();
+  await page.getByRole('link', { name: hostName, exact: true }).first().click();
   await page.waitForURL(/\/inventory\/hosts\/[^/?]+\?returnTo=/, { timeout: 10000 }).catch(() => null);
   check(tag('host opens detail with returnTo'), new URL(page.url()).searchParams.get('returnTo') === '/inventory/hosts', here(page));
   await settle(page);
@@ -516,7 +520,7 @@ async function inventoryJourney(theme) {
   await page.locator('tr.si-version-row').first().waitFor({ timeout: 10000 }).catch(() => null);
   check(tag('row expands versions'), (await page.locator('tr.si-version-row').count()) > 0);
   check(tag('expansion fetches identity detail once'), requests.filter((request) => /^\/inventory\/software-identities\/[^/]+$/.test(apiPath(request.url()))).length === 1);
-  await identityRows.first().locator('button').first().click();
+  await identityRows.first().getByRole('link').first().click();
   await page.waitForURL(/\/inventory\/software-identities\/[^/]+/, { timeout: 10000 }).catch(() => null);
   check(tag('identity opens detail'), /^\/inventory\/software-identities\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
   await page.getByRole('tablist', { name: 'Software identity sections' }).waitFor({ timeout: 15000 }).catch(() => null);
@@ -530,10 +534,10 @@ async function inventoryJourney(theme) {
   await page.goto(`${base}/inventory/ai/declared-resources`, { waitUntil: 'networkidle' });
   await settle(page);
   await shot(page, `declared-resources_${theme}`);
-  // Rows navigate on click and hold no link; the setup-actions table above has rows too.
+  // Scope to the resource table: the setup-actions table above has links too.
   const declared = page.locator('table', { has: page.getByRole('columnheader', { name: 'Last declared' }) }).locator('tbody tr');
   if (await declared.count()) {
-    await declared.first().locator('td').first().click();
+    await declared.first().getByRole('link').first().click();
     await page.waitForURL(/\/inventory\/ai\/declared-resources\/[^/]+/, { timeout: 10000 }).catch(() => null);
     check(tag('declared resource opens detail'), /\/inventory\/ai\/declared-resources\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
     await settle(page);
@@ -627,7 +631,7 @@ async function authorityJourney(theme) {
   if (await visible(block)) {
     platform.requests.length = 0;
     await block.click();
-    const dialog = pp.locator('dialog.confirm-dialog');
+    const dialog = pp.locator('dialog .confirm-dialog');
     await dialog.waitFor();
     check(tag('block access asks for confirmation'), /block all tenant users/i.test(await dialog.innerText()), await dialog.innerText());
     await dialog.getByRole('button', { name: 'Block Access' }).click();
@@ -639,7 +643,7 @@ async function authorityJourney(theme) {
     if (await visible(restore)) {
       platform.requests.length = 0;
       await restore.first().click();
-      const confirm = pp.locator('dialog.confirm-dialog');
+      const confirm = pp.locator('dialog .confirm-dialog');
       if (await visible(confirm)) await confirm.getByRole('button').filter({ hasNotText: /Cancel/ }).last().click();
       await settle(pp);
       const back = platform.requests.find((request) => /\/platform\/tenants\/[^/]+\/status$/.test(apiPath(request.url())) && request.method() === 'PATCH');

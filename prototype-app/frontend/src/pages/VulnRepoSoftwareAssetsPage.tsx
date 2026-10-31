@@ -1,16 +1,18 @@
 import React from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { DataTable, type DataTableColumn, type DataTableRow } from '../components/DataTable';
 import { pathForVulnRepoHostAsset, pathForVulnRepoView } from '../app/routes';
+import { usePageHeader } from '../app/pageHeaderState';
+import { AsyncSection } from '../components/AsyncSection';
 import { useVulnRepoSoftwareAssetsQuery } from '../features/software-identities/queries';
 
 const SOFTWARE_ASSET_COLUMNS: DataTableColumn[] = [
-  { id: 'asset', label: 'Asset', header: 'Asset', initialSize: 260 },
+  { id: 'asset', label: 'Asset', header: 'Asset', initialSize: 260, minWidth: 200, priority: 'essential' },
   { id: 'assetType', label: 'Type', header: 'Type', initialSize: 110 },
   { id: 'version', label: 'Version', header: 'Version', initialSize: 160 },
   { id: 'source', label: 'Source', header: 'Source', initialSize: 120 },
-  { id: 'openVulnerabilities', label: 'Open CVEs', header: 'Open CVEs', initialSize: 120 },
-  { id: 'openFindings', label: 'Open Findings', header: 'Open Findings', initialSize: 140 },
+  { id: 'openVulnerabilities', label: 'Open CVEs', header: 'Open CVEs', initialSize: 120, priority: 'essential' },
+  { id: 'openFindings', label: 'Open Findings', header: 'Open Findings', initialSize: 140, priority: 'essential' },
   { id: 'lastObserved', label: 'Last Observed', header: 'Last Observed', initialSize: 180 },
 ];
 
@@ -33,17 +35,20 @@ export function VulnRepoSoftwareAssetsPage() {
   const softwareLabel = searchParams.get('software')?.trim() ?? '';
   const detailQuery = useVulnRepoSoftwareAssetsQuery(softwareIdentityId || null, Boolean(softwareIdentityId));
 
+  const softwareName = detailQuery.data?.displayName || softwareLabel;
+  usePageHeader(softwareName ? { title: `Assets running ${softwareName}` } : null);
+
   const impactedAssets = React.useMemo(
     () => detailQuery.data?.assets ?? [],
     [detailQuery.data?.assets]
   );
 
-  const openHostDetailSection = React.useCallback(
-    (assetId: string, section: 'applicable-cves' | 'host-findings') => {
+  const hostDetailPath = React.useCallback(
+    (assetId: string, section?: 'applicable-cves' | 'host-findings') => {
       const returnTo = `${location.pathname}${location.search}${location.hash}`;
-      navigate(`${pathForVulnRepoHostAsset(assetId, returnTo)}#${section}`);
+      return `${pathForVulnRepoHostAsset(assetId, returnTo)}${section ? `#${section}` : ''}`;
     },
-    [location.hash, location.pathname, location.search, navigate]
+    [location.hash, location.pathname, location.search]
   );
 
   const rows = React.useMemo<DataTableRow[]>(
@@ -54,7 +59,9 @@ export function VulnRepoSoftwareAssetsPage() {
           asset: {
             content: (
               <>
-                <div>{asset.assetName}</div>
+                {(asset.assetType ?? '').toUpperCase() === 'HOST'
+                  ? <Link to={hostDetailPath(asset.assetId)}>{asset.assetName}</Link>
+                  : <div>{asset.assetName}</div>}
                 <div className="panel-caption mono">{asset.assetIdentifier}</div>
               </>
             ),
@@ -64,26 +71,18 @@ export function VulnRepoSoftwareAssetsPage() {
           source: { content: asset.sourceSystem || '-' },
           openVulnerabilities: {
             content: asset.openCveCount > 0 ? (
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => openHostDetailSection(asset.assetId, 'applicable-cves')}
-              >
+              <Link className="btn-link" to={hostDetailPath(asset.assetId, 'applicable-cves')}>
                 {asset.openCveCount.toLocaleString()}
-              </button>
+              </Link>
             ) : (
               '0'
             )
           },
           openFindings: {
             content: asset.openFindingCount > 0 ? (
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => openHostDetailSection(asset.assetId, 'host-findings')}
-              >
+              <Link className="btn-link" to={hostDetailPath(asset.assetId, 'host-findings')}>
                 {asset.openFindingCount.toLocaleString()}
-              </button>
+              </Link>
             ) : (
               '0'
             )
@@ -91,7 +90,7 @@ export function VulnRepoSoftwareAssetsPage() {
           lastObserved: { content: formatDateTime(asset.lastObservedAt) },
         },
       })),
-    [impactedAssets, openHostDetailSection]
+    [impactedAssets, hostDetailPath]
   );
 
   return (
@@ -100,9 +99,11 @@ export function VulnRepoSoftwareAssetsPage() {
         <div>
           <div className="org-cve-back-link">Impacted Assets</div>
           <h3>{detailQuery.data?.displayName || softwareLabel || 'Software Assets'}</h3>
-          <span className="panel-caption">
-            {(detailQuery.data?.impactedAssetCount ?? impactedAssets.length).toLocaleString()} assets are currently associated with this software identity in the repository scope.
-          </span>
+          {detailQuery.data && (
+            <span className="panel-caption">
+              {detailQuery.data.impactedAssetCount.toLocaleString()} {detailQuery.data.impactedAssetCount === 1 ? 'asset is' : 'assets are'} currently associated with this software identity in the repository scope.
+            </span>
+          )}
         </div>
         <div className="button-row">
           <button
@@ -116,11 +117,18 @@ export function VulnRepoSoftwareAssetsPage() {
       </div>
 
       {!softwareIdentityId ? (
-        <div className="notice error">Software identity is required.</div>
-      ) : detailQuery.isLoading || detailQuery.isFetching ? (
-        <div className="notice">Loading impacted assets...</div>
-      ) : detailQuery.error instanceof Error ? (
-        <div className="notice error">{detailQuery.error.message}</div>
+        <div className="notice error" role="alert">
+          Software identity is required. Open this list from a software row on the dashboard or the software identities inventory.
+        </div>
+      ) : detailQuery.isPending ? (
+        <div className="notice" role="status">Loading impacted assets...</div>
+      ) : detailQuery.error instanceof Error && !detailQuery.data ? (
+        <AsyncSection
+          state="error"
+          errorMessage={detailQuery.error.message}
+          onRetry={() => void detailQuery.refetch()}
+          retrying={detailQuery.isFetching}
+        />
       ) : impactedAssets.length === 0 ? (
         <div className="empty-state"><p>No assets were found for this software identity.</p></div>
       ) : (

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { renderWithProviders } from '../test/test-utils';
@@ -240,5 +240,33 @@ describe('InventoryRunQueuePage', () => {
     const copilotRow = copilotType.closest('tr') as HTMLTableRowElement;
     expect(within(copilotRow).getByText('Completed')).toBeInTheDocument();
     expect(within(copilotRow).getByText('6')).toBeInTheDocument();
+  });
+
+  it('reports a failed run list as an error with retry rather than "no runs recorded"', async () => {
+    const runs = vi.spyOn(api, 'listSyncRuns').mockRejectedValueOnce(new Error('sync runs offline')).mockResolvedValue([]);
+    vi.spyOn(api, 'listIngestionJobs').mockResolvedValue({ items: [], page: 0, size: 100, totalItems: 0, totalPages: 0 });
+
+    renderWithProviders(<InventoryRunQueuePage />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Inventory sync runs could not be loaded: sync runs offline.');
+    expect(screen.queryByText('No inventory-source runs have been recorded yet.')).not.toBeInTheDocument();
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('No inventory-source runs have been recorded yet.')).toBeInTheDocument();
+    expect(runs).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps loaded sync runs visible with a warning when queued AI jobs fail to load', async () => {
+    vi.spyOn(api, 'listSyncRuns').mockResolvedValue([{
+      id: 'sn-run', syncType: 'SERVICENOW_CMDB', runDomain: 'INVENTORY', runClass: 'INGESTION', status: 'completed',
+      recordsFetched: 2, recordsInserted: 2, recordsUpdated: 0, recordsFailed: 0,
+      startedAt: '2026-07-29T09:00:00Z', completedAt: '2026-07-29T09:01:00Z',
+    }]);
+    vi.spyOn(api, 'listIngestionJobs').mockRejectedValue(new Error('jobs offline'));
+
+    renderWithProviders(<InventoryRunQueuePage />);
+
+    await waitFor(() => expect(screen.getByText(/Queued AI collection jobs could not be loaded: jobs offline\. Showing the runs that did load\./)).toBeInTheDocument());
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });

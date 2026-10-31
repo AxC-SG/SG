@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
@@ -91,6 +91,16 @@ describe('SoftwareIdentityDetailPage', () => {
     await waitFor(() =>
       expect(screen.getByText('Not authorized')).toBeInTheDocument()
     );
+  });
+
+  it('offers retry when the detail fetch fails', async () => {
+    const load = vi.spyOn(api, 'getSoftwareIdentityDetail').mockRejectedValueOnce(new Error('Gateway timeout')).mockResolvedValue(buildDetail());
+    mockSupportingQueries();
+    renderWithProviders(<SoftwareIdentityDetailPage softwareIdentityId="si-1" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Gateway timeout');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('button', { name: '← Back to Software Entities' })).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it('shows not-found message when detail resolves null', async () => {

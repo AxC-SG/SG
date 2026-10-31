@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { Route, Routes } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { pathForConfigurationsView } from '../app/routes';
 import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
+import type { OwnershipRuleResponse, RiskPolicy, SuppressionRule } from '../features/configurations/types';
 import { defaultRiskPolicy } from '../test/fixtures';
 import { renderWithProviders } from '../test/test-utils';
 import { ConfigurationsPage } from './ConfigurationsPage';
@@ -311,6 +312,142 @@ describe('ConfigurationsPage', () => {
       expect(cveWorkbenchApi.generateInvestigationSummary).toHaveBeenCalled();
       expect(cveWorkbenchApi.createServiceNowIncident).toHaveBeenCalled();
     });
+  });
+
+  function suppressionRule(overrides: Partial<SuppressionRule> = {}): SuppressionRule {
+    return {
+      id: 'rule-1', name: 'Low severity on dev', state: 'APPROVED', recordType: 'FINDING', conditionsJson: '[]',
+      conditionLogic: 'AND', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', suppressedCount: 2,
+      ...overrides,
+    };
+  }
+
+  it('names each SLA input by its tier and unit and shows a deadline example', async () => {
+    mockBaseApis();
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('sla') });
+
+    expect(await screen.findByRole('spinbutton', { name: 'Critical Risk minimum score (0–10)' })).toHaveValue(9);
+    expect(screen.getByRole('spinbutton', { name: 'Low Risk remediate within (days, 0–365)' })).toBeInTheDocument();
+    expect(screen.getByText(/a Critical Risk finding detected today is due within/)).toBeInTheDocument();
+    // Fixed tiers say so instead of offering an input.
+    expect(screen.queryByRole('spinbutton', { name: /Medium Risk minimum score/ })).not.toBeInTheDocument();
+  });
+
+  it('marks unsaved policy edits, discards them, and clears the cue after a confirmed save', async () => {
+    mockBaseApis();
+    vi.spyOn(api, 'updateRiskPolicy').mockImplementation(async (policy) => policy as RiskPolicy);
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('sla') });
+
+    const critical = await screen.findByRole('spinbutton', { name: 'Critical Risk minimum score (0–10)' });
+    fireEvent.change(critical, { target: { value: '8.5' } });
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(critical).toHaveValue(9);
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+
+    fireEvent.change(critical, { target: { value: '8.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Configuration saved')).toBeInTheDocument();
+    expect(api.updateRiskPolicy).toHaveBeenCalledWith(expect.objectContaining({ criticalThreshold: 8.5 }));
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+  });
+
+  it('keeps the draft and names the failure when a policy save is rejected', async () => {
+    mockBaseApis();
+    vi.spyOn(api, 'updateRiskPolicy').mockRejectedValue(new Error('Risk policy update failed'));
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('sla') });
+
+    const critical = await screen.findByRole('spinbutton', { name: 'Critical Risk minimum score (0–10)' });
+    fireEvent.change(critical, { target: { value: '8.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Risk policy update failed')).toBeInTheDocument();
+    expect(critical).toHaveValue(8.5);
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  });
+
+  it('does not claim the triage weights were saved when the API does not store them', async () => {
+    mockBaseApis();
+    // The API echoes the policy without the frontend-only triage fields.
+    vi.spyOn(api, 'updateRiskPolicy').mockImplementation(async (policy) => {
+      const { triageExploitabilityWeight: _a, triageBlastRadiusWeight: _b, triageEolRiskWeight: _c, triageSlaBreachWeight: _d,
+        triageMissingOwnerBoost: _e, triagePatchGapBoost: _f, ...rest } = policy;
+      return rest as RiskPolicy;
+    });
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('triage') });
+
+    expect(await screen.findByText(/The server does not store these weights yet/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('slider', { name: 'Exploitability weight' }), { target: { value: '1.6' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/Other settings saved\. The server does not store prioritization weights/)).toBeInTheDocument();
+    expect(screen.queryByText('Configuration saved')).not.toBeInTheDocument();
+  });
+
+  it('keeps a failed risk-policy load visible as local defaults with Retry', async () => {
+    mockBaseApis();
+    vi.spyOn(api, 'getRiskPolicy').mockRejectedValue(new Error('down'));
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('automation') });
+
+    const alert = await screen.findByText(/The saved configuration could not be loaded, so local defaults are shown/);
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('shows an ownership load failure with Retry instead of an empty rule list', async () => {
+    mockBaseApis();
+    const rule: OwnershipRuleResponse = {
+      id: 'own-1', name: 'Payments services', condition: '{"logic":"AND","conditions":[]}', userGroup: 'Payments',
+      executionOrder: 1, matchedCount: 3, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z',
+    };
+    vi.spyOn(api, 'listOwnershipRules').mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([rule]);
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('ownership') });
+
+    expect(await screen.findByText('Ownership rules could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText('No ownership rules defined yet.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    const region = await screen.findByRole('region', { name: 'Ownership rules' });
+    expect(within(region).getByText('Payments services')).toBeInTheDocument();
+  });
+
+  it('lists suppression rules in a labelled scroll region and confirms deletes in a named dialog', async () => {
+    mockBaseApis();
+    vi.spyOn(api, 'listSuppressionRules').mockResolvedValue([suppressionRule()]);
+    const remove = vi.spyOn(api, 'deleteSuppressionRule')
+      .mockRejectedValueOnce(new Error('Rule is in use'))
+      .mockResolvedValueOnce(undefined as never);
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('suppress') });
+
+    const region = await screen.findByRole('region', { name: 'Suppression rules' });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(screen.getByText(/it is not a resolution/)).toBeInTheDocument();
+    fireEvent.click(within(region).getByRole('button', { name: 'Delete' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete suppression rule?' });
+    expect(within(dialog).getByText(/2 suppressed records/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete rule' }));
+    expect(await within(dialog).findByText('Rule is in use')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Suppression rules' })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete rule' }));
+    expect(await screen.findByText('Suppression rule deleted.')).toBeInTheDocument();
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows a suppression load failure with Retry', async () => {
+    mockBaseApis();
+    vi.spyOn(api, 'listSuppressionRules').mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([suppressionRule()]);
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('suppress') });
+
+    expect(await screen.findByText(/Suppression rules could not be loaded/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('region', { name: 'Suppression rules' })).toBeInTheDocument();
+  });
+
+  it('renders the panel heading one level below the shell H1', async () => {
+    mockBaseApis();
+    renderConfigPage({ route: pathForConfigurationsView('sla') });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Configurations' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
 
   it('calls getRiskPolicy on mount', async () => {

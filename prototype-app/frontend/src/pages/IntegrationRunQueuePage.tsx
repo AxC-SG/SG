@@ -1,5 +1,6 @@
 import React from 'react';
 import { DataTable, type DataTableColumn, type DataTableRow } from '../components/DataTable';
+import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
 import { useSyncRunsQuery } from '../features/connect/queries';
 import type { SyncRun } from '../features/connect/types';
 
@@ -43,7 +44,7 @@ function formatRunDomain(run: SyncRun): string {
 function runStatusClass(value: string): string {
   const n = value.trim().toUpperCase();
   if (n === 'FAILED') return 'status-failure';
-  if (n === 'PARTIAL_SUCCESS' || n === 'COMPLETED_WITH_ERRORS' || n === 'SUCCESS_WITH_WARNINGS') return 'status-warning';
+  if (n === 'PARTIAL' || n === 'PARTIAL_SUCCESS' || n === 'COMPLETED_WITH_ERRORS' || n === 'SUCCESS_WITH_WARNINGS') return 'status-warning';
   if (n === 'COMPLETED') return 'status-success';
   if (n === 'RUNNING' || n === 'STARTED' || n === 'QUEUED') return 'status-open';
   return `status-${value.toLowerCase().replace('_', '-')}`;
@@ -190,7 +191,11 @@ export function IntegrationRunQueuePage({
   const rows = React.useMemo(() => buildRows(query.data ?? []), [query.data]);
   const loading = query.isPending && !query.data;
   const refreshing = query.isFetching;
-  const error = query.error instanceof Error ? query.error.message : '';
+  const error = query.error instanceof Error ? query.error.message : 'Unknown error';
+  // A failed load is not "no runs"; cached rows stay visible when a background refresh fails.
+  const state: AsyncSectionState = loading
+    ? 'pending'
+    : query.isError && !query.data ? 'error' : rows.length === 0 ? 'empty' : 'ready';
 
   return (
     <section className="panel">
@@ -213,15 +218,16 @@ export function IntegrationRunQueuePage({
         </div>
       </div>
 
-      {error && <div className="notice error">{error}</div>}
-
-      {loading ? (
-        <div className="notice">Loading integration runs…</div>
-      ) : rows.length === 0 ? (
-        <div className="empty-state">
-          <p>No integration runs recorded yet.</p>
-        </div>
-      ) : (
+      <AsyncSection
+        state={state}
+        loadingLabel="Loading integration runs…"
+        emptyMessage="No integration runs recorded yet."
+        errorMessage={`Integration runs could not be loaded: ${error}`}
+        refreshError={query.isError && query.data ? `The latest refresh failed (${error}). Showing the last loaded runs.` : undefined}
+        onRetry={() => void query.refetch()}
+        retrying={refreshing}
+        isRefreshing={refreshing}
+      >
         <div className="table-scroll">
           <DataTable
             storageKey={storageKey}
@@ -229,7 +235,7 @@ export function IntegrationRunQueuePage({
             rows={rows}
           />
         </div>
-      )}
+      </AsyncSection>
     </section>
   );
 }

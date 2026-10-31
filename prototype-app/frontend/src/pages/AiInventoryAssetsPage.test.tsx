@@ -195,7 +195,7 @@ describe('AiInventoryAssetsPage', () => {
     expect(screen.queryByText('Last observed')).not.toBeInTheDocument();
   });
 
-  it('navigates to the AI asset detail page when a row is clicked', async () => {
+  it('links each asset name to the AI asset detail page with a return path', async () => {
     mockBaseline();
     vi.spyOn(api, 'listAiArtifactSummaries').mockResolvedValue({
       items: [buildArtifact()],
@@ -207,9 +207,28 @@ describe('AiInventoryAssetsPage', () => {
 
     renderWithProviders(<AiInventoryAssetsPage />, { route: '/inventory/ai/assets' });
 
-    fireEvent.click(await screen.findByText('Production Guardrail'));
+    const link = await screen.findByRole('link', { name: 'Production Guardrail' });
+    expect(link).toHaveAttribute('href', '/inventory/ai/artifact-1?returnTo=%2Finventory%2Fai%2Fassets');
+  });
 
-    expect(navigateMock).toHaveBeenCalledWith('/inventory/ai/artifact-1?returnTo=%2Finventory%2Fai%2Fassets');
+  it('separates a failed list (with retry) and a filtered-empty result from an empty AI estate', async () => {
+    mockBaseline();
+    const list = vi.spyOn(api, 'listAiArtifactSummaries')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue({ items: [], page: 0, size: 50, total: 0 });
+    vi.spyOn(api, 'getAiSecuritySummary').mockResolvedValue(emptySummary());
+
+    renderWithProviders(<AiInventoryAssetsPage />, { route: '/inventory/ai/assets?provider=AZURE' });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('AI inventory could not be loaded.');
+    expect(screen.queryByText('No AI assets discovered')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI inventory' }));
+
+    expect(await screen.findByText('No AI assets match the current filters.')).toBeInTheDocument();
+    expect(screen.queryByText('No AI assets discovered')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByText('No AI assets discovered')).toBeInTheDocument();
+    expect(list).toHaveBeenLastCalledWith(undefined, 0, 50, undefined, undefined, undefined, undefined);
   });
 
   it('combines cross-provider kinds into one category option and filters by the combined set', async () => {

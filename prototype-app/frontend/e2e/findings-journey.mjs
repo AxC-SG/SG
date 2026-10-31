@@ -71,7 +71,9 @@ for (const theme of themes) {
   await page.goto(`${base}/findings`, { waitUntil: 'networkidle' });
   await page.locator('.fpl-tr').first().waitFor();
   check(tag('list renders 25 rows (cursor page size)'), (await page.locator('.fpl-tr').count()) === 25);
-  check(tag('list page info'), /Page 1 of 3 · 62 findings/.test(await page.locator('.fpl-page-info').innerText()));
+  const pagerText = () => page.getByRole('navigation', { name: 'Findings pages' }).innerText();
+  const scopeText = () => page.locator('.fpl-list-bar .queue-result-scope').innerText();
+  check(tag('list page info'), /Page 1 of 3/.test(await pagerText()) && /Showing 1–25 of 62 findings/.test(await scopeText()), `${await pagerText()} | ${await scopeText()}`);
   await shot(page, tag('findings-list'));
 
   // Severity widget narrows the table only; aggregates keep queue scope.
@@ -86,7 +88,7 @@ for (const theme of themes) {
   // The unfiltered page is usually served from the query cache, so assert visible state, not a request.
   await page.locator('.fpl-legend-row', { hasText: 'CRITICAL' }).first().click();
   await page.waitForTimeout(600);
-  check(tag('same severity again toggles off'), await page.locator('.fpl-legend-row--active').count() === 0 && /62 findings/.test(await page.locator('.fpl-page-info').innerText()));
+  check(tag('same severity again toggles off'), await page.locator('.fpl-legend-row--active').count() === 0 && /of 62 findings/.test(await scopeText()));
 
   // Column multi-select filter popover (Status), two values accumulate.
   await page.waitForTimeout(500);
@@ -100,24 +102,24 @@ for (const theme of themes) {
   await shot(page, tag('findings-column-filter'));
   await page.keyboard.press('Escape');
   await page.mouse.click(1300, 40);
-  check(tag('filter chip shown'), (await page.locator('.fpl-chip').count()) >= 1);
-  const clearAll = page.locator('.fpl-chip-clear');
-  await requestFrom(page, '/findings', () => (clearAll.count().then((count) => (count ? clearAll.click() : page.locator('.fpl-chip button').first().click()))));
+  const chips = page.getByRole('group', { name: 'Active filters' });
+  check(tag('filter chip shown'), (await chips.locator('.queue-filter-chip').count()) >= 1);
+  await requestFrom(page, '/findings', () => chips.getByRole('button', { name: 'Clear filters' }).click());
 
   // Cursor paging next/back.
-  const nextRequest = await requestFrom(page, '/findings', () => page.getByRole('button', { name: 'Next →' }).click());
+  const nextRequest = await requestFrom(page, '/findings', () => page.getByRole('button', { name: 'Next' }).click());
   check(tag('next page sends cursor'), nextRequest?.searchParams.get('cursor') === 'c1', nextRequest?.search);
-  check(tag('page 2 info'), /Page 2 of 3/.test(await page.locator('.fpl-page-info').innerText()));
-  await page.getByRole('button', { name: '← Prev' }).click();
+  check(tag('page 2 info'), /Page 2 of 3/.test(await pagerText()) && /Showing 26–50 of 62/.test(await scopeText()));
+  await page.getByRole('button', { name: 'Previous' }).click();
   await page.waitForTimeout(600);
-  check(tag('prev returns to page 1'), /Page 1 of 3/.test(await page.locator('.fpl-page-info').innerText()));
+  check(tag('prev returns to page 1'), /Page 1 of 3/.test(await pagerText()));
 
   // Row click selects (does not navigate).
   const firstRow = page.locator('.fpl-tr').first();
   await firstRow.locator('td').nth(3).click();
   check(tag('row click selects'), (await firstRow.getAttribute('class')).includes('fpl-tr--selected'));
   check(tag('row click stays on list'), new URL(page.url()).pathname === '/findings');
-  check(tag('selected badge'), (await page.locator('.fpl-sel-badge').innerText()).includes('1 selected'));
+  check(tag('selected badge'), (await scopeText()).includes('1 selected on this page'));
   await shot(page, tag('findings-selected'));
 
   // Group by severity: server group aggregates.
@@ -169,7 +171,7 @@ for (const theme of themes) {
 
   await page.goto(`${base}/findings/ai/exposures`, { waitUntil: 'networkidle' });
   await shot(page, tag('ai-exposures'));
-  await page.locator('.ai-security-table-panel tbody tr').first().click();
+  await page.locator('.ai-security-table-panel tbody tr').first().getByRole('link').click();
   await page.waitForURL(/\/findings\/ai\/exposures\/exposure-1$/, { timeout: 5000 }).catch(() => null);
   await page.locator('.ai-exposure-grid').waitFor({ timeout: 5000 }).catch(() => null);
   check(tag('exposure row opens detail'), new URL(page.url()).pathname === '/findings/ai/exposures/exposure-1' && await page.locator('.ai-exposure-grid').count() === 1);
@@ -192,7 +194,8 @@ for (const theme of themes) {
 // ── Entitlement unavailable ──────────────────────────────────────────────────
 const denied = await newPage('dark', 1440, { ...actor, entitlements: { 'ai.security': false } });
 await denied.page.goto(`${base}/findings/ai`, { waitUntil: 'networkidle' });
-check('ai findings redirect without entitlement', new URL(denied.page.url()).pathname === '/exposure', denied.page.url().replace(base, ''));
+const redirected = await denied.page.waitForURL((url) => url.pathname === '/exposure', { timeout: 10000 }).then(() => true, () => false);
+check('ai findings redirect without entitlement', redirected, denied.page.url().replace(base, ''));
 await denied.context.close();
 
 await browser.close();

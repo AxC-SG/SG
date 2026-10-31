@@ -15,6 +15,7 @@ import type {
   SyncTriggerResponse
 } from '../features/connect/types';
 import { useAwsDiscoveryConfigQuery, useAwsDiscoveryTargetsQuery } from '../features/connect/queries';
+import { ConnectorConfigLoadError } from '../features/connect/ConnectorConfigLoadError';
 import { formatTimestamp } from '../lib/time';
 
 // ── Region constants ─────────────────────────────────────────────────────────
@@ -128,6 +129,8 @@ export function AwsDiscoveryConnectorPage() {
   const [testing, setTesting] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [error, setError] = React.useState('');
+  // Shown only after an explicit Save; Test and Run report their own outcome.
+  const [saveNotice, setSaveNotice] = React.useState('');
   const [editingTargetId, setEditingTargetId] = React.useState<string | null>(null);
   const [targetForm, setTargetForm] = React.useState<AwsDiscoveryTargetRequest>(defaultTargetForm(null));
   const [targetBusy, setTargetBusy] = React.useState('');
@@ -161,6 +164,7 @@ export function AwsDiscoveryConnectorPage() {
   const saveConnector = async (): Promise<AwsDiscoveryConfig | null> => {
     setSaving(true);
     setError('');
+    setSaveNotice('');
     try {
       const payload = buildPayload();
       const saved = await api.saveAwsDiscoveryConfig(payload);
@@ -296,6 +300,9 @@ export function AwsDiscoveryConnectorPage() {
   if (configQuery.isPending && !config) {
     return <section className="panel">Loading AWS Cloud Discovery connector...</section>;
   }
+  if (configQuery.isError && !configQuery.data) {
+    return <ConnectorConfigLoadError connectorName="AWS Cloud Discovery" error={configQuery.error} onRetry={() => void configQuery.refetch()} retrying={configQuery.isFetching} />;
+  }
 
   const intervalOptions = [
     { label: 'Hourly', minutes: 60 },
@@ -351,6 +358,7 @@ export function AwsDiscoveryConnectorPage() {
       )}
 
       {displayError && <div className="notice error">{displayError}</div>}
+      {saveNotice && !displayError && <div className="notice success" role="status">{saveNotice}</div>}
 
       {/* ── Tab navigation ── */}
       <div className="connector-tab-bar">
@@ -546,7 +554,7 @@ export function AwsDiscoveryConnectorPage() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void saveConnector()}
+              onClick={() => void saveConnector().then((saved) => { if (saved) setSaveNotice('Connector settings saved.'); })}
               disabled={!canManageConnector || saving || testing || syncing}
             >
               {saving ? 'Saving...' : 'Save Connector'}
@@ -732,7 +740,7 @@ export function AwsDiscoveryConnectorPage() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void saveConnector()}
+              onClick={() => void saveConnector().then((saved) => { if (saved) setSaveNotice('Connector settings saved.'); })}
               disabled={!canManageConnector || saving || testing || syncing}
             >
               {saving ? 'Saving...' : 'Save Connector'}

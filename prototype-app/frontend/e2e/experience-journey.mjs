@@ -133,10 +133,24 @@ for (const theme of themes) {
   await settle(page);
   check(tag('exploit callout opens KEV intelligence'), new URL(page.url()).pathname === '/vuln-repo/vulnerabilities' && params(page).inKev === 'true', here(page));
   await goto(page, '/exposure');
-  await page.getByRole('button', { name: 'View EOL →' }).click();
-  await settle(page);
-  check(tag('EOL insight redirects tenant to exposure'), here(page) === '/exposure', here(page));
+  check(tag('EOL insight has no self-looping action'), (await page.getByRole('button', { name: /View (near-)?EOL/ }).count()) === 0);
+  check(tag('EOL insight explains missing lifecycle view'), (await page.getByText('Lifecycle detail view not available yet').count()) >= 1);
+  check(tag('EOL KPI is not a navigation control'), (await page.locator('button.exec-kpi', { hasText: 'EOL Software' }).count()) === 0);
   check(tag('no page errors on exposure'), errors.length === 0, errors);
+
+  // Stage 5 layout at the changed breakpoints: KPI columns 2/3/6 and the Grid Exposure + Remediation pair.
+  const columns = (selector) => page.locator(selector).evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').filter(Boolean).length);
+  for (const [width, kpiColumns, pairColumns] of [[639, 2, 1], [640, 3, 1], [1199, 3, 1], [1200, 6, 2]]) {
+    await page.setViewportSize({ width, height: 900 });
+    await goto(page, '/exposure');
+    await page.locator('.exec-pair').waitFor();
+    check(tag(`exposure ${width}px shows ${kpiColumns} KPI columns`), (await columns('.exec-kpi-grid')) === kpiColumns, String(await columns('.exec-kpi-grid')));
+    check(tag(`exposure ${width}px pair has ${pairColumns} column(s)`), (await columns('.exec-pair')) === pairColumns, String(await columns('.exec-pair')));
+    const kpiHeights = await page.locator('.exec-kpi').evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().height));
+    check(tag(`exposure ${width}px KPI cards at least 112px`), kpiHeights.every((height) => height >= 112), kpiHeights.join(','));
+    check(tag(`exposure ${width}px no page overflow`), !(await overflow(page)));
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   // ── CVE dashboard (/vuln-repo) ────────────────────────────────────────────
   await goto(page, '/vuln-repo');
@@ -171,12 +185,16 @@ for (const theme of themes) {
   await page.locator('.cw-modal').waitFor();
   check(tag('New Campaign opens the wizard'), await page.locator('.cw-modal').isVisible());
   await shot(page, tag('campaign-wizard'));
+  for (let step = 0; step < 3; step += 1) await page.locator('.cw-modal').getByRole('button', { name: 'Next' }).click();
+  check(tag('wizard blocks launch without CVE scope'), await page.getByRole('button', { name: 'Launch Campaign' }).isDisabled());
+  check(tag('wizard previews launch notifications in place'), (await page.locator('dialog[open]').count()) === 1
+    && await page.getByRole('region', { name: 'Launch notifications' }).isVisible());
   await page.locator('.cw-header .cd-delete-btn').click();
   await settle(page);
   check(tag('wizard closes'), (await page.locator('.cw-modal').count()) === 0);
-  await page.locator('.campaigns-table tbody tr', { hasText: 'OpenSSL Q4 remediation sprint' }).click();
+  await page.locator('.campaigns-table').getByRole('link', { name: 'OpenSSL Q4 remediation sprint' }).click();
   await settle(page);
-  check(tag('row opens the campaign detail'), here(page) === `/vuln-repo/campaigns/${PRIMARY_CAMPAIGN_ID}`, here(page));
+  check(tag('row link opens the campaign detail'), here(page) === `/vuln-repo/campaigns/${PRIMARY_CAMPAIGN_ID}`, here(page));
 
   // ── Campaign detail: tabs, status transition, breadcrumb ─────────────────
   await page.locator('.cd-hero-title').waitFor();
@@ -188,16 +206,25 @@ for (const theme of themes) {
   check(tag('findings tab lists campaign findings'), await page.getByText('F-1001').first().isVisible());
   check(tag('findings tab marks the active tab'), (await page.locator('.cd-tab.active').textContent()).startsWith('Findings'));
   await shot(page, tag('campaign-findings'));
+  check(tag('one primary lifecycle action with a secondary menu'), (await page.locator('.cd-topbar-actions .btn-primary').count()) === 1
+    && await page.getByRole('button', { name: 'More actions' }).isVisible());
+  await page.locator('.cd-tab', { hasText: /^Overview/ }).click();
+  await page.getByRole('button', { name: 'Notifications' }).click();
+  const notifyDialog = page.getByRole('dialog', { name: /Notify Teams/ });
+  check(tag('notifications dialog offers no send action'), await notifyDialog.isVisible()
+    && (await notifyDialog.getByRole('button', { name: /Send/ }).count()) === 0);
+  await notifyDialog.getByRole('button', { name: 'Close' }).click();
   requests.length = 0;
   await page.getByRole('button', { name: 'Move to Review' }).click();
   await settle(page);
   const statusCall = calls(requests, `/campaigns/${PRIMARY_CAMPAIGN_ID}/status`, 'POST').at(-1);
   check(tag('Move to Review posts IN_REVIEW'), statusCall && body(statusCall).status === 'IN_REVIEW', statusCall?.body);
+  check(tag('status change reports its result beside the actions'), await page.getByText('Campaign moved to In Review.').isVisible());
   await page.locator('.cd-breadcrumb-link').click();
   await settle(page);
   check(tag('breadcrumb returns to campaigns'), here(page) === '/vuln-repo/campaigns', here(page));
   await goto(page, '/vuln-repo/campaigns/campaign-missing');
-  check(tag('unknown campaign shows not-found with back action'), await page.getByRole('button', { name: 'Back to Campaigns' }).isVisible());
+  check(tag('unknown campaign shows not-found with back action'), await page.getByRole('link', { name: 'Back to Campaigns' }).isVisible());
   await goto(page, `/vuln-repo/campaigns/${BLOCKED_CAMPAIGN_ID}`);
   await page.locator('.cd-hero-title').waitFor();
   check(tag('blocked campaign renders its status'), await page.locator('.cd-page').getByText('BLOCKED', { exact: false }).first().isVisible());
@@ -254,14 +281,14 @@ for (const theme of themes) {
   // ── Legacy redirects and role-based home ─────────────────────────────────
   const legacy = await newPage(theme, 1440);
   for (const [from, expected] of [
-    ['/', '/configurations'],
+    ['/', '/exposure'],
     ['/vulnerability-intelligence?severity=CRITICAL', '/vuln-repo/vulnerabilities?severity=CRITICAL'],
     ['/vulnerability-intelligence/vulnerabilities', '/vuln-repo/vulnerabilities'],
     [`/vulnerability-intelligence/org-cves/${CRITICAL_CVE_ID}`, `/vuln-repo/org-cves/${CRITICAL_CVE_ID}`],
     ['/vuln-repo/policies', '/platform/ai-policies'],
     ['/fix-intelligence', '/fix-intelligence/all'],
     ['/end-of-life', '/exposure'],
-    ['/no-such-route', '/configurations'],
+    ['/no-such-route', '/exposure'],
   ]) {
     await goto(legacy.page, from);
     check(tag(`redirect ${from}`), here(legacy.page) === expected, here(legacy.page));
@@ -269,14 +296,27 @@ for (const theme of themes) {
   // Recorded quirk (unchanged): HomeRoute redirects '/' to the role home before LegacyQueryRedirect
   // runs, so a legacy '/?tab=findings' link opens the role home, not /findings.
   await goto(legacy.page, '/?tab=findings');
-  check(tag('legacy /?tab= link resolves to the role home (recorded quirk)'), here(legacy.page) === '/configurations', here(legacy.page));
+  check(tag('legacy /?tab= link resolves to the role home (recorded quirk)'), here(legacy.page) === '/exposure', here(legacy.page));
   await goto(legacy.page, '/inventory/ai/executions');
   check(tag('redirect /inventory/ai/executions stays in AI inventory'), new URL(legacy.page.url()).pathname.startsWith('/inventory/ai'), here(legacy.page));
+  for (const route of ['/operations/pipeline', '/operations/platform-health']) {
+    legacy.requests.length = 0;
+    await goto(legacy.page, route);
+    check(tag(`tenant admin ${route} redirects to exposure`), here(legacy.page) === '/exposure', here(legacy.page));
+    check(tag(`tenant admin ${route} sends no platform operations requests`),
+      !legacy.requests.some((request) => /^\/(operations|slo)\//.test(apiPath(request.url))));
+  }
+  await goto(legacy.page, '/operations/quality?domain=VEX');
+  check(tag('tenant quality route stays available'), new URL(legacy.page.url()).pathname === '/inventory'
+    && params(legacy.page).inventoryTabs === 'quality-vex', here(legacy.page));
   await legacy.context.close();
   const analyst = await newPage(theme, 1440, analystActor);
   await goto(analyst.page, '/');
+  await analyst.page.waitForURL((url) => url.pathname === '/exposure');
   check(tag('analyst home is exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   await goto(analyst.page, '/operations');
+  await analyst.page.waitForURL((url) => url.pathname === '/exposure');
+  check(tag('analyst operations redirects to exposure'), here(analyst.page) === '/exposure', here(analyst.page));
   check(tag('analyst /operations has no operations nav'), (await analyst.page.locator('nav').getByText('Operations', { exact: true }).count()) === 0);
   await analyst.context.close();
 
@@ -303,8 +343,9 @@ for (const theme of themes) {
     && (await anon.page.getByLabel('Email').inputValue()) === 'new.user@example.test');
   await goto(anon.page, '/login?setup=1&email=new.user%40example.test');
   const setPassword = anon.page.getByRole('button', { name: 'Set password' });
-  await anon.page.getByLabel('New password').fill('short');
-  check(tag('set password needs 8 characters'), await setPassword.isDisabled());
+  check(tag('set password states the 12-character requirement'), await anon.page.getByText('Use at least 12 characters.').isVisible());
+  await anon.page.getByLabel('New password').fill('elevenchars');
+  check(tag('set password needs 12 characters'), await setPassword.isDisabled());
   await anon.page.getByLabel('New password').fill('long-enough-password');
   anon.requests.length = 0;
   await setPassword.click();
@@ -337,6 +378,7 @@ for (const theme of themes) {
   await goto(anon.page, '/setup#token=bad-token');
   await anon.page.getByRole('alert').waitFor();
   check(tag('invalid setup link shows an error'), (await anon.page.getByRole('alert').textContent()).includes('invalid or expired'));
+  check(tag('invalid setup link offers log in'), (await anon.page.locator('.auth-link-recovery').getByRole('link', { name: 'Go to log in' }).getAttribute('href')) === '/login');
   await shot(anon.page, tag('setup-error'));
   await anon.page.locator('.public-demo-nav').getByRole('link', { name: 'Log in' }).click();
   await settle(anon.page);
@@ -351,7 +393,7 @@ for (const theme of themes) {
   await fresh.page.getByLabel('Password', { exact: true }).fill('correct-password');
   await fresh.page.getByRole('button', { name: 'Sign in' }).click();
   await settle(fresh.page);
-  check(tag('successful login opens the role home'), here(fresh.page) === '/configurations', here(fresh.page));
+  check(tag('successful login opens the role home'), here(fresh.page) === '/exposure', here(fresh.page));
   await fresh.context.close();
 
   // ── Narrow viewport ─────────────────────────────────────────────────────

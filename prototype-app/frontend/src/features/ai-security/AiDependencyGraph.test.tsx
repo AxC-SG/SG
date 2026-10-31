@@ -209,6 +209,26 @@ describe('AiDependencyGraph', () => {
     expect(await screen.findByText('Graph capped for safe rendering.')).toBeInTheDocument();
   });
 
+  it('offers a readable relationship list with the same destinations as View Details', async () => {
+    const onNodeClick = vi.fn();
+    renderWithProviders(<AiDependencyGraph graph={buildGraph()} rootArtifactId="artifact-1" onNodeClick={onNodeClick} />);
+    await screen.findByText('depth-fn');
+
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('region', { name: 'AI artifact dependency graph' })).not.toBeInTheDocument();
+    const table = screen.getByRole('table', { name: 'AI artifact relationships' });
+    const row = within(table).getAllByRole('row')[1];
+    expect(row).toHaveTextContent('depth-agent (this asset)');
+    expect(row).toHaveTextContent('Implemented By');
+
+    fireEvent.click(within(row).getByRole('button', { name: 'depth-fn' }));
+    expect(onNodeClick).toHaveBeenCalledWith('artifact-2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Graph' }));
+    expect(await screen.findByRole('region', { name: 'AI artifact dependency graph' })).toBeInTheDocument();
+  });
+
   it('does not show runtime controls', () => {
     renderWithProviders(<AiDependencyGraph graph={{ nodes: [], edges: [], truncated: false }} />);
     expect(screen.queryByText('View executions')).not.toBeInTheDocument();

@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
-import { pathForFindingDetail, pathForConnectView } from '../app/routes';
+import { pathForFindingDetail, pathForConnectView, pathForVulnRepoView } from '../app/routes';
 import type {
   Finding,
   FindingBulkWorkflowRequest,
@@ -13,6 +13,8 @@ import type { CreateServiceNowIncidentRequest } from '../features/cve-workbench/
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import { MultiGroupBy, type MultiGroupByOption } from '../components/MultiGroupBy';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
+import { Dialog } from '../components/Dialog';
+import { ActiveFilterChips, Pager, ResultScope, type ActiveFilter } from '../components/QueueControls';
 import {
   useFindingBacklogHealthQuery,
   useFindingDistributionsQuery,
@@ -23,7 +25,7 @@ import {
   useFindingSummaryQuery
 } from '../features/findings/queries';
 import { useFindingsCursorPaging, useFindingsQueryContext } from '../features/findings/hooks';
-import { FindingsSummaryWidgets } from '../features/findings/components/FindingsSummaryWidgets';
+import { FindingsSummaryWidgets, type SourceState } from '../features/findings/components/FindingsSummaryWidgets';
 import { useRiskPolicyQuery } from '../features/cve-workbench/queries';
 import { useActor } from '../features/auth/context';
 import { canRunSecurityWorkflow } from '../features/auth/roles';
@@ -183,11 +185,15 @@ function applyColFilters(rows: Finding[], f: ColFilters, dueDateBand: DueDateBan
   });
 }
 
+// Each widget source reports its own state, so one failed summary never zeroes or hides the others.
+function sourceState(query: { data?: unknown; isError: boolean }): SourceState {
+  if (query.data !== undefined) return query.isError ? 'stale' : 'ready';
+  return query.isError ? 'error' : 'pending';
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
-type FindingsPageProps = { onOpenCveWorkbench?: (vulnerabilityId: string) => void };
-
-export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
+export function FindingsPage() {
   const actor = useActor();
   const canMutateFindings = canRunSecurityWorkflow(actor);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -222,7 +228,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
   const [actionModal, setActionModal] = React.useState<ActionType | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionError, setActionError] = React.useState('');
-  const [actionNotice, setActionNotice] = React.useState<{ tone: 'info' | 'success'; message: string } | null>(null);
+  const [actionNotice, setActionNotice] = React.useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
   const [showMoreActions, setShowMoreActions] = React.useState(false);
   const moreActionsRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -342,6 +348,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
     [distributionsQuery.data]
   );
 
+  // Zero placeholders only feed charts the widgets hide until the backlog source has loaded.
   const dueDateCounts = backlogHealthQuery.data ?? { overdue: 0, dueSoon: 0, onTrack: 0, noSla: 0 };
   const editableActiveQueue = React.useMemo(
     () => personalQueues.find((queue) => queue.key === activeQueryContext.queueKey) ?? null,
@@ -353,11 +360,6 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
       ?? personalQueues.find((queue) => queue.editable) ?? null,
     [defaultQueue, editableActiveQueue, personalQueues]
   );
-  const workspaceError = findingsQuery.error instanceof Error ? findingsQuery.error
-    : summaryQuery.error instanceof Error ? summaryQuery.error
-    : distributionsQuery.error instanceof Error ? distributionsQuery.error
-    : backlogHealthQuery.error instanceof Error ? backlogHealthQuery.error
-    : null;
 
   // ── outside click ──────────────────────────────────────────────────────────
   React.useEffect(() => {
@@ -598,21 +600,25 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
   }
 
   // active filter chips (server-side only for now)
-  const activeChips: Array<{ label: string; onRemove: ()=>void }> = [];
-  if (groupFilter) activeChips.push({ label: `${GROUP_OPTIONS.find(option => option.key === groupFilter.field)?.label}: ${groupFilter.value}`, onRemove: () => setGroupFilter(null) });
-  if (unassignedOnly) activeChips.push({ label: 'Unassigned remediation', onRemove: () => setUnassignedOnly(false) });
-  if (incidentLinked) activeChips.push({ label: 'Linked incident', onRemove: () => setIncidentLinked(false) });
-  if (colFilters.severity.length>0) activeChips.push({ label:`Severity: ${colFilters.severity.join(', ')}`, onRemove:()=>setColFilter('severity',[]) });
-  if (colFilters.status.length>0)   activeChips.push({ label:`Status: ${colFilters.status.map(fmt).join(', ')}`, onRemove:()=>setColFilter('status',[]) });
-  if (colFilters.creationSource.length>0) activeChips.push({ label:`Created By: ${colFilters.creationSource.map(fmt).join(', ')}`, onRemove:()=>setColFilter('creationSource',[]) });
-  if (colFilters.cveId)    activeChips.push({ label:`CVE: ${colFilters.cveId}`,  onRemove:()=>setColFilter('cveId','') });
-  if (colFilters.package)  activeChips.push({ label:`Package: ${colFilters.package}`, onRemove:()=>setColFilter('package','') });
-  if (colFilters.asset)    activeChips.push({ label:`Asset: ${colFilters.asset}`, onRemove:()=>setColFilter('asset','') });
-  if (colFilters.owner)    activeChips.push({ label:`Owner: ${colFilters.owner}`, onRemove:()=>setColFilter('owner','') });
-  if (colFilters.supportGroup) activeChips.push({ label:`Support Group: ${colFilters.supportGroup}`, onRemove:()=>setColFilter('supportGroup','') });
-  if (colFilters.assignedTo) activeChips.push({ label:`Assigned: ${colFilters.assignedTo}`, onRemove:()=>setColFilter('assignedTo','') });
-  if (dueDateBand)         activeChips.push({ label:`SLA: ${fmt(dueDateBand)}`, onRemove:()=>setDueDateBand(null) });
-  if (assetTypeFilter.length>0) activeChips.push({ label:`Asset Type: ${assetTypeFilter.map(fmt).join(', ')}`, onRemove:()=>setAssetTypeFilter([]) });
+  // Every narrowing filter, including the page-local column filters, is shown as a removable chip.
+  const activeChips: ActiveFilter[] = [];
+  if (groupFilter) activeChips.push({ key: 'group', label: GROUP_OPTIONS.find(option => option.key === groupFilter.field)?.label ?? groupFilter.field, value: groupFilter.value, onRemove: () => setGroupFilter(null) });
+  if (unassignedOnly) activeChips.push({ key: 'unassigned', label: 'Remediation', value: 'Unassigned', onRemove: () => setUnassignedOnly(false) });
+  if (incidentLinked) activeChips.push({ key: 'incident-linked', label: 'Incident', value: 'Linked', onRemove: () => setIncidentLinked(false) });
+  if (colFilters.findingId) activeChips.push({ key:'findingId', label:'Finding ID', value: colFilters.findingId, onRemove:()=>setColFilter('findingId','') });
+  if (colFilters.severity.length>0) activeChips.push({ key:'severity', label:'Severity', value: colFilters.severity.join(', '), onRemove:()=>setColFilter('severity',[]) });
+  if (colFilters.status.length>0)   activeChips.push({ key:'status', label:'Status', value: colFilters.status.map(fmt).join(', '), onRemove:()=>setColFilter('status',[]) });
+  if (colFilters.creationSource.length>0) activeChips.push({ key:'creationSource', label:'Created By', value: colFilters.creationSource.map(fmt).join(', '), onRemove:()=>setColFilter('creationSource',[]) });
+  if (colFilters.cveId)    activeChips.push({ key:'cveId', label:'CVE', value: colFilters.cveId, onRemove:()=>setColFilter('cveId','') });
+  if (colFilters.package)  activeChips.push({ key:'package', label:'Package', value: colFilters.package, onRemove:()=>setColFilter('package','') });
+  if (colFilters.asset)    activeChips.push({ key:'asset', label:'Asset', value: colFilters.asset, onRemove:()=>setColFilter('asset','') });
+  if (colFilters.owner)    activeChips.push({ key:'owner', label:'Owner', value: colFilters.owner, onRemove:()=>setColFilter('owner','') });
+  if (colFilters.supportGroup) activeChips.push({ key:'supportGroup', label:'Support Group', value: colFilters.supportGroup, onRemove:()=>setColFilter('supportGroup','') });
+  if (colFilters.assignedTo) activeChips.push({ key:'assignedTo', label:'Assigned', value: colFilters.assignedTo, onRemove:()=>setColFilter('assignedTo','') });
+  if (colFilters.incidentId) activeChips.push({ key:'incidentId', label:'Incident ID', value: colFilters.incidentId, onRemove:()=>setColFilter('incidentId','') });
+  if (colFilters.risk)     activeChips.push({ key:'risk', label:'Risk at least', value: colFilters.risk, onRemove:()=>setColFilter('risk','') });
+  if (dueDateBand)         activeChips.push({ key:'dueDateBand', label:'SLA', value: fmt(dueDateBand), onRemove:()=>setDueDateBand(null) });
+  if (assetTypeFilter.length>0) activeChips.push({ key:'assetType', label:'Asset Type', value: assetTypeFilter.map(fmt).join(', '), onRemove:()=>setAssetTypeFilter([]) });
 
   // ── selection ──────────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
@@ -648,7 +654,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
     setIncidentAssignmentGroup(''); setIncidentDueDate('');
     setAssignGroupTarget('');
   }
-  function publishActionNotice(message: string, tone: 'info' | 'success' = 'success') {
+  function publishActionNotice(message: string, tone: 'info' | 'success' | 'error' = 'success') {
     setActionNotice({ message, tone });
   }
   async function execAll(payload: Record<string,unknown>) {
@@ -670,7 +676,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
     setSelectedIds(new Set());
   }
   async function handleResolve()     { setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'RESOLVED',actor:actor?.principal}); publishActionNotice(`Resolved ${count.toLocaleString()} finding${count === 1 ? '' : 's'}.`); closeModal(); } catch(e){setActionError(String(e));} finally{setActionLoading(false);} }
-  async function handleReopen()      { if (!hasSelection) return; setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'OPEN',actor:actor?.principal}); publishActionNotice(`Reopened ${count.toLocaleString()} finding${count === 1 ? '' : 's'}.`); } catch(e){console.error(e);} finally{setActionLoading(false); setShowMoreActions(false);} }
+  async function handleReopen()      { if (!hasSelection) return; setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'OPEN',actor:actor?.principal}); publishActionNotice(`Reopened ${count.toLocaleString()} finding${count === 1 ? '' : 's'}.`); } catch(e){publishActionNotice(`Could not reopen the selected findings: ${e instanceof Error ? e.message : String(e)}`, 'error');} finally{setActionLoading(false); setShowMoreActions(false);} }
   async function handleDefer()       { setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'SUPPRESSED',suppressionReason:deferReason||'DEFERRED',suppressedUntil:deferExpiry?new Date(deferExpiry).toISOString():undefined,actor:actor?.principal}); publishActionNotice(`Deferred ${count.toLocaleString()} finding${count === 1 ? '' : 's'}.`); closeModal(); } catch(e){setActionError(String(e));} finally{setActionLoading(false);} }
   async function handleFalsePos()    { setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'SUPPRESSED',suppressionReason:`FALSE_POSITIVE${fpJustification?': '+fpJustification:''}`,actor:actor?.principal}); publishActionNotice(`Marked ${count.toLocaleString()} finding${count === 1 ? '' : 's'} as false positive.`); closeModal(); } catch(e){setActionError(String(e));} finally{setActionLoading(false);} }
   async function handleDuplicate()   { setActionLoading(true); try { const count = selectedFindings.length; await execAll({status:'SUPPRESSED',suppressionReason:`DUPLICATE${duplicateOf?': '+duplicateOf:''}`,actor:actor?.principal}); publishActionNotice(`Marked ${count.toLocaleString()} finding${count === 1 ? '' : 's'} as duplicate.`); closeModal(); } catch(e){setActionError(String(e));} finally{setActionLoading(false);} }
@@ -829,9 +835,9 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
         {row.displayId||row.id}
       </Link>
     );
-    if (key==='cveId') return onOpenCveWorkbench
-      ? <button type="button" className="fpl-cve-link" onClick={()=>onOpenCveWorkbench(row.vulnerabilityId)}>{row.vulnerabilityId}</button>
-      : <span className="mono fpl-cve-text">{row.vulnerabilityId}</span>;
+    if (key==='cveId') return row.vulnerabilityId
+      ? <Link to={pathForVulnRepoView('org-cves', row.vulnerabilityId)} className="fpl-cve-link">{row.vulnerabilityId}</Link>
+      : <span className="mono fpl-cve-text">—</span>;
     if (key==='asset') return <div><div className="fpl-cell-main">{row.assetName}</div><div className="fpl-cell-sub">{fmt(row.assetType)}</div></div>;
     if (key==='owner') return (
       <div>
@@ -888,34 +894,35 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
       'delete':`Delete ${n} Finding${n!==1?'s':''}`,
     };
     return (
-      <div className="fd3-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)closeModal();}}>
-        <div className="fd3-modal" style={{maxWidth:actionModal==='create-incident'?520:440}}>
+      <Dialog isOpen labelledBy="fpl-action-title" onClose={closeModal} busy={actionLoading}
+        busyMessage="Updating the selected findings… this dialog can be closed when the request finishes."
+        className={`fd3-modal fpl-action-modal${actionModal==='create-incident' ? ' fpl-action-modal--wide' : ''}`}>
           <div className="fd3-modal-header">
-            <span>{TITLES[actionModal]}</span>
-            <button className="fd3-modal-close" onClick={closeModal}>✕</button>
+            <span id="fpl-action-title">{TITLES[actionModal]}</span>
+            <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeModal} disabled={actionLoading}>✕</button>
           </div>
           <div className="fd3-modal-body">
-            {actionError && <div className="notice error" style={{marginBottom:12}}>{actionError}</div>}
+            {actionError && <div className="notice error" role="alert" style={{marginBottom:12}}>{actionError}</div>}
             {actionModal==='create-incident' && (
               <div className="fpl-form">
-                <div className="fpl-form-row"><label>Priority</label>
-                  <select value={incidentPriority} onChange={e=>setIncidentPriority(e.target.value)} className="fpl-form-select">
+                <div className="fpl-form-row"><label htmlFor="fpl-incident-priority">Priority</label>
+                  <select id="fpl-incident-priority" value={incidentPriority} onChange={e=>setIncidentPriority(e.target.value)} className="fpl-form-select">
                     <option value="1">1 - Critical</option><option value="2">2 - High</option>
                     <option value="3">3 - Moderate</option><option value="4">4 - Low</option>
                   </select>
                 </div>
-                <div className="fpl-form-row"><label>Assigned To</label><input className="fpl-form-input" value={incidentAssignedTo} onChange={e=>setIncidentAssignedTo(e.target.value)} placeholder="username or email"/></div>
-                <div className="fpl-form-row"><label>Assignment Group</label><input className="fpl-form-input" value={incidentAssignmentGroup} onChange={e=>setIncidentAssignmentGroup(e.target.value)} placeholder="Security Operations"/></div>
-                <div className="fpl-form-row"><label>Due Date</label><input type="date" className="fpl-form-input" value={incidentDueDate} onChange={e=>setIncidentDueDate(e.target.value)}/></div>
-                <div className="fpl-form-row"><label>Notes</label><textarea className="fpl-form-textarea" rows={3} value={incidentNotes} onChange={e=>setIncidentNotes(e.target.value)} placeholder="Remediation context…"/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-incident-assignee">Assigned To</label><input id="fpl-incident-assignee" className="fpl-form-input" value={incidentAssignedTo} onChange={e=>setIncidentAssignedTo(e.target.value)} placeholder="username or email"/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-incident-group">Assignment Group</label><input id="fpl-incident-group" className="fpl-form-input" value={incidentAssignmentGroup} onChange={e=>setIncidentAssignmentGroup(e.target.value)} placeholder="Security Operations"/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-incident-due">Due Date</label><input id="fpl-incident-due" type="date" className="fpl-form-input" value={incidentDueDate} onChange={e=>setIncidentDueDate(e.target.value)}/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-incident-notes">Notes</label><textarea id="fpl-incident-notes" className="fpl-form-textarea" rows={3} value={incidentNotes} onChange={e=>setIncidentNotes(e.target.value)} placeholder="Remediation context…"/></div>
                 <div className="fpl-form-info">Creating for <strong>{n}</strong> finding(s) across <strong>{new Set(selectedFindings.map(f=>f.vulnerabilityId)).size}</strong> CVE(s).</div>
               </div>
             )}
             {actionModal==='defer' && (
               <div className="fpl-form">
                 <p className="fpl-form-desc">Suppress {n} finding(s) until a specified date.</p>
-                <div className="fpl-form-row"><label>Reason</label>
-                  <select value={deferReason} onChange={e=>setDeferReason(e.target.value)} className="fpl-form-select">
+                <div className="fpl-form-row"><label htmlFor="fpl-defer-reason">Reason</label>
+                  <select id="fpl-defer-reason" value={deferReason} onChange={e=>setDeferReason(e.target.value)} className="fpl-form-select">
                     <option value="">Select reason…</option>
                     <option value="RISK_ACCEPTED">Risk Accepted</option>
                     <option value="COMPENSATING_CONTROL">Compensating Control</option>
@@ -923,20 +930,20 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
                     <option value="DEFERRED">Deferred</option>
                   </select>
                 </div>
-                <div className="fpl-form-row"><label>Expires</label><input type="date" className="fpl-form-input" value={deferExpiry} onChange={e=>setDeferExpiry(e.target.value)}/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-defer-expiry">Expires</label><input id="fpl-defer-expiry" type="date" className="fpl-form-input" value={deferExpiry} onChange={e=>setDeferExpiry(e.target.value)}/></div>
               </div>
             )}
             {actionModal==='resolve' && <p className="fpl-form-desc">Mark <strong>{n}</strong> finding(s) as resolved.</p>}
             {actionModal==='false-positive' && (
               <div className="fpl-form">
                 <p className="fpl-form-desc">Suppress <strong>{n}</strong> finding(s) as false positives.</p>
-                <div className="fpl-form-row"><label>Justification</label><textarea className="fpl-form-textarea" rows={3} value={fpJustification} onChange={e=>setFpJustification(e.target.value)} placeholder="Why is this a false positive?"/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-fp-justification">Justification</label><textarea id="fpl-fp-justification" className="fpl-form-textarea" rows={3} value={fpJustification} onChange={e=>setFpJustification(e.target.value)} placeholder="Why is this a false positive?"/></div>
               </div>
             )}
             {actionModal==='duplicate' && (
               <div className="fpl-form">
                 <p className="fpl-form-desc">Mark <strong>{n}</strong> finding(s) as duplicate.</p>
-                <div className="fpl-form-row"><label>Duplicate Of</label><input className="fpl-form-input mono" value={duplicateOf} onChange={e=>setDuplicateOf(e.target.value)} placeholder="Finding ID or Incident ID"/></div>
+                <div className="fpl-form-row"><label htmlFor="fpl-duplicate-of">Duplicate Of</label><input id="fpl-duplicate-of" className="fpl-form-input mono" value={duplicateOf} onChange={e=>setDuplicateOf(e.target.value)} placeholder="Finding ID or Incident ID"/></div>
               </div>
             )}
             {actionModal==='assign' && (() => {
@@ -945,16 +952,16 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
                 <div className="fpl-form">
                   <p className="fpl-form-desc">Assign <strong>{n}</strong> finding{n!==1?'s':''} to an assignment group.</p>
                   <div className="fpl-form-row">
-                    <label>Assignment Group</label>
+                    <label htmlFor="fpl-assign-group">Assignment Group</label>
                     {groups.length > 0
-                      ? <select className="fpl-form-select" value={assignGroupTarget} onChange={e=>setAssignGroupTarget(e.target.value)}>
+                      ? <select id="fpl-assign-group" className="fpl-form-select" value={assignGroupTarget} onChange={e=>setAssignGroupTarget(e.target.value)}>
                           <option value="">— select group —</option>
                           {groups.map(g=><option key={g} value={g}>{g}</option>)}
                           <option value="__custom__">Other…</option>
                         </select>
                       : null}
                     {(groups.length === 0 || assignGroupTarget === '__custom__') &&
-                      <input className="fpl-form-input" value={assignGroupTarget==='__custom__'?'':assignGroupTarget}
+                      <input id={groups.length === 0 ? 'fpl-assign-group' : undefined} aria-label={groups.length > 0 ? 'Other assignment group' : undefined} className="fpl-form-input" value={assignGroupTarget==='__custom__'?'':assignGroupTarget}
                         onChange={e=>setAssignGroupTarget(e.target.value)} placeholder="Enter group name"/>}
                   </div>
                 </div>
@@ -970,7 +977,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
             )}
           </div>
           <div className="fd3-modal-footer">
-            <button className="btn btn-secondary" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={actionLoading}>Cancel</button>
             {actionModal==='delete'
               ? <button className="btn btn-danger" disabled={actionLoading} onClick={()=>void handleDelete()}
                   style={{background:'#ef4444',color:'#fff',borderColor:'#ef4444'}}>
@@ -989,30 +996,29 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
                 </button>
             }
           </div>
-        </div>
-      </div>
+      </Dialog>
     );
   }
 
   function renderQueueDialog() {
     if (!queueDialogMode) return null;
     return (
-      <div className="fd3-modal-overlay" onClick={e=>{if(e.target===e.currentTarget)closeQueueDialog();}}>
-        <div className="fd3-modal" style={{maxWidth:460}}>
+      <Dialog isOpen labelledBy="fpl-queue-title" onClose={closeQueueDialog} busy={queueActionLoading}
+        busyMessage="Saving the queue… this dialog can be closed when the request finishes." className="fd3-modal fpl-queue-modal">
           <div className="fd3-modal-header">
-            <span>{queueDialogMode === 'create' ? 'Save Current View' : 'Edit Saved Queue'}</span>
-            <button className="fd3-modal-close" onClick={closeQueueDialog}>✕</button>
+            <span id="fpl-queue-title">{queueDialogMode === 'create' ? 'Save Current View' : 'Edit Saved Queue'}</span>
+            <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeQueueDialog} disabled={queueActionLoading}>✕</button>
           </div>
           <div className="fd3-modal-body">
-            {queueActionError && <div className="notice error" style={{marginBottom:12}}>{queueActionError}</div>}
+            {queueActionError && <div className="notice error" role="alert" style={{marginBottom:12}}>{queueActionError}</div>}
             <div className="fpl-form">
               <div className="fpl-form-row">
-                <label>Title</label>
-                <input className="fpl-form-input" value={queueTitle} onChange={e=>setQueueTitle(e.target.value)} placeholder="Queue title"/>
+                <label htmlFor="fpl-queue-name">Title</label>
+                <input id="fpl-queue-name" className="fpl-form-input" value={queueTitle} onChange={e=>setQueueTitle(e.target.value)} placeholder="Queue title"/>
               </div>
               <div className="fpl-form-row">
-                <label>Description</label>
-                <textarea className="fpl-form-textarea" rows={3} value={queueDescription} onChange={e=>setQueueDescription(e.target.value)} placeholder="Optional description"/>
+                <label htmlFor="fpl-queue-description">Description</label>
+                <textarea id="fpl-queue-description" className="fpl-form-textarea" rows={3} value={queueDescription} onChange={e=>setQueueDescription(e.target.value)} placeholder="Optional description"/>
               </div>
               <label className="fpl-col-filter-check" style={{marginTop:8}}>
                 <input type="checkbox" checked={queueSetAsDefault} onChange={e=>setQueueSetAsDefault(e.target.checked)} />
@@ -1029,8 +1035,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
               {queueActionLoading ? 'Saving…' : queueDialogMode === 'create' ? 'Save Queue' : 'Save Changes'}
             </button>
           </div>
-        </div>
-      </div>
+      </Dialog>
     );
   }
 
@@ -1044,13 +1049,8 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
         refreshLabel="Refreshing findings while keeping current results visible…"
       />
       {actionNotice && (
-        <div className={`notice${actionNotice.tone === 'success' ? ' success' : ''}`} style={{ marginBottom: 12 }} role="status">
+        <div className={`notice${actionNotice.tone === 'success' ? ' success' : actionNotice.tone === 'error' ? ' error' : ''}`} style={{ marginBottom: 12 }} role={actionNotice.tone === 'error' ? 'alert' : 'status'}>
           {actionNotice.message}
-        </div>
-      )}
-      {workspaceError && (
-        <div className="notice error" style={{ marginBottom: 12 }}>
-          {workspaceError.message}
         </div>
       )}
       {queueActionError && (
@@ -1064,18 +1064,7 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
           <MultiGroupBy options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy}
             label="GROUP BY" placeholder="None" allowEmptyPrimary emptyPrimaryLabel="None" showSelectorsByDefault={false}/>
 
-          {/* active filter chips */}
-          {activeChips.length>0 && (
-            <div className="fpl-active-chips">
-              {activeChips.map((chip,i)=>(
-                <span key={i} className="fpl-chip">
-                  {chip.label}
-                  <button onClick={chip.onRemove} aria-label="Remove filter">✕</button>
-                </span>
-              ))}
-              {activeChips.length>1 && <button className="fpl-chip-clear" onClick={clearAllFilters}>Clear all</button>}
-            </div>
-          )}
+          <ActiveFilterChips filters={activeChips} onClearAll={clearAllFilters} />
         </div>
         <div className="fpl-toolbar-right">
           {queueActionTarget && (
@@ -1110,6 +1099,12 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
         assetCounts={assetCounts}
         dueDateCounts={dueDateCounts}
         summary={summaryQuery.data}
+        summaryState={sourceState(summaryQuery)}
+        distributionsState={sourceState(distributionsQuery)}
+        backlogState={sourceState(backlogHealthQuery)}
+        onRetrySummary={() => void summaryQuery.refetch()}
+        onRetryDistributions={() => void distributionsQuery.refetch()}
+        onRetryBacklog={() => void backlogHealthQuery.refetch()}
         severityColors={SEV_COLORS}
         statusColors={STATUS_COLORS}
         formatLabel={fmt}
@@ -1149,8 +1144,8 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
 
           {/* More actions "..." dropdown */}
           <div className="fpl-more-wrap" ref={moreActionsRef}>
-            <button className={`fpl-more-btn${showMoreActions?' fpl-more-btn--open':''}`}
-              onClick={()=>setShowMoreActions(p=>!p)} title="More actions">
+            <button type="button" className={`fpl-more-btn${showMoreActions?' fpl-more-btn--open':''}`}
+              onClick={()=>setShowMoreActions(p=>!p)} title="More actions" aria-label="More actions" aria-expanded={showMoreActions}>
               <span className="fpl-more-dots">•••</span>
             </button>
             {showMoreActions && (
@@ -1169,23 +1164,30 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
             )}
           </div>
 
-          {/* Selected count badge */}
-          {selectedIds.size > 0 && (
-            <span className="fpl-sel-badge">{selectedIds.size} selected</span>
+          {findingsQuery.data && (
+            <ResultScope
+              offset={page * PAGE_SIZE}
+              count={allRows.length}
+              total={totalItems}
+              noun="finding"
+              filtered={activeChips.length > 0}
+              selectedCount={selectedIds.size}
+            />
           )}
         </div>
 
         <div className="fpl-list-bar-right">
           {/* Column visibility — gear icon */}
           <div className="fpl-colvis-wrap" ref={colVisRef}>
-            <button className={`fpl-colvis-btn${showColVis?' fpl-colvis-btn--open':''}`}
-              onClick={()=>{setShowColVis(p=>!p);setOpenColFilter(null);}} title="Column settings">
+            <button type="button" className={`fpl-colvis-btn${showColVis?' fpl-colvis-btn--open':''}`}
+              onClick={()=>{setShowColVis(p=>!p);setOpenColFilter(null);}} title="Column settings" aria-label="Column settings" aria-expanded={showColVis}>
               <svg viewBox="0 0 20 20" width="15" height="15" fill="currentColor" aria-hidden>
                 <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/>
               </svg>
             </button>
             {showColVis && (
-              <div className="fpl-colvis-popover fpl-colvis-popover--right">
+              <div className="fpl-colvis-popover fpl-colvis-popover--right" role="group" aria-label="Visible columns"
+                onKeyDown={e=>{ if (e.key==='Escape') { setShowColVis(false); (colVisRef.current?.querySelector('.fpl-colvis-btn') as HTMLButtonElement | null)?.focus(); } }}>
                 <div className="fpl-colvis-header"><span>VISIBLE COLUMNS</span><button className="fpl-col-filter-clear" onClick={()=>saveColVis(new Set(DEFAULT_VISIBLE))}>Reset</button></div>
                 {ALL_COLUMNS.filter(c=>!c.alwaysVisible).map(c=>(
                   <label key={c.key} className="fpl-colvis-item">
@@ -1210,7 +1212,12 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
 
       {/* ── main table ───────────────────────────────────────────────────── */}
       <div className="fpl-table-wrap">
-        {findingsQuery.error && <div className="notice error">Failed to load findings: {String(findingsQuery.error)}</div>}
+        {findingsQuery.isError && findingsQuery.data ? (
+          <div className="notice warning async-section-notice" role="status" style={{ marginBottom: 12 }}>
+            <span>Findings could not be refreshed. Showing the last loaded results.</span>
+            <button type="button" className="btn btn-sm" disabled={findingsQuery.isFetching} onClick={() => void findingsQuery.refetch()}>Retry</button>
+          </div>
+        ) : null}
         {refreshingResults && rows.length > 0 ? (
           <div className="notice" role="status" style={{ marginBottom: 12 }}>
             Updating results for the active filters. Current rows stay visible until the refresh completes.
@@ -1230,11 +1237,20 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
               </tr>
             </thead>
             <tbody>
-              {initialLoading && rows.length===0 ? (
-                <tr><td colSpan={visColDefs.length+1} className="fpl-loading-row">Loading findings…</td></tr>
+              {findingsQuery.isError && !findingsQuery.data ? (
+                <tr><td colSpan={visColDefs.length+1} className="fpl-empty-row">
+                  <div className="notice error async-section-notice" role="alert">
+                    <span>Findings could not be loaded{findingsQuery.error instanceof Error ? `: ${findingsQuery.error.message}` : '.'}</span>
+                    <button type="button" className="btn btn-sm" disabled={findingsQuery.isFetching} onClick={() => void findingsQuery.refetch()}>
+                      {findingsQuery.isFetching ? 'Retrying…' : 'Retry'}
+                    </button>
+                  </div>
+                </td></tr>
+              ) : !findingsQuery.data ? (
+                <tr><td colSpan={visColDefs.length+1} className="fpl-loading-row" role="status">Loading findings…</td></tr>
               ) : rows.length===0 ? (
                 <tr><td colSpan={visColDefs.length+1} className="fpl-empty-row">
-                  {(findingsQuery.data?.totalItems ?? 0) === 0 && activeChips.length === 0 ? (
+                  {totalItems === 0 && activeChips.length === 0 ? (
                     <div className="empty-state-inline">
                       <strong>No findings yet</strong>
                       <p>Findings are generated when ingested vulnerabilities are correlated with your software inventory.</p>
@@ -1242,8 +1258,8 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
                     </div>
                   ) : (
                     <>
-                      No findings matched the current filters.{' '}
-                      {activeChips.length>0 && <button className="fpl-link-btn" onClick={clearAllFilters}>Clear filters</button>}
+                      <span role="status">No findings matched the current filters.</span>{' '}
+                      {activeChips.length>0 && <button type="button" className="fpl-link-btn" onClick={clearAllFilters}>Clear filters</button>}
                     </>
                   )}
                 </td></tr>
@@ -1264,30 +1280,31 @@ export function FindingsPage({ onOpenCveWorkbench }: FindingsPageProps = {}) {
           </table>
         </div>
 
-        <div className="fpl-pagination">
-          <button className="btn btn-secondary btn-inline" disabled={page<=0||loading} onClick={()=>setPage(p=>Math.max(0,p-1))}>← Prev</button>
-          <span className="fpl-page-info">
-            {totalItems===0 ? 'No results' : `Page ${page+1} of ${Math.max(1,totalPages)} · ${totalItems.toLocaleString()} findings`}
-          </span>
-          <button
-            className="btn btn-secondary btn-inline"
-            disabled={loading || !nextCursor}
-            onClick={() => {
-              if (!nextCursor) return;
-              setPageCursors((prev) => {
-                if (prev[page + 1] === nextCursor) {
-                  return prev;
-                }
-                const next = prev.slice(0, page + 1);
-                next.push(nextCursor);
-                return next;
-              });
-              setPage(p => p + 1);
-            }}
-          >
-            Next →
-          </button>
-        </div>
+        {findingsQuery.data && rows.length < allRows.length ? (
+          <p className="queue-result-scope">
+            {rows.length.toLocaleString()} of {allRows.length.toLocaleString()} rows on this page match the column filters.
+          </p>
+        ) : null}
+        <Pager
+          page={page}
+          totalPages={findingsQuery.data ? totalPages : null}
+          hasNext={!!nextCursor}
+          disabled={loading}
+          label="Findings pages"
+          onPrevious={() => setPage(p => Math.max(0, p - 1))}
+          onNext={() => {
+            if (!nextCursor) return;
+            setPageCursors((prev) => {
+              if (prev[page + 1] === nextCursor) {
+                return prev;
+              }
+              const next = prev.slice(0, page + 1);
+              next.push(nextCursor);
+              return next;
+            });
+            setPage(p => p + 1);
+          }}
+        />
       </div>
 
       {renderModal()}

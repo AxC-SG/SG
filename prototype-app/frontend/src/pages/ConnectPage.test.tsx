@@ -227,7 +227,7 @@ describe('ConnectPage', () => {
 
     renderConnectPage(TENANT_ADMIN);
 
-    expect(await screen.findByLabelText(/last sync failed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/last sync failed/i)).toBeInTheDocument();
     expect(screen.getByText('ServiceNow')).toBeInTheDocument();
   });
 
@@ -254,7 +254,25 @@ describe('ConnectPage', () => {
     expect(screen.getAllByText('Jira').some((element) => element.closest('button') != null)).toBe(true);
     expect(screen.getByText(/Overrides ServiceNow ticketing/i)).toBeInTheDocument();
     expect(screen.getByText(/When Jira is enabled it overrides ServiceNow for new tickets/i)).toBeInTheDocument();
-    expect(await screen.findByLabelText(/connection test passed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/connection test passed/i)).toBeInTheDocument();
+  });
+
+  it('names catalog status in text and never reports a failed or pending configuration read as not configured', async () => {
+    vi.spyOn(api, 'getServiceNowCmdbConfig').mockRejectedValue(new Error('config service down'));
+    vi.spyOn(api, 'getAwsDiscoveryConfig').mockImplementation(() => new Promise(() => undefined));
+    renderConnectPage(TENANT_ADMIN);
+
+    const cardFor = (name: string) => screen.getAllByText(name).find((element) => element.closest('button'))!.closest('button')!;
+    await waitFor(() => expect(cardFor('ServiceNow')).toHaveTextContent('Status unavailable — configuration could not be loaded'));
+    expect(cardFor('ServiceNow')).not.toHaveTextContent('Not configured');
+    expect(cardFor('AWS')).toHaveTextContent('Checking status…');
+    // Generic Azure collection is paused (N11): the card says so instead of "Not configured".
+    expect(cardFor('Azure')).toHaveTextContent('Paused for the pilot — read-only');
+    // A source the catalog does not summarise does not claim a configuration state either.
+    expect(cardFor('SBOM API Endpoint')).toHaveTextContent('Open to view status');
+    await waitFor(() => expect(cardFor('SCCM/MECM')).toHaveTextContent('Not configured'));
+    expect(cardFor('ServiceNow').querySelector('.connect-source-dot')).toHaveClass('connect-source-dot--unknown');
+    expect(cardFor('ServiceNow').querySelector('.connect-source-dot')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('offers the Google Cloud discovery connector in the Inventory section', async () => {
@@ -289,7 +307,7 @@ describe('ConnectPage', () => {
 
     // A ticketing connector never syncs inventory, so its health reads as a test result rather
     // than a missing last-sync timestamp.
-    expect(await screen.findByLabelText(/last connection test failed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/last connection test failed/i)).toBeInTheDocument();
   });
 
   it('keeps platform-owned vulnerability connector management hidden from tenant users', async () => {
