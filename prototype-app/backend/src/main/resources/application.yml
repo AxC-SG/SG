@@ -203,6 +203,7 @@ app:
       base-url: ${RESEND_BASE_URL:https://api.resend.com}
       api-key: ${RESEND_API_KEY:}
       from: ${RESEND_FROM_EMAIL:}
+      from-domain: ${RESEND_FROM_DOMAIN:scoutgrid.io}
   sbom-fetch:
     max-payload-bytes: ${SBOM_FETCH_MAX_PAYLOAD_BYTES:5242880}
     allow-user-auth-header: ${SBOM_FETCH_ALLOW_USER_AUTH_HEADER:false}

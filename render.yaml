@@ -61,7 +61,11 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
-        sync: false
+        value: "Scout.ai <noreply@scoutgrid.io>"
+      - key: RESEND_FROM_DOMAIN
+        value: scoutgrid.io
+      - key: APP_DEMO_APP_BASE_URL
+        value: https://scoutgrid.io
       - key: APP_TEST_PERSONAS_ENABLED
         value: "false"
       - key: APP_ALLOW_API_KEY_AUTH

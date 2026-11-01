@@ -977,7 +977,7 @@ public final class ProductionBootstrapCli {
                     env("RESEND_BASE_URL", "https://api.resend.com"),
                     env("RESEND_API_KEY", ""),
                     env("RESEND_FROM_EMAIL", ""),
-                    env("RESEND_FROM_DOMAIN", "hossstore.in"));
+                    env("RESEND_FROM_DOMAIN", "scoutgrid.io"));
         }
     }
 
