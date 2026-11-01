@@ -5,6 +5,7 @@ Verified on 1 November 2026 (Asia/Kolkata).
 ## Configuration
 
 - Provider: Resend, connected and configured through MCP.
+- Source repository: [AxG-SG/SG](https://github.com/AxG-SG/SG). Resend is an API-based delivery provider; the Render backend owns the Git source connection. See [deployment sources](deployment-sources.md) for the repository migration status.
 - Verified sending domain: `scoutgrid.io`; DKIM and SPF verified, sending enabled.
 - Sender: `Scout.ai <noreply@scoutgrid.io>`.
 - Application key: `ScoutGrid_Application_Email_2026_11`, sending-only and restricted to the verified domain.

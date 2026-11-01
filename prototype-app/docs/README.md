@@ -13,6 +13,7 @@ Updated October 28, 2026 against the UI 2.0 source in this checkout. Runtime cod
 | [Database](database.md) | Schema ownership, projections, migration lines and tenant control plane |
 | [Business logic](business-logic-guide.md) | End-to-end workflows and supported/contained capabilities |
 | [CI security](ci-security.md) | Security scanners and frontend regression gates |
+| [Deployment sources](deployment-sources.md) | Canonical GitHub repository, Vercel frontend settings, Render backend source, and Resend configuration ownership |
 
 The [UI 2.0 migration record](<../Working Knowledge/New UI 2.0/README.md>) retains the previous state, implemented plans, current state, historical evidence and rollback material. Implementation completion does not imply final branch-tip release qualification; its outstanding evidence is listed in [CURRENT_STATE.md](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>).
 

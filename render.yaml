@@ -4,6 +4,8 @@
 services:
   - type: web
     name: scout-backend
+    repo: https://github.com/AxG-SG/SG
+    branch: main
     runtime: docker
     plan: free
     region: oregon
