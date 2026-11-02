@@ -6,6 +6,7 @@ import com.prototype.vulnwatch.domain.CbomPostureSummary;
 import com.prototype.vulnwatch.domain.CbomRiskFinding;
 import com.prototype.vulnwatch.domain.CbomRiskSeverity;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.dto.CbomBomAssetResponse;
 import com.prototype.vulnwatch.dto.CbomComponentResponse;
 import com.prototype.vulnwatch.dto.CbomPostureSummaryResponse;
 import com.prototype.vulnwatch.dto.CbomRiskFindingResponse;
@@ -28,15 +29,18 @@ public class CbomReadService {
     private final CbomPostureSummaryRepository postureSummaryRepository;
     private final CbomComponentRepository componentRepository;
     private final CbomRiskFindingRepository findingRepository;
+    private final CbomFindingMirrorService findingMirror;
 
     public CbomReadService(
             CbomPostureSummaryRepository postureSummaryRepository,
             CbomComponentRepository componentRepository,
-            CbomRiskFindingRepository findingRepository
+            CbomRiskFindingRepository findingRepository,
+            CbomFindingMirrorService findingMirror
     ) {
         this.postureSummaryRepository = postureSummaryRepository;
         this.componentRepository = componentRepository;
         this.findingRepository = findingRepository;
+        this.findingMirror = findingMirror;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +74,28 @@ public class CbomReadService {
         return components.stream().map(component -> toComponentResponse(component, findingsByComponent.getOrDefault(component.getId(), List.of()))).toList();
     }
 
+    /** The assets one CBOM document reported, riskiest first, each with its findings of any status. */
+    @Transactional(readOnly = true)
+    public List<CbomBomAssetResponse> listAssetsForBom(Tenant tenant, UUID bomId) {
+        List<CbomComponent> components = componentRepository
+                .findByTenant_IdAndSourceBom_IdAndActiveTrueOrderByRiskScoreDescNameAsc(tenant.getId(), bomId);
+        List<UUID> componentIds = components.stream().map(CbomComponent::getId).toList();
+        Map<UUID, List<CbomRiskFinding>> findingsByComponent = componentIds.isEmpty()
+                ? Map.of()
+                : findingRepository.findByTenant_IdAndComponent_IdIn(tenant.getId(), componentIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(f -> f.getComponent().getId()));
+        return components.stream()
+                .map(component -> {
+                    List<CbomRiskFinding> findings = findingsByComponent.getOrDefault(component.getId(), List.of());
+                    return new CbomBomAssetResponse(
+                            toComponentResponse(component, findings),
+                            findings.stream().map(this::toFindingResponse).toList()
+                    );
+                })
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<CbomRiskFindingResponse> listFindings(Tenant tenant, UUID assetId, String severity) {
         List<CbomRiskFinding> findings;
@@ -96,7 +122,9 @@ public class CbomReadService {
         CbomRiskFinding finding = findingRepository.findByIdAndTenant_Id(findingId, tenant.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CBOM finding not found"));
         finding.setStatus(CbomFindingStatus.ACCEPTED);
-        return toFindingResponse(findingRepository.save(finding));
+        CbomRiskFinding saved = findingRepository.save(finding);
+        findingMirror.syncTenant(tenant);
+        return toFindingResponse(saved);
     }
 
     private CbomPostureSummaryResponse toPostureResponse(CbomPostureSummary summary) {

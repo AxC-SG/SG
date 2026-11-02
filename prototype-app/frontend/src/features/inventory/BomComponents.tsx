@@ -7,6 +7,13 @@ import { BomComponentDetailPanel } from './BomComponentDetailPanel';
 import { ApplicationDetailPanel } from './ApplicationDetailPanel';
 
 const PAGE_SIZE = 100;
+// Rows the server adds for a CBOM's cryptographic assets. They have no software component detail;
+// the asset list is in the CBOM's BOM Inventory detail.
+const CRYPTO_ECOSYSTEM = 'crypto';
+
+function isCrypto(item: BomComponentSummaryItem): boolean {
+  return item.ecosystem === CRYPTO_ECOSYSTEM;
+}
 
 function bomLabel(type: string): string {
   return type === 'AI_BOM' ? 'AI BOM' : type;
@@ -418,18 +425,18 @@ export function BomComponents() {
             className="filter-input"
             placeholder="Filter component name…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); resetPage(); }}
             style={{ flex: '1 1 180px', minWidth: 140 }}
           />
           <select className="filter-input" style={{ width: 'auto' }} value={ecosystemFilter}
-            onChange={(e) => setEcosystemFilter(e.target.value)}>
+            onChange={(e) => { setEcosystemFilter(e.target.value); resetPage(); }}>
             <option value="">All ecosystems</option>
             {ecosystems.map((eco) => (
               <option key={eco} value={eco}>{eco}</option>
             ))}
           </select>
           <select className="filter-input" style={{ width: 'auto' }} value={riskFilter}
-            onChange={(e) => setRiskFilter(e.target.value)}>
+            onChange={(e) => { setRiskFilter(e.target.value); resetPage(); }}>
             <option value="">All risk levels</option>
             <option value="CRITICAL">Critical</option>
             <option value="HIGH">High</option>
@@ -438,7 +445,7 @@ export function BomComponents() {
             <option value="NONE">None</option>
           </select>
           <select className="filter-input" style={{ width: 'auto' }} value={bomTypeFilter}
-            onChange={(e) => setBomTypeFilter(e.target.value)}>
+            onChange={(e) => { setBomTypeFilter(e.target.value); resetPage(); }}>
             <option value="">All BOM types</option>
             <option value="SBOM">SBOM</option>
             <option value="AI_BOM">AI BOM</option>
@@ -486,8 +493,9 @@ export function BomComponents() {
                   return (
                     <tr
                       key={c.componentId}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => { setSelectedComponent(c); setView('component-detail'); }}
+                      style={{ cursor: isCrypto(c) ? 'default' : 'pointer' }}
+                      title={isCrypto(c) ? 'Cryptographic asset — open the CBOM in BOM Inventory for its details' : undefined}
+                      onClick={isCrypto(c) ? undefined : () => { setSelectedComponent(c); setView('component-detail'); }}
                     >
                       <td>
                         <div style={{ fontWeight: 600 }}>{c.packageName}</div>
@@ -506,7 +514,14 @@ export function BomComponents() {
                             : <BomTypeTag type="UNMAPPED" />}
                         </div>
                       </td>
-                      <td style={{ fontWeight: 600 }}>{appCount}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{c.assetName}</div>
+                        {appCount > 1 && (
+                          <div className="panel-caption" style={{ fontSize: 10 }}>
+                            +{appCount - 1} other {appCount - 1 === 1 ? 'application' : 'applications'}
+                          </div>
+                        )}
+                      </td>
                       <td><RiskPill level={c.riskLevel} /></td>
                       <td>
                         {c.totalCveCount > 0

@@ -179,6 +179,25 @@ describe('FindingDetailPage', () => {
     expect(lookup).toHaveBeenCalledWith(FINDING.id);
   });
 
+  it('shows a crypto finding as its own panel and never looks its rule id up as a CVE', async () => {
+    const cveDetail = vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockRejectedValue(new Error('skip'));
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+
+    renderWithFinding({
+      ...FINDING,
+      findingKind: 'CRYPTO',
+      vulnerabilityId: 'CBOM-WEAK-HASH',
+      packageName: 'SHA-1',
+      evidence: JSON.stringify({ detail: 'SHA-1 collisions are practical', recommendation: 'Move to SHA-256' }),
+    });
+
+    expect(await screen.findByText('Crypto finding')).toBeInTheDocument();
+    expect(screen.getByText('SHA-1 collisions are practical')).toBeInTheDocument();
+    expect(screen.getByText('Move to SHA-256')).toBeInTheDocument();
+    expect(screen.queryByText('Vulnerability')).not.toBeInTheDocument();
+    expect(cveDetail).not.toHaveBeenCalled();
+  });
+
   it('explains a missing finding without claiming the link works', async () => {
     vi.spyOn(api, 'getFinding').mockRejectedValue(new ApiError('Not found', 404));
 

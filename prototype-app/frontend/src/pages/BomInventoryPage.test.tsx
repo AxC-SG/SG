@@ -92,4 +92,26 @@ describe('BomInventoryPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(remove).toHaveBeenCalledTimes(2);
   });
+
+  it('shows a CBOM\'s cryptographic assets in its detail instead of the empty component table', async () => {
+    const cbom = { ...BOM_ITEM, id: 'bom-c', bomType: 'CBOM', supplier: 'Crypto Supplier', componentCount: 9 };
+    vi.spyOn(api, 'getBomDashboard').mockResolvedValue(EMPTY_DASHBOARD);
+    vi.spyOn(api, 'listBomInventory').mockResolvedValue([cbom]);
+    vi.spyOn(api, 'getBomLineage').mockResolvedValue([]);
+    vi.spyOn(api, 'getBomDetail').mockResolvedValue({
+      ...cbom,
+      sourceReference: '',
+      checksumSha256: '',
+      inspection: { format: 'CycloneDX', formatVersion: '1.6', specFamily: 'cyclonedx', documentFormat: 'json', supportLevel: 'current', supported: true, warnings: [] },
+      workflowSummary: [],
+      components: [],
+    } as never);
+    const assets = vi.spyOn(api, 'listCbomAssetsForBom').mockResolvedValue([]);
+    renderWithProviders(<BomInventoryPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View BOM detail for Crypto Supplier' }));
+    expect(await screen.findByText('Cryptographic assets (0)')).toBeInTheDocument();
+    expect(screen.queryByText('No components recorded.')).not.toBeInTheDocument();
+    expect(assets).toHaveBeenCalledWith('bom-c');
+  });
 });

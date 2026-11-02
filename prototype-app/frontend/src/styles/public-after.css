@@ -191,6 +191,10 @@ html:where(:not([data-ui='2'])),
   margin-bottom: 4px;
 }
 
+:where(html:not([data-ui='2'])) .nav-sub-list[hidden] {
+  display: none;
+}
+
 :where(html:not([data-ui='2'])) .nav-sub-btn {
   width: 100%;
   border: 1px solid transparent;

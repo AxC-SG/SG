@@ -1,0 +1,25 @@
+package com.prototype.vulnwatch.dto;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Result of a pipeline push. {@code action} is CREATED, REPLACED, or UNCHANGED when the same
+ * document was already the source's current version (a retried pipeline step).
+ */
+public record BomIngestResponse(
+        UUID bomId,
+        UUID assetId,
+        UUID sourceId,
+        String bomType,
+        String format,
+        String formatVersion,
+        String documentFormat,
+        boolean supported,
+        List<String> warnings,
+        int componentCount,
+        int findingsGenerated,
+        String status,
+        String action,
+        String statusUrl
+) {}

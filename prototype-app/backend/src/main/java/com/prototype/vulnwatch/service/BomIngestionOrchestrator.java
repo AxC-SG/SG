@@ -77,6 +77,7 @@ import org.w3c.dom.NodeList;
 public class BomIngestionOrchestrator {
 
     public static final long MAX_BOM_BYTES = BomInputLimits.MAX_BOM_BYTES;
+    public static final String DUPLICATE_BOM_MESSAGE = "This BOM serial number has already been ingested";
 
     private final SbomEndpointFetchService sbomEndpointFetchService;
     private final SbomContentIngestionService sbomContentIngestionService;
@@ -199,6 +200,38 @@ public class BomIngestionOrchestrator {
         );
         return sbomIngestionLockService.withAssetLock(tenant, assetIdentifier, () ->
                 ingestBytes(tenant, bomType, supplier, null, "UPLOAD", content, legacyRequest, metadata, null, selector)
+        );
+    }
+
+    /**
+     * Ingest from an automated pipeline. The pipeline label, build and key are kept on the stored
+     * record (system, label and endpoint) so the push can be traced; the correlator is the
+     * source reference.
+     */
+    public BomIngestionResultResponse ingestFromApi(
+            Tenant tenant,
+            BomType bomType,
+            com.prototype.vulnwatch.domain.AssetType assetType,
+            String assetName,
+            String assetIdentifier,
+            String supplier,
+            byte[] content,
+            String contentType,
+            String pipeline,
+            String buildLabel,
+            String correlator,
+            String keyReference,
+            BomSourceSelector selector
+    ) throws IOException {
+        SbomEndpointIngestionRequest legacyRequest = new SbomEndpointIngestionRequest(
+                assetType, assetName, assetIdentifier, null, buildLabel, null
+        );
+        SbomIngestionSourceMetadata metadata = new SbomIngestionSourceMetadata(
+                "API", pipeline, correlator, keyReference, null, contentType,
+                (long) content.length, null
+        );
+        return sbomIngestionLockService.withAssetLock(tenant, assetIdentifier, () ->
+                ingestBytes(tenant, bomType, supplier, null, "API", content, legacyRequest, metadata, null, selector)
         );
     }
 
@@ -334,10 +367,19 @@ public class BomIngestionOrchestrator {
         if (format == SbomFormat.UNKNOWN) {
             throw new IOException("Unsupported or unrecognized BOM format");
         }
+        // SPDX XML is mapped onto the tree SPDX JSON would have produced, so everything below the
+        // document boundary treats the two serializations identically. Only CycloneDX XML needs
+        // the DOM-based component path.
+        JsonNode spdxXmlRoot = isXml && format == SbomFormat.SPDX ? sbomParserService.readSpdxXml(content) : null;
+        boolean cycloneDxXml = isXml && spdxXmlRoot == null;
         String serialNumber;
         String formatVersion;
         JsonNode root;
-        if (isXml) {
+        if (spdxXmlRoot != null) {
+            root = spdxXmlRoot;
+            serialNumber = extractSerialNumber(root);
+            formatVersion = extractFormatVersion(root, format);
+        } else if (isXml) {
             String[] xmlMeta = extractXmlBomAttributes(content);
             serialNumber = xmlMeta[0];
             formatVersion = xmlMeta[1];
@@ -354,7 +396,7 @@ public class BomIngestionOrchestrator {
         if (bomType == BomType.CBOM) {
             cbomIngestionService.validateContent(content);
         } else {
-            parsedComponents = isXml
+            parsedComponents = cycloneDxXml
                     ? extractAndCategorizeXmlComponents(content, tenant, bomType, supplier)
                     : extractAndCategorizeComponents(root, tenant, bomType, supplier);
             if (parsedComponents.isEmpty()) {
@@ -403,7 +445,7 @@ public class BomIngestionOrchestrator {
             BomIngestionRecord existing = existingOpt.get();
             if ((serialNumber != null && serialNumber.equals(existing.getSerialNumber()))
                     || (contentChecksum.equals(existing.getChecksumSha256()) && contentChecksum != null && !contentChecksum.isBlank())) {
-                throw new IOException("This BOM serial number has already been ingested");
+                throw new IOException(DUPLICATE_BOM_MESSAGE);
             }
         }
 
@@ -611,6 +653,9 @@ public class BomIngestionOrchestrator {
     }
 
     private String originalFilenameFor(String sourceMethod) {
+        if ("API".equalsIgnoreCase(sourceMethod)) {
+            return "bom-api";
+        }
         return "UPLOAD".equalsIgnoreCase(sourceMethod) ? "bom-upload" : "bom-endpoint";
     }
 
@@ -765,7 +810,9 @@ public class BomIngestionOrchestrator {
 
     private String extractSerialNumber(JsonNode root) {
         String serial = root.path("serialNumber").asText(null);
-        if (serial == null) serial = root.path("SPDXID").asText(null);
+        // An SPDX document's own SPDXID is the constant "SPDXRef-DOCUMENT", so it cannot tell two
+        // versions apart; documentNamespace is the SPDX-defined unique document identifier.
+        if (serial == null) serial = root.path("documentNamespace").asText(null);
         return blankToNull(serial);
     }
 

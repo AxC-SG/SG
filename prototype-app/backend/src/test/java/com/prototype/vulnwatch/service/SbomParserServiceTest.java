@@ -154,4 +154,106 @@ class SbomParserServiceTest {
                         .anyMatch(warning -> warning.contains("not in the supported matrix"))
         );
     }
+
+    private static final String SPDX_JSON = """
+            {
+              "spdxVersion": "SPDX-2.3",
+              "SPDXID": "SPDXRef-DOCUMENT",
+              "documentNamespace": "https://example.test/spdx/app-1",
+              "packages": [
+                {
+                  "name": "lodash",
+                  "SPDXID": "SPDXRef-lodash",
+                  "versionInfo": "4.17.21",
+                  "licenseDeclared": "MIT",
+                  "checksums": [{"algorithm": "SHA256", "checksumValue": "abc123"}],
+                  "externalRefs": [
+                    {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl",
+                     "referenceLocator": "pkg:npm/lodash@4.17.21"}
+                  ]
+                }
+              ]
+            }
+            """;
+
+    private static final String SPDX_XML = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Document xmlns="http://spdx.org/spdxdocs/app-1">
+              <spdxVersion>SPDX-2.3</spdxVersion>
+              <SPDXID>SPDXRef-DOCUMENT</SPDXID>
+              <documentNamespace>https://example.test/spdx/app-1</documentNamespace>
+              <packages>
+                <name>lodash</name>
+                <SPDXID>SPDXRef-lodash</SPDXID>
+                <versionInfo>4.17.21</versionInfo>
+                <licenseDeclared>MIT</licenseDeclared>
+                <checksums>
+                  <algorithm>SHA256</algorithm>
+                  <checksumValue>abc123</checksumValue>
+                </checksums>
+                <externalRefs>
+                  <referenceCategory>PACKAGE-MANAGER</referenceCategory>
+                  <referenceType>purl</referenceType>
+                  <referenceLocator>pkg:npm/lodash@4.17.21</referenceLocator>
+                </externalRefs>
+              </packages>
+            </Document>
+            """;
+
+    @Test
+    void spdxXmlIsDetectedAndParsesToTheSameComponentsAsSpdxJson() throws Exception {
+        byte[] xml = SPDX_XML.getBytes(StandardCharsets.UTF_8);
+
+        Assertions.assertEquals(SbomFormat.SPDX, parser.detectFormat(xml));
+
+        List<ParsedComponent> fromXml = parser.parse(xml);
+        List<ParsedComponent> fromJson = parser.parse(SPDX_JSON.getBytes(StandardCharsets.UTF_8));
+        Assertions.assertEquals(1, fromXml.size());
+        Assertions.assertEquals(fromJson, fromXml);
+        Assertions.assertEquals("lodash", fromXml.get(0).packageName());
+        Assertions.assertEquals("4.17.21", fromXml.get(0).version());
+        Assertions.assertEquals("pkg:npm/lodash@4.17.21", fromXml.get(0).purl());
+    }
+
+    @Test
+    void spdxXmlInspectionReportsVersionAndXmlDocumentFormat() throws Exception {
+        BomInspectionResponse inspection = parser.inspect(SPDX_XML.getBytes(StandardCharsets.UTF_8));
+
+        Assertions.assertEquals("SPDX", inspection.specFamily());
+        Assertions.assertEquals("XML", inspection.documentFormat());
+        Assertions.assertEquals("2.3", inspection.formatVersion());
+        Assertions.assertTrue(inspection.supported());
+    }
+
+    @Test
+    void spdxXmlWithSeveralPackagesAndOneExternalRefKeepsArrays() throws Exception {
+        String xml = SPDX_XML.replace("</Document>", """
+                  <packages>
+                    <name>left-pad</name>
+                    <versionInfo>1.3.0</versionInfo>
+                  </packages>
+                </Document>
+                """);
+
+        List<ParsedComponent> parsed = parser.parse(xml.getBytes(StandardCharsets.UTF_8));
+
+        Assertions.assertEquals(2, parsed.size());
+        Assertions.assertEquals("left-pad", parsed.get(1).packageName());
+    }
+
+    @Test
+    void spdxXmlRejectsDoctypeDeclarations() {
+        String hostile = "<!DOCTYPE Document [<!ENTITY x SYSTEM \"file:///etc/passwd\">]>"
+                + "<Document><spdxVersion>SPDX-2.3</spdxVersion><packages><name>&x;</name></packages></Document>";
+
+        Assertions.assertEquals(SbomFormat.UNKNOWN, detectQuietly(hostile));
+    }
+
+    private SbomFormat detectQuietly(String content) {
+        try {
+            return parser.detectFormat(content.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            return SbomFormat.UNKNOWN;
+        }
+    }
 }

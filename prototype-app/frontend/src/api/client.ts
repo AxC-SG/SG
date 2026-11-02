@@ -220,6 +220,12 @@ export type CbomRiskFinding = {
   lastSeenAt: string;
 };
 
+/** One cryptographic asset reported by a CBOM document, with the findings raised against it. */
+export type CbomBomAsset = {
+  asset: CbomComponent;
+  findings: CbomRiskFinding[];
+};
+
 export type IngestionJobAccepted = {
   jobId: string;
   status: string;
@@ -394,7 +400,25 @@ export type BomInventoryItem = {
   status: string;
   ingestedAt: string;
   ingestedBy: string;
+  // Set by pipeline pushes: the build the push came from and its correlator.
+  sourceLabel?: string | null;
+  sourceReference?: string | null;
 };
+
+export type BomIngestKey = {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  state: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+};
+
+/** `token` is the only time the full key is returned. */
+export type CreatedBomIngestKey = { key: BomIngestKey; token: string };
 
 export type BomComponent = {
   id: string;
@@ -690,6 +714,12 @@ import type {
 } from '../features/ai-security/types';
 
 const API_BASE = resolveApiBase();
+
+/** Absolute API base for documentation snippets; a relative base is resolved against this origin. */
+export function absoluteApiBase(): string {
+  if (/^https?:\/\//i.test(API_BASE)) return API_BASE;
+  return `${typeof window === 'undefined' ? '' : window.location.origin}${API_BASE}`;
+}
 const API_KEY = import.meta.env.DEV ? (import.meta.env.VITE_API_KEY ?? 'change-me-in-prod') : '';
 const CREATOR_KEY = import.meta.env.DEV ? (import.meta.env.VITE_CREATOR_KEY ?? 'local-creator') : '';
 const DEFAULT_TENANT_ID = import.meta.env.DEV ? (import.meta.env.VITE_TENANT_ID ?? '1') : '';
@@ -2287,6 +2317,14 @@ export const api = {
     request<void>(`/tenants/${encodeURIComponent(tenantId)}/invites/${encodeURIComponent(inviteId)}`, {
       method: 'DELETE'
     }),
+  listBomIngestKeys: () => request<BomIngestKey[]>('/bom/ingest-keys'),
+  createBomIngestKey: (payload: { name: string; expiresInDays?: number }) =>
+    request<CreatedBomIngestKey>('/bom/ingest-keys', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  revokeBomIngestKey: (keyId: string) =>
+    request<void>(`/bom/ingest-keys/${encodeURIComponent(keyId)}`, { method: 'DELETE' }),
   listServiceAccounts: () => request<ServiceAccount[]>('/service-accounts'),
   createServiceAccount: (payload: ServiceAccountRequest) =>
     request<ServiceAccount>('/service-accounts', {
@@ -2353,6 +2391,8 @@ export const api = {
     request<BomDetail>(`/bom/inventory/${encodeURIComponent(bomId)}`),
   getBomLineage: (bomId: string) =>
     request<BomLineageItem[]>(`/bom/inventory/${encodeURIComponent(bomId)}/lineage`),
+  listCbomAssetsForBom: (bomId: string) =>
+    request<CbomBomAsset[]>(`/bom/inventory/${encodeURIComponent(bomId)}/cbom-assets`),
   deleteBom: (bomId: string) =>
     request<void>(`/bom/inventory/${encodeURIComponent(bomId)}`, { method: 'DELETE' }),
   listAiBomDeclaredResources: (deploymentState?: 'UNVERIFIED' | 'LINKED' | 'AMBIGUOUS') =>

@@ -42,7 +42,8 @@ class CbomEvidenceWithdrawalTest {
                 mock(CbomRiskScorer.class),
                 mock(CbomPostureService.class),
                 componentRepository,
-                findingRepository);
+                findingRepository,
+                mock(CbomFindingMirrorService.class));
         sourceBomId = UUID.randomUUID();
     }
 

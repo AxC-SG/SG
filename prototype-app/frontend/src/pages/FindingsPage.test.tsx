@@ -347,6 +347,19 @@ describe('FindingsPage', () => {
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeEnabled();
   });
 
+  it('flags a crypto finding and shows its rule id without a CVE link', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    listFindings.mockResolvedValue(pageOf([buildFinding({
+      displayId: 'F-CRYPTO-1', findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-WEAK-HASH', packageName: 'SHA-1', packageVersion: '',
+    })]));
+    renderWithProviders(<FindingsPage />);
+
+    expect(await screen.findByRole('link', { name: 'F-CRYPTO-1' })).toBeInTheDocument();
+    expect(screen.getByTitle('Cryptographic finding from a CBOM')).toHaveTextContent('Crypto');
+    expect(screen.getByText('CBOM-WEAK-HASH')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'CBOM-WEAK-HASH' })).not.toBeInTheDocument();
+  });
+
   it('clears all ad-hoc filters while preserving the selected queue', async () => {
     const { listFindings } = mockFindingsWorkspace();
     renderWithProviders(<FindingsPage />, { route: '/findings?queue=critical-open&severity=CRITICAL&status=OPEN&assetType=HOST' });

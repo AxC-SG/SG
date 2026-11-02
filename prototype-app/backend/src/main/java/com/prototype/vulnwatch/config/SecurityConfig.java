@@ -29,6 +29,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
+            BomIngestKeyAuthenticationFilter bomIngestKeyAuthenticationFilter,
             RequestCorrelationFilter requestCorrelationFilter,
             TenantStatusFilter tenantStatusFilter,
             @Value("${app.security.headers.content-security-policy:default-src 'none'; frame-ancestors 'none'}") String contentSecurityPolicy,
@@ -80,6 +81,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(apiKeyAuthenticationFilter, CsrfFilter.class)
+                .addFilterBefore(bomIngestKeyAuthenticationFilter, ApiKeyAuthenticationFilter.class)
                 .addFilterAfter(requestCorrelationFilter, ApiKeyAuthenticationFilter.class)
                 .addFilterAfter(tenantStatusFilter, RequestCorrelationFilter.class);
 

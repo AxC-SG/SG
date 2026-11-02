@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type BomFetchPayload, type BomIngestionResult, type BomSource, type BomType, type CbomComponent, type CbomRiskFinding, type IngestionJob } from '../api/client';
+import { BomApiPanel } from '../features/bom-api/BomApiPanel';
 import { useGithubSbomSourcesQuery, useSyncRunsQuery } from '../features/connect/queries';
 import type { GithubSbomSource, SyncRun } from '../features/connect/types';
 import { FindingSeverityChips } from '../features/findings/components/FindingSeverityChips';
@@ -871,6 +872,9 @@ export function BomManagementPage({
           )}
         </section>
       )}
+
+      {/* ── CI/CD pipeline API ── */}
+      <BomApiPanel bomType={bomType} />
 
       {/* ── GitHub Auto-Pipeline ── */}
       {includeGithubSources && (

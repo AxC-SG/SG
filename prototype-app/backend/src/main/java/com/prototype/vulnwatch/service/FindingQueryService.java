@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.Finding;
 import com.prototype.vulnwatch.domain.Asset;
+import com.prototype.vulnwatch.service.cbom.CbomFindingMirrorService;
 import com.prototype.vulnwatch.domain.FindingDecisionState;
 import com.prototype.vulnwatch.domain.FindingStatus;
 import com.prototype.vulnwatch.domain.InventoryComponent;
@@ -255,6 +256,8 @@ public class FindingQueryService {
         InventoryComponent component = finding.getComponent();
         Asset asset = finding.getAsset() != null ? finding.getAsset() : component != null ? component.getAsset() : null;
         Map<String, Object> evidencePayload = readEvidencePayload(finding.getEvidence());
+        // A crypto finding has no inventory component or CVE; its asset name and rule id stand in.
+        boolean crypto = CbomFindingMirrorService.KIND.equals(finding.getFindingKind());
 
         String scoreConfig = riskPolicyService.getFindingsScoreConfig(finding.getTenant());
         Double findingsScore = safeFindingsScore(scoreConfig, finding);
@@ -266,9 +269,9 @@ public class FindingQueryService {
                 asset != null ? asset.getName() : null,
                 asset != null ? asset.getIdentifier() : null,
                 asset != null && asset.getType() != null ? asset.getType().name() : null,
-                component != null ? component.getPackageName() : null,
+                component != null ? component.getPackageName() : crypto ? traceString(evidencePayload, "assetName") : null,
                 component != null ? component.getVersion() : null,
-                vulnerability != null ? vulnerability.getExternalId() : null,
+                vulnerability != null ? vulnerability.getExternalId() : crypto ? finding.getPolicyId() : null,
                 vulnerability != null && vulnerability.getSource() != null ? vulnerability.getSource().name() : null,
                 finding.getCreationSource(),
                 finding.getSeverityOverride() != null
@@ -319,7 +322,8 @@ public class FindingQueryService {
                                 : hasText(asset.getOwnerEmail()) ? asset.getOwnerEmail().trim() : "Unassigned",
                         "supportGroup", asset.getSupportGroup() == null ? "" : asset.getSupportGroup()),
                 affectedAiResources == null ? List.of() : affectedAiResources,
-                finding.getIntelligenceEligibility(),finding.getIntelligenceReleaseId(),finding.getIntelligenceRevision(),finding.getIntelligenceMergedIntoId());
+                finding.getIntelligenceEligibility(),finding.getIntelligenceReleaseId(),finding.getIntelligenceRevision(),finding.getIntelligenceMergedIntoId(),
+                finding.getFindingKind());
     }
 
     private Double safeFindingsScore(String scoreConfig, Finding finding) {

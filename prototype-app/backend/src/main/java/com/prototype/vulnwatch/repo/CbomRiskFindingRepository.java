@@ -19,6 +19,8 @@ public interface CbomRiskFindingRepository extends JpaRepository<CbomRiskFinding
             String findingFingerprint
     );
 
+    List<CbomRiskFinding> findByTenant_Id(UUID tenantId);
+
     List<CbomRiskFinding> findByTenant_IdAndComponent_IdIn(UUID tenantId, Collection<UUID> componentIds);
 
     List<CbomRiskFinding> findByTenant_IdAndComponent_Id(UUID tenantId, UUID componentId);

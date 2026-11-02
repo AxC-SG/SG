@@ -25,6 +25,7 @@ public class CbomIngestionService {
     private final CbomPostureService postureService;
     private final CbomComponentRepository componentRepository;
     private final CbomRiskFindingRepository findingRepository;
+    private final CbomFindingMirrorService findingMirror;
 
     public CbomIngestionService(
             CbomComponentParser parser,
@@ -32,7 +33,8 @@ public class CbomIngestionService {
             CbomRiskScorer riskScorer,
             CbomPostureService postureService,
             CbomComponentRepository componentRepository,
-            CbomRiskFindingRepository findingRepository
+            CbomRiskFindingRepository findingRepository,
+            CbomFindingMirrorService findingMirror
     ) {
         this.parser = parser;
         this.riskEngine = riskEngine;
@@ -40,6 +42,7 @@ public class CbomIngestionService {
         this.postureService = postureService;
         this.componentRepository = componentRepository;
         this.findingRepository = findingRepository;
+        this.findingMirror = findingMirror;
     }
 
     public void validateContent(byte[] content) throws IOException {
@@ -69,6 +72,7 @@ public class CbomIngestionService {
             findingCount += evaluated.size();
         }
         postureService.rollUp(tenant, asset, sourceBom);
+        findingMirror.syncTenant(tenant);
         return new CbomIngestionResult(parsedComponents.size(), findingCount);
     }
 
@@ -96,7 +100,11 @@ public class CbomIngestionService {
         if (!withdrawn.isEmpty()) {
             findingRepository.saveAll(withdrawn);
         }
-        return componentRepository.softDeleteBySourceBomId(sourceBomId);
+        int retired = componentRepository.softDeleteBySourceBomId(sourceBomId);
+        if (!reported.isEmpty()) {
+            findingMirror.syncTenant(reported.get(0).getTenant());
+        }
+        return retired;
     }
 
     private void applyParsed(CbomComponent component, Tenant tenant, Asset asset, BomIngestionRecord sourceBom, CbomParsedComponent parsed) {

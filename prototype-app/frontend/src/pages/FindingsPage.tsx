@@ -831,10 +831,15 @@ export function FindingsPage() {
   function renderCell(row: Finding, key: ColKey): React.ReactNode {
     const now = Date.now();
     if (key==='findingId') return (
-      <Link to={pathForFindingDetail(row.displayId||row.id)} state={{finding:row}} className="finding-id-link mono">
-        {row.displayId||row.id}
-      </Link>
+      <>
+        <Link to={pathForFindingDetail(row.displayId||row.id)} state={{finding:row}} className="finding-id-link mono">
+          {row.displayId||row.id}
+        </Link>
+        {row.findingKind === 'CRYPTO' && <> <span className="status-badge status-badge--cbom" title="Cryptographic finding from a CBOM">Crypto</span></>}
+      </>
     );
+    // A crypto finding carries its rule id here; there is no CVE record to open.
+    if (key==='cveId' && row.findingKind === 'CRYPTO') return <span className="mono fpl-cve-text">{row.vulnerabilityId || '—'}</span>;
     if (key==='cveId') return row.vulnerabilityId
       ? <Link to={pathForVulnRepoView('org-cves', row.vulnerabilityId)} className="fpl-cve-link">{row.vulnerabilityId}</Link>
       : <span className="mono fpl-cve-text">—</span>;

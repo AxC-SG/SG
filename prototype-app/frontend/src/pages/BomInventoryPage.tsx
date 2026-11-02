@@ -7,6 +7,7 @@ import {
   type BomLineageItem,
   type BomWorkflowSummary,
 } from '../api/client';
+import { CbomAssetsPanel } from '../features/inventory/CbomAssetsPanel';
 import { AsyncSection } from '../components/AsyncSection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
@@ -350,52 +351,54 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
 
           <LineagePanel items={lineageQuery.data ?? []} />
 
-          <div className="panel bom-components-panel">
-            <div className="panel-header">
-              <h4>Components ({detail.componentCount.toLocaleString()})</h4>
-              <span className="panel-caption">
-                {detail.correlatedComponentCount} with vulnerability links · {detail.vulnerabilityLinkCount} CVE links · {detail.components.length} shown
-              </span>
-            </div>
-            {detail.components.length === 0 ? (
-              <div className="empty-state"><p>No components recorded.</p></div>
-            ) : (
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Version</th>
-                      <th>Category</th>
-                      <th>Workflow</th>
-                      <th>Vulns</th>
-                      <th>Evidence</th>
-                      <th>Type</th>
-                      <th>PURL</th>
-                      <th>CPE</th>
-                      <th>License</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.components.map((c) => (
-                      <tr key={c.id} className={c.active ? '' : 'row--inactive'}>
-                        <td>{c.name}</td>
-                        <td>{c.version ?? '—'}</td>
-                        <td><span className="tag">{c.category}</span></td>
-                        <td><WorkflowTag status={c.workflowStatus} /></td>
-                        <td>{c.vulnerabilityCount}</td>
-                        <td>{c.evidenceCount}</td>
-                        <td>{c.componentType ?? '—'}</td>
-                        <td className="monospace cell-truncate">{c.purl ?? '—'}</td>
-                        <td className="monospace cell-truncate">{c.cpe ?? '—'}</td>
-                        <td>{c.license ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {detail.bomType === 'CBOM' ? <CbomAssetsPanel bomId={bomId} /> : (
+            <div className="panel bom-components-panel">
+              <div className="panel-header">
+                <h4>Components ({detail.componentCount.toLocaleString()})</h4>
+                <span className="panel-caption">
+                  {detail.correlatedComponentCount} with vulnerability links · {detail.vulnerabilityLinkCount} CVE links · {detail.components.length} shown
+                </span>
               </div>
-            )}
-          </div>
+              {detail.components.length === 0 ? (
+                <div className="empty-state"><p>No components recorded.</p></div>
+              ) : (
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>Category</th>
+                        <th>Workflow</th>
+                        <th>Vulns</th>
+                        <th>Evidence</th>
+                        <th>Type</th>
+                        <th>PURL</th>
+                        <th>CPE</th>
+                        <th>License</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.components.map((c) => (
+                        <tr key={c.id} className={c.active ? '' : 'row--inactive'}>
+                          <td>{c.name}</td>
+                          <td>{c.version ?? '—'}</td>
+                          <td><span className="tag">{c.category}</span></td>
+                          <td><WorkflowTag status={c.workflowStatus} /></td>
+                          <td>{c.vulnerabilityCount}</td>
+                          <td>{c.evidenceCount}</td>
+                          <td>{c.componentType ?? '—'}</td>
+                          <td className="monospace cell-truncate">{c.purl ?? '—'}</td>
+                          <td className="monospace cell-truncate">{c.cpe ?? '—'}</td>
+                          <td>{c.license ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

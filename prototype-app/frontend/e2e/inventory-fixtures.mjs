@@ -515,6 +515,26 @@ const bomDetail = (item) => {
   };
 };
 
+const cbomAssets = (item) => {
+  const asset = (n, name, assetType, extra, findings) => ({
+    asset: {
+      id: `${item.id}-crypto-${n}`, assetId: item.assetId, sourceBomId: item.id, bomRef: `crypto/${n}`, name, description: null, assetType, componentType: 'cryptographic-asset',
+      primitive: null, keySize: null, curve: null, padding: null, protocolVersion: null, state: 'active', format: null, storageLocation: null, transmission: null, sensitivity: null, usedIn: null,
+      notAfter: null, riskScore: findings.length ? 7.5 : 1, openFindingCount: findings.length, highFindingCount: findings.length, criticalFindingCount: 0, ...extra,
+    },
+    findings: findings.map((title, index) => ({
+      id: `${item.id}-crypto-${n}-f${index}`, componentId: `${item.id}-crypto-${n}`, componentName: name, assetId: item.assetId, ruleId: 'fixture-rule', riskClass: 'WEAK_ALGORITHM',
+      severity: 'HIGH', title, detail: null, evidence: null, recommendation: null, status: 'OPEN', firstSeenAt: iso(-2), lastSeenAt: iso(-1),
+    })),
+  });
+  return [
+    asset(1, 'SHA-1', 'ALGORITHM', { primitive: 'hash', keySize: 160 }, ['SHA-1 is a weak hash']),
+    asset(2, 'AES-GCM', 'ALGORITHM', { primitive: 'ae', keySize: 256 }, []),
+    asset(3, 'TLS (outbound HTTPS)', 'PROTOCOL', { protocolVersion: '1.3' }, []),
+    asset(4, 'Credential encryption key', 'RELATED_CRYPTO_MATERIAL', { state: 'active' }, ['Key has no rotation date']),
+  ];
+};
+
 const bomLineage = (item) => [0, 1, 2].map((revision) => ({
   id: revision === 0 ? item.id : `${item.id}-r${revision}`, previousBomId: revision === 2 ? null : `${item.id}-r${revision + 1}`, supersededBy: revision === 0 ? null : revision === 1 ? item.id : `${item.id}-r1`,
   bomType: item.bomType, status: revision === 0 ? item.status : 'SUPERSEDED', format: item.format, formatVersion: item.formatVersion, specFamily: item.specFamily, documentFormat: item.documentFormat,
@@ -885,6 +905,11 @@ export function inventoryFixtureFor(rawUrl, method = 'GET') {
   if (path === '/bom/dashboard') return ok(bomDashboard());
   if (path === '/bom/sources') return ok([]);
   if (path === '/bom/support') return ok({ entries: [{ specFamily: 'CYCLONEDX', documentFormat: 'JSON', version: '1.6', supportLevel: 'FULL', supported: true, notes: '' }, { specFamily: 'SPDX', documentFormat: 'JSON', version: '2.3', supportLevel: 'PARTIAL', supported: true, notes: 'Relationships beyond DEPENDS_ON are ignored.' }] });
+  const cbomAssetsMatch = path.match(/^\/bom\/inventory\/([^/]+)\/cbom-assets$/);
+  if (cbomAssetsMatch) {
+    const item = bomInventory.find((candidate) => candidate.id === decodeURIComponent(cbomAssetsMatch[1]));
+    return item?.bomType === 'CBOM' ? ok(cbomAssets(item)) : notFound;
+  }
   const bomMatch = path.match(/^\/bom\/inventory\/([^/]+)(\/lineage)?$/);
   if (bomMatch) {
     const item = bomInventory.find((candidate) => candidate.id === decodeURIComponent(bomMatch[1]));

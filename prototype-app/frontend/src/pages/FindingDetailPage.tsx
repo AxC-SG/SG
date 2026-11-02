@@ -259,7 +259,9 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
     setAssignmentGroup((current) => current || (lookedUpFinding.ownerGroup ?? ''));
   }, [lookedUpFinding]);
 
-  const findingVulnId = currentFinding?.vulnerabilityId;
+  const isCryptoFinding = currentFinding?.findingKind === 'CRYPTO';
+  // A crypto finding's vulnerabilityId is a CBOM rule id, so it must not drive CVE lookups.
+  const findingVulnId = isCryptoFinding ? undefined : currentFinding?.vulnerabilityId;
   const findingAssetIdentifier = currentFinding?.assetIdentifier;
   const findingAssetName = currentFinding?.assetName;
 
@@ -944,6 +946,25 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
 
           {/* ── RIGHT: CVE + Remediation ──────────────────────────────── */}
           <div className="fd3-col fd3-col-right">
+            {isCryptoFinding ? (
+              <Panel title="Crypto finding">
+                <div className="fd3-kv-table">
+                  <KVRow label="Type"><span className="status-badge status-badge--cbom">Crypto</span></KVRow>
+                  <KVRow label="Rule"><span className="mono">{currentFinding.vulnerabilityId || '—'}</span></KVRow>
+                  <KVRow label="Crypto asset">{currentFinding.packageName || '—'}</KVRow>
+                  {typeof evidencePayload.detail === 'string' && evidencePayload.detail && (
+                    <KVRow label="Detail"><span style={{ fontSize: 12, lineHeight: 1.5 }}>{evidencePayload.detail}</span></KVRow>
+                  )}
+                  {typeof evidencePayload.recommendation === 'string' && evidencePayload.recommendation && (
+                    <KVRow label="Recommendation"><span style={{ fontSize: 12, lineHeight: 1.5 }}>{evidencePayload.recommendation}</span></KVRow>
+                  )}
+                  <KVRow label="Severity">
+                    <span className={`severity-pill severity-${currentFinding.severity.toLowerCase()}`}>{currentFinding.severity}</span>
+                  </KVRow>
+                  <KVRow label="Risk Score">{currentFinding.riskScore.toFixed(1)}</KVRow>
+                </div>
+              </Panel>
+            ) : (<>
             <FixContextPanel cveId={currentFinding.vulnerabilityId} assetId={hostAssetId} />
 
             <Panel title="Vulnerability">
@@ -982,6 +1003,7 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                 )}
               </div>
             </Panel>
+            </>)}
 
             {aiSolution?.data && (
               <Panel title="Remediation Guidance">

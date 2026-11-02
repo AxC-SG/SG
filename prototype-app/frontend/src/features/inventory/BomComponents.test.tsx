@@ -134,6 +134,23 @@ describe('BomComponents', () => {
     });
   });
 
+  it('lists CBOM cryptographic assets, counts them under Crypto Libraries and does not open a software detail for them', async () => {
+    const detail = vi.spyOn(api, 'getBomComponentDetail');
+    vi.spyOn(api, 'listBomComponents').mockResolvedValue([
+      buildComponent({ componentId: 'crypto-1', packageName: 'AES-GCM', version: null, purl: null, ecosystem: 'crypto', bomTypes: ['CBOM'], bomEvidenceState: null, correlationState: 'UNCHECKED' }),
+      buildComponent({ componentId: 'comp-1', packageName: 'left-pad' }),
+    ]);
+
+    renderWithProviders(<BomComponents />);
+    const cell = await screen.findByText('AES-GCM');
+    const cryptoCard = screen.getByText('Crypto Libraries').closest('.panel') as HTMLElement;
+    expect(within(cryptoCard).getByText('1')).toBeInTheDocument();
+
+    fireEvent.click(cell);
+    expect(detail).not.toHaveBeenCalled();
+    expect(screen.getByText('BOM Components')).toBeInTheDocument();
+  });
+
   it('reports a failed component load with retry', async () => {
     const list = vi.spyOn(api, 'listBomComponents')
       .mockRejectedValueOnce(new Error('boom'))
@@ -145,5 +162,42 @@ describe('BomComponents', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry BOM components' }));
     expect(await screen.findByText('left-pad')).toBeInTheDocument();
     expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it('regression: changing a toolbar filter returns to the first page instead of leaving an empty out-of-range page', async () => {
+    // 101 rows span two pages (PAGE_SIZE 100). Moving to page 2 and then narrowing with the search
+    // box used to keep page 2, so a one-row result rendered an empty table.
+    const rows = Array.from({ length: 101 }, (_, i) =>
+      buildComponent({ componentId: `comp-${i}`, packageName: i === 0 ? 'needle' : `pkg-${String(i).padStart(3, '0')}` }));
+    vi.spyOn(api, 'listBomComponents').mockResolvedValue(rows);
+
+    renderWithProviders(<BomComponents />);
+    await screen.findByText('needle');
+
+    fireEvent.click(screen.getByRole('button', { name: /Next/ }));
+    await screen.findByText('Page 2 of 2');
+
+    fireEvent.change(screen.getByPlaceholderText('Filter component name…'), { target: { value: 'needle' } });
+
+    expect(await screen.findByText('needle')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 1–1 of 1 components/)).toBeInTheDocument();
+  });
+
+  it('shows each row\'s own application and how many other applications carry the same package', async () => {
+    vi.spyOn(api, 'listBomComponents').mockResolvedValue([
+      buildComponent({ componentId: 'comp-1', assetId: 'asset-1', assetName: 'kanra-mobile' }),
+      buildComponent({ componentId: 'comp-2', assetId: 'asset-2', assetName: 'billing-api' }),
+      buildComponent({ componentId: 'comp-3', assetId: 'asset-3', assetName: 'solo-app', packageName: 'right-pad', version: '2.0.0' }),
+    ]);
+
+    renderWithProviders(<BomComponents />);
+    const rows = await screen.findAllByText('left-pad');
+    const first = rows[0].closest('tr') as HTMLElement;
+    expect(within(first).getByText('kanra-mobile')).toBeInTheDocument();
+    expect(within(first).getByText('+1 other application')).toBeInTheDocument();
+
+    const solo = (await screen.findByText('right-pad')).closest('tr') as HTMLElement;
+    expect(within(solo).getByText('solo-app')).toBeInTheDocument();
+    expect(within(solo).queryByText(/other application/)).not.toBeInTheDocument();
   });
 });

@@ -10,6 +10,8 @@ export type Finding = {
   packageName: string;
   packageVersion: string;
   vulnerabilityId: string;
+  /** VULNERABILITY (or absent), AI_POSTURE, AI_EXPOSURE, or CRYPTO for a mirrored CBOM finding. */
+  findingKind?: string;
   source: string;
   creationSource: 'MANUAL' | 'AUTOMATIC';
   severity: string;
