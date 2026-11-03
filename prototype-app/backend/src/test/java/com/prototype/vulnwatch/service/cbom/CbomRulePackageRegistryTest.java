@@ -24,7 +24,13 @@ class CbomRulePackageRegistryTest {
         assertThat(baseline.digest()).isEqualTo("sha256:60f075150e63c596d843d7b81c40ba036ef226283d151fe0317b1721fb475c4e");
         assertThat(baseline.stage()).isEqualTo(CbomRulePackageRegistry.Stage.GENERAL);
         assertThat(baseline.mandatoryRuleIds()).contains("CBOM-WEAK-ALGO").doesNotContain("CBOM-CERT-EXPIRING");
-        assertThat(baseline.defaults()).containsEntry("minimumRsaBits", 2048);
+        assertThat(baseline.defaults()).containsEntry("minimumRsaBits", 2048).containsEntry("certificateExpiryWarningDays", 90);
+        assertThat(baseline.rules()).hasSize(11).allSatisfy(rule -> {
+            assertThat(rule.title()).isNotBlank();
+            assertThat(rule.severity()).isIn("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
+            assertThat(rule.condition()).isNotBlank();
+            assertThat(rule.recommendation()).isNotBlank();
+        });
     }
 
     @Test

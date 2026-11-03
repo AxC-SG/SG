@@ -4,7 +4,7 @@ import { api, type CbomRuleConfigurationRequest, type CbomRuleImpactPreview } fr
 import { AsyncSection } from '../../components/AsyncSection';
 import { useActor } from '../auth/context';
 import { hasRole } from '../auth/roles';
-import { formatDate, titleCase } from './labels';
+import { formatDate, severityBadgeClass, titleCase } from './labels';
 
 /** Tenant CBOM rule package selection: version policy, parameters, impact preview and audited activation. */
 export function CbomRulesPanel() {
@@ -114,6 +114,33 @@ export function CbomRulesPanel() {
                 </div>
               ) : <p className="panel-caption">Only a tenant administrator can change the rule configuration.</p>}
             </form>
+            <section aria-labelledby="cbom-package-rules">
+              <h4 id="cbom-package-rules">Rules in this package ({config.rules.length})</h4>
+              <p className="panel-caption">
+                Mandatory rules always run. Rules marked “On by default” are part of the baseline; turning them off per workspace is not available yet.
+                Thresholds shown are this workspace&apos;s current values.
+              </p>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>Rule</th><th>Severity</th><th>Mode</th><th>Category</th><th>When it fires</th><th>Recommended fix</th><th>Open findings</th></tr>
+                  </thead>
+                  <tbody>
+                    {config.rules.map((rule) => (
+                      <tr key={rule.id}>
+                        <td><strong>{rule.title ?? rule.id}</strong><div className="panel-caption mono">{rule.id} v{rule.version}</div></td>
+                        <td>{rule.severity ? <span className={`status-badge ${severityBadgeClass(rule.severity)}`}>{rule.severity}</span> : '—'}</td>
+                        <td>{rule.mode === 'mandatory' ? 'Mandatory' : rule.mode === 'enabled' ? 'On by default' : 'Optional'}</td>
+                        <td>{titleCase(rule.category)}</td>
+                        <td>{rule.condition ?? '—'}</td>
+                        <td>{rule.recommendation ?? '—'}</td>
+                        <td>{rule.openFindings}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
             {config.history.length > 0 && (
               <section aria-labelledby="cbom-rule-history">
                 <h4 id="cbom-rule-history">Selection history</h4>

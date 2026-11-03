@@ -5,21 +5,157 @@
   "evaluatorMajor": 1,
   "evaluatorVersion": "1.0",
   "rules": [
-    {"id": "CBOM-WEAK-ALGO", "version": 1, "mode": "mandatory", "tags": ["ALGORITHM"]},
-    {"id": "CBOM-RSA-SMALL-KEY", "version": 1, "mode": "mandatory", "tags": ["KEY_MANAGEMENT"]},
-    {"id": "CBOM-QUANTUM-VULNERABLE", "version": 1, "mode": "mandatory", "tags": ["PQC"]},
-    {"id": "CBOM-CERT-EXPIRED", "version": 1, "mode": "mandatory", "tags": ["CERTIFICATE"]},
-    {"id": "CBOM-CERT-EXPIRING", "version": 1, "mode": "enabled", "tags": ["CERTIFICATE"]},
-    {"id": "CBOM-CERT-WEAK-SIGNATURE", "version": 1, "mode": "mandatory", "tags": ["CERTIFICATE"]},
-    {"id": "CBOM-DEPRECATED-PROTOCOL", "version": 1, "mode": "mandatory", "tags": ["TLS"]},
-    {"id": "CBOM-MATERIAL-COMPROMISED", "version": 1, "mode": "mandatory", "tags": ["KEY_MANAGEMENT"]},
-    {"id": "CBOM-SECRET-ENV-STORAGE", "version": 1, "mode": "enabled", "tags": ["KEY_MANAGEMENT"]},
-    {"id": "CBOM-MISSING-USAGE", "version": 1, "mode": "enabled", "tags": ["COMPLETENESS"]},
-    {"id": "CBOM-WEAK-CRYPTO", "version": 1, "mode": "mandatory", "tags": ["ALGORITHM"]}
+    {
+      "id": "CBOM-WEAK-ALGO",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "ALGORITHM"
+      ],
+      "title": "Weak cryptographic primitive",
+      "severity": "HIGH",
+      "condition": "An algorithm uses MD5, SHA-1, DES, 3DES or RC4.",
+      "recommendation": "Replace with a modern primitive such as AES-GCM, SHA-256/SHA-384, or an approved signature algorithm."
+    },
+    {
+      "id": "CBOM-RSA-SMALL-KEY",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "KEY_MANAGEMENT"
+      ],
+      "title": "RSA key size below the minimum",
+      "severity": "HIGH",
+      "condition": "An RSA algorithm declares a key smaller than {minimumRsaBits} bits.",
+      "recommendation": "Rotate to RSA-{minimumRsaBits} or stronger, or an approved elliptic-curve/post-quantum alternative."
+    },
+    {
+      "id": "CBOM-QUANTUM-VULNERABLE",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "PQC"
+      ],
+      "title": "Quantum-vulnerable asymmetric cryptography",
+      "severity": "MEDIUM",
+      "condition": "An algorithm uses RSA, DSA, ECC/ECDSA/ECDH, Diffie-Hellman, EdDSA, X25519/X448 or ElGamal, which a cryptographically relevant quantum computer can break.",
+      "recommendation": "Track migration plans and prefer hybrid or post-quantum schemes (ML-KEM, ML-DSA) where supported."
+    },
+    {
+      "id": "CBOM-CERT-EXPIRED",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "CERTIFICATE"
+      ],
+      "title": "Certificate is expired",
+      "severity": "CRITICAL",
+      "condition": "A certificate's expiry date (notValidAfter) is in the past.",
+      "recommendation": "Replace or renew the certificate immediately."
+    },
+    {
+      "id": "CBOM-CERT-EXPIRING",
+      "version": 1,
+      "mode": "enabled",
+      "tags": [
+        "CERTIFICATE"
+      ],
+      "title": "Certificate expires soon",
+      "severity": "MEDIUM",
+      "condition": "A certificate expires within {certificateExpiryWarningDays} days.",
+      "recommendation": "Schedule certificate renewal before expiry."
+    },
+    {
+      "id": "CBOM-CERT-WEAK-SIGNATURE",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "CERTIFICATE"
+      ],
+      "title": "Weak certificate signature algorithm",
+      "severity": "HIGH",
+      "condition": "A certificate is signed with SHA-1 or MD5.",
+      "recommendation": "Reissue the certificate with SHA-256 or stronger signature algorithms."
+    },
+    {
+      "id": "CBOM-DEPRECATED-PROTOCOL",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "TLS"
+      ],
+      "title": "Deprecated cryptographic protocol",
+      "severity": "HIGH",
+      "condition": "A protocol declares SSL, TLS 1.0 or TLS 1.1.",
+      "recommendation": "Disable deprecated protocols and require TLS 1.2 or TLS 1.3 as appropriate."
+    },
+    {
+      "id": "CBOM-MATERIAL-COMPROMISED",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "KEY_MANAGEMENT"
+      ],
+      "title": "Cryptographic material is marked compromised",
+      "severity": "CRITICAL",
+      "condition": "A key, secret or credential is declared with state compromised.",
+      "recommendation": "Revoke, rotate, and investigate all dependent systems."
+    },
+    {
+      "id": "CBOM-SECRET-ENV-STORAGE",
+      "version": 1,
+      "mode": "enabled",
+      "tags": [
+        "KEY_MANAGEMENT"
+      ],
+      "title": "Sensitive material stored in environment variables",
+      "severity": "MEDIUM",
+      "condition": "A key, secret or credential declares environment-variable storage.",
+      "recommendation": "Move sensitive material to a managed secret store with rotation and audit controls."
+    },
+    {
+      "id": "CBOM-MISSING-USAGE",
+      "version": 1,
+      "mode": "enabled",
+      "tags": [
+        "COMPLETENESS"
+      ],
+      "title": "Cryptographic material usage is not documented",
+      "severity": "LOW",
+      "condition": "A key, secret or credential does not declare where it is used (usedIn).",
+      "recommendation": "Document consuming systems so rotation and incident response can be targeted."
+    },
+    {
+      "id": "CBOM-WEAK-CRYPTO",
+      "version": 1,
+      "mode": "mandatory",
+      "tags": [
+        "ALGORITHM"
+      ],
+      "title": "Weak cryptographic asset",
+      "severity": "HIGH",
+      "condition": "An asset of unknown or unrecognised type declares a weak primitive (MD5, SHA-1, DES, 3DES, RC4).",
+      "recommendation": "Replace with a modern approved primitive."
+    }
   ],
   "parameters": {
-    "minimumRsaBits": {"type": "integer", "default": 2048, "min": 2048, "max": 16384},
-    "certificateExpiryWarningDays": {"type": "integer", "default": 90, "min": 1, "max": 365},
-    "pqcDataLifetimeYears": {"type": "integer", "default": 10, "min": 1, "max": 100}
+    "minimumRsaBits": {
+      "type": "integer",
+      "default": 2048,
+      "min": 2048,
+      "max": 16384
+    },
+    "certificateExpiryWarningDays": {
+      "type": "integer",
+      "default": 90,
+      "min": 1,
+      "max": 365
+    },
+    "pqcDataLifetimeYears": {
+      "type": "integer",
+      "default": 10,
+      "min": 1,
+      "max": 100
+    }
   }
 }

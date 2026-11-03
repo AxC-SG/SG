@@ -81,4 +81,15 @@ public interface CbomRiskFindingRepository extends JpaRepository<CbomRiskFinding
             @Param("assetId") UUID assetId,
             @Param("statuses") Collection<CbomFindingStatus> statuses
     );
+
+    /** Open findings per rule on active components whose evidence is still supported: {ruleId, count}. */
+    @Query("""
+            SELECT f.ruleId, COUNT(f) FROM CbomRiskFinding f
+             WHERE f.tenant.id = :tenantId
+               AND f.status = com.prototype.vulnwatch.domain.CbomFindingStatus.OPEN
+               AND (f.evidenceState IS NULL OR f.evidenceState <> com.prototype.vulnwatch.domain.BomEvidenceState.WITHDRAWN)
+               AND f.component.active = true
+             GROUP BY f.ruleId
+            """)
+    List<Object[]> countOpenByRule(@Param("tenantId") UUID tenantId);
 }

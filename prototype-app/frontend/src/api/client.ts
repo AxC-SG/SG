@@ -281,6 +281,11 @@ export type CbomRuleConfiguration = {
     id: string; action: string; fromVersion: string | null; toVersion: string | null; versionPolicy: string;
     actor: string; reason: string; impactJson: string | null; createdAt: string;
   }>;
+  /** Rules of the effective package; condition and recommendation carry this workspace's thresholds. */
+  rules: Array<{
+    id: string; version: number; mode: 'mandatory' | 'enabled' | 'optional'; title: string | null; severity: string | null;
+    category: string | null; condition: string | null; recommendation: string | null; openFindings: number;
+  }>;
 };
 export type CbomRuleConfigurationRequest = {
   versionPolicy: 'FOLLOW_LATEST' | 'PINNED'; pinnedVersion: string | null; parameters: Record<string, number>; reason: string;

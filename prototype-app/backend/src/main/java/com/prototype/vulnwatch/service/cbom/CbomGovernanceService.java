@@ -215,8 +215,32 @@ public class CbomGovernanceService {
         List<SelectionHistory> history=lifecycle.history(tenant.getId(),20).stream()
                 .map(h->new SelectionHistory(h.id(),h.action(),h.fromVersion(),h.toVersion(),h.versionPolicy(),h.actor(),h.reason(),h.impactJson(),h.createdAt())).toList();
         return new RuleConfiguration(c.getPackageId(),c.getVersionPolicy(),c.getPinnedVersion(),read(c),c.getVersion(),c.getUpdatedBy(),
-                effective,c.getPinState(),remediation(c),versions,history);
+                effective,c.getPinState(),remediation(c),versions,history,rules(tenant,c,now));
     }
+    /** Rules of the package that evaluates this workspace, with its thresholds filled in and its open findings counted. */
+    private List<PackageRule> rules(Tenant tenant,CbomRuleConfiguration c,Instant now){
+        CbomRulePackageRegistry.RulePackage pkg;
+        try{pkg=packages.resolve(c,now);}
+        catch(CbomRulePackageService.UnsupportedRulePackageException unsupported){
+            pkg=registry.find(c.getPackageId(),c.getPinnedVersion()).or(()->registry.generalDefault(c.getPackageId(),now)).orElse(null);
+        }
+        if(pkg==null)return List.of();
+        CbomRiskEngine.RuleParameters parameters=packages.parameters(tenant);
+        Map<String,String> values=Map.of("minimumRsaBits",String.valueOf(parameters.minimumRsaBits()),
+                "certificateExpiryWarningDays",String.valueOf(parameters.certificateExpiryWarningDays()));
+        Map<String,Long> open=new HashMap<>();
+        for(Object[] row:findings.countOpenByRule(tenant.getId()))open.put((String)row[0],((Number)row[1]).longValue());
+        return pkg.rules().stream().map(r->new PackageRule(r.id(),r.version(),r.mode(),r.title(),r.severity(),r.category(),
+                fill(r.condition(),values),fill(r.recommendation(),values),open.getOrDefault(r.id(),0L))).toList();
+    }
+
+    private static String fill(String template,Map<String,String> values){
+        if(template==null)return null;
+        String out=template;
+        for(var entry:values.entrySet())out=out.replace("{"+entry.getKey()+"}",entry.getValue());
+        return out;
+    }
+
     private String remediation(CbomRuleConfiguration c){
         return switch(c.getPinState()==null?"CURRENT":c.getPinState()){
             case "UPGRADE_AVAILABLE" -> "A newer rule package is available. Pinned behaviour is unchanged until you select it.";

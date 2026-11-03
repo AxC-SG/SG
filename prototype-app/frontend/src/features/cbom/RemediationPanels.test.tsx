@@ -46,6 +46,12 @@ const RULES: CbomRuleConfiguration = {
     retiresAt: null, pinnable: true, tenantStatus: 'EFFECTIVE' }],
   history: [{ id: 'h-1', action: 'ROLLOUT_UPGRADE', fromVersion: null, toVersion: '1.0.0', versionPolicy: 'FOLLOW_LATEST', actor: 'system',
     reason: 'Rollout stage GENERAL', impactJson: null, createdAt: '2026-11-01T00:00:00Z' }],
+  rules: [
+    { id: 'CBOM-RSA-SMALL-KEY', version: 1, mode: 'mandatory', title: 'RSA key size below the minimum', severity: 'HIGH', category: 'KEY_MANAGEMENT',
+      condition: 'An RSA algorithm declares a key smaller than 2048 bits.', recommendation: 'Rotate to RSA-2048 or stronger.', openFindings: 0 },
+    { id: 'CBOM-MISSING-USAGE', version: 1, mode: 'enabled', title: 'Cryptographic material usage is not documented', severity: 'LOW',
+      category: 'COMPLETENESS', condition: 'A key does not declare where it is used.', recommendation: 'Document consuming systems.', openFindings: 6 },
+  ],
 };
 
 describe('crypto remediation panels', () => {
@@ -113,6 +119,13 @@ describe('crypto remediation panels', () => {
     vi.spyOn(api, 'getCbomRuleConfiguration').mockResolvedValue(RULES);
     renderAs(AUDITOR, <CbomRulesPanel />);
     expect(await screen.findByText('Only a tenant administrator can change the rule configuration.')).toBeInTheDocument();
+    const table = screen.getByRole('heading', { name: 'Rules in this package (2)' }).closest('section') as HTMLElement;
+    expect(within(table).getByText('RSA key size below the minimum')).toBeInTheDocument();
+    expect(within(table).getByText('CBOM-RSA-SMALL-KEY v1')).toBeInTheDocument();
+    expect(within(table).getByText('Mandatory')).toBeInTheDocument();
+    expect(within(table).getByText('On by default')).toBeInTheDocument();
+    expect(within(table).getByText('An RSA algorithm declares a key smaller than 2048 bits.')).toBeInTheDocument();
+    expect(within(table).getByText('6')).toBeInTheDocument();
     expect(screen.getByLabelText('Minimum rsa bits')).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Activate configuration' })).not.toBeInTheDocument();
   });

@@ -56,6 +56,12 @@ class CbomRuleLifecyclePostgresIntegrationTest {
         assertEquals("1.0.0", initial.path("availableVersions").get(0).path("version").asText());
         assertTrue(initial.path("availableVersions").get(0).path("pinnable").asBoolean());
         assertEquals(2048, initial.path("parameters").path("minimumRsaBits").asInt());
+        assertEquals(11, initial.path("rules").size(), "every packaged rule is visible to the workspace");
+        JsonNode rsaRule = null;
+        for (JsonNode rule : initial.path("rules")) if ("CBOM-RSA-SMALL-KEY".equals(rule.path("id").asText())) rsaRule = rule;
+        assertTrue(rsaRule != null && rsaRule.path("condition").asText().contains("2048 bits"));
+        assertEquals("HIGH", rsaRule.path("severity").asText());
+        assertTrue(rsaRule.path("openFindings").isNumber());
 
         var summary = reconciler.rollout();
         assertTrue(summary.tenantsVisited() >= 1);

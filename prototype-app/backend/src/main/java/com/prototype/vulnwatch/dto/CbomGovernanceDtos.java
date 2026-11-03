@@ -11,7 +11,11 @@ public final class CbomGovernanceDtos {
     public record RuleConfiguration(String packageId, String versionPolicy, String pinnedVersion,
                                     Map<String,Integer> parameters, long version, String updatedBy,
                                     String effectiveVersion, String pinState, String remediation,
-                                    List<PackageVersion> availableVersions, List<SelectionHistory> history) {}
+                                    List<PackageVersion> availableVersions, List<SelectionHistory> history,
+                                    List<PackageRule> rules) {}
+    /** A rule in the effective package; condition and recommendation carry this workspace's thresholds. */
+    public record PackageRule(String id, int version, String mode, String title, String severity, String category,
+                              String condition, String recommendation, long openFindings) {}
     public record PackageVersion(String version, String title, String digest, int evaluatorMajor, String rolloutStage,
                                  java.time.Instant deprecatedAt, java.time.Instant retiresAt, boolean pinnable,
                                  String tenantStatus) {}

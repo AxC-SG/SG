@@ -42,9 +42,18 @@ public class CbomRulePackageRegistry {
     private static final Pattern SEMVER = Pattern.compile("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
     private static final Set<String> MODES = Set.of("mandatory", "enabled", "optional");
 
-    public record Rule(String id, int version, String mode) {
+    /**
+     * One packaged rule. Only {@code id:version:mode} is digested (what the evaluator executes);
+     * title, severity, category, condition and recommendation describe the rule to tenants. A
+     * condition may contain {@code {parameterName}} placeholders filled with the tenant's values.
+     */
+    public record Rule(String id, int version, String mode, String title, String severity, String category,
+            String condition, String recommendation) {
+        public Rule(String id, int version, String mode) { this(id, version, mode, null, null, null, null, null); }
         public boolean mandatory() { return "mandatory".equals(mode); }
     }
+
+    private static final Set<String> SEVERITIES = Set.of("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
 
     public record Parameter(String type, int defaultValue, int min, int max) { }
 
@@ -184,7 +193,12 @@ public class CbomRulePackageRegistry {
                 String mode = text(rule, "mode", where);
                 if (!MODES.contains(mode)) throw invalid(where, "rule " + id + " has unsupported mode " + mode);
                 if (!ruleIds.add(id)) throw invalid(where, "duplicate rule " + id);
-                rules.add(new Rule(id, required(rule, "version", where).asInt(), mode));
+                String severity = optional(rule, "severity");
+                if (severity != null && !SEVERITIES.contains(severity)) throw invalid(where, "rule " + id + " has unsupported severity " + severity);
+                JsonNode tags = rule.path("tags");
+                rules.add(new Rule(id, required(rule, "version", where).asInt(), mode, optional(rule, "title"), severity,
+                        tags.isArray() && tags.size() > 0 ? tags.get(0).asText() : null, optional(rule, "condition"),
+                        optional(rule, "recommendation")));
             }
             if (rules.isEmpty()) throw invalid(where, "package declares no rules");
             Map<String, Parameter> parameters = new LinkedHashMap<>();
@@ -238,6 +252,11 @@ public class CbomRulePackageRegistry {
         String value = required(node, field, where).asText();
         if (value.isBlank()) throw invalid(where, "blank " + field);
         return value;
+    }
+
+    private static String optional(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() || value.asText().isBlank() ? null : value.asText();
     }
 
     private static Instant instant(JsonNode node, String field) {

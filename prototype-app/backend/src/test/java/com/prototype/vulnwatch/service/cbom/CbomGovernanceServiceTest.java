@@ -90,4 +90,23 @@ class CbomGovernanceServiceTest {
         when(configs.findById(tenant.getId())).thenReturn(Optional.of(stored));
         assertThat(packages.parameters(tenant)).isEqualTo(new CbomRiskEngine.RuleParameters(3072,90));
     }
+
+    @Test void configurationListsEveryRuleWithThisWorkspacesThresholdsAndOpenFindings(){
+        var stored=new com.prototype.vulnwatch.domain.CbomRuleConfiguration();stored.setTenantId(tenant.getId());
+        stored.setParametersJson("{\"minimumRsaBits\":3072}");
+        when(configs.findById(tenant.getId())).thenReturn(Optional.of(stored));
+        when(findings.countOpenByRule(tenant.getId())).thenReturn(List.<Object[]>of(new Object[]{"CBOM-MISSING-USAGE",6L}));
+        var rules=service.configuration(tenant).rules();
+        assertThat(rules).hasSize(11);
+        var rsa=rules.stream().filter(r->r.id().equals("CBOM-RSA-SMALL-KEY")).findFirst().orElseThrow();
+        assertThat(rsa.severity()).isEqualTo("HIGH");
+        assertThat(rsa.mode()).isEqualTo("mandatory");
+        assertThat(rsa.condition()).contains("3072 bits").doesNotContain("{");
+        assertThat(rsa.recommendation()).contains("RSA-3072");
+        var expiring=rules.stream().filter(r->r.id().equals("CBOM-CERT-EXPIRING")).findFirst().orElseThrow();
+        assertThat(expiring.condition()).contains("90 days");
+        assertThat(expiring.mode()).isEqualTo("enabled");
+        assertThat(rules.stream().filter(r->r.id().equals("CBOM-MISSING-USAGE")).findFirst().orElseThrow().openFindings()).isEqualTo(6);
+        assertThat(rules).allSatisfy(r->{assertThat(r.title()).isNotBlank();assertThat(r.category()).isNotBlank();});
+    }
 }

@@ -103,3 +103,73 @@ AggregateError [ECONNREFUSED]:
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
+7:16:02 pm [vite] (client) [console.error] Warning: validateDOMNesting(...): <button> cannot appear as a descendant of <button>.
+    at button
+    at div
+    at div
+    at button
+    at div
+    at div
+    at TenantDashboard (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx?t=1793703405927:680:19)
+    at VulnRepoDashboardPage (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx?t=1793703405927:1665:16)
+    at VulnRepoDashboardRoute
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx?t=1793703418152:1327:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx?t=1793703418152:1134:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+7:48:27 pm [vite] (client) [console.error] Warning: validateDOMNesting(...): <button> cannot appear as a descendant of <button>.
+    at button
+    at div
+    at div
+    at button
+    at div
+    at div
+    at TenantDashboard (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx?t=1793703405927:680:19)
+    at VulnRepoDashboardPage (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx?t=1793703405927:1665:16)
+    at VulnRepoDashboardRoute
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx?t=1793703418152:1327:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx?t=1793703418152:1134:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+8:00:17 pm [vite] (client) hmr update /src/App.tsx, /src/pages/DemoPublicPages.tsx, /src/pages/UserManagementPage.tsx, /src/pages/ConfigurationsPage.tsx, /src/pages/FindingsPage.tsx, /src/pages/FindingDetailPage.tsx, /src/pages/SoftwareIdentityDetailPage.tsx, /src/features/inventory/BomComponentDetailPanel.tsx, /src/features/inventory/ApplicationDetailPanel.tsx, /src/pages/CampaignsPage.tsx, /src/pages/ConnectPage.tsx, /src/pages/JiraTicketingConnectorPage.tsx, /src/pages/InventoryRunQueuePage.tsx, /src/pages/AssetsPage.tsx and 48 more
+8:00:17 pm [vite] (client) hmr update /src/features/cbom/CbomRulesPanel.tsx
+8:00:18 pm [vite] http proxy error: /api/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+8:00:18 pm [vite] http proxy error: /api/vuln-repo/dashboard
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+8:00:19 pm [vite] http proxy error: /api/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+8:00:19 pm [vite] http proxy error: /api/vuln-repo/dashboard
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
