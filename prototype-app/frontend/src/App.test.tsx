@@ -66,7 +66,7 @@ describe('App test persona switcher', () => {
     const { default: App } = await import('./App');
     renderWithProviders(<App />, { route: '/' });
 
-    expect(await screen.findByRole('heading', { name: /The Exposure Management Platform Powered by AI Grid/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Secure AI\.\s*See the whole exposure\./i })).toBeInTheDocument();
     expect(screen.queryByText('Loading page...')).not.toBeInTheDocument();
   });
 

@@ -202,6 +202,21 @@ const MythosReadinessBlogPage = React.lazy(async () => ({
 const SbomExploitabilityBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).SbomExploitabilityBlogPage
 }));
+const PrivacyPolicyPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).PrivacyPolicyPage
+}));
+const AnnouncementsIndexPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).AnnouncementsIndexPage
+}));
+const NvidiaInceptionAnnouncementPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).NvidiaInceptionAnnouncementPage
+}));
+const CookiePolicyPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).CookiePolicyPage
+}));
+const TermsOfServicePage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).TermsOfServicePage
+}));
 const DemoRequestPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).DemoRequestPage
 }));
@@ -1382,6 +1397,11 @@ export default function App() {
         <Route path="/demo/blog/zero-day-response-hours-not-weeks" element={<ZeroDayBlogPage />} />
         <Route path="/demo/blog/mythos-readiness" element={<MythosReadinessBlogPage />} />
         <Route path="/demo/blog/why-your-sbom-tool-doesnt-know-whats-exploitable" element={<SbomExploitabilityBlogPage />} />
+        <Route path="/demo/announcements" element={<AnnouncementsIndexPage />} />
+        <Route path="/demo/announcements/scoutgrid-joins-nvidia-inception" element={<NvidiaInceptionAnnouncementPage />} />
+        <Route path="/demo/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/demo/terms" element={<TermsOfServicePage />} />
+        <Route path="/demo/cookies" element={<CookiePolicyPage />} />
         <Route path="/demo/request" element={<DemoRequestPage />} />
         <Route path="/demo/request/success" element={<DemoRequestSuccessPage />} />
         <Route path="/demo/expired" element={<DemoExpiredPage />} />

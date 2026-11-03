@@ -24,10 +24,10 @@ export default mergeConfig(viteConfig, defineConfig({
       // Ratcheted 2026-10-29 after Stage 4 Workbench tab, draft and guard tests.
       // Two-worker run: lines 55.16%, statements 52.73%, functions 44.3%, branches 43.81%.
       thresholds: {
-        lines: 58.7,
-        statements: 56.1,
-        functions: 48.2,
-        branches: 48.1
+        lines: 59.8,
+        statements: 57.2,
+        functions: 49.6,
+        branches: 49.4
       }
     }
   }

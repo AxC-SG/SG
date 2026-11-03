@@ -43,7 +43,7 @@ function pushCommand(
 export function buildSnippets(input: SnippetInput): Record<PipelineKind, string> {
   const curl = pushCommand(input, { pipeline: 'ci', buildId: '$BUILD_ID' }, '');
   const github = [
-    '- name: Publish BOM to ScoutGrid',
+    '- name: Publish BOM to Scoutgrid',
     '  env:',
     '    SCOUTGRID_INGEST_KEY: ${{ secrets.SCOUTGRID_INGEST_KEY }}',
     '  run: |',

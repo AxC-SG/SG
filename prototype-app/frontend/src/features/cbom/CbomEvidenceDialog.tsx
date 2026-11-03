@@ -58,7 +58,7 @@ export function CbomEvidenceDialog({ componentId, onClose }: { componentId: stri
                   {detail.claims.map((claim) => (
                     <li key={claim.claimPath}>
                       <code>{claim.claimPath}</code>{' '}
-                      <span className="tag" title="How strongly ScoutGrid has verified this claim">{assuranceLabel(claim.assuranceLevel)}</span>{' '}
+                      <span className="tag" title="How strongly Scoutgrid has verified this claim">{assuranceLabel(claim.assuranceLevel)}</span>{' '}
                       <span className="tag" title="Whether the source document still supports this claim">{presenceLabel(claim.evidenceState)}</span>
                       <div className="panel-caption">{claim.explanation}</div>
                     </li>
