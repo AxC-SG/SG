@@ -47,6 +47,7 @@ public class FindingAssetRecomputeService {
     private final FindingCorrelationAnalysisService findingCorrelationAnalysisService;
     private final FindingCorrelationMutationService findingCorrelationMutationService;
     private final FindingUpsertService findingUpsertService;
+    private CanonicalSuppressionMutationService suppressionMutations;
 
     public FindingAssetRecomputeService(
             FindingRepository findingRepository,
@@ -80,6 +81,11 @@ public class FindingAssetRecomputeService {
         this.findingUpsertService = findingUpsertService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSuppressionMutations(CanonicalSuppressionMutationService suppressionMutations) {
+        this.suppressionMutations = suppressionMutations;
+    }
+
     @Transactional
     public int recomputeForAsset(Tenant tenant, Asset asset) {
         List<InventoryComponent> components = inventoryComponentRepository.findByAssetAndComponentStatus(
@@ -95,8 +101,8 @@ public class FindingAssetRecomputeService {
                     FindingStatus previousStatus = finding.getStatus();
                     finding.setStatus(FindingStatus.RESOLVED);
                     finding.setDecisionState(FindingDecisionState.NOT_AFFECTED);
-                    finding.setSuppressionReason(null);
-                    finding.setSuppressedUntil(null);
+                    suppressionMutations.clearMetadata(finding, "system", "SUPPRESSION_CLEARED_ASSET_INACTIVE",
+                            "Suppression metadata cleared because asset is inactive");
                     finding.touch();
                     findingWorkflowService.appendEvent(
                             finding,
@@ -274,8 +280,8 @@ public class FindingAssetRecomputeService {
                     boolean changed = false;
 
                     if (existingFinding.getStatus() == FindingStatus.AUTO_CLOSED) {
-                        existingFinding.setSuppressionReason(null);
-                        existingFinding.setSuppressedUntil(null);
+                        suppressionMutations.clearMetadata(existingFinding, "system", "SUPPRESSION_CLEARED_REOPEN",
+                                "Suppression metadata cleared during recompute reopen");
                         existingFinding.setStatus(FindingStatus.OPEN);
                         reopened = true;
                         changed = true;
@@ -286,8 +292,8 @@ public class FindingAssetRecomputeService {
                         }
                         existingFinding.setStatus(FindingStatus.OPEN);
                         if (isSuppressionExpired(existingFinding, now)) {
-                            existingFinding.setSuppressionReason(null);
-                            existingFinding.setSuppressedUntil(null);
+                            suppressionMutations.clearMetadata(existingFinding, "system", "SUPPRESSION_EXPIRED",
+                                    "Suppression expired during recompute");
                             findingWorkflowService.appendEvent(
                                     existingFinding,
                                     "SUPPRESSION_EXPIRED",
@@ -354,8 +360,8 @@ public class FindingAssetRecomputeService {
                 FindingStatus previousStatus = finding.getStatus();
                 finding.setStatus(FindingStatus.RESOLVED);
                 finding.setDecisionState(FindingDecisionState.NOT_AFFECTED);
-                finding.setSuppressionReason(null);
-                finding.setSuppressedUntil(null);
+                suppressionMutations.clearMetadata(finding, "system", "SUPPRESSION_CLEARED_NOT_OBSERVED",
+                        "Suppression metadata cleared because finding is no longer observed");
                 finding.touch();
                 findingWorkflowService.appendEvent(
                         finding,

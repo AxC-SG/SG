@@ -42,6 +42,16 @@ class BomCbomAssetsPostgresIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private com.prototype.vulnwatch.service.FindingDeltaQueueService deltaQueue;
+
+    /** Scheduling is off in ITs; drain CBOM_DELTA entries the way the 2-second poller would. */
+    private void drainDeltas() {
+        for (int i = 0; i < 5; i++) {
+            deltaQueue.processPendingDeltas();
+        }
+    }
+
     private JsonNode json(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
@@ -108,6 +118,7 @@ class BomCbomAssetsPostgresIntegrationTest {
 
     /** The canonical CRYPTO rows that mirror the given CBOM findings, keyed by CBOM finding id. */
     private java.util.Map<String, JsonNode> cryptoFindingsFor(java.util.Set<String> cbomFindingIds) throws Exception {
+        drainDeltas();
         java.util.Map<String, JsonNode> byCbomFinding = new java.util.HashMap<>();
         for (JsonNode row : get("/api/findings?findingKind=CRYPTO&page=0&size=200").path("items")) {
             String cbomFindingId = objectMapper.readTree(row.path("evidence").asText("{}")).path("cbomFindingId").asText();
@@ -136,16 +147,16 @@ class BomCbomAssetsPostgresIntegrationTest {
             assertTrue(!row.path("vulnerabilityId").asText().isBlank(), "the rule id stands in for the CVE id");
         }
 
+        // Direct CBOM acceptance is a 410 tombstone; it must not suppress the canonical finding.
         String accepted = cbomFindingIds.iterator().next();
         mockMvc.perform(asPlatformOwner(authedPost("/api/bom/cbom/findings/" + accepted + "/accept")))
-                .andExpect(status().isOk());
-        assertEquals("SUPPRESSED", cryptoFindingsFor(cbomFindingIds).get(accepted).path("status").asText());
+                .andExpect(status().isGone());
+        assertEquals("OPEN", cryptoFindingsFor(cbomFindingIds).get(accepted).path("status").asText());
 
         mockMvc.perform(asPlatformOwner(authedDelete("/api/bom/inventory/" + bomId))).andExpect(status().isOk());
         java.util.Map<String, JsonNode> afterDelete = cryptoFindingsFor(cbomFindingIds);
         for (String id : cbomFindingIds) {
-            String expected = id.equals(accepted) ? "SUPPRESSED" : "AUTO_CLOSED";
-            assertEquals(expected, afterDelete.get(id).path("status").asText(),
+            assertEquals("AUTO_CLOSED", afterDelete.get(id).path("status").asText(),
                     "deleting the CBOM closes its open crypto findings without calling them remediated");
         }
     }

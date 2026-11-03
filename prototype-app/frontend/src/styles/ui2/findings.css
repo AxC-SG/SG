@@ -1216,3 +1216,21 @@ html[data-ui='2'] .ui2-findings-family .panel ul {
   padding-left: 18px;
   color: var(--dp-text-2);
 }
+
+/* CRYPTO verification dialog form and ticket attempt history on finding detail. */
+html[data-ui='2'] .fd3-page .crypto-verification-form {
+  display: grid;
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .fd3-page .crypto-verification-form label {
+  display: grid;
+  gap: var(--dp-space-1, 4px);
+}
+
+html[data-ui='2'] .fd3-page .crypto-ticket-attempts ul {
+  display: grid;
+  gap: var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-3, 12px);
+  padding-left: var(--dp-space-5, 20px);
+}

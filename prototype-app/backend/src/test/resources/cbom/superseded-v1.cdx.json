@@ -1,0 +1,1 @@
+{"bomFormat":"CycloneDX","specVersion":"1.6","serialNumber":"urn:uuid:00000000-0000-0000-0000-000000000201","components":[{"type":"cryptographic-asset","bom-ref":"tls:edge","name":"Edge TLS","cryptoProperties":{"assetType":"protocol","protocolProperties":{"version":"TLS 1.2"}}}]}

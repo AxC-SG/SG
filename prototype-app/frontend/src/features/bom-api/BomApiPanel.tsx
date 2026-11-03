@@ -4,7 +4,7 @@ import { BomPipelinePushes } from './BomPipelinePushes';
 import { BomPipelineSnippets } from './BomPipelineSnippets';
 
 /** Pushing BOMs from CI/CD: the keys a pipeline authenticates with, how to call the API, and what arrived. */
-export function BomApiPanel({ bomType }: { bomType: BomType }) {
+export function BomApiPanel({ bomType }: { bomType?: BomType }) {
   return (
     <section className="panel" aria-labelledby="bom-api-heading">
       <div className="panel-header">
@@ -15,7 +15,7 @@ export function BomApiPanel({ bomType }: { bomType: BomType }) {
       </div>
       <div className="ingestion-form">
         <BomIngestKeysSection />
-        <BomPipelineSnippets bomType={bomType} />
+        <BomPipelineSnippets initialBomType={bomType} />
         <BomPipelinePushes />
       </div>
     </section>

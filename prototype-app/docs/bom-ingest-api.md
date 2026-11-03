@@ -55,6 +55,30 @@ The body carries `bomId`, `assetId`, `sourceId`, `format`, `formatVersion`, `doc
 `GET /api/bom/ingest/{bomId}/status` returns `state` (`ACTIVE`, `SUPERSEDED`, `FAILED`), `componentCount`,
 `pipeline`, `build`, `correlator`, `ingestedAt` and `supersededBy`.
 
+## CBOM CI gate
+
+A CBOM push (`bomType=CBOM`) accepts an optional `environment` (1–40 lowercase letters, digits or hyphens;
+default `default`) and returns a single-job `gateToken` (`sgg_…`) and `gateEnvironment`. The token is shown
+once, stored only as a SHA-256, expires after 24 hours and reads the gate result of that one document only.
+
+Poll the document's status with both the ingest key and the token:
+
+```bash
+curl -H "Authorization: Bearer $SCOUT_INGEST_KEY" -H "X-Scout-Gate-Token: $GATE_TOKEN" \
+  https://api.scoutgrid.io/api/bom/ingest/$BOM_ID/status
+```
+
+The response then carries `gate`: `state` is `PENDING` (assessment not finished; retry after
+`pollAfterSeconds`), `PASS`, `FAIL` (with `reasons`) or `INDETERMINATE` (invalid document or failed
+assessment), plus the `assessmentRunId`, `rulePackageDigest` and `artifactChecksum` the decision used.
+Without the token the status response has no `gate`; a token for another document, an unknown token and
+an expired token all return 403. The ingest key alone never reads findings, reports or gate results.
+
+Gate policies are per environment (`GET/PUT /api/bom/cbom/governance/gate-policies/{environment}`, write
+requires `TENANT_ADMIN`): `failOnSeverities`, `minimumCompleteness` and `blockOnInvalid`. An environment
+without a policy uses the `default` policy, then the application default (fail on `CRITICAL`/`HIGH`,
+completeness at least 0.80, invalid documents block).
+
 ## Errors
 
 Every error carries a stable `code`.

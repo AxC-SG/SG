@@ -46,6 +46,30 @@ public interface CbomRiskFindingRepository extends JpaRepository<CbomRiskFinding
 
     Optional<CbomRiskFinding> findByIdAndTenant_Id(UUID id, UUID tenantId);
 
+    List<CbomRiskFinding> findByTenant_IdAndIdIn(UUID tenantId, Collection<UUID> ids);
+
+    /** Ids of findings reported by components of one CBOM document. */
+    @Query("SELECT f.id FROM CbomRiskFinding f WHERE f.component.sourceBom.id = :sourceBomId")
+    List<UUID> findIdsBySourceBomId(@Param("sourceBomId") UUID sourceBomId);
+
+    /**
+     * Bounded drift detector for the mirror repair sweep. Returns CBOM findings whose canonical
+     * CRYPTO row is missing although the finding is live, or is still OPEN although the finding
+     * is no longer live. Content drift is not detected here; CBOM_DELTA producers own that.
+     * Tenant-local: runs in the current tenant schema.
+     */
+    @Query(value = """
+        SELECT r.id FROM cbom_risk_findings r
+          JOIN cbom_components c ON c.id = r.cbom_component_id
+          LEFT JOIN findings f ON f.fingerprint = 'cbom:' || r.id::text AND f.finding_kind = 'CRYPTO'
+         WHERE (r.status = 'OPEN' AND c.active AND r.evidence_state <> 'WITHDRAWN' AND f.id IS NULL)
+            OR (f.status = 'OPEN' AND r.status <> 'ACCEPTED'
+                AND NOT (r.status = 'OPEN' AND c.active AND r.evidence_state <> 'WITHDRAWN'))
+         ORDER BY r.id
+         LIMIT :limit
+        """, nativeQuery = true)
+    List<UUID> findMirrorRepairCandidates(@Param("limit") int limit);
+
     @Query("""
         SELECT f FROM CbomRiskFinding f
         WHERE f.tenant.id = :tenantId

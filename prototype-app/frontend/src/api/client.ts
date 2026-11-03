@@ -15,6 +15,11 @@ import type {
   FindingDistributions,
   FindingFilterValues,
   FindingProjectionStatus,
+  FindingSuppressionDecision,
+  FindingSuppressionRequest,
+  FindingSuppressionRequestCreate,
+  FindingVerificationRequest,
+  FindingVerificationResponse,
   FindingQueueDefinition,
   FindingQueueUpsertRequest,
   FindingPage,
@@ -94,6 +99,24 @@ import type {
   InventoryComponentPage
 } from '../features/inventory/api-types';
 import type { PlatformVulnIntelDetail, PlatformVulnSourceStats, VulnRepoDashboard } from '../features/vuln-repo-dashboard/types';
+import type {
+  CbomComponentDetail,
+  CbomInventoryFilters,
+  CbomInventoryPage,
+  CbomOverview,
+  CbomReport,
+  CbomSemanticDiff,
+  CbomTrends,
+  CryptoEffectiveness,
+  CampaignFinding,
+  CbomBlastRadius,
+  CbomContradiction,
+  CbomGatePolicy,
+  CbomPortfolio,
+  CbomPqcProgress,
+  CryptoRemediationQueue,
+  FindingTicketAttempt,
+} from '../features/cbom/types';
 import type {
   AuditEvent,
   AllowedTenant,
@@ -218,6 +241,66 @@ export type CbomRiskFinding = {
   status: string;
   firstSeenAt: string;
   lastSeenAt: string;
+};
+
+export type CbomSuppressionSettings = {
+  tenantId: string;
+  requireDistinctSuppressionApprover: boolean;
+  suppressionRequestDeadlineDays: number;
+  lowSuppressionMaxDays: number;
+  mediumSuppressionMaxDays: number;
+  highSuppressionMaxDays: number;
+  criticalSuppressionMaxDays: number;
+  updatedBy: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type CbomSuppressionSettingsUpdate = Omit<CbomSuppressionSettings, 'tenantId' | 'updatedBy' | 'updatedAt' | 'version'>;
+
+export type CbomAssessment = {
+  id: string; bomId: string; previousBomId: string | null; artifactChecksum: string; rulePackageId: string;
+  rulePackageVersion: string; rulePackageDigest: string; evaluatorVersion: string;
+  status: string; validationOutcome: string; componentCount: number; findingCount: number;
+  confidenceScore: number | null; completenessScore: number | null;
+  startedAt: string | null; completedAt: string | null;
+  validationIssues: Array<{ id: string; code: string; severity: string; jsonPointer: string | null; message: string }>;
+  claimAssurances: Array<{ id: string; componentId: string | null; claimPath: string; assuranceLevel: string; evidenceState: string; explanation: string }>;
+};
+export type CbomRuleConfiguration = {
+  packageId: string; versionPolicy: 'FOLLOW_LATEST' | 'PINNED'; pinnedVersion: string | null;
+  parameters: Record<string, number>; version: number; updatedBy: string;
+  effectiveVersion: string | null;
+  pinState: 'CURRENT' | 'UPGRADE_AVAILABLE' | 'DEPRECATED' | 'UPGRADE_REQUIRED' | 'UNSUPPORTED';
+  remediation: string | null;
+  availableVersions: Array<{
+    version: string; title: string; digest: string; evaluatorMajor: number; rolloutStage: string;
+    deprecatedAt: string | null; retiresAt: string | null; pinnable: boolean; tenantStatus: string | null;
+  }>;
+  history: Array<{
+    id: string; action: string; fromVersion: string | null; toVersion: string | null; versionPolicy: string;
+    actor: string; reason: string; impactJson: string | null; createdAt: string;
+  }>;
+};
+export type CbomRuleConfigurationRequest = {
+  versionPolicy: 'FOLLOW_LATEST' | 'PINNED'; pinnedVersion: string | null; parameters: Record<string, number>; reason: string;
+};
+export type CbomRuleImpactPreview = {
+  activeComponents: number; projectedRsaFindings: number; projectedExpiringCertificateFindings: number; safetyBounds: string[];
+  fromVersion: string | null; toVersion: string; addedRules: string[]; removedRules: string[]; changedRuleModes: string[];
+  changedParameters: Record<string, [number | null, number]>; currentRsaFindings: number; currentExpiringCertificateFindings: number;
+};
+export type CbomPqcReadiness = {
+  total: number; quantumVulnerable: number; pqcReady: number; unknown: number;
+  /** Symmetric, hash, MAC or KDF at adequate strength. */
+  quantumSafe: number;
+  /** Broken or deprecated today (MD5, SHA-1, 3DES, RC4…), regardless of quantum risk. */
+  classicallyWeak: number;
+  highestPriority: Array<{
+    componentId: string; name: string; primitive: string | null;
+    readiness: 'QUANTUM_VULNERABLE' | 'CLASSICALLY_WEAK' | 'PQC_READY' | 'QUANTUM_SAFE' | 'UNKNOWN';
+    migrationPriority: string; reason: string;
+  }>;
 };
 
 /** One cryptographic asset reported by a CBOM document, with the findings raised against it. */
@@ -1139,6 +1222,27 @@ export const api = {
     return request<FindingPage>(`/findings${suffix}`);
   },
   getFinding: (findingId: string) => request<Finding>(`/findings/${encodeURIComponent(findingId)}`),
+  listFindingSuppressionRequests: () => request<FindingSuppressionRequest[]>('/findings/suppression-requests'),
+  requestFindingSuppression: (findingId: string, payload: FindingSuppressionRequestCreate) =>
+    request<FindingSuppressionRequest>(`/findings/${encodeURIComponent(findingId)}/suppression-requests`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  suppressFindingDirectly: (findingId: string, payload: FindingSuppressionRequestCreate) =>
+    request<void>(`/findings/${encodeURIComponent(findingId)}/suppress`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  decideFindingSuppression: (requestId: string, payload: FindingSuppressionDecision) =>
+    request<FindingSuppressionRequest>(`/findings/suppression-requests/${encodeURIComponent(requestId)}/decision`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateFindingVerification: (findingId: string, payload: FindingVerificationRequest) =>
+    request<FindingVerificationResponse>(`/findings/${encodeURIComponent(findingId)}/verify`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getFindingGroups: (field: string, params?: FindingsFilterModel) => {
     const search = buildFindingsSearchParams(params);
     search.set('field', field);
@@ -1378,6 +1482,8 @@ export const api = {
    * Prefer this over createFindingIncident, whose ServiceNow-shaped response cannot say which
    * system actually holds the ticket.
    */
+  listFindingTicketAttempts: (findingId: string) =>
+    request<FindingTicketAttempt[]>(`/findings/${encodeURIComponent(findingId)}/ticket-attempts`),
   createFindingTicket: (findingId: string, payload: CreateFindingTicketRequest) =>
     request<FindingTicketResponse>(`/findings/${encodeURIComponent(findingId)}/ticket`, {
       method: 'POST',
@@ -2430,8 +2536,94 @@ export const api = {
     if (severity) params.set('severity', severity);
     return request<CbomRiskFinding[]>(`/bom/cbom/findings?${params.toString()}`);
   },
-  acceptCbomFinding: (findingId: string) =>
-    request<CbomRiskFinding>(`/bom/cbom/findings/${encodeURIComponent(findingId)}/accept`, { method: 'POST' }),
+  getCbomSuppressionSettings: () =>
+    request<CbomSuppressionSettings>('/bom/cbom/suppression-settings'),
+  updateCbomSuppressionSettings: (payload: CbomSuppressionSettingsUpdate) =>
+    request<CbomSuppressionSettings>('/bom/cbom/suppression-settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  listCbomAssessments: (bomId: string) =>
+    request<CbomAssessment[]>(`/bom/cbom/assessments?bomId=${encodeURIComponent(bomId)}`),
+  requestCbomAssessment: (bomId: string) =>
+    request<IngestionJobAccepted>(`/bom/cbom/assessments/${encodeURIComponent(bomId)}`, { method: 'POST' }),
+  getCbomDiff: (fromBomId: string, toBomId: string) =>
+    request<{ fromBomId: string; toBomId: string; addedCount: number; removedCount: number; changedCount: number; changes: Array<{ changeType: string; identity: string; name: string; changedFields: string[] }> }>(
+      `/bom/cbom/diff?fromBomId=${encodeURIComponent(fromBomId)}&toBomId=${encodeURIComponent(toBomId)}`),
+  getCbomRuleConfiguration: () =>
+    request<CbomRuleConfiguration>('/bom/cbom/governance/rules'),
+  previewCbomRuleConfiguration: (payload: CbomRuleConfigurationRequest) =>
+    request<CbomRuleImpactPreview>('/bom/cbom/governance/rules/preview', { method: 'POST', body: JSON.stringify(payload) }),
+  updateCbomRuleConfiguration: (payload: CbomRuleConfigurationRequest) =>
+    request<CbomRuleConfiguration>('/bom/cbom/governance/rules', { method: 'PUT', body: JSON.stringify(payload) }),
+  getCbomBlastRadius: (componentId: string, depth = 3) =>
+    request<CbomBlastRadius>(`/bom/cbom/blast-radius?componentId=${encodeURIComponent(componentId)}&depth=${depth}`),
+  listCbomContradictions: (status = 'OPEN') =>
+    request<CbomContradiction[]>(`/bom/cbom/contradictions?status=${encodeURIComponent(status)}`),
+  reviewCbomContradiction: (id: string, payload: { decision: 'ACCEPTED_A' | 'ACCEPTED_B' | 'DISMISSED'; note: string; version: number }) =>
+    request<CbomContradiction>(`/bom/cbom/contradictions/${encodeURIComponent(id)}/review`, { method: 'POST', body: JSON.stringify(payload) }),
+  listCbomGatePolicies: () => request<CbomGatePolicy[]>('/bom/cbom/governance/gate-policies'),
+  saveCbomGatePolicy: (environment: string, payload: { failOnSeverities: string[]; minimumCompleteness: number; blockOnInvalid: boolean; version?: number }) =>
+    request<CbomGatePolicy>(`/bom/cbom/governance/gate-policies/${encodeURIComponent(environment)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  getCbomPqcProgress: () => request<CbomPqcProgress>('/bom/cbom/pqc/progress'),
+  createCbomPqcCampaign: (payload: { name: string; dueAt: string; assignedTo?: string; ownerGroup?: string; environment?: string }) =>
+    request<{ summary: { id: string; name: string } }>('/bom/cbom/pqc/campaigns', { method: 'POST', body: JSON.stringify(payload) }),
+  getCbomPortfolio: (groupBy: string) => request<CbomPortfolio>(`/bom/cbom/portfolio?groupBy=${encodeURIComponent(groupBy)}`),
+  getCryptoRemediationQueue: () =>
+    request<CryptoRemediationQueue>('/bom/cbom/remediation/queue'),
+  getCryptoRemediationEffectiveness: (days = 90) =>
+    request<CryptoEffectiveness>(`/bom/cbom/remediation/effectiveness?days=${days}`),
+  createCampaignFromFindings: (payload: {
+    name: string; summary?: string; findingIds: string[]; dueAt?: string; assignedTo?: string; ownerGroup?: string; launchNote?: string;
+  }) => request<{ summary: { id: string; name: string } }>('/campaigns/from-findings', { method: 'POST', body: JSON.stringify(payload) }),
+  listCampaignFindings: (campaignId: string) =>
+    request<CampaignFinding[]>(`/campaigns/${encodeURIComponent(campaignId)}/findings`),
+  getCbomPqcReadiness: () =>
+    request<CbomPqcReadiness>('/bom/cbom/governance/pqc-readiness'),
+  getCbomOverview: () =>
+    request<CbomOverview>('/bom/cbom/overview'),
+  getCbomTrends: (days = 90) =>
+    request<CbomTrends>(`/bom/cbom/trends?days=${days}`),
+  listCbomInventory: (filters: CbomInventoryFilters, page = 0, size = 50) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+    return request<CbomInventoryPage>(`/bom/cbom/inventory?${params.toString()}`);
+  },
+  getCbomComponentDetail: (componentId: string) =>
+    request<CbomComponentDetail>(`/bom/cbom/components/${encodeURIComponent(componentId)}`),
+  getCbomSemanticDiff: (bomId: string, baselineBomId?: string) =>
+    request<CbomSemanticDiff>(`/bom/inventory/${encodeURIComponent(bomId)}/diff${baselineBomId ? `?baselineBomId=${encodeURIComponent(baselineBomId)}` : ''}`),
+  listCbomReports: (bomId: string) =>
+    request<CbomReport[]>(`/bom/inventory/${encodeURIComponent(bomId)}/reports`),
+  requestCbomReport: (bomId: string, assessmentRunId: string, format: 'JSON' | 'HTML', idempotencyKey: string) =>
+    request<CbomReport>(`/bom/inventory/${encodeURIComponent(bomId)}/reports`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ assessmentRunId, format }),
+    }),
+  regenerateCbomReport: (bomId: string, reportId: string, idempotencyKey: string) =>
+    request<CbomReport>(`/bom/inventory/${encodeURIComponent(bomId)}/reports/${encodeURIComponent(reportId)}/regenerate`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }),
+  downloadCbomReport: async (bomId: string, reportId: string) => {
+    const headers = buildApiHeaders(undefined, false);
+    const response = await fetch(
+      `${API_BASE}/bom/inventory/${encodeURIComponent(bomId)}/reports/${encodeURIComponent(reportId)}/download`,
+      { headers, credentials: 'include' });
+    if (!response.ok) throw await parseApiError(response);
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? 'cbom-assessment-report';
+    return { filename, blob: await response.blob(), checksum: response.headers.get('x-content-sha256') };
+  },
+  downloadCbomAssessmentReport: async (runId: string, format: 'json' | 'html') => {
+    const headers = buildApiHeaders(undefined, false);
+    const response = await fetch(`${API_BASE}/bom/cbom/assessments/${encodeURIComponent(runId)}/report?format=${format}`, { headers, credentials: 'include' });
+    if (!response.ok) throw await parseApiError(response);
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `cbom-assessment.${format}`;
+    return { filename, blob: await response.blob(), checksum: response.headers.get('x-content-sha256') };
+  },
 };
 
 export type AiBaseline = {

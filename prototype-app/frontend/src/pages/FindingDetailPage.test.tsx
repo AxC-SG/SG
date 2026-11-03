@@ -20,6 +20,13 @@ const ANALYST: ActorContext = {
   roles: ['ROLE_SECURITY_ANALYST'],
 };
 
+const TENANT_ADMIN: ActorContext = {
+  ...ANALYST,
+  principal: 'admin@example.com',
+  userId: 'admin-1',
+  roles: ['ROLE_TENANT_ADMIN'],
+};
+
 const FINDING: Finding = {
   id: '11111111-1111-1111-1111-111111111111',
   displayId: 'F-001',
@@ -182,6 +189,7 @@ describe('FindingDetailPage', () => {
   it('shows a crypto finding as its own panel and never looks its rule id up as a CVE', async () => {
     const cveDetail = vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockRejectedValue(new Error('skip'));
     vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
 
     renderWithFinding({
       ...FINDING,
@@ -196,6 +204,87 @@ describe('FindingDetailPage', () => {
     expect(screen.getByText('Move to SHA-256')).toBeInTheDocument();
     expect(screen.queryByText('Vulnerability')).not.toBeInTheDocument();
     expect(cveDetail).not.toHaveBeenCalled();
+  });
+
+  it('routes crypto suppression through a time-bounded request with a compensating control', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+    const requestSuppression = vi.spyOn(api, 'requestFindingSuppression').mockResolvedValue({
+      id: 'request-1',
+      findingId: FINDING.id,
+      findingKind: 'CRYPTO',
+      severityAtRequest: 'CRITICAL',
+      requestedBy: ANALYST.principal,
+      requestedAt: '2026-11-02T00:00:00Z',
+      decisionDueAt: '2026-11-16T00:00:00Z',
+      reason: 'COMPENSATING_CONTROL',
+      compensatingControl: 'TLS termination rejects SHA-1 certificates',
+      proposedSuppressedUntil: '2099-01-01T00:00:00.000Z',
+      status: 'PENDING',
+    });
+
+    renderWithFinding({
+      ...FINDING,
+      findingKind: 'CRYPTO',
+      vulnerabilityId: 'CBOM-WEAK-HASH',
+    });
+
+    expect(await screen.findByText('No suppression requests exist for this cryptographic finding.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'False Positive' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Request Suppression' }));
+    expect(screen.getByRole('dialog', { name: 'Request Cryptographic Suppression' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'COMPENSATING_CONTROL' } });
+    fireEvent.change(screen.getByLabelText('Compensating control'), { target: { value: 'TLS termination rejects SHA-1 certificates' } });
+    fireEvent.change(screen.getByLabelText('Expires'), { target: { value: '2099-01-01' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Request' }));
+
+    await waitFor(() => expect(requestSuppression).toHaveBeenCalledWith(FINDING.id, expect.objectContaining({
+      reason: 'COMPENSATING_CONTROL',
+      compensatingControl: 'TLS termination rejects SHA-1 certificates',
+    })));
+    expect(await screen.findByText('Suppression request submitted for tenant-admin review.')).toBeInTheDocument();
+  });
+
+  it('lets a tenant admin decide a pending crypto suppression request', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([{
+      id: 'request-1', findingId: FINDING.id, findingKind: 'CRYPTO', severityAtRequest: 'HIGH',
+      requestedBy: 'analyst@example.com', requestedAt: '2026-11-02T00:00:00Z',
+      decisionDueAt: '2026-11-16T00:00:00Z', reason: 'PENDING_PATCH',
+      compensatingControl: 'Restricted network access', proposedSuppressedUntil: '2026-12-01T00:00:00Z',
+      status: 'PENDING',
+    }]);
+    const decide = vi.spyOn(api, 'decideFindingSuppression').mockResolvedValue({
+      id: 'request-1', findingId: FINDING.id, findingKind: 'CRYPTO', severityAtRequest: 'HIGH',
+      requestedBy: 'analyst@example.com', requestedAt: '2026-11-02T00:00:00Z',
+      decisionDueAt: '2026-11-16T00:00:00Z', reason: 'PENDING_PATCH',
+      compensatingControl: 'Restricted network access', proposedSuppressedUntil: '2026-12-01T00:00:00Z',
+      status: 'REJECTED', decidedBy: TENANT_ADMIN.principal, decidedAt: '2026-11-03T00:00:00Z',
+    });
+
+    renderWithFinding({ ...FINDING, findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-WEAK-HASH' }, TENANT_ADMIN);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reject' }));
+    await waitFor(() => expect(decide).toHaveBeenCalledWith('request-1', { decision: 'REJECT' }));
+  });
+
+  it('lets a tenant admin directly suppress a noncritical crypto finding', async () => {
+    const cryptoFinding = { ...FINDING, findingKind: 'CRYPTO', severity: 'HIGH', vulnerabilityId: 'CBOM-WEAK-HASH' };
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+    const suppress = vi.spyOn(api, 'suppressFindingDirectly').mockResolvedValue(undefined);
+    vi.spyOn(api, 'getFinding').mockResolvedValue({ ...cryptoFinding, status: 'SUPPRESSED' });
+
+    renderWithFinding(cryptoFinding, TENANT_ADMIN);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Suppress Directly' }));
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'PENDING_PATCH' } });
+    fireEvent.change(screen.getByLabelText('Compensating control'), { target: { value: 'Isolated network segment' } });
+    fireEvent.change(screen.getByLabelText('Expires'), { target: { value: '2099-01-01' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Suppress' }));
+
+    await waitFor(() => expect(suppress).toHaveBeenCalledWith(FINDING.id, expect.objectContaining({ reason: 'PENDING_PATCH' })));
+    expect(await screen.findByText('Finding suppressed under the tenant policy.')).toBeInTheDocument();
   });
 
   it('explains a missing finding without claiming the link works', async () => {
@@ -238,5 +327,70 @@ describe('FindingDetailPage', () => {
     expect(await screen.findByText('Fix Intelligence is unavailable right now.')).toBeInTheDocument();
     expect(screen.getAllByText('F-001').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Retry remediation options' })).toBeInTheDocument();
+  });
+
+  it('requests and accepts crypto verification through labelled dialogs instead of browser prompts', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingTicketAttempts').mockResolvedValue([]);
+    const prompt = vi.spyOn(window, 'prompt');
+    const crypto: Finding = { ...FINDING, findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-RSA-SMALL-KEY' };
+    const update = vi.spyOn(api, 'updateFindingVerification').mockRejectedValueOnce(new Error('Verification store unavailable'))
+      .mockResolvedValue({} as never);
+    vi.spyOn(api, 'getFinding').mockResolvedValue({ ...crypto, verificationStatus: 'REQUESTED', targetState: 'RSA-3072' });
+    renderWithFinding(crypto);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Request Verification' }));
+    const dialog = screen.getByRole('dialog', { name: 'Request remediation verification' });
+    expect(screen.getByRole('button', { name: 'Request verification' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Target cryptographic state'), { target: { value: 'RSA-3072' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Request verification' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verification store unavailable');
+    expect(screen.getByLabelText('Target cryptographic state')).toHaveValue('RSA-3072');
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Request verification' }));
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(FINDING.id, { action: 'REQUEST', targetState: 'RSA-3072' }));
+    expect(await screen.findByText('Verification requested. The finding remains open until evidence is accepted.')).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept Verification' }));
+    expect(screen.getByText('Target state: RSA-3072')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Verification evidence'), { target: { value: 'Assessment shows RSA-3072' } });
+    expect(screen.getByRole('button', { name: 'Accept and resolve' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Assessment run ID that proves the target state'), { target: { value: 'run-9' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and resolve' }));
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(FINDING.id,
+      { action: 'ACCEPT', evidence: 'Assessment shows RSA-3072', assessmentRunId: 'run-9' }));
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it('shows a failed crypto ticket push and retries it', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingTicketAttempts').mockResolvedValue([{
+      id: 'attempt-1', provider: 'jira', template: 'CRYPTO', outcome: 'FAILED', ticketKey: null,
+      errorMessage: 'Jira rejected the request', attemptedBy: 'user-1', attemptedAt: '2026-11-02T00:00:00Z',
+    }]);
+    const create = vi.spyOn(api, 'createFindingTicket').mockResolvedValue({} as never);
+    renderWithFinding({ ...FINDING, findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-RSA-SMALL-KEY' });
+
+    expect(await screen.findByText('Jira rejected the request')).toBeInTheDocument();
+    expect(screen.getByText(/crypto template/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry ticket' }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(FINDING.id, {}));
+  });
+
+  it('opens the CBOM component page from a crypto finding\'s affected asset instead of a host page', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+    vi.spyOn(api, 'listFindingTicketAttempts').mockResolvedValue([]);
+    renderWithFinding({
+      ...FINDING, findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-MISSING-USAGE', packageName: 'Active credential encryption key slot',
+      assetType: 'APPLICATION', evidence: JSON.stringify({ cbomFindingId: 'cf-9', cbomComponentId: 'cbom-comp-1' }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Affected Assets/ }));
+    const link = screen.getByRole('link', { name: 'Active credential encryption key slot' });
+    expect(link).toHaveAttribute('href', '/inventory/bom-components/cbom/cbom-comp-1?returnTo=%2Ffindings%2FF-001');
   });
 });

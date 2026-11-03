@@ -7,7 +7,14 @@ import {
   type BomLineageItem,
   type BomWorkflowSummary,
 } from '../api/client';
-import { CbomAssetsPanel } from '../features/inventory/CbomAssetsPanel';
+import { CbomDocumentPanel } from '../features/cbom/CbomDocumentPanel';
+import { CbomInventoryPanel } from '../features/cbom/CbomInventoryPanel';
+import { CbomOverviewPanel } from '../features/cbom/CbomOverviewPanel';
+import { CryptoRemediationPanel } from '../features/cbom/CryptoRemediationPanel';
+import { CbomPortfolioPanel } from '../features/cbom/CbomPortfolioPanel';
+import { useActor } from '../features/auth/context';
+import { hasRole } from '../features/auth/roles';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { AsyncSection } from '../components/AsyncSection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
@@ -351,7 +358,7 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
 
           <LineagePanel items={lineageQuery.data ?? []} />
 
-          {detail.bomType === 'CBOM' ? <CbomAssetsPanel bomId={bomId} /> : (
+          {detail.bomType === 'CBOM' ? <CbomDocumentPanel bomId={bomId} /> : (
             <div className="panel bom-components-panel">
               <div className="panel-header">
                 <h4>Components ({detail.componentCount.toLocaleString()})</h4>
@@ -500,11 +507,15 @@ function OnDemandPanel({ items, onRunTriggered }: {
   );
 }
 
+type BomInventoryView = 'documents' | 'crypto-posture' | 'crypto-inventory' | 'crypto-remediation' | 'crypto-portfolio';
+
 export function BomInventoryPage() {
   const [selectedBomId, setSelectedBomId] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [typeFilter, setTypeFilter] = React.useState('');
   const [page, setPage] = React.useState(0);
+  const [view, setView] = React.useState<BomInventoryView>('documents');
+  const actor = useActor();
 
   const queryClient = useQueryClient();
 
@@ -547,8 +558,42 @@ export function BomInventoryPage() {
     );
   }
 
+  const viewSwitch = (
+    <SegmentedControl<BomInventoryView>
+      ariaLabel="BOM inventory view"
+      value={view}
+      onChange={setView}
+      options={[
+        { value: 'documents', label: 'Documents' },
+        { value: 'crypto-posture', label: 'Cryptographic posture' },
+        { value: 'crypto-inventory', label: 'Cryptographic inventory' },
+        { value: 'crypto-remediation', label: 'Crypto remediation' },
+        { value: 'crypto-portfolio', label: 'Portfolio & PQC' },
+      ]}
+    />
+  );
+
+  if (view !== 'documents') {
+    return (
+      <div className="bom-inventory-page ui2-inventory-family">
+        {viewSwitch}
+        {view === 'crypto-posture' && <CbomOverviewPanel />}
+        {view === 'crypto-inventory' && (
+          <CbomInventoryPanel showContradictions canReview={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+        {view === 'crypto-portfolio' && (
+          <CbomPortfolioPanel canManage={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+        {view === 'crypto-remediation' && (
+          <CryptoRemediationPanel canManage={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bom-inventory-page ui2-inventory-family">
+      {viewSwitch}
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={refreshing}

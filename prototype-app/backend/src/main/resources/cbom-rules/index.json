@@ -1,0 +1,8 @@
+{
+  "description": "Application release configuration for packaged CBOM rule packages. Package files are immutable once released; 'digest' pins the canonical rule manifest and is verified at startup. 'rolloutStage' advances OBSERVE -> CANARY -> BATCHED -> GENERAL. 'deprecatedAt' starts the 90-day pinned-tenant notice; 'retiresAt' must be at least 90 days later.",
+  "packages": [
+    {"packageId": "scoutgrid-baseline", "version": "1.0.0", "resource": "scoutgrid-baseline/1.0.0.json",
+     "digest": "sha256:60f075150e63c596d843d7b81c40ba036ef226283d151fe0317b1721fb475c4e",
+     "releasedAt": "2026-10-01T00:00:00Z", "rolloutStage": "GENERAL", "deprecatedAt": null, "retiresAt": null}
+  ]
+}

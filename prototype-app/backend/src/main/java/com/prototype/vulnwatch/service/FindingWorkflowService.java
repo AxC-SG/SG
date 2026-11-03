@@ -51,6 +51,7 @@ public class FindingWorkflowService {
     private final TenantWorkRunner tenantWorkRunner;
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TransactionTemplate writeTransactionTemplate;
+    private CanonicalSuppressionMutationService suppressionMutations;
 
     public FindingWorkflowService(
             FindingRepository findingRepository,
@@ -85,6 +86,11 @@ public class FindingWorkflowService {
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSuppressionMutations(CanonicalSuppressionMutationService suppressionMutations) {
+        this.suppressionMutations = suppressionMutations;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -188,16 +194,14 @@ public class FindingWorkflowService {
         if (request.status() != null && !request.status().isBlank()) {
             FindingStatus nextStatus = FindingStatus.valueOf(request.status().trim().toUpperCase());
             FindingStatus previousStatus = finding.getStatus();
-            finding.setStatus(nextStatus);
             if (nextStatus == FindingStatus.SUPPRESSED) {
-                finding.setSuppressionReason(trimToNull(request.suppressionReason()));
-                finding.setSuppressedUntil(request.suppressedUntil());
+                suppressionMutations.suppress(finding, trimToNull(request.suppressionReason()), request.suppressedUntil(),
+                        null, null, SuppressionMutationSource.DIRECT_TENANT_ADMIN, actor);
                 clearClosureMetadata(finding);
             } else {
-                finding.setSuppressionReason(null);
-                finding.setSuppressedUntil(null);
-                finding.setSuppressedByRuleId(null);
-                finding.setSuppressedByRuleName(null);
+                finding.setStatus(nextStatus);
+                suppressionMutations.clearMetadata(finding, actor, "SUPPRESSION_CLEARED",
+                        "Suppression metadata cleared by workflow transition");
                 if (nextStatus == FindingStatus.OPEN) {
                     clearClosureMetadata(finding);
                 } else if (nextStatus == FindingStatus.RESOLVED) {
@@ -218,8 +222,9 @@ public class FindingWorkflowService {
                     "Finding status changed",
                     details);
         } else if (request.suppressionReason() != null || request.suppressedUntil() != null) {
-            finding.setSuppressionReason(trimToNull(request.suppressionReason()));
-            finding.setSuppressedUntil(request.suppressedUntil());
+            suppressionMutations.suppress(finding, trimToNull(request.suppressionReason()), request.suppressedUntil(),
+                    finding.getSuppressedByRuleId(), finding.getSuppressedByRuleName(),
+                    SuppressionMutationSource.DIRECT_TENANT_ADMIN, actor);
             Map<String, Object> details = new LinkedHashMap<>();
             details.put("suppressionReason", finding.getSuppressionReason());
             details.put("suppressedUntil", finding.getSuppressedUntil());
@@ -332,10 +337,8 @@ public class FindingWorkflowService {
         finding.setStatus(FindingStatus.RESOLVED);
         finding.setDecisionState(FindingDecisionState.FIXED);
         finding.setAssessmentId(assessmentId);
-        finding.setSuppressionReason(null);
-        finding.setSuppressedUntil(null);
-        finding.setSuppressedByRuleId(null);
-        finding.setSuppressedByRuleName(null);
+        suppressionMutations.clearMetadata(finding, "ai-grid-reassessment", "SUPPRESSION_CLEARED_REMEDIATION",
+                "Suppression metadata cleared after verified remediation");
         markObserved(finding, observedAt, observedRunId);
         applyClosureMetadata(finding, FindingCloseReason.VERIFIED_REMEDIATION,
                 "ai-grid-reassessment", null, observedAt);
@@ -365,10 +368,8 @@ public class FindingWorkflowService {
         FindingStatus previousStatus = finding.getStatus();
         finding.setStatus(FindingStatus.AUTO_CLOSED);
         finding.setDecisionState(FindingDecisionState.NOT_AFFECTED);
-        finding.setSuppressionReason(null);
-        finding.setSuppressedUntil(null);
-        finding.setSuppressedByRuleId(null);
-        finding.setSuppressedByRuleName(null);
+        suppressionMutations.clearMetadata(finding, "system", "SUPPRESSION_CLEARED_AUTO_CLOSE",
+                "Suppression metadata cleared during auto-close");
         applyClosureMetadata(finding, reason, "system", null, closedAt);
         finding.touch();
         Map<String, Object> eventDetails = new LinkedHashMap<>();
@@ -398,19 +399,9 @@ public class FindingWorkflowService {
     private void reopenExpiredSuppressionsInTenant(Instant now) {
         List<Finding> expired = findingRepository.findByStatusAndSuppressedUntilBeforeOrderById(FindingStatus.SUPPRESSED, now);
         for (Finding finding : expired) {
-            finding.setStatus(FindingStatus.OPEN);
-            finding.setDecisionState(FindingDecisionState.AFFECTED);
-            finding.setSuppressionReason(null);
-            finding.setSuppressedUntil(null);
-            finding.setSuppressedByRuleId(null);
-            finding.setSuppressedByRuleName(null);
-            finding.touch();
-            appendEvent(
-                    finding,
-                    "SUPPRESSION_EXPIRED",
-                    "system",
-                    "Suppression expired and finding reopened",
-                    Map.of("reopenedAt", now));
+            // The canonical mutation records the SUPPRESSION_EXPIRED event itself.
+            suppressionMutations.reopen(finding, "system", "SUPPRESSION_EXPIRED",
+                    "Suppression expired and finding reopened");
         }
         if (!expired.isEmpty()) {
             findingRepository.saveAll(expired);

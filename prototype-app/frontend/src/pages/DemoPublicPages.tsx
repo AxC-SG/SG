@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pathForConnectView } from '../app/routes';
+import { BrandMark } from '../components/BrandMark';
 import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
 import { getAuthContextQueryKey } from '../features/auth/queries';
 import { canManageInventorySources, canManageRiskPolicy } from '../features/auth/roles';
@@ -595,7 +596,7 @@ export function PublicLandingPage() {
         <div className="footer-grid">
           <div className="footer-brand">
             <div className="footer-brand-name">
-              <span className="brand-mark">S</span>
+              <BrandMark />
               ScoutGrid
             </div>
             <p className="footer-tagline">
@@ -1532,7 +1533,7 @@ function PublicDemoShell({ children, compact = false, authEntry = false }: { chi
       <nav className="public-demo-nav" aria-label="ScoutGrid site">
         <div className="public-demo-nav-inner">
           <Link to="/demo" className="public-demo-brand">
-            <span className="brand-mark">S</span>
+            <BrandMark />
             <strong>ScoutGrid</strong>
           </Link>
           <div className="public-demo-links">

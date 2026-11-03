@@ -57,6 +57,7 @@ public class FindingComponentRecomputeService {
     private final VulnerabilityIntelSummarySourceRepository vulnerabilityIntelSummarySourceRepository;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final FindingUpsertService findingUpsertService;
+    private CanonicalSuppressionMutationService suppressionMutations;
 
     public FindingComponentRecomputeService(
             FindingRepository findingRepository,
@@ -98,6 +99,11 @@ public class FindingComponentRecomputeService {
         this.vulnerabilityIntelSummarySourceRepository = vulnerabilityIntelSummarySourceRepository;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
         this.findingUpsertService = findingUpsertService;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSuppressionMutations(CanonicalSuppressionMutationService suppressionMutations) {
+        this.suppressionMutations = suppressionMutations;
     }
 
     private TenantApprovedIntelligenceService approvedIntelligence;
@@ -634,7 +640,7 @@ public class FindingComponentRecomputeService {
                 duplicate.setIntelligenceMergedIntoId(master.getId());duplicate.setIntelligenceEligibility("INTELLIGENCE_WITHDRAWN");
                 evaluationFence.stamp(duplicate);
                 if(duplicate.getStatus()==FindingStatus.SUPPRESSED && master.getStatus()==FindingStatus.OPEN) {
-                    master.setStatus(FindingStatus.SUPPRESSED);master.setSuppressionReason(duplicate.getSuppressionReason());master.setSuppressedUntil(duplicate.getSuppressedUntil());
+                    suppressionMutations.copySuppression(duplicate, master, "finding-component-merge");
                 } else if(duplicate.getStatus()==FindingStatus.RESOLVED && master.getStatus()==FindingStatus.OPEN) {
                     master.setStatus(FindingStatus.RESOLVED);master.setClosedAt(duplicate.getClosedAt());master.setClosedBy(duplicate.getClosedBy());master.setClosedReason(duplicate.getClosedReason());
                 }

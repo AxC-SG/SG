@@ -12,6 +12,14 @@ export type Finding = {
   vulnerabilityId: string;
   /** VULNERABILITY (or absent), AI_POSTURE, AI_EXPOSURE, or CRYPTO for a mirrored CBOM finding. */
   findingKind?: string;
+  workflowSubstate?: string;
+  targetState?: string;
+  verificationRequired?: boolean;
+  verificationStatus?: 'NOT_REQUIRED' | 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+  verificationEvidence?: string;
+  verificationRequestedAt?: string;
+  verificationCompletedAt?: string;
+  verificationActor?: string;
   source: string;
   creationSource: 'MANUAL' | 'AUTOMATIC';
   severity: string;
@@ -233,6 +241,49 @@ export type FindingBulkWorkflowResponse = {
   updated: number;
   failed: number;
   message: string;
+};
+
+export type FindingSuppressionRequestCreate = {
+  reason: string;
+  compensatingControl: string;
+  proposedSuppressedUntil: string;
+};
+
+export type FindingSuppressionRequest = FindingSuppressionRequestCreate & {
+  id: string;
+  findingId: string;
+  findingKind: string;
+  severityAtRequest: string;
+  requestedBy: string;
+  requestedAt: string;
+  decisionDueAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  decisionReason?: string | null;
+  appliedEventId?: string | null;
+};
+
+export type FindingSuppressionDecision = {
+  decision: 'APPROVE' | 'REJECT';
+  reason?: string;
+};
+export type FindingVerificationRequest = {
+  action: 'REQUEST' | 'ACCEPT' | 'REJECT';
+  targetState?: string;
+  evidence?: string;
+  assessmentRunId?: string;
+};
+export type FindingVerificationResponse = {
+  findingId: string;
+  workflowSubstate?: string;
+  targetState?: string;
+  verificationRequired: boolean;
+  verificationStatus: 'NOT_REQUIRED' | 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+  verificationEvidence?: string;
+  verificationRequestedAt?: string;
+  verificationCompletedAt?: string;
+  verificationActor?: string;
 };
 export type FindingComment = {
   id: string;

@@ -323,7 +323,15 @@ public class FindingQueryService {
                         "supportGroup", asset.getSupportGroup() == null ? "" : asset.getSupportGroup()),
                 affectedAiResources == null ? List.of() : affectedAiResources,
                 finding.getIntelligenceEligibility(),finding.getIntelligenceReleaseId(),finding.getIntelligenceRevision(),finding.getIntelligenceMergedIntoId(),
-                finding.getFindingKind());
+                finding.getFindingKind(),
+                finding.getWorkflowSubstate(),
+                finding.getTargetState(),
+                finding.isVerificationRequired(),
+                finding.getVerificationStatus(),
+                finding.getVerificationEvidence(),
+                finding.getVerificationRequestedAt(),
+                finding.getVerificationCompletedAt(),
+                finding.getVerificationActor());
     }
 
     private Double safeFindingsScore(String scoreConfig, Finding finding) {

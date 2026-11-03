@@ -37,6 +37,7 @@ import com.prototype.vulnwatch.service.FindingQueryService;
 import com.prototype.vulnwatch.service.RequestActor;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.FindingWorkflowService;
+import com.prototype.vulnwatch.service.FindingSuppressionRequestService;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +61,8 @@ class FindingControllerTest {
     @Mock private FindingProjectionOperationsService findingProjectionOperationsService;
     @Mock private FindingQueueService findingQueueService;
     @Mock private FindingWorkflowService findingWorkflowService;
+    @Mock private FindingSuppressionRequestService findingSuppressionRequestService;
+    @Mock private com.prototype.vulnwatch.service.FindingVerificationService findingVerificationService;
 
     private MockMvc mockMvc;
     private Tenant tenant;
@@ -73,7 +76,9 @@ class FindingControllerTest {
                 findingAnalyticsService,
                 findingProjectionOperationsService,
                 findingQueueService,
-                findingWorkflowService
+                findingWorkflowService,
+                findingSuppressionRequestService,
+                findingVerificationService
         );
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         tenant = new Tenant();

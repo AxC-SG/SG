@@ -4,11 +4,12 @@ import { api, type ApplicationRiskSummary, type BomComponentSummaryItem } from '
 import { AsyncSection } from '../../components/AsyncSection';
 import { FindingSeverityChips } from '../findings/components/FindingSeverityChips';
 import { BomComponentDetailPanel } from './BomComponentDetailPanel';
+import { CbomComponentDetailPanel } from '../cbom/CbomComponentDetailPanel';
 import { ApplicationDetailPanel } from './ApplicationDetailPanel';
 
 const PAGE_SIZE = 100;
-// Rows the server adds for a CBOM's cryptographic assets. They have no software component detail;
-// the asset list is in the CBOM's BOM Inventory detail.
+// Rows the server adds for a CBOM's cryptographic assets. Their componentId is the CBOM component id,
+// so they open the CBOM component page instead of the software component detail.
 const CRYPTO_ECOSYSTEM = 'crypto';
 
 function isCrypto(item: BomComponentSummaryItem): boolean {
@@ -261,7 +262,7 @@ function BomTypeBreakdown({
   );
 }
 
-type BomView = 'list' | 'component-detail' | 'app-detail';
+type BomView = 'list' | 'component-detail' | 'app-detail' | 'cbom-detail';
 
 export function BomComponents() {
   const [view, setView] = React.useState<BomView>('list');
@@ -330,6 +331,15 @@ export function BomComponents() {
         app={selectedApp}
         onBack={() => { setSelectedApp(null); setView('component-detail'); }}
       />
+    );
+  }
+
+  if (view === 'cbom-detail' && selectedComponent) {
+    return (
+      <div className="page-grid ui2-inventory-family">
+        <CbomComponentDetailPanel componentId={selectedComponent.componentId} applicationName={selectedComponent.assetName}
+          onClose={() => { setSelectedComponent(null); setView('list'); }} />
+      </div>
     );
   }
 
@@ -493,9 +503,8 @@ export function BomComponents() {
                   return (
                     <tr
                       key={c.componentId}
-                      style={{ cursor: isCrypto(c) ? 'default' : 'pointer' }}
-                      title={isCrypto(c) ? 'Cryptographic asset — open the CBOM in BOM Inventory for its details' : undefined}
-                      onClick={isCrypto(c) ? undefined : () => { setSelectedComponent(c); setView('component-detail'); }}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => { setSelectedComponent(c); setView(isCrypto(c) ? 'cbom-detail' : 'component-detail'); }}
                     >
                       <td>
                         <div style={{ fontWeight: 600 }}>{c.packageName}</div>

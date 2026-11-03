@@ -29,18 +29,15 @@ public class CbomReadService {
     private final CbomPostureSummaryRepository postureSummaryRepository;
     private final CbomComponentRepository componentRepository;
     private final CbomRiskFindingRepository findingRepository;
-    private final CbomFindingMirrorService findingMirror;
 
     public CbomReadService(
             CbomPostureSummaryRepository postureSummaryRepository,
             CbomComponentRepository componentRepository,
-            CbomRiskFindingRepository findingRepository,
-            CbomFindingMirrorService findingMirror
+            CbomRiskFindingRepository findingRepository
     ) {
         this.postureSummaryRepository = postureSummaryRepository;
         this.componentRepository = componentRepository;
         this.findingRepository = findingRepository;
-        this.findingMirror = findingMirror;
     }
 
     @Transactional(readOnly = true)
@@ -115,16 +112,6 @@ public class CbomReadService {
             );
         }
         return findings.stream().map(this::toFindingResponse).toList();
-    }
-
-    @Transactional
-    public CbomRiskFindingResponse acceptFinding(Tenant tenant, UUID findingId) {
-        CbomRiskFinding finding = findingRepository.findByIdAndTenant_Id(findingId, tenant.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CBOM finding not found"));
-        finding.setStatus(CbomFindingStatus.ACCEPTED);
-        CbomRiskFinding saved = findingRepository.save(finding);
-        findingMirror.syncTenant(tenant);
-        return toFindingResponse(saved);
     }
 
     private CbomPostureSummaryResponse toPostureResponse(CbomPostureSummary summary) {

@@ -68,6 +68,30 @@ public class Finding {
     @Column(name = "workflow_class", length = 32)
     private String workflowClass;
 
+    @Column(name = "workflow_substate", length = 40)
+    private String workflowSubstate;
+
+    @Column(name = "target_state", length = 80)
+    private String targetState;
+
+    @Column(name = "verification_required", nullable = false)
+    private boolean verificationRequired;
+
+    @Column(name = "verification_status", nullable = false, length = 24)
+    private String verificationStatus = "NOT_REQUIRED";
+
+    @Column(name = "verification_evidence", columnDefinition = "text")
+    private String verificationEvidence;
+
+    @Column(name = "verification_requested_at")
+    private Instant verificationRequestedAt;
+
+    @Column(name = "verification_completed_at")
+    private Instant verificationCompletedAt;
+
+    @Column(name = "verification_actor", length = 255)
+    private String verificationActor;
+
     @Column(name = "title", length = 512)
     private String title;
 
@@ -301,6 +325,22 @@ public class Finding {
     public void setFingerprint(String fingerprint) { this.fingerprint = fingerprint; }
     public String getWorkflowClass() { return workflowClass; }
     public void setWorkflowClass(String workflowClass) { this.workflowClass = workflowClass; }
+    public String getWorkflowSubstate() { return workflowSubstate; }
+    public void setWorkflowSubstate(String value) { workflowSubstate = value; }
+    public String getTargetState() { return targetState; }
+    public void setTargetState(String value) { targetState = value; }
+    public boolean isVerificationRequired() { return verificationRequired; }
+    public void setVerificationRequired(boolean value) { verificationRequired = value; }
+    public String getVerificationStatus() { return verificationStatus; }
+    public void setVerificationStatus(String value) { verificationStatus = value; }
+    public String getVerificationEvidence() { return verificationEvidence; }
+    public void setVerificationEvidence(String value) { verificationEvidence = value; }
+    public Instant getVerificationRequestedAt() { return verificationRequestedAt; }
+    public void setVerificationRequestedAt(Instant value) { verificationRequestedAt = value; }
+    public Instant getVerificationCompletedAt() { return verificationCompletedAt; }
+    public void setVerificationCompletedAt(Instant value) { verificationCompletedAt = value; }
+    public String getVerificationActor() { return verificationActor; }
+    public void setVerificationActor(String value) { verificationActor = value; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getPolicyId() { return policyId; }

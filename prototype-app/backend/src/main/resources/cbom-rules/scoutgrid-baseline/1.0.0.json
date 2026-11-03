@@ -1,0 +1,25 @@
+{
+  "packageId": "scoutgrid-baseline",
+  "version": "1.0.0",
+  "title": "ScoutGrid Recommended Cryptography Baseline",
+  "evaluatorMajor": 1,
+  "evaluatorVersion": "1.0",
+  "rules": [
+    {"id": "CBOM-WEAK-ALGO", "version": 1, "mode": "mandatory", "tags": ["ALGORITHM"]},
+    {"id": "CBOM-RSA-SMALL-KEY", "version": 1, "mode": "mandatory", "tags": ["KEY_MANAGEMENT"]},
+    {"id": "CBOM-QUANTUM-VULNERABLE", "version": 1, "mode": "mandatory", "tags": ["PQC"]},
+    {"id": "CBOM-CERT-EXPIRED", "version": 1, "mode": "mandatory", "tags": ["CERTIFICATE"]},
+    {"id": "CBOM-CERT-EXPIRING", "version": 1, "mode": "enabled", "tags": ["CERTIFICATE"]},
+    {"id": "CBOM-CERT-WEAK-SIGNATURE", "version": 1, "mode": "mandatory", "tags": ["CERTIFICATE"]},
+    {"id": "CBOM-DEPRECATED-PROTOCOL", "version": 1, "mode": "mandatory", "tags": ["TLS"]},
+    {"id": "CBOM-MATERIAL-COMPROMISED", "version": 1, "mode": "mandatory", "tags": ["KEY_MANAGEMENT"]},
+    {"id": "CBOM-SECRET-ENV-STORAGE", "version": 1, "mode": "enabled", "tags": ["KEY_MANAGEMENT"]},
+    {"id": "CBOM-MISSING-USAGE", "version": 1, "mode": "enabled", "tags": ["COMPLETENESS"]},
+    {"id": "CBOM-WEAK-CRYPTO", "version": 1, "mode": "mandatory", "tags": ["ALGORITHM"]}
+  ],
+  "parameters": {
+    "minimumRsaBits": {"type": "integer", "default": 2048, "min": 2048, "max": 16384},
+    "certificateExpiryWarningDays": {"type": "integer", "default": 90, "min": 1, "max": 365},
+    "pqcDataLifetimeYears": {"type": "integer", "default": 10, "min": 1, "max": 100}
+  }
+}

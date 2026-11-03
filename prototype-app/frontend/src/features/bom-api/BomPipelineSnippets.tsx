@@ -4,9 +4,14 @@ import { buildSnippets, PIPELINE_LABELS, type PipelineKind } from './snippets';
 
 const KINDS = Object.keys(PIPELINE_LABELS) as PipelineKind[];
 
-type Props = { bomType: BomType };
+const BOM_TYPE_OPTIONS: Array<{ value: BomType; label: string }> = [
+  { value: 'SBOM', label: 'SBOM' }, { value: 'CBOM', label: 'CBOM' }, { value: 'AI_BOM', label: 'AI BOM' }, { value: 'VENDOR', label: 'Vendor BOM' },
+];
 
-export function BomPipelineSnippets({ bomType }: Props) {
+type Props = { initialBomType?: BomType };
+
+export function BomPipelineSnippets({ initialBomType = 'SBOM' }: Props) {
+  const [bomType, setBomType] = React.useState<BomType>(initialBomType);
   const [kind, setKind] = React.useState<PipelineKind>('curl');
   const [fileName, setFileName] = React.useState('bom.json');
   const [copied, setCopied] = React.useState(false);
@@ -49,6 +54,11 @@ export function BomPipelineSnippets({ bomType }: Props) {
           </button>
         ))}
       </div>
+      <label className="form-label" style={{ marginTop: 8 }}>BOM type your pipeline pushes
+        <select className="form-input" value={bomType} onChange={(event) => setBomType(event.target.value as BomType)}>
+          {BOM_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>
       <label className="form-label" style={{ marginTop: 8 }}>BOM file your pipeline produces
         <input
           type="text"

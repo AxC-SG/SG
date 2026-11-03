@@ -12,6 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CbomComponentRepository extends JpaRepository<CbomComponent, UUID> {
+    List<CbomComponent> findByTenant_IdAndActiveTrueOrderByNameAsc(UUID tenantId);
+    List<CbomComponent> findByTenant_IdAndSourceBom_IdOrderByNameAsc(UUID tenantId, UUID sourceBomId);
 
     Optional<CbomComponent> findByTenant_IdAndSourceBom_IdAndComponentFingerprint(
             UUID tenantId,

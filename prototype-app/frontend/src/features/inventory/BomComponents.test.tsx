@@ -134,8 +134,28 @@ describe('BomComponents', () => {
     });
   });
 
-  it('lists CBOM cryptographic assets, counts them under Crypto Libraries and does not open a software detail for them', async () => {
+  it('lists CBOM cryptographic assets under Crypto Libraries and opens the CBOM component page for them', async () => {
     const detail = vi.spyOn(api, 'getBomComponentDetail');
+    const cbomDetail = vi.spyOn(api, 'getCbomComponentDetail').mockResolvedValue({
+      component: {
+        id: 'crypto-1', name: 'AES-GCM', assetType: 'ALGORITHM', primitive: 'ae', keySize: 256, curve: null, protocolVersion: null,
+        storageLocation: 'kms', notAfter: null, riskScore: 1.5, assetId: 'a-1', assetName: 'checkout', environment: 'production',
+        sourceBomId: 'bom-1', sourceDocument: 'checkout.cdx.json', openFindings: 1, highestSeverity: 'MEDIUM', evidenceState: 'SUPPORTED',
+      },
+      properties: { bomRef: 'crypto/algorithm/aes-256-gcm', componentFingerprint: 'fp-1', parameterSetIdentifier: '256', active: true,
+        createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z' },
+      provenance: { bomId: 'bom-1', documentName: 'checkout.cdx.json', serialNumber: 'urn:uuid:1', checksumSha256: 'abc', sourceType: 'API',
+        sourceMethod: 'PUSH', sourceLabel: null, bomStatus: 'ACTIVE', ingestedAt: '2026-11-01T00:00:00Z', assessmentRunId: 'run-1',
+        rulePackage: 'scoutgrid-baseline@1.0.0', rulePackageDigest: 'sha256:x', evaluatorVersion: '1.0', assessedAt: '2026-11-01T00:01:00Z' },
+      claims: [{ claimPath: '/cryptoProperties/0/primitive', assuranceLevel: 'DECLARED', evidenceState: 'SUPPORTED', explanation: 'Primitive is declared.' }],
+      findings: [{ id: 'f-1', ruleId: 'CBOM-QUANTUM-VULNERABLE', ruleVersion: '1', severity: 'MEDIUM', riskClass: 'QUANTUM_VULNERABLE',
+        title: 'Quantum-vulnerable algorithm', detail: 'Plan migration.', evidence: null, recommendation: 'Adopt ML-KEM.', status: 'OPEN',
+        evidenceState: 'SUPPORTED', firstSeenAt: null, lastSeenAt: '2026-11-02T00:00:00Z',
+        canonical: { id: 'cf-1', displayId: 'F-7', status: 'OPEN', assignedTo: null, dueAt: null, suppressedUntil: null } }],
+      relationships: [{ direction: 'INBOUND', relationshipType: 'USES_ALGORITHM', otherType: 'COMPONENT', otherId: 'c-2', otherName: 'Credential key', evidenceKind: 'DECLARED' }],
+    });
+    vi.spyOn(api, 'getCbomBlastRadius').mockResolvedValue({ componentId: 'crypto-1', graph: { nodes: [], edges: [], truncated: false, depth: 3 },
+      applications: [], affectedComponents: 1, openFindings: 0, openFindingsBySeverity: {} });
     vi.spyOn(api, 'listBomComponents').mockResolvedValue([
       buildComponent({ componentId: 'crypto-1', packageName: 'AES-GCM', version: null, purl: null, ecosystem: 'crypto', bomTypes: ['CBOM'], bomEvidenceState: null, correlationState: 'UNCHECKED' }),
       buildComponent({ componentId: 'comp-1', packageName: 'left-pad' }),
@@ -148,7 +168,29 @@ describe('BomComponents', () => {
 
     fireEvent.click(cell);
     expect(detail).not.toHaveBeenCalled();
-    expect(screen.getByText('BOM Components')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'AES-GCM' })).toBeInTheDocument();
+    expect(cbomDetail).toHaveBeenCalledWith('crypto-1');
+    expect(screen.getByText('crypto/algorithm/aes-256-gcm', { selector: '.mono.cbom-wrap' })).toBeInTheDocument();
+    expect(screen.getByText('256 bits')).toBeInTheDocument();
+    expect(screen.getByText('kms')).toBeInTheDocument();
+    expect(screen.getByText('checkout.cdx.json')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Findings (1)' }));
+    expect(screen.getByRole('tab', { name: 'Findings (1)' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Quantum-vulnerable algorithm')).toBeInTheDocument();
+    expect(screen.getByText('Adopt ML-KEM.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'F-7' })).toHaveAttribute('href', '/findings/cf-1');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Evidence & claims (1)' }));
+    expect(screen.getByText('scoutgrid-baseline@1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('Assurance: Declared')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Relationships (1)' }));
+    expect(screen.getByRole('link', { name: 'Credential key' }))
+      .toHaveAttribute('href', '/inventory/bom-components/cbom/c-2?returnTo=%2F');
+
+    fireEvent.click(screen.getByRole('button', { name: '← Back to BOM Components' }));
+    expect(await screen.findByText('left-pad')).toBeInTheDocument();
   });
 
   it('reports a failed component load with retry', async () => {

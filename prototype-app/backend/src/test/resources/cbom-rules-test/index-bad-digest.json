@@ -1,0 +1,44 @@
+{
+ "packages": [
+  {
+   "packageId": "test-pack",
+   "version": "1.0.0",
+   "resource": "test-pack/1.0.0.json",
+   "digest": "sha256:32b17323f49ea6c831c504654397d3ecd10ff2c81f3f3c7bc0be342cb356ac4e",
+   "releasedAt": "2025-06-01T00:00:00Z",
+   "rolloutStage": "GENERAL",
+   "deprecatedAt": "2026-01-01T00:00:00Z",
+   "retiresAt": "2026-04-15T00:00:00Z"
+  },
+  {
+   "packageId": "test-pack",
+   "version": "1.1.0",
+   "resource": "test-pack/1.1.0.json",
+   "digest": "sha256:00",
+   "releasedAt": "2025-06-01T00:00:00Z",
+   "rolloutStage": "GENERAL",
+   "deprecatedAt": null,
+   "retiresAt": null
+  },
+  {
+   "packageId": "test-pack",
+   "version": "1.2.0",
+   "resource": "test-pack/1.2.0.json",
+   "digest": "sha256:db6ec9793023cfa9ddd4ec346966d57013b6e5b8fb5aebc64d94feed8cfa0bc9",
+   "releasedAt": "2025-06-01T00:00:00Z",
+   "rolloutStage": "GENERAL",
+   "deprecatedAt": null,
+   "retiresAt": null
+  },
+  {
+   "packageId": "test-pack",
+   "version": "1.3.0",
+   "resource": "test-pack/1.3.0.json",
+   "digest": "sha256:3365ca37b2217b4812c9bea8ae6a100a585cdb3d386d126848256823ff6171f6",
+   "releasedAt": "2025-06-01T00:00:00Z",
+   "rolloutStage": "CANARY",
+   "deprecatedAt": null,
+   "retiresAt": null
+  }
+ ]
+}

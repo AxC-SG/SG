@@ -735,6 +735,7 @@ function ConnectorDetailContent({ connectorId }: ConnectorDetailsProps) {
         title="GitHub BOM Connector"
         caption="Use GitHub repositories and GHCR attestations as BOM acquisition adapters inside the shared BOM management workflow."
         includeGithubSources
+        initialSection="pipelines"
       />
     );
   }

@@ -2,9 +2,13 @@ import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type BomFetchPayload, type BomIngestionResult, type BomSource, type BomType, type CbomComponent, type CbomRiskFinding, type IngestionJob } from '../api/client';
 import { BomApiPanel } from '../features/bom-api/BomApiPanel';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { useGithubSbomSourcesQuery, useSyncRunsQuery } from '../features/connect/queries';
 import type { GithubSbomSource, SyncRun } from '../features/connect/types';
 import { FindingSeverityChips } from '../features/findings/components/FindingSeverityChips';
+import { CbomSuppressionSettingsPanel } from '../features/findings/CbomSuppressionSettingsPanel';
+import { CbomRulesPanel } from '../features/cbom/CbomRulesPanel';
+import { CbomGatePoliciesPanel } from '../features/cbom/CbomGatePoliciesPanel';
 import { RUN_QUEUE_REFRESH_INTERVAL_MS } from '../lib/polling';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -22,6 +26,9 @@ const BOM_META: Record<BomType, { label: string; short: string; description: str
 const BOM_TYPES: BomType[] = ['SBOM', 'CBOM', 'AI_BOM', 'VENDOR'];
 
 type GithubSourceOption = { value: string; label: string; needsRepo: boolean; hint?: string };
+
+/** BOM types GitHub can supply, in the order the Source Type list groups them. */
+const GITHUB_SOURCE_GROUPS: BomType[] = ['SBOM', 'CBOM', 'AI_BOM'];
 
 const GITHUB_SOURCE_OPTIONS: Record<BomType, GithubSourceOption[]> = {
   SBOM:   [
@@ -176,14 +183,22 @@ type Props = {
   title?: string;
   caption?: string;
   includeGithubSources?: boolean;
+  /** Section shown first; the GitHub connector opens on CI/CD & pipelines. */
+  initialSection?: BomManagementSection;
 };
+
+type BomManagementSection = 'ingest' | 'pipelines' | 'cbom-governance';
 
 export function BomManagementPage({
   title = 'BOM Management',
   caption = 'Unified ingestion for SBOM, CBOM, AI BOM, and Vendor BOM — file upload, URL fetch, or automated GitHub pipeline.',
   includeGithubSources = true,
+  initialSection = 'ingest',
 }: Props) {
   const queryClient = useQueryClient();
+
+  // ── Page section: ingest now, CI/CD pipelines, or CBOM governance ──
+  const [section, setSection] = React.useState<BomManagementSection>(initialSection);
 
   // ── BOM type ──
   const [bomType, setBomType] = React.useState<BomType>('SBOM');
@@ -252,8 +267,19 @@ export function BomManagementPage({
     queryFn: () => api.listCbomPosture(),
     enabled: bomType === 'CBOM',
   });
+  const cbomRuleConfigurationQuery = useQuery({
+    queryKey: ['cbom-rule-configuration'],
+    queryFn: () => api.getCbomRuleConfiguration(),
+    enabled: bomType === 'CBOM' || section === 'cbom-governance',
+  });
+  const cbomPqcReadinessQuery = useQuery({
+    queryKey: ['cbom-pqc-readiness'],
+    queryFn: () => api.getCbomPqcReadiness(),
+    enabled: bomType === 'CBOM' || section === 'cbom-governance',
+  });
   const cbomPosture = cbomPostureQuery.data ?? [];
   const activeCbomAssetId = selectedCbomAssetId ?? cbomPosture[0]?.assetId ?? null;
+  const activeCbomPosture = cbomPosture.find(item => item.assetId === activeCbomAssetId) ?? null;
   const cbomComponentsQuery = useQuery({
     queryKey: ['cbom-components', activeCbomAssetId],
     queryFn: () => api.listCbomComponents(activeCbomAssetId!, 0, 100),
@@ -264,6 +290,18 @@ export function BomManagementPage({
     queryFn: () => api.listCbomFindings(activeCbomAssetId!, cbomSeverityFilter || undefined),
     enabled: bomType === 'CBOM' && activeCbomAssetId != null,
   });
+  const cbomAssessmentsQuery = useQuery({
+    queryKey: ['cbom-assessments', activeCbomPosture?.lastSourceBomId],
+    queryFn: () => api.listCbomAssessments(activeCbomPosture!.lastSourceBomId!),
+    enabled: bomType === 'CBOM' && Boolean(activeCbomPosture?.lastSourceBomId),
+    refetchInterval: query => query.state.data?.[0]?.status === 'QUEUED' || query.state.data?.[0]?.status === 'RUNNING' ? 3000 : false,
+  });
+  const latestCbomAssessment = cbomAssessmentsQuery.data?.[0] ?? null;
+  const cbomDiffQuery = useQuery({
+    queryKey: ['cbom-diff', latestCbomAssessment?.previousBomId, latestCbomAssessment?.bomId],
+    queryFn: () => api.getCbomDiff(latestCbomAssessment!.previousBomId!, latestCbomAssessment!.bomId),
+    enabled: Boolean(latestCbomAssessment?.previousBomId),
+  });
 
   React.useEffect(() => {
     if (bomType === 'CBOM' && ingestResult?.assetId) {
@@ -273,14 +311,6 @@ export function BomManagementPage({
       void queryClient.invalidateQueries({ queryKey: ['cbom-findings', ingestResult.assetId] });
     }
   }, [bomType, ingestResult, queryClient]);
-
-  // When BOM type changes, reset GitHub source path to first valid option
-  React.useEffect(() => {
-    const opts = GITHUB_SOURCE_OPTIONS[bomType];
-    if (opts.length > 0 && !opts.find(o => o.value === ghSourcePath)) {
-      setGhSourcePath(opts[0].value);
-    }
-  }, [bomType, ghSourcePath]);
 
   // Poll active run until terminal
   React.useEffect(() => {
@@ -434,7 +464,7 @@ export function BomManagementPage({
   }
 
   // ── GitHub pipeline handlers ──
-  const currentSourceOpts = GITHUB_SOURCE_OPTIONS[bomType];
+  const currentSourceOpts = GITHUB_SOURCE_GROUPS.flatMap(group => GITHUB_SOURCE_OPTIONS[group]);
   const currentSourceOpt = currentSourceOpts.find(o => o.value === ghSourcePath) ?? currentSourceOpts[0];
   const needsRepo = currentSourceOpt?.needsRepo ?? false;
 
@@ -480,6 +510,15 @@ export function BomManagementPage({
     } finally { setPipelineBusy(null); }
   }
 
+  async function downloadAssessmentReport(format: 'json' | 'html') {
+    if (!latestCbomAssessment) return;
+    const report = await api.downloadCbomAssessmentReport(latestCbomAssessment.id, format);
+    const url = URL.createObjectURL(report.blob);
+    const anchor = document.createElement('a');
+    anchor.href = url; anchor.download = report.filename; anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function runSavedPipeline(id: string) {
     setPipelineBusy(id); setPipelineMsg('');
     try {
@@ -505,18 +544,24 @@ export function BomManagementPage({
     } finally { setPipelineBusy(null); }
   }
 
-  async function acceptCbomFinding(finding: CbomRiskFinding) {
-    await api.acceptCbomFinding(finding.id);
-    await queryClient.invalidateQueries({ queryKey: ['cbom-posture'] });
-    await queryClient.invalidateQueries({ queryKey: ['cbom-components', finding.assetId] });
-    await queryClient.invalidateQueries({ queryKey: ['cbom-findings', finding.assetId] });
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <div className="page-grid" style={{ gap: 16 }}>
 
+      <SegmentedControl<BomManagementSection>
+        ariaLabel="BOM Management section"
+        value={section}
+        onChange={setSection}
+        options={[
+          { value: 'ingest', label: 'Ingest now' },
+          { value: 'pipelines', label: 'CI/CD & pipelines' },
+          { value: 'cbom-governance', label: 'CBOM governance' },
+        ]}
+      />
+
+      {section === 'ingest' && (
+        <>
       {/* ── BOM Type Selector ── */}
       <section className="panel">
         <div className="panel-header">
@@ -548,6 +593,11 @@ export function BomManagementPage({
         </div>
       </section>
 
+        </>
+      )}
+
+      {section === 'ingest' && (
+        <>
       {/* ── Manual Ingestion ── */}
       <section className="panel">
         <div className="panel-header">
@@ -781,6 +831,50 @@ export function BomManagementPage({
 
                   <div className="panel-subsection">
                     <div className="panel-header" style={{ padding: 0, marginBottom: 8 }}>
+                      <div>
+                        <h4>Assessment provenance</h4>
+                        <span className="panel-caption">Validation, evidence assurance, rule package, and evaluator used for this CBOM.</span>
+                      </div>
+                      {activeCbomPosture?.lastSourceBomId && (
+                        <button type="button" className="btn btn-secondary btn-inline" onClick={async () => {
+                          await api.requestCbomAssessment(activeCbomPosture.lastSourceBomId!);
+                          await cbomAssessmentsQuery.refetch();
+                        }}>Reassess</button>
+                      )}
+                    </div>
+                    {cbomAssessmentsQuery.isPending ? <p className="panel-caption">Loading assessment provenance…</p>
+                      : cbomAssessmentsQuery.isError ? <div className="notice error" role="alert">Assessment provenance could not be loaded.</div>
+                      : !latestCbomAssessment ? <div className="notice warning">No versioned assessment has completed for this CBOM yet.</div>
+                      : <div style={{ display: 'grid', gap: 10 }}>
+                          <div className="summary-grid">
+                            <div className="summary-card"><span className="summary-label">Assessment</span><span className="summary-value">{latestCbomAssessment.status}</span></div>
+                            <div className="summary-card"><span className="summary-label">Validation</span><span className="summary-value">{latestCbomAssessment.validationOutcome}</span></div>
+                            <div className="summary-card"><span className="summary-label">Completeness</span><span className="summary-value">{latestCbomAssessment.completenessScore == null ? '—' : `${Math.round(latestCbomAssessment.completenessScore * 100)}%`}</span></div>
+                            <div className="summary-card"><span className="summary-label">Confidence</span><span className="summary-value">{latestCbomAssessment.confidenceScore == null ? '—' : `${Math.round(latestCbomAssessment.confidenceScore * 100)}%`}</span></div>
+                          </div>
+                          <p className="panel-caption" style={{ margin: 0 }}>
+                            Package {latestCbomAssessment.rulePackageId}@{latestCbomAssessment.rulePackageVersion} · evaluator {latestCbomAssessment.evaluatorVersion} · artifact <code>{latestCbomAssessment.artifactChecksum}</code>
+                          </p>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button type="button" className="btn btn-secondary btn-inline" onClick={() => void downloadAssessmentReport('json')}>Download JSON report</button>
+                            <button type="button" className="btn btn-secondary btn-inline" onClick={() => void downloadAssessmentReport('html')}>Download HTML report</button>
+                          </div>
+                          {latestCbomAssessment.validationIssues.length > 0 && (
+                            <div style={{ display: 'grid', gap: 6 }}>
+                              {latestCbomAssessment.validationIssues.map(issue => <div className={`notice ${issue.severity === 'ERROR' ? 'error' : 'warning'}`} key={issue.id}>
+                                <strong>{issue.code}</strong>{issue.jsonPointer ? ` · ${issue.jsonPointer}` : ''}<br />{issue.message}
+                              </div>)}
+                            </div>
+                          )}
+                          {latestCbomAssessment.previousBomId && (cbomDiffQuery.isPending ? <p className="panel-caption">Comparing with the previous CBOM…</p>
+                            : cbomDiffQuery.data ? <div className="notice" role="status">
+                                <strong>Change from previous CBOM:</strong> {cbomDiffQuery.data.addedCount} added · {cbomDiffQuery.data.removedCount} removed · {cbomDiffQuery.data.changedCount} changed
+                              </div> : null)}
+                        </div>}
+                  </div>
+
+                  <div className="panel-subsection">
+                    <div className="panel-header" style={{ padding: 0, marginBottom: 8 }}>
                       <h4>CBOM Components</h4>
                       <span className="panel-caption">Algorithms, certificates, protocols, and related cryptographic material.</span>
                     </div>
@@ -851,9 +945,9 @@ export function BomManagementPage({
                               <p style={{ margin: '6px 0 0' }}>{finding.title}</p>
                               {finding.recommendation && <p className="panel-caption" style={{ marginTop: 4 }}>{finding.recommendation}</p>}
                             </div>
-                            <button type="button" className="btn btn-secondary btn-inline" onClick={() => void acceptCbomFinding(finding)}>
-                              Accept
-                            </button>
+                            <a className="btn btn-secondary btn-inline" href="/findings?findingKind=CRYPTO">
+                              Review in Findings
+                            </a>
                           </div>
                         </div>
                       ))}
@@ -873,24 +967,22 @@ export function BomManagementPage({
         </section>
       )}
 
+        </>
+      )}
+
+      {section === 'pipelines' && (
+        <>
       {/* ── CI/CD pipeline API ── */}
-      <BomApiPanel bomType={bomType} />
+      <BomApiPanel />
 
       {/* ── GitHub Auto-Pipeline ── */}
       {includeGithubSources && (
         <section className="panel">
           <div className="panel-header">
             <h3>GitHub Auto-Pipeline</h3>
-            <span className="panel-caption">Configure automated {BOM_META[bomType].short} ingestion from GitHub repositories or GHCR.</span>
+            <span className="panel-caption">Configure automated SBOM, CBOM or AI BOM ingestion from GitHub repositories or GHCR. Vendor BOMs are not available from GitHub; use Ingest now.</span>
           </div>
 
-          {bomType === 'VENDOR' ? (
-            <div className="ingestion-form">
-              <div className="form-section">
-                <div className="inline-note">GitHub auto-pipeline is not available for Vendor BOM — vendor-supplied files must be ingested via File Upload or URL Fetch above.</div>
-              </div>
-            </div>
-          ) : (
             <div className="ingestion-form">
               {/* Source type + owner/repo/token */}
               <div className="form-section">
@@ -898,7 +990,11 @@ export function BomManagementPage({
                 <div className="form-grid ingestion-grid">
                   <label>Source Type
                     <select value={ghSourcePath} onChange={e => setGhSourcePath(e.target.value)}>
-                      {currentSourceOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {GITHUB_SOURCE_GROUPS.map(group => (
+                        <optgroup key={group} label={BOM_META[group].label}>
+                          {GITHUB_SOURCE_OPTIONS[group].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   </label>
                   <label>GitHub Owner
@@ -961,7 +1057,6 @@ export function BomManagementPage({
 
               {pipelineMsg && <div className="notice">{pipelineMsg}</div>}
             </div>
-          )}
 
           {/* Saved pipelines table */}
           {githubSources.length > 0 && (
@@ -1010,18 +1105,76 @@ export function BomManagementPage({
             </div>
           )}
 
-          {githubSourcesQuery.isError && !githubSourcesQuery.data && bomType !== 'VENDOR' && (
+          {githubSourcesQuery.isError && !githubSourcesQuery.data && (
             <div className="notice error" role="alert" style={{ margin: '0 16px 16px' }}>
               Saved pipelines could not be loaded.{' '}
               <button type="button" className="btn btn-sm" onClick={() => void githubSourcesQuery.refetch()}>Retry</button>
             </div>
           )}
-          {githubSources.length === 0 && !(githubSourcesQuery.isError && !githubSourcesQuery.data) && !githubSourcesQuery.isPending && bomType !== 'VENDOR' && (
+          {githubSources.length === 0 && !(githubSourcesQuery.isError && !githubSourcesQuery.data) && !githubSourcesQuery.isPending && (
             <div className="empty-state" style={{ padding: '16px 16px 24px' }}>
               <p>No saved pipelines yet. Configure a source above and click <strong>Save Pipeline</strong> to schedule recurring ingestion.</p>
             </div>
           )}
         </section>
+      )}
+          <p className="panel-caption">Environment pass/fail rules for CBOM pushes are set under CBOM governance → CI gate policies.</p>
+        </>
+      )}
+
+      {section === 'cbom-governance' && (
+        <>
+        <section className="panel">
+          <div className="panel-header">
+            <h3>Cryptographic Governance</h3>
+            <span className="panel-caption">Effective tenant rule package and post-quantum migration readiness.</span>
+          </div>
+          <div className="summary-grid" style={{ padding: '0 16px 16px' }}>
+            <div className="summary-card">
+              <span className="summary-label">Rule package</span>
+              <span className="summary-value">{cbomRuleConfigurationQuery.data?.packageId ?? '—'}</span>
+              <span className="summary-caption">{cbomRuleConfigurationQuery.data?.versionPolicy ?? 'Loading…'}</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">Quantum-vulnerable</span>
+              <span className="summary-value">{cbomPqcReadinessQuery.data?.quantumVulnerable ?? '—'}</span>
+              <span className="summary-caption">Prioritize long-lived sensitive data first</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">PQC-ready</span>
+              <span className="summary-value">{cbomPqcReadinessQuery.data?.pqcReady ?? '—'}</span>
+              <span className="summary-caption">Post-quantum or hybrid algorithms</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">Quantum-safe</span>
+              <span className="summary-value">{cbomPqcReadinessQuery.data?.quantumSafe ?? '—'}</span>
+              <span className="summary-caption">Symmetric, hash, MAC or KDF at adequate strength</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">Classically weak</span>
+              <span className="summary-value">{cbomPqcReadinessQuery.data?.classicallyWeak ?? '—'}</span>
+              <span className="summary-caption">Broken today; replace regardless of quantum</span>
+            </div>
+            <div className="summary-card">
+              <span className="summary-label">Unknown</span>
+              <span className="summary-value">{cbomPqcReadinessQuery.data?.unknown ?? '—'}</span>
+              <span className="summary-caption">The CBOM declares too little to judge</span>
+            </div>
+          </div>
+          {(cbomRuleConfigurationQuery.isError || cbomPqcReadinessQuery.isError) &&
+            <div className="notice error" role="alert" style={{ margin: '0 16px 16px' }}>Governance data could not be loaded.</div>}
+          {(cbomPqcReadinessQuery.data?.highestPriority ?? []).filter(item => item.migrationPriority === 'HIGH').length > 0 && (
+            <div style={{ padding: '0 16px 16px' }}>
+              <strong>Highest-priority fixes</strong>
+              <ul>{cbomPqcReadinessQuery.data!.highestPriority.filter(item => item.migrationPriority === 'HIGH').slice(0, 5)
+                .map(item => <li key={item.componentId}><strong>{item.name}</strong> — {item.reason}</li>)}</ul>
+            </div>
+          )}
+        </section>
+          <CbomSuppressionSettingsPanel />
+          <CbomRulesPanel />
+          <CbomGatePoliciesPanel />
+        </>
       )}
     </div>
   );

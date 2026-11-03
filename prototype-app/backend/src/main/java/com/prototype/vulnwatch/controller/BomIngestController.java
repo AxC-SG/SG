@@ -58,23 +58,49 @@ public class BomIngestController {
             @RequestParam(required = false) String correlator,
             @RequestParam(required = false) String pipeline,
             @RequestParam(required = false) String buildId,
-            @RequestParam(required = false) String completeness
+            @RequestParam(required = false) String completeness,
+            @RequestParam(required = false) String environment
     ) {
         BomApiIngestService.Request request = new BomApiIngestService.Request(
                 parse(BomType.class, "bomType", bomType, true),
                 parse(AssetType.class, "assetType", assetType, false),
                 assetName, assetIdentifier, supplier, correlator, pipeline, buildId,
                 parse(BomSourceCompleteness.class, "completeness", completeness, false));
+        String env;
+        try {
+            env = com.prototype.vulnwatch.service.cbom.CbomGateService.environment(environment);
+        } catch (IllegalArgumentException e) {
+            throw new BomIngestException(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER", e.getMessage());
+        }
         BomIngestResponse response = ingestService.ingest(body, contentType, request);
+        if (gates != null && request.bomType() == BomType.CBOM && response.bomId() != null) {
+            response = response.withGate(gates.issue(response.bomId(), env, "ingest:" + (pipeline == null ? "api" : pipeline)), env);
+        }
         HttpStatus status = "CREATED".equals(response.action()) ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(response);
     }
 
     @GetMapping("/{bomId}/status")
     @PreAuthorize(STATUS_ROLES)
-    public BomIngestStatusResponse status(@PathVariable UUID bomId) {
-        return ingestService.status(bomId);
+    public BomIngestStatusResponse status(@PathVariable UUID bomId,
+            @RequestHeader(value = GATE_TOKEN_HEADER, required = false) String gateToken) {
+        BomIngestStatusResponse status = ingestService.status(bomId);
+        if (gateToken == null || gates == null || workspace == null) return status;
+        return status.withGate(gates.result(workspace.getWorkspace(), bomId, gateToken));
     }
+
+    /** Header carrying the single-job gate token returned by a CBOM push. */
+    public static final String GATE_TOKEN_HEADER = "X-Scout-Gate-Token";
+
+    private com.prototype.vulnwatch.service.cbom.CbomGateService gates;
+    private com.prototype.vulnwatch.service.WorkspaceService workspace;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setGates(com.prototype.vulnwatch.service.cbom.CbomGateService gates, com.prototype.vulnwatch.service.WorkspaceService workspace) {
+        this.gates = gates;
+        this.workspace = workspace;
+    }
+
 
     private static <E extends Enum<E>> E parse(Class<E> type, String name, String value, boolean required) {
         if (value == null || value.isBlank()) {

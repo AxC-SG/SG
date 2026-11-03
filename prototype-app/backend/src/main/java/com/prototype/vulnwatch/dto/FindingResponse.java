@@ -71,6 +71,14 @@ public record FindingResponse(
         long intelligenceRevision,
         UUID intelligenceMergedIntoId,
         /** VULNERABILITY, AI_POSTURE, AI_EXPOSURE or CRYPTO. */
-        String findingKind
+        String findingKind,
+        String workflowSubstate,
+        String targetState,
+        boolean verificationRequired,
+        String verificationStatus,
+        String verificationEvidence,
+        Instant verificationRequestedAt,
+        Instant verificationCompletedAt,
+        String verificationActor
 ) {
 }

@@ -1,13 +1,15 @@
+import { CryptoTicketAttempts } from '../features/findings/CryptoTicketAttempts';
+import { CryptoVerificationDialog, type CryptoVerificationMode } from '../features/findings/CryptoVerificationDialog';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Finding } from '../features/findings/types';
-import { pathForVulnRepoView, pathForInventoryHostAsset, pathForInventoryViewWithSearch, type VulnerabilityIntelRouteView } from '../app/routes';
+import { pathForCbomComponent, pathForVulnRepoView, pathForInventoryHostAsset, pathForInventoryViewWithSearch, type VulnerabilityIntelRouteView } from '../app/routes';
 import { ApiError, apiRequest, api } from '../api/client';
 import { AsyncSection } from '../components/AsyncSection';
 import { Dialog } from '../components/Dialog';
 import { usePageHeader } from '../app/pageHeaderState';
-import { canRunSecurityWorkflow } from '../features/auth/roles';
+import { canRunSecurityWorkflow, hasRole } from '../features/auth/roles';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import type { AiSolutionApiResponse } from '../features/cve-workbench/api';
@@ -232,6 +234,12 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
 
   const [deferReason, setDeferReason] = React.useState('');
   const [deferExpiry, setDeferExpiry] = React.useState('');
+  const [compensatingControl, setCompensatingControl] = React.useState('');
+  const [suppressionMode, setSuppressionMode] = React.useState<'REQUEST' | 'DIRECT'>('REQUEST');
+  const [decisionLoadingId, setDecisionLoadingId] = React.useState<string | null>(null);
+  const [decisionError, setDecisionError] = React.useState('');
+  const [verificationMode, setVerificationMode] = React.useState<CryptoVerificationMode | null>(null);
+  const [verificationMessage, setVerificationMessage] = React.useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [fpJustification, setFpJustification] = React.useState('');
   const [incidentPriority, setIncidentPriority] = React.useState('3');
   const [incidentAssignedTo, setIncidentAssignedTo] = React.useState('');
@@ -260,10 +268,39 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
   }, [lookedUpFinding]);
 
   const isCryptoFinding = currentFinding?.findingKind === 'CRYPTO';
+  // A CRYPTO finding's affected asset is the CBOM cryptographic component named in its evidence.
+  const cbomComponentId = React.useMemo(() => {
+    if (!isCryptoFinding || !currentFinding?.evidence) return null;
+    try {
+      const value = (JSON.parse(currentFinding.evidence) as { cbomComponentId?: unknown }).cbomComponentId;
+      return typeof value === 'string' && value.length > 0 ? value : null;
+    } catch {
+      return null;
+    }
+  }, [isCryptoFinding, currentFinding?.evidence]);
+  const isTenantAdmin = hasRole(actor, 'TENANT_ADMIN');
+  const isCriticalCryptoFinding = isCryptoFinding && ['CRITICAL', 'UNKNOWN'].includes((currentFinding?.severity ?? 'UNKNOWN').toUpperCase());
+  const suppressionRequestsQuery = useQuery({
+    queryKey: ['finding-suppression-requests', currentFinding?.id],
+    queryFn: async () => (await api.listFindingSuppressionRequests())
+      .filter(request => request.findingId === currentFinding?.id),
+    enabled: Boolean(isCryptoFinding && currentFinding?.id && canMutateFinding),
+  });
   // A crypto finding's vulnerabilityId is a CBOM rule id, so it must not drive CVE lookups.
   const findingVulnId = isCryptoFinding ? undefined : currentFinding?.vulnerabilityId;
   const findingAssetIdentifier = currentFinding?.assetIdentifier;
   const findingAssetName = currentFinding?.assetName;
+
+  async function onVerificationCompleted(message: string) {
+    if (!currentFinding) return;
+    setVerificationMode(null);
+    try {
+      setCurrentFinding(await api.getFinding(currentFinding.id));
+      setVerificationMessage({ tone: 'success', text: message });
+    } catch (error) {
+      setVerificationMessage({ tone: 'error', text: `${message} The finding could not be reloaded: ${error instanceof Error ? error.message : 'unknown error'}` });
+    }
+  }
 
   React.useEffect(() => {
     if (!findingVulnId) return;
@@ -370,9 +407,13 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
   function openModal(t: ActionType) {
     setActionModal(t); setActionError(''); setActionDone(''); setIncidentResult(null);
   }
+  function openCryptoSuppression(mode: 'REQUEST' | 'DIRECT') {
+    setSuppressionMode(mode);
+    openModal('defer');
+  }
   function closeModal() {
     setActionModal(null); setActionError(''); setActionDone('');
-    setDeferReason(''); setDeferExpiry(''); setFpJustification('');
+    setDeferReason(''); setDeferExpiry(''); setCompensatingControl(''); setFpJustification('');
     setIncidentPriority('3'); setIncidentAssignedTo(''); setIncidentAssignmentGroup('');
     setIncidentDueDate(''); setIncidentNotes(''); setIncidentResult(null);
   }
@@ -404,12 +445,45 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
     await applyWorkflow({ status: 'RESOLVED', actor: actor?.principal }, 'Finding marked as Resolved.');
   }
   async function handleDefer() {
+    if (isCryptoFinding) {
+      setActionLoading(true); setActionError('');
+      try {
+        const payload = {
+          reason: deferReason,
+          compensatingControl,
+          proposedSuppressedUntil: new Date(deferExpiry).toISOString(),
+        };
+        if (suppressionMode === 'DIRECT') {
+          await api.suppressFindingDirectly(currentFinding!.id, payload);
+          setCurrentFinding(await api.getFinding(currentFinding!.id));
+        } else {
+          await api.requestFindingSuppression(currentFinding!.id, payload);
+        }
+        await suppressionRequestsQuery.refetch();
+        setActionDone(suppressionMode === 'DIRECT'
+          ? 'Finding suppressed under the tenant policy.'
+          : 'Suppression request submitted for tenant-admin review.');
+      } catch (e) { setActionError(String(e)); }
+      finally { setActionLoading(false); }
+      return;
+    }
     await applyWorkflow({
       status: 'SUPPRESSED',
       suppressionReason: deferReason || 'DEFERRED',
       suppressedUntil: deferExpiry ? new Date(deferExpiry).toISOString() : undefined,
       actor: actor?.principal,
     }, 'Finding deferred successfully.');
+  }
+  async function decideSuppression(requestId: string, decision: 'APPROVE' | 'REJECT') {
+    setDecisionLoadingId(requestId); setDecisionError('');
+    try {
+      await api.decideFindingSuppression(requestId, { decision });
+      await suppressionRequestsQuery.refetch();
+      if (decision === 'APPROVE') {
+        setCurrentFinding(await api.getFinding(currentFinding!.id));
+      }
+    } catch (e) { setDecisionError(String(e)); }
+    finally { setDecisionLoadingId(null); }
   }
   async function handleFalsePositive() {
     await applyWorkflow({
@@ -462,7 +536,9 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
     if (!actionModal) return null;
     const TITLES: Record<ActionType, string> = {
       'create-incident': 'Create ServiceNow Incident',
-      'defer': 'Defer Finding',
+      'defer': isCryptoFinding
+        ? (suppressionMode === 'DIRECT' ? 'Suppress Cryptographic Finding' : 'Request Cryptographic Suppression')
+        : 'Defer Finding',
       'resolve': 'Resolve Finding',
       'under-investigation': 'Mark Under Investigation',
       'false-positive': 'Mark as False Positive',
@@ -528,7 +604,13 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
 
             {actionModal === 'defer' && !actionDone && (
               <div className="fd3-form">
-                <p className="fd3-form-desc">Suppress this finding until a specified date.</p>
+                <p className="fd3-form-desc">
+                  {isCryptoFinding
+                    ? (suppressionMode === 'DIRECT'
+                        ? 'Apply a time-bounded exception under the tenant policy. Critical and unknown-severity findings cannot use direct suppression.'
+                        : 'Request a time-bounded exception. A tenant administrator must review it; critical findings also require a different approver and cannot be suppressed in a single-admin tenant.')
+                    : 'Suppress this finding until a specified date.'}
+                </p>
                 <div className="fd3-form-row">
                   <label htmlFor="fd3-defer-reason">Reason</label>
                   <select id="fd3-defer-reason" value={deferReason} onChange={e => setDeferReason(e.target.value)} className="fd3-form-select">
@@ -539,6 +621,14 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                     <option value="DEFERRED">Deferred</option>
                   </select>
                 </div>
+                {isCryptoFinding && (
+                  <div className="fd3-form-row">
+                    <label htmlFor="fd3-compensating-control">Compensating control</label>
+                    <textarea id="fd3-compensating-control" className="fd3-form-textarea" rows={3}
+                      value={compensatingControl} onChange={e => setCompensatingControl(e.target.value)}
+                      placeholder="Describe the control that reduces risk during this exception period." />
+                  </div>
+                )}
                 <div className="fd3-form-row">
                   <label htmlFor="fd3-defer-expiry">Expires</label>
                   <input id="fd3-defer-expiry" type="date" className="fd3-form-input" value={deferExpiry} onChange={e => setDeferExpiry(e.target.value)} />
@@ -573,7 +663,8 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
               ? <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
               : <>
                   <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={actionLoading}>Cancel</button>
-                  <button type="button" className="btn btn-primary" disabled={actionLoading}
+                  <button type="button" className="btn btn-primary"
+                    disabled={actionLoading || (actionModal === 'defer' && isCryptoFinding && (!deferReason || !deferExpiry || !compensatingControl.trim()))}
                     onClick={() => {
                       if (actionModal === 'create-incident') void handleCreateIncident();
                       else if (actionModal === 'defer') void handleDefer();
@@ -584,7 +675,7 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                     }}>
                     {actionLoading ? 'Working…'
                       : actionModal === 'create-incident' ? 'Create Incident'
-                      : actionModal === 'defer' ? 'Defer'
+                      : actionModal === 'defer' ? (isCryptoFinding ? (suppressionMode === 'DIRECT' ? 'Suppress' : 'Submit Request') : 'Defer')
                       : actionModal === 'resolve' ? 'Resolve'
                       : actionModal === 'under-investigation' ? 'Set Under Investigation'
                       : actionModal === 'reopen' ? 'Re-open'
@@ -650,9 +741,21 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
           {currentFinding.status === 'OPEN' && (
             <>
               <button type="button" className="fd3-action-btn" onClick={() => openModal('under-investigation')}>Under Investigation</button>
-              <button type="button" className="fd3-action-btn" onClick={() => openModal('defer')}>Defer</button>
+              <button type="button" className="fd3-action-btn" onClick={() => isCryptoFinding ? openCryptoSuppression('REQUEST') : openModal('defer')}>{isCryptoFinding ? 'Request Suppression' : 'Defer'}</button>
+              {isCryptoFinding && isTenantAdmin && !isCriticalCryptoFinding && (
+                <button type="button" className="fd3-action-btn" onClick={() => openCryptoSuppression('DIRECT')}>Suppress Directly</button>
+              )}
+              {isCryptoFinding && currentFinding.verificationStatus !== 'REQUESTED' && (
+                <button type="button" className="fd3-action-btn" onClick={() => setVerificationMode('REQUEST')}>Request Verification</button>
+              )}
+              {isCryptoFinding && currentFinding.verificationStatus === 'REQUESTED' && (
+                <>
+                  <button type="button" className="fd3-action-btn" onClick={() => setVerificationMode('ACCEPT')}>Accept Verification</button>
+                  <button type="button" className="fd3-action-btn" onClick={() => setVerificationMode('REJECT')}>Reject Verification</button>
+                </>
+              )}
               <button type="button" className="fd3-action-btn" onClick={() => openModal('resolve')}>Resolve</button>
-              <button type="button" className="fd3-action-btn fd3-action-btn--fp" onClick={() => openModal('false-positive')}>False Positive</button>
+              {!isCryptoFinding && <button type="button" className="fd3-action-btn fd3-action-btn--fp" onClick={() => openModal('false-positive')}>False Positive</button>}
             </>
           )}
           {currentFinding.status !== 'OPEN' && (
@@ -662,11 +765,64 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
         )}
       </div>
 
+      {isCryptoFinding && (
+        <>
+          {verificationMessage && (
+            <div className={`notice ${verificationMessage.tone}`} role={verificationMessage.tone === 'error' ? 'alert' : 'status'}>{verificationMessage.text}</div>
+          )}
+          <CryptoVerificationDialog findingId={currentFinding.id} mode={verificationMode} targetState={currentFinding.targetState}
+            onClose={() => setVerificationMode(null)} onCompleted={(message) => void onVerificationCompleted(message)} />
+          <CryptoTicketAttempts findingId={currentFinding.id} ticketed={Boolean(currentFinding.incidentId)} canRetry={canMutateFinding}
+            onTicketed={() => void api.getFinding(currentFinding.id).then(setCurrentFinding)} />
+        </>
+      )}
+
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={loadingSupportingContext}
         refreshLabel="Loading supporting investigation context while keeping the finding visible…"
       />
+
+      {isCryptoFinding && canMutateFinding && (
+        <div className="fd3-panel" style={{ marginBottom: 16 }}>
+          <div className="fd3-panel-title">Suppression governance</div>
+          <div className="fd3-panel-body">
+            {decisionError && <div className="notice error" role="alert" style={{ marginBottom: 10 }}>{decisionError}</div>}
+            {suppressionRequestsQuery.isPending ? (
+              <p className="fd3-muted">Loading suppression requests…</p>
+            ) : suppressionRequestsQuery.isError ? (
+              <div className="notice error" role="alert">Suppression request history could not be loaded.</div>
+            ) : suppressionRequestsQuery.data?.length ? (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {suppressionRequestsQuery.data.map(request => (
+                  <div key={request.id} style={{ border: '1px solid var(--dp-border)', borderRadius: 8, padding: 12 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <strong>{fmt(request.status)}</strong>
+                      <span>{fmt(request.severityAtRequest)}</span>
+                      <span className="fd3-muted">Requested {fmtDt(request.requestedAt)} by {request.requestedBy}</span>
+                      <span className="fd3-muted">Decision due {fmtDt(request.decisionDueAt)}</span>
+                    </div>
+                    <p style={{ margin: '8px 0 4px' }}><strong>Reason:</strong> {fmt(request.reason)}</p>
+                    <p style={{ margin: 0 }}><strong>Compensating control:</strong> {request.compensatingControl}</p>
+                    <p className="fd3-muted" style={{ margin: '4px 0 0' }}>Requested expiry: {fmtDt(request.proposedSuppressedUntil)}</p>
+                    {request.decisionReason && <p style={{ margin: '4px 0 0' }}><strong>Decision:</strong> {request.decisionReason}</p>}
+                    {isTenantAdmin && request.status === 'PENDING' && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button type="button" className="btn btn-primary" disabled={decisionLoadingId === request.id}
+                          onClick={() => void decideSuppression(request.id, 'APPROVE')}>Approve</button>
+                        <button type="button" className="btn btn-secondary" disabled={decisionLoadingId === request.id}
+                          onClick={() => void decideSuppression(request.id, 'REJECT')}>Reject</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="fd3-muted" style={{ margin: 0 }}>No suppression requests exist for this cryptographic finding.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── tab bar ─────────────────────────────────────────────────────── */}
       <div className="fd3-tab-bar">
@@ -962,6 +1118,20 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                     <span className={`severity-pill severity-${currentFinding.severity.toLowerCase()}`}>{currentFinding.severity}</span>
                   </KVRow>
                   <KVRow label="Risk Score">{currentFinding.riskScore.toFixed(1)}</KVRow>
+                  {typeof evidencePayload.assessmentRunId === 'string' && (
+                    <KVRow label="Assessment"><span className="mono">{evidencePayload.assessmentRunId}</span></KVRow>
+                  )}
+                  {typeof evidencePayload.rulePackage === 'string' && <KVRow label="Rule package">{evidencePayload.rulePackage}</KVRow>}
+                  {typeof evidencePayload.evaluatorVersion === 'string' && <KVRow label="Evaluator">{evidencePayload.evaluatorVersion}</KVRow>}
+                  {typeof evidencePayload.artifactChecksum === 'string' && (
+                    <KVRow label="Artifact checksum"><span className="mono" style={{ fontSize: 10, wordBreak: 'break-all' }}>{evidencePayload.artifactChecksum}</span></KVRow>
+                  )}
+                  {typeof evidencePayload.completeness === 'number' && <KVRow label="Completeness">{Math.round(evidencePayload.completeness * 100)}%</KVRow>}
+                  {typeof evidencePayload.assurance === 'number' && <KVRow label="Assurance">{Math.round(evidencePayload.assurance * 100)}%</KVRow>}
+                  <KVRow label="Workflow state">{currentFinding.workflowSubstate || 'Active'}</KVRow>
+                  <KVRow label="Verification">{currentFinding.verificationStatus || 'NOT_REQUIRED'}</KVRow>
+                  {currentFinding.targetState && <KVRow label="Target state">{currentFinding.targetState}</KVRow>}
+                  {currentFinding.verificationEvidence && <KVRow label="Verification evidence">{currentFinding.verificationEvidence}</KVRow>}
                 </div>
               </Panel>
             ) : (<>
@@ -1090,15 +1260,25 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
                         </tr>
                       ))
                     : (
-                        <tr style={{ borderBottom: '1px solid var(--dp-border)', cursor: hostAssetId ? 'pointer' : 'default' }}
-                          onClick={() => hostAssetId && navigate(pathForInventoryHostAsset(hostAssetId))}>
+                        <tr style={{ borderBottom: '1px solid var(--dp-border)', cursor: (cbomComponentId || hostAssetId) ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (cbomComponentId) navigate(pathForCbomComponent(cbomComponentId, `${location.pathname}${location.search}`));
+                            else if (hostAssetId) navigate(pathForInventoryHostAsset(hostAssetId));
+                          }}>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 11, color: 'var(--dp-text-2)' }}>
                             {currentFinding.assetIdentifier || '—'}
                           </td>
-                          <td style={{ padding: '10px 16px', fontWeight: 500, color: hostAssetId ? 'var(--dp-accent)' : 'var(--dp-text)' }}>
+                          <td style={{ padding: '10px 16px', fontWeight: 500, color: hostAssetId && !cbomComponentId ? 'var(--dp-accent)' : 'var(--dp-text)' }}>
                             {currentFinding.assetName || '—'}
                           </td>
-                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{currentFinding.packageName || '—'}</td>
+                          <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>
+                            {cbomComponentId ? (
+                              <Link to={pathForCbomComponent(cbomComponentId, `${location.pathname}${location.search}`)} className="fd3-asset-link"
+                                onClick={(event) => event.stopPropagation()}>
+                                {currentFinding.packageName || 'Cryptographic asset'}
+                              </Link>
+                            ) : (currentFinding.packageName || '—')}
+                          </td>
                           <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: 12 }}>{currentFinding.packageVersion || '—'}</td>
                           <td style={{ padding: '10px 16px', color: 'var(--dp-text-2)', fontSize: 12 }}>{fmt(currentFinding.assetType)}</td>
                         </tr>

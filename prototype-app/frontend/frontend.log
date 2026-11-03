@@ -1,36 +1,105 @@
 
-> vulnwatch-frontend@0.1.0 dev
-> vite --port 5173 --strictPort
-
-
-  VITE v8.3.4  ready in 823 ms
+  VITE v8.3.4  ready in 235 ms
 
   ➜  Local:   http://127.0.0.1:5173/
-9:36:42 am [vite] http proxy error: /api/auth/login
+2:56:09 pm [vite] (client) [console.error] Warning: validateDOMNesting(...): <button> cannot appear as a descendant of <button>.
+    at button
+    at div
+    at div
+    at button
+    at div
+    at div
+    at TenantDashboard (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx:680:19)
+    at VulnRepoDashboardPage (http://localhost:5173/src/pages/VulnRepoDashboardPage.tsx:1665:16)
+    at VulnRepoDashboardRoute
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at RouteErrorBoundary (http://localhost:5173/src/components/RouteErrorBoundary.tsx:5:8)
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/App.tsx:1281:16)
+    at PageHeaderProvider (http://localhost:5173/src/app/PageHeader.tsx:6:38)
+    at AuthSessionBoundary (http://localhost:5173/src/App.tsx:1088:32)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4203:26)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4885:19)
+    at Suspense
+    at App
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:4837:29)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=25186945:7286:26)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=25186945:2536:30)
+3:04:33 pm [vite] (client) hmr update /src/features/inventory/BomComponents.tsx
+3:04:33 pm [vite] (client) hmr update /src/styles/index.css
+3:05:01 pm [vite] (client) hmr update /src/features/inventory/BomComponents.tsx
+3:18:41 pm [vite] (client) hmr update /src/features/cbom/CbomComponentDetailPanel.tsx
+3:18:41 pm [vite] (client) hmr update /src/features/cbom/CbomEvidenceDialog.tsx
+3:18:41 pm [vite] (client) hmr update /src/features/cbom/CryptoRemediationPanel.tsx
+3:22:12 pm [vite] (client) hmr update /src/App.tsx, /src/pages/DemoPublicPages.tsx, /src/pages/ConfigurationsPage.tsx, /src/pages/ConnectPage.tsx, /src/pages/AssetsPage.tsx, /src/pages/AzureDiscoveryConnectorPage.tsx, /src/components/EolSourcePanel.tsx, /src/pages/SccmConnectorPage.tsx, /src/pages/AwsDiscoveryConnectorPage.tsx, /src/pages/GcpDiscoveryConnectorPage.tsx, /src/pages/InventoryOverviewPage.tsx, /src/components/EolMappingReviewPanel.tsx, /src/pages/CloudResourcesPage.tsx and 15 more
+3:22:12 pm [vite] (client) hmr update /src/App.tsx
+3:22:12 pm [vite] (client) hmr update /src/features/cbom/CbomComponentDetailPanel.tsx
+3:22:12 pm [vite] (client) hmr update /src/pages/FindingDetailPage.tsx
+3:22:22 pm [vite] (client) hmr update /src/App.tsx
+3:22:22 pm [vite] (client) hmr update /src/pages/FindingDetailPage.tsx
+3:24:49 pm [vite] (client) hmr update /src/features/cbom/CbomComponentDetailPanel.tsx
+3:24:49 pm [vite] (client) hmr update /src/features/cbom/CbomBlastRadius.tsx
+3:24:49 pm [vite] (client) hmr update /src/App.tsx
+3:57:51 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+3:59:02 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+3:59:02 pm [vite] (client) hmr update /src/pages/ConnectPage.tsx
+4:03:37 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+4:03:53 pm [vite] (client) hmr update /src/styles/index.css
+4:07:17 pm [vite] (client) hmr update /src/features/bom-api/BomPipelineSnippets.tsx
+4:07:17 pm [vite] (client) hmr update /src/features/bom-api/BomApiPanel.tsx
+4:07:17 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+4:07:56 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+4:08:43 pm [vite] (client) hmr update /src/styles/index.css
+4:26:45 pm [vite] (client) hmr update /src/App.tsx, /src/pages/DemoPublicPages.tsx, /src/pages/UserManagementPage.tsx, /src/pages/ConfigurationsPage.tsx, /src/pages/FindingsPage.tsx, /src/pages/FindingDetailPage.tsx, /src/pages/SoftwareIdentityDetailPage.tsx, /src/features/inventory/BomComponentDetailPanel.tsx, /src/features/inventory/ApplicationDetailPanel.tsx, /src/pages/CampaignsPage.tsx, /src/pages/ConnectPage.tsx, /src/pages/JiraTicketingConnectorPage.tsx, /src/pages/InventoryRunQueuePage.tsx, /src/pages/AssetsPage.tsx and 48 more
+4:26:58 pm [vite] (client) hmr update /src/pages/BomManagementPage.tsx
+4:28:31 pm [vite] http proxy error: /api/bom/cbom/governance/rules
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:36:47 am [vite] http proxy error: /api/me
+4:28:31 pm [vite] http proxy error: /api/bom/cbom/suppression-settings
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:36:48 am [vite] http proxy error: /api/me
+4:28:31 pm [vite] http proxy error: /api/bom/cbom/governance/gate-policies
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:36:52 am [vite] http proxy error: /api/me
+4:28:31 pm [vite] http proxy error: /api/bom/cbom/governance/pqc-readiness
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:36:53 am [vite] http proxy error: /api/me
+4:28:32 pm [vite] http proxy error: /api/bom/cbom/suppression-settings
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:36:55 am [vite] http proxy error: /api/auth/login
+4:28:32 pm [vite] http proxy error: /api/bom/cbom/governance/rules
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)
-9:38:15 am [vite] http proxy error: /api/auth/login
+4:28:32 pm [vite] http proxy error: /api/bom/cbom/governance/gate-policies
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+4:28:32 pm [vite] http proxy error: /api/bom/cbom/governance/pqc-readiness
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+4:33:39 pm [vite] http proxy error: /api/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+4:33:40 pm [vite] http proxy error: /api/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+4:33:42 pm [vite] http proxy error: /api/me
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+4:33:43 pm [vite] http proxy error: /api/me
 AggregateError [ECONNREFUSED]: 
     at internalConnectMultiple (node:net:1134:18)
     at afterConnectMultiple (node:net:1715:7)

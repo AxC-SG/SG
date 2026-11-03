@@ -2,6 +2,7 @@ package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.service.QuotaExceededException;
 import com.prototype.vulnwatch.service.DemoAccessException;
+import com.prototype.vulnwatch.service.CryptoSuppressionPolicyException;
 import com.prototype.vulnwatch.security.PublicRateLimitException;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
@@ -35,6 +36,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, Object> handleNotFound(EntityNotFoundException ex) {
         return error("NOT_FOUND", ex.getMessage());
+    }
+
+    @ExceptionHandler(CryptoSuppressionPolicyException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, Object> handleCryptoSuppressionPolicy(CryptoSuppressionPolicyException ex) {
+        return error(ex.getReasonCode(), ex.getMessage());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
@@ -124,7 +131,7 @@ public class ApiExceptionHandler {
         return error("BAD_REQUEST", "Request conflicts with existing data.");
     }
 
-    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class, SecurityException.class})
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Map<String, Object> handleAccessDenied(Exception ex) {
         log.warn("Access denied while handling API request: {}", ex.getMessage());

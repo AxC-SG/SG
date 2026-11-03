@@ -1,0 +1,1 @@
+{"bomFormat":"CycloneDX","specVersion":"1.6","components":[{"type":"cryptographic-asset","bom-ref":"crypto:unknown","name":"Unspecified cryptographic dependency","cryptoProperties":{"assetType":"algorithm","algorithmProperties":{}}}]}

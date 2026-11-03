@@ -14,9 +14,11 @@ import com.prototype.vulnwatch.domain.RiskPolicy;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.repo.CbomRiskFindingRepository;
 import com.prototype.vulnwatch.repo.FindingRepository;
+import com.prototype.vulnwatch.repo.CbomAssessmentRunRepository;
 import com.prototype.vulnwatch.service.FindingListProjectionService;
 import com.prototype.vulnwatch.service.FindingSlaService;
 import com.prototype.vulnwatch.service.FindingWorkflowService;
+import com.prototype.vulnwatch.service.CanonicalSuppressionMutationService;
 import com.prototype.vulnwatch.service.RiskPolicyService;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -34,14 +36,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  *
  * <p>{@code cbom_risk_findings} stays the source of truth; each pass derives the canonical row
  * from it and is idempotent. The canonical fingerprint is {@code cbom:<cbom finding id>}.
- * An OPEN finding backed by a live document is OPEN; an accepted one is SUPPRESSED; a finding
+ * An OPEN finding backed by a live document is OPEN. Acceptance is handled only by the canonical
+ * suppression workflow; the mirror never creates or extends a suppression. A finding
  * the latest evaluation no longer reports, or whose document was withdrawn, is auto-closed.
  * Closing for a withdrawn document is not a remediation claim, which is why it is never
  * RESOLVED. A finding that an analyst closed in the findings list reopens only when a newer
  * ingest observes it again.
  */
 @Service
-public class CbomFindingMirrorService {
+public class CbomFindingMirrorService implements com.prototype.vulnwatch.service.FindingDeltaQueueService.CbomDeltaHandler {
 
     public static final String KIND = "CRYPTO";
     private static final Logger LOG = LoggerFactory.getLogger(CbomFindingMirrorService.class);
@@ -53,6 +56,16 @@ public class CbomFindingMirrorService {
     private final RiskPolicyService riskPolicies;
     private final FindingListProjectionService projections;
     private final ObjectMapper objectMapper;
+    private final CanonicalSuppressionMutationService suppressionMutations;
+    private CbomAssessmentRunRepository assessmentRuns;
+
+    private com.prototype.vulnwatch.service.TenantService tenantService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void setTenantService(com.prototype.vulnwatch.service.TenantService value){this.tenantService=value;}
+
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void setAssessmentRuns(CbomAssessmentRunRepository value){this.assessmentRuns=value;}
 
     public CbomFindingMirrorService(
             CbomRiskFindingRepository cbomFindings,
@@ -61,7 +74,8 @@ public class CbomFindingMirrorService {
             FindingSlaService sla,
             RiskPolicyService riskPolicies,
             FindingListProjectionService projections,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            CanonicalSuppressionMutationService suppressionMutations
     ) {
         this.cbomFindings = cbomFindings;
         this.findings = findings;
@@ -70,6 +84,7 @@ public class CbomFindingMirrorService {
         this.riskPolicies = riskPolicies;
         this.projections = projections;
         this.objectMapper = objectMapper;
+        this.suppressionMutations = suppressionMutations;
     }
 
     /** Brings every CRYPTO finding of the tenant in line with its CBOM finding. Needs tenant context. */
@@ -87,6 +102,35 @@ public class CbomFindingMirrorService {
         return changed;
     }
 
+    /**
+     * Mirrors only the referenced CBOM findings: the CBOM_DELTA consumer path. Ids outside the
+     * tenant are ignored. Needs tenant context; joins the delta batch transaction.
+     */
+    @Transactional
+    public int syncFindings(Tenant tenant, java.util.Collection<java.util.UUID> cbomFindingIds) {
+        if (cbomFindingIds == null || cbomFindingIds.isEmpty()) {
+            return 0;
+        }
+        int changed = 0;
+        for (CbomRiskFinding source : cbomFindings.findByTenant_IdAndIdIn(tenant.getId(), cbomFindingIds)) {
+            if (mirror(tenant, source)) {
+                changed++;
+            }
+        }
+        if (changed > 0) {
+            refreshProjectionAfterCommit(tenant);
+        }
+        return changed;
+    }
+
+    @Override
+    public int applyCbomDeltas(java.util.UUID tenantId, java.util.Collection<java.util.UUID> cbomFindingIds) {
+        if (tenantService == null) {
+            throw new IllegalStateException("Tenant resolution is unavailable for CBOM deltas");
+        }
+        return syncFindings(tenantService.resolveTenantUuid(tenantId), cbomFindingIds);
+    }
+
     static String fingerprint(CbomRiskFinding source) {
         return "cbom:" + source.getId();
     }
@@ -94,7 +138,7 @@ public class CbomFindingMirrorService {
     private boolean mirror(Tenant tenant, CbomRiskFinding source) {
         CbomComponent asset = source.getComponent();
         Instant now = Instant.now();
-        Finding existing = findings.findByTenantAndFingerprint(tenant, fingerprint(source)).orElse(null);
+        Finding existing = findings.findByFingerprint(fingerprint(source)).orElse(null);
         if (source.getStatus() == CbomFindingStatus.OPEN
                 && asset.isActive() && source.getEvidenceState() != BomEvidenceState.WITHDRAWN) {
             return openOrRefresh(tenant, source, existing, now);
@@ -103,7 +147,9 @@ public class CbomFindingMirrorService {
             return false;
         }
         if (source.getStatus() == CbomFindingStatus.ACCEPTED) {
-            return suppress(existing, source, now);
+            // The legacy accept route is closed. Existing source rows may retain ACCEPTED for
+            // history, but only the canonical workflow may change suppression state.
+            return false;
         }
         if (existing.getStatus() != FindingStatus.OPEN) {
             return false;
@@ -142,9 +188,25 @@ public class CbomFindingMirrorService {
                     Map.of("cbomFindingId", source.getId().toString()));
             return true;
         }
+        String previousSeverity = existing.getSeverityOverride();
         boolean observedAgain = existing.getLastObservedAt() == null || observedAt.isAfter(existing.getLastObservedAt());
         boolean suppressionActive = existing.getStatus() == FindingStatus.SUPPRESSED
                 && (existing.getSuppressedUntil() == null || existing.getSuppressedUntil().isAfter(now));
+        if (suppressionActive) {
+            apply(existing, source, risk);
+            boolean roseToCritical = !"CRITICAL".equalsIgnoreCase(previousSeverity)
+                    && "CRITICAL".equalsIgnoreCase(existing.getSeverityOverride());
+            if (roseToCritical) {
+                suppressionMutations.reopen(existing, "cbom-delta", "SUPPRESSION_REOPENED_SEVERITY_ESCALATION",
+                        "CRYPTO suppression reopened because severity rose to critical");
+                workflow.markObserved(existing, observedAt, null);
+                findings.save(existing);
+                return true;
+            }
+            existing.touch();
+            findings.save(existing);
+            return !sameSeverity(previousSeverity, existing.getSeverityOverride());
+        }
         if (existing.getStatus() == FindingStatus.OPEN) {
             if (!observedAgain && sameContent(existing, source)) {
                 return false;
@@ -159,22 +221,6 @@ public class CbomFindingMirrorService {
         apply(existing, source, risk);
         existing.touch();
         findings.save(existing);
-        return true;
-    }
-
-    private boolean suppress(Finding existing, CbomRiskFinding source, Instant now) {
-        if (existing.getStatus() == FindingStatus.SUPPRESSED) {
-            return false;
-        }
-        FindingStatus previous = existing.getStatus();
-        existing.setStatus(FindingStatus.SUPPRESSED);
-        existing.setSuppressionReason("Risk accepted in CBOM posture");
-        existing.setSuppressedUntil(null);
-        existing.touch();
-        findings.save(existing);
-        workflow.appendEvent(existing, "SUPPRESSED", "cbom-risk-engine",
-                "Crypto finding suppressed because its risk was accepted",
-                Map.of("fromStatus", previous.name(), "cbomFindingId", source.getId().toString()));
         return true;
     }
 
@@ -197,6 +243,12 @@ public class CbomFindingMirrorService {
                         source.getSeverity() == null ? null : source.getSeverity().name());
     }
 
+    private boolean sameSeverity(String left, String right) {
+        return java.util.Objects.equals(
+                left == null ? null : left.toUpperCase(),
+                right == null ? null : right.toUpperCase());
+    }
+
     private String evidence(CbomRiskFinding source) {
         CbomComponent asset = source.getComponent();
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -208,6 +260,18 @@ public class CbomFindingMirrorService {
         payload.put("detail", source.getDetail());
         payload.put("recommendation", source.getRecommendation());
         payload.put("impactReason", source.getDetail());
+        if (assessmentRuns != null && asset.getSourceBom() != null) {
+            assessmentRuns.findFirstByTenant_IdAndBom_IdAndStatusOrderByCreatedAtDesc(
+                    source.getTenant().getId(), asset.getSourceBom().getId(), "SUCCEEDED").ifPresent(run -> {
+                payload.put("assessmentRunId", run.getId().toString());
+                payload.put("artifactChecksum", run.getArtifactChecksum());
+                payload.put("rulePackage", run.getRulePackageId() + "@" + run.getRulePackageVersion());
+                payload.put("rulePackageDigest", run.getRulePackageDigest());
+                payload.put("evaluatorVersion", run.getEvaluatorVersion());
+                payload.put("assurance", run.getConfidenceScore());
+                payload.put("completeness", run.getCompletenessScore());
+            });
+        }
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (Exception e) {

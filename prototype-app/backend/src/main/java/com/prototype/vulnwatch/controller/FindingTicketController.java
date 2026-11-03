@@ -29,6 +29,16 @@ public class FindingTicketController {
 
     private final WorkspaceService workspaceService;
     private final TicketingService ticketingService;
+    private com.prototype.vulnwatch.service.cbom.CryptoRemediationService remediation;
+    private com.prototype.vulnwatch.service.RequestActorService actors;
+
+    /** CRYPTO findings get the crypto ticket template; every attempt, including failures, is recorded for retry. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setRemediation(com.prototype.vulnwatch.service.cbom.CryptoRemediationService remediation,
+            com.prototype.vulnwatch.service.RequestActorService actors) {
+        this.remediation = remediation;
+        this.actors = actors;
+    }
 
     public FindingTicketController(WorkspaceService workspaceService, TicketingService ticketingService) {
         this.workspaceService = workspaceService;
@@ -54,7 +64,10 @@ public class FindingTicketController {
             @RequestBody(required = false) CreateFindingTicketRequest request
     ) {
         Tenant tenant = workspaceService.getWorkspace();
-        TicketRef ref = ticketingService.createTicketForFinding(tenant, findingId, toTicketRequest(request));
+        TicketRef ref = remediation == null
+                ? ticketingService.createTicketForFinding(tenant, findingId, toTicketRequest(request))
+                : remediation.createTicket(tenant, findingId, toTicketRequest(request),
+                        actors.currentActor() == null ? "api" : actors.currentActor().userId());
         return new FindingTicketResponse(
                 ref.system().key(),
                 ref.system().displayName(),

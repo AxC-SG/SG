@@ -156,8 +156,10 @@ describe('ConnectPage', () => {
     const submit = vi.spyOn(api, 'bomFetch');
     renderConnectPage(TENANT_ADMIN);
     fireEvent.click(screen.getAllByText(card).find((element) => element.closest('button'))!.closest('button')!);
-    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'CI/CD & pipelines' }));
     expect(screen.getByRole('heading', { name: 'GitHub Auto-Pipeline' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ingest now' }));
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'URL Fetch' }));
     fireEvent.change(screen.getByPlaceholderText('https://example.com/bom.json'), { target: { value: 'https://fixture.example/bom.json' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ingest SBOM' }));
