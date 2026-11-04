@@ -310,6 +310,7 @@ export function experienceFixtureFor(rawUrl, method = 'GET', body = null) {
     if (!record) return notFound;
     const action = campaign[2];
     if (!action && isGet) return ok(detailFor(record));
+    if (action === 'findings' && isGet) return ok([]);
     if (action === 'status') return ok(detailFor({ ...record, status: json.status ?? record.status, updatedAt: iso(0) }));
     if (action === 'notes') return ok({ id: 'note-new', author: 'fixture.analyst@example.test', body: json.body ?? '', createdAt: iso(0) });
     if (action === 'ai-insights' || action === 'ai-advisories') return { status: 503, json: { message: 'AI generation is not available in fixtures.' } };
