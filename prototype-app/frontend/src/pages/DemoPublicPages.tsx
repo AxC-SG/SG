@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '../api/client';
+import { api, setStoredAuthToken } from '../api/client';
 import { getAuthContextQueryKey } from '../features/auth/queries';
 import type { ActorContext } from '../features/auth/types';
 import { AnnouncementsIndexPage, NvidiaInceptionAnnouncementPage } from '../features/public-site/Announcements';
