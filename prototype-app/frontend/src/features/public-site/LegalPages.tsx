@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PublicDemoShell, SITE_NAME } from './PublicSiteShell';
+import { LEGAL_ENTITY, PublicDemoShell, SITE_NAME } from './PublicSiteShell';
 
 // Legal text for the public site. It describes how Scoutgrid actually behaves (essential
 // storage only, no analytics or advertising trackers) and still needs review by qualified
 // counsel before the site goes live.
-const COMPANY = SITE_NAME;
+const COMPANY = LEGAL_ENTITY;
 const ADDRESS = 'Hyderabad, India';
 const CONTACT_EMAIL = 'support@scoutgrid.io';
 const GOVERNING_LAW = 'India';
@@ -37,7 +37,7 @@ export function PrivacyPolicyPage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Privacy Policy"
-      deck={`How ${COMPANY} (“we”, “us”) collects, uses and protects personal information when you visit this site, request a demo or sign in to the ${SITE_NAME} platform.`}
+      deck={`How ${COMPANY}, which operates ${SITE_NAME} (“we”, “us”), collects, uses and protects personal information when you visit this site, request a demo or sign in to the ${SITE_NAME} platform.`}
     >
       <section>
         <h2>1. Scope and our role</h2>
@@ -185,7 +185,7 @@ export function CookiePolicyPage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Cookie Policy"
-      deck={`The cookies and similar technologies ${COMPANY} uses on scoutgrid.io and in the ${SITE_NAME} platform, and the choices you have.`}
+      deck={`The cookies and similar technologies ${COMPANY}, operating as ${SITE_NAME}, uses on scoutgrid.io and in the ${SITE_NAME} platform, and the choices you have.`}
     >
       <section>
         <h2>1. What these technologies are</h2>
@@ -232,7 +232,7 @@ export function TermsOfServicePage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Terms of Service"
-      deck={`The terms that apply when you use this site, request a demo or access the ${SITE_NAME} platform provided by ${COMPANY}, ${ADDRESS}.`}
+      deck={`The terms that apply when you use this site, request a demo or access the ${SITE_NAME} platform provided by ${COMPANY}, operating as ${SITE_NAME}, ${ADDRESS}.`}
     >
       <section>
         <h2>1. Acceptance</h2>

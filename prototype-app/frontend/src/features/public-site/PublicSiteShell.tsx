@@ -4,6 +4,7 @@ import { clearStoredAuthToken, getStoredAuthToken } from '../../api/client';
 import { BrandMark } from '../../components/BrandMark';
 
 export const SITE_NAME = 'Scoutgrid';
+export const LEGAL_ENTITY = 'Axoncyber Private Limited';
 
 export function SiteLogo() {
   return (
@@ -187,7 +188,7 @@ function SiteFooter() {
           ))}
         </div>
         <div className="sgw-footer-bottom">
-          <span>© 2026 {SITE_NAME}. All rights reserved.</span>
+          <span>© 2026 {LEGAL_ENTITY}. All rights reserved. {SITE_NAME} is a product of {LEGAL_ENTITY}.</span>
           <span className="sgw-footer-legal">
             <Link to="/demo/privacy">Privacy</Link>
             <Link to="/demo/terms">Terms</Link>
