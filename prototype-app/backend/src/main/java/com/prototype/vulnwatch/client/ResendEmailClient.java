@@ -64,7 +64,7 @@ public class ResendEmailClient {
     private static final Logger LOG = LoggerFactory.getLogger(ResendEmailClient.class);
     private static final String DEFAULT_BASE_URL = "https://api.resend.com";
     private static final String DEFAULT_USER_AGENT = "vulnwatch-backend/resend";
-    private static final String DEFAULT_FROM_DOMAIN = "hossstore.in";
+    private static final String DEFAULT_FROM_DOMAIN = "scoutgrid.io";
     private static final String DEFAULT_FROM_ADDRESS = "Scout.ai <noreply@" + DEFAULT_FROM_DOMAIN + ">";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
@@ -82,7 +82,7 @@ public class ResendEmailClient {
             @Value("${app.email.resend.base-url:https://api.resend.com}") String baseUrl,
             @Value("${app.email.resend.api-key:${RESEND_API_KEY:}}") String apiKey,
             @Value("${app.email.resend.from:${RESEND_FROM_EMAIL:}}") String fromAddress,
-            @Value("${app.email.resend.from-domain:${RESEND_FROM_DOMAIN:hossstore.in}}") String fromDomain
+            @Value("${app.email.resend.from-domain:${RESEND_FROM_DOMAIN:scoutgrid.io}}") String fromDomain
     ) {
         this.objectMapper = objectMapper;
         this.httpClient = new com.prototype.vulnwatch.client.http.CheckedHttpTransport();
