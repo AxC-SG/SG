@@ -402,6 +402,11 @@ html[data-ui='2'] .ui2-inventory-family .ui2-dialog > .si-entity-dialog {
 }
 
 /* ── CBOM visibility (BOM inventory crypto posture/inventory, CBOM document views) ───────── */
+html[data-ui='2'] .bom-inventory-page > .segmented-control {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 html[data-ui='2'] .ui2-inventory-family :is(.cbom-overview, .cbom-document-panel, .cbom-evidence) {
   display: grid;
   gap: var(--dp-space-4, 16px);
