@@ -28,15 +28,20 @@ const RESOURCE_LINKS = [
   { label: 'Announcements', to: '/demo/announcements' }
 ];
 
+const COMPANY_LINKS = [
+  { label: 'Partners', to: '/demo/partners' },
+  { label: 'Contact', to: '/demo/contact' }
+];
+
 // Disclosure menu: a button that shows a short list of links. Closes on Escape,
 // an outside click, focus leaving the menu, or navigation.
-function ResourcesMenu() {
+function DisclosureMenu({ label, links }: { label: string; links: Array<{ label: string; to: string }> }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const menuId = React.useId();
-  const active = RESOURCE_LINKS.some((link) => location.pathname.startsWith(link.to));
+  const active = links.some((link) => location.pathname.startsWith(link.to));
 
   React.useEffect(() => {
     setOpen(false);
@@ -77,13 +82,13 @@ function ResourcesMenu() {
         aria-controls={menuId}
         onClick={() => setOpen((current) => !current)}
       >
-        Resources
+        {label}
         <svg className="sgw-menu-caret" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
           <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       <ul id={menuId} className="sgw-menu-panel" hidden={!open}>
-        {RESOURCE_LINKS.map((link) => (
+        {links.map((link) => (
           <li key={link.label}><Link to={link.to}>{link.label}</Link></li>
         ))}
       </ul>
@@ -102,11 +107,12 @@ function SiteHeader({ onLogout }: { onLogout?: () => void }) {
           {NAV_SECTIONS.map((section) => (
             <Link key={section.label} to={section.to}>{section.label}</Link>
           ))}
-          <ResourcesMenu />
+          <DisclosureMenu label="Resources" links={RESOURCE_LINKS} />
+          <DisclosureMenu label="Company" links={COMPANY_LINKS} />
         </nav>
         <div className="sgw-nav-actions">
           <Link className="sgw-nav-login" to="/login">Log in</Link>
-          <Link className="sgw-btn sgw-btn-red sgw-nav-cta" to="/demo/request">
+          <Link className="sgw-btn sgw-btn-red sgw-nav-cta" to="/demo/contact">
             Request a demo
           </Link>
           {onLogout && (
@@ -147,8 +153,15 @@ const FOOTER_COLUMNS: Array<{ title: string; links: Array<{ label: string; to: s
       { label: 'Platform', to: '/demo#platform' },
       { label: 'Blog', to: '/demo/blog' },
       { label: 'Announcements', to: '/demo/announcements' },
-      { label: 'Request a demo', to: '/demo/request' },
+      { label: 'Request a demo', to: '/demo/contact' },
       { label: 'Log in', to: '/login' }
+    ]
+  },
+  {
+    title: 'Company',
+    links: [
+      { label: 'Partners', to: '/demo/partners' },
+      { label: 'Contact', to: '/demo/contact' }
     ]
   }
 ];

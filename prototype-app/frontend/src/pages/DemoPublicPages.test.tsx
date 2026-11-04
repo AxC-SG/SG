@@ -85,7 +85,7 @@ describe('Demo public pages', () => {
       main.getByRole('link', { name: /Find your starting point/i })
     ];
     expect(demoLinks).toHaveLength(8);
-    demoLinks.forEach((link) => expect(link).toHaveAttribute('href', '/demo/request'));
+    demoLinks.forEach((link) => expect(link).toHaveAttribute('href', '/demo/contact'));
     expect(main.getByRole('link', { name: /Explore AI Grid in a demo/i })).toBeInTheDocument();
     expect(main.getByRole('link', { name: /Meet the four Grids/i })).toHaveAttribute('href', '/demo#products');
   });
@@ -111,7 +111,7 @@ describe('Demo public pages', () => {
     expect(resources).toHaveFocus();
     expect(navigation.queryByRole('link', { name: 'Announcements' })).not.toBeInTheDocument();
     expect(banner.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
-    expect(banner.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(banner.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
     expect(screen.queryByRole('link', { name: /^AI security$/i })).not.toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe('Demo public pages', () => {
     expect(footer.getByRole('link', { name: 'AI Grid' })).toHaveAttribute('href', '/demo#ai-grid');
     expect(footer.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#platform');
     expect(footer.getByRole('link', { name: 'Blog' })).toHaveAttribute('href', '/demo/blog');
-    expect(footer.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(footer.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
     expect(footer.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
     expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/demo/privacy');
     expect(footer.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/demo/terms');
@@ -130,7 +130,9 @@ describe('Demo public pages', () => {
     expect(footer.getByText('© 2026 Scoutgrid. All rights reserved.')).toBeInTheDocument();
     expect(footer.queryByRole('link', { name: /^AI security$/i })).not.toBeInTheDocument();
     expect(footer.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/demo/announcements');
-    expect(footer.getAllByRole('listitem')).toHaveLength(15);
+    expect(footer.getByRole('link', { name: 'Partners' })).toHaveAttribute('href', '/demo/partners');
+    expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/demo/contact');
+    expect(footer.getAllByRole('listitem')).toHaveLength(17);
   });
 
   it('navigates from the landing page to the blog and the legal pages', () => {
@@ -169,24 +171,24 @@ describe('Demo public pages', () => {
     fireEvent.click(siteNav.getByRole('link', { name: 'Announcements' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Announcements' })).toBeInTheDocument();
     expect(siteNav.queryByRole('link', { name: 'Announcements' })).not.toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Scoutgrid and NVIDIA' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'NVIDIA Inception Program and Scoutgrid' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: 'Scoutgrid joins the NVIDIA Inception program' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Scoutgrid joins the NVIDIA Inception program' })).toBeInTheDocument();
     for (const heading of ['Securing AI in context', 'What Inception brings', 'What\u2019s next']) {
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
     }
-    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
   });
 
-  it('places Scoutgrid first and NVIDIA second in the co-brand lockup, split by a divider', () => {
+  it('places the NVIDIA Inception logo on the left and Scoutgrid on the right in the co-brand lockup', () => {
     const { container } = renderWithProviders(<NvidiaInceptionAnnouncementPage />, { route: '/demo/announcements/scoutgrid-joins-nvidia-inception' });
 
     const lockup = container.querySelector('.sgw-cobrand');
     expect(Array.from(lockup?.children ?? []).map((child) => child.className)).toEqual([
-      'sgw-cobrand-partner', 'sgw-cobrand-divider', 'sgw-cobrand-nvidia'
+      'sgw-cobrand-nvidia', 'sgw-cobrand-partner'
     ]);
-    expect(lockup?.querySelector('img')).toHaveAttribute('src', '/brand/nvidia-logo-horizontal.png');
+    expect(lockup?.querySelector('img')).toHaveAttribute('src', '/brand/nvidia-inception-program-logo.png');
   });
 
   it('renders the privacy policy with every required section', () => {
@@ -685,7 +687,7 @@ describe('Demo public pages', () => {
       { route: '/invite#token=old-token' }
     );
     expect(await screen.findByRole('alert')).toHaveTextContent('Invite has expired');
-    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
     expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
   });
 

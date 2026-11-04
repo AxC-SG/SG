@@ -1,20 +1,17 @@
 import { Link } from 'react-router-dom';
-import { BrandMark } from '../../components/BrandMark';
-import { PublicDemoShell, SITE_NAME } from './PublicSiteShell';
+import { PublicDemoShell, SITE_NAME, SiteLogo } from './PublicSiteShell';
 
 export const NVIDIA_INCEPTION_PATH = '/demo/announcements/scoutgrid-joins-nvidia-inception';
 
 // Co-branded lockup per NVIDIA's partner guidance: horizontal arrangement, partner
-// (Scoutgrid) first, NVIDIA second, a divider line between them and equal visual weight.
+// (Inception Program) on the left, Scoutgrid on the right, at equal visual weight.
 export function NvidiaCoBrandLockup({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return (
-    <div className={`sgw-cobrand sgw-cobrand--${size}`} role="img" aria-label={`${SITE_NAME} and NVIDIA`}>
+    <div className={`sgw-cobrand sgw-cobrand--${size}`} role="img" aria-label={`NVIDIA Inception Program and ${SITE_NAME}`}>
+      <img className="sgw-cobrand-nvidia" src="/brand/nvidia-inception-program-logo.png" alt="" width="538" height="204" />
       <span className="sgw-cobrand-partner" aria-hidden="true">
-        <BrandMark className="sgw-cobrand-mark" />
-        <span className="sgw-cobrand-word">{SITE_NAME}</span>
+        <SiteLogo />
       </span>
-      <span className="sgw-cobrand-divider" aria-hidden="true" />
-      <img className="sgw-cobrand-nvidia" src="/brand/nvidia-logo-horizontal.png" alt="" width="1200" height="249" />
     </div>
   );
 }
@@ -118,7 +115,7 @@ export function NvidiaInceptionAnnouncementPage() {
           <div className="blog-closing-callout">
             <strong>See Scoutgrid in action.</strong>
             <span>Explore the AI Grid and the wider platform in a private demo, tailored to your priorities.</span>
-            <p><Link className="sgw-btn sgw-btn-red" to="/demo/request">Request a demo</Link></p>
+            <p><Link className="sgw-btn sgw-btn-red" to="/demo/contact">Request a demo</Link></p>
           </div>
         </div>
       </article>

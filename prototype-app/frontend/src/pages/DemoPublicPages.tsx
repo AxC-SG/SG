@@ -171,6 +171,7 @@ export { AnnouncementsIndexPage, CookiePolicyPage, NvidiaInceptionAnnouncementPa
 
 const ZERO_DAY_BLOG_PATH = '/demo/blog/zero-day-response-hours-not-weeks';
 const MYTHOS_READINESS_BLOG_PATH = '/demo/blog/mythos-readiness';
+const PHP2SHELL_BLOG_PATH = '/demo/blog/php2shell-critical-cve-response-starts-with-inventory';
 const SBOM_EXPLOITABILITY_BLOG_PATH = '/demo/blog/why-your-sbom-tool-doesnt-know-whats-exploitable';
 
 export function BlogIndexPage() {
@@ -223,6 +224,19 @@ export function BlogIndexPage() {
               move an organization toward stronger AI governance.
             </p>
             <Link className="blog-read-more" to={MYTHOS_READINESS_BLOG_PATH}>
+              Read more <span aria-hidden="true">→</span>
+            </Link>
+          </article>
+          <article className="blog-card">
+            <time dateTime="2026-10-25">October 25, 2026</time>
+            <h2>
+              <Link to={PHP2SHELL_BLOG_PATH}>PHP2Shell: the critical CVE response test that starts with inventory</Link>
+            </h2>
+            <p>
+              CVE-2026-109618 and CVE-2026-109619 turn an unknown PHP footprint into an urgent exposure problem.
+              See how Scoutgrid turns a critical CVE into a prioritized, owned remediation queue.
+            </p>
+            <Link className="blog-read-more" to={PHP2SHELL_BLOG_PATH}>
               Read more <span aria-hidden="true">→</span>
             </Link>
           </article>
@@ -482,7 +496,138 @@ export function ZeroDayBlogPage() {
   );
 }
 
-export function DemoRequestPage() {
+export function Php2ShellBlogPage() {
+  return (
+    <PublicDemoShell>
+      <article className="blog-article">
+        <header className="blog-article-header">
+          <Link className="blog-back-link" to="/demo/blog">← All blogs</Link>
+          <span className="blog-article-kicker">Scoutgrid Blog · Vulnerability Response</span>
+          <h1>PHP2Shell: the critical CVE response test that starts with inventory</h1>
+          <p className="blog-article-deck">Turning a critical CVE into a prioritized, owned remediation queue.</p>
+          <time dateTime="2026-10-25">October 25, 2026</time>
+        </header>
+
+        <div className="blog-article-body">
+          <p>
+            A critical vulnerability drops, and the first week isn&rsquo;t spent patching. It&rsquo;s spent answering
+            three questions: <em>Do we run it? Where? Which instances matter most?</em>
+          </p>
+          <p>
+            PHP2Shell is the name being used for two critical PHP vulnerabilities, CVE-2026-109618 and
+            CVE-2026-109619. PHP describes installations serving web requests as at risk, including PHP-FPM, Apache
+            mod_php, php-cgi, FrankenPHP and LiteSpeed. The flaws can enable unauthenticated remote code execution,
+            and the risk can exist before application code runs.
+          </p>
+          <p>
+            That makes this more than a PHP upgrade task. It tests inventory quality, exposure context, ownership and
+            remediation evidence &mdash; long before the patch itself.
+          </p>
+
+          <blockquote>
+            A critical CVE is only the beginning of the response. The real question is: what does it mean for our
+            environment, right now?
+          </blockquote>
+
+          <section>
+            <h2>What the two vulnerabilities do</h2>
+            <p>Both involve PHP memory handling and request state, through different failure paths:</p>
+            <ul>
+              <li><strong>CVE-2026-109618 &mdash; out-of-memory corruption.</strong> An out-of-memory condition can interrupt request processing while internal data is only partially initialized. Cleanup code may then treat that invalid state as usable.</li>
+              <li><strong>CVE-2026-109619 &mdash; stale global state.</strong> Request-owned state can remain after the memory behind it has been freed. A later request handled by the same worker may access that stale state.</li>
+            </ul>
+            <p>
+              The practical consequence is the same: a vulnerable PHP worker may become a path to remote code
+              execution. Exploitability still depends on deployment and configuration, but the exposure cannot be
+              dismissed just because your application has no obvious PHP flaw.
+            </p>
+            <p>
+              PHP released fixed upstream versions 8.2.35, 8.3.36, 8.4.27 and 8.5.12. For distribution-managed
+              installations, the vendor advisory and backported package are the source of truth. PHP 8.1 and earlier
+              need particular care because many of those branches are outside regular upstream support. Updating is
+              the durable answer; temporary risk reduction is a bridge, not a substitute.
+            </p>
+          </section>
+
+          <section>
+            <h2>What the slow path actually costs you</h2>
+            <ul>
+              <li><strong>PHP lives in more places than any one inventory shows.</strong> Internet-facing web servers, PHP-FPM pools behind a reverse proxy, containers and images, build artifacts, appliances owned by another team, and several PHP copies on one host.</li>
+              <li><strong>&ldquo;PHP is installed&rdquo; is not an answer.</strong> You also need to know whether the asset is reachable, how important the service is, who must act, what deadline applies and whether remediation happened.</li>
+              <li><strong>A version string isn&rsquo;t applicability.</strong> Distribution backports mean the upstream version number may not tell the full story, and unsupported branches need an upgrade rather than a routine patch.</li>
+              <li><strong>A severity score isn&rsquo;t a plan.</strong> Critical says nothing about what to fix first, or who owns it.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>How Scoutgrid closes the gap</h2>
+            <p>
+              Scoutgrid works in the space between disclosure and verified remediation. It doesn&rsquo;t replace PHP
+              patch management, a WAF or endpoint protection. It helps your team answer the questions those tools
+              leave open.
+            </p>
+            <ul>
+              <li><strong>Know where PHP runs.</strong> Scoutgrid brings together host, cloud and software inventory evidence so you can see which assets are affected, not just that PHP exists somewhere.</li>
+              <li><strong>Know what it means for you.</strong> A generic CVE record becomes an assessment specific to your environment, including old, unsupported PHP versions that need an upgrade rather than a routine patch.</li>
+              <li><strong>Know what to fix first.</strong> Exploit signals and asset criticality turn severity into a short, prioritized queue.</li>
+              <li><strong>Know who owns it.</strong> Every exposure gets an accountable owner, a deadline and a documented exception path.</li>
+              <li><strong>Know when it&rsquo;s done.</strong> Progress is tracked from advisory to affected asset to action, so leadership sees closure, not another unbounded finding count.</li>
+            </ul>
+          </section>
+
+          <aside className="blog-practice-callout">
+            <strong>In practice</strong>
+            <p>
+              PHP2Shell is disclosed. Without a trusted inventory, the week goes to finding out where PHP runs and who
+              owns it. With Scoutgrid, the team opens a short queue: affected assets, the evidence behind each match,
+              which are business-critical, who owns them and when the SLA lands. Remediation is already underway the
+              same day.
+            </p>
+          </aside>
+
+          <section>
+            <h2>A practical PHP2Shell response path</h2>
+            <ul>
+              <li><strong>Discover.</strong> Find PHP across hosts, cloud workloads, containers, SBOMs and externally reachable services.</li>
+              <li><strong>Validate applicability.</strong> Match installed version and vendor package to the advisory, mindful of backports.</li>
+              <li><strong>Prioritize exposure.</strong> Put internet-facing, business-critical, actively used and ownerless systems first.</li>
+              <li><strong>Assign the work.</strong> Give every affected system an owner, an SLA and an exception path.</li>
+              <li><strong>Remediate and verify.</strong> Upgrade to the fixed or vendor-supported build, restart services and workers as required, then recheck the running environment.</li>
+            </ul>
+            <p>
+              Don&rsquo;t use public proof-of-concept code as a production test. It can overload workers, write
+              attacker-controlled data or trigger the vulnerable code path. Validate in an isolated lab or through an
+              approved, non-destructive process.
+            </p>
+          </section>
+
+          <section>
+            <h2>The bigger picture</h2>
+            <p>
+              The best PHP2Shell response isn&rsquo;t the longest list of vulnerable versions. It&rsquo;s a short,
+              trusted queue the right people can act on immediately: the affected asset, the evidence that makes it
+              applicable, who owns it, the approved next step and whether the fix has landed. When your team can answer
+              those quickly, the response moves from emergency triage to controlled execution.
+            </p>
+          </section>
+
+          <aside className="blog-takeaways">
+            <strong>Key takeaways</strong>
+            <ul>
+              <li>PHP2Shell is a runtime exposure problem, not just an application-code problem.</li>
+              <li>The first dependency is a trustworthy inventory across servers, cloud, containers and software sources.</li>
+              <li>Applicability, exploit signals, criticality and ownership should drive remediation order &mdash; not severity alone.</li>
+              <li>Temporary mitigation reduces risk, but upgrading to a fixed or vendor-supported build is the durable answer.</li>
+              <li>Scoutgrid connects the CVE to the assets, owners and evidence needed to close the exposure.</li>
+            </ul>
+          </aside>
+        </div>
+      </article>
+    </PublicDemoShell>
+  );
+}
+
+export function DemoRequestForm() {
   const navigate = useNavigate();
   const [formError, setFormError] = React.useState<{ field: 'terms' | 'email' | 'captcha'; message: string } | null>(null);
   const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
@@ -529,6 +674,72 @@ export function DemoRequestPage() {
   };
 
   return (
+    <form className="demo-request-form" onSubmit={submit}>
+      <label className="half-width">Full name<input name="fullName" autoComplete="name" required maxLength={255} /></label>
+      <label className="half-width">Work email
+        <input
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          maxLength={255}
+          aria-invalid={formError?.field === 'email' || undefined}
+          aria-describedby={formError?.field === 'email' ? 'demo-request-email-hint demo-request-error' : 'demo-request-email-hint'}
+        />
+        <span id="demo-request-email-hint" className="field-hint">Use your company email address. Personal email providers are not accepted.</span>
+      </label>
+      <label className="third-width">Company<input name="company" autoComplete="organization" required maxLength={255} /></label>
+      <label className="third-width">Role<input name="roleTitle" autoComplete="organization-title" maxLength={255} /></label>
+      <label className="third-width">Company size
+        <select name="companySize" defaultValue="">
+          <option value="" disabled>Select size</option>
+          <option value="1-100">1-100</option>
+          <option value="101-1000">101-1,000</option>
+          <option value="1001-5000">1,001-5,000</option>
+          <option value="5000+">5,000+</option>
+        </select>
+      </label>
+      <label className="full-width">Notes<textarea name="notes" rows={3} maxLength={2000} /></label>
+      <label className="demo-terms full-width">
+        <input
+          name="acceptedTerms"
+          type="checkbox"
+          aria-invalid={formError?.field === 'terms' || undefined}
+          aria-describedby={formError?.field === 'terms' ? 'demo-request-error' : undefined}
+        />
+        <span>I understand the demo is time-boxed, uses isolated sample-friendly workflows, and may include demo-specific usage limits.</span>
+      </label>
+      <TurnstileWidget onTokenChange={handleCaptchaToken} resetKey={captchaResetKey} />
+      {!captchaToken && (
+        <p id="demo-request-captcha-status" className="field-hint full-width" role="status">
+          {captchaClearReason === 'expired'
+            ? 'The verification expired. Complete it again to submit your request.'
+            : captchaClearReason === 'error'
+              ? 'The verification could not be completed. Retry the check above, or reload the page if it does not appear.'
+              : captchaClearReason === 'reset'
+                ? 'Your entries are kept. Complete the verification again to resubmit.'
+                : 'Complete the verification above to enable Submit request.'}
+        </p>
+      )}
+      {(formError || requestDemo.isError) && (
+        <div id="demo-request-error" className="notice error full-width" role="alert">
+          {formError?.message ?? (requestDemo.error instanceof Error ? requestDemo.error.message : 'Demo request failed')}
+        </div>
+      )}
+      <button
+        className="btn btn-primary"
+        type="submit"
+        disabled={requestDemo.isPending || !captchaToken}
+        aria-describedby={captchaToken ? undefined : 'demo-request-captcha-status'}
+      >
+        {requestDemo.isPending ? 'Submitting...' : 'Submit request'}
+      </button>
+    </form>
+  );
+}
+
+export function DemoRequestPage() {
+  return (
     <PublicDemoShell compact>
       <section className="public-form-panel">
         <div className="panel-header">
@@ -541,67 +752,7 @@ export function DemoRequestPage() {
             <Link to="/login">Already have access? Log in</Link>
           </div>
         </div>
-        <form className="demo-request-form" onSubmit={submit}>
-          <label className="half-width">Full name<input name="fullName" autoComplete="name" required maxLength={255} /></label>
-          <label className="half-width">Work email
-            <input
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              maxLength={255}
-              aria-invalid={formError?.field === 'email' || undefined}
-              aria-describedby={formError?.field === 'email' ? 'demo-request-email-hint demo-request-error' : 'demo-request-email-hint'}
-            />
-            <span id="demo-request-email-hint" className="field-hint">Use your company email address. Personal email providers are not accepted.</span>
-          </label>
-          <label className="third-width">Company<input name="company" autoComplete="organization" required maxLength={255} /></label>
-          <label className="third-width">Role<input name="roleTitle" autoComplete="organization-title" maxLength={255} /></label>
-          <label className="third-width">Company size
-            <select name="companySize" defaultValue="">
-              <option value="" disabled>Select size</option>
-              <option value="1-100">1-100</option>
-              <option value="101-1000">101-1,000</option>
-              <option value="1001-5000">1,001-5,000</option>
-              <option value="5000+">5,000+</option>
-            </select>
-          </label>
-          <label className="full-width">Notes<textarea name="notes" rows={3} maxLength={2000} /></label>
-          <label className="demo-terms full-width">
-            <input
-              name="acceptedTerms"
-              type="checkbox"
-              aria-invalid={formError?.field === 'terms' || undefined}
-              aria-describedby={formError?.field === 'terms' ? 'demo-request-error' : undefined}
-            />
-            <span>I understand the demo is time-boxed, uses isolated sample-friendly workflows, and may include demo-specific usage limits.</span>
-          </label>
-          <TurnstileWidget onTokenChange={handleCaptchaToken} resetKey={captchaResetKey} />
-          {!captchaToken && (
-            <p id="demo-request-captcha-status" className="field-hint full-width" role="status">
-              {captchaClearReason === 'expired'
-                ? 'The verification expired. Complete it again to submit your request.'
-                : captchaClearReason === 'error'
-                  ? 'The verification could not be completed. Retry the check above, or reload the page if it does not appear.'
-                  : captchaClearReason === 'reset'
-                    ? 'Your entries are kept. Complete the verification again to resubmit.'
-                    : 'Complete the verification above to enable Submit request.'}
-            </p>
-          )}
-          {(formError || requestDemo.isError) && (
-            <div id="demo-request-error" className="notice error full-width" role="alert">
-              {formError?.message ?? (requestDemo.error instanceof Error ? requestDemo.error.message : 'Demo request failed')}
-            </div>
-          )}
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={requestDemo.isPending || !captchaToken}
-            aria-describedby={captchaToken ? undefined : 'demo-request-captcha-status'}
-          >
-            {requestDemo.isPending ? 'Submitting...' : 'Submit request'}
-          </button>
-        </form>
+        <DemoRequestForm />
       </section>
     </PublicDemoShell>
   );
@@ -642,7 +793,7 @@ function AuthLinkRecovery({ message, requestDemo = false }: { message: string; r
       <p>{message}</p>
       <div className="button-row">
         <Link className="btn btn-secondary" to="/login">Go to log in</Link>
-        {requestDemo ? <Link className="btn btn-secondary" to="/demo/request">Request a demo</Link> : null}
+        {requestDemo ? <Link className="btn btn-secondary" to="/demo/contact">Request a demo</Link> : null}
       </div>
     </div>
   );
@@ -1036,7 +1187,7 @@ export function DemoExpiredPage() {
       <section className="public-form-panel">
         <h1>Demo expired</h1>
         <p>This 7-day demo workspace is no longer active. Contact the team if you need more time or want to continue validation.</p>
-        <Link className="btn btn-primary" to="/demo/request">Request another demo</Link>
+        <Link className="btn btn-primary" to="/demo/contact">Request another demo</Link>
       </section>
     </PublicDemoShell>
   );

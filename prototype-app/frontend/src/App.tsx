@@ -196,6 +196,15 @@ const BlogIndexPage = React.lazy(async () => ({
 const ZeroDayBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).ZeroDayBlogPage
 }));
+const PartnersPage = React.lazy(async () => ({
+  default: (await import('./features/public-site/CompanyPages')).PartnersPage
+}));
+const ContactPage = React.lazy(async () => ({
+  default: (await import('./features/public-site/CompanyPages')).ContactPage
+}));
+const Php2ShellBlogPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).Php2ShellBlogPage
+}));
 const MythosReadinessBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).MythosReadinessBlogPage
 }));
@@ -1395,8 +1404,11 @@ export default function App() {
         <Route path="/demo" element={<DemoLandingPage />} />
         <Route path="/demo/blog" element={<BlogIndexPage />} />
         <Route path="/demo/blog/zero-day-response-hours-not-weeks" element={<ZeroDayBlogPage />} />
+        <Route path="/demo/blog/php2shell-critical-cve-response-starts-with-inventory" element={<Php2ShellBlogPage />} />
         <Route path="/demo/blog/mythos-readiness" element={<MythosReadinessBlogPage />} />
         <Route path="/demo/blog/why-your-sbom-tool-doesnt-know-whats-exploitable" element={<SbomExploitabilityBlogPage />} />
+        <Route path="/demo/partners" element={<PartnersPage />} />
+        <Route path="/demo/contact" element={<ContactPage />} />
         <Route path="/demo/announcements" element={<AnnouncementsIndexPage />} />
         <Route path="/demo/announcements/scoutgrid-joins-nvidia-inception" element={<NvidiaInceptionAnnouncementPage />} />
         <Route path="/demo/privacy" element={<PrivacyPolicyPage />} />

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AiDiamondGraphic, ConnectionsGraphic, HeroSurfaceGraphic, SiteIcon } from './graphics';
 import { PublicDemoShell } from './PublicSiteShell';
 
-const REQUEST_PATH = '/demo/request';
+const REQUEST_PATH = '/demo/contact';
 
 const GRIDS: Array<{ id: string; icon: 'sparkle' | 'server' | 'boxes' | 'cloud'; title: string; body: string; tag?: string }> = [
   { id: 'ai', icon: 'sparkle', title: 'AI Grid', body: 'Bring your expanding AI exposure into focus.', tag: 'AI security' },

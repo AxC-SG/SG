@@ -733,7 +733,7 @@
 
 .sgw-footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr));
   gap: 40px 32px;
 }
 
@@ -1250,10 +1250,13 @@
 .sgw-cobrand-nvidia {
   display: block;
   width: auto;
-  height: calc(var(--cobrand-h) * 0.9);
-  max-width: 48%;
+  height: calc(var(--cobrand-h) * 2.2);
+  max-width: 50%;
   object-fit: contain;
 }
+
+.sgw-cobrand .sgw-logo { zoom: 1.9; }
+.sgw-cobrand--sm .sgw-logo { zoom: 1.1; }
 
 .sgw-announcement-art {
   display: flex;
@@ -1351,6 +1354,9 @@
     --cobrand-h: 24px;
   }
 
+  .sgw-cobrand .sgw-logo { zoom: 1.2; }
+  .sgw-cobrand--sm .sgw-logo { zoom: 0.9; }
+
   .sgw-nav-actions {
     gap: 14px;
   }
@@ -1396,3 +1402,17 @@
   }
 }
 
+
+/* Company pages (Partners, Contact) */
+.sgw-site .sgw-company-section { padding-block: 28px; }
+.sgw-site .sgw-company-section h2 { margin: 0 0 16px; }
+.sgw-company-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.sgw-company-card { border: 1px solid var(--line, #e3e5ea); border-radius: 10px; padding: 20px; }
+.sgw-site .sgw-company-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.sgw-company-card p { margin: 0; }
+.sgw-company-list { padding-left: 20px; display: grid; gap: 10px; }
+.sgw-contact-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 32px; align-items: start; }
+.sgw-contact-details { display: grid; gap: 12px; margin: 0 0 20px; }
+.sgw-contact-details dt { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+.sgw-contact-details dd { margin: 2px 0 0; }
+@media (max-width: 760px) { .sgw-contact-grid { grid-template-columns: 1fr; } }
