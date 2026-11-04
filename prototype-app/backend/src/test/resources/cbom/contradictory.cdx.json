@@ -1,0 +1,1 @@
+{"bomFormat":"CycloneDX","specVersion":"1.6","components":[{"type":"cryptographic-asset","bom-ref":"crypto:contradiction","name":"Conflicting key declaration","cryptoProperties":{"assetType":"algorithm","algorithmProperties":{"primitive":"RSA","keySize":1024}},"properties":[{"name":"cdx:cbom:assurance","value":"verified-strong"}]}]}

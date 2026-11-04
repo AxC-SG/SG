@@ -1,0 +1,32 @@
+{
+ "packageId": "test-pack",
+ "version": "1.0.0",
+ "title": "Test pack 1.0.0",
+ "evaluatorMajor": 1,
+ "evaluatorVersion": "1.0",
+ "rules": [
+  {
+   "id": "A",
+   "version": 1,
+   "mode": "mandatory"
+  },
+  {
+   "id": "B",
+   "version": 1,
+   "mode": "mandatory"
+  },
+  {
+   "id": "C",
+   "version": 1,
+   "mode": "enabled"
+  }
+ ],
+ "parameters": {
+  "x": {
+   "type": "integer",
+   "default": 5,
+   "min": 1,
+   "max": 10
+  }
+ }
+}

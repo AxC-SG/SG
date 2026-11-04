@@ -283,7 +283,7 @@ describe('UI 2.0 stylesheet scope', () => {
     const base = readFileSync(join(directory, '..', 'index.css'), 'utf8');
     expect(base.split(/\r?\n/, 1)[0]).toMatch(/^@import url\(.+\);$/);
     expect([...base.matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1])).toEqual([
-      './public-tokens.css', './public-before.css', './public.css', './public-after.css', './ui2/index.css',
+      './public-tokens.css', './public-before.css', './public.css', './public-after.css', './public-site.css', './ui2/index.css',
     ]);
     expect(rules(base)).toEqual([]);
     const shared = sharedSelectors();

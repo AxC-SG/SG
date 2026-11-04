@@ -852,6 +852,92 @@ class FindingDeltaQueueServiceTest {
     // Helpers
     // ----------------------------------------------------------------
 
+    // ----------------------------------------------------------------
+    // CBOM_DELTA producer + consumer
+    // ----------------------------------------------------------------
+
+    @Test
+    void enqueueCbomDeltas_coalescesAcrossProducersWithTagFreeDedupeKey() {
+        UUID tenant = UUID.randomUUID();
+        UUID finding = UUID.randomUUID();
+        when(repository.insertIfNotDuplicate(any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
+
+        int queued = service.enqueueCbomDeltas(tenant, List.of(finding, finding), "CBOM-Ingest");
+
+        assertEquals(1, queued);
+        verify(repository).insertIfNotDuplicate(eq("CBOM_DELTA"), eq(tenant), eq(finding), eq(null), eq(null),
+                eq("cbom-ingest"), eq("cbom:" + tenant + ":" + finding));
+    }
+
+    @Test
+    void enqueueCbomDeltas_nullTenantOrEmpty_isNoOp() {
+        assertEquals(0, service.enqueueCbomDeltas(null, List.of(UUID.randomUUID()), "x"));
+        assertEquals(0, service.enqueueCbomDeltas(UUID.randomUUID(), List.of(), "x"));
+        verify(repository, never()).insertIfNotDuplicate(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void processClaimedBatch_cbomDelta_mirrorsOnlyReferencedFindingsPerTenant() {
+        UUID tenantA = UUID.randomUUID();
+        UUID tenantB = UUID.randomUUID();
+        UUID f1 = UUID.randomUUID(), f2 = UUID.randomUUID(), f3 = UUID.randomUUID();
+        FindingDeltaQueueEntry e1 = entry(1L, FindingDeltaQueueService.CBOM_DELTA, tenantA, f1, null, null);
+        FindingDeltaQueueEntry e2 = entry(2L, FindingDeltaQueueService.CBOM_DELTA, tenantA, f2, null, null);
+        FindingDeltaQueueEntry e3 = entry(3L, FindingDeltaQueueService.CBOM_DELTA, tenantB, f3, null, null);
+        FindingDeltaQueueService.CbomDeltaHandler handler = org.mockito.Mockito.mock(FindingDeltaQueueService.CbomDeltaHandler.class);
+        when(handler.applyCbomDeltas(any(), any())).thenReturn(1);
+        service.setCbomDeltaHandler(providerOf(handler));
+        when(repository.findById(any())).thenAnswer(inv -> Optional.of(
+                List.of(e1, e2, e3).stream().filter(e -> e.getId().equals(inv.getArgument(0))).findFirst().orElseThrow()));
+
+        service.processClaimedBatch(List.of(e1, e2, e3));
+
+        verify(handler).applyCbomDeltas(tenantA, List.of(f1, f2));
+        verify(handler).applyCbomDeltas(tenantB, List.of(f3));
+        assertEquals("DONE", e1.getStatus());
+        assertEquals("DONE", e3.getStatus());
+        // No recompute or noise-refresh side effects for crypto mirror deltas.
+        verify(findingRecomputeService, never()).recomputeOnSoftwareDeltaBatch(any(), any());
+    }
+
+    @Test
+    void processClaimedBatch_cbomDeltaHandlerFailure_schedulesRetry() {
+        UUID tenant = UUID.randomUUID();
+        FindingDeltaQueueEntry e = entry(1L, FindingDeltaQueueService.CBOM_DELTA, tenant, UUID.randomUUID(), null, null);
+        e.setAttemptCount(1);
+        FindingDeltaQueueService.CbomDeltaHandler handler = org.mockito.Mockito.mock(FindingDeltaQueueService.CbomDeltaHandler.class);
+        when(handler.applyCbomDeltas(any(), any())).thenThrow(new IllegalStateException("mirror down"));
+        service.setCbomDeltaHandler(providerOf(handler));
+        when(repository.findById(1L)).thenReturn(Optional.of(e));
+
+        service.processClaimedBatch(List.of(e));
+
+        assertEquals("PENDING", e.getStatus());
+        assertEquals("mirror down", e.getErrorMessage());
+    }
+
+    @Test
+    void processClaimedBatch_cbomDeltaWithoutHandler_isRetriedNotAcknowledged() {
+        FindingDeltaQueueEntry e = entry(1L, FindingDeltaQueueService.CBOM_DELTA, UUID.randomUUID(), UUID.randomUUID(), null, null);
+        e.setAttemptCount(1);
+        service.setCbomDeltaHandler(providerOf(null));
+        when(repository.findById(1L)).thenReturn(Optional.of(e));
+
+        service.processClaimedBatch(List.of(e));
+
+        assertEquals("PENDING", e.getStatus());
+    }
+
+    private static org.springframework.beans.factory.ObjectProvider<FindingDeltaQueueService.CbomDeltaHandler> providerOf(
+            FindingDeltaQueueService.CbomDeltaHandler handler) {
+        return new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public FindingDeltaQueueService.CbomDeltaHandler getObject() { return handler; }
+            @Override public FindingDeltaQueueService.CbomDeltaHandler getObject(Object... args) { return handler; }
+            @Override public FindingDeltaQueueService.CbomDeltaHandler getIfAvailable() { return handler; }
+            @Override public FindingDeltaQueueService.CbomDeltaHandler getIfUnique() { return handler; }
+        };
+    }
+
     private FindingDeltaQueueEntry entry(
             Long id,
             String eventType,

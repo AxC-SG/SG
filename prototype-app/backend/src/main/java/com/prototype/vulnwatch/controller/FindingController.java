@@ -15,6 +15,11 @@ import com.prototype.vulnwatch.dto.FindingResponse;
 import com.prototype.vulnwatch.dto.FindingSummaryResponse;
 import com.prototype.vulnwatch.dto.FindingsFilterRequest;
 import com.prototype.vulnwatch.dto.FindingWorkflowUpdateRequest;
+import com.prototype.vulnwatch.dto.FindingSuppressionDecisionRequest;
+import com.prototype.vulnwatch.dto.FindingSuppressionRequestCreate;
+import com.prototype.vulnwatch.dto.FindingSuppressionResponse;
+import com.prototype.vulnwatch.dto.FindingVerificationRequest;
+import com.prototype.vulnwatch.dto.FindingVerificationResponse;
 import com.prototype.vulnwatch.security.SensitiveTenantAction;
 import com.prototype.vulnwatch.service.FindingAnalyticsService;
 import com.prototype.vulnwatch.service.FindingListProjectionService;
@@ -22,6 +27,8 @@ import com.prototype.vulnwatch.service.FindingProjectionOperationsService;
 import com.prototype.vulnwatch.service.FindingQueueService;
 import com.prototype.vulnwatch.service.FindingQueryService;
 import com.prototype.vulnwatch.service.FindingWorkflowService;
+import com.prototype.vulnwatch.service.FindingSuppressionRequestService;
+import com.prototype.vulnwatch.service.FindingVerificationService;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/findings")
@@ -47,6 +55,8 @@ public class FindingController {
     private final FindingProjectionOperationsService findingProjectionOperationsService;
     private final FindingQueueService findingQueueService;
     private final FindingWorkflowService findingWorkflowService;
+    private final FindingSuppressionRequestService findingSuppressionRequestService;
+    private final FindingVerificationService findingVerificationService;
 
     public FindingController(
             WorkspaceService workspaceService,
@@ -54,7 +64,9 @@ public class FindingController {
             FindingAnalyticsService findingAnalyticsService,
             FindingProjectionOperationsService findingProjectionOperationsService,
             FindingQueueService findingQueueService,
-            FindingWorkflowService findingWorkflowService
+            FindingWorkflowService findingWorkflowService,
+            FindingSuppressionRequestService findingSuppressionRequestService,
+            FindingVerificationService findingVerificationService
     ) {
         this.workspaceService = workspaceService;
         this.findingQueryService = findingQueryService;
@@ -62,6 +74,8 @@ public class FindingController {
         this.findingProjectionOperationsService = findingProjectionOperationsService;
         this.findingQueueService = findingQueueService;
         this.findingWorkflowService = findingWorkflowService;
+        this.findingSuppressionRequestService = findingSuppressionRequestService;
+        this.findingVerificationService = findingVerificationService;
     }
 
     @GetMapping
@@ -207,6 +221,53 @@ public class FindingController {
             @RequestBody FindingWorkflowUpdateRequest request
     ) {
         return findingWorkflowService.updateWorkflow(findingId, request);
+    }
+
+    @PostMapping("/{findingId}/suppression-requests")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SECURITY_ANALYST')")
+    @SensitiveTenantAction("finding.suppression.requested")
+    public FindingSuppressionResponse requestSuppression(
+            @PathVariable UUID findingId,
+            @Valid @RequestBody FindingSuppressionRequestCreate request
+    ) {
+        return findingSuppressionRequestService.create(findingId, request);
+    }
+
+    @GetMapping("/suppression-requests")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SECURITY_ANALYST')")
+    public List<FindingSuppressionResponse> listSuppressionRequests() {
+        return findingSuppressionRequestService.list();
+    }
+
+    @PostMapping("/suppression-requests/{requestId}/decision")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    @SensitiveTenantAction("finding.suppression.decided")
+    public FindingSuppressionResponse decideSuppression(
+            @PathVariable UUID requestId,
+            @Valid @RequestBody FindingSuppressionDecisionRequest request
+    ) {
+        return findingSuppressionRequestService.decide(requestId, request);
+    }
+
+    @PostMapping("/{findingId}/suppress")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    @SensitiveTenantAction("finding.suppression.applied")
+    public ResponseEntity<Void> suppressFinding(
+            @PathVariable UUID findingId,
+            @Valid @RequestBody FindingSuppressionRequestCreate request
+    ) {
+        findingSuppressionRequestService.suppressDirectly(findingId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{findingId}/verify")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','SECURITY_ANALYST')")
+    @SensitiveTenantAction("finding.verification.updated")
+    public FindingVerificationResponse verifyFinding(
+            @PathVariable UUID findingId,
+            @Valid @RequestBody FindingVerificationRequest request
+    ) {
+        return findingVerificationService.update(findingId, request);
     }
 
     @PostMapping("/bulk-workflow")

@@ -90,6 +90,7 @@ class FindingAssetRecomputeServiceTest {
                 findingCorrelationMutationService,
                 findingUpsertService
         );
+        findingAssetRecomputeService.setSuppressionMutations(TestSuppressionMutations.create());
     }
 
     @Test

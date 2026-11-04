@@ -6,12 +6,17 @@ import { authApi } from '../features/auth/api';
 import { useActorQuery } from '../features/auth/queries';
 import { createTestQueryClient, renderWithProviders } from '../test/test-utils';
 import {
+  AnnouncementsIndexPage,
   BlogIndexPage,
   DemoInvitePage,
   DemoLandingPage,
   DemoRequestPage,
+  CookiePolicyPage,
   LoginPage,
+  NvidiaInceptionAnnouncementPage,
+  PrivacyPolicyPage,
   SetupSessionPage,
+  TermsOfServicePage,
   TenantInvitePage,
   ZeroDayBlogPage
 } from './DemoPublicPages';
@@ -39,7 +44,7 @@ describe('Demo public pages', () => {
     delete window.turnstile;
   });
 
-  it('renders the first-class ScoutGrid landing page at the index route', () => {
+  it('renders the Scoutgrid landing page from the mock at the index route', () => {
     renderWithProviders(
       <Routes>
         <Route path="/" element={<DemoLandingPage />} />
@@ -47,28 +52,204 @@ describe('Demo public pages', () => {
       { route: '/' }
     );
 
-    expect(screen.getByRole('heading', { name: /The Exposure Management Platform Powered by AI Grid/i })).toBeInTheDocument();
-    expect(screen.queryByTitle('ScoutGrid — exposure and BOM management')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Request Product Demo/i })).toHaveAttribute('href', '/demo/request');
-    expect(document.getElementById('grids')).toBeInTheDocument();
-    expect(document.getElementById('bom-grid')).toBeInTheDocument();
-    expect(document.getElementById('ai-grid')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /Secure AI\.\s*See the whole exposure\./i })).toBeInTheDocument();
+    for (const heading of [
+      /AI doesn.t exist in isolation/i,
+      /Four Grids\.\s*A wider view of risk\./i,
+      /Move AI forward/i,
+      /Better context\.\s*Sharper decisions\./i,
+      /Make the next move count\./i,
+      /The value is in the connections\./i,
+      /Different perspectives\.\s*One direction\./i,
+      /See your exposure in a different light\./i
+    ]) {
+      expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
+    }
+    for (const grid of ['AI Grid', 'Infra Grid', 'BOM Grid', 'Cloud Grid']) {
+      expect(screen.getByRole('heading', { level: 3, name: grid })).toBeInTheDocument();
+    }
+    for (const id of ['platform', 'products', 'ai-grid', 'solutions', 'act']) {
+      expect(document.getElementById(id)).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Explore Scoutgrid in a private demo/i)).toBeInTheDocument();
   });
 
-  it('uses application routes for public landing-page actions', () => {
+  it('sends every demo and request action on the landing page to the request form', () => {
     renderWithProviders(<DemoLandingPage />, { route: '/demo' });
 
-    const navigation = within(screen.getByRole('navigation'));
-    expect(navigation.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#grids');
-    expect(navigation.getByRole('link', { name: 'Grids' })).toHaveAttribute('href', '/demo#ai-grid');
+    const main = within(screen.getByRole('main'));
+    const demoLinks = [
+      ...main.getAllByRole('link', { name: /Request a demo/i }),
+      ...main.getAllByRole('link', { name: /Explore .*in a demo/i }),
+      main.getByRole('link', { name: /Request an AI Grid demo/i }),
+      main.getByRole('link', { name: /Find your starting point/i })
+    ];
+    expect(demoLinks).toHaveLength(8);
+    demoLinks.forEach((link) => expect(link).toHaveAttribute('href', '/demo/contact'));
+    expect(main.getByRole('link', { name: /Explore AI Grid in a demo/i })).toBeInTheDocument();
+    expect(main.getByRole('link', { name: /Meet the four Grids/i })).toHaveAttribute('href', '/demo#products');
+  });
+
+  it('shows the new top bar without the AI security link', () => {
+    renderWithProviders(<DemoLandingPage />, { route: '/demo' });
+
+    const banner = within(screen.getByRole('banner'));
+    expect(banner.getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
+    const navigation = within(screen.getByRole('navigation', { name: 'Scoutgrid site' }));
+    expect(navigation.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#platform');
+    expect(navigation.getByRole('link', { name: 'Products' })).toHaveAttribute('href', '/demo#products');
+    expect(navigation.getByRole('link', { name: 'Solutions' })).toHaveAttribute('href', '/demo#solutions');
+    expect(navigation.queryByRole('link', { name: 'Blog' })).not.toBeInTheDocument();
+    const resources = navigation.getByRole('button', { name: 'Resources' });
+    expect(resources).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(resources);
+    expect(resources).toHaveAttribute('aria-expanded', 'true');
     expect(navigation.getByRole('link', { name: 'Blog' })).toHaveAttribute('href', '/demo/blog');
-    expect(navigation.getByRole('link', { name: 'Request Demo' })).toHaveAttribute('href', '/demo/request');
-    expect(navigation.queryByRole('link', { name: 'Four Grids' })).not.toBeInTheDocument();
-    expect(navigation.queryByRole('link', { name: 'AI Grid' })).not.toBeInTheDocument();
-    screen.getAllByRole('link', { name: 'Log in' }).forEach((link) => {
-      expect(link).toHaveAttribute('href', '/login');
-    });
-    expect(screen.getByRole('link', { name: /Schedule a Live Demo/i })).toHaveAttribute('href', '/demo/request');
+    expect(navigation.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/demo/announcements');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(resources).toHaveAttribute('aria-expanded', 'false');
+    expect(resources).toHaveFocus();
+    expect(navigation.queryByRole('link', { name: 'Announcements' })).not.toBeInTheDocument();
+    expect(banner.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
+    expect(banner.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
+    expect(screen.queryByRole('link', { name: /^AI security$/i })).not.toBeInTheDocument();
+  });
+
+  it('links the footer to products, blog, log in, request a demo, privacy and terms', () => {
+    renderWithProviders(<DemoLandingPage />, { route: '/demo' });
+
+    const footer = within(screen.getByRole('contentinfo'));
+    expect(footer.getByRole('link', { name: 'AI Grid' })).toHaveAttribute('href', '/demo#ai-grid');
+    expect(footer.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#platform');
+    expect(footer.getByRole('link', { name: 'Blog' })).toHaveAttribute('href', '/demo/blog');
+    expect(footer.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
+    expect(footer.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
+    expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/demo/privacy');
+    expect(footer.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/demo/terms');
+    expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute('href', '/demo/cookies');
+    expect(footer.getByText('© 2026 Axoncyber Private Limited. All rights reserved. Scoutgrid is a product of Axoncyber Private Limited.')).toBeInTheDocument();
+    expect(footer.queryByRole('link', { name: /^AI security$/i })).not.toBeInTheDocument();
+    expect(footer.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/demo/announcements');
+    expect(footer.getByRole('link', { name: 'Partners' })).toHaveAttribute('href', '/demo/partners');
+    expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/demo/contact');
+    expect(footer.getAllByRole('listitem')).toHaveLength(17);
+  });
+
+  it('navigates from the landing page to the blog and the legal pages', () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/demo" element={<DemoLandingPage />} />
+        <Route path="/demo/blog" element={<BlogIndexPage />} />
+        <Route path="/demo/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/demo/terms" element={<TermsOfServicePage />} />
+      </Routes>,
+      { route: '/demo' }
+    );
+
+    const siteNav = within(screen.getByRole('navigation', { name: 'Scoutgrid site' }));
+    fireEvent.click(siteNav.getByRole('button', { name: 'Resources' }));
+    fireEvent.click(siteNav.getByRole('link', { name: 'Blog' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Blog' })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('contentinfo')).getByRole('link', { name: 'Privacy' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('contentinfo')).getByRole('link', { name: 'Terms' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+  });
+
+  it('lists the NVIDIA Inception announcement and opens it from the Resources menu', () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/demo" element={<DemoLandingPage />} />
+        <Route path="/demo/announcements" element={<AnnouncementsIndexPage />} />
+        <Route path="/demo/announcements/scoutgrid-joins-nvidia-inception" element={<NvidiaInceptionAnnouncementPage />} />
+      </Routes>,
+      { route: '/demo' }
+    );
+
+    const siteNav = within(screen.getByRole('navigation', { name: 'Scoutgrid site' }));
+    fireEvent.click(siteNav.getByRole('button', { name: 'Resources' }));
+    fireEvent.click(siteNav.getByRole('link', { name: 'Announcements' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Announcements' })).toBeInTheDocument();
+    expect(siteNav.queryByRole('link', { name: 'Announcements' })).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'NVIDIA Inception Program and Scoutgrid' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Scoutgrid joins the NVIDIA Inception program' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Scoutgrid joins the NVIDIA Inception program' })).toBeInTheDocument();
+    for (const heading of ['Securing AI in context', 'What Inception brings', 'What\u2019s next']) {
+      expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
+    }
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
+  });
+
+  it('places the NVIDIA Inception logo on the left and Scoutgrid on the right in the co-brand lockup', () => {
+    const { container } = renderWithProviders(<NvidiaInceptionAnnouncementPage />, { route: '/demo/announcements/scoutgrid-joins-nvidia-inception' });
+
+    const lockup = container.querySelector('.sgw-cobrand');
+    expect(Array.from(lockup?.children ?? []).map((child) => child.className)).toEqual([
+      'sgw-cobrand-nvidia', 'sgw-cobrand-partner'
+    ]);
+    expect(lockup?.querySelector('img')).toHaveAttribute('src', '/brand/nvidia-inception-program-logo.png');
+  });
+
+  it('renders the privacy policy with every required section', () => {
+    renderWithProviders(<PrivacyPolicyPage />, { route: '/demo/privacy' });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(screen.getByText('Last updated: 3 November 2026')).toBeInTheDocument();
+    for (const section of [
+      'Scope and our role', 'Information we collect', 'Where it comes from', 'How we use it, and our legal basis',
+      'Sharing and processors', 'Retention', 'Security', 'Your rights and how to contact us', 'Regional information',
+      'International transfers', 'Children', 'Links to other sites', 'Changes to this policy', 'Effective date'
+    ]) {
+      expect(screen.getByRole('heading', { level: 2, name: new RegExp(`^\\d+\\. ${section}$`) })).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Demo-request details\./)).toBeInTheDocument();
+    expect(screen.getByText(/Digital Personal Data Protection Act, 2023/)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'support@scoutgrid.io' })[0]).toHaveAttribute('href', 'mailto:support@scoutgrid.io');
+    expect(screen.getAllByText(/Axoncyber Private Limited, Hyderabad, India/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\[[^\]]*(legal name|address|email|governing)[^\]]*\]/i)).not.toBeInTheDocument();
+    const main = within(screen.getByRole('main'));
+    expect(main.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/demo/terms');
+    expect(main.getAllByRole('link', { name: 'Cookie Policy' })[0]).toHaveAttribute('href', '/demo/cookies');
+  });
+
+  it('renders the terms of service with every required section', () => {
+    renderWithProviders(<TermsOfServicePage />, { route: '/demo/terms' });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    expect(screen.getByText('Last updated: 3 November 2026')).toBeInTheDocument();
+    for (const section of [
+      'Acceptance', 'The service and demo access', 'Accounts and acceptable use', 'Customer data and confidentiality',
+      'Intellectual property', 'Third-party services', 'Disclaimers and limitation of liability', 'Termination',
+      'Governing law', 'Changes', 'Contact'
+    ]) {
+      expect(screen.getByRole('heading', { level: 2, name: new RegExp(`^\\d+\\. ${section}$`) })).toBeInTheDocument();
+    }
+    expect(screen.getByText(/governed by the laws of India/)).toBeInTheDocument();
+    expect(screen.getByText(/courts at Hyderabad, Telangana, India/)).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/demo/privacy');
+  });
+
+  it('renders the cookie policy with the storage Scoutgrid actually uses', () => {
+    renderWithProviders(<CookiePolicyPage />, { route: '/demo/cookies' });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Cookie Policy' })).toBeInTheDocument();
+    expect(screen.getByText('Last updated: 3 November 2026')).toBeInTheDocument();
+    const essential = within(screen.getByRole('table', { name: 'Strictly necessary cookies and storage' }));
+    for (const name of ['Sign-in token', 'XSRF-TOKEN', 'scout_setup_session', 'Cloudflare Turnstile']) {
+      expect(essential.getByRole('rowheader', { name })).toBeInTheDocument();
+    }
+    const preferences = within(screen.getByRole('table', { name: 'Preference storage' }));
+    expect(preferences.getByRole('rowheader', { name: 'scoutai-theme' })).toBeInTheDocument();
+    expect(screen.getByText(/do not show a cookie banner/i)).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/demo/privacy');
+  });
+
+  it('gives the login page the new top bar without the site footer', () => {
+    renderWithProviders(<LoginPage />, { route: '/login' });
+
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
   it('lists the first blog post and links to the article', () => {
@@ -80,12 +261,13 @@ describe('Demo public pages', () => {
       .toHaveAttribute('href', '/demo/blog/zero-day-response-hours-not-weeks');
   });
 
-  it('publishes the zero-day article using ScoutGrid branding', () => {
+  it('publishes the zero-day article using Scoutgrid branding', () => {
     renderWithProviders(<ZeroDayBlogPage />, { route: '/demo/blog/zero-day-response-hours-not-weeks' });
 
     expect(screen.getByRole('heading', { name: /Zero-day response: from disclosure/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'How ScoutGrid closes the gap' })).toBeInTheDocument();
-    expect(screen.getByText(/ScoutGrid tells you what it means for you/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How Scoutgrid closes the gap' })).toBeInTheDocument();
+    expect(screen.getByText(/Scoutgrid tells you what it means for you/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Scout[G]rid/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Scout$/)).not.toBeInTheDocument();
   });
 
@@ -433,7 +615,7 @@ describe('Demo public pages', () => {
     await waitFor(() => {
       expect(getStoredAuthToken()).toBe('');
     });
-    expect(screen.getByRole('heading', { name: /Log in to ScoutGrid/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Log in to Scoutgrid/i })).toBeInTheDocument();
   });
 
   it('toggles password visibility on the login form', () => {
@@ -494,7 +676,7 @@ describe('Demo public pages', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('This link has expired.');
     expect(screen.getByText(/Ask your workspace administrator to send a new invite/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
-    expect(screen.queryByRole('link', { name: 'Request a demo' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('main')).queryByRole('link', { name: 'Request a demo' })).not.toBeInTheDocument();
     cleanup();
 
     vi.spyOn(api, 'validateDemoInvite').mockRejectedValue(new Error('Invite has expired'));
@@ -505,7 +687,7 @@ describe('Demo public pages', () => {
       { route: '/invite#token=old-token' }
     );
     expect(await screen.findByRole('alert')).toHaveTextContent('Invite has expired');
-    expect(screen.getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/request');
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Request a demo' })).toHaveAttribute('href', '/demo/contact');
     expect(screen.getByRole('link', { name: 'Go to log in' })).toHaveAttribute('href', '/login');
   });
 

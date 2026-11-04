@@ -1,7 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 /* The only stylesheet entry: public defaults, then app foundations and families. */
 @import "./public-tokens.css";
 @import "./public-before.css";
 @import "./public.css";
 @import "./public-after.css";
+@import "./public-site.css";
 @import "./ui2/index.css";

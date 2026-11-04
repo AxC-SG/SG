@@ -42,7 +42,8 @@ class CbomEvidenceWithdrawalTest {
                 mock(CbomRiskScorer.class),
                 mock(CbomPostureService.class),
                 componentRepository,
-                findingRepository);
+                findingRepository,
+                mock(CbomFindingMirrorService.class));
         sourceBomId = UUID.randomUUID();
     }
 
@@ -66,6 +67,27 @@ class CbomEvidenceWithdrawalTest {
         assertEquals(CbomFindingStatus.OPEN, open.getStatus(),
                 "a withdrawn document does not mean the weak algorithm was fixed");
         assertNull(open.getResolvedAt());
+    }
+
+    @Test
+    void withdrawalPublishesPerFindingCbomDeltasInsteadOfATenantScan() {
+        CbomFindingMirrorService mirror = mock(CbomFindingMirrorService.class);
+        com.prototype.vulnwatch.service.FindingDeltaQueueService queue = mock(com.prototype.vulnwatch.service.FindingDeltaQueueService.class);
+        service = new CbomIngestionService(mock(CbomComponentParser.class), mock(CbomRiskEngine.class),
+                mock(CbomRiskScorer.class), mock(CbomPostureService.class), componentRepository, findingRepository, mirror);
+        service.setDeltaQueue(queue);
+        com.prototype.vulnwatch.domain.Tenant tenant = new com.prototype.vulnwatch.domain.Tenant();
+        tenant.setId(UUID.randomUUID());
+        CbomRiskFinding open = finding(CbomFindingStatus.OPEN, null);
+        open.setTenant(tenant);
+        UUID findingId = UUID.randomUUID();
+        org.springframework.test.util.ReflectionTestUtils.setField(open, "id", findingId);
+        when(findingRepository.findBySourceBomId(sourceBomId)).thenReturn(List.of(open));
+
+        service.deactivateBySourceBomId(sourceBomId);
+
+        org.mockito.Mockito.verify(queue).enqueueCbomDeltas(tenant.getId(), List.of(findingId), "cbom-withdrawal");
+        org.mockito.Mockito.verify(mirror, org.mockito.Mockito.never()).syncTenant(org.mockito.ArgumentMatchers.any());
     }
 
     // Plan: "CBOM withdrawal preserves finding status and resolution timestamps."

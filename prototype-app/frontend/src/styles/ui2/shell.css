@@ -454,3 +454,18 @@ html[data-ui='2'] .section-tab-btn.active::after {
     transition: none;
   }
 }
+
+/* Logo mark: drop the letter-tile chrome; contexts keep their own sizes. */
+html[data-ui='2'] .brand-mark.brand-mark-logo {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--dp-text, #11141b);
+}
+
+html[data-ui='2'] .brand-mark.brand-mark-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

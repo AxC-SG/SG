@@ -1,0 +1,629 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:97664978-7472-481e-89fd-10b7936dd4ec",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-01T15:50:57Z",
+    "component": {
+      "bom-ref": "application/scoutgrid-prototype-app@0.1.0",
+      "type": "application",
+      "name": "scoutgrid-prototype-app",
+      "version": "0.1.0",
+      "purl": "pkg:github/ravikanukollu/scoutgrid-prototype-app@0.1.0"
+    },
+    "properties": [
+      {
+        "name": "scoutgrid:cbom:generation-method",
+        "value": "Static source and configuration review"
+      },
+      {
+        "name": "scoutgrid:cbom:assessment-date",
+        "value": "2026-11-01"
+      },
+      {
+        "name": "scoutgrid:cbom:provisional-risk",
+        "value": "MODERATE"
+      },
+      {
+        "name": "scoutgrid:cbom:coverage",
+        "value": "Application cryptographic code paths are inventoried; deployed TLS negotiation, certificates, secret-store implementation, key dates, and provider certification require runtime evidence."
+      }
+    ]
+  },
+  "components": [
+    {
+      "bom-ref": "crypto/algorithm/aes-256-gcm",
+      "type": "cryptographic-asset",
+      "name": "AES-256-GCM",
+      "description": "Authenticated encryption for stored connector and provider credentials.",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "parameterSetIdentifier": "256",
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "generic",
+          "certificationLevel": [
+            "unknown"
+          ],
+          "mode": "gcm",
+          "cryptoFunctions": [
+            "encrypt",
+            "decrypt",
+            "tag",
+            "verify"
+          ],
+          "classicalSecurityLevel": 256
+        },
+        "oid": "2.16.840.1.101.3.4.1.46"
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:implementation",
+          "value": "javax.crypto.Cipher AES/GCM/NoPadding; 96-bit random IV; 128-bit tag; envelope prefix authenticated as AAD"
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "backend/src/main/java/com/prototype/vulnwatch/service/CredentialEncryptionService.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/algorithm/hmac-sha-256",
+      "type": "cryptographic-asset",
+      "name": "HMAC-SHA-256",
+      "description": "MAC used for local JWT signing and verification and for independently keyed AI identity digests.",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "parameterSetIdentifier": "256",
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "generic",
+          "certificationLevel": [
+            "unknown"
+          ],
+          "cryptoFunctions": [
+            "tag",
+            "verify"
+          ]
+        },
+        "oid": "1.2.840.113549.2.9"
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:implementation",
+          "value": "JCA Mac HmacSHA256"
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "backend/src/main/java/com/prototype/vulnwatch/service/AuthTokenService.java; backend/src/main/java/com/prototype/vulnwatch/aisecurity/service/AiSecurityDigestService.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/algorithm/sha-256",
+      "type": "cryptographic-asset",
+      "name": "SHA-256",
+      "description": "Content checksums, fingerprints, token verifiers, ingest-key verifiers, and deterministic identity material.",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "parameterSetIdentifier": "256",
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "generic",
+          "certificationLevel": [
+            "unknown"
+          ],
+          "cryptoFunctions": [
+            "digest"
+          ]
+        },
+        "oid": "2.16.840.1.101.3.4.2.1"
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:implementation",
+          "value": "JCA MessageDigest SHA-256"
+        },
+        {
+          "name": "scoutgrid:security-boundary",
+          "value": "Suitable for high-entropy token verifiers and integrity digests; not used as the password hashing algorithm."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/algorithm/bcrypt-cost-10",
+      "type": "cryptographic-asset",
+      "name": "bcrypt cost 10",
+      "description": "Adaptive password hashing for local users and bootstrap credentials.",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kdf",
+          "parameterSetIdentifier": "cost-10",
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "generic",
+          "certificationLevel": [
+            "unknown"
+          ],
+          "cryptoFunctions": [
+            "keyderive",
+            "verify"
+          ]
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:assessment",
+          "value": "Legacy minimum posture; benchmark Argon2id migration and define explicit bcrypt input-length and rehash-on-login policy."
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "LocalCredentialAuthService.java; IdentityAdministrationService.java; PlatformOwnerBootstrapService.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/algorithm/java-secure-random",
+      "type": "cryptographic-asset",
+      "name": "Java SecureRandom provider-selected DRBG",
+      "description": "CSPRNG abstraction used for AES-GCM IVs, BOM ingest keys, invitation tokens, and other application secrets.",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "drbg",
+          "parameterSetIdentifier": "provider-selected",
+          "executionEnvironment": "software-plain-ram",
+          "implementationPlatform": "generic",
+          "certificationLevel": [
+            "unknown"
+          ],
+          "cryptoFunctions": [
+            "generate",
+            "keygen"
+          ]
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:assessment",
+          "value": "The concrete provider and DRBG construction are deployment/JVM dependent and require runtime evidence."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/protocol/jwt-local-hs256",
+      "type": "cryptographic-asset",
+      "name": "JWT local authentication with HS256",
+      "description": "Local access-token issuance and validation with fixed HS256, issuer, audience, expiry, token-use, and current authorization checks.",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "other",
+          "version": "RFC 7519 / JWS HS256",
+          "cryptoRefArray": [
+            "crypto/algorithm/hmac-sha-256"
+          ]
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:configuration",
+          "value": "APP_JWT_AUTH_MODE=LOCAL; minimum 32 UTF-8 byte secret; default token TTL 480 minutes"
+        },
+        {
+          "name": "scoutgrid:production-boundary",
+          "value": "Production startup requires external issuer/JWK unless APP_ALLOW_HMAC_IN_PRODUCTION=true is explicitly authorized."
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "JwtDecoderConfig.java; AuthTokenService.java; ProductionSafetyValidator.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/protocol/jwt-external-jwk",
+      "type": "cryptographic-asset",
+      "name": "External JWT issuer and JWK validation",
+      "description": "Production-preferred JWT validation mode using an external issuer and optional explicit JWK set URI.",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "other",
+          "version": "OIDC discovery / RFC 7519 / JWK"
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:assessment",
+          "value": "Accepted asymmetric algorithms and issuer key lifecycle are provider/deployment dependent and are not provable from repository configuration."
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "backend/src/main/java/com/prototype/vulnwatch/config/JwtDecoderConfig.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/protocol/tls-outbound",
+      "type": "cryptographic-asset",
+      "name": "Outbound TLS",
+      "description": "HTTPS transport to external vulnerability, cloud, identity, AI, email, ticketing, and source-control providers.",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "JVM/provider negotiated; not pinned by the reviewed application configuration"
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:assessment",
+          "value": "TLS versions, negotiated cipher suites, trust stores, peer certificates, and key-exchange algorithms require runtime evidence."
+        },
+        {
+          "name": "scoutgrid:coverage-status",
+          "value": "INCOMPLETE_RUNTIME_EVIDENCE"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/credential-encryption-key-active",
+      "type": "cryptographic-asset",
+      "name": "Active credential encryption key slot",
+      "description": "Deployment-provided base64-encoded 256-bit key used to encrypt stored connector and provider credentials.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "secret-key",
+          "id": "APP_CREDENTIAL_ENCRYPTION_KEY_ID",
+          "algorithmRef": "crypto/algorithm/aes-256-gcm",
+          "size": 256,
+          "format": "base64",
+          "securedBy": {
+            "mechanism": "Deployment secret injection; concrete secret store not evidenced"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:rotation",
+          "value": "Active key ID plus configured previous-key ring supports decrypt-and-reencrypt rotation."
+        },
+        {
+          "name": "scoutgrid:evidence-gap",
+          "value": "Creation, activation, expiration, owner, secret-store implementation, and environment isolation are deployment-specific."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/credential-encryption-previous-key-ring",
+      "type": "cryptographic-asset",
+      "name": "Previous credential decryption key ring",
+      "description": "Optional versioned previous AES keys retained only for bounded credential migration and decryption overlap.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "secret-key",
+          "id": "APP_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS",
+          "algorithmRef": "crypto/algorithm/aes-256-gcm",
+          "size": 256,
+          "format": "key-id=base64-key",
+          "securedBy": {
+            "mechanism": "Deployment secret injection; concrete secret store not evidenced"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:state-note",
+          "value": "Optional configuration slot; actual presence and lifecycle state require deployment evidence."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/jwt-local-hmac-secret",
+      "type": "cryptographic-asset",
+      "name": "Local JWT HMAC secret slot",
+      "description": "Shared secret used only when local JWT mode is enabled for signing and verification.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "secret-key",
+          "id": "APP_JWT_HMAC_SECRET",
+          "algorithmRef": "crypto/algorithm/hmac-sha-256",
+          "securedBy": {
+            "mechanism": "Deployment secret injection; concrete secret store not evidenced"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:minimum-key-size",
+          "value": "256 bits / 32 UTF-8 bytes"
+        },
+        {
+          "name": "scoutgrid:assessment",
+          "value": "No key identifier or overlapping rotation mechanism is implemented for local JWTs; production prefers external issuer/JWK mode."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/ai-identity-hmac-key",
+      "type": "cryptographic-asset",
+      "name": "AI identity HMAC key family",
+      "description": "Versioned key family for tenant- and purpose-scoped AI identity digests, separate from JWT signing.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "secret-key",
+          "id": "APP_AI_SECURITY_IDENTITY_HMAC_KEY",
+          "algorithmRef": "crypto/algorithm/hmac-sha-256",
+          "securedBy": {
+            "mechanism": "Deployment secret injection; concrete secret store not evidenced"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:minimum-key-size",
+          "value": "256 bits / 32 UTF-8 bytes at point of use"
+        },
+        {
+          "name": "scoutgrid:domain-separation",
+          "value": "Digest input includes key version, tenant UUID, purpose, and value."
+        },
+        {
+          "name": "scoutgrid:rotation",
+          "value": "Current and previous key versions are separately configured."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/ai-runtime-identity-hmac-key",
+      "type": "cryptographic-asset",
+      "name": "AI runtime identity HMAC key family",
+      "description": "Separately configured versioned key family for runtime identity digests.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "secret-key",
+          "id": "APP_AI_SECURITY_RUNTIME_IDENTITY_HMAC_KEY",
+          "algorithmRef": "crypto/algorithm/hmac-sha-256",
+          "securedBy": {
+            "mechanism": "Deployment secret injection; concrete secret store not evidenced"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:release-boundary",
+          "value": "Runtime collection and evaluation are disabled and out of scope for the current release."
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/bom-ingest-api-key",
+      "type": "cryptographic-asset",
+      "name": "BOM ingest API key",
+      "description": "Tenant-scoped sgk_ credential containing a 256-bit random secret; only a SHA-256 verifier and lookup prefix are stored.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "credential",
+          "id": "sgk_<16-hex-prefix>_<64-hex-secret>",
+          "algorithmRef": "crypto/algorithm/java-secure-random",
+          "size": 256,
+          "format": "hex secret with nonsecret lookup prefix",
+          "securedBy": {
+            "mechanism": "Full secret returned once; SHA-256 verifier stored in PostgreSQL; constant-time comparison"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:scope",
+          "value": "bom:ingest"
+        },
+        {
+          "name": "scoutgrid:lifecycle",
+          "value": "Optional expiration, explicit revocation, last-used timestamp, maximum 25 active keys per tenant"
+        },
+        {
+          "name": "scoutgrid:source",
+          "value": "backend/src/main/java/com/prototype/vulnwatch/service/BomIngestApiKeyService.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/tenant-invitation-token",
+      "type": "cryptographic-asset",
+      "name": "Tenant invitation token",
+      "description": "384-bit URL-safe random invitation token with a seven-day validity period; persistent lookup uses a SHA-256 verifier.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "token",
+          "algorithmRef": "crypto/algorithm/java-secure-random",
+          "size": 384,
+          "format": "base64url without padding",
+          "securedBy": {
+            "mechanism": "SHA-256 verifier stored for lookup"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:source",
+          "value": "TenantUserInviteService.java; InvitationTokens.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/password-setup-token",
+      "type": "cryptographic-asset",
+      "name": "Password setup and recovery token",
+      "description": "One-time setup material derived from two random UUID values, stored only as a SHA-256 verifier, with a 30-minute setup-token expiry.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "token",
+          "algorithmRef": "crypto/algorithm/java-secure-random",
+          "format": "UUID-UUID",
+          "securedBy": {
+            "mechanism": "SHA-256 verifier stored for lookup"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:source",
+          "value": "backend/src/main/java/com/prototype/vulnwatch/service/LocalCredentialAuthService.java"
+        }
+      ]
+    },
+    {
+      "bom-ref": "crypto/material/local-password-verifier",
+      "type": "cryptographic-asset",
+      "name": "Local password verifier",
+      "description": "Salted bcrypt password verifier stored for local authentication.",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "digest",
+          "algorithmRef": "crypto/algorithm/bcrypt-cost-10",
+          "format": "bcrypt modular crypt string",
+          "securedBy": {
+            "mechanism": "Application database access controls"
+          }
+        }
+      },
+      "properties": [
+        {
+          "name": "scoutgrid:assessment",
+          "value": "Define a consistent maximum input policy and migrate to a memory-hard password KDF when operationally qualified."
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "application/scoutgrid-prototype-app@0.1.0",
+      "dependsOn": [
+        "crypto/algorithm/aes-256-gcm",
+        "crypto/algorithm/hmac-sha-256",
+        "crypto/algorithm/sha-256",
+        "crypto/algorithm/bcrypt-cost-10",
+        "crypto/algorithm/java-secure-random",
+        "crypto/protocol/jwt-local-hs256",
+        "crypto/protocol/jwt-external-jwk",
+        "crypto/protocol/tls-outbound",
+        "crypto/material/credential-encryption-key-active",
+        "crypto/material/jwt-local-hmac-secret",
+        "crypto/material/ai-identity-hmac-key",
+        "crypto/material/bom-ingest-api-key",
+        "crypto/material/tenant-invitation-token",
+        "crypto/material/password-setup-token",
+        "crypto/material/local-password-verifier"
+      ]
+    },
+    {
+      "ref": "crypto/protocol/jwt-local-hs256",
+      "dependsOn": [
+        "crypto/algorithm/hmac-sha-256",
+        "crypto/material/jwt-local-hmac-secret"
+      ]
+    },
+    {
+      "ref": "crypto/material/credential-encryption-key-active",
+      "dependsOn": [
+        "crypto/algorithm/aes-256-gcm"
+      ]
+    },
+    {
+      "ref": "crypto/material/credential-encryption-previous-key-ring",
+      "dependsOn": [
+        "crypto/algorithm/aes-256-gcm"
+      ]
+    },
+    {
+      "ref": "crypto/material/jwt-local-hmac-secret",
+      "dependsOn": [
+        "crypto/algorithm/hmac-sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/ai-identity-hmac-key",
+      "dependsOn": [
+        "crypto/algorithm/hmac-sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/ai-runtime-identity-hmac-key",
+      "dependsOn": [
+        "crypto/algorithm/hmac-sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/bom-ingest-api-key",
+      "dependsOn": [
+        "crypto/algorithm/java-secure-random",
+        "crypto/algorithm/sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/tenant-invitation-token",
+      "dependsOn": [
+        "crypto/algorithm/java-secure-random",
+        "crypto/algorithm/sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/password-setup-token",
+      "dependsOn": [
+        "crypto/algorithm/java-secure-random",
+        "crypto/algorithm/sha-256"
+      ]
+    },
+    {
+      "ref": "crypto/material/local-password-verifier",
+      "dependsOn": [
+        "crypto/algorithm/bcrypt-cost-10"
+      ]
+    }
+  ],
+  "properties": [
+    {
+      "name": "scoutgrid:assessment:confirmed-strength",
+      "value": "AES-256-GCM uses 96-bit random IVs, 128-bit tags, key-version AAD, and exact 256-bit keys."
+    },
+    {
+      "name": "scoutgrid:assessment:confirmed-strength",
+      "value": "Local JWT validation pins HS256 and validates issuer, audience, standard time claims, and token_use=access."
+    },
+    {
+      "name": "scoutgrid:assessment:confirmed-strength",
+      "value": "BOM ingest keys contain 256 random bits, are returned once, tenant-scoped, expirable, revocable, hash-only at rest, and compared in constant time."
+    },
+    {
+      "name": "scoutgrid:assessment:medium-gap",
+      "value": "TLS version, cipher-suite, certificate, trust-store, and key-exchange evidence is not captured by static source review."
+    },
+    {
+      "name": "scoutgrid:assessment:medium-gap",
+      "value": "Key creation, activation, expiration, custody, deployed storage mechanism, and environment isolation require deployment evidence."
+    },
+    {
+      "name": "scoutgrid:assessment:medium-gap",
+      "value": "bcrypt cost 10 is a minimum legacy posture; memory-hard migration and explicit input-length handling remain recommended."
+    },
+    {
+      "name": "scoutgrid:assessment:limitation",
+      "value": "This document contains no secret values and does not claim runtime certificate, negotiated TLS, HSM/KMS, FIPS-module, or deployed key-lifecycle evidence."
+    }
+  ]
+}

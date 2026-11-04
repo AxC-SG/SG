@@ -130,8 +130,8 @@ public class FindingProjectionRefreshService {
                         finding.confidence_score,
                         finding.finding_kind,
                         coalesce(vulnerability.external_id, finding.policy_id),
-                        coalesce(component.package_name, ai_artifact.name),
-                        coalesce(component.ecosystem, case when finding.finding_kind <> 'VULNERABILITY' then 'AI' end),
+                        coalesce(component.package_name, ai_artifact.name, crypto_asset.name),
+                        coalesce(component.ecosystem, case finding.finding_kind when 'CRYPTO' then 'crypto' when 'VULNERABILITY' then null else 'AI' end),
                         finding.owner_group,
                         finding.assigned_to,
                         finding.incident_id,
@@ -156,6 +156,9 @@ public class FindingProjectionRefreshService {
                          LIMIT 1
                     ) ai_subject ON true
                     LEFT JOIN ai_security_artifacts ai_artifact ON ai_artifact.id = ai_subject.subject_id
+                    LEFT JOIN cbom_risk_findings crypto_finding
+                      ON finding.finding_kind = 'CRYPTO' AND finding.fingerprint = 'cbom:' || crypto_finding.id::text
+                    LEFT JOIN cbom_components crypto_asset ON crypto_asset.id = crypto_finding.cbom_component_id
                     LEFT JOIN (
                         SELECT DISTINCT upper(fix_record.cve_id) AS external_id_upper
                         FROM fix_records fix_record

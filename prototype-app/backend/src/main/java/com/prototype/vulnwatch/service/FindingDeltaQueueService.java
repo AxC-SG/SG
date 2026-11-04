@@ -45,12 +45,15 @@ public class FindingDeltaQueueService {
     static final String VEX_DELTA = "VEX_DELTA";
     static final String LIFECYCLE_DELTA = "LIFECYCLE_DELTA";
     static final String NOISE_REDUCTION_REFRESH = "NOISE_REDUCTION_REFRESH";
+    /** Crypto finding mirror delta. {@code component_id} carries the CBOM risk finding id. */
+    public static final String CBOM_DELTA = "CBOM_DELTA";
 
     private static final int POLL_BATCH_SIZE = 100;
     private static final int SOFTWARE_BATCH_SIZE = 250;
     private static final int CVE_BATCH_SIZE = 100;
     private static final int CVE_METADATA_BATCH_SIZE = 250;
     private static final int LIFECYCLE_BATCH_SIZE = 500;
+    private static final int CBOM_BATCH_SIZE = 250;
 
     private final FindingDeltaQueueEntryRepository repository;
     private final ComponentVulnerabilityStateRepository componentVulnerabilityStateRepository;
@@ -65,6 +68,7 @@ public class FindingDeltaQueueService {
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TransactionTemplate writeTransactionTemplate;
     private TransactionTemplate enqueueTransactionTemplate;
+    private org.springframework.beans.factory.ObjectProvider<CbomDeltaHandler> cbomDeltaHandler;
 
     public FindingDeltaQueueService(
             FindingDeltaQueueEntryRepository repository,
@@ -101,6 +105,17 @@ public class FindingDeltaQueueService {
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    /** Resolved lazily: the CBOM mirror depends on workflow services that publish deltas. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCbomDeltaHandler(org.springframework.beans.factory.ObjectProvider<CbomDeltaHandler> handler) {
+        this.cbomDeltaHandler = handler;
+    }
+
+    /** Applies CBOM_DELTA entries for one tenant. Runs inside the tenant schema and batch transaction. */
+    public interface CbomDeltaHandler {
+        int applyCbomDeltas(UUID tenantId, Collection<UUID> cbomFindingIds);
     }
 
     @PostConstruct
@@ -247,6 +262,25 @@ public class FindingDeltaQueueService {
         ));
     }
 
+    /**
+     * Publishes one CBOM_DELTA per CBOM risk finding. The dedupe key deliberately omits the
+     * source tag: every producer (ingest, withdrawal, reassessment, suppression change, repair)
+     * coalesces into a single pending mirror pass per finding. Joins the caller's transaction.
+     */
+    public int enqueueCbomDeltas(UUID tenantId, Collection<UUID> cbomFindingIds, String sourceTag) {
+        if (tenantId == null || cbomFindingIds == null || cbomFindingIds.isEmpty()) {
+            return 0;
+        }
+        return executeEnqueue(() -> {
+            int queued = 0;
+            for (UUID findingId : sortedUniqueIds(cbomFindingIds)) {
+                queued += repository.insertIfNotDuplicate(CBOM_DELTA, tenantId, findingId, null, null,
+                        normalizeTag(sourceTag), "cbom:" + tenantId + ":" + findingId);
+            }
+            return queued;
+        });
+    }
+
     public long queueDepth() {
         return repository.countPending();
     }
@@ -378,6 +412,7 @@ public class FindingDeltaQueueService {
                 case VEX_DELTA -> processVexEntries(entries);
                 case LIFECYCLE_DELTA -> processLifecycleEntries(entries);
                 case NOISE_REDUCTION_REFRESH -> processNoiseReductionEntries(entries);
+                case CBOM_DELTA -> processCbomEntries(entries);
                 default -> entries.forEach(this::processEntryIndividually);
             }
         });
@@ -497,6 +532,35 @@ public class FindingDeltaQueueService {
         });
     }
 
+    private void processCbomEntries(List<FindingDeltaQueueEntry> entries) {
+        CbomDeltaHandler handler = cbomDeltaHandler == null ? null : cbomDeltaHandler.getIfAvailable();
+        List<FindingDeltaQueueEntry> valid = entries.stream()
+                .filter(entry -> entry.getTenantId() != null && entry.getComponentId() != null)
+                .toList();
+        if (handler == null) {
+            // Leave the work durable rather than acknowledging it: retry until the handler exists.
+            markFailedOrRetry(valid, "CBOM delta handler is not available");
+        } else {
+            Map<UUID, List<FindingDeltaQueueEntry>> byTenant = valid.stream()
+                    .collect(Collectors.groupingBy(FindingDeltaQueueEntry::getTenantId, java.util.LinkedHashMap::new, Collectors.toList()));
+            byTenant.forEach((tenantId, tenantEntries) -> {
+                for (List<FindingDeltaQueueEntry> chunk : chunk(tenantEntries, CBOM_BATCH_SIZE)) {
+                    try {
+                        List<UUID> ids = chunk.stream().map(FindingDeltaQueueEntry::getComponentId).distinct().toList();
+                        int changed = runInTenantSchema(tenantId, () -> handler.applyCbomDeltas(tenantId, ids));
+                        markDone(chunk.stream().map(FindingDeltaQueueEntry::getId).toList(), changed);
+                    } catch (RuntimeException ex) {
+                        LOG.warn("Failed processing CBOM delta entries for tenant {}: {}", tenantId, ex.getMessage(), ex);
+                        markFailedOrRetry(chunk, ex.getMessage());
+                    }
+                }
+            });
+        }
+        entries.stream()
+                .filter(entry -> entry.getTenantId() == null || entry.getComponentId() == null)
+                .forEach(entry -> markDone(entry.getId(), 0));
+    }
+
     private void processNoiseReductionEntries(List<FindingDeltaQueueEntry> entries) {
         Map<UUID, List<FindingDeltaQueueEntry>> byTenant = entries.stream()
                 .filter(entry -> entry.getTenantId() != null)
@@ -535,6 +599,12 @@ public class FindingDeltaQueueService {
                 case NOISE_REDUCTION_REFRESH -> runInTenantSchema(
                         entry.getTenantId(),
                         () -> dashboardNoiseReductionProjectionService.refreshTenant(entry.getTenantId()));
+                case CBOM_DELTA -> {
+                    CbomDeltaHandler handler = cbomDeltaHandler == null ? null : cbomDeltaHandler.getIfAvailable();
+                    if (handler == null) throw new IllegalStateException("CBOM delta handler is not available");
+                    yield runInTenantSchema(entry.getTenantId(),
+                            () -> handler.applyCbomDeltas(entry.getTenantId(), List.of(entry.getComponentId())));
+                }
                 default -> {
                     LOG.warn("Unknown delta event type '{}' for entry id={}", entry.getEventType(), entry.getId());
                     yield 0;

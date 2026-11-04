@@ -19,5 +19,8 @@ description = "Synthetic JWT fixtures used only by isolated automated tests"
 rules = ["generic-api-key"]
 paths = [
   '''^prototype-app/backend/src/test/java/com/prototype/vulnwatch/controller/TenantDeletionPostgresIntegrationTest\.java$''',
-  '''^prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/TestPersonaServiceTest\.java$'''
+  '''^prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/TestPersonaServiceTest\.java$''',
+  '''^prototype-app/backend/src/test/java/com/prototype/vulnwatch/controller/CbomEnterpriseGovernancePostgresIntegrationTest\.java$''',
+  '''^prototype-app/backend/src/test/java/com/prototype/vulnwatch/controller/BomIngestKeyPostgresIntegrationTest\.java$''',
+  '''^prototype-app/frontend/src/features/bom-api/BomApiPanel\.test\.tsx$'''
 ]

@@ -58,6 +58,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 && !"/actuator/health".equals(path)
                 && !path.startsWith("/actuator/health/")
                 && !"/actuator/info".equals(path);
+        // A BOM ingest key was already authenticated by BomIngestKeyAuthenticationFilter.
+        if (request.getAttribute(BomIngestKeyAuthenticationFilter.AUTHENTICATED) != null) {
+            return true;
+        }
         return (!path.startsWith("/api/") && !protectedActuatorEndpoint)
                 || "/api/auth/login".equals(path)
                 || "/api/auth/setup-password".equals(path)

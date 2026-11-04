@@ -22,9 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class SuppressionRuleService {
+    private static final Logger LOG = LoggerFactory.getLogger(SuppressionRuleService.class);
 
     private final SuppressionRuleRepository repo;
     private final FindingRepository findingRepository;
@@ -37,6 +40,8 @@ public class SuppressionRuleService {
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TransactionTemplate readTransactionTemplate;
     private TransactionTemplate writeTransactionTemplate;
+    private CanonicalSuppressionMutationService suppressionMutations;
+    private AuditEventService auditEventService;
 
     public SuppressionRuleService(
             SuppressionRuleRepository repo,
@@ -78,6 +83,15 @@ public class SuppressionRuleService {
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSuppressionDependencies(
+            CanonicalSuppressionMutationService suppressionMutations,
+            AuditEventService auditEventService
+    ) {
+        this.suppressionMutations = suppressionMutations;
+        this.auditEventService = auditEventService;
     }
 
     public List<SuppressionRuleResponse> list(Tenant tenant) {
@@ -169,11 +183,8 @@ public class SuppressionRuleService {
 
             List<Finding> findings = findingRepository.findBySuppressedByRuleId(ruleId);
             for (Finding finding : findings) {
-                finding.setStatus(FindingStatus.OPEN);
-                finding.setSuppressedByRuleId(null);
-                finding.setSuppressedByRuleName(null);
-                finding.setSuppressionReason(null);
-                finding.touch();
+                suppressionMutations.reopen(finding, "suppression-rule", "SUPPRESSION_RULE_REVERSED",
+                        "Finding reopened because its suppression rule was reversed");
             }
             if (!findings.isEmpty()) {
                 findingRepository.saveAll(findings);
@@ -231,6 +242,7 @@ public class SuppressionRuleService {
         List<Finding> openFindings = findingRepository.findForMaintenance(FindingStatus.OPEN, null);
 
         List<Finding> toSuppress = new ArrayList<>();
+        int deniedCount = 0;
         for (Finding finding : openFindings) {
             if (finding.getVulnerability() == null
                     || finding.getAsset() == null
@@ -239,17 +251,26 @@ public class SuppressionRuleService {
             }
             if (findingsScoreService.matchesSuppressionConditions(
                     rule.getConditionsJson(), rule.getConditionLogic(), finding)) {
-                finding.setStatus(FindingStatus.SUPPRESSED);
-                finding.setSuppressionReason(rule.getReason());
-                finding.setSuppressedByRuleId(rule.getId());
-                finding.setSuppressedByRuleName(rule.getName());
-                finding.touch();
-                toSuppress.add(finding);
+                try {
+                    suppressionMutations.suppress(finding, rule.getReason(), null, rule.getId(), rule.getName(),
+                            SuppressionMutationSource.AUTOMATED_RULE, "suppression-rule:" + rule.getId());
+                    toSuppress.add(finding);
+                } catch (CryptoSuppressionPolicyException denied) {
+                    deniedCount++;
+                    // Policy denials are finding-local. The rest of the nightly batch continues.
+                    auditEventService.record("finding.suppression.rule_denied", "finding", finding.getId().toString(),
+                            "{\"ruleId\":\"" + rule.getId() + "\",\"reasonCode\":\""
+                                    + denied.getReasonCode() + "\"}", "DENIED");
+                }
             }
         }
 
         if (!toSuppress.isEmpty()) {
             findingRepository.saveAll(toSuppress);
+        }
+        if (deniedCount > 0) {
+            LOG.info("Suppression rule {} applied={} denied_by_crypto_policy={}",
+                    rule.getId(), toSuppress.size(), deniedCount);
         }
         return toSuppress.size();
     }
