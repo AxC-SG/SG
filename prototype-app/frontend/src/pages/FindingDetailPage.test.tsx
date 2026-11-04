@@ -372,12 +372,15 @@ describe('FindingDetailPage', () => {
       errorMessage: 'Jira rejected the request', attemptedBy: 'user-1', attemptedAt: '2026-11-02T00:00:00Z',
     }]);
     const create = vi.spyOn(api, 'createFindingTicket').mockResolvedValue({} as never);
-    renderWithFinding({ ...FINDING, findingKind: 'CRYPTO', vulnerabilityId: 'CBOM-RSA-SMALL-KEY' });
+    const finding = { ...FINDING, findingKind: 'CRYPTO' as const, vulnerabilityId: 'CBOM-RSA-SMALL-KEY' };
+    vi.spyOn(api, 'getFinding').mockResolvedValue({ ...finding, incidentId: 'JIRA-123' });
+    renderWithFinding(finding);
 
     expect(await screen.findByText('Jira rejected the request')).toBeInTheDocument();
     expect(screen.getByText(/crypto template/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry ticket' }));
     await waitFor(() => expect(create).toHaveBeenCalledWith(FINDING.id, {}));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument());
   });
 
   it('opens the CBOM component page from a crypto finding\'s affected asset instead of a host page', async () => {

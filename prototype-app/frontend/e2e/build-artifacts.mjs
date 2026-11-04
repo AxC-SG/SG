@@ -77,8 +77,11 @@ async function checkPublicNavigation(browser, server, version, failures) {
             const s = value / 255;
             return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
           }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
-          const background = rgba(getComputedStyle(document.querySelector('.public-demo-nav')).backgroundColor);
-          const headerMinContrast = Math.min(...[...document.querySelectorAll('.public-demo-brand strong, .public-demo-links a:not([class])')].flatMap((link) => {
+          const header = document.querySelector('.sgw-nav');
+          const links = header?.querySelectorAll('.sgw-nav-links > a, .sgw-nav-login');
+          if (!header || !links?.length) throw new Error('Site header or navigation links are missing');
+          const background = rgba(getComputedStyle(header).backgroundColor);
+          const headerMinContrast = Math.min(...[...links].flatMap((link) => {
             const text = luminance(rgba(getComputedStyle(link).color).slice(0, 3));
             return [0, 255].map((backdrop) => {
               const surface = luminance(background.slice(0, 3).map((channel) => channel * background[3] / 255 + backdrop * (1 - background[3] / 255)));
@@ -102,9 +105,9 @@ async function checkPublicNavigation(browser, server, version, failures) {
       const canvas = JSON.stringify(direct.body);
       if (publicCanvases.has(width) && publicCanvases.get(width) !== canvas) failures.push(`${version} ${width}: public canvas changes with the stored theme`);
       publicCanvases.set(width, canvas);
-      await page.locator('.public-demo-nav a[href="/login"]').click();
+      await page.locator('.sgw-nav').getByRole('link', { name: 'Log in' }).click();
       await check('/login', false);
-      await page.locator('a.public-demo-brand[href="/demo"]').click();
+      await page.locator('.sgw-nav-brand').click();
       await check('/demo', true, direct);
       await page.goBack();
       await check('/login', false);
