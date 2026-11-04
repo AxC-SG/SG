@@ -7,6 +7,8 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -20,12 +22,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Ownership of attempts in the existing ingestion_jobs queue, including each batch document commit. */
 @Service
-public class IngestionAttemptService {
+public class IngestionAttemptService implements SmartInitializingSingleton {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(IngestionAttemptService.class);
     private static final ThreadLocal<Attempt> CURRENT = new ThreadLocal<>();
     private final JdbcTemplate jdbc;
     private final TenantSchemaExecutionService tenants;
-    private final TransactionTemplate heartbeatTransaction;
+    private final ObjectProvider<PlatformTransactionManager> transactionManagers;
+    private final TransactionTemplate heartbeatTransaction = new TransactionTemplate();
     private final long leaseSeconds;
     private final ScheduledExecutorService heartbeats = Executors.newScheduledThreadPool(2, task -> {
         Thread thread = new Thread(task, "ingestion-lease-heartbeat");
@@ -34,17 +37,24 @@ public class IngestionAttemptService {
     });
 
     public IngestionAttemptService(JdbcTemplate jdbc, TenantSchemaExecutionService tenants,
-            PlatformTransactionManager transactionManager,
+            ObjectProvider<PlatformTransactionManager> transactionManagers,
             @Value("${app.ingestion.jobs.lease-seconds:120}") long leaseSeconds) {
         if (leaseSeconds < 3) throw new IllegalArgumentException("Ingestion lease must be at least three seconds");
         this.jdbc = jdbc;
         this.tenants = tenants;
         this.leaseSeconds = leaseSeconds;
-        this.heartbeatTransaction = new TransactionTemplate(transactionManager);
+        this.transactionManagers = transactionManagers;
         this.heartbeatTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @Override
+    public void afterSingletonsInstantiated() {
+        // JPA bootstrap can instantiate this service before the transaction manager exists.
+        PlatformTransactionManager transactionManager = transactionManagers.getObject();
         if (!(transactionManager instanceof ConfigurableTransactionManager configurable)) {
             throw new IllegalStateException("Ingestion commits require a configurable transaction manager");
         }
+        heartbeatTransaction.setTransactionManager(transactionManager);
         // Every existing Spring transaction on the executing thread is fenced. This includes
         // independently committed documents in a GitHub batch and provider observation writes.
         configurable.addListener(new TransactionExecutionListener() {
