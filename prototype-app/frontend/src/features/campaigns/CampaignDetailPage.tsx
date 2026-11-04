@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { CampaignLinkedFindings } from './CampaignLinkedFindings';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
 import { ApiError, api } from '../../api/client';
 import { usePageHeader } from '../../app/pageHeaderState';
@@ -883,6 +884,7 @@ export function CampaignDetailPage() {
           <div className="cd-overview-layout">
             {/* ── Main column ── */}
             <div className="cd-overview-main">
+              {id && <CampaignLinkedFindings campaignId={id} />}
 
               {/* Hero card — campaign identity + threat context */}
               <div className="cd-hero-card">

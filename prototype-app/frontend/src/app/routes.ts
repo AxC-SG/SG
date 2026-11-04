@@ -338,6 +338,15 @@ export function pathForInventoryHostAsset(assetId: string, returnTo?: string): s
   return `/inventory/hosts/${encodedAssetId}?${searchParams.toString()}`;
 }
 
+/** CBOM cryptographic asset page (the CBOM counterpart of the BOM component detail). */
+export function pathForCbomComponent(componentId: string, returnTo?: string): string {
+  const path = `/inventory/bom-components/cbom/${encodeURIComponent(componentId)}`;
+  if (!returnTo || returnTo.trim().length === 0) return path;
+  const searchParams = new URLSearchParams();
+  searchParams.set('returnTo', returnTo.trim());
+  return `${path}?${searchParams.toString()}`;
+}
+
 export function pathForInventoryAiAgents(values?: Record<string, RouteSearchValue>): string {
   return appendSearchToPath('/inventory/ai/agents', values);
 }

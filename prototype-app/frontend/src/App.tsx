@@ -1,7 +1,8 @@
 import React from 'react';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { BrandMark } from './components/BrandMark';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Activity, Bot, Boxes, Bug, Building2, CalendarX, Flag, Gauge, Library, Plug, Send, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench } from 'lucide-react';
 import { AccountMenu } from './app/AccountMenu';
 import { PageHeaderProvider } from './app/PageHeader';
@@ -155,6 +156,9 @@ const InventoryOverviewPage = React.lazy(async () => ({
 const SoftwareIdentitiesPage = React.lazy(async () => ({
   default: (await import('./pages/SoftwareIdentitiesPage')).SoftwareIdentitiesPage
 }));
+const CbomComponentDetailPanel = React.lazy(async () => ({
+  default: (await import('./features/cbom/CbomComponentDetailPanel')).CbomComponentDetailPanel
+}));
 const BomInventoryPage = React.lazy(async () => ({
   default: (await import('./pages/BomInventoryPage')).BomInventoryPage
 }));
@@ -192,11 +196,35 @@ const BlogIndexPage = React.lazy(async () => ({
 const ZeroDayBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).ZeroDayBlogPage
 }));
+const PartnersPage = React.lazy(async () => ({
+  default: (await import('./features/public-site/CompanyPages')).PartnersPage
+}));
+const ContactPage = React.lazy(async () => ({
+  default: (await import('./features/public-site/CompanyPages')).ContactPage
+}));
+const Php2ShellBlogPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).Php2ShellBlogPage
+}));
 const MythosReadinessBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).MythosReadinessBlogPage
 }));
 const SbomExploitabilityBlogPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).SbomExploitabilityBlogPage
+}));
+const PrivacyPolicyPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).PrivacyPolicyPage
+}));
+const AnnouncementsIndexPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).AnnouncementsIndexPage
+}));
+const NvidiaInceptionAnnouncementPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).NvidiaInceptionAnnouncementPage
+}));
+const CookiePolicyPage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).CookiePolicyPage
+}));
+const TermsOfServicePage = React.lazy(async () => ({
+  default: (await import('./pages/DemoPublicPages')).TermsOfServicePage
 }));
 const DemoRequestPage = React.lazy(async () => ({
   default: (await import('./pages/DemoPublicPages')).DemoRequestPage
@@ -510,6 +538,26 @@ function VulnRepoHostAssetRoute() {
   }
 
   return <HostAssetDetailPage assetId={assetId} />;
+}
+
+function CbomComponentRoute() {
+  const params = useParams<{ componentId?: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const componentId = params.componentId ? decodeURIComponent(params.componentId) : null;
+  // Only same-app paths are honoured as a return target.
+  const requested = searchParams.get('returnTo');
+  const returnTo = requested && requested.startsWith('/') && !requested.startsWith('//') ? requested : pathForInventoryView('bom-components');
+  if (!componentId) {
+    return <Navigate to={pathForInventoryView('bom-components')} replace />;
+  }
+  return (
+    <div className="page-grid ui2-inventory-family">
+      <CbomComponentDetailPanel componentId={componentId} onClose={() => navigate(returnTo)}
+        backLabel={returnTo.startsWith('/findings/') ? '← Back to finding'
+          : returnTo.startsWith('/inventory/bom-components/cbom/') ? '← Back to previous component' : undefined} />
+    </div>
+  );
 }
 
 function InventoryHostAssetRoute() {
@@ -1080,7 +1128,7 @@ function AppShell() {
       <div className="app-shell">
         <aside id="app-sidebar" ref={sidebarRef} className={navOpen ? 'sidebar open' : 'sidebar'} onKeyDown={onSidebarKeyDown}>
           <div className="brand-block compact">
-            <div className="brand-mark" aria-hidden="true">S</div>
+            <BrandMark />
             <div className="brand">Scout</div>
           </div>
           <SidebarNav key={actor?.tenantId ?? 'platform'} sections={navSections} />
@@ -1141,7 +1189,7 @@ function AppShell() {
                   onClose={closeSettingsMenu}
                   triggers={[accountPillRef, settingsButtonRef]}
                   header={<>
-                    <div className="brand-mark settings-menu-mark" aria-hidden="true">S</div>
+                    <BrandMark className="settings-menu-mark" />
                     <strong>Settings</strong>
                     <span>{actorLabel}</span>
                   </>}
@@ -1252,6 +1300,7 @@ function AppShell() {
               <Route path="/inventory/ai/declared-resources/:resourceId" element={<AiBomDeclaredResourceDetailRoute />} />
               <Route path="/connect/copilot-studio" element={<AiSecurityRoute><CopilotStudioConnectorPage /></AiSecurityRoute>} />
               <Route path="/inventory/ai/:assetId" element={<InventoryAiAssetRoute />} />
+              <Route path="/inventory/bom-components/cbom/:componentId" element={<CbomComponentRoute />} />
               <Route path="/inventory/software-identities/:softwareIdentityId" element={<SoftwareIdentityDetailRoute />} />
               <Route path="/inventory/:inventoryView?" element={<InventoryRoute />} />
               <Route path="/end-of-life" element={<EndOfLifeRoute />} />
@@ -1357,8 +1406,16 @@ export default function App() {
         <Route path="/demo" element={<DemoLandingPage />} />
         <Route path="/demo/blog" element={<BlogIndexPage />} />
         <Route path="/demo/blog/zero-day-response-hours-not-weeks" element={<ZeroDayBlogPage />} />
+        <Route path="/demo/blog/php2shell-critical-cve-response-starts-with-inventory" element={<Php2ShellBlogPage />} />
         <Route path="/demo/blog/mythos-readiness" element={<MythosReadinessBlogPage />} />
         <Route path="/demo/blog/why-your-sbom-tool-doesnt-know-whats-exploitable" element={<SbomExploitabilityBlogPage />} />
+        <Route path="/demo/partners" element={<PartnersPage />} />
+        <Route path="/demo/contact" element={<ContactPage />} />
+        <Route path="/demo/announcements" element={<AnnouncementsIndexPage />} />
+        <Route path="/demo/announcements/scoutgrid-joins-nvidia-inception" element={<NvidiaInceptionAnnouncementPage />} />
+        <Route path="/demo/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/demo/terms" element={<TermsOfServicePage />} />
+        <Route path="/demo/cookies" element={<CookiePolicyPage />} />
         <Route path="/demo/request" element={<DemoRequestPage />} />
         <Route path="/demo/request/success" element={<DemoRequestSuccessPage />} />
         <Route path="/demo/expired" element={<DemoExpiredPage />} />

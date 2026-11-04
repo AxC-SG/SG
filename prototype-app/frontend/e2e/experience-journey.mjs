@@ -380,7 +380,7 @@ for (const theme of themes) {
   check(tag('invalid setup link shows an error'), (await anon.page.getByRole('alert').textContent()).includes('invalid or expired'));
   check(tag('invalid setup link offers log in'), (await anon.page.locator('.auth-link-recovery').getByRole('link', { name: 'Go to log in' }).getAttribute('href')) === '/login');
   await shot(anon.page, tag('setup-error'));
-  await anon.page.locator('.public-demo-nav').getByRole('link', { name: 'Log in' }).click();
+  await anon.page.locator('.sgw-nav').getByRole('link', { name: 'Log in' }).click();
   await settle(anon.page);
   check(tag('public nav log-in link kept'), here(anon.page) === '/login', here(anon.page));
   check(tag('no page errors on auth entry'), anon.errors.length === 0, anon.errors);

@@ -200,8 +200,6 @@ public class FindingCorrelationMutationService {
         finding.setFirstObservedAt(now);
         finding.setLastObservedAt(now);
         finding.setDueAt(findingSlaService.deriveDueAt(now, riskScore, asset, policy));
-        finding.setSuppressionReason(null);
-        finding.setSuppressedUntil(null);
         setEvidenceWithVex(finding, evidence);
         finding.setPrecedenceTrace(toJson(resolution.precedenceTrace()));
         ownershipRuleService.applyOwnerGroupToFinding(finding);

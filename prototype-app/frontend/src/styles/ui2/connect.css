@@ -829,3 +829,16 @@ html[data-ui='2'] .ui2-connect-family .code-block {
   font-size: var(--dp-text-xs);
   white-space: pre;
 }
+
+/* CBOM rule package panel in BOM Management (shares the crypto form layout). */
+html[data-ui='2'] .ui2-connect-family .cbom-rules-panel .crypto-campaign-form,
+html[data-ui='2'] .ui2-connect-family .cbom-rules-panel fieldset {
+  display: grid;
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-connect-family .cbom-rules-panel .cbom-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+}

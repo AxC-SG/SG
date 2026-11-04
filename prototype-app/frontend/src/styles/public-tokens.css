@@ -6,8 +6,8 @@
 :where(html:not([data-ui='2'])) body,
 :where(html:not([data-ui='2'])) .public-demo-shell {
   color-scheme: light;
-  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
-  --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-display: "Inter", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -39,8 +39,8 @@
   --title: #121a27;
   --border: #d7deea;
   --border-strong: #bdc8db;
-  --accent: #2a68e8;
-  --accent-strong: #1f57ca;
+  --accent: #d50a2a;
+  --accent-strong: #b8081f;
   --track: #e3e8f2;
   --table-row: rgba(18, 30, 49, 0.03);
   --critical: #dc3545;
@@ -74,8 +74,8 @@
   --title: #f1f5ff;
   --border: #202939;
   --border-strong: #2c374d;
-  --accent: #4d8dff;
-  --accent-strong: #6ca3ff;
+  --accent: #ff5a6e;
+  --accent-strong: #ff8291;
   --track: #1a2334;
   --table-row: rgba(124, 143, 177, 0.07);
   --critical: #ff5d76;

@@ -7,6 +7,14 @@ import {
   type BomLineageItem,
   type BomWorkflowSummary,
 } from '../api/client';
+import { CbomDocumentPanel } from '../features/cbom/CbomDocumentPanel';
+import { CbomInventoryPanel } from '../features/cbom/CbomInventoryPanel';
+import { CbomOverviewPanel } from '../features/cbom/CbomOverviewPanel';
+import { CryptoRemediationPanel } from '../features/cbom/CryptoRemediationPanel';
+import { CbomPortfolioPanel } from '../features/cbom/CbomPortfolioPanel';
+import { useActor } from '../features/auth/context';
+import { hasRole } from '../features/auth/roles';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { AsyncSection } from '../components/AsyncSection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
@@ -350,52 +358,54 @@ function BomDetailPanel({ bomId, onClose }: { bomId: string; onClose: () => void
 
           <LineagePanel items={lineageQuery.data ?? []} />
 
-          <div className="panel bom-components-panel">
-            <div className="panel-header">
-              <h4>Components ({detail.componentCount.toLocaleString()})</h4>
-              <span className="panel-caption">
-                {detail.correlatedComponentCount} with vulnerability links · {detail.vulnerabilityLinkCount} CVE links · {detail.components.length} shown
-              </span>
-            </div>
-            {detail.components.length === 0 ? (
-              <div className="empty-state"><p>No components recorded.</p></div>
-            ) : (
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Version</th>
-                      <th>Category</th>
-                      <th>Workflow</th>
-                      <th>Vulns</th>
-                      <th>Evidence</th>
-                      <th>Type</th>
-                      <th>PURL</th>
-                      <th>CPE</th>
-                      <th>License</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.components.map((c) => (
-                      <tr key={c.id} className={c.active ? '' : 'row--inactive'}>
-                        <td>{c.name}</td>
-                        <td>{c.version ?? '—'}</td>
-                        <td><span className="tag">{c.category}</span></td>
-                        <td><WorkflowTag status={c.workflowStatus} /></td>
-                        <td>{c.vulnerabilityCount}</td>
-                        <td>{c.evidenceCount}</td>
-                        <td>{c.componentType ?? '—'}</td>
-                        <td className="monospace cell-truncate">{c.purl ?? '—'}</td>
-                        <td className="monospace cell-truncate">{c.cpe ?? '—'}</td>
-                        <td>{c.license ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {detail.bomType === 'CBOM' ? <CbomDocumentPanel bomId={bomId} /> : (
+            <div className="panel bom-components-panel">
+              <div className="panel-header">
+                <h4>Components ({detail.componentCount.toLocaleString()})</h4>
+                <span className="panel-caption">
+                  {detail.correlatedComponentCount} with vulnerability links · {detail.vulnerabilityLinkCount} CVE links · {detail.components.length} shown
+                </span>
               </div>
-            )}
-          </div>
+              {detail.components.length === 0 ? (
+                <div className="empty-state"><p>No components recorded.</p></div>
+              ) : (
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>Category</th>
+                        <th>Workflow</th>
+                        <th>Vulns</th>
+                        <th>Evidence</th>
+                        <th>Type</th>
+                        <th>PURL</th>
+                        <th>CPE</th>
+                        <th>License</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.components.map((c) => (
+                        <tr key={c.id} className={c.active ? '' : 'row--inactive'}>
+                          <td>{c.name}</td>
+                          <td>{c.version ?? '—'}</td>
+                          <td><span className="tag">{c.category}</span></td>
+                          <td><WorkflowTag status={c.workflowStatus} /></td>
+                          <td>{c.vulnerabilityCount}</td>
+                          <td>{c.evidenceCount}</td>
+                          <td>{c.componentType ?? '—'}</td>
+                          <td className="monospace cell-truncate">{c.purl ?? '—'}</td>
+                          <td className="monospace cell-truncate">{c.cpe ?? '—'}</td>
+                          <td>{c.license ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -497,11 +507,15 @@ function OnDemandPanel({ items, onRunTriggered }: {
   );
 }
 
+type BomInventoryView = 'documents' | 'crypto-posture' | 'crypto-inventory' | 'crypto-remediation' | 'crypto-portfolio';
+
 export function BomInventoryPage() {
   const [selectedBomId, setSelectedBomId] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [typeFilter, setTypeFilter] = React.useState('');
   const [page, setPage] = React.useState(0);
+  const [view, setView] = React.useState<BomInventoryView>('documents');
+  const actor = useActor();
 
   const queryClient = useQueryClient();
 
@@ -544,8 +558,42 @@ export function BomInventoryPage() {
     );
   }
 
+  const viewSwitch = (
+    <SegmentedControl<BomInventoryView>
+      ariaLabel="BOM inventory view"
+      value={view}
+      onChange={setView}
+      options={[
+        { value: 'documents', label: 'Documents' },
+        { value: 'crypto-posture', label: 'Cryptographic posture' },
+        { value: 'crypto-inventory', label: 'Cryptographic inventory' },
+        { value: 'crypto-remediation', label: 'Crypto remediation' },
+        { value: 'crypto-portfolio', label: 'Portfolio & PQC' },
+      ]}
+    />
+  );
+
+  if (view !== 'documents') {
+    return (
+      <div className="bom-inventory-page ui2-inventory-family">
+        {viewSwitch}
+        {view === 'crypto-posture' && <CbomOverviewPanel />}
+        {view === 'crypto-inventory' && (
+          <CbomInventoryPanel showContradictions canReview={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+        {view === 'crypto-portfolio' && (
+          <CbomPortfolioPanel canManage={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+        {view === 'crypto-remediation' && (
+          <CryptoRemediationPanel canManage={hasRole(actor, 'TENANT_ADMIN') || hasRole(actor, 'SECURITY_ANALYST')} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bom-inventory-page ui2-inventory-family">
+      {viewSwitch}
       <PageFreshnessStatus
         updatedAt={latestDataUpdate}
         isRefreshing={refreshing}

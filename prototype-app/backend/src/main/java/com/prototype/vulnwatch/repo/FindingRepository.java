@@ -36,6 +36,7 @@ public interface FindingRepository extends JpaRepository<Finding, UUID>, JpaSpec
 
     List<Finding> findAllByOrderByUpdatedAtDesc();
     Optional<Finding> findByTenantAndFingerprint(Tenant tenant, String fingerprint);
+    Optional<Finding> findByFingerprint(String fingerprint);
     @Query("""
             select f
             from Finding f
@@ -53,6 +54,11 @@ public interface FindingRepository extends JpaRepository<Finding, UUID>, JpaSpec
     List<Finding> findByStatusOrderByUpdatedAtDesc(FindingStatus status);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     List<Finding> findByStatusAndSuppressedUntilBeforeOrderById(FindingStatus status, Instant before);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    List<Finding> findTop500ByFindingKindAndStatusAndSuppressedUntilIsNullOrderById(
+            String findingKind, FindingStatus status);
+    @Query("select count(f) from Finding f where f.findingKind = 'CRYPTO' and f.status = com.prototype.vulnwatch.domain.FindingStatus.SUPPRESSED and f.suppressedUntil is null")
+    long countLegacyCryptoSuppressions();
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select f

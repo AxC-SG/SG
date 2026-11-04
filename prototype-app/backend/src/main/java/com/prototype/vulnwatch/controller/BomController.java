@@ -9,6 +9,7 @@ import com.prototype.vulnwatch.dto.ApplicationCveResponse;
 import com.prototype.vulnwatch.dto.BomComponentDetailResponse;
 import com.prototype.vulnwatch.dto.BomComponentSummaryResponse;
 import com.prototype.vulnwatch.dto.BomDetailResponse;
+import com.prototype.vulnwatch.dto.CbomBomAssetResponse;
 import com.prototype.vulnwatch.dto.BomDashboardResponse;
 import com.prototype.vulnwatch.dto.BomFetchRequest;
 import com.prototype.vulnwatch.dto.BomIngestionResultResponse;
@@ -215,6 +216,17 @@ public class BomController {
     public BomDetailResponse getBomDetail(@PathVariable UUID bomId) {
         Tenant tenant = workspaceService.getWorkspace();
         return bomInventoryReadService.getDetail(tenant, bomId);
+    }
+
+    /**
+     * GET /api/bom/inventory/{bomId}/cbom-assets
+     * Cryptographic assets reported by one CBOM document, with their findings.
+     */
+    @GetMapping("/inventory/{bomId}/cbom-assets")
+    @PreAuthorize("hasAnyRole('SECURITY_ANALYST','INVENTORY_ADMIN','TENANT_ADMIN','CREATOR','OPERATOR')")
+    public List<CbomBomAssetResponse> getCbomAssets(@PathVariable UUID bomId) {
+        Tenant tenant = workspaceService.getWorkspace();
+        return bomInventoryReadService.getCbomAssets(tenant, bomId);
     }
 
     @GetMapping("/inventory/{bomId}/lineage")

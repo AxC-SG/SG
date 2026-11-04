@@ -66,6 +66,7 @@ class FindingWorkflowServiceTest {
                 findingListProjectionService,
                 tenantWorkRunner
         );
+        service.setSuppressionMutations(TestSuppressionMutations.create());
     }
 
     @Test

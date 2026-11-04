@@ -400,3 +400,232 @@ html[data-ui='2'] .ui2-inventory-family .ui2-dialog > .si-entity-dialog {
   margin-left: auto;
   height: 100%;
 }
+
+/* ── CBOM visibility (BOM inventory crypto posture/inventory, CBOM document views) ───────── */
+html[data-ui='2'] .ui2-inventory-family.bom-inventory-page > .segmented-control {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+html[data-ui='2'] .ui2-inventory-family :is(.cbom-overview, .cbom-document-panel, .cbom-evidence) {
+  display: grid;
+  gap: var(--dp-space-4, 16px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-definition-list {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  gap: var(--dp-space-2, 8px) var(--dp-space-4, 16px);
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-definition-list dd {
+  margin: 0;
+  min-width: 0;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-wrap {
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-filter-bar label {
+  display: grid;
+  gap: var(--dp-space-1, 4px);
+  min-width: 140px;
+  flex: 1 1 140px;
+}
+
+html[data-ui='2'] .ui2-inventory-family :is(.cbom-claim-list, .cbom-finding-list, .cbom-outcome-summary) {
+  display: grid;
+  gap: var(--dp-space-3, 12px);
+  padding-left: var(--dp-space-5, 20px);
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-inventory-family :is(.cbom-report-actions, .cbom-row-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2, 8px);
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-row-link {
+  text-align: left;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  html[data-ui='2'] .ui2-inventory-family .cbom-definition-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+html[data-ui='2'] .ui2-inventory-family .crypto-campaign-form {
+  display: grid;
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .crypto-campaign-form label {
+  display: grid;
+  gap: var(--dp-space-1, 4px);
+}
+
+/* Blast-radius picture (decorative; the lists beside it carry the same information). */
+html[data-ui='2'] .ui2-inventory-family .cbom-blast-radius-graph {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-edge {
+  stroke: var(--dp-border-strong);
+  stroke-width: 1;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-edge--stale {
+  stroke-dasharray: 3 3;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node { fill: var(--dp-text-2); }
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node--application { fill: var(--dp-accent); }
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node--critical { fill: var(--dp-critical); }
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node--high { fill: var(--dp-high); }
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node--medium { fill: var(--dp-medium); }
+html[data-ui='2'] .ui2-inventory-family .cbom-graph-node--low { fill: var(--dp-low); }
+
+/* CBOM component page (BOM Components → cryptographic asset), modelled on the component detail. */
+html[data-ui='2'] .ui2-inventory-family .cbom-component-page {
+  display: grid;
+  gap: var(--dp-space-4, 16px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--dp-space-4, 16px);
+  padding: var(--dp-space-5, 20px) var(--dp-space-6, 24px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2, 8px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-title h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2, 8px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-stats .panel {
+  display: grid;
+  justify-items: center;
+  min-width: 90px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-stats strong {
+  font-size: 22px;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-tabs button {
+  padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px);
+  margin-bottom: -2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--dp-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-tabs button.active {
+  border-bottom-color: var(--dp-accent);
+  color: var(--dp-accent);
+  font-weight: 700;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--dp-space-4, 16px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-grid > .panel {
+  padding: var(--dp-space-4, 16px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-grid h4 {
+  margin: 0 0 var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-component-grid dl {
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-detail-row {
+  display: flex;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-2, 8px) 0;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-detail-row dt {
+  flex-shrink: 0;
+  width: 160px;
+  color: var(--dp-text-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+html[data-ui='2'] .ui2-inventory-family .cbom-detail-row dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+}

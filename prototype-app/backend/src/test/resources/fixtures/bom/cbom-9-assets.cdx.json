@@ -1,0 +1,34 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:5c1b7a52-3f0e-4d7b-9a1e-0b6c2d4e8f11",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-01T12:00:00Z",
+    "component": {"type": "application", "name": "scoutgrid-prototype-app", "version": "0.1.0", "purl": "pkg:github/ravikanukollu/scoutgrid-prototype-app"}
+  },
+  "components": [
+    {"type":"cryptographic-asset","bom-ref":"crypto/algorithm/aes-256-gcm","name":"AES-GCM","description":"Credential encryption (CredentialEncryptionService)",
+     "cryptoProperties":{"assetType":"algorithm","algorithmProperties":{"primitive":"ae","parameterSetIdentifier":"256","mode":"gcm","padding":"none","cryptoFunctions":["encrypt","decrypt"]},"oid":"2.16.840.1.101.3.4.1.46"}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/algorithm/hmac-sha256","name":"HMAC-SHA-256","description":"Auth token signing, AI security digests, test persona tokens; JWT HS256 verification (JwtDecoderConfig)",
+     "cryptoProperties":{"assetType":"algorithm","algorithmProperties":{"primitive":"mac","parameterSetIdentifier":"256","cryptoFunctions":["tag","verify"]},"oid":"1.2.840.113549.2.9"}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/algorithm/sha-256","name":"SHA-256","description":"Content checksums, API and ingest key hashing, fingerprints (44 call sites)",
+     "cryptoProperties":{"assetType":"algorithm","algorithmProperties":{"primitive":"hash","parameterSetIdentifier":"256","cryptoFunctions":["digest"]},"oid":"2.16.840.1.101.3.4.2.1"}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/algorithm/bcrypt","name":"bcrypt","description":"Local user password hashing, cost factor 10 (LocalCredentialAuthService, IdentityAdministrationService)",
+     "cryptoProperties":{"assetType":"algorithm","algorithmProperties":{"primitive":"kdf","parameterSetIdentifier":"cost-10","cryptoFunctions":["keyderive"]}}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/protocol/jwt-hs256","name":"JWT (HS256)","description":"Tenant session tokens validated with a shared HMAC secret",
+     "cryptoProperties":{"assetType":"protocol","protocolProperties":{"type":"other","version":"RFC 7519"}}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/protocol/tls-outbound","name":"TLS (outbound HTTPS)","description":"Calls to allow-listed hosts: api.github.com, services.nvd.nist.gov, api.osv.dev, api.openai.com, management.azure.com, graph.microsoft.com and others",
+     "cryptoProperties":{"assetType":"protocol","protocolProperties":{"type":"tls"}}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/key/credential-encryption-key","name":"Credential encryption key","description":"Secret from configuration that wraps stored connector credentials",
+     "cryptoProperties":{"assetType":"related-crypto-material","relatedCryptoMaterialProperties":{"type":"secret-key","algorithmRef":"crypto/algorithm/aes-256-gcm","state":"active"}}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/key/jwt-hmac-secret","name":"JWT HMAC secret","description":"Shared secret for HS256 token signing and verification",
+     "cryptoProperties":{"assetType":"related-crypto-material","relatedCryptoMaterialProperties":{"type":"secret-key","algorithmRef":"crypto/algorithm/hmac-sha256","state":"active"}}},
+    {"type":"cryptographic-asset","bom-ref":"crypto/key/bom-ingest-key","name":"BOM ingest API key (sgk_)","description":"64-hex secret, stored as SHA-256 hash in platform.bom_ingest_api_keys",
+     "cryptoProperties":{"assetType":"related-crypto-material","relatedCryptoMaterialProperties":{"type":"credential","size":256,"algorithmRef":"crypto/algorithm/sha-256","state":"active"}}}
+  ],
+  "dependencies": [
+    {"ref":"crypto/key/credential-encryption-key","dependsOn":["crypto/algorithm/aes-256-gcm"]},
+    {"ref":"crypto/protocol/jwt-hs256","dependsOn":["crypto/algorithm/hmac-sha256"]}
+  ]
+}

@@ -4,7 +4,7 @@ import com.prototype.vulnwatch.domain.BomType;
 import com.prototype.vulnwatch.domain.AssetType;
 import java.util.UUID;
 
-final class IngestionJobPayloads {
+public final class IngestionJobPayloads {
 
     private IngestionJobPayloads() {
     }
@@ -39,5 +39,11 @@ final class IngestionJobPayloads {
             UUID syncRunId,
             UUID sourceId
     ) {
+    }
+
+    public record CbomAssessmentPayload(UUID bomId) {
+    }
+
+    public record CbomReportPayload(UUID reportId) {
     }
 }

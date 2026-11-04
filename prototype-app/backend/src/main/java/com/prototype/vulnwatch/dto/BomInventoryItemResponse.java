@@ -25,5 +25,8 @@ public record BomInventoryItemResponse(
         long correlatedComponentCount,
         String status,
         Instant ingestedAt,
-        String ingestedBy
+        String ingestedBy,
+        // A pipeline push's build ("build:<id>") and correlator; null for other ingestion paths.
+        String sourceLabel,
+        String sourceReference
 ) {}

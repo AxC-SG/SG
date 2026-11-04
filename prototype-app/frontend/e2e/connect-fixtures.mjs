@@ -26,7 +26,7 @@ export const SCCM_FAILURE_MESSAGE = "Login failed for user 'svc-scoutgrid-read' 
 export const AWS_ACCOUNT_ID = '111122223333';
 export const AWS_PRIMARY_TARGET_ID = 'aws-target-prod';
 export const FAILING_AWS_TARGET_ID = 'aws-target-sandbox';
-export const AWS_TARGET_FAILURE_MESSAGE = 'AccessDenied: sts:AssumeRole on arn:aws:iam::444455556666:role/ScoutGridDiscovery (fixture).';
+export const AWS_TARGET_FAILURE_MESSAGE = 'AccessDenied: sts:AssumeRole on arn:aws:iam::444455556666:role/ScoutgridDiscovery (fixture).';
 
 /**
  * Validation path: PUT /api/connectors/servicenow-cmdb with a baseUrl that does not start with
@@ -95,7 +95,7 @@ const sccmConfig = {
 
 const awsConfig = {
   id: 'cfg-aws-1', sourceSystem: 'aws', configured: true, authType: 'CROSS_ACCOUNT_ROLE', accessKeyId: '', hasCredential: false,
-  crossAccountRoleArn: `arn:aws:iam::${AWS_ACCOUNT_ID}:role/ScoutGridDiscovery`, externalId: 'scoutgrid-fixture-ext-7c1d', awsAccountId: AWS_ACCOUNT_ID,
+  crossAccountRoleArn: `arn:aws:iam::${AWS_ACCOUNT_ID}:role/ScoutgridDiscovery`, externalId: 'scoutgrid-fixture-ext-7c1d', awsAccountId: AWS_ACCOUNT_ID,
   regionsJson: JSON.stringify(['us-east-1', 'us-west-2', 'eu-west-1']), resourceTypesJson: '["EC2"]', enabled: true, autoSyncEnabled: true, intervalMinutes: 1440,
   lastTestStatus: 'SUCCESS', lastTestMessage: 'Role assumed; 3 regions reachable (fixture).', lastTestedAt: iso(-1.1), lastSyncAt: iso(-1),
 };
@@ -122,11 +122,11 @@ const patchConfig = (provider) => ({
 });
 
 const awsTargets = [
-  { id: AWS_PRIMARY_TARGET_ID, accountId: AWS_ACCOUNT_ID, accountName: 'production', roleArn: `arn:aws:iam::${AWS_ACCOUNT_ID}:role/ScoutGridDiscovery`,
+  { id: AWS_PRIMARY_TARGET_ID, accountId: AWS_ACCOUNT_ID, accountName: 'production', roleArn: `arn:aws:iam::${AWS_ACCOUNT_ID}:role/ScoutgridDiscovery`,
     externalId: 'scoutgrid-fixture-ext-7c1d', enabled: true, regionsJson: JSON.stringify(['us-east-1', 'us-west-2']), resourceTypesJson: '["EC2"]',
     lastTestStatus: 'SUCCESS', lastTestMessage: 'Role assumed (fixture).', lastTestedAt: iso(-1.1), lastSyncAt: iso(-1),
     hostCount: 184, ssmManagedHostCount: 171, missingIamInstanceProfileCount: 9, softwareInventoryHostCount: 166 },
-  { id: FAILING_AWS_TARGET_ID, accountId: '444455556666', accountName: 'sandbox', roleArn: 'arn:aws:iam::444455556666:role/ScoutGridDiscovery',
+  { id: FAILING_AWS_TARGET_ID, accountId: '444455556666', accountName: 'sandbox', roleArn: 'arn:aws:iam::444455556666:role/ScoutgridDiscovery',
     externalId: 'scoutgrid-fixture-ext-91aa', enabled: true, regionsJson: JSON.stringify(['eu-west-1']), resourceTypesJson: '["EC2"]',
     lastTestStatus: 'FAILED', lastTestMessage: AWS_TARGET_FAILURE_MESSAGE, lastTestedAt: iso(-0.4), lastSyncAt: iso(-12),
     hostCount: 23, ssmManagedHostCount: 11, missingIamInstanceProfileCount: 12, softwareInventoryHostCount: 10 },
@@ -183,7 +183,7 @@ const bomFetchResult = { bomId: 'bom-0042', assetId: 'asset-payments-api', bomTy
 const ingestionJobs = [
   ingestionJob(QUEUED_INGESTION_JOB_ID, 'AI_SECURITY_COPILOT_STUDIO', 'CONNECTOR', 'copilot:copilot-conn-1', 'QUEUED', -0.002),
   ingestionJob(FAILED_INGESTION_JOB_ID, 'AI_SECURITY_AWS_BEDROCK', 'CONNECTOR', `aws:ai-aws-conn-1`, 'FAILED', -0.6,
-    { failureCode: 'ASSUME_ROLE_DENIED', failureMessage: 'The ScoutGrid AI Security role could not be assumed (fixture). Update the trust policy External ID.' }),
+    { failureCode: 'ASSUME_ROLE_DENIED', failureMessage: 'The Scoutgrid AI Security role could not be assumed (fixture). Update the trust policy External ID.' }),
   ingestionJob(BOM_FETCH_JOB_ID, 'BOM_FETCH', 'URL', 'asset-payments-api', 'SUCCEEDED', -2, { sbomUploadId: 'upload-0042', resultJson: JSON.stringify(bomFetchResult) }),
   ingestionJob('job-sbom-0029', 'SBOM_FETCH', 'API_ENDPOINT', 'billing-core', 'SUCCEEDED', -3, { sbomUploadId: 'upload-0029', resultJson: JSON.stringify({ ...bomFetchResult, bomId: 'bom-0029', assetId: 'asset-billing-core', componentsIngested: 74 }) }),
 ];

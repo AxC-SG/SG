@@ -42,6 +42,8 @@ public class IngestionJobService {
     public static final String JOB_TYPE_AI_SECURITY_COPILOT_STUDIO = "AI_SECURITY_COPILOT_STUDIO";
     public static final String JOB_TYPE_AI_GRID_RUNTIME_ADAPTER = "AI_GRID_RUNTIME_ADAPTER";
     public static final String JOB_TYPE_AI_GRID_BOM_PROJECTION = "AI_GRID_BOM_PROJECTION";
+    public static final String JOB_TYPE_CBOM_ASSESSMENT = "CBOM_ASSESSMENT";
+    public static final String JOB_TYPE_CBOM_REPORT = "CBOM_REPORT";
     private static final List<String> AI_SECURITY_JOB_TYPES = List.of(
             JOB_TYPE_AI_SECURITY_AWS_BEDROCK,
             JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
@@ -322,7 +324,7 @@ public class IngestionJobService {
         if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
         if (JOB_TYPE_AI_GRID_RUNTIME_ADAPTER.equals(jobType)) return List.of();
         if (!java.util.Set.of(JOB_TYPE_AI_SECURITY_AWS_BEDROCK,JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
-                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB,JOB_TYPE_SCCM_CMDB,JOB_TYPE_GCP_DISCOVERY,JOB_TYPE_PATCH_SYNC).contains(jobType))
+                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_CBOM_ASSESSMENT,JOB_TYPE_CBOM_REPORT,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB,JOB_TYPE_SCCM_CMDB,JOB_TYPE_GCP_DISCOVERY,JOB_TYPE_PATCH_SYNC).contains(jobType))
             throw new IllegalArgumentException("Unsupported retained ingestion job type");
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
             attempts.lockCapacity(tenant.getId());
@@ -346,6 +348,39 @@ public class IngestionJobService {
             });
             ingestionJobRepository.saveAll(jobs);
             return jobs.stream().map(job -> new ClaimedJobRef(tenant.getId(), job.getId(), job.getClaimToken())).toList();
+        }));
+    }
+
+    public IngestionJobAcceptedResponse enqueueCbomAssessmentJob(Tenant tenant, UUID bomId, String requestedBy) {
+        if (tenant == null || bomId == null) throw new IllegalArgumentException("Tenant and BOM are required");
+        return enqueueJob(tenant, JOB_TYPE_CBOM_ASSESSMENT, "cbom-assessment", bomId.toString(),
+                requestedBy == null || requestedBy.isBlank() ? "system" : requestedBy,
+                new IngestionJobPayloads.CbomAssessmentPayload(bomId));
+    }
+
+    /** Durable generation job for one persisted CBOM report artifact; deduplicated per report. */
+    public IngestionJobAcceptedResponse enqueueCbomReportJob(Tenant tenant, UUID reportId, String requestedBy) {
+        if (tenant == null || reportId == null) throw new IllegalArgumentException("Tenant and report are required");
+        return enqueueJob(tenant, JOB_TYPE_CBOM_REPORT, "cbom-report", reportId.toString(),
+                requestedBy == null || requestedBy.isBlank() ? "system" : requestedBy,
+                new IngestionJobPayloads.CbomReportPayload(reportId));
+    }
+
+    /** Queued depth and oldest visible queued time for one job type in one tenant. */
+    public record JobTypeBacklog(long queued, Instant oldestVisibleQueuedAt) { }
+
+    /** Asset identifiers (for CBOM assessment: BOM ids) of jobs of one type in one status. */
+    public java.util.Set<String> assetIdentifiersByTypeAndStatus(Tenant tenant, String jobType, String status) {
+        return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(tx ->
+                new java.util.HashSet<>(ingestionJobRepository.findAssetIdentifiersByJobTypeAndStatus(jobType, status))));
+    }
+
+    public JobTypeBacklog backlogByType(Tenant tenant, String jobType) {
+        return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
+            Instant now = Instant.now();
+            return new JobTypeBacklog(
+                    ingestionJobRepository.countByStatusAndJobType(STATUS_QUEUED, jobType),
+                    ingestionJobRepository.findOldestVisibleQueuedAtByJobType(jobType, now));
         }));
     }
 

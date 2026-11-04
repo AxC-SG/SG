@@ -119,7 +119,7 @@ Tenant/demo invitations use hashed records, fragment links with POST exchange, a
 
 ## Database Setup
 
-Current packaged heads are **platform V8 / tenant V8**, with required tenant range V8–V8. Next versions are platform V9 / tenant V9. Preserve every applied migration; add the next version and update `MigrationCatalogTest`. `mvn clean` removes stale build resources, not database history. Startup/readiness checks shared work structures and grants; individual incompatible tenants remain blocked without taking compatible tenants offline.
+Current packaged heads are **platform V9 / tenant V8**, with required tenant range V8–V8. Next versions are platform V10 / tenant V9. Preserve every applied migration; add the next version and update `MigrationCatalogTest`. `mvn clean` removes stale build resources, not database history. Startup/readiness checks shared work structures and grants; individual incompatible tenants remain blocked without taking compatible tenants offline.
 
 The last observed deployed backend predates the development migration-history reset. Actual deployed histories are unverified. Fresh local V5→V6 checks do not establish deployed upgrade or rollback compatibility. Inspect actual histories read-only and rehearse an authorized representative-clone transition with backup/restore and candidate/rollback digests. Never reset a shared database, replay baselines over existing tables or use `flyway:repair` to disguise differing histories. See [release qualification](<Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 

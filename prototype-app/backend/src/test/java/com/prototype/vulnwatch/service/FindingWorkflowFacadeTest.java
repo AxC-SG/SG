@@ -88,6 +88,7 @@ class FindingWorkflowFacadeTest {
                 tenantSchemaExecutionService,
                 new FindingUpsertService(findingRepository)
         );
+        facade.setSuppressionMutations(TestSuppressionMutations.create());
         doAnswer(invocation -> invocation.getArgument(1, java.util.function.Supplier.class).get())
                 .when(tenantSchemaExecutionService)
                 .run(org.mockito.ArgumentMatchers.nullable(Tenant.class), org.mockito.ArgumentMatchers.<java.util.function.Supplier<Object>>any());

@@ -136,6 +136,20 @@ public interface IngestionJobRepository extends JpaRepository<IngestionJob, UUID
     @Query("SELECT MIN(j.startedAt) FROM IngestionJob j WHERE j.status = :status")
     Instant findOldestStartedAtByStatus(@Param("status") String status);
 
+    /** Asset identifiers of jobs of one type in one status. Tenant-local. */
+    @Query("select distinct j.assetIdentifier from IngestionJob j where j.jobType = :jobType and j.status = :status")
+    List<String> findAssetIdentifiersByJobTypeAndStatus(@Param("jobType") String jobType, @Param("status") String status);
+
+    /** Oldest visible queued job of one type, for queue-age metrics. Tenant-local. */
+    @Query("""
+            select min(j.visibleAt)
+            from IngestionJob j
+            where j.status = 'QUEUED'
+              and j.jobType = :jobType
+              and j.visibleAt <= :before
+            """)
+    Instant findOldestVisibleQueuedAtByJobType(@Param("jobType") String jobType, @Param("before") Instant before);
+
     List<IngestionJob> findByStatus(String status);
 
     @Query("SELECT COUNT(j) FROM IngestionJob j WHERE j.requestedAt >= :since AND j.jobType IN ('REMOTE_ENDPOINT','GITHUB_REPOSITORY','GITHUB_GHCR')")

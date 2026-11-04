@@ -48,6 +48,33 @@ public final class CampaignDtos {
     ) {
     }
 
+    /** A campaign over canonical findings without CVEs (for example CRYPTO findings), with optional bulk assignment. */
+    public record CampaignFromFindingsRequest(
+            String name,
+            String summary,
+            List<UUID> findingIds,
+            Instant dueAt,
+            String assignedTo,
+            String ownerGroup,
+            String launchNote
+    ) {
+    }
+
+    public record CampaignFindingResponse(
+            UUID findingId,
+            String displayId,
+            String title,
+            String findingKind,
+            String severity,
+            String status,
+            String assignedTo,
+            String ownerGroup,
+            Instant dueAt,
+            String verificationStatus,
+            Instant addedAt
+    ) {
+    }
+
     public record CampaignStatusUpdateRequest(
             CampaignStatus status,
             String note

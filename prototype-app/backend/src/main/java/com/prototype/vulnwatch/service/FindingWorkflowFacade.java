@@ -54,6 +54,7 @@ public class FindingWorkflowFacade {
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final FindingUpsertService findingUpsertService;
     private TransactionTemplate writeTransactionTemplate;
+    private CanonicalSuppressionMutationService suppressionMutations;
 
     public FindingWorkflowFacade(
             FindingRepository findingRepository,
@@ -92,6 +93,11 @@ public class FindingWorkflowFacade {
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSuppressionMutations(CanonicalSuppressionMutationService suppressionMutations) {
+        this.suppressionMutations = suppressionMutations;
     }
 
     public ManualFindingCreationResult createManualFindingsForVulnerability(
@@ -254,8 +260,8 @@ public class FindingWorkflowFacade {
                 existingFinding.setConfidenceScore(state.getConfidenceScore() == null ? 0.0 : state.getConfidenceScore());
                 applyManualEvidence(existingFinding, evidence);
                 existingFinding.setPrecedenceTrace(state.getTraceJson());
-                existingFinding.setSuppressionReason(null);
-                existingFinding.setSuppressedUntil(null);
+                suppressionMutations.clearMetadata(existingFinding, userId, "SUPPRESSION_CLEARED_MANUAL_REOPEN",
+                        "Suppression metadata cleared during manual reopen");
                 existingFinding.setLastObservedAt(now);
                 existingFinding.touch();
                 return FindingUpsertService.UpsertAction.REOPENED;
@@ -323,8 +329,6 @@ public class FindingWorkflowFacade {
                     if (severityOverride != null && !severityOverride.isBlank()) {
                         created.setSeverityOverride(severityOverride.toUpperCase());
                     }
-                    created.setSuppressionReason(null);
-                    created.setSuppressedUntil(null);
                     applyManualEvidence(created, evidence);
                     ownershipRuleService.applyOwnerGroupToFinding(created);
                     created.touch();
@@ -346,8 +350,8 @@ public class FindingWorkflowFacade {
                         }
                         existingFinding.setConfidenceScore(0.0);
                         applyManualEvidence(existingFinding, evidence);
-                        existingFinding.setSuppressionReason(null);
-                        existingFinding.setSuppressedUntil(null);
+                        suppressionMutations.clearMetadata(existingFinding, userId, "SUPPRESSION_CLEARED_MANUAL_REOPEN",
+                                "Suppression metadata cleared during manual reopen");
                         existingFinding.setLastObservedAt(now);
                         existingFinding.touch();
                         return FindingUpsertService.UpsertAction.REOPENED;
@@ -581,8 +585,6 @@ public class FindingWorkflowFacade {
         if (severityOverride != null && !severityOverride.isBlank()) {
             finding.setSeverityOverride(severityOverride.toUpperCase());
         }
-        finding.setSuppressionReason(null);
-        finding.setSuppressedUntil(null);
         applyManualEvidence(finding, evidence);
         finding.setPrecedenceTrace(state.getTraceJson());
         ownershipRuleService.applyOwnerGroupToFinding(finding);

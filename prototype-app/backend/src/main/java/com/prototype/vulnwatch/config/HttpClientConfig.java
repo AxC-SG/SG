@@ -146,6 +146,20 @@ public class HttpClientConfig {
         return executor;
     }
 
+    @Bean(name = "cbomAssessmentExecutor")
+    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
+    public ThreadPoolTaskExecutor cbomAssessmentExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("cbom-assessment-");
+        executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
+        executor.initialize();
+        return executor;
+    }
+
     static TaskDecorator tenantContextTaskDecorator() {
         return runnable -> {
             TenantContext.Snapshot captured = TenantContext.capture();

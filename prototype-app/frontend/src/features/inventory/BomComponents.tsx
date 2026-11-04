@@ -4,9 +4,17 @@ import { api, type ApplicationRiskSummary, type BomComponentSummaryItem } from '
 import { AsyncSection } from '../../components/AsyncSection';
 import { FindingSeverityChips } from '../findings/components/FindingSeverityChips';
 import { BomComponentDetailPanel } from './BomComponentDetailPanel';
+import { CbomComponentDetailPanel } from '../cbom/CbomComponentDetailPanel';
 import { ApplicationDetailPanel } from './ApplicationDetailPanel';
 
 const PAGE_SIZE = 100;
+// Rows the server adds for a CBOM's cryptographic assets. Their componentId is the CBOM component id,
+// so they open the CBOM component page instead of the software component detail.
+const CRYPTO_ECOSYSTEM = 'crypto';
+
+function isCrypto(item: BomComponentSummaryItem): boolean {
+  return item.ecosystem === CRYPTO_ECOSYSTEM;
+}
 
 function bomLabel(type: string): string {
   return type === 'AI_BOM' ? 'AI BOM' : type;
@@ -254,7 +262,7 @@ function BomTypeBreakdown({
   );
 }
 
-type BomView = 'list' | 'component-detail' | 'app-detail';
+type BomView = 'list' | 'component-detail' | 'app-detail' | 'cbom-detail';
 
 export function BomComponents() {
   const [view, setView] = React.useState<BomView>('list');
@@ -323,6 +331,15 @@ export function BomComponents() {
         app={selectedApp}
         onBack={() => { setSelectedApp(null); setView('component-detail'); }}
       />
+    );
+  }
+
+  if (view === 'cbom-detail' && selectedComponent) {
+    return (
+      <div className="page-grid ui2-inventory-family">
+        <CbomComponentDetailPanel componentId={selectedComponent.componentId} applicationName={selectedComponent.assetName}
+          onClose={() => { setSelectedComponent(null); setView('list'); }} />
+      </div>
     );
   }
 
@@ -418,18 +435,18 @@ export function BomComponents() {
             className="filter-input"
             placeholder="Filter component name…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); resetPage(); }}
             style={{ flex: '1 1 180px', minWidth: 140 }}
           />
           <select className="filter-input" style={{ width: 'auto' }} value={ecosystemFilter}
-            onChange={(e) => setEcosystemFilter(e.target.value)}>
+            onChange={(e) => { setEcosystemFilter(e.target.value); resetPage(); }}>
             <option value="">All ecosystems</option>
             {ecosystems.map((eco) => (
               <option key={eco} value={eco}>{eco}</option>
             ))}
           </select>
           <select className="filter-input" style={{ width: 'auto' }} value={riskFilter}
-            onChange={(e) => setRiskFilter(e.target.value)}>
+            onChange={(e) => { setRiskFilter(e.target.value); resetPage(); }}>
             <option value="">All risk levels</option>
             <option value="CRITICAL">Critical</option>
             <option value="HIGH">High</option>
@@ -438,7 +455,7 @@ export function BomComponents() {
             <option value="NONE">None</option>
           </select>
           <select className="filter-input" style={{ width: 'auto' }} value={bomTypeFilter}
-            onChange={(e) => setBomTypeFilter(e.target.value)}>
+            onChange={(e) => { setBomTypeFilter(e.target.value); resetPage(); }}>
             <option value="">All BOM types</option>
             <option value="SBOM">SBOM</option>
             <option value="AI_BOM">AI BOM</option>
@@ -487,7 +504,7 @@ export function BomComponents() {
                     <tr
                       key={c.componentId}
                       style={{ cursor: 'pointer' }}
-                      onClick={() => { setSelectedComponent(c); setView('component-detail'); }}
+                      onClick={() => { setSelectedComponent(c); setView(isCrypto(c) ? 'cbom-detail' : 'component-detail'); }}
                     >
                       <td>
                         <div style={{ fontWeight: 600 }}>{c.packageName}</div>
@@ -506,7 +523,14 @@ export function BomComponents() {
                             : <BomTypeTag type="UNMAPPED" />}
                         </div>
                       </td>
-                      <td style={{ fontWeight: 600 }}>{appCount}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{c.assetName}</div>
+                        {appCount > 1 && (
+                          <div className="panel-caption" style={{ fontSize: 10 }}>
+                            +{appCount - 1} other {appCount - 1 === 1 ? 'application' : 'applications'}
+                          </div>
+                        )}
+                      </td>
                       <td><RiskPill level={c.riskLevel} /></td>
                       <td>
                         {c.totalCveCount > 0

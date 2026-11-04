@@ -10,6 +10,7 @@ import com.prototype.vulnwatch.dto.ParsedComponent;
 import com.prototype.vulnwatch.util.BomInputLimits;
 import com.prototype.vulnwatch.util.CpeUtil;
 import com.prototype.vulnwatch.util.PurlUtil;
+import com.prototype.vulnwatch.util.SpdxXmlConverter;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Locale;
@@ -153,16 +154,44 @@ public class SbomParserService {
             if ("bom".equals(root.getLocalName()) && ns != null && ns.startsWith("http://cyclonedx.org/schema/bom/")) {
                 return SbomFormat.CYCLONEDX;
             }
+            if (SpdxXmlConverter.isSpdxXml(root)) {
+                return SbomFormat.SPDX;
+            }
         } catch (Exception e) {
             // fall through
         }
         return SbomFormat.UNKNOWN;
     }
 
+    /**
+     * Returns the SPDX JSON-shaped tree for an SPDX XML document, or null when the content is not
+     * SPDX XML (including CycloneDX XML and JSON), so callers can reuse the SPDX JSON extraction.
+     */
+    public JsonNode readSpdxXml(byte[] content) throws IOException {
+        if (!isXmlBytes(content)) {
+            return null;
+        }
+        try {
+            Element root = buildXmlDocument(content).getDocumentElement();
+            return SpdxXmlConverter.isSpdxXml(root) ? SpdxXmlConverter.toJson(root, objectMapper) : null;
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to parse SPDX XML document", e);
+        }
+    }
+
     private String[] extractXmlVersion(byte[] content) {
         try {
             Document doc = buildXmlDocument(content);
             Element root = doc.getDocumentElement();
+            if (SpdxXmlConverter.isSpdxXml(root)) {
+                String spdxVersion = blankToNull(xmlChildText(root, "spdxVersion"));
+                return new String[] {
+                        blankToNull(xmlChildText(root, "documentNamespace")),
+                        spdxVersion == null ? null : blankToNull(spdxVersion.replace("SPDX-", "").trim())
+                };
+            }
             String serial = blankToNull(root.getAttribute("serialNumber"));
             String version = blankToNull(root.getAttribute("version"));
             return new String[] { serial, version };
@@ -176,6 +205,9 @@ public class SbomParserService {
         try {
             Document doc = buildXmlDocument(content);
             Element bom = doc.getDocumentElement();
+            if (SpdxXmlConverter.isSpdxXml(bom)) {
+                return parseSpdx(SpdxXmlConverter.toJson(bom, objectMapper));
+            }
             Element componentsEl = xmlFindElement(bom, "components");
             if (componentsEl == null) {
                 return result;

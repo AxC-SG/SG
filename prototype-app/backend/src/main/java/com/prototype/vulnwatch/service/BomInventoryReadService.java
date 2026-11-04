@@ -72,7 +72,13 @@ public class BomInventoryReadService {
     private final EolReleaseRepository eolReleaseRepository;
     private final FindingRepository findingRepository;
     private final BomContributionService bomContributionService;
+    /** Ecosystem marker on BOM Components rows that are CBOM cryptographic assets. */
+    public static final String CRYPTO_ECOSYSTEM = "crypto";
+
     private final com.prototype.vulnwatch.service.cbom.CbomIngestionService cbomIngestionService;
+    private final com.prototype.vulnwatch.repo.CbomComponentRepository cbomComponentRepository;
+    private final com.prototype.vulnwatch.service.cbom.CbomReadService cbomReadService;
+    private final com.prototype.vulnwatch.repo.CbomRiskFindingRepository cbomRiskFindingRepository;
 
     public BomInventoryReadService(
             BomIngestionRecordRepository bomRecordRepository,
@@ -88,7 +94,10 @@ public class BomInventoryReadService {
             EolReleaseRepository eolReleaseRepository,
             FindingRepository findingRepository,
             BomContributionService bomContributionService,
-            com.prototype.vulnwatch.service.cbom.CbomIngestionService cbomIngestionService
+            com.prototype.vulnwatch.service.cbom.CbomIngestionService cbomIngestionService,
+            com.prototype.vulnwatch.repo.CbomComponentRepository cbomComponentRepository,
+            com.prototype.vulnwatch.service.cbom.CbomReadService cbomReadService,
+            com.prototype.vulnwatch.repo.CbomRiskFindingRepository cbomRiskFindingRepository
     ) {
         this.bomRecordRepository = bomRecordRepository;
         this.bomSourceRepository = bomSourceRepository;
@@ -104,6 +113,9 @@ public class BomInventoryReadService {
         this.findingRepository = findingRepository;
         this.bomContributionService = bomContributionService;
         this.cbomIngestionService = cbomIngestionService;
+        this.cbomComponentRepository = cbomComponentRepository;
+        this.cbomReadService = cbomReadService;
+        this.cbomRiskFindingRepository = cbomRiskFindingRepository;
     }
 
     @Transactional(readOnly = true)
@@ -137,7 +149,15 @@ public class BomInventoryReadService {
                 workflow -> workflow.getWorkflowStatus().name(),
                 (left, right) -> right
         ));
-        long componentCount = components.size();
+        // A CBOM keeps its assets in cbom_components, so bom_components alone undercounts it.
+        List<UUID> cbomIds = records.stream()
+                .filter(record -> record.getBomType() == BomType.CBOM)
+                .map(BomIngestionRecord::getId)
+                .toList();
+        long cbomAssetCount = cbomIds.isEmpty()
+                ? 0
+                : cbomComponentRepository.countActiveBySourceBomIds(tenant.getId(), cbomIds);
+        long componentCount = components.size() + cbomAssetCount;
         long evidenceCount = evidenceCountByComponent.values().stream().mapToLong(Integer::longValue).sum();
         long vulnerabilityLinkCount = vulnerabilityCountByComponent.values().stream().mapToLong(Integer::longValue).sum();
         long correlatedComponentCount = components.stream()
@@ -205,6 +225,15 @@ public class BomInventoryReadService {
             forward = next.getSupersededBy();
         }
         return lineage;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.prototype.vulnwatch.dto.CbomBomAssetResponse> getCbomAssets(Tenant tenant, UUID bomId) {
+        bomRecordRepository.findById(bomId)
+                .filter(r -> r.getTenant().getId().equals(tenant.getId()))
+                .filter(r -> r.getBomType() == BomType.CBOM)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CBOM record not found"));
+        return cbomReadService.listAssetsForBom(tenant, bomId);
     }
 
     @Transactional(readOnly = true)
@@ -284,7 +313,7 @@ public class BomInventoryReadService {
                 record.getSourceUrl(),
                 record.getChecksumSha256(),
                 inspection,
-                allBomComponents.size(),
+                componentCountFor(record, allBomComponents.size()),
                 evidenceCount,
                 vulnerabilityLinkCount,
                 correlatedComponentCount,
@@ -476,6 +505,8 @@ public class BomInventoryReadService {
             ));
         });
 
+        addCbomAssetRows(tenant, activeBomRecords, assetById, summaries);
+
         summaries.sort(Comparator
                 .comparing(BomComponentSummaryResponse::packageName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(response -> response.version() != null ? response.version() : ""));
@@ -483,6 +514,59 @@ public class BomInventoryReadService {
         int fromIndex = Math.min(Math.max(0, page) * boundedSize, summaries.size());
         int toIndex = Math.min(fromIndex + boundedSize, summaries.size());
         return summaries.subList(fromIndex, toIndex);
+    }
+
+    /**
+     * A CBOM's cryptographic assets live in cbom_components, not bom_components, so they get their
+     * own rows here. The ecosystem is the fixed marker {@link #CRYPTO_ECOSYSTEM}; the grid keys off it.
+     */
+    private void addCbomAssetRows(
+            Tenant tenant,
+            List<BomIngestionRecord> activeBomRecords,
+            Map<UUID, Asset> assetById,
+            List<BomComponentSummaryResponse> summaries
+    ) {
+        Map<UUID, BomIngestionRecord> cbomRecords = activeBomRecords.stream()
+                .filter(record -> record.getBomType() == BomType.CBOM)
+                .collect(Collectors.toMap(BomIngestionRecord::getId, Function.identity()));
+        if (cbomRecords.isEmpty()) {
+            return;
+        }
+        List<com.prototype.vulnwatch.domain.CbomComponent> assets = cbomComponentRepository
+                .findByTenant_IdAndSourceBom_IdInAndActiveTrue(tenant.getId(), cbomRecords.keySet());
+        Map<UUID, List<com.prototype.vulnwatch.domain.CbomRiskFinding>> openFindings = assets.isEmpty()
+                ? Map.of()
+                : cbomRiskFindingRepository
+                        .findByTenant_IdAndComponent_IdIn(tenant.getId(), assets.stream().map(com.prototype.vulnwatch.domain.CbomComponent::getId).toList())
+                        .stream()
+                        .filter(f -> f.getStatus() == com.prototype.vulnwatch.domain.CbomFindingStatus.OPEN)
+                        .collect(Collectors.groupingBy(f -> f.getComponent().getId()));
+        for (com.prototype.vulnwatch.domain.CbomComponent asset : assets) {
+            BomIngestionRecord record = cbomRecords.get(asset.getSourceBom().getId());
+            Asset application = record.getAssetId() != null ? assetById.get(record.getAssetId()) : null;
+            List<com.prototype.vulnwatch.domain.CbomRiskFinding> findings = openFindings.getOrDefault(asset.getId(), List.of());
+            double score = asset.getRiskScore() == null ? 0.0 : asset.getRiskScore().doubleValue();
+            summaries.add(new BomComponentSummaryResponse(
+                    asset.getId().toString(),
+                    asset.getName(),
+                    null,
+                    null,
+                    CRYPTO_ECOSYSTEM,
+                    null,
+                    application != null ? application.getId().toString() : null,
+                    application != null ? application.getName() : "Unassigned",
+                    List.of(BomType.CBOM.name()),
+                    false,
+                    null,
+                    0, 0, 0, 0, 0,
+                    "UNCHECKED",
+                    toApplicationRiskLevel(score),
+                    findings.size(),
+                    (int) findings.stream().filter(f -> f.getSeverity() == com.prototype.vulnwatch.domain.CbomRiskSeverity.CRITICAL).count(),
+                    (int) findings.stream().filter(f -> f.getSeverity() == com.prototype.vulnwatch.domain.CbomRiskSeverity.HIGH).count(),
+                    null
+            ));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -832,6 +916,15 @@ public class BomInventoryReadService {
         return finding.getRiskScore() >= 9 ? "CRITICAL" : finding.getRiskScore() >= 7 ? "HIGH" : "OTHER";
     }
 
+    /** A CBOM's components are its cbom_components assets; every other type uses bom_components. */
+    private int componentCountFor(BomIngestionRecord record, int bomComponentCount) {
+        if (record.getBomType() != BomType.CBOM) {
+            return bomComponentCount;
+        }
+        return (int) cbomComponentRepository.countByTenant_IdAndSourceBom_IdAndActiveTrue(
+                record.getTenant().getId(), record.getId());
+    }
+
     private BomInventoryItemResponse toInventoryItem(BomIngestionRecord r) {
         long evidenceCount = bomComponentEvidenceRepository.countByBomId(r.getId());
         long vulnerabilityLinkCount = bomComponentVulnerabilityLinkRepository.countByBomId(r.getId());
@@ -865,13 +958,15 @@ public class BomInventoryReadService {
                 r.getSourceUrl(),
                 inspection.supportLevel(),
                 inspection.supported(),
-                activeComponents.size(),
+                componentCountFor(r, activeComponents.size()),
                 evidenceCount,
                 vulnerabilityLinkCount,
                 correlatedComponentCount,
                 r.getStatus().name(),
                 r.getIngestedAt(),
-                r.getIngestedBy()
+                r.getIngestedBy(),
+                r.getSourceLabel(),
+                r.getSourceReference()
         );
     }
 
