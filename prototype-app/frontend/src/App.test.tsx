@@ -116,7 +116,7 @@ describe('App test persona switcher', () => {
     ]);
 
     const { default: App } = await import('./App');
-    renderWithProviders(<App />);
+    renderWithProviders(<App />, { route: '/exposure' });
 
     fireEvent.click(await screen.findByLabelText('Open settings menu'));
     expect(screen.getByText('Impersonate User')).toBeInTheDocument();
@@ -259,6 +259,20 @@ describe('App test persona switcher', () => {
     expect(screen.getByText(/Operations is no longer part of the platform view/i)).toBeInTheDocument();
   });
 
+  it.each(['TENANT_ADMIN', 'INVENTORY_ADMIN', 'SECURITY_ANALYST', 'READ_ONLY_AUDITOR'].flatMap((role) => (
+    ['/operations', '/operations/pipeline', '/operations/platform-health'].map((route) => ({ role, route }))
+  )))('redirects $role away from platform-only $route before requesting operations data', async ({ role, route }) => {
+    const auth = await import('./features/auth/api');
+    vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue({ ...TENANT_ADMIN, roles: [role] });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const { default: App } = await import('./App');
+    renderWithProviders(<><App /><LocationProbe /></>, { route });
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/));
+    expect(fetchSpy.mock.calls.some(([url]) => /\/api\/(operations|slo)\//.test(String(url)))).toBe(false);
+  });
+
   it('shows only EOL info in the platform subnav for the EOL view', async () => {
     const auth = await import('./features/auth/api');
     const platformOwner: ActorContext = {
@@ -304,9 +318,10 @@ describe('App test persona switcher', () => {
     vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
 
     const { default: App } = await import('./App');
-    renderWithProviders(<App />, { route: '/' });
+    renderWithProviders(<><App /><LocationProbe /></>, { route: '/' });
 
     expect(await screen.findByRole('link', { name: 'Configurations' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/exposure$/));
     expect(sidebar().getByRole('link', { name: 'Exposure' })).toBeInTheDocument();
     const remediation = within(sidebar().getByRole('group', { name: 'Remediation' }));
     expect(remediation.getAllByRole('link').map((link) => link.textContent)).toEqual(['Vulnerability Findings', 'Campaigns']);
@@ -364,6 +379,26 @@ describe('App test persona switcher', () => {
     expect(screen.queryByText('End-of-Life')).not.toBeInTheDocument();
   });
 
+  it('collapses sidebar sections again when entering a different tenant', async () => {
+    const auth = await import('./features/auth/api');
+    const client = await import('./api/client');
+    const actorSpy = vi.spyOn(auth.authApi, 'getActorContext').mockResolvedValue(TENANT_ADMIN);
+    client.setStoredAuthToken('tenant-a-token');
+    const { default: App } = await import('./App');
+    const view = renderWithProviders(<App />, { route: '/exposure' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Expand Inventory sections' }));
+    expect(sidebar().getByRole('button', { name: 'Collapse Inventory sections' })).toHaveAttribute('aria-expanded', 'true');
+
+    actorSpy.mockResolvedValue({ ...TENANT_ADMIN, tenantId: 'tenant-b', tenantName: 'Customer B' });
+    client.setStoredAuthToken('tenant-b-token');
+    view.rerender(<App />);
+
+    await screen.findByRole('button', { name: 'Customer B TENANT ADMIN: Open account menu' });
+    for (const disclosure of sidebar().getAllByRole('button', { name: /^Expand .* sections$/ })) {
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    }
+  });
+
   it.each([
     '/connect/sources?connectSource=sccm-patch',
     '/connect/sources?connectSource=bigfix-patch',
@@ -411,6 +446,10 @@ describe('App test persona switcher', () => {
     const { container } = renderWithProviders(<><App /><LocationProbe /></>, { route: '/exposure' });
     const toggle = await screen.findByRole('button', { name: 'Expand Fix Intelligence sections' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    for (const disclosure of sidebar().getAllByRole('button', { name: /^Expand .* sections$/ })) {
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      expect(document.getElementById(disclosure.getAttribute('aria-controls') ?? '')).not.toBeVisible();
+    }
     expect(toggle.parentElement).toBe(sidebar().getByRole('link', { name: 'Fix Intelligence' }).parentElement);
     expect(container.querySelector('button button, button a, a a, a button, a [role="button"]')).toBeNull();
     // Group headings label their group and are not controls.

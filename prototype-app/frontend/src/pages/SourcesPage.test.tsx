@@ -21,6 +21,65 @@ const PLATFORM_OWNER: ActorContext = {
 describe('SourcesPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  it('discards legacy keys and submits a new key without writing browser storage', async () => {
+    const storageKey = 'scoutai-nvd-full-sync-api-key';
+    sessionStorage.setItem(storageKey, 'legacy-secret');
+    const write = vi.spyOn(Storage.prototype, 'setItem');
+    const read = vi.spyOn(Storage.prototype, 'getItem');
+    vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
+    vi.spyOn(api, 'getVulnerabilitySourceFilterConfig').mockResolvedValue({
+      sourceSystem: 'nvd', configured: true, isVulnerable: false, hasKev: false, knownRansomwareCampaignUse: false,
+    });
+    vi.spyOn(api, 'saveVulnerabilitySourceFilterConfig').mockResolvedValue({
+      sourceSystem: 'nvd', configured: true, isVulnerable: false, hasKev: false, knownRansomwareCampaignUse: false,
+    });
+    const sync = vi.spyOn(api, 'syncNvdFull').mockResolvedValue({ runId: 'nvd-run', status: 'QUEUED', message: 'Queued' });
+    const renderPage = () => renderWithProviders(
+      <ActorContextState.Provider value={PLATFORM_OWNER}><SourcesPage focusSource="nvd" /></ActorContextState.Provider>
+    );
+    const view = renderPage();
+    const input = await screen.findByLabelText('NVD API Key');
+    expect(input).toHaveValue('');
+    expect(read).not.toHaveBeenCalledWith(storageKey);
+    expect(sessionStorage.getItem(storageKey)).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand the runtime/ }));
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run NVD Full Sync' }));
+    expect(sync).not.toHaveBeenCalled();
+    expect(screen.getByText('An NVD API key is required for the full corpus sync.')).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: '  new-secret  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run NVD Full Sync' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledWith({ apiKey: 'new-secret' }));
+    expect(write.mock.calls.some(([, value]) => String(value).includes('new-secret'))).toBe(false);
+    expect(sessionStorage.getItem(storageKey)).toBeNull();
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    view.unmount();
+    renderPage();
+    expect(await screen.findByLabelText('NVD API Key')).toHaveValue('');
+  });
+
+  it('allows entering a temporary key when browser storage is unavailable', async () => {
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
+    vi.spyOn(api, 'getVulnerabilitySourceFilterConfig').mockResolvedValue({
+      sourceSystem: 'nvd', configured: true, isVulnerable: false, hasKev: false, knownRansomwareCampaignUse: false,
+    });
+    vi.spyOn(api, 'saveVulnerabilitySourceFilterConfig').mockResolvedValue({
+      sourceSystem: 'nvd', configured: true, isVulnerable: false, hasKev: false, knownRansomwareCampaignUse: false,
+    });
+    const sync = vi.spyOn(api, 'syncNvdFull').mockRejectedValue(new Error('NVD unavailable'));
+    renderWithProviders(<ActorContextState.Provider value={PLATFORM_OWNER}><SourcesPage focusSource="nvd" /></ActorContextState.Provider>);
+    const input = await screen.findByLabelText('NVD API Key');
+    fireEvent.change(input, { target: { value: 'temporary-secret' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /I understand the runtime/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run NVD Full Sync' }));
+    await waitFor(() => expect(sync).toHaveBeenCalledWith({ apiKey: 'temporary-secret' }));
+    expect(await screen.findByText(/NVD Full Sync failed: NVD unavailable/)).toBeInTheDocument();
+    expect(input).toHaveValue('temporary-secret');
   });
 
   it('does not enter a refetch loop on source drill-down pages', async () => {

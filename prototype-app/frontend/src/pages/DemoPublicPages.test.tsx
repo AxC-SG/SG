@@ -385,7 +385,7 @@ describe('Demo public pages', () => {
     expect(screen.getByRole('button', { name: /Activate your workspace/i })).toBeEnabled();
   });
 
-  it('routes tenant admins to configurations after credential login', async () => {
+  it.each(['TENANT_ADMIN', 'INVENTORY_ADMIN', 'PLATFORM_OWNER'])('routes tenant %s to Exposure after credential login', async (role) => {
     vi.spyOn(api, 'login').mockResolvedValue({
       token: 'tenant-token',
       tokenType: 'Bearer',
@@ -399,7 +399,7 @@ describe('Demo public pages', () => {
       tenantName: 'Example Co',
       planCode: 'ENTERPRISE',
       demo: true,
-      roles: ['TENANT_ADMIN'],
+      roles: [role],
       platformScope: false
     };
     const getAuthContextSpy = vi.spyOn(api, 'getAuthContext').mockResolvedValue(actor);
@@ -409,7 +409,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<ExposureActorProbe />} />
+        <Route path="/exposure" element={<ExposureActorProbe />} />
         <Route path="/platform/tenants" element={<div>Platform Tenants</div>} />
       </Routes>,
       { queryClient, route: '/login' }
@@ -570,7 +570,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<div>Configurations</div>} />
+        <Route path="/exposure" element={<div>Exposure Dashboard</div>} />
       </Routes>,
       { route: '/login?setup=1&email=alex%40example.com' }
     );
@@ -585,7 +585,7 @@ describe('Demo public pages', () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/configurations" element={<div>Configurations</div>} />
+        <Route path="/exposure" element={<div>Exposure Dashboard</div>} />
       </Routes>,
       { route: '/login' }
     );
@@ -596,7 +596,7 @@ describe('Demo public pages', () => {
     fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: 'password-123' } });
     fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
 
-    await screen.findByText('Configurations');
+    await screen.findByText('Exposure Dashboard');
     expect(loginSpy).toHaveBeenCalledWith('alex@example.com', 'password-123');
   });
 

@@ -123,7 +123,7 @@ function ExposureFunnelWidget({
   return (
     <section className="panel">
       <div className="panel-header">
-        <h3>CVE Exposure Funnel</h3>
+        <h2>CVE Exposure Funnel</h2>
         <span className="panel-caption">Volume reduction from intelligence intake to active remediation</span>
       </div>
       <svg
@@ -521,7 +521,7 @@ export function ExposureDashboardPage() {
       <div className="exec-pair">
         <section className="panel">
           <div className="panel-header">
-            <h3>Grid Exposure</h3>
+            <h2>Grid Exposure</h2>
             <span className="panel-caption">Open findings across your Scout Grid, by asset domain and severity</span>
           </div>
           <AsyncSection
@@ -540,7 +540,7 @@ export function ExposureDashboardPage() {
         {/* Remediation Progress */}
         <section className="panel">
           <div className="panel-header">
-            <h3>Remediation Progress</h3>
+            <h2>Remediation Progress</h2>
             <span className="panel-caption">Organization CVE records by impact state, all severities</span>
           </div>
 
@@ -616,7 +616,7 @@ export function ExposureDashboardPage() {
         {/* Critical CVEs requiring action */}
         <section className="panel">
           <div className="panel-header">
-            <h3>Critical CVEs Requiring Action</h3>
+            <h2>Critical CVEs Requiring Action</h2>
             <button type="button" className="btn-link" onClick={() => navigate(pathForFindingsWithFilters({ severity: ['CRITICAL'], status: ['OPEN'] }))}>
               View all findings
             </button>
@@ -654,7 +654,7 @@ export function ExposureDashboardPage() {
         {/* Where attention is required */}
         <section className="panel">
           <div className="panel-header">
-            <h3>Where Attention Is Required</h3>
+            <h2>Where Attention Is Required</h2>
             <span className="panel-caption">Actionable insights for leadership</span>
           </div>
           <AsyncSection
@@ -713,7 +713,7 @@ export function ExposureDashboardPage() {
         {/* Top affected software */}
         <section className="panel">
           <div className="panel-header">
-            <h3>Most Exposed Software</h3>
+            <h2>Most Exposed Software</h2>
             <button type="button" className="btn-link" onClick={() => navigate(pathForInventoryView('software-identities'))}>
               View all
             </button>
@@ -761,7 +761,7 @@ export function ExposureDashboardPage() {
         {/* Critical exposed assets */}
         <section className="panel">
           <div className="panel-header">
-            <h3>Critical Exposed Assets</h3>
+            <h2>Critical Exposed Assets</h2>
             <button type="button" className="btn-link" onClick={() => navigate(pathForInventoryView('hosts'))}>
               View all
             </button>
@@ -822,7 +822,7 @@ export function ExposureDashboardPage() {
       ) : (
         <section className="panel">
           <div className="panel-header">
-            <h3>CVE Exposure Funnel</h3>
+            <h2>CVE Exposure Funnel</h2>
             <span className="panel-caption">Volume reduction from intelligence intake to active remediation</span>
           </div>
           <AsyncSection

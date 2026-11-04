@@ -92,7 +92,7 @@ Fixtures use fixed time, locale `en-US`, timezone `UTC`, reduced motion and bloc
 
 Accessible control names must include their visible text. The account menu includes the workspace and role, exposure funnel stages include the count and supporting metric, and policy links retain the visible “Open policy” wording before the policy name. Axe-core 4.14 checks these through `label-content-name-mismatch`; run `npm run e2e:sweep -- --checks accessibility --widths 390,768,1280,1440` to compare both themes against the reviewed baseline.
 
-`.github/workflows/quality.yml` runs the quality and browser gates; `frontend-e2e-sweep.yml` runs the scheduled/on-demand full sweep. Unknown presentation files select `FULL_SWEEP`, never zero routes. Add new routes and presentation ownership to `e2e/routes.mjs` and `affected-routes.json` with the screen. Live journeys are separate from default CI.
+`.github/workflows/quality.yml` runs the quality gates and fixture journeys on PRs; `frontend-e2e-sweep.yml` runs the scheduled/on-demand full sweep and visual checks. Locally, unknown presentation files make `select-affected.mjs` return `FULL_SWEEP`, never zero routes. Add new routes and presentation ownership to `e2e/routes.mjs` and `affected-routes.json` with the screen. Live journeys are separate from default CI.
 
 ## Retained archives
 

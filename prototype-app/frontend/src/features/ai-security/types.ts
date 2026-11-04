@@ -431,7 +431,6 @@ export type AiGridPolicyRetirementStatus = {
   unmappedRecordCount: number;
 };
 
-export type AiGridPolicyCandidate = { id: string; title: string; sourceType: string; status: string; technologyId: string | null; rationale: string; riskScore: number; reachScore: number; evidenceMaturity: number; remediationClarity: number; owner: string | null; priorityScore: number };
 
 export type AiGridOwner = {
   artifactId: string;

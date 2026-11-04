@@ -782,7 +782,6 @@ import type {
   AiGridPhase1CorpusCertification,
   AiGridPhase1PreviewCertificationProfile,
   AiGridPhase1PreviewStatus,
-  AiGridPolicyCandidate,
   AiGridPolicySelection,
   AiGridBulkPolicySelectionResult,
   AiGridOwner,
@@ -1792,12 +1791,6 @@ export const api = {
   certifyPlatformAiGridPhase1Corpus: () => request<AiGridPhase1CorpusCertification>(
     '/platform/ai-grid/validation/releases/phase-1/certification-corpus/certify', { method: 'POST' },
   ),
-  getPlatformAiGridPolicyCandidates: () => request<AiGridPolicyCandidate[]>('/platform/ai-grid/policies/portfolio/candidates'),
-  createPlatformAiGridPolicyCandidate: (payload: {
-    title: string; sourceType: string; status: string; technologyId?: string; rationale: string;
-    frameworkMappings: Record<string, unknown>; riskScore: number; reachScore: number;
-    evidenceMaturity: number; remediationClarity: number; owner?: string;
-  }) => request<AiGridPolicyCandidate>('/platform/ai-grid/policies/portfolio/candidates', { method: 'POST', body: JSON.stringify(payload) }),
   updateAiGridPolicySelection: (policyId: string, selection: AiGridPolicySelection, reason?: string) =>
     request<AiGridPolicy[]>(`/ai-policies/${encodeURIComponent(policyId)}/selection`, {
       method: 'PUT',

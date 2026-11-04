@@ -76,6 +76,17 @@ const card = (page, name) => page.locator('.connect-source-card', { has: page.lo
 for (const theme of themes) {
   const tag = (name) => `${name}_${theme}`;
 
+  const unconfiguredAws = await newPage(theme, 1440);
+  await unconfiguredAws.context.route((url) => url.pathname === '/api/connectors/ai-security/aws',
+    (route) => route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }));
+  await unconfiguredAws.page.goto(`${base}/connect?connectSource=ai-security-aws`, { waitUntil: 'networkidle' });
+  check(tag('unconfigured AWS AI connector shows initial setup'),
+    await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).isVisible()
+    && await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').textContent() === 'Not configured');
+  check(tag('unconfigured AWS AI connector does not show a load error'),
+    await unconfiguredAws.page.getByRole('alert').count() === 0 && unconfiguredAws.errors.length === 0);
+  await unconfiguredAws.context.close();
+
   // ── Catalog: sections, health dots, accordion ──────────────────────────
   const tenant = await newPage(theme, 1440);
   const { page, requests, errors } = tenant;

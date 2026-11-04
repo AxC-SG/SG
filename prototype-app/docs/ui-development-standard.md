@@ -19,6 +19,8 @@ main.tsx
 
 `AppShell` currently lives inside `src/App.tsx`; there is no separate shell package. Reuse its sidebar, top bar, workspace context, navigation and theme control. Do not create a second shell for a feature. Pages are lazy-loaded, but application styles load eagerly so direct links and navigation have the same cascade.
 
+Tenant login and the authenticated home route default to the Exposure Dashboard. Explicit login return links retain their destination. Sidebar subsections start collapsed, reset when the workspace changes, and expand only through their disclosure buttons; the submenu layout must respect the `hidden` attribute. These defaults were requested by the user on October 30, 2026.
+
 Keep domain types in `src/features/<feature>/`; `src/types/index.ts` is a re-export surface. Keep substantial domain components in their feature folder. Small reusable cross-feature components belong in `src/components/` (new additions should stay under about 300 lines; existing larger files are not templates to copy). Pure calculations belong in feature helpers or `src/lib/`; they should not fetch data or import React unless they render elements.
 
 TanStack Query owns remote state. Reuse the feature's query hooks, keys, polling constants, invalidation and existing previous-data behavior. Local state owns temporary selections and drafts; URL state owns only the filters/navigation defined by that feature's contract. Persist successful writes through the API and verify them after reload. Do not claim local drafts are server-persisted or turn page-local filters into tenant-wide searches without an explicit behavior change.

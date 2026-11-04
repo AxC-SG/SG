@@ -1,5 +1,6 @@
 package com.prototype.vulnwatch.aisecurity.controller;
 
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.prototype.vulnwatch.aisecurity.service.AiSecurityAccessService;
 import com.prototype.vulnwatch.aisecurity.service.AiSecurityAwsConnectorService;
 import com.prototype.vulnwatch.aisecurity.service.AiSecurityAwsConnectorService.ConnectionTestResponse;
@@ -11,6 +12,8 @@ import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.IngestionJobAcceptedResponse;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.WorkspaceService;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,8 +50,12 @@ public class AiSecurityConnectorController {
     }
 
     @GetMapping
-    public ConnectorConfigResponse get() {
-        return connectorService.get(tenant());
+    public ResponseEntity<Object> get() {
+        ConnectorConfigResponse config = connectorService.get(tenant());
+        // Spring writes a null controller return value as an empty body. Query clients
+        // need a JSON value to distinguish an unconfigured connector from a read failure.
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+                .body(config == null ? NullNode.getInstance() : config);
     }
 
     @PutMapping

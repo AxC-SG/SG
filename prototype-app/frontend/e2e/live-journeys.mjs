@@ -481,14 +481,14 @@ async function inventoryJourney(theme) {
   await hostRows.first().waitFor({ timeout: 15000 });
   const hosts = await hostRows.count();
   check(tag('hosts list renders'), hosts > 0, String(hosts));
-  const hostButton = hostRows.first().getByRole('button').first();
-  const hostName = (await hostButton.innerText()).trim();
+  const hostLink = hostRows.first().getByRole('link').first();
+  const hostName = (await hostLink.innerText()).trim();
   await page.getByPlaceholder('hostname, OS, software...').fill(hostName);
   await settle(page);
   check(tag('host search narrows'), (await hostRows.count()) >= 1 && (await hostRows.count()) <= hosts, String(await hostRows.count()));
   await page.getByPlaceholder('hostname, OS, software...').fill('');
   await settle(page);
-  await page.getByRole('button', { name: hostName, exact: true }).first().click();
+  await page.getByRole('link', { name: hostName, exact: true }).first().click();
   await page.waitForURL(/\/inventory\/hosts\/[^/?]+\?returnTo=/, { timeout: 10000 }).catch(() => null);
   check(tag('host opens detail with returnTo'), new URL(page.url()).searchParams.get('returnTo') === '/inventory/hosts', here(page));
   await settle(page);
@@ -520,7 +520,7 @@ async function inventoryJourney(theme) {
   await page.locator('tr.si-version-row').first().waitFor({ timeout: 10000 }).catch(() => null);
   check(tag('row expands versions'), (await page.locator('tr.si-version-row').count()) > 0);
   check(tag('expansion fetches identity detail once'), requests.filter((request) => /^\/inventory\/software-identities\/[^/]+$/.test(apiPath(request.url()))).length === 1);
-  await identityRows.first().locator('button').first().click();
+  await identityRows.first().getByRole('link').first().click();
   await page.waitForURL(/\/inventory\/software-identities\/[^/]+/, { timeout: 10000 }).catch(() => null);
   check(tag('identity opens detail'), /^\/inventory\/software-identities\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
   await page.getByRole('tablist', { name: 'Software identity sections' }).waitFor({ timeout: 15000 }).catch(() => null);
@@ -534,10 +534,10 @@ async function inventoryJourney(theme) {
   await page.goto(`${base}/inventory/ai/declared-resources`, { waitUntil: 'networkidle' });
   await settle(page);
   await shot(page, `declared-resources_${theme}`);
-  // Rows navigate on click and hold no link; the setup-actions table above has rows too.
+  // Scope to the resource table: the setup-actions table above has links too.
   const declared = page.locator('table', { has: page.getByRole('columnheader', { name: 'Last declared' }) }).locator('tbody tr');
   if (await declared.count()) {
-    await declared.first().locator('td').first().click();
+    await declared.first().getByRole('link').first().click();
     await page.waitForURL(/\/inventory\/ai\/declared-resources\/[^/]+/, { timeout: 10000 }).catch(() => null);
     check(tag('declared resource opens detail'), /\/inventory\/ai\/declared-resources\/[^/]+$/.test(new URL(page.url()).pathname), here(page));
     await settle(page);

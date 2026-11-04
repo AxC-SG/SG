@@ -1,0 +1,2997 @@
+{
+  "sourceRevision": "05a64dfaa3d9fe195f8ab6a5b4914412db4e8c86",
+  "image": "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+  "totalSnapshots": 172,
+  "changedSnapshots": 164,
+  "unchangedSnapshots": 8,
+  "changes": [
+    {
+      "snapshot": "admin-users-dark-1280.png",
+      "beforeSha256": "348a769fa25b29f3da1f52ce8c287f4ed55334e2b6d544d99f24bb74151ff791",
+      "afterSha256": "0032655efac799fdef3dcae944261ccfdcbb4b19dce958e759a97619dd994f0e",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/admin/users",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "admin-users-dark-390.png",
+      "beforeSha256": "1e19bba73e86bb5849b5decfe2555f5bda0b24328d350b3a2e3a7abace819972",
+      "afterSha256": "93100781d41431c17f2a69d99dafc42cb91ae935da724db02ca361c2923ae2d5",
+      "beforeSize": [
+        390,
+        1016
+      ],
+      "afterSize": [
+        390,
+        1021
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/admin/users",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "admin-users-light-1280.png",
+      "beforeSha256": "681de0872815d1be71cafb33227f1eb7c6f9e108c30b168e09a185bd98438c23",
+      "afterSha256": "b4f35ce798d0033c63a975d7e6ba74a01d8204d6010d258bdcfa3b0555ce5506",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/admin/users",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "admin-users-light-390.png",
+      "beforeSha256": "591e98158365caadeef9087479cea8e9b92ef92048cf877a2364e37968e65730",
+      "afterSha256": "43dece98e38d8d858b75a0fa93f7f5dc7b3c0b393e78b3804f350d58450ebf64",
+      "beforeSize": [
+        390,
+        1016
+      ],
+      "afterSize": [
+        390,
+        1021
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/admin/users",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "configurations-sla-dark-1280.png",
+      "beforeSha256": "b28d791b2722af9b751ba6b7a545e583fa33fd5f33adc1a60a4386efc3be2c71",
+      "afterSha256": "a1e1cf2ffc69aa4c1e549af6dbefe1e351c60d0e2cc3342b4334ad4463ff4d53",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/configurations/sla",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "configurations-sla-dark-390.png",
+      "beforeSha256": "f88cf129e73f1da9bc2f7b471ad15c32aa1c678fcde744d18c81226c02607f9d",
+      "afterSha256": "a977bb39a271364aa3345b00204883f8e07653aa688832b7ba3a25638b6afc93",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        1618
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/configurations/sla",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "configurations-sla-light-1280.png",
+      "beforeSha256": "05200f173afde416ee3d10d09b75e9ee88d0afeb08993d0c178ffb090f2fb964",
+      "afterSha256": "0c55308c6540f95bcfd885d89f1e5b02cb91f164be56f7e5c465e60178001fd1",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/configurations/sla",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "configurations-sla-light-390.png",
+      "beforeSha256": "39b54d8a26b61b10190f429ea561f5c915ae1a5649fc444bfdd8e787b111fc71",
+      "afterSha256": "9a500ba88c870f1837945b51518190b46a7f6e97f19abda0a257a25f59bc5e8e",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        1618
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/configurations/sla",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-connectSource-patch-sccm-dark-1280.png",
+      "beforeSha256": "9b827b0224a882f8f4beebd7247db5e32d574bb9cf80ac205dabb22fa612cde0",
+      "afterSha256": "189dce45c0d11eeda539de3e023f16d2ff18e13fd70f8c4453eb44a498f2d15f",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=patch-sccm",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-connectSource-patch-sccm-dark-390.png",
+      "beforeSha256": "6be475c7ffc4e3d5f244b6ed220f23cb7b08a8573ac495a08a3518347f2a35fc",
+      "afterSha256": "386f34f7167f8d1f69c7a2d0487060e3e4c57895cff5f3f8b1a259b22bc1c3d1",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=patch-sccm",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-connectSource-patch-sccm-light-1280.png",
+      "beforeSha256": "883b62d11d035b3f4d63a8ab4204a2ce07c8ab8525fbbcea25d851f27041c98d",
+      "afterSha256": "44c41f0894c286e4fcb1f9f64dacc07b5433dfba75f4746ca95a9b150ee03804",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=patch-sccm",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-connectSource-patch-sccm-light-390.png",
+      "beforeSha256": "5811c075a065005ac19a5da85e77d9439b411d595e78dff5cc49754fa8e0960a",
+      "afterSha256": "dcb820a1a77d43fef8fba339b18a1351994408f53440a4dedb76d56a250dddc4",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=patch-sccm",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-connectSource-servicenow-cmdb-dark-1280.png",
+      "beforeSha256": "9b6055b2df7f8fc2d2b56f92b1fea00142bc82caea94b3f4b3e2fcfd1cd6d6d9",
+      "afterSha256": "fd9e54b452b02fd180512c711b3fb3faf51b881d40a1eef6d95ad6b131f053f4",
+      "beforeSize": [
+        1280,
+        1030
+      ],
+      "afterSize": [
+        1280,
+        1038
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=servicenow-cmdb",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-connectSource-servicenow-cmdb-dark-390.png",
+      "beforeSha256": "71cb81e1939b14222a41a653fda9411c627434296aa67c9ac624abea9386f58e",
+      "afterSha256": "0e4afe4d71af5450f44952beeaa56a5a630e9fa5e00c8dcf281c41397a905748",
+      "beforeSize": [
+        390,
+        1325
+      ],
+      "afterSize": [
+        390,
+        1330
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=servicenow-cmdb",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-connectSource-servicenow-cmdb-light-1280.png",
+      "beforeSha256": "30cb83befe970a6bd722988c1fd7b55a383b7474f8f162f5fe9e864df6f6c298",
+      "afterSha256": "416c7ea8420a426bdf84eeb04501c969cd5686e4bcf8644ae347172a75a66670",
+      "beforeSize": [
+        1280,
+        1030
+      ],
+      "afterSize": [
+        1280,
+        1038
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=servicenow-cmdb",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-connectSource-servicenow-cmdb-light-390.png",
+      "beforeSha256": "45f195bad99c7d28d56f0c8a9f52f2ede7fc8ce28c09ccdc664bfcdb2590c211",
+      "afterSha256": "0d4765e83d32630f95240b3b8bef02514fbbd75a25fa79bed1177530c9ffeda5",
+      "beforeSize": [
+        390,
+        1325
+      ],
+      "afterSize": [
+        390,
+        1330
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect?connectSource=servicenow-cmdb",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-dark-1280.png",
+      "beforeSha256": "a968f08b33dffabad22a6200183900e38c6763a1a6683200434f3ae07a87fe46",
+      "afterSha256": "aeb640106ae13f515cdbdfe75167c1ec631008c8fd38a69a61f21df9be9f206f",
+      "beforeSize": [
+        1280,
+        2028
+      ],
+      "afterSize": [
+        1280,
+        2061
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-dark-390.png",
+      "beforeSha256": "7b5c18dfdc1d6fa312e075b672bdcf5c6ef1121a51895f9ced115a31a9d8fc8f",
+      "afterSha256": "d3252e10b62b829387740b7f50522bd10b1a905e5197f837c65c9838510059db",
+      "beforeSize": [
+        390,
+        3220
+      ],
+      "afterSize": [
+        390,
+        3540
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-light-1280.png",
+      "beforeSha256": "484da9f05d4ad2e49849b48c6a15481c62220823df169ac199fb931df24880d1",
+      "afterSha256": "d8f0a31c9b42e451d222fdf34e1246624f4f849bd769434fffb4f222b97f107c",
+      "beforeSize": [
+        1280,
+        2028
+      ],
+      "afterSize": [
+        1280,
+        2061
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-light-390.png",
+      "beforeSha256": "eb86100b747c6f2bb1ef808d3a10a4b5e6f075a9a815bd4f6cb8c9bac3475bea",
+      "afterSha256": "4953b8fd88933533b6a17ab8a53856429bb25ca3b01d541716bbc14edbce9eb7",
+      "beforeSize": [
+        390,
+        3220
+      ],
+      "afterSize": [
+        390,
+        3540
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-run-history-dark-1280.png",
+      "beforeSha256": "ff07ba65ce10d5a02c41a0b401313804aac3d9994c2396a6b161c7dc7af890cc",
+      "afterSha256": "8a34c5001b61f594e22bc8205591ad7b51d3f797bda7422012757d3b99c93d4e",
+      "beforeSize": [
+        1280,
+        914
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect/run-history",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-run-history-dark-390.png",
+      "beforeSha256": "457729b17a55156ec42a90ca0abf9a0378d1c3783f4039a0104acb153dea7eac",
+      "afterSha256": "21c7d3fb6e09982b9e4107300786e9cbf758576452e6cbb7b54ffc2ed56310d7",
+      "beforeSize": [
+        390,
+        1167
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect/run-history",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "connect-run-history-light-1280.png",
+      "beforeSha256": "472df2554a20462ecbd44082c9e1a16bfedccefdac54ff33442890728a789548",
+      "afterSha256": "881967236e07370dbfa7ca51ccbfa84b5fac7b2d338b1ee44772d2532a55411a",
+      "beforeSize": [
+        1280,
+        914
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect/run-history",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "connect-run-history-light-390.png",
+      "beforeSha256": "e9a20ba12a7e862b50b2f4a560dab0f21d1834dd83df5e6227a560a49cc24266",
+      "afterSha256": "1ab0ecbc236b1cfd525678b1d0aca8a9184da157a73c7c6e1b00571823652585",
+      "beforeSize": [
+        390,
+        1167
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/connect/run-history",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "demo-request-dark-1280.png",
+      "beforeSha256": "978d4a02524c6a9271bccce12568018c6b03f3e36b45d9e843189d1f4599e169",
+      "afterSha256": "2eeb565a1a6a6eb9ac9933855e2595e074adbefd7d68338bb921da6665b5c600",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing company-email helper and CAPTCHA status guidance in the public request form.",
+      "route": "/demo/request",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "demo-request-dark-390.png",
+      "beforeSha256": "c25b0b0356d1d19c49d5b9636b73ed8881b8f4968a8f5e6a438e8f7de7d191e9",
+      "afterSha256": "7d8403729f2b014de19fbc9cc0a5217af991654056d677dff828f9c6e8792721",
+      "beforeSize": [
+        390,
+        1225
+      ],
+      "afterSize": [
+        390,
+        1323
+      ],
+      "expectedChange": "Existing company-email helper and CAPTCHA status guidance in the public request form.",
+      "route": "/demo/request",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "demo-request-light-1280.png",
+      "beforeSha256": "978d4a02524c6a9271bccce12568018c6b03f3e36b45d9e843189d1f4599e169",
+      "afterSha256": "2eeb565a1a6a6eb9ac9933855e2595e074adbefd7d68338bb921da6665b5c600",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing company-email helper and CAPTCHA status guidance in the public request form.",
+      "route": "/demo/request",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "demo-request-light-390.png",
+      "beforeSha256": "c25b0b0356d1d19c49d5b9636b73ed8881b8f4968a8f5e6a438e8f7de7d191e9",
+      "afterSha256": "7d8403729f2b014de19fbc9cc0a5217af991654056d677dff828f9c6e8792721",
+      "beforeSize": [
+        390,
+        1225
+      ],
+      "afterSize": [
+        390,
+        1323
+      ],
+      "expectedChange": "Existing company-email helper and CAPTCHA status guidance in the public request form.",
+      "route": "/demo/request",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "exposure-dark-1280.png",
+      "beforeSha256": "121a086200d14e7572e699ca09e4f3e271eb4d7fab49d2051cc415f07eb31aca",
+      "afterSha256": "01d2df570d18532e7e48255a7abd615215e293fd18a786b8d3ce5ac40068c09a",
+      "beforeSize": [
+        1280,
+        2025
+      ],
+      "afterSize": [
+        1280,
+        2201
+      ],
+      "expectedChange": "Grouped shared navigation, shared route H1, existing Exposure widget ordering and KPI presentation.",
+      "route": "/exposure",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "exposure-dark-390.png",
+      "beforeSha256": "4739539310d8f9081ea81009ed957195f6d57b9046fbeccc355d797d858720f1",
+      "afterSha256": "4cd1b530ef1c7ddae92065ffeaea0066a04a3e61e3ff33c75431bb4bad3166d0",
+      "beforeSize": [
+        390,
+        3431
+      ],
+      "afterSize": [
+        390,
+        3535
+      ],
+      "expectedChange": "Grouped shared navigation, shared route H1, existing Exposure widget ordering and KPI presentation.",
+      "route": "/exposure",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "exposure-light-1280.png",
+      "beforeSha256": "005cada40e3cf4fa2d0981ad133666c71674a02680598e7bb61cee3ed10e2d11",
+      "afterSha256": "ca644c42779c1b8a8235158dcf29c5e013884a163a015c1672e8b77b644c3795",
+      "beforeSize": [
+        1280,
+        2025
+      ],
+      "afterSize": [
+        1280,
+        2201
+      ],
+      "expectedChange": "Grouped shared navigation, shared route H1, existing Exposure widget ordering and KPI presentation.",
+      "route": "/exposure",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "exposure-light-390.png",
+      "beforeSha256": "096e63c116b14dcb6a780c7862b4288c880e4a127ace46adf0fde2740915ddd1",
+      "afterSha256": "50e6ae44cb8022b1ed59bab5f718e812672315d7de72b9a8e4eabacbad80c519",
+      "beforeSize": [
+        390,
+        3431
+      ],
+      "afterSize": [
+        390,
+        3535
+      ],
+      "expectedChange": "Grouped shared navigation, shared route H1, existing Exposure widget ordering and KPI presentation.",
+      "route": "/exposure",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-F-10420-dark-1280.png",
+      "beforeSha256": "52ba510439173c83036e7e28f97826ac1e4230c606f8bf039c474f6daa67119f",
+      "afterSha256": "d40502b8a1af12f09a26f163e15357e92589407cad741bfbda10e578fce30a28",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing explicit finding-not-found state.",
+      "route": "/findings/F-10420",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-F-10420-dark-390.png",
+      "beforeSha256": "6e1e22b87df0742b7ae4afd8c24f5ac4053edc9470bbd491592574e672d4f636",
+      "afterSha256": "9bb6a3115bfdb980f44bc6f773726b49cb405ee9149319ed31bee0eedb2396cc",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing explicit finding-not-found state.",
+      "route": "/findings/F-10420",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-F-10420-light-1280.png",
+      "beforeSha256": "9725b706deeee17737df17acf7aa1c93cf57c2a3c9acf3b71bd011106040043d",
+      "afterSha256": "0e9e5c2ed1fa79589cb4e40b59af01ba4ae974f052769ebff358130dbc20a3dc",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing explicit finding-not-found state.",
+      "route": "/findings/F-10420",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-F-10420-light-390.png",
+      "beforeSha256": "d4fd38699cc20ab1b6d3721462f2f16430ee65115f142010dece142a9aa873a5",
+      "afterSha256": "d1fe5700638511bc8d925e28537a5a5edb31c7f9391b88576ff770fe5f4f35ae",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing explicit finding-not-found state.",
+      "route": "/findings/F-10420",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-dark-1280.png",
+      "beforeSha256": "b5b115dc4036b12904d2790d6629aaf817566984ccbc15cd4a77bea735a1a16a",
+      "afterSha256": "f7598c33f9a153e1c72f6f21c32b7f28bbf191cf72f2c8eac0bd724a5c249dea",
+      "beforeSize": [
+        1280,
+        994
+      ],
+      "afterSize": [
+        1280,
+        1002
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-dark-390.png",
+      "beforeSha256": "cb60ed9cde4e0f807f1d00406efc04911c3be4b308c32be1b6c5c4df6ff7e703",
+      "afterSha256": "1b1d2dcef8a61974fe52d5270f7ed509fcf116dd15f6599eb601d5859fd55c94",
+      "beforeSize": [
+        390,
+        1543
+      ],
+      "afterSize": [
+        390,
+        1548
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-exposures-dark-1280.png",
+      "beforeSha256": "da8a6a86d5466e893752fc0134cf27f562d292e566dd5dd3dcc05acf6a79f111",
+      "afterSha256": "cddcee869e574851feeb1e816345fa45b2aaf437cae20959d0f9a4b845d967b5",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/exposures",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-exposures-dark-390.png",
+      "beforeSha256": "852d910e650973c3703a74ab803e1b5c96bbf297420b3b801373f456d1fc71be",
+      "afterSha256": "9592f7d86839b78ba5f26513532cb5065317000d1900a732eb9a8ade4e5b5783",
+      "beforeSize": [
+        390,
+        958
+      ],
+      "afterSize": [
+        390,
+        963
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/exposures",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-exposures-light-1280.png",
+      "beforeSha256": "cfe94ab29145372f2d1569ff639f3cbff107c385c261e775e73cc05bd2379894",
+      "afterSha256": "a2d13d6de48d5a47f4f6b00b7b46edc52971733e6386386bfbcf668fdae4a906",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/exposures",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-exposures-light-390.png",
+      "beforeSha256": "4bd21f3838161c36e92ad510043a613d3e746cfa9ba7c4a08a39ab9fdd2a9b1d",
+      "afterSha256": "3b283a20e9d62dc05b36ca01e9fbf19c297c1ef7ea6e42b56923dc6c027dc8cf",
+      "beforeSize": [
+        390,
+        958
+      ],
+      "afterSize": [
+        390,
+        963
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/exposures",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-light-1280.png",
+      "beforeSha256": "b39cc63f125fd69630245e04e654748f6dce043b6c889c865821ae3905595b07",
+      "afterSha256": "c92f9f5114ae303d04ff3cb9c007cf2522328d36f35fc1a50ad63f6c6ee39996",
+      "beforeSize": [
+        1280,
+        994
+      ],
+      "afterSize": [
+        1280,
+        1002
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-light-390.png",
+      "beforeSha256": "8a8cb5580ea68bd5937790712c19b16dce14aa9ebf9050bb54f1264731914ab6",
+      "afterSha256": "61b97df19e47db3f84f4f34d7228dfdb0c7af27f9c9b5acab64e60d02d8cdc86",
+      "beforeSize": [
+        390,
+        1543
+      ],
+      "afterSize": [
+        390,
+        1548
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-vulnerabilities-dark-1280.png",
+      "beforeSha256": "45e6e996d92dfac5f7d089631ad12789cd5fc61ee0825454d219556c860ed911",
+      "afterSha256": "ed9847d3dac46b74aa985fe5492bc18e37d3183943418632740d8a8359b4f4ae",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/vulnerabilities",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-vulnerabilities-dark-390.png",
+      "beforeSha256": "79f056ca7cd28294d9670cc66fbb8326ac2433594b6028197ee85d0da595e693",
+      "afterSha256": "e3d040a4fd5eb45da12b468c76293b54b5676add97450f1f6b83bae94b8891b4",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/vulnerabilities",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-ai-vulnerabilities-light-1280.png",
+      "beforeSha256": "cca07af37e4a37f9c839106aade79fd6ec51d81144f14c219a9d2ddf30f76587",
+      "afterSha256": "61e17ff339f4d93483a76fc4c7cbb96729c1d89ebfbd2db93ab02a1981e61d57",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/vulnerabilities",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-ai-vulnerabilities-light-390.png",
+      "beforeSha256": "4939795ee3627719c9d14942e95f90e997f31c89fba13adbed93a23bb72da2a6",
+      "afterSha256": "93b8cf15042274c313750d682d7666aca974f7f15cb8e33abbebe66ceb70d8ba",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings/ai/vulnerabilities",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-dark-1280.png",
+      "beforeSha256": "5e1f01f55a85214ff507f3362840e802938b46fb2c9c0051b6ec4ff8b3f2eef1",
+      "afterSha256": "ce326f7da76b24b07288562fced846b728e8e97f49f2b0da9830cdd77e0d4bb3",
+      "beforeSize": [
+        1280,
+        2266
+      ],
+      "afterSize": [
+        1280,
+        2270
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-dark-390.png",
+      "beforeSha256": "3634eb7af8f1e86129c11fcaf976d90a2caa3b6c16b17c8073e0422495344f5d",
+      "afterSha256": "28f32d5a77a65576c34c84dc7a504cf701a91d54d41e6e8b7b18ee6ee107586e",
+      "beforeSize": [
+        390,
+        2856
+      ],
+      "afterSize": [
+        390,
+        2878
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "findings-light-1280.png",
+      "beforeSha256": "9b75214335a9a5eaa669d126b87f4fcad5a2a171e5033a9aaa1d984f3b3d3c4b",
+      "afterSha256": "966533b62b86df434214f10a8617548c933c8400b9c59ccfe67c3ed9355c24ba",
+      "beforeSize": [
+        1280,
+        2266
+      ],
+      "afterSize": [
+        1280,
+        2270
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "findings-light-390.png",
+      "beforeSha256": "7d95ce5cd717593450036461b9ba471a2c6888c28c3e7d52d2954fcca5aaaff5",
+      "afterSha256": "fecc851e01baec5ce62b6ab37c3e17fc573a972fe09fa8ada3ce3a9266d227aa",
+      "beforeSize": [
+        390,
+        2856
+      ],
+      "afterSize": [
+        390,
+        2878
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/findings",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-all-dark-1280.png",
+      "beforeSha256": "585f912f4cd41fed2cabd3aa763bce00c69545a16a63981eaa603b802404cd57",
+      "afterSha256": "8f15668d7bd4ef54d1ae1bcd6083ce8484208d8f2518a6127f265e7a9d0cbcd7",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/all",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-all-dark-390.png",
+      "beforeSha256": "c29ccf5f9d6ff3b9b506f1066d4a9cb4e89a729ebec0192bc4d8dab755fd19e8",
+      "afterSha256": "b52a20a2e3451ab27f53fd05e9131661ece2e1760dc65c0fd039f43bff8a5f7a",
+      "beforeSize": [
+        390,
+        1302
+      ],
+      "afterSize": [
+        390,
+        1237
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/all",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-all-light-1280.png",
+      "beforeSha256": "1a0bec8b94df47242eabfcd37439fd89c7a9c8bcf1c8e4a5161607bc631d9334",
+      "afterSha256": "c0831e35ddbae3927a5f60f989e5335a8cffefc449bd9089169905545cdc9c43",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/all",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-all-light-390.png",
+      "beforeSha256": "4660f1d107647d4b02e300b5f3401c7eb689d176d14463a988169efb98e58a76",
+      "afterSha256": "4a67eb611b8c0b90a3619ccb4b09c9a10576cd58206e9e27d79d3ff605021817",
+      "beforeSize": [
+        390,
+        1302
+      ],
+      "afterSize": [
+        390,
+        1237
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/all",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-compensating-controls-dark-1280.png",
+      "beforeSha256": "96018234b63cbb98d154debbeb01a5f804bc93e5e71c1aa7ee632f6e4f292747",
+      "afterSha256": "d0ba3938274440f290bb75e446bffba2ce17271ffe302fa8dd7fdf89dc3bd3a6",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/compensating-controls",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-compensating-controls-dark-390.png",
+      "beforeSha256": "b1eba8e3fc30f329c8c9ca4e1109c500989b9605e49f9d1cfe7a5a828ee81e24",
+      "afterSha256": "d0e4ba3c45dc897449b79cb0c38d2394368d778138d132c283ee91ca5fa3f4a2",
+      "beforeSize": [
+        390,
+        1234
+      ],
+      "afterSize": [
+        390,
+        1213
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/compensating-controls",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-compensating-controls-light-1280.png",
+      "beforeSha256": "8597381df41bdbf12a8d98cbb78b9fb9e7ee9f38486c9485477450412f70a665",
+      "afterSha256": "ea20f792c28d34794f7a632626d8da876d6d85a01fbea480d453d92427839c01",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/compensating-controls",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-compensating-controls-light-390.png",
+      "beforeSha256": "6ba1d9a3f40063bc61821ca0966072ef125086db3892cd3674904bd5e98df823",
+      "afterSha256": "4b25f045471b8a82e0cae31254904925e3221b296cd968df56d3224dfbd30c53",
+      "beforeSize": [
+        390,
+        1234
+      ],
+      "afterSize": [
+        390,
+        1213
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/compensating-controls",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-kb5034441-dark-1280.png",
+      "beforeSha256": "7d2f08a48ab85604a6a4c3c2b91c455f6994e12e3d55349dd6f5e145c4296fc1",
+      "afterSha256": "30003cecbb184249b3358573f76cce6d0b70e7d232dc0161043111e979df0db0",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-kb5034441",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-kb5034441-dark-390.png",
+      "beforeSha256": "2b7825ce952436a77aadd51727739c54c50313187f54cdad8945631c13375ca7",
+      "afterSha256": "e3fe581ba93b0c20ed3a383c68fc772a258dd6ea7317a8d94c1217142c2e320d",
+      "beforeSize": [
+        390,
+        1219
+      ],
+      "afterSize": [
+        390,
+        1180
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-kb5034441",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-kb5034441-light-1280.png",
+      "beforeSha256": "92dc0877aeaf658935190ca82e921fd39f033f502f2ebb55ea7fca0899c3f3cb",
+      "afterSha256": "4098f272d5031f271f94375a896592dc7600dff9a9394b2efe6cc142ee6adee3",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-kb5034441",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-kb5034441-light-390.png",
+      "beforeSha256": "b056127cf05f238144118abf90334db440104eaaa1c4392a135b7650464af8ad",
+      "afterSha256": "783f740da21e534eebad2b8e8cf94455db08bf24bedc1270f5fcf267934e10a6",
+      "beforeSize": [
+        390,
+        1219
+      ],
+      "afterSize": [
+        390,
+        1180
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-kb5034441",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-smbv1-dark-1280.png",
+      "beforeSha256": "f4621958d9673bd73f1f67de723ff944fce5f5c72cd5f5e57371e0b848f48f8d",
+      "afterSha256": "3f4bd9c65ef7ee79c1ebfe02a33ef29823176e72e5d3fbc988579260d19a26ee",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-smbv1",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-smbv1-dark-390.png",
+      "beforeSha256": "6de2017bd591e8f936167201b3d5c20337bb059463609658f2f593ff05fc6933",
+      "afterSha256": "3a7904fed227f16a24309f7287bbe80c14ff7f0bbe91316f2fe7e22821859e59",
+      "beforeSize": [
+        390,
+        1059
+      ],
+      "afterSize": [
+        390,
+        1024
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-smbv1",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-smbv1-light-1280.png",
+      "beforeSha256": "8d6fd2aa7b20d66983e0f432265fa2eab446faf08e2286b0c97784930984d52e",
+      "afterSha256": "735246843f65808cd8a131ec860eb15c15f1bfaa4b253e455e617f0220bd74b7",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-smbv1",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-details-fix-smbv1-light-390.png",
+      "beforeSha256": "6116cc372f378378fe56f777ec731cde36554308e49ec17f9e68bc176ba95af5",
+      "afterSha256": "3309f06d57d00c185f982eabfc73dc1bb2667022067efa0f2e53a55f1b8c4cf9",
+      "beforeSize": [
+        390,
+        1059
+      ],
+      "afterSize": [
+        390,
+        1024
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/details/fix-smbv1",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-patches-dark-1280.png",
+      "beforeSha256": "4b03c026cbcf39620ee9efa898b26216dd5c3c0f090eea50b010d2b246abc89f",
+      "afterSha256": "967867341a104804f17c334b3412c0ce3acde26b09e5b222fd0c12a91d898f19",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/patches",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-patches-dark-390.png",
+      "beforeSha256": "577d138ee4a3a3dcd8477c4f37110949bb4819d4e8aa76055a00a9d831f0b92e",
+      "afterSha256": "a1c032f130f43cb54d189b5c42ab66fc0c934baf279d2f7f3af472dd9ff29500",
+      "beforeSize": [
+        390,
+        1295
+      ],
+      "afterSize": [
+        390,
+        1275
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/patches",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-patches-light-1280.png",
+      "beforeSha256": "418b494deb68aae84b77905e9b5fc95187a53d38d3a9066a746044cb783c2add",
+      "afterSha256": "6500d04f84889721631ea8f0d23ef67849ad44f0ba0436393308c0744331119e",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/patches",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-patches-light-390.png",
+      "beforeSha256": "47cd4fc401c55071e71f61a35a0a21895634b65cd64cb12f9db5cc34b8a58eab",
+      "afterSha256": "34462141d031488979872ac09e765288d35480c26eb3ecb7b7cb8754ae2eabb9",
+      "beforeSize": [
+        390,
+        1295
+      ],
+      "afterSize": [
+        390,
+        1275
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/patches",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-workarounds-dark-1280.png",
+      "beforeSha256": "b8ccad2788763f6451daa0b94ef96339dfcdb85728dfd9e85ea6141b08b0e0fe",
+      "afterSha256": "92f12d2df8acae7b28728848b98872c48c6d53a2f5228cd22f1a3752b0c1187e",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/workarounds",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-workarounds-dark-390.png",
+      "beforeSha256": "94cd792831af6ae919330de2fb7f94e21ecbeed4e3e732b816f6e69cdf982cfe",
+      "afterSha256": "c6a016cfbe164eb33e8add9a182fc6ac29849bf6cdd11b4e46a9209313d14ca9",
+      "beforeSize": [
+        390,
+        1203
+      ],
+      "afterSize": [
+        390,
+        1183
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/workarounds",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "fix-intelligence-workarounds-light-1280.png",
+      "beforeSha256": "2af1867382b8952a9bbe1a9b539af72d677361482479befa688f45d61add8f9c",
+      "afterSha256": "decec835e1d7878b6ca307e6ec04e08417c7357f931190456c903a81894be528",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/workarounds",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "fix-intelligence-workarounds-light-390.png",
+      "beforeSha256": "a7dd751407a2ada0188399f6acf1f1ebf9863abff0b725dae901963458016ea5",
+      "afterSha256": "4e39bb1a0d98a0b4aec989736b5563562a5a25b57efbc0fd980bf34d2ab11df3",
+      "beforeSize": [
+        390,
+        1203
+      ],
+      "afterSize": [
+        390,
+        1183
+      ],
+      "expectedChange": "Shared navigation/title and existing Stage 6 Fix Intelligence header/form/table adoption.",
+      "route": "/fix-intelligence/workarounds",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-ai-ai-agent-claims-triage-dark-1280.png",
+      "beforeSha256": "36dcbb7695dec7fb25160a7900e8643aa442e0da325353afe247f9a30d50cd4a",
+      "afterSha256": "d9b00fd7a53c441e57f8f005311e60e1ce122da9b449e4867adbac409fe3ea2b",
+      "beforeSize": [
+        1280,
+        2391
+      ],
+      "afterSize": [
+        1280,
+        2399
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-ai-ai-agent-claims-triage-dark-390.png",
+      "beforeSha256": "14748fc4de8a59430865c856d676e0b9a72d8718db947f8882e6b10df90428d5",
+      "afterSha256": "ca208bc5226a7aa902a91504752f5463193038ff184fa02c3ede9805577eb044",
+      "beforeSize": [
+        390,
+        2988
+      ],
+      "afterSize": [
+        390,
+        2993
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-ai-ai-agent-claims-triage-light-1280.png",
+      "beforeSha256": "2ff93d95b2c5e8c4bfa0bda5495d5da4297e951acba847fbbd035296e043d5b8",
+      "afterSha256": "e766e95e71ff976413acc81172aa6698c61b5d4b783ee5c08509dd86bd9801c1",
+      "beforeSize": [
+        1280,
+        2391
+      ],
+      "afterSize": [
+        1280,
+        2399
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-ai-ai-agent-claims-triage-light-390.png",
+      "beforeSha256": "7d6df02dff478856ba4d340141f3b9822ebda33f23de21458644e9a6c41a24db",
+      "afterSha256": "cfcd9ae175ddacf484cf80b2df4c9372534239d6606cf3845e90c8f4a3270604",
+      "beforeSize": [
+        390,
+        2988
+      ],
+      "afterSize": [
+        390,
+        2993
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-ai-dark-1280.png",
+      "beforeSha256": "9ee9c9648eaef6b4454ee8f538454a8ca94bfc6deaa6a9444a56e7f9352ff987",
+      "afterSha256": "a2458826a8eec0b43ce10386e904f2e91f2abede45b3760d34461bce4916ff73",
+      "beforeSize": [
+        1280,
+        970
+      ],
+      "afterSize": [
+        1280,
+        978
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-ai-dark-390.png",
+      "beforeSha256": "c665bd8290789a992feeda614635dbd082dc0a92d3bc695f14a4bed4bbd60b4d",
+      "afterSha256": "5210598c4888d7cb9c39d19b3a25f5f184b82216859ea54b4f5852dab594e805",
+      "beforeSize": [
+        390,
+        1909
+      ],
+      "afterSize": [
+        390,
+        1914
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-ai-light-1280.png",
+      "beforeSha256": "5c297433fd80f3da2219347f5d1c014b922e37ffd4e29230650ab65d32ec7413",
+      "afterSha256": "0cf06c8f7b3df570c02013cdcc2ea810cc7619b9a397139dfbc7394d84163201",
+      "beforeSize": [
+        1280,
+        970
+      ],
+      "afterSize": [
+        1280,
+        978
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-ai-light-390.png",
+      "beforeSha256": "93a22827e1c4dc4637d9664ff1062414d1adee9c74ba09d373b0097e4f66089e",
+      "afterSha256": "045935e25c035329e41a23755f599ac352219dc7a3a32d2522a9741455637bbd",
+      "beforeSize": [
+        390,
+        1909
+      ],
+      "afterSize": [
+        390,
+        1914
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/ai",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-cloud-resources-dark-1280.png",
+      "beforeSha256": "b2249014a11f65bb9021206d67771f70684156ee80343c4b9e77786a13bbf48b",
+      "afterSha256": "c7fbe113149c19a009daa9e1a7fdd3ff96c844c533ef2763ebabbc0e8557b0ae",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing async empty-state notice.",
+      "route": "/inventory/cloud-resources",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-cloud-resources-dark-390.png",
+      "beforeSha256": "ce84d5dd4255fbed33af2c570536e5f1e85d4d31d6bf89b04c638ba17df1dab3",
+      "afterSha256": "58e47b3ef6e29916df6431c0f5c5be669db06a99d881f9ae5a1a2cc9d1801943",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing async empty-state notice.",
+      "route": "/inventory/cloud-resources",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-cloud-resources-light-1280.png",
+      "beforeSha256": "b9f822320a8fc6a9888cc317a76fdf5cf66467ba3149e304b8575a465faeb5a7",
+      "afterSha256": "5c5dfbe3749d8212f68a0a8088171cf67da7094e7e41943d2e32bac9449b4a2d",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing async empty-state notice.",
+      "route": "/inventory/cloud-resources",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-cloud-resources-light-390.png",
+      "beforeSha256": "683e8be4e6b8cf283c84640978b924bca01d2694fef8ab94b6d1e4680707135e",
+      "afterSha256": "162ffd81f7ea6e2d41a22cdd3ae479e374988686a188d518a9c315ac0d4d85c4",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Shared navigation/title and existing async empty-state notice.",
+      "route": "/inventory/cloud-resources",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-dark-1280.png",
+      "beforeSha256": "eac527c5f23dcb553a44f7661856d81e9996f6a57af839554c4f50cf0baa4aaa",
+      "afterSha256": "4801291c2866d86e9566721aefc278ef476842aaa2b477365dbb93a03dccbc9e",
+      "beforeSize": [
+        1280,
+        1611
+      ],
+      "afterSize": [
+        1280,
+        1619
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-dark-390.png",
+      "beforeSha256": "035295e63d337c731a11ce32267b30f59457ea3cd2b54a9cf09d61a708fe6d37",
+      "afterSha256": "71589eeb0aae7b601544c6301ade399506dbca5b70b9b17750cd431576e7ab63",
+      "beforeSize": [
+        390,
+        4239
+      ],
+      "afterSize": [
+        390,
+        4244
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-hosts-dark-1280.png",
+      "beforeSha256": "fc852c195996ae087f483162dab76d4db965d6d9c96d6082e3d02ec69a95b7d3",
+      "afterSha256": "0dd4305277183412465963c6879072c252c8cf6c5d45623f8ae93a77292914d7",
+      "beforeSize": [
+        1280,
+        2789
+      ],
+      "afterSize": [
+        1280,
+        2779
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-hosts-dark-390.png",
+      "beforeSha256": "edd202a1c8cdc1c3509e59262a4326566ebbeff6bc35b1364c3177e60bb0a1d8",
+      "afterSha256": "c2f946917d38185fe62db6c8995baea7c1cd561a5088d60f611dee4a2f8404aa",
+      "beforeSize": [
+        390,
+        3474
+      ],
+      "afterSize": [
+        390,
+        3461
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-hosts-host-prod-api-gw-01-dark-1280.png",
+      "beforeSha256": "8aff4145afc89ab46e16623dd59a870097e8fbcf8092bc6f0a42f4d9991bd2eb",
+      "afterSha256": "e3e9901fbc2263b6141d1bfb056550c9fb53141dabea39fb154cd5aff2489608",
+      "beforeSize": [
+        1280,
+        1733
+      ],
+      "afterSize": [
+        1280,
+        1499
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-hosts-host-prod-api-gw-01-dark-390.png",
+      "beforeSha256": "55b365dc7c3d5f49fb3679e5e251ed97c0af538760d4b23ca8fce8a9f85ee669",
+      "afterSha256": "f994526479dd5d805bab8dd700cdd6777a850d290e7caef5f2ef188ea6c4644a",
+      "beforeSize": [
+        390,
+        2875
+      ],
+      "afterSize": [
+        390,
+        2638
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-hosts-host-prod-api-gw-01-light-1280.png",
+      "beforeSha256": "9a4f008a649f3799d93bd460fee127b46673b0dd95a187968070786afb3386de",
+      "afterSha256": "91776f84f23b1c86bc13fc025c94ebdcb5c587f45867106df2ee65e9acccb9e3",
+      "beforeSize": [
+        1280,
+        1733
+      ],
+      "afterSize": [
+        1280,
+        1499
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-hosts-host-prod-api-gw-01-light-390.png",
+      "beforeSha256": "43573f43d0b760166db7a3ecaaa045cdfc0dc36e7c911a78a0368e8320a246f7",
+      "afterSha256": "a2c82950d235e10d966bc0f2b5a6f775fb1553a0e8ad688a647bca3c11c963be",
+      "beforeSize": [
+        390,
+        2875
+      ],
+      "afterSize": [
+        390,
+        2638
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-hosts-light-1280.png",
+      "beforeSha256": "9639307940a484452e6bdf749e4683617bb067d5906f56a383ce4d163ffdd980",
+      "afterSha256": "66fbe94e4346208221e01526fa402eb653aae44372a42cebd72b834b007c196f",
+      "beforeSize": [
+        1280,
+        2789
+      ],
+      "afterSize": [
+        1280,
+        2779
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-hosts-light-390.png",
+      "beforeSha256": "4bc6913984da81908ec159ffa91e1d3757bef320c8a872549a36711a2eb5b439",
+      "afterSha256": "7fa4524e7c7877ae05b0cc0692b32241629ddece50cb0af52870e4886a7e5d15",
+      "beforeSize": [
+        390,
+        3474
+      ],
+      "afterSize": [
+        390,
+        3461
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/hosts",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-light-1280.png",
+      "beforeSha256": "49bf6b3a61c0e15404fec04bfc473c4722d6246811047f83077103ad4c860a88",
+      "afterSha256": "1d00cf9ba478da19e05c88dc08d87deac170d3b04912070bd22a883e4cdc81a5",
+      "beforeSize": [
+        1280,
+        1611
+      ],
+      "afterSize": [
+        1280,
+        1619
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-light-390.png",
+      "beforeSha256": "c0ec7d8db155aeee6fa4fc9f386e44c1eed500b321137b6fcdc6f7fe7685f7ae",
+      "afterSha256": "0eefe286991de93023e5b043f15ca2129e3817706f801ac4a5db8c8eb42094a7",
+      "beforeSize": [
+        390,
+        4239
+      ],
+      "afterSize": [
+        390,
+        4244
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-software-identities-si-log4j-core-dark-1280.png",
+      "beforeSha256": "521c15d04c271dd5075fcc04e681ccebfb3075e7b6e1dc0471bca9219307ebd7",
+      "afterSha256": "d6aff3aec35747a04a9705207ce66f2cb7e2c72afbe93697491168a17bf0c8ab",
+      "beforeSize": [
+        1280,
+        2036
+      ],
+      "afterSize": [
+        1280,
+        2044
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-software-identities-si-log4j-core-dark-390.png",
+      "beforeSha256": "a15b6e75afc9c77af388e6dbd226aabc0a1f5fd70f288e22c47aab6b6f47a722",
+      "afterSha256": "a08c02561c599d2d8958241d88c5c952fb08ad4c2a5c70ba083500cc7fd82a3b",
+      "beforeSize": [
+        390,
+        2612
+      ],
+      "afterSize": [
+        390,
+        2525
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "inventory-software-identities-si-log4j-core-light-1280.png",
+      "beforeSha256": "877a2d97c04e3273e900baf29ad195a30f667af32c9ad18b3e5ac0e14c2e8576",
+      "afterSha256": "26539fb25a6a15fa5ceabe41f7ea992d372e7a5e78ebb0ca3c34077bf8c5dff4",
+      "beforeSize": [
+        1280,
+        2036
+      ],
+      "afterSize": [
+        1280,
+        2044
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "inventory-software-identities-si-log4j-core-light-390.png",
+      "beforeSha256": "d87e3f7a57cb7a6f3aa1aa16ed2a6ad904da6572dddb55b47e2d2d8f678d4f36",
+      "afterSha256": "4615f07824704650c8214bcb3558227f8240b192adb89529f2c6f6390e0d72cc",
+      "beforeSize": [
+        390,
+        2612
+      ],
+      "afterSize": [
+        390,
+        2525
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "login-dark-1280.png",
+      "beforeSha256": "2c4c027766822ed3aab88c7a66edd971ee547d297b61f0d36f69b687f3381681",
+      "afterSha256": "a45f29db28ec0ac5d210fffc596a8b0bc5ba94d1fc1908cf576d049e4bb8a48c",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/login",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "login-dark-390.png",
+      "beforeSha256": "8c767277e580cd6cf217467b1dfd304ba2eee6ccf7fd1d572ed36d3ed07017f1",
+      "afterSha256": "c0e2d37aedcfea1759c2292728a66ac3e228fd1e86f8647c41c156b4bad0fde8",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/login",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "login-light-1280.png",
+      "beforeSha256": "c77f3604aa996e1b4370ddb9360da9215f33780fdf683720ebe774ab58a966aa",
+      "afterSha256": "229cb49dc15dfa2542ac2db0a56bbde580383b7e2c3b1c2fe1114c4fb9ef7e6c",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/login",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "login-light-390.png",
+      "beforeSha256": "fcb7291341c0505faa9aca0d56faa84ad2d422f3d3debfde7d6164640341fc04",
+      "afterSha256": "54a16320f3af4f5e66ffb963e61d93f959ada70533f5c435adc4fbbd8801b749",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/login",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-ai-policies-azure-foundry-content-filter-blocking-dark-1280.png",
+      "beforeSha256": "c3cbd8970d44cd95b0adc49cdca7d3bf8e860156b88f8859cd43b258a6604127",
+      "afterSha256": "fe7301513f884e5fe70aa497ca3e5d175355d66590fd55a4b805ef6613580928",
+      "beforeSize": [
+        1280,
+        1153
+      ],
+      "afterSize": [
+        1280,
+        1145
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-ai-policies-azure-foundry-content-filter-blocking-dark-390.png",
+      "beforeSha256": "a1cae9d6f149c087defb166a4add37d7ff7c476e871f26e09bcb1cd8e938729b",
+      "afterSha256": "f7b6c22aa4fb7bd9a646e43fdd054163fa83ecd698bf02fc2411bc16c87c7c05",
+      "beforeSize": [
+        390,
+        1636
+      ],
+      "afterSize": [
+        390,
+        1646
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-ai-policies-azure-foundry-content-filter-blocking-light-1280.png",
+      "beforeSha256": "3962357106500b81803665cce873ce05e02ffcb28869feaed10554a923d4fbb7",
+      "afterSha256": "ee84b939c1029e2b4019a0dbf97faeac41b4aa4054dd10261e1b831e12480d67",
+      "beforeSize": [
+        1280,
+        1153
+      ],
+      "afterSize": [
+        1280,
+        1145
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "actor": "platform",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-ai-policies-azure-foundry-content-filter-blocking-light-390.png",
+      "beforeSha256": "cc7068ef45952f5f4601e88d9a1bf39bafd1b8740c8bc21736b9d1b0e78d26ef",
+      "afterSha256": "4fd96f2bb30c907ac6be8db8745276ed394eb79bbf40a70c712bd4d1329bae17",
+      "beforeSize": [
+        390,
+        1636
+      ],
+      "afterSize": [
+        390,
+        1646
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "actor": "platform",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-ai-policies-dark-1280.png",
+      "beforeSha256": "68b2a991c7f449d1512412ed197ed268c9ce9ee17296dad537b2f509fe2a507b",
+      "afterSha256": "31e45974081b4a944eb2b9570007875dc6724fc304ca645c5a3bb2e53c010286",
+      "beforeSize": [
+        1280,
+        1876
+      ],
+      "afterSize": [
+        1280,
+        1913
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-ai-policies-dark-390.png",
+      "beforeSha256": "58c575351cc0c80f486a97e68f0fe0cea7ebfd8d21b7467a7beb85b0da3f9a18",
+      "afterSha256": "2838e96c054a3a98547187a486eefe754831766ebd576851c491ce75765ac29e",
+      "beforeSize": [
+        390,
+        2412
+      ],
+      "afterSize": [
+        390,
+        2417
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-ai-policies-light-1280.png",
+      "beforeSha256": "0cf6b7261fe7094b44d4b2de3669959b9689d56204606b4bb79c695865cf2dd8",
+      "afterSha256": "846fee1236684899f9988e36cf0b04b70dee871b36aea60c9f2817af8804cfc4",
+      "beforeSize": [
+        1280,
+        1876
+      ],
+      "afterSize": [
+        1280,
+        1913
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies",
+      "actor": "platform",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-ai-policies-light-390.png",
+      "beforeSha256": "979bae95867ce482cdfcc52cb0aa0eb3d3e9e3daf995d8e91bfd00f1ca79b95c",
+      "afterSha256": "939a5acee44242aa6c7da5a97dd957e0cade92c368f0159bd0007440bfaafe61",
+      "beforeSize": [
+        390,
+        2412
+      ],
+      "afterSize": [
+        390,
+        2417
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/ai-policies",
+      "actor": "platform",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-operations-dark-1280.png",
+      "beforeSha256": "a236dfbf7f4d228467ebd887c76ff68c555b1f21569bf956f8c6b173648e6b95",
+      "afterSha256": "67c3bd8d481f6d0710eac90cc502343419b7cd56542fb028362c058e79edd417",
+      "beforeSize": [
+        1280,
+        956
+      ],
+      "afterSize": [
+        1280,
+        964
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/operations",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-operations-dark-390.png",
+      "beforeSha256": "d13dee157da8e6f2aed7c6aee49022f8df5615ae7ba0365f14c67f2f840abe4e",
+      "afterSha256": "8319c13d6a0e3c1ece4fbe59a5ae7f13596f31b0e5b13bd12103d6562d2c0a4c",
+      "beforeSize": [
+        390,
+        1578
+      ],
+      "afterSize": [
+        390,
+        1583
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/operations",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-operations-light-1280.png",
+      "beforeSha256": "181fe49fd0a3e449b087a3c90a5f82ed620dbbd024ed4e96dd568aa1b74644ca",
+      "afterSha256": "b30ff996948eb42663d74485a85a041a797730f3827b5356d0f01f28769caea0",
+      "beforeSize": [
+        1280,
+        956
+      ],
+      "afterSize": [
+        1280,
+        964
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/operations",
+      "actor": "platform",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-operations-light-390.png",
+      "beforeSha256": "8bedeb36187779a9bc8f47a81508adc9c15b7816230d3788d1a57ec4928111fd",
+      "afterSha256": "bfcd35c263110f17ec0af6dca328a5be2f66709baca36e0fa2bd0ede1c94e675",
+      "beforeSize": [
+        390,
+        1578
+      ],
+      "afterSize": [
+        390,
+        1583
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/operations",
+      "actor": "platform",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-tenants-dark-1280.png",
+      "beforeSha256": "1252fbabf05b3c7452cbe36831fe5463674148105348c461122ada88b8668215",
+      "afterSha256": "71ec229639ab209a7f48a9ae8ea5eaa6dd875991f3a6e77f652c36008389b3c9",
+      "beforeSize": [
+        1280,
+        1398
+      ],
+      "afterSize": [
+        1280,
+        1469
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/tenants",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-tenants-dark-390.png",
+      "beforeSha256": "9c23e2b5037a4073b1282fd3761433c94a5b6da6020979cde20530ea6e278552",
+      "afterSha256": "6d070e129c98b5f9f8f92daa2d4a7fe9514e45a6606684e0ddb50d894aa5eb2f",
+      "beforeSize": [
+        390,
+        2024
+      ],
+      "afterSize": [
+        390,
+        2028
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/tenants",
+      "actor": "platform",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "platform-tenants-light-1280.png",
+      "beforeSha256": "c2702a5c70b8a6cd953ee5f6dca67770680aeada5b1804af897067b0579b9172",
+      "afterSha256": "42ac41a142f8073d797994c74edd14c220342a488006fc14e37db3d2cc283bac",
+      "beforeSize": [
+        1280,
+        1398
+      ],
+      "afterSize": [
+        1280,
+        1469
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/tenants",
+      "actor": "platform",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "platform-tenants-light-390.png",
+      "beforeSha256": "a107d6d93da13d78ab00263a16c39c657be0513a844e86b22352bdf02cca58be",
+      "afterSha256": "469bbb75fcff9085f8d1055a318df8cff5195fa9749d1c8bec2cb1f8088022a1",
+      "beforeSize": [
+        390,
+        2024
+      ],
+      "afterSize": [
+        390,
+        2028
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/platform/tenants",
+      "actor": "platform",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "policies-dark-1280.png",
+      "beforeSha256": "28b4412174a5bde20316215432022bea6a908420e69e20e33b0f6af4ef2df0ed",
+      "afterSha256": "f71891ee3434d055088cd7f2bd5d804de71449688bfa54b1361a8ff4e8a01780",
+      "beforeSize": [
+        1280,
+        1815
+      ],
+      "afterSize": [
+        1280,
+        1901
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "policies-dark-390.png",
+      "beforeSha256": "f481b67aea0e6c3072566491ce87de632221a9c8ef4a0f8041515aa158ad01db",
+      "afterSha256": "4931c6a9106572fcc9ddd9ef639966ee567845e81d77cb76c133f379b8d3a686",
+      "beforeSize": [
+        390,
+        2752
+      ],
+      "afterSize": [
+        390,
+        2801
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "policies-light-1280.png",
+      "beforeSha256": "79007880a6a428e516b418222c04be5c45ac10c64d95d5f2f085c46fa5b67607",
+      "afterSha256": "a7b4282b81f13c9397af667f266023e8553239eaab1bb00e5a80124cfb28b04e",
+      "beforeSize": [
+        1280,
+        1815
+      ],
+      "afterSize": [
+        1280,
+        1901
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "policies-light-390.png",
+      "beforeSha256": "2642d6f56c23aec3a2d18b13b7579408f4ccd1f116197dac5420bf8302ab2614",
+      "afterSha256": "26ebce740bb9ba76bcd7a237381546c85e4e0b2bec5385be8ceae3c298dfa3b1",
+      "beforeSize": [
+        390,
+        2752
+      ],
+      "afterSize": [
+        390,
+        2801
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "policies-policy-aws-2-dark-1280.png",
+      "beforeSha256": "f3edb50c71b7285a1b98a89bad45b7d2681094ebbe6ee87808610d8b37ae2577",
+      "afterSha256": "4b108b54296b7f6c001151be5fae22a8ae3c7fdfde7a8d857606c565aac40308",
+      "beforeSize": [
+        1280,
+        1422
+      ],
+      "afterSize": [
+        1280,
+        1414
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies/policy.aws.2",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "policies-policy-aws-2-dark-390.png",
+      "beforeSha256": "94665acdff1aa9581dff457626dbcf4dec06e653ac97f3068c05518e111be15f",
+      "afterSha256": "aa87f8fe0afb431fab617e47fddd10a06b3314d2957d55395d4987dc64199318",
+      "beforeSize": [
+        390,
+        2153
+      ],
+      "afterSize": [
+        390,
+        2163
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies/policy.aws.2",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "policies-policy-aws-2-light-1280.png",
+      "beforeSha256": "316ae66aa4fc69020b862790e7ffbe712fa4a25c887440151bd0851ba436f8fa",
+      "afterSha256": "c9e067b2da68886e650a7a2b24716ea628020a0ff4d99c8e9407a28d43853854",
+      "beforeSize": [
+        1280,
+        1422
+      ],
+      "afterSize": [
+        1280,
+        1414
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies/policy.aws.2",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "policies-policy-aws-2-light-390.png",
+      "beforeSha256": "8539e05ad95d7b78de1f10a6ccbb826d9283552218cca2beda06a2507fdce702",
+      "afterSha256": "c460bac722a5399704b5058fbd9ca4baabadf92416b140f2c415a765d3f83dc7",
+      "beforeSize": [
+        390,
+        2153
+      ],
+      "afterSize": [
+        390,
+        2163
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/policies/policy.aws.2",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "setup-dark-1280.png",
+      "beforeSha256": "41c19dd7c6906cbb4e0314b633029c97500de831e37820ae994ff10328899c70",
+      "afterSha256": "dfb5c23a3f849a7ae9fa734c4cfe18b84c5909d9ff74e45f50cd1f60eb637f18",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/setup",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "setup-dark-390.png",
+      "beforeSha256": "114ebeaeb70b2fc621f775927c6a1e99c5a4c5c4798452e6f9ee58a5dbe97386",
+      "afterSha256": "43f65bc2ead2c732e31c014c27da7445f80338fdf86237468aa77fc8c86357f7",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/setup",
+      "actor": "signedOut",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "setup-light-1280.png",
+      "beforeSha256": "c9eec0d992102c45b23728330f0d865dae7cd868bba104361c3c22bc5014f2d9",
+      "afterSha256": "a012d8255d12d9fcffc976e7ac52f1e8f4c49a850c437e60c27cfff59f8db545",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/setup",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "setup-light-390.png",
+      "beforeSha256": "08ef4e60a287e442238238bd17764db1ab8922c331db0cffada4e4d3a19d9e4d",
+      "afterSha256": "e2c5b2112f91f52b3e6a64247ec320ea2bfdeec047be4907d67db6e0c1c2f254",
+      "beforeSize": [
+        390,
+        900
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing recovery guidance and accessible auth-entry field states.",
+      "route": "/setup",
+      "actor": "signedOut",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-campaign-openssl-q4-dark-1280.png",
+      "beforeSha256": "78a98deabe2bc31f525e5acbec4274c9c3dcf6297a960c24fe3178696acdfe59",
+      "afterSha256": "3068e372c8d187f2fafa9686aaaa119a9701b66f71bef6549961ba8370453ea7",
+      "beforeSize": [
+        1280,
+        1145
+      ],
+      "afterSize": [
+        1280,
+        1180
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-campaign-openssl-q4-dark-390.png",
+      "beforeSha256": "8ebe203684e6ef61e7a942b112d7ddabcee6ffa74ec10a18a675d3b3a2c4d7ab",
+      "afterSha256": "6d0e78fc96fe08f9a12403fa49baf47167b718f3263953b23753173e3a44f845",
+      "beforeSize": [
+        390,
+        2342
+      ],
+      "afterSize": [
+        390,
+        2315
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-campaign-openssl-q4-light-1280.png",
+      "beforeSha256": "923b59b37ecadd0cea91ee250303713ddb7dab4a3c898e54827a9fdc0e461272",
+      "afterSha256": "26913ad4fcf23b7732401f43c7ca656c25c21ebba01b24aff61b2ba12261689c",
+      "beforeSize": [
+        1280,
+        1145
+      ],
+      "afterSize": [
+        1280,
+        1180
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-campaign-openssl-q4-light-390.png",
+      "beforeSha256": "a3e47030bebc48074a6a885ad10a5e9269da34cdb41043bbad02522b36ae50af",
+      "afterSha256": "27e5a7a6204bb6403fd42d8afa98ab5b727df5c911efc063113316fc3b827567",
+      "beforeSize": [
+        390,
+        2342
+      ],
+      "afterSize": [
+        390,
+        2315
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-dark-1280.png",
+      "beforeSha256": "e8a9c1d486f9336c6f84364aac2035a5eb36909e9556143825f460a44f2cba66",
+      "afterSha256": "712bf314a7dfaec8908a6c35641cced3e96e8816ab4a9958cac772254d8c1f83",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-dark-390.png",
+      "beforeSha256": "b5b3522890a905cf3896635f3e6ece8ebe2a435db925e960f54c931c80d4a62e",
+      "afterSha256": "2cd29e79732e35826ec0981a309b1e709d158a99cae7899a0f0e4e64aef8c902",
+      "beforeSize": [
+        390,
+        1017
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-light-1280.png",
+      "beforeSha256": "41d875fe624e50fad8872f39adb89d174eec33965105836e9fd4747d0a61908c",
+      "afterSha256": "883f26bc50f3311b35ad1b649ba795f56e0668528ce24c52da2d59a10fd29d62",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-campaigns-light-390.png",
+      "beforeSha256": "5da8427011190a7a318576889193a3294d04dd0811923796194164b92277e73d",
+      "afterSha256": "11733721f96fc5dd39eb7d52014a5717dd5a88240f9891ca253e5a620322b1d2",
+      "beforeSize": [
+        390,
+        1017
+      ],
+      "afterSize": [
+        390,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/campaigns",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-dark-1280.png",
+      "beforeSha256": "0ed91fb2f7e8c02bf81f251134cb6731a5d01e55b0d462e4389d9040179e261f",
+      "afterSha256": "00df1b3196fb1102409557f13f824a0c5bccf441cff32f10f60af3eb65a44f4c",
+      "beforeSize": [
+        1280,
+        2093
+      ],
+      "afterSize": [
+        1280,
+        2101
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-dark-390.png",
+      "beforeSha256": "67b5b4a2c1e02102a499bc14472fa28d630fc46c8c21a389b42167e3f060dfc5",
+      "afterSha256": "1be08ef2b7482ff9cd5998884b69c3408ce88ea0dfbb7190dcc3af969e8d5e1b",
+      "beforeSize": [
+        390,
+        4132
+      ],
+      "afterSize": [
+        390,
+        4137
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-light-1280.png",
+      "beforeSha256": "39efe2ce9ad1af8213ff4fc037d4a988e89d3a28423733af9d74e9f9e6422298",
+      "afterSha256": "314dd2650469699e98a820bb4c8fea3e48b5dc29fba99b630c2eba8ce804c743",
+      "beforeSize": [
+        1280,
+        2093
+      ],
+      "afterSize": [
+        1280,
+        2101
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-light-390.png",
+      "beforeSha256": "144b245dfbd0f5d759a5ea8193ac3b958ad5366b8204abe05b78d4851ef75709",
+      "afterSha256": "1f3a6d2727ddb63645428006e2e37c3c8dfc8aad03656e0e478a7555cd79c9d0",
+      "beforeSize": [
+        390,
+        4132
+      ],
+      "afterSize": [
+        390,
+        4137
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-assets-dark-1280.png",
+      "beforeSha256": "2add872d098d70ec9ed1f15d5a39994b2794fa1068aad85d81e70a435fcba04d",
+      "afterSha256": "ab9b47982f62c42ed5f0bb6eb86b1519b479b29c4da6a8daaed3b24d572ebffe",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-assets-dark-390.png",
+      "beforeSha256": "2f382d963fbbfc545bba99e5c16713a91be21fc257608024e7135422ecf4f909",
+      "afterSha256": "a9a6148fff7e0e7726014b9d1746e48986731330f4b04b18d24adade12bda8d7",
+      "beforeSize": [
+        390,
+        1196
+      ],
+      "afterSize": [
+        390,
+        1201
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-assets-light-1280.png",
+      "beforeSha256": "b84b0fffe77fe4030804d6dc64e182bb707b484d6f1d1095ce3d24e742670a8b",
+      "afterSha256": "4902504025e22ff1ce8d900ae29701a132eec1bb0c28f300e1656e374e08b9c0",
+      "beforeSize": [
+        1280,
+        900
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-assets-light-390.png",
+      "beforeSha256": "68010b1bebc901562aaccc881497f40298bb6c8ee43f7c6e83bc3a51a597be8c",
+      "afterSha256": "80265bce27b2919b958ff9ddd68356fdf42691ccb3b8bdb45857182a5c79d7d0",
+      "beforeSize": [
+        390,
+        1196
+      ],
+      "afterSize": [
+        390,
+        1201
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-dark-1280.png",
+      "beforeSha256": "4d694a0c7fde4feb832650c73bdaacfc4cf3bbbb9125aae9117986de58bd768b",
+      "afterSha256": "54d9a39d9bd97870da18e0401c409eb8d2fc7dbc49afe7360160f47dc7effa5e",
+      "beforeSize": [
+        1280,
+        1461
+      ],
+      "afterSize": [
+        1280,
+        1540
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-dark-390.png",
+      "beforeSha256": "c9760b6a612f8bba315c7f9b592045eaee244d957ff02aa1244d96329aca14f7",
+      "afterSha256": "f2e24e5053e245041c53a9e938bda7b6681e552365e2cb06fb55cf7f40042521",
+      "beforeSize": [
+        390,
+        2641
+      ],
+      "afterSize": [
+        390,
+        2717
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-light-1280.png",
+      "beforeSha256": "13d072b2be676b3ea12a0212722bba4d25b580583c947d417a5b30a5ee5f5468",
+      "afterSha256": "e648a47a19872a85e66d85dc8deddbcbf810caa6d616c4100c540cf542c50d0b",
+      "beforeSize": [
+        1280,
+        1461
+      ],
+      "afterSize": [
+        1280,
+        1540
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-CVE-2026-31337-light-390.png",
+      "beforeSha256": "22b7a35cd367556ac8c15ed7fbc06a7aef1e939972a2beceb3c11d02811ccc61",
+      "afterSha256": "d7c97191f2e5144877ef8b8a17dc3f330540e6b8eeb27fc8a35c98835607a629",
+      "beforeSize": [
+        390,
+        2641
+      ],
+      "afterSize": [
+        390,
+        2717
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-dark-1280.png",
+      "beforeSha256": "2e5a6af0db569f30a3fcf40385c9a3a30ca20137926d4a81ee2c50cea7e8921f",
+      "afterSha256": "30560ec233170d134a29cb86cc7c364a71dec1cf3ae8158fe461e7fc6391a574",
+      "beforeSize": [
+        1280,
+        1151
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-dark-390.png",
+      "beforeSha256": "a14a3f01dc61d191379eab6f6fff6775a25693d38b1b77dc91670b70634589f4",
+      "afterSha256": "73f9e278700fa2be0c3c855483beacede27813f91531f3505ff7e0a50796ff1c",
+      "beforeSize": [
+        390,
+        1544
+      ],
+      "afterSize": [
+        390,
+        1274
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-light-1280.png",
+      "beforeSha256": "081719517b16625627e86a04053f2d07b76ebbf04e3046e193c5791685c0ebd5",
+      "afterSha256": "a1515eda2e31ccd3a67f8d2c3048d72d0782b93cba77f49cc006ae5852f527ae",
+      "beforeSize": [
+        1280,
+        1151
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-org-cves-light-390.png",
+      "beforeSha256": "02a6175e7d9c6c1ecfc97a249e7c52609e8b97663f5d7cd6dfa9562ec9ada9a6",
+      "afterSha256": "9c7e00f360cc5934ce8692be84cb81db4f665f610f0b6d71d0bd1e81dc0e9668",
+      "beforeSize": [
+        390,
+        1544
+      ],
+      "afterSize": [
+        390,
+        1274
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/org-cves",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-vulnerabilities-dark-1280.png",
+      "beforeSha256": "baf35512e196cef508582dbe4da25c8813a00edaee7146346014560c777c72b7",
+      "afterSha256": "6fa1e7af9129b17d384dc7edfa7b32e6ba81feedcf17b04a92fcdc3dd7e026da",
+      "beforeSize": [
+        1280,
+        1021
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/vulnerabilities",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-vulnerabilities-dark-390.png",
+      "beforeSha256": "1aa52decb33d02cea7ddecdf0bb59fed86e36904e77d04213cb007c00ebe09d4",
+      "afterSha256": "4fdaa3817d6a2b657947bdbabc9e011653cf3b22eef06eece5df860cc5485816",
+      "beforeSize": [
+        390,
+        1161
+      ],
+      "afterSize": [
+        390,
+        924
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/vulnerabilities",
+      "actor": "tenant",
+      "theme": "dark",
+      "width": 390
+    },
+    {
+      "snapshot": "vuln-repo-vulnerabilities-light-1280.png",
+      "beforeSha256": "f33cb29a9c9d07de3f540ef6009aaca07a59e4acd24d93f59262c2f6c24e2601",
+      "afterSha256": "5509eef18001fbbc057beb4bc71882c962fe936b06b7611bb5b7867258a274af",
+      "beforeSize": [
+        1280,
+        1021
+      ],
+      "afterSize": [
+        1280,
+        900
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/vulnerabilities",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 1280
+    },
+    {
+      "snapshot": "vuln-repo-vulnerabilities-light-390.png",
+      "beforeSha256": "78fa648d2e32fc37981f07d97776267e825c9f56359c0976fdd025b9e481d1d9",
+      "afterSha256": "4056f073bab657280947039d8039bea6759c5d7aa1c077de01248b8a2cf1638f",
+      "beforeSize": [
+        390,
+        1161
+      ],
+      "afterSize": [
+        390,
+        924
+      ],
+      "expectedChange": "Existing Stage 2b\u20136 grouped navigation, single shared route H1, family layout and shared table/control adoption.",
+      "route": "/vuln-repo/vulnerabilities",
+      "actor": "tenant",
+      "theme": "light",
+      "width": 390
+    }
+  ],
+  "failedJob": "https://github.com/AxG-SG/SG/actions/runs/41030161511/job/123977805205",
+  "previousBaselineRevision": "a1f87f03",
+  "review": {
+    "performedBy": "Codex",
+    "kind": "automated visual-diff inspection",
+    "comparisonSheetsInspected": 11,
+    "humanReviewer": null,
+    "humanApprovalClaimed": false
+  },
+  "threshold": {
+    "maxDiffPixelRatio": 0.001,
+    "changed": false
+  },
+  "journeyBaselinesChanged": false,
+  "accessibilityBaselinesChanged": false,
+  "validation": {
+    "representativeReproduction": {
+      "total": 24,
+      "failedBeforeRefresh": 24
+    },
+    "regeneration": {
+      "total": 164,
+      "passed": 164
+    },
+    "fullComparisonWithoutUpdates": {
+      "total": 172,
+      "passed": 172,
+      "failed": 0
+    },
+    "functionalJourneysFromFailedCiJob": {
+      "checks": 823,
+      "passed": 823,
+      "failed": 0
+    },
+    "applicationSourceChangedByRepair": false
+  }
+}

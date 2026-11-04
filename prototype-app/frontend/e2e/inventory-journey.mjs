@@ -71,8 +71,9 @@ for (const theme of themes) {
 
   // ── Overview ──────────────────────────────────────────────────────────────
   await page.goto(`${base}/inventory`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'Lifecycle breakdown', exact: true }).waitFor();
   await settle(page);
-  check(tag('overview renders funnel and lifecycle'), await page.getByText('Lifecycle breakdown').first().isVisible());
+  check(tag('overview renders funnel and lifecycle'), await page.getByRole('heading', { name: 'Lifecycle breakdown', exact: true }).isVisible());
   await shot(page, tag('overview'));
 
   // ── Hosts list → detail → return ──────────────────────────────────────────

@@ -20,6 +20,20 @@ const CONFIG: AiSecurityConnectorConfig = {
 describe('AiSecurityConnectorPage', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it('shows the initial setup form when the real API client receives JSON null', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('null', {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.spyOn(api, 'listAiSecurityRuns').mockResolvedValue([]);
+    renderWithProviders(<AiSecurityConnectorPage />);
+
+    expect(await screen.findByText('Not configured')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save connection' })).toBeEnabled();
+    expect(screen.getByLabelText('AWS account ID')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('hides the form behind a retry when the saved connection fails to load', async () => {
     vi.spyOn(api, 'getAiSecurityConnector').mockRejectedValue(new Error('connector service down'));
     vi.spyOn(api, 'listAiSecurityRuns').mockResolvedValue([]);

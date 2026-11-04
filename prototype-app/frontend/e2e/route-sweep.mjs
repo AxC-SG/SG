@@ -87,8 +87,12 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
     let errors = [];
     let consoleErrors = [];
     let externalRequests = [];
+    let missingFindingResponse = false;
     page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+    page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push({ text: message.text(), url: message.location().url }); });
+    page.on('response', (response) => {
+      if (new URL(response.url()).pathname === '/api/findings/F-10420' && response.status() === 404) missingFindingResponse = true;
+    });
     page.on('request', (request) => {
       const url = new URL(request.url());
       if (url.origin !== new URL(base).origin && !EXPECTED_EXTERNAL_HOSTS.has(url.hostname)) externalRequests.push(`${request.method()} ${url.origin}${url.pathname}`);
@@ -108,10 +112,20 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
           text: rendered.map((child) => child.textContent ?? '').join(' ').trim().slice(0, 80),
         };
       }, FAMILY_ROOTS);
+      // This bookmark deliberately exercises the documented unsupported display-ID state.
+      // Accept only its exact 404 diagnostic, and only after the expected unavailable UI renders.
+      const expectedMissing = route === '/findings/F-10420' && missingFindingResponse
+        && await page.getByRole('heading', { name: 'Finding not found', exact: true }).isVisible()
+        && await page.getByText('No finding matches F-10420.', { exact: false }).isVisible();
+      if (route === '/findings/F-10420' && !expectedMissing) errors.push('Display-ID bookmark did not render its expected 404/unavailable state');
+      const unexpectedConsoleErrors = consoleErrors.filter((entry) => !(expectedMissing
+        && entry.url === `${base}/api/findings/F-10420`
+        && entry.text === 'Failed to load resource: the server responded with a status of 404 (Not Found)')).map((entry) => entry.text);
       const url = new URL(page.url());
-      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), authenticated: !unauthenticated, width, via, route, final: url.pathname + url.search, ...state, errors, consoleErrors, externalRequests });
+      rows.push({ actor: who.roles.join('+') + (unauthenticated ? ' (signed out)' : ''), authenticated: !unauthenticated, width, via, route, final: url.pathname + url.search, ...state, errors, consoleErrors: unexpectedConsoleErrors, expectedMissing, externalRequests });
       errors = [];
       consoleErrors = [];
+      missingFindingResponse = false;
       externalRequests = [];
     };
     for (const route of routes) {

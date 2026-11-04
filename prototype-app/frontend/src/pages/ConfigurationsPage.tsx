@@ -2120,7 +2120,7 @@ export function ConfigurationsPage() {
         <div className="config-content">
           <div className="config-section-head">
             <div className="config-section-head-text">
-              <h3>{title}</h3>
+              <h2>{title}</h2>
               <p>{description}</p>
             </div>
           </div>
@@ -2561,7 +2561,7 @@ function SuppressionSection({ canEdit }: { canEdit: boolean }) {
                             <button
                               type="button"
                               className="btn btn-secondary"
-                              style={{ fontSize: '0.75rem', padding: '2px 8px', marginRight: 6, color: '#d97706' }}
+                              style={{ fontSize: '0.75rem', padding: '2px 8px', marginRight: 6, color: 'var(--dp-warning)' }}
                               onClick={() => reopenAll(rule.id)}
                               disabled={reopeningAllId === rule.id}
                               title={`Reopen all ${rule.suppressedCount} suppressed record${rule.suppressedCount === 1 ? '' : 's'}`}
