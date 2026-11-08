@@ -1,5 +1,6 @@
 package com.prototype.vulnwatch.config;
 
+import com.prototype.vulnwatch.controller.ManagedBrowserAuthController;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,9 +33,15 @@ public class SecurityConfig {
             BomIngestKeyAuthenticationFilter bomIngestKeyAuthenticationFilter,
             RequestCorrelationFilter requestCorrelationFilter,
             TenantStatusFilter tenantStatusFilter,
+            @Value("${app.security.managed-auth.enabled:false}") boolean managedAuthEnabled,
             @Value("${app.security.headers.content-security-policy:default-src 'none'; frame-ancestors 'none'}") String contentSecurityPolicy,
             @Value("${app.security.headers.permissions-policy:camera=(), microphone=(), geolocation=(), payment=()}") String permissionsPolicy
     ) throws Exception {
+        var csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        if (managedAuthEnabled) {
+            csrfRepository.setCookieName("__Host-sg-csrf");
+            csrfRepository.setCookieCustomizer(cookie -> cookie.secure(true).httpOnly(true).sameSite("Strict").path("/"));
+        }
         http
                 // Without this, Spring Security rejects a request before the MVC CORS handling
                 // runs, so 401 and 403 responses carry no Access-Control-Allow-Origin. A browser
@@ -43,7 +50,7 @@ public class SecurityConfig {
                 // invisible. Reuses the origins configured in WebConfig; it adds no permissions.
                 .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfRepository)
                         .requireCsrfProtectionMatcher(request ->
                                 CsrfFilter.DEFAULT_CSRF_MATCHER.matches(request) && !HEADER_AUTH_CSRF_BYPASS.matches(request))
                         .ignoringRequestMatchers(
@@ -69,6 +76,14 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/setup-password", "/api/auth/setup-session").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
+                        .requestMatchers(request -> managedAuthEnabled && (
+                                ("GET".equals(request.getMethod()) && (
+                                        ManagedBrowserAuthController.LOGIN_PATH.equals(request.getRequestURI())
+                                        || ManagedBrowserAuthController.CALLBACK_PATH.equals(request.getRequestURI())))
+                                || ("POST".equals(request.getMethod())
+                                        && (ManagedBrowserAuthController.LOGOUT_PATH.equals(request.getRequestURI())
+                                        || ManagedBrowserAuthController.INVITATION_PATH.equals(request.getRequestURI())))))
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demo-requests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demo-invites/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demo-invites/**").permitAll()

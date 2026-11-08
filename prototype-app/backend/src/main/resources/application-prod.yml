@@ -60,7 +60,7 @@ app:
     allow-header-tenant-selection: false
     require-tenant-context: true
     enforce-schema-version: true
-    minimum-compatible-schema-version: 19
+    minimum-compatible-schema-version: 20
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
 

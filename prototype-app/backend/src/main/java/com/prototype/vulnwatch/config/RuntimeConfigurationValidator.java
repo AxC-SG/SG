@@ -23,8 +23,7 @@ public class RuntimeConfigurationValidator {
             throw new IllegalStateException("APP_ENVIRONMENT must explicitly be local, test, production, or preproduction.");
         }
         boolean deployedProfile = environment.matchesProfiles("prod", "preprod");
-        boolean deployedHost = environment.getProperty("RENDER_SERVICE_ID") != null
-                || environment.getProperty("RENDER", Boolean.class, false);
+        boolean deployedHost = environment.containsProperty("ECS_CONTAINER_METADATA_URI_V4");
         boolean production = Set.of("production", "preproduction").contains(intended);
         if ((deployedProfile || deployedHost) && !production) {
             throw new IllegalStateException("A deployed runtime cannot use a local/test APP_ENVIRONMENT.");

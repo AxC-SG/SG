@@ -85,7 +85,8 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         runtimeRole="journey_"+UUID.randomUUID().toString().replace("-","");
         String password=UUID.randomUUID().toString();
         try(var connection=DriverManager.getConnection(DB.url(),DB.username(),DB.password())){
-            ReflectionTestUtils.invokeMethod(ProductionBootstrapCli.class,"provisionRuntimeRole",connection,runtimeRole,password);
+            ReflectionTestUtils.invokeMethod(ProductionBootstrapCli.class, "provisionRuntimeRole",
+                    connection, runtimeRole, password, 0);
         }
         pool.getHikariConfigMXBean().setUsername(runtimeRole);pool.getHikariConfigMXBean().setPassword(password);
         pool.getHikariPoolMXBean().softEvictConnections();
@@ -97,7 +98,11 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         TenantContext.clear();
         pool.getHikariConfigMXBean().setUsername(DB.username());pool.getHikariConfigMXBean().setPassword(DB.password());
         pool.getHikariPoolMXBean().softEvictConnections();
-        if(runtimeRole!=null){owner.execute("drop owned by "+runtimeRole);owner.execute("drop role "+runtimeRole);}
+        if (runtimeRole != null && Boolean.TRUE.equals(owner.queryForObject(
+                "select exists (select 1 from pg_roles where rolname = ?)", Boolean.class, runtimeRole))) {
+            owner.execute("drop owned by " + runtimeRole);
+            owner.execute("drop role " + runtimeRole);
+        }
     }
 
     @Test void localLoginWorkspaceAndRevocationUseRestrictedConnections() throws Exception {

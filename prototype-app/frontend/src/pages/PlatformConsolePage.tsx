@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
+import { managedBrowserAuthEnabled } from '../features/auth/managedSession';
 import type { PlatformRouteView } from '../app/routes';
 import { pathForPlatformView } from '../app/routes';
 import { PageFreshnessStatus, latestFreshnessValue } from '../components/PageFreshnessStatus';
@@ -20,7 +21,7 @@ const PLATFORM_TABS: Array<{ key: PlatformRouteView; label: string; helper: stri
   { key: 'ai-policies', label: 'Policies', helper: 'Catalog distribution, tenant defaults, and rollout control' },
   { key: 'users', label: 'Users', helper: 'Provision and manage platform-owner identities' },
   { key: 'platform-audit', label: 'Platform Audit', helper: 'Review platform-user identity changes and setup history' },
-  { key: 'demo-requests', label: 'Demo Requests', helper: 'Review, provision, and invite customer demo tenants' },
+  { key: 'demo-requests', label: 'Demo Requests', helper: 'Review customer requests and track workspace setup' },
   { key: 'vuln-intel', label: 'Vulnerability Intelligence', helper: 'Platform-owned NVD, KEV, GHSA, CSAF/VEX, advisory, EOL, EUVD, and JVN feed configuration' },
   { key: 'eol', label: 'EOL', helper: 'Platform-owned end-of-life catalog and lifecycle coverage' }
 ];
@@ -1731,8 +1732,14 @@ function DemoRequestsPanel() {
     }
   });
   const requests = requestsQuery.data ?? [];
-  const isApprovalComplete = (status: string, tenantId: string | null) =>
-    tenantId != null || ['SENT', 'ERROR', 'REJECTED'].includes(status.toUpperCase());
+  const standardStageLabels: Record<string, string> = {
+    STANDARD_APPROVED: 'Approved. Awaiting workspace setup.',
+    STANDARD_PROVISIONING_FAILED: 'Workspace setup failed. Retry the approved request.',
+    STANDARD_WORKSPACE_ACTIVE: 'Workspace active. Awaiting administrator setup.',
+    STANDARD_ADMIN_LINKED: 'Administrator linked. Awaiting setup email.',
+    STANDARD_SETUP_FAILED: 'Password setup email failed. Review the provider result before retrying.',
+    STANDARD_SETUP_SUBMITTED: 'Password setup email submitted.'
+  };
   const deleteNotFound =
     deleteRequest.error instanceof Error && deleteRequest.error.message.includes('[NOT_FOUND]');
 
@@ -1751,7 +1758,9 @@ function DemoRequestsPanel() {
         </button>
       </div>
       <p className="panel-caption">
-        Approved requests provision demo tenants with the standard access profile while retaining demo expiry, invite, quota, and bootstrap-state controls.
+        {managedBrowserAuthEnabled
+          ? 'Approval queues Standard workspace setup. The setup email follows workspace activation and administrator enrollment.'
+          : 'Approved requests provision demo tenants with the standard access profile while retaining demo expiry, invite, quota, and bootstrap-state controls.'}
       </p>
       {requestsQuery.isError ? (
         <div className="notice error">{requestsQuery.error instanceof Error ? requestsQuery.error.message : 'Failed to load demo requests'}</div>
@@ -1770,14 +1779,16 @@ function DemoRequestsPanel() {
                 <th>Use Case</th>
                 <th>Status</th>
                 <th>Bootstrap</th>
-                <th>Invite</th>
+                {!managedBrowserAuthEnabled && <th>Invite</th>}
                 <th>Requested</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {requests.map((request) => (
-                <tr key={request.id}>
+              {requests.map((request) => {
+                const stage = standardStageLabels[request.bootstrapStatus ?? ''];
+                const approvalComplete = !!stage || request.tenantId != null || ['SENT', 'ERROR', 'REJECTED'].includes(request.status.toUpperCase());
+                return <tr key={request.id}>
                   <td>
                     <strong>{request.fullName}</strong>
                     <div className="muted-small">{request.email}</div>
@@ -1786,22 +1797,25 @@ function DemoRequestsPanel() {
                   <td>{formatWorkspaceProfile(request.provisionedPlanCode)}</td>
                   <td>{request.useCase ?? '-'}</td>
                   <td>{request.status}</td>
-                  <td>{request.bootstrapStatus ?? '-'}</td>
                   <td>
+                    {stage ?? request.bootstrapStatus ?? '-'}
+                    {stage && <div><small>Request ID <code>{request.id}</code></small></div>}
+                  </td>
+                  {!managedBrowserAuthEnabled && <td>
                     {request.latestInvite ? (
                       <a href={request.latestInvite.inviteUrl}>{request.latestInvite.status}</a>
                     ) : '-'}
-                  </td>
+                  </td>}
                   <td>{new Date(request.requestedAt).toLocaleDateString()}</td>
                   <td>
                     <div className="button-row compact">
-                      {!request.tenantId && (
+                      {!managedBrowserAuthEnabled && !request.tenantId && (
                         <label className="checkbox-row" style={{ marginRight: 8 }}>
                           <input
                             type="checkbox"
                             aria-label={`Add demo data for ${request.company}`}
                             checked={addDemoDataByRequest[request.id] ?? false}
-                            disabled={approve.isPending || isApprovalComplete(request.status, request.tenantId)}
+                            disabled={approve.isPending || approvalComplete}
                             onChange={(event) => setAddDemoDataByRequest((current) => ({
                               ...current,
                               [request.id]: event.target.checked
@@ -1812,7 +1826,7 @@ function DemoRequestsPanel() {
                       )}
                       <button
                         className="btn btn-secondary btn-sm"
-                        disabled={approve.isPending || isApprovalComplete(request.status, request.tenantId)}
+                        disabled={approve.isPending || approvalComplete}
                         onClick={() => approve.mutate({
                           id: request.id,
                           addDemoData: addDemoDataByRequest[request.id] ?? false
@@ -1820,7 +1834,7 @@ function DemoRequestsPanel() {
                       >
                         Approve
                       </button>
-                      {request.tenantId && (
+                      {!managedBrowserAuthEnabled && request.tenantId && (
                         <button
                           className="btn btn-secondary btn-sm"
                           disabled={seedDemoData.isPending}
@@ -1829,23 +1843,23 @@ function DemoRequestsPanel() {
                           Add demo data
                         </button>
                       )}
-                      <button className="btn btn-secondary btn-sm" disabled={resend.isPending || !request.tenantId} onClick={() => resend.mutate(request.id)}>
+                      {!managedBrowserAuthEnabled && <button className="btn btn-secondary btn-sm" disabled={resend.isPending || !request.tenantId} onClick={() => resend.mutate(request.id)}>
                         Resend
-                      </button>
-                      <button
+                      </button>}
+                      {!managedBrowserAuthEnabled && <button
                         className="btn btn-secondary btn-sm"
                         disabled={issueSetup.isPending || !request.tenantId}
                         onClick={() => issueSetup.mutate(request.id)}
                         title={request.tenantId ? 'Open password setup for the tenant owner' : 'Provision the request first'}
                       >
                         Set Password
-                      </button>
-                      <button className="btn btn-secondary btn-sm" disabled={reject.isPending || request.status === 'REJECTED'} onClick={() => reject.mutate({ id: request.id, reason: 'Not a fit for current validation wave' })}>
+                      </button>}
+                      <button className="btn btn-secondary btn-sm" disabled={reject.isPending || !!stage || request.status === 'REJECTED'} onClick={() => reject.mutate({ id: request.id, reason: 'Not a fit for current validation wave' })}>
                         Reject
                       </button>
                       <button
                         className="btn btn-secondary btn-sm"
-                        disabled={deleteRequest.isPending}
+                        disabled={deleteRequest.isPending || !!stage}
                         onClick={() => setRequestPendingDelete({
                           id: request.id,
                           company: request.company,
@@ -1858,8 +1872,8 @@ function DemoRequestsPanel() {
                       </button>
                     </div>
                   </td>
-                </tr>
-              ))}
+                </tr>;
+              })}
             </tbody>
           </table>
         </div>

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en" data-ui="2">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScoutGrid Standard · Workflow review</title>
+  <link rel="stylesheet" href="../../frontend/src/styles/ui2/tokens.css">
+  <style>
+    body { margin: 0; background: var(--dp-bg); color: var(--dp-text); font: 1rem/1.5 var(--dp-font); }
+    main { max-width: 72rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); }
+    h1, h2, p { margin-block: 0 var(--dp-space-3); }
+    h1 { font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.08; letter-spacing: -.045em; }
+    h2 { font-size: clamp(1.4rem, 3vw, 1.85rem); line-height: 1.2; }
+    a { color: var(--dp-accent); text-underline-offset: .2em; }
+    :focus-visible { outline: 2px solid var(--dp-accent); outline-offset: 3px; }
+    .eyebrow { color: var(--dp-text-2); font-size: .78rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .intro { max-width: 44rem; color: var(--dp-text-2); }
+    nav ul { list-style: none; margin: 0; padding: 0; }
+    nav ul { display: flex; flex-wrap: wrap; gap: var(--dp-space-2); }
+    nav a { display: inline-block; padding: .55rem .85rem; border: 1px solid var(--dp-border-strong); border-radius: var(--dp-radius); background: var(--dp-surface); font-weight: 650; }
+    nav a:hover { background: var(--dp-hover); }
+    section { margin-block-start: var(--dp-space-8); padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--dp-border-strong); border-radius: var(--dp-radius-xl); background: var(--dp-surface); }
+    dl { display: grid; gap: var(--dp-space-2); margin-block: 0; }
+    dl div { display: grid; grid-template-columns: minmax(4.5rem, 2fr) minmax(0, 3fr); gap: var(--dp-space-2); }
+    dt { color: var(--dp-text-2); }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    details { margin-block-start: var(--dp-space-4); padding: var(--dp-space-3); border: 1px solid var(--dp-border-strong); border-radius: var(--dp-radius); }
+    summary { font-weight: 700; cursor: pointer; }
+    details ul { margin-block: var(--dp-space-2) 0; padding-inline-start: 1.2rem; }
+    details li + li { margin-block-start: var(--dp-space-2); }
+    .handoff { margin-block: var(--dp-space-3) 0; color: var(--dp-text-2); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">ScoutGrid Standard · P14 review</p>
+    <h1>From workspace setup to first findings</h1>
+    <p class="intro">Follow Orchard Systems from a demo request through platform-owner approval, first sign-in, and the first inventory results.</p>
+    <nav aria-label="Review workflows">
+      <ul>
+        <li><a href="#objective">What changes and why</a></li>
+        <li><a href="#provision">1. Existing demo request and approval</a></li>
+        <li><a href="#sign-in">2. Existing password setup and sign-in</a></li>
+        <li><a href="#workspace">3. Existing workspace access</a></li>
+        <li><a href="#connectors">4. Existing inventory connectors</a></li>
+        <li><a href="#upload">5. Existing BOM Management</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section id="objective" aria-labelledby="objective-title">
+    <p class="eyebrow">Review scope</p>
+    <h2 id="objective-title">What changes and why</h2>
+    <p>Reuse the existing ScoutGrid pages. This review shows where AWS changes how those pages connect to provisioning, managed sign-in, and background processing.</p>
+    <dl>
+      <div><dt>Join and work in the right workspace</dt><dd>Use the existing Request a demo entry point. Once the platform owner approves the request and the workspace is ready, send the designated tenant administrator a password setup email. Use managed sign-in and reuse the workspace picker and header.</dd></div>
+      <div><dt>Keep approval in the existing console</dt><dd>Use Platform → Demo Requests for approval and request status. Use the reviewed provisioning task and runbook for Standard setup and retry.</dd></div>
+      <div><dt>Make data collection status accurate</dt><dd>Use the existing <strong>Connectors → Sources</strong> catalog and its connector pages for inventory setup. Adapt the manual upload form inside BOM Management for S3-backed uploads. Use the existing Run History, Inventory, and Findings pages to verify results.</dd></div>
+    </dl>
+  </section>
+
+  <section id="provision" aria-labelledby="provision-title">
+    <p class="eyebrow">01 · Existing pages</p>
+    <h2 id="provision-title">Request and approve a workspace</h2>
+    <dl>
+      <div><dt>Request a demo</dt><dd>The requester submits the existing public form at <code>/demo/contact</code>.</dd></div>
+      <div><dt>Platform → Demo Requests</dt><dd>The platform owner reviews and approves the request in the existing console at <code>/platform/demo-requests</code>.</dd></div>
+      <div><dt>AWS integration</dt><dd>Route the approved request through Standard provisioning. After activation, send the designated tenant administrator the <a href="#sign-in">password setup email</a>. Use the existing request status and the operator runbook for setup or delivery failures.</dd></div>
+    </dl>
+  </section>
+
+  <section id="sign-in" aria-labelledby="sign-in-title">
+    <p class="eyebrow">02 · Existing entry points</p>
+    <h2 id="sign-in-title">Set your password and sign in</h2>
+    <dl>
+      <div><dt>Password setup and sign-in</dt><dd>The administrator opens <strong>Set your password</strong> from the setup email and uses the temporary password from the message. Cognito prompts the administrator to choose a password before opening the approved workspace.</dd></div>
+      <div><dt>AWS integration</dt><dd>Reuse the existing sign-in page (<code>/login</code>) to hand off to Cognito-managed account setup and sign-in. Keep the approved workspace and role linked to the verified account.</dd></div>
+    </dl>
+  </section>
+
+  <section id="workspace" aria-labelledby="workspace-title">
+    <p class="eyebrow">03 · Existing workspace access</p>
+    <h2 id="workspace-title">Verify workspace access after sign-in</h2>
+    <dl>
+      <div><dt>Tenant administrator</dt><dd>After password setup and sign-in, a tenant administrator with one workspace enters it directly. The existing header shows the active workspace.</dd></div>
+      <div><dt>Platform owner</dt><dd>Use <strong>Settings → Authorized Workspaces</strong> (<code>/authorized-workspaces</code>) to open a workspace through an authorized membership or an accepted support grant. The existing page shows the access type and expiry.</dd></div>
+    </dl>
+    <details>
+      <summary>Workspace access checks for AWS launch</summary>
+      <ul>
+        <li>Sign in with Cognito and confirm the single-workspace admin enters the approved workspace with the correct role.</li>
+        <li>Open two authorized workspaces in separate tabs as a platform owner. Switching one tab leaves the other tab's workspace and data intact.</li>
+        <li>Confirm SG Internal requires explicit internal membership. Verify that expired or revoked grants, suspended workspaces, and unauthorized requests are denied.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="connectors" aria-labelledby="connectors-title">
+    <p class="eyebrow">04 · Existing connector pages</p>
+    <h2 id="connectors-title">Inventory setup in Connectors → Sources</h2>
+    <p>Open <a href="http://127.0.0.1:5173/connect/sources">Connectors → Sources</a> from the left navigation and choose a card under <strong>Inventory</strong>.</p>
+    <dl>
+      <div><dt>AWS Discovery</dt><dd>Use the existing form to save the customer role and scope. Configure the role trust with the generated External ID, then use <strong>Test Connection</strong> and <strong>Run Integration Now</strong>.</dd></div>
+      <div><dt>GitHub</dt><dd>Use the existing pipeline form to save the source and its credentials. Use <strong>Run Now</strong> on a saved pipeline or let it run on schedule. Update the credential hint in the existing form to reflect tenant credentials and supported anonymous access.</dd></div>
+      <div><dt>Review results</dt><dd>Use <strong>Connectors → Run History</strong> for execution status and the existing Inventory views to confirm assets or BOMs were imported.</dd></div>
+    </dl>
+    <details>
+      <summary>Connector checks for AWS launch</summary>
+      <ul>
+        <li>Verify the AWS account binding, role trust, and External ID. Verify private GitHub and GHCR credential requirements and supported anonymous sources.</li>
+        <li>Check scheduled and manual runs. Distinguish access errors, throttling, a completed run with no results, and a successful inventory update in the existing views.</li>
+        <li>AWS Discovery and GitHub are in the readiness record. AWS static AI posture depends on entitlement and qualification. Other providers require a confirmed launch need and separate qualification.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="upload" aria-labelledby="upload-title">
+    <p class="eyebrow">05 · Existing BOM Management page</p>
+    <h2 id="upload-title">Import a BOM and review its result</h2>
+    <dl>
+      <div><dt>Start the import</dt><dd>From the left navigation, open <strong>Connectors → Sources → BOM Management</strong>. Use <strong>Ingest Now → File Upload</strong> and submit the file with the existing form.</dd></div>
+      <div><dt>Track the import</dt><dd>Wire the existing form to S3-backed upload and show transfer progress, acceptance, or validation errors in place. Extend the existing <strong>Connectors → Run History</strong> view to show queued, running, and completed manual imports, so users can return to an accepted job.</dd></div>
+      <div><dt>Review results</dt><dd>Use the existing BOM Management result area for the import outcome, <strong>BOM Inventory</strong> for imported components, and <strong>Findings</strong> once assessment results are available.</dd></div>
+    </dl>
+    <details>
+      <summary>Import checks for AWS launch</summary>
+      <ul>
+        <li>Verify that the user can leave after acceptance and find the same job on return. Recover an interrupted transfer without creating a duplicate import.</li>
+        <li>Show validation or permission failures through the existing form and run status where authorized.</li>
+        <li>Preserve the existing source replacement and complete-coverage controls. Verify that assessment can continue after the import completes.</li>
+      </ul>
+    </details>
+  </section>
+
+  <p class="handoff">Workflow review with fictional data. It identifies the existing pages and where AWS integration changes their behavior.</p>
+</main>
+</body>
+</html>

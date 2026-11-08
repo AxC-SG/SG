@@ -6,6 +6,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -202,6 +203,10 @@ public class PerformanceResourceCeilingService {
                     "Thread-pool queue metrics are not available in the current runtime.");
         }
         int queueSize = executor.getQueue().size();
+        if (executor.getQueue() instanceof SynchronousQueue<?>) {
+            return item(key, label, "executor", "%", executorQueueMaxUtilizationPct, 0.0, true,
+                    "Direct handoff executor has no in-memory backlog.");
+        }
         int queueCapacity = queueSize + executor.getQueue().remainingCapacity();
         if (queueCapacity <= 0) {
             return noData(key, label, "executor", "%", executorQueueMaxUtilizationPct,

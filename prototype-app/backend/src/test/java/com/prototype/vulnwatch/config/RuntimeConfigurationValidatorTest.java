@@ -30,7 +30,7 @@ class RuntimeConfigurationValidatorTest {
         assertThatThrownBy(() -> new RuntimeConfigurationValidator(production()
                 .withProperty("app.security.require-production-secrets", "false")).validate()).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> new RuntimeConfigurationValidator(production().withProperty("app.environment", "test")
-                .withProperty("RENDER_SERVICE_ID", "fixture")).validate()).isInstanceOf(IllegalStateException.class);
+                .withProperty("ECS_CONTAINER_METADATA_URI_V4", "http://169.254.170.2/v4/fixture")).validate()).isInstanceOf(IllegalStateException.class);
     }
     @Test
     void rejectsBootstrapMockAndForwardingBypasses() {

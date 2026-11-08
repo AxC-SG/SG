@@ -112,7 +112,8 @@ class GithubSbomSourceServiceTest {
                 transactionTemplate,
                 new ObjectMapper(),
                 tenantService,
-                tenantSchemaExecutionService
+                tenantSchemaExecutionService,
+                org.mockito.Mockito.mock(ConnectorScheduleProgress.class)
         );
     }
 

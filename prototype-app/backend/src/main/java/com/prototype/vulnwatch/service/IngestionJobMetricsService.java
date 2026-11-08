@@ -1,11 +1,9 @@
 package com.prototype.vulnwatch.service;
 
-import com.prototype.vulnwatch.repo.IngestionJobRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -13,21 +11,8 @@ import org.springframework.stereotype.Service;
 public class IngestionJobMetricsService {
 
     private final MeterRegistry meterRegistry;
-    private final TenantService tenantService;
-    private final TenantSchemaExecutionService tenantSchemaExecutionService;
-    private final IngestionJobRepository ingestionJobRepository;
-
-    public IngestionJobMetricsService(
-            ObjectProvider<MeterRegistry> meterRegistryProvider,
-            TenantService tenantService,
-            TenantSchemaExecutionService tenantSchemaExecutionService,
-            IngestionJobRepository ingestionJobRepository
-    ) {
+    public IngestionJobMetricsService(ObjectProvider<MeterRegistry> meterRegistryProvider) {
         this.meterRegistry = meterRegistryProvider.getIfAvailable();
-        this.tenantService = tenantService;
-        this.tenantSchemaExecutionService = tenantSchemaExecutionService;
-        this.ingestionJobRepository = ingestionJobRepository;
-        registerGauges();
     }
 
     public void recordEnqueued(String sourceType) {
@@ -87,20 +72,6 @@ public class IngestionJobMetricsService {
             return;
         }
         meterRegistry.counter(name, "sourceType", tagValue(sourceType)).increment();
-    }
-
-    private void registerGauges() {
-        if (meterRegistry == null) {
-            return;
-        }
-        meterRegistry.gauge("ingestion.jobs.queue.depth", this, metrics -> metrics.countJobsWithStatuses(List.of("QUEUED")));
-        meterRegistry.gauge("ingestion.jobs.active", this, metrics -> metrics.countJobsWithStatuses(List.of("QUEUED", "RUNNING")));
-    }
-
-    private double countJobsWithStatuses(List<String> statuses) {
-        return TenantContext.runAsPlatform(() -> tenantService.listTenants().stream()
-                .mapToLong(tenant -> tenantSchemaExecutionService.run(tenant, () -> ingestionJobRepository.countByStatusIn(statuses)))
-                .sum());
     }
 
     private String tagValue(String value) {

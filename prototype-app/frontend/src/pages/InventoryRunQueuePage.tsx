@@ -11,6 +11,9 @@ import type { SyncRun } from '../features/connect/types';
 import type { IngestionJob } from '../api/client';
 
 type InventoryRunMetadata = {
+  assetIdentifier?: string;
+  bomId?: string;
+  componentCount?: number;
   sourceSystem?: string;
   assetType?: string;
   assetsDiscovered?: number;
@@ -139,6 +142,34 @@ function aiJobAsRun(job: IngestionJob): SyncRun {
   };
 }
 
+function bomUploadJobAsRun(job: IngestionJob): SyncRun {
+  const result = parseRunMetadata(job.resultJson ?? undefined) ?? {};
+  const status = job.status.trim().toUpperCase();
+  return {
+    id: `ingestion-job-${job.jobId}`,
+    syncType: 'BOM_UPLOAD',
+    runDomain: 'INVENTORY',
+    runClass: 'INGESTION',
+    status: status === 'SUCCEEDED' ? 'COMPLETED' : status,
+    recordsFetched: 0,
+    recordsInserted: result.componentCount ?? 0,
+    recordsUpdated: 0,
+    recordsFailed: 0,
+    startedAt: job.startedAt ?? job.requestedAt,
+    completedAt: job.completedAt ?? undefined,
+    errorMessage: job.failureMessage ?? undefined,
+    metadataJson: JSON.stringify({
+      sourceSystem: 'File Upload',
+      triggerMode: 'Manual',
+      ingestionJobId: job.jobId,
+      assetIdentifier: job.assetIdentifier,
+      bomId: result.bomId,
+      componentsIngested: result.componentCount,
+      findingsGenerated: result.findingsGenerated
+    })
+  };
+}
+
 function hasReplacementSyncRun(job: IngestionJob, syncRuns: SyncRun[]): boolean {
   let resultRunId: string | undefined;
   if (job.resultJson) {
@@ -186,6 +217,7 @@ function formatSyncType(value: string): string {
   if (normalized === 'SERVICENOW_CMDB') return 'ServiceNow CMDB Live Sync';
   if (normalized === 'GITHUB_REPOSITORY_SBOM') return 'GitHub Repository SBOM';
   if (normalized === 'GITHUB_GHCR_SBOM') return 'GitHub GHCR SBOM';
+  if (normalized === 'BOM_UPLOAD') return 'Manual BOM import';
   return value;
 }
 
@@ -301,6 +333,8 @@ function buildRunRows(runs: SyncRun[]): DataTableRow[] {
               {detailLine('Provider', metadata.provider)}
               {detailLine('Connector ID', metadata.connectorId)}
               {detailLine('Ingestion job ID', metadata.ingestionJobId)}
+              {detailLine('Asset identifier', metadata.assetIdentifier)}
+              {detailLine('BOM ID', metadata.bomId)}
               {detailLine('AWS account', metadata.accountId ?? metadata.awsAccountId)}
               {detailLine('Azure tenant', metadata.azureTenantId)}
               {detailLine('Azure subscription', metadata.subscriptionId)}
@@ -356,12 +390,16 @@ export function InventoryRunQueuePage() {
   const inventoryRuns = React.useMemo(
     () => {
       const syncRuns = (inventoryRunsQuery.data ?? []).filter((run) => isInventoryRun(run));
-      const visibleAiJobs = (ingestionJobsQuery.data?.items ?? [])
+      const jobs = ingestionJobsQuery.data?.items ?? [];
+      const visibleAiJobs = jobs
         .filter((job) => ['QUEUED', 'RUNNING', 'FAILED'].includes(job.status.trim().toUpperCase()))
         .filter((job) => job.jobType.trim().toUpperCase().startsWith('AI_SECURITY_'))
         .filter((job) => !hasReplacementSyncRun(job, syncRuns))
         .map(aiJobAsRun);
-      return [...visibleAiJobs, ...syncRuns];
+      const bomUploadRuns = jobs
+        .filter((job) => job.jobType === 'BOM_UPLOAD')
+        .map(bomUploadJobAsRun);
+      return [...visibleAiJobs, ...bomUploadRuns, ...syncRuns];
     },
     [ingestionJobsQuery.data, inventoryRunsQuery.data]
   );
@@ -376,7 +414,7 @@ export function InventoryRunQueuePage() {
   const jobsFailed = ingestionJobsQuery.isError;
   const failureNotes = [
     runsFailed && `Inventory sync runs could not be loaded: ${errorText(inventoryRunsQuery.error)}.`,
-    jobsFailed && `Queued AI collection jobs could not be loaded: ${errorText(ingestionJobsQuery.error)}.`,
+    jobsFailed && `Ingestion jobs could not be loaded: ${errorText(ingestionJobsQuery.error)}.`,
   ].filter(Boolean).join(' ');
   const queueState: AsyncSectionState = loading
     ? 'pending'

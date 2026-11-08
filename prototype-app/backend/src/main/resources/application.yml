@@ -136,6 +136,10 @@ app:
     credential-encryption-previous-keys: ${APP_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS:}
     default-user-id: ${APP_DEFAULT_USER_ID:local-analyst}
     require-production-secrets: ${APP_REQUIRE_PRODUCTION_SECRETS:false}
+    managed-auth:
+      enabled: ${APP_MANAGED_AUTH_ENABLED:false}
+      login-origin: ${APP_MANAGED_AUTH_LOGIN_ORIGIN:}
+      client-id: ${APP_MANAGED_AUTH_CLIENT_ID:}
     jwt:
       # LOCAL retains existing login/setup/context tokens; EXTERNAL disables local issuance.
       mode: ${APP_JWT_AUTH_MODE:LOCAL}
@@ -191,8 +195,8 @@ app:
     require-tenant-context: ${APP_REQUIRE_TENANT_CONTEXT:true}
     default-schema: ${APP_DEFAULT_TENANT_SCHEMA:tenant_default}
     enforce-schema-version: ${APP_ENFORCE_TENANT_SCHEMA_VERSION:false}
-    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:19}
-    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:19}
+    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:20}
+    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:20}
   test-personas:
     enabled: ${APP_TEST_PERSONAS_ENABLED:false}
     token-ttl-minutes: ${APP_TEST_PERSONA_TOKEN_TTL_MINUTES:60}
@@ -266,6 +270,8 @@ app:
     delta-queue-enqueue-timeout-ms: ${APP_CORRELATION_DELTA_QUEUE_ENQUEUE_TIMEOUT_MS:2000}
     delta-queue-poll-interval-ms: ${APP_CORRELATION_DELTA_QUEUE_POLL_INTERVAL_MS:2000}
     delta-queue-max-batches-per-tenant-per-poll: ${APP_CORRELATION_DELTA_QUEUE_MAX_BATCHES_PER_TENANT_PER_POLL:5}
+    delta-queue-sweep-budget-ms: ${APP_CORRELATION_DELTA_QUEUE_SWEEP_BUDGET_MS:2000}
+    delta-queue-transaction-timeout-seconds: ${APP_CORRELATION_DELTA_QUEUE_TRANSACTION_TIMEOUT_SECONDS:15}
   ingestion:
     admission:
       rate-limit-window-seconds: ${APP_INGESTION_ADMISSION_RATE_LIMIT_WINDOW_SECONDS:300}

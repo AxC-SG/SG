@@ -203,6 +203,19 @@ public class BomIngestionOrchestrator {
         );
     }
 
+    BomIngestionResultResponse ingestPreparedUpload(
+            Tenant tenant, com.prototype.vulnwatch.dto.BomUploadRequest request,
+            PreparedDocument document, BomSourceSelector selector
+    ) throws IOException {
+        var legacyRequest = new SbomEndpointIngestionRequest(request.assetType(), request.assetName(),
+                request.assetIdentifier(), null, request.filename(), null);
+        var metadata = new SbomIngestionSourceMetadata("UPLOAD", "bom-upload", request.filename(), null,
+                null, null, (long) request.size(), null);
+        return sbomIngestionLockService.withAssetLock(tenant, request.assetIdentifier(), () ->
+                persistDocument(tenant, request.bomType(), request.supplier(), null, "UPLOAD",
+                        document, legacyRequest, metadata, null, selector));
+    }
+
     /**
      * Ingest from an automated pipeline. The pipeline label, build and key are kept on the stored
      * record (system, label and endpoint) so the push can be traced; the correlator is the
@@ -360,6 +373,11 @@ public class BomIngestionOrchestrator {
             Consumer<Asset> assetCustomizer,
             BomSourceSelector selector
     ) throws IOException {
+        return persistDocument(tenant, bomType, supplier, sourceUrl, sourceMethod,
+                prepareDocument(tenant, bomType, supplier, content), legacyRequest, metadata, assetCustomizer, selector);
+    }
+
+    PreparedDocument prepareDocument(Tenant tenant, BomType bomType, String supplier, byte[] content) throws IOException {
         BomInputLimits.checkBytes(content);
 
         boolean isXml = isXmlContent(content);
@@ -393,8 +411,13 @@ public class BomIngestionOrchestrator {
         // Finish parsing and reject empty/over-limit documents before creating an asset,
         // resolving a source or superseding any previously accepted version.
         List<BomComponent> parsedComponents = List.of();
+        CbomIngestionService.PreparedContent crypto = null;
+        SbomContentIngestionService.PreparedContent software = null;
         if (bomType == BomType.CBOM) {
-            cbomIngestionService.validateContent(content);
+            crypto = cbomIngestionService.prepare(content);
+            if (crypto.components().isEmpty()) {
+                throw new IOException("No CBOM cryptographic assets could be extracted from the submitted document");
+            }
         } else {
             parsedComponents = cycloneDxXml
                     ? extractAndCategorizeXmlComponents(content, tenant, bomType, supplier)
@@ -402,8 +425,20 @@ public class BomIngestionOrchestrator {
             if (parsedComponents.isEmpty()) {
                 throw new IOException("No BOM components could be extracted from the submitted document");
             }
+            software = sbomContentIngestionService.prepare(content);
         }
+        return new PreparedDocument(format, formatVersion, serialNumber, resolveDocumentFormat(format, content),
+                root, parsedComponents, sha256(content), crypto, software);
+    }
 
+    private BomIngestionResultResponse persistDocument(
+            Tenant tenant, BomType bomType, String supplier, String sourceUrl, String sourceMethod,
+            PreparedDocument document, SbomEndpointIngestionRequest legacyRequest,
+            SbomIngestionSourceMetadata metadata, Consumer<Asset> assetCustomizer, BomSourceSelector selector
+    ) throws IOException {
+        SbomFormat format = document.format();
+        String formatVersion = document.formatVersion();
+        String serialNumber = document.serialNumber();
         Asset resolvedAsset = sbomUploadSupportService.resolveAsset(
                 tenant,
                 legacyRequest.assetType(),
@@ -437,7 +472,7 @@ public class BomIngestionOrchestrator {
         Optional<BomIngestionRecord> existingOpt = source.getCurrentBomId() == null
                 ? Optional.empty()
                 : bomRecordRepository.findById(source.getCurrentBomId());
-        String contentChecksum = sha256(content);
+        String contentChecksum = document.checksum();
 
         // Scoped to this source's own current version: an identical document arriving on a
         // different source is a legitimate independent observation, not a duplicate.
@@ -449,7 +484,7 @@ public class BomIngestionOrchestrator {
             }
         }
 
-        String defaultFilename = isXml ? "bom.xml" : "bom.json";
+        String defaultFilename = document.documentFormat() == BomDocumentFormat.XML ? "bom.xml" : "bom.json";
         String originalFilename = metadata.sourceReference() != null ? metadata.sourceReference() : defaultFilename;
         SbomIngestionResponse inventoryResult = null;
         if (bomType != BomType.CBOM) {
@@ -460,12 +495,12 @@ public class BomIngestionOrchestrator {
             // sources would otherwise each retire the other's components on every upload.
             // A PARTIAL document only adds evidence; withdrawing support for what it omits
             // is reconciliation's job, not an inline retirement sweep.
-            inventoryResult = sbomContentIngestionService.ingestBytes(
+            inventoryResult = sbomContentIngestionService.ingestPrepared(
                     tenant,
                     legacyRequest.assetType(),
                     legacyRequest.assetName(),
                     legacyRequest.assetIdentifier(),
-                    content,
+                    document.software(),
                     originalFilename,
                     metadata,
                     assetCustomizer,
@@ -508,7 +543,7 @@ public class BomIngestionOrchestrator {
         record.setSourceLabel(legacyRequest.sourceLabel());
         record.setSourceUrl(sourceUrl);
         record.setSpecFamily(resolveSpecFamily(format, bomType));
-        record.setDocumentFormat(resolveDocumentFormat(format, content));
+        record.setDocumentFormat(document.documentFormat());
         record.setDocumentName(metadata.sourceReference() != null ? metadata.sourceReference() : originalFilenameFor(sourceMethod));
         record.setContentType(metadata.contentType());
         record.setContentLengthBytes(metadata.contentLengthBytes());
@@ -538,7 +573,7 @@ public class BomIngestionOrchestrator {
         int componentCount;
         int findingsGenerated;
         if (bomType == BomType.CBOM) {
-            CbomIngestionResult cbomResult = cbomIngestionService.ingest(tenant, resolvedAsset, record, content);
+            CbomIngestionResult cbomResult = cbomIngestionService.ingestPrepared(tenant, resolvedAsset, record, document.crypto());
             if (cbomResult.componentCount() == 0) {
                 record.setStatus(BomStatus.FAILED);
                 bomRecordRepository.save(record);
@@ -550,7 +585,7 @@ public class BomIngestionOrchestrator {
             bomRecordRepository.save(record);
         } else {
             // Persist BomComponents with category
-            List<BomComponent> components = parsedComponents;
+            List<BomComponent> components = document.components();
             for (BomComponent component : components) {
                 component.setBomId(record.getId());
             }
@@ -564,7 +599,7 @@ public class BomIngestionOrchestrator {
             // Structure the document declared between its own components, stored verbatim.
             // Nothing is inferred from these edges: a dependsOn is not a training or serving
             // claim, and treating it as one would invent provenance for policy to act on.
-            bomRelationshipParsingService.recordRelationships(record, root, components);
+            bomRelationshipParsingService.recordRelationships(record, document.root(), components);
             componentCount = components.size();
             findingsGenerated = inventoryResult.findingsGenerated();
             record.setComponentCount(componentCount);
@@ -605,6 +640,11 @@ public class BomIngestionOrchestrator {
                 action
         );
     }
+
+    record PreparedDocument(SbomFormat format, String formatVersion, String serialNumber,
+                            BomDocumentFormat documentFormat, JsonNode root, List<BomComponent> components,
+                            String checksum, CbomIngestionService.PreparedContent crypto,
+                            SbomContentIngestionService.PreparedContent software) { }
 
     private String normalizeSourceIdentity(SbomIngestionSourceMetadata metadata) {
         if (metadata == null || metadata.sourceReference() == null) {

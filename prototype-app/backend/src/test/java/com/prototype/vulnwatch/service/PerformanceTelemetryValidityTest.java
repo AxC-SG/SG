@@ -3,6 +3,8 @@ package com.prototype.vulnwatch.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -10,6 +12,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 class PerformanceTelemetryValidityTest {
     @Test void startupFailureRecoveryAndAgeAreDistinguishableFromHealthyZero() {
@@ -32,7 +35,9 @@ class PerformanceTelemetryValidityTest {
             doReturn(List.of()).when(tenants).listTenants();
             service.refreshFreshnessSnapshot();assertEquals(0,gauge(registry,"refresh_error"));assertEquals(1,gauge(registry,"refresh_valid"));
             assertEquals(0,registry.get("scoutgrid.finding_delta_queue.pending").gauge().value());
+            assertEquals(0, registry.get("ingestion.jobs.queue.depth").gauge().value());
             time.set(time.get().plusSeconds(4));assertEquals(0,gauge(registry,"refresh_valid"));
+            assertTrue(Double.isNaN(registry.get("ingestion.jobs.queue.depth").gauge().value()));
             assertEquals("worker",registry.get("scoutgrid.performance.refresh_valid").gauge().getId().getTag("role"));
         } finally {registry.close();}
     }
@@ -46,9 +51,12 @@ class PerformanceTelemetryValidityTest {
             when(tenants.listTenants()).thenReturn(List.of(failed,healthy));
             when(execution.run(org.mockito.ArgumentMatchers.eq(failed),org.mockito.ArgumentMatchers.<Supplier<?>>any())).thenThrow(new IllegalStateException("unavailable tenant"));
             when(execution.run(org.mockito.ArgumentMatchers.eq(healthy),org.mockito.ArgumentMatchers.<Supplier<?>>any())).thenAnswer(call -> ((Supplier<?>)call.getArgument(1)).get());
-            var service=new PerformanceTelemetryService(meters,tenants,execution,mock(FindingProjectionStatusService.class),mock(JdbcTemplate.class),15,1000,BackgroundTaskExecutionPolicy.forRole("worker"),Clock.systemUTC());
+            var jdbc = mock(JdbcTemplate.class);
+            stubIngestion(jdbc, Instant.now());
+            var service=new PerformanceTelemetryService(meters,tenants,execution,mock(FindingProjectionStatusService.class),jdbc,15,1000,BackgroundTaskExecutionPolicy.forRole("worker"),Clock.systemUTC());
             service.refreshFreshnessSnapshot();
             assertEquals(1,gauge(registry,"observed_tenants"));assertEquals(1,gauge(registry,"failed_tenants"));assertEquals(0,gauge(registry,"refresh_valid"));
+            assertTrue(Double.isNaN(registry.get("ingestion.jobs.active").gauge().value()));
         } finally {registry.close();}
     }
     @Test void workerPublishesKnownPendingAgeAndProjectionLagWhileApiRemainsUnknown() {
@@ -68,14 +76,20 @@ class PerformanceTelemetryValidityTest {
                     .thenReturn(java.sql.Timestamp.from(now.minusSeconds(125)));
             when(projections.inspectProjectionStatus(tenant)).thenReturn(
                     new FindingListProjectionService.ProjectionStatus(now.minusSeconds(960), 1, 1, 10L, true, 0));
+            stubIngestion(jdbc, now);
             var worker = new PerformanceTelemetryService(meters, tenants, execution, projections, jdbc, 15, 1000,
                     BackgroundTaskExecutionPolicy.forRole("worker"), Clock.fixed(now, ZoneOffset.UTC));
             worker.refreshFreshnessSnapshot();
+            clearInvocations(tenants, execution, projections, jdbc);
+            assertEquals(2, registry.get("ingestion.jobs.queue.depth").gauge().value());
+            assertEquals(3, registry.get("ingestion.jobs.active").gauge().value());
+            assertEquals(240, registry.get("scoutgrid.ingestion.queue.oldest_visible_age_seconds").gauge().value());
             assertEquals(7, registry.get("scoutgrid.finding_delta_queue.pending").gauge().value());
             assertEquals(125, registry.get("scoutgrid.finding_delta_queue.oldest_age_seconds").gauge().value());
             assertEquals(960, registry.get("scoutgrid.finding_projection.max_lag_seconds").gauge().value());
             assertEquals(1, registry.get("scoutgrid.finding_projection.stale_tenants").gauge().value());
             assertEquals(1, gauge(registry, "refresh_valid")); // A valid observation may report unhealthy lag.
+            verifyNoInteractions(tenants, execution, projections, jdbc);
             ObjectProvider<io.micrometer.core.instrument.MeterRegistry> apiMeters = mock(ObjectProvider.class);
             when(apiMeters.getIfAvailable()).thenReturn(apiRegistry);
             var api = new PerformanceTelemetryService(apiMeters, tenants, execution, projections, jdbc, 15, 1000,
@@ -86,7 +100,20 @@ class PerformanceTelemetryValidityTest {
             assertEquals(0, gauge(apiRegistry, "refresh_owner"));
             assertEquals(0, gauge(apiRegistry, "refresh_valid"));
             assertTrue(Double.isNaN(apiRegistry.get("scoutgrid.finding_delta_queue.pending").gauge().value()));
+            assertTrue(Double.isNaN(apiRegistry.get("ingestion.jobs.queue.depth").gauge().value()));
         } finally { registry.close(); apiRegistry.close(); }
     }
+
+    private void stubIngestion(JdbcTemplate jdbc, Instant now) {
+        when(jdbc.queryForObject(contains("from ingestion_jobs"), org.mockito.ArgumentMatchers.<RowMapper<Object>>any(),
+                any(Timestamp.class))).thenAnswer(call -> {
+            var row = mock(ResultSet.class);
+            when(row.getLong("queued")).thenReturn(2L);
+            when(row.getLong("active")).thenReturn(3L);
+            when(row.getTimestamp("oldest")).thenReturn(Timestamp.from(now.minusSeconds(240)));
+            return call.<RowMapper<Object>>getArgument(1).mapRow(row, 0);
+        });
+    }
+
     private double gauge(SimpleMeterRegistry registry,String suffix) {return registry.get("scoutgrid.performance."+suffix).gauge().value();}
 }

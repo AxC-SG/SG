@@ -64,6 +64,19 @@ public class TenantService {
     }
 
     @Transactional(readOnly = true)
+    public Tenant resolveActiveTenantForBackgroundWork(UUID tenantId) {
+        Tenant tenant = resolveTenantUuid(tenantId);
+        String schema = tenant.getSchemaName();
+        if (!isActiveTenantForBackgroundWork(tenant)
+                || schema == null || schema.isBlank()
+                || (DEFAULT_TENANT_SCHEMA.equalsIgnoreCase(schema.trim()) && !tenant.isInternal())) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Tenant is unavailable for background work");
+        }
+        return tenant;
+    }
+
+    @Transactional(readOnly = true)
     public List<Tenant> listTenants() {
         return tenantRepository.findAllByOrderByCreatedAtAsc();
     }

@@ -35,6 +35,7 @@ public class IngestionJobService {
     public static final String JOB_TYPE_GCP_DISCOVERY = "GCP_DISCOVERY";
     public static final String JOB_TYPE_PATCH_SYNC = "PATCH_SYNC";
     public static final String JOB_TYPE_REMOTE_ENDPOINT = "REMOTE_ENDPOINT";
+    public static final String JOB_TYPE_BOM_UPLOAD = "BOM_UPLOAD";
     public static final String JOB_TYPE_GITHUB_REPOSITORY = "GITHUB_REPOSITORY";
     public static final String JOB_TYPE_GITHUB_GHCR = "GITHUB_GHCR";
     public static final String JOB_TYPE_AI_SECURITY_AWS_BEDROCK = "AI_SECURITY_AWS_BEDROCK";
@@ -216,7 +217,9 @@ public class IngestionJobService {
     public List<ClaimedJobRef> claimPendingJobs(Tenant tenant, int limit, int maxConcurrentPerTenant) {
         if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
-            attempts.lockCapacity(tenant.getId());
+            if (!attempts.tryLockCapacity(tenant.getId())) {
+                return List.of();
+            }
             long running = ingestionJobRepository.countByStatusExcludingJobTypes(
                     STATUS_RUNNING, isolatedJobTypes());
             if (running >= maxConcurrentPerTenant) {
@@ -251,6 +254,7 @@ public class IngestionJobService {
         types.add(JOB_TYPE_SCCM_CMDB);
         types.add(JOB_TYPE_GCP_DISCOVERY);
         types.add(JOB_TYPE_PATCH_SYNC);
+        types.add(JOB_TYPE_BOM_UPLOAD);
         return types;
     }
 
@@ -324,10 +328,12 @@ public class IngestionJobService {
         if (!backgroundPolicy.allowsBackgroundTask("ingestion-job.claim")) return List.of();
         if (JOB_TYPE_AI_GRID_RUNTIME_ADAPTER.equals(jobType)) return List.of();
         if (!java.util.Set.of(JOB_TYPE_AI_SECURITY_AWS_BEDROCK,JOB_TYPE_AI_SECURITY_AZURE_DISCOVERY,
-                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_CBOM_ASSESSMENT,JOB_TYPE_CBOM_REPORT,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB,JOB_TYPE_SCCM_CMDB,JOB_TYPE_GCP_DISCOVERY,JOB_TYPE_PATCH_SYNC).contains(jobType))
+                JOB_TYPE_AI_SECURITY_COPILOT_STUDIO,JOB_TYPE_AI_GRID_BOM_PROJECTION,JOB_TYPE_CBOM_ASSESSMENT,JOB_TYPE_CBOM_REPORT,JOB_TYPE_AWS_DISCOVERY,JOB_TYPE_SERVICENOW_CMDB,JOB_TYPE_SCCM_CMDB,JOB_TYPE_GCP_DISCOVERY,JOB_TYPE_PATCH_SYNC,JOB_TYPE_BOM_UPLOAD).contains(jobType))
             throw new IllegalArgumentException("Unsupported retained ingestion job type");
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
-            attempts.lockCapacity(tenant.getId());
+            if (!attempts.tryLockCapacity(tenant.getId())) {
+                return List.of();
+            }
             long running = ingestionJobRepository.countByStatusAndJobType(STATUS_RUNNING, jobType);
             if (running >= maxConcurrentPerTenant) {
                 return List.of();
@@ -469,7 +475,9 @@ public class IngestionJobService {
             for (Tenant tenant : tenantService.listActiveTenants()) {
                 try {
                     recovered += tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
-                        attempts.lockCapacity(tenant.getId());
+                        if (!attempts.tryLockCapacity(tenant.getId())) {
+                            return 0;
+                        }
                         var expired = ingestionJobRepository.pollExpiredAttempts(100);
                         int changed=0;
                         for (IngestionJob job : expired) {
@@ -525,6 +533,11 @@ public class IngestionJobService {
             attempts.lockCapacity(tenant.getId());
             return work.get();
         }));
+    }
+
+    IngestionJobAcceptedResponse enqueueBomUpload(Tenant tenant, UUID uploadId, String assetIdentifier, String actor) {
+        return enqueueJobInCurrentTenantSchema(tenant, JOB_TYPE_BOM_UPLOAD, "bom-upload", assetIdentifier,
+                actor, new BomUploadJobPayload(uploadId), "bom_upload:" + uploadId);
     }
 
     public <T> T readPayload(IngestionJob job, Class<T> payloadType) {
@@ -609,7 +622,7 @@ public class IngestionJobService {
             return new IngestionJobAcceptedResponse(job.getId(), job.getStatus(), "Existing ingestion job already active", true, null);
         }
 
-        if (List.of(JOB_TYPE_REMOTE_ENDPOINT, JOB_TYPE_GITHUB_REPOSITORY, JOB_TYPE_GITHUB_GHCR).contains(jobType)) {
+        if (List.of(JOB_TYPE_REMOTE_ENDPOINT, JOB_TYPE_GITHUB_REPOSITORY, JOB_TYPE_GITHUB_GHCR, JOB_TYPE_BOM_UPLOAD).contains(jobType)) {
             tenantQuotaService.assertCanCreateSbomIngestionJob(tenant, sourceType);
         }
         IngestionJob newJob = new IngestionJob();
@@ -658,6 +671,8 @@ public class IngestionJobService {
     public record ClaimedJobRef(UUID tenantId, UUID jobId, UUID claimToken) {
         public ClaimedJobRef(UUID tenantId, UUID jobId) { this(tenantId, jobId, null); }
     }
+
+    record BomUploadJobPayload(UUID uploadId) { }
 
     public record ConnectorJobPayload(UUID configId, UUID runId, String triggerMode, UUID targetId) { }
 
