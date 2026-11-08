@@ -43,7 +43,7 @@ Design:
 
 ```text
 TenantDataCipher (new interface)
-  encrypt(tenantId, purpose, plaintext) -> "enc:v2:<tenantKeyVer>:<iv>:<ct>"
+  encrypt(tenantId, purpose, plaintext) -> "enc:t1:<tenantKeyVer>:<base64(iv||ct)>"
   decrypt(tenantId, purpose, ciphertext)
   blindIndex(tenantId, purpose, normalizedValue) -> byte[] (HMAC-SHA256)
 KeyWrapper (interface)       : wrap/unwrap(dek, encryptionContext{tenantId,purpose,keyVersion})
@@ -53,6 +53,10 @@ TenantKeyRegistry            : platform.tenant_data_keys, caffeine cache (bounde
 ```
 
 - Per-tenant DEKs wrapped by KMS; AAD = `tenantId|purpose|keyVersion`; plaintext DEK cached in memory only, bounded TTL.
+- Prefix is `enc:t1:` because `CredentialEncryptionService` already writes `enc:v2:<keyId>:` with platform keys.
+  Wrap context is `{tenantId, purpose=tenant-data-key, keyVersion}`; field AAD is `tenantId|purpose|keyVersion`.
+- Blind-index key is derived from tenant key **version 1** so indexes survive DEK rotation; destroying v1 or
+  rotating the index key needs a reindex job (not in Release 1).
 - `enc:v1:` ciphertext stays readable through `CredentialEncryptionService`; `ProviderCredentialMigrator` gains a
   re-envelope pass (v1 → v2) driven by `ProviderCredentialMigrationTool`, resumable, never logging plaintext.
 - Gate: identity-source enablement and any PII write call `TenantDataCipher.readiness(tenantId)`; failure blocks with a
@@ -132,7 +136,7 @@ the release authority, plus provider-tenant access dates (ServiceNow, Entra, Okt
 | # | Prerequisite | Status |
 |---|---|---|
 | 1 | Storage map, versions, RLS/grants/purge | Designed here; verify at implementation |
-| 2 | KMS spike + cipher interface | Interface designed; **spike OPEN** |
+| 2 | KMS spike + cipher interface | Implemented (`security.tenantkey`, platform V11, local wrapper only); **spike OPEN** |
 | 3 | Identity key + search | Designed; **100k/300k plan OPEN** |
 | 4 | Authorization matrix | Designed |
 | 5 | Precedence/inheritance/TTL | Designed; thresholds **need product confirmation** |

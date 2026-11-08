@@ -134,6 +134,13 @@ app:
     credential-encryption-key: ${APP_CREDENTIAL_ENCRYPTION_KEY:}
     credential-encryption-key-id: ${APP_CREDENTIAL_ENCRYPTION_KEY_ID:primary}
     credential-encryption-previous-keys: ${APP_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS:}
+    tenant-keys:
+      # Per-tenant PII/connector-secret keys (ownership MVP). disabled = every PII write fails closed.
+      # local = test/dev-only wrapper (refused unless APP_ENVIRONMENT is local/test). KMS follows the spike.
+      wrapper: ${APP_TENANT_KEY_WRAPPER:disabled}
+      local-master-key: ${APP_TENANT_KEY_LOCAL_MASTER_KEY:}
+      cache-ttl: ${APP_TENANT_KEY_CACHE_TTL:PT10M}
+      cache-max-keys: ${APP_TENANT_KEY_CACHE_MAX_KEYS:10000}
     default-user-id: ${APP_DEFAULT_USER_ID:local-analyst}
     require-production-secrets: ${APP_REQUIRE_PRODUCTION_SECRETS:false}
     jwt:
