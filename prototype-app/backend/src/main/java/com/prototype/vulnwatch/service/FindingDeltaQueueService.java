@@ -7,6 +7,7 @@ import com.prototype.vulnwatch.repo.FindingDeltaQueueEntryRepository;
 import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -61,10 +63,12 @@ public class FindingDeltaQueueService {
     private final DashboardNoiseReductionProjectionService dashboardNoiseReductionProjectionService;
     private final TenantService tenantService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
+    private int nextTenantOffset;
     @org.springframework.beans.factory.annotation.Value("${app.correlation.delta-queue-stale-processing-threshold-minutes:30}")
     private long staleProcessingThresholdMinutes;
     @org.springframework.beans.factory.annotation.Value("${app.correlation.delta-queue-max-batches-per-tenant-per-poll:5}")
     private int maxBatchesPerTenantPerPoll;
+    private long sweepBudgetNanos = TimeUnit.SECONDS.toNanos(2);
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TransactionTemplate writeTransactionTemplate;
     private TransactionTemplate enqueueTransactionTemplate;
@@ -94,17 +98,21 @@ public class FindingDeltaQueueService {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    public void setTransactionManager(PlatformTransactionManager transactionManager) {
-        if (transactionManager == null) {
-            this.writeTransactionTemplate = null;
-            this.enqueueTransactionTemplate = null;
-            return;
+    public void configureTransactions(
+            PlatformTransactionManager transactionManager,
+            @org.springframework.beans.factory.annotation.Value("${app.correlation.delta-queue-sweep-budget-ms:2000}") long sweepBudgetMs,
+            @org.springframework.beans.factory.annotation.Value("${app.correlation.delta-queue-transaction-timeout-seconds:15}") int transactionTimeoutSeconds
+    ) {
+        if (sweepBudgetMs < 1 || transactionTimeoutSeconds < 1) {
+            throw new IllegalArgumentException("Finding delta sweep and transaction time budgets must be positive");
         }
+        this.sweepBudgetNanos = TimeUnit.MILLISECONDS.toNanos(sweepBudgetMs);
         this.enqueueTransactionTemplate = new TransactionTemplate(transactionManager);
         this.enqueueTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         this.writeTransactionTemplate = new TransactionTemplate(transactionManager);
         this.writeTransactionTemplate.setReadOnly(false);
         this.writeTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.writeTransactionTemplate.setTimeout(transactionTimeoutSeconds);
     }
 
     /** Resolved lazily: the CBOM mirror depends on workflow services that publish deltas. */
@@ -315,46 +323,56 @@ public class FindingDeltaQueueService {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-delta-queue.process-pending-deltas")) {
             return;
         }
-        // finding_delta_queue is per-tenant. The scheduler thread carries no tenant context, so the
-        // queue claim + status updates land in the default schema — without iterating tenants this only
-        // ever drained tenant_default and left every other tenant's deltas PENDING forever (so their
-        // findings/projections never recomputed). Drain each tenant's queue inside its own schema
-        // context. Never let an exception escape: a @Scheduled task that throws is not rescheduled.
         try {
-            TenantContext.runAsPlatform(() -> {
-                for (Tenant tenant : tenantService.listActiveTenants()) {
-                    try {
-                        tenantSchemaExecutionService.run(tenant, () -> {
-                            int batchesProcessed = 0;
-                            int maxBatches = Math.max(1, maxBatchesPerTenantPerPoll);
-                            while (batchesProcessed < maxBatches) {
-                                if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-delta-queue.claim")) break;
-                                List<FindingDeltaQueueEntry> claimed = claimBatch();
-                                if (claimed.isEmpty()) {
-                                    break;
-                                }
-                                LOG.debug("Delta queue: claimed {} entries for tenant {} (batch {}/{})",
-                                        claimed.size(),
-                                        tenant.getId(),
-                                        batchesProcessed + 1,
-                                        maxBatches);
-                                processClaimedBatch(claimed);
-                                batchesProcessed += 1;
-                            }
-                            if (batchesProcessed == maxBatches) {
-                                LOG.debug("Delta queue: paused tenant {} after {} batches to keep one poll cycle bounded",
-                                        tenant.getId(),
-                                        maxBatches);
-                            }
-                            return null;
-                        });
-                    } catch (Exception ex) {
-                        LOG.warn("Delta queue processing failed for tenant {}: {}", tenant.getId(), ex.getMessage(), ex);
-                    }
-                }
-            });
+            TenantContext.runAsPlatform(this::sweepTenants);
         } catch (Exception ex) {
             LOG.warn("Delta queue poll cycle failed before tenant iteration: {}", ex.getMessage(), ex);
+        }
+    }
+
+    private void sweepTenants() {
+        List<Tenant> tenants = tenantService.listActiveTenants();
+        if (tenants.isEmpty()) {
+            return;
+        }
+        int start = nextTenantOffset % tenants.size();
+        List<Integer> ready = new ArrayList<>(tenants.size());
+        for (int offset = 0; offset < tenants.size(); offset++) {
+            ready.add((start + offset) % tenants.size());
+        }
+        int maxRounds = Math.max(1, maxBatchesPerTenantPerPoll);
+        long started = System.nanoTime();
+        // Visit each eligible workspace once per round. Empty and failed tenants wait for the next poll.
+        for (int round = 0; round < maxRounds && !ready.isEmpty(); round++) {
+            List<Integer> backlogged = new ArrayList<>(ready.size());
+            for (int index : ready) {
+                if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("finding-delta-queue.claim")
+                        || System.nanoTime() - started >= sweepBudgetNanos) {
+                    return;
+                }
+                nextTenantOffset = (index + 1) % tenants.size();
+                if (processOneTenantBatch(tenants.get(index))) {
+                    backlogged.add(index);
+                }
+            }
+            ready = backlogged;
+        }
+        nextTenantOffset = (start + 1) % tenants.size();
+    }
+
+    private boolean processOneTenantBatch(Tenant tenant) {
+        try {
+            return tenantSchemaExecutionService.run(tenant, () -> {
+                List<FindingDeltaQueueEntry> claimed = claimBatch();
+                if (claimed.isEmpty()) {
+                    return false;
+                }
+                processClaimedBatch(claimed);
+                return true;
+            });
+        } catch (RuntimeException ex) {
+            LOG.warn("Delta queue processing failed for tenant {}: {}", tenant.getId(), ex.getMessage(), ex);
+            return false;
         }
     }
 
@@ -397,7 +415,10 @@ public class FindingDeltaQueueService {
         } catch (RuntimeException failure) {
             // A joined domain transaction may mark the batch rollback-only.
             // Record retry only after its effects and row locks have rolled back.
-            markFailedOrRetry(claimed,failure.getMessage());
+            executeWrite(() -> {
+                markFailedOrRetry(claimed, failure.getMessage());
+                return null;
+            });
         }
     }
 

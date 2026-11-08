@@ -41,18 +41,30 @@ public final class ProductionBootstrapCli {
         String failureCode = null;
         String failureMessage = null;
         try {
+            var onboarding = StandardRequestOnboarding.Command.parse(args);
+            var standardRequest = onboarding == null ? StandardTenantEnrollment.Request.parse(args) : null;
             Config config = validatedConfig();
+            if ((onboarding != null || standardRequest != null) && (config.reportOnly() || config.platformOwnerBootstrapEnabled()
+                    || config.managedOperators() != null)) {
+                throw new BootstrapFailure("conflicting_modes",
+                        "Standard tenant provisioning requires a task without installation or report-only inputs");
+            }
             try (Connection connection = ownerConnection(config)) {
                 verifyOwnerPreflight(connection, config);
                 phases.add(Phase.success("database_preflight", "configuration and connectivity verified"));
                 acquireLock(connection);
                 try {
-                    if (config.reportOnly()) {
+                    if (onboarding != null) {
+                        runStandardOnboarding(connection, config, onboarding, runId, phases);
+                    } else if (standardRequest != null) {
+                        provisionStandardTenant(connection, config, standardRequest, runId, phases);
+                    } else if (config.reportOnly()) {
                         verifyControlPlane(connection, config.runtimeDbUsername());
                         phases.add(Phase.success("report_only_owner_verification", "complete"));
                     } else {
                         int platformVersion = runPlatformMigrations(config);
-                        provisionRuntimeRole(connection, config.runtimeDbUsername(), config.runtimeDbPassword());
+                        StandardTenantEnrollment.configure(connection, config.standardCustomerLimit());
+                        provisionRuntimeRole(connection, config);
                         phases.add(Phase.success("platform_migrations", "version=" + platformVersion));
                         TenantSchema defaultTenant = ensureDefaultTenant(connection);
                         phases.add(Phase.success("default_tenant_registration", defaultTenant.schemaName()));
@@ -68,20 +80,22 @@ public final class ProductionBootstrapCli {
                         if (!tenantResult.success()) {
                             throw new BootstrapFailure("tenant_provisioning_failed", "Tenant provisioning failed");
                         }
-                        provisionRuntimeRole(connection, config.runtimeDbUsername(), config.runtimeDbPassword());
+                        provisionRuntimeRole(connection, config);
                         phases.add(Phase.success("runtime_role_provisioning", config.runtimeDbUsername()));
                         verifyControlPlane(connection, config.runtimeDbUsername());
                         phases.add(Phase.success("owner_verification", "complete"));
-                        if (config.platformOwnerBootstrapEnabled()) {
-                            bootstrapInstallationIdentities(connection, config, defaultTenant.tenantId());
-                            phases.add(Phase.success("installation_identities", "verified; setup delivery intents committed"));
+                        if (config.platformOwnerBootstrapEnabled() || config.managedOperators() != null) {
+                            String result = bootstrapInstallationIdentities(connection, config, defaultTenant.tenantId());
+                            phases.add(Phase.success("installation_identities", result));
                         }
+                    }
+                    if (standardRequest == null && onboarding == null) {
+                        verifyRuntimeConnection(config);
                     }
                 } finally {
                     releaseLock(connection);
                 }
             }
-            verifyRuntimeConnection(config);
             phases.add(Phase.success("runtime_verification", "complete"));
             success = true;
         } catch (BootstrapFailure ex) {
@@ -99,6 +113,46 @@ public final class ProductionBootstrapCli {
             throw new BootstrapFailure(failureCode == null ? "bootstrap_failed" : failureCode,
                     failureMessage == null ? "Production bootstrap failed" : failureMessage);
         }
+    }
+
+    private static void runStandardOnboarding(Connection connection, Config config,
+            StandardRequestOnboarding.Command command, UUID runId, List<Phase> phases) throws Exception {
+        if (platformVersion(connection) != MIGRATION_TARGETS.platformTarget() || !ManagedOperatorEnrollment.exists(connection)) {
+            throw new BootstrapFailure("standard_onboarding_preflight", "Run the matching managed Standard bootstrap first");
+        }
+        StandardTenantEnrollment.requireCapacityPolicy(connection, config.standardCustomerLimit());
+        String issuer = env("APP_JWT_ISSUER_URI", "");
+        if (!issuer.matches("https://cognito-idp\\.([a-z0-9-]+)\\.amazonaws\\.com/\\1_[A-Za-z0-9]+")
+                || queryLong(connection, """
+                    select count(*) from platform.managed_operator_enrollment e
+                    join platform.managed_identities i on i.id in (e.owner_binding_id, e.admin_binding_id)
+                    where i.issuer = ?
+                    """, issuer) == 0) {
+            throw new BootstrapFailure("standard_onboarding_preflight", "Standard onboarding requires the configured Cognito issuer");
+        }
+        if (command.action() == StandardRequestOnboarding.Action.PROVISION) {
+            var request = StandardRequestOnboarding.load(connection, command.requestId());
+            try {
+                provisionStandardTenant(connection, config, request.workspace(), runId, phases);
+            } catch (Exception failure) {
+                try {
+                    StandardRequestOnboarding.recordProvisioning(connection, request, false);
+                } catch (SQLException recordFailure) {
+                    failure.addSuppressed(recordFailure);
+                }
+                throw new BootstrapFailure("standard_request_provisioning_failed", "Inspect the task and retry the approved request");
+            }
+            StandardRequestOnboarding.recordProvisioning(connection, request, true);
+            return;
+        }
+        StandardRequestOnboarding.finish(connection, command, issuer, MIGRATION_TARGETS.tenantTarget());
+        String phase = switch (command.action()) {
+            case LINK_ADMIN -> "standard_admin_link_verified";
+            case RECORD_EMAIL -> "standard_setup_submission_recorded";
+            case RECORD_EMAIL_FAILURE -> "standard_setup_failure_recorded";
+            case PROVISION -> throw new IllegalStateException("Workspace provisioning was already handled");
+        };
+        phases.add(Phase.success(phase, "request_id=" + command.requestId()));
     }
 
     private static Config validatedConfig() {
@@ -180,30 +234,69 @@ public final class ProductionBootstrapCli {
                         config.credentialEncryptionKey(), config.credentialEncryptionKeyId(), ""));
     }
 
-    private static void bootstrapInstallationIdentities(Connection connection, Config config, UUID tenantId) throws SQLException {
+    private static String bootstrapInstallationIdentities(Connection connection, Config config, UUID tenantId) throws SQLException {
         boolean original = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try {
-            String ownerEmail = config.platformOwnerBootstrapEmail().trim().toLowerCase(java.util.Locale.ROOT);
-            String adminEmail = config.internalAdminEmail().trim().toLowerCase(java.util.Locale.ROOT);
-            if (ownerEmail.equals(adminEmail)) throw new IllegalArgumentException("Owner and internal administrator require distinct email aliases");
-            UUID owner = reconcileIdentity(connection, ownerEmail, config.platformOwnerBootstrapExternalSubject(), true, tenantId);
-            UUID admin = reconcileIdentity(connection, adminEmail, adminEmail, false, tenantId);
-            PlatformOwnerSetupLinkIssuer issuer = platformOwnerSetupLinkIssuer(config);
-            issuer.enqueue(connection, owner, null, "PLATFORM_OWNER_SETUP", ownerEmail,
-                    config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.platformOwnerSetupAllowReissue());
-            issuer.enqueue(connection, admin, tenantId, "INTERNAL_ADMIN_SETUP", adminEmail,
-                    config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.internalAdminSetupAllowReissue());
-            try(var audit=connection.prepareStatement("insert into platform.intelligence_audit_events(id,action,actor,detail) values(?,'INSTALLATION_VERIFIED','system:installation',jsonb_build_object('ownerId',?::text,'internalAdminId',?::text,'tenantId',?::text))")) {
-                audit.setObject(1,UUID.randomUUID());audit.setString(2,owner.toString());audit.setString(3,admin.toString());audit.setString(4,tenantId.toString());audit.executeUpdate();
+            String result;
+            if (config.managedOperators() != null) {
+                boolean enrolled = ManagedOperatorEnrollment.enroll(connection, config.managedOperators(), tenantId);
+                result = enrolled ? "managed operator links committed" : "recorded managed operator links verified";
+            } else {
+                if (ManagedOperatorEnrollment.exists(connection)) {
+                    throw new IllegalStateException("Local setup is unavailable on a managed operator installation");
+                }
+                bootstrapLocalInstallationIdentities(connection, config, tenantId);
+                result = "verified; setup delivery intents committed";
             }
             connection.commit();
-        } catch (SQLException | RuntimeException failure) {
-            connection.rollback(); throw failure;
-        } finally { connection.setAutoCommit(original); }
+            return result;
+        } catch (SQLException failure) {
+            connection.rollback();
+            if (config.managedOperators() != null) {
+                throw new BootstrapFailure("managed_operator_enrollment_failed", "Managed operator enrollment database operation failed");
+            }
+            throw failure;
+        } catch (RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(original);
+        }
     }
 
-    private static UUID reconcileIdentity(Connection connection, String email, String subject, boolean owner, UUID tenantId) throws SQLException {
+    private static void bootstrapLocalInstallationIdentities(Connection connection, Config config, UUID tenantId) throws SQLException {
+        String ownerEmail = config.platformOwnerBootstrapEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        String adminEmail = config.internalAdminEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        if (ownerEmail.equals(adminEmail)) {
+            throw new IllegalArgumentException("Owner and internal administrator require distinct email aliases");
+        }
+        UUID owner = reconcileIdentity(connection, ownerEmail, config.platformOwnerBootstrapExternalSubject(), true, tenantId);
+        UUID admin = reconcileIdentity(connection, adminEmail, adminEmail, false, tenantId);
+        PlatformOwnerSetupLinkIssuer issuer = platformOwnerSetupLinkIssuer(config);
+        issuer.enqueue(connection, owner, null, "PLATFORM_OWNER_SETUP", ownerEmail,
+                config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.platformOwnerSetupAllowReissue());
+        issuer.enqueue(connection, admin, tenantId, "INTERNAL_ADMIN_SETUP", adminEmail,
+                config.platformOwnerSetupAppBaseUrl(), config.platformOwnerSetupTokenTtlMinutes(), config.internalAdminSetupAllowReissue());
+        recordInstallationAudit(connection, tenantId, owner, admin, "LOCAL");
+    }
+
+    static void recordInstallationAudit(Connection connection, UUID tenantId, UUID owner, UUID admin, String mode) throws SQLException {
+        try (var audit = connection.prepareStatement("""
+                insert into platform.intelligence_audit_events (id, action, actor, detail)
+                values (?, 'INSTALLATION_VERIFIED', 'system:installation',
+                    jsonb_build_object('ownerId', ?::text, 'internalAdminId', ?::text, 'tenantId', ?::text, 'mode', ?::text))
+                """)) {
+            audit.setObject(1, UUID.randomUUID());
+            audit.setString(2, owner.toString());
+            audit.setString(3, admin.toString());
+            audit.setString(4, tenantId.toString());
+            audit.setString(5, mode);
+            audit.executeUpdate();
+        }
+    }
+
+    static UUID reconcileIdentity(Connection connection, String email, String subject, boolean owner, UUID tenantId) throws SQLException {
         if (subject == null || subject.isBlank()) subject = email;
         UUID bySubject = findUserBySubject(connection, subject);
         UUID byEmail = findUserByEmail(connection, email);
@@ -343,6 +436,9 @@ public final class ProductionBootstrapCli {
             phases.add(Phase.success("tenant_batch_migration", "count=" + batch.size()));
         }
 
+        if (config.standardCustomerLimit() != 0) {
+            return new BootstrapResult(true, phases);
+        }
         List<TenantSchema> pending = tenants(connection, "PROVISIONING");
         for (TenantSchema tenant : pending) {
             try {
@@ -360,6 +456,91 @@ public final class ProductionBootstrapCli {
             }
         }
         return new BootstrapResult(true, phases);
+    }
+
+    private static void provisionStandardTenant(
+            Connection connection, Config config, StandardTenantEnrollment.Request request, UUID runId,
+            List<Phase> phases
+    ) throws Exception {
+        if (platformVersion(connection) != MIGRATION_TARGETS.platformTarget()) {
+            throw new BootstrapFailure("platform_target_mismatch", "Run the matching Standard bootstrap first");
+        }
+        StandardTenantEnrollment.requireCapacityPolicy(connection, config.standardCustomerLimit());
+        String status = StandardTenantEnrollment.reserve(connection, request, config.standardCustomerLimit());
+        var tenant = new TenantSchema(request.id(), request.schema(), status);
+        phases.add(Phase.success("standard_tenant_reserved", "tenant_id=" + request.id()));
+        if ("ACTIVE".equals(status)) {
+            verifyActiveTenantSchemaState(connection);
+            verifyStandardRuntime(config, tenant);
+            phases.add(Phase.success("standard_tenant_already_active", "tenant_id=" + request.id()));
+            return;
+        }
+        try {
+            if (queryLong(connection, "select count(*) from pg_namespace where nspname = ?", tenant.schemaName()) != 1) {
+                throw new BootstrapFailure("standard_schema_missing", "The reserved tenant schema is missing");
+            }
+            migrateTenant(config, tenant);
+            String checksum = fingerprint(connection, tenant.schemaName());
+            if (!checksum.equals(fingerprint(connection, DEFAULT_TENANT_SCHEMA))) {
+                throw new BootstrapFailure("tenant_schema_drift", "Reserved schema differs from SG Internal");
+            }
+            grantAndVerifySchema(connection, config.runtimeDbUsername(), tenant.schemaName());
+            verifyStandardRuntime(config, tenant);
+            StandardTenantEnrollment.requireCapacityPolicy(connection, config.standardCustomerLimit());
+            finishStandardProvisioning(connection, tenant, checksum, runId);
+        } catch (Exception ex) {
+            try {
+                finishStandardProvisioning(connection, tenant, null, runId);
+            } catch (SQLException recordFailure) {
+                ex.addSuppressed(recordFailure);
+            }
+            throw ex;
+        }
+        phases.add(Phase.success("standard_tenant_activated", "tenant_id=" + request.id()));
+    }
+
+    private static void finishStandardProvisioning(Connection connection, TenantSchema tenant, String checksum, UUID runId)
+            throws SQLException {
+        connection.setAutoCommit(false);
+        try (var statement = connection.prepareStatement("""
+                update platform.tenants set status = ?, updated_at = now()
+                where id = ? and schema_name = ? and deleted_at is null and classification = 'CUSTOMER'
+                  and status in ('PROVISIONING', 'PROVISIONING_FAILED')
+                """)) {
+            statement.setString(1, checksum == null ? "PROVISIONING_FAILED" : "ACTIVE");
+            statement.setObject(2, tenant.tenantId());
+            statement.setString(3, tenant.schemaName());
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Standard tenant reservation changed before completion");
+            }
+            if (checksum == null) {
+                markFailure(connection, tenant, "PROVISIONING_FAILED", "STANDARD_PROVISIONING_FAILED",
+                        "Inspect the exit-once task report and retry the same reservation.", runId);
+            } else {
+                markCurrent(connection, tenant, checksum, runId);
+            }
+            connection.commit();
+        } catch (SQLException ex) {
+            connection.rollback();
+            throw ex;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private static void verifyStandardRuntime(Config config, TenantSchema tenant) throws SQLException {
+        try (Connection connection = runtimeConnection(config)) {
+            verifyRuntimeDdlDenied(connection);
+            String budgetCount = "select count(*) from " + quotedIdentifier(tenant.schemaName()) + ".ai_grid_budget_config";
+            requireZero(connection, budgetCount, "tenant rows visible without tenant context");
+            try (var context = connection.prepareStatement("select set_config('app.current_tenant_id', ?, false)")) {
+                context.setString(1, tenant.tenantId().toString());
+                context.execute();
+            }
+            if (queryLong(connection, budgetCount + " where tenant_id = ?", tenant.tenantId()) != 1) {
+                throw new BootstrapFailure("verification_failed", "Runtime cannot read the reserved tenant budget seed");
+            }
+        }
     }
 
     private static void migrateAndMark(
@@ -524,7 +705,8 @@ public final class ProductionBootstrapCli {
         }
     }
 
-    private static void provisionRuntimeRole(Connection connection, String role, String password) throws SQLException {
+    private static void provisionRuntimeRole(Connection connection, Config config) throws SQLException {
+        String role = config.runtimeDbUsername();
         String quotedRole = quotedIdentifier(role);
         try (Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -542,9 +724,10 @@ public final class ProductionBootstrapCli {
                     where rolname = ?
                       and (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)
                     """, "runtime role has immutable unsafe attributes", role);
-            statement.execute("alter role " + quotedRole
-                    + " with login noinherit password "
-                    + quotedLiteral(password));
+            String connectionLimit = config.runtimeDbConnectionLimit() == 0
+                    ? "" : " connection limit " + config.runtimeDbConnectionLimit();
+            statement.execute("alter role " + quotedRole + " with login noinherit password "
+                    + quotedLiteral(config.runtimeDbPassword()) + connectionLimit);
             statement.execute("grant connect on database " + quotedIdentifier(connection.getCatalog()) + " to " + quotedRole);
             statement.execute("revoke create on database " + quotedIdentifier(connection.getCatalog()) + " from " + quotedRole);
             statement.execute("revoke create on schema public from " + quotedRole);
@@ -715,8 +898,15 @@ public final class ProductionBootstrapCli {
     }
 
     private static void verifyRuntimeConnection(Config config) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(
-                config.dbUrl(), config.runtimeDbUsername(), config.runtimeDbPassword())) {
+        try (Connection connection = runtimeConnection(config)) {
+            verifyRuntimeDdlDenied(connection);
+        }
+    }
+
+    private static Connection runtimeConnection(Config config) throws SQLException {
+        Connection connection = DriverManager.getConnection(
+                config.dbUrl(), config.runtimeDbUsername(), config.runtimeDbPassword());
+        try {
             if (!connection.getCatalog().equals(config.expectedDatabase())) {
                 throw new BootstrapFailure("verification_failed", "runtime connection targets an unexpected database");
             }
@@ -728,7 +918,16 @@ public final class ProductionBootstrapCli {
                     where rolname = current_user
                       and (rolsuper or rolinherit or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls)
                     """, "runtime role is unsafe");
-            verifyRuntimeDdlDenied(connection);
+            if (config.runtimeDbConnectionLimit() > 0) {
+                requireZero(connection, """
+                        select count(*) from pg_roles where rolname = current_user and rolconnlimit <> ?
+                        """, "runtime connection limit does not match the Standard fleet budget",
+                        config.runtimeDbConnectionLimit());
+            }
+            return connection;
+        } catch (RuntimeException | SQLException ex) {
+            connection.close();
+            throw ex;
         }
     }
 
@@ -915,7 +1114,10 @@ public final class ProductionBootstrapCli {
             String runtimeDbUsername,
             String runtimeDbPassword,
             String expectedDatabase,
+            int standardCustomerLimit,
+            int runtimeDbConnectionLimit,
             boolean reportOnly,
+            ManagedOperatorEnrollment.Spec managedOperators,
             boolean platformOwnerBootstrapEnabled,
             String platformOwnerBootstrapEmail,
             String platformOwnerBootstrapExternalSubject,
@@ -939,6 +1141,20 @@ public final class ProductionBootstrapCli {
             boolean setupLinkEnabled = Boolean.parseBoolean(env("PLATFORM_OWNER_SETUP_LINK_ENABLED", "false"));
             boolean ownerBootstrapEnabled = Boolean.parseBoolean(
                     env("APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED", "false")) || setupLinkEnabled;
+            boolean reportOnly = Boolean.parseBoolean(env("BOOTSTRAP_REPORT_ONLY",
+                    env("APP_SCHEMA_MIGRATION_REPORT_ONLY", "false")));
+            var managedOperators = ManagedOperatorEnrollment.configured(name -> env(name, ""), ownerBootstrapEnabled, reportOnly);
+            int standardCustomerLimit = switch (env("APP_STANDARD_CUSTOMER_LIMIT", "")) {
+                case "" -> 0;
+                case "3" -> 3;
+                case "10" -> 10;
+                default -> throw new IllegalArgumentException("APP_STANDARD_CUSTOMER_LIMIT must be 3 or 10");
+            };
+            int runtimeDbConnectionLimit = env("APP_STANDARD_RUNTIME_DB_CONNECTION_LIMIT", "").isEmpty() ? 0
+                    : integerEnv("APP_STANDARD_RUNTIME_DB_CONNECTION_LIMIT", 1, 1, Integer.MAX_VALUE);
+            if (runtimeDbConnectionLimit > 0 && standardCustomerLimit == 0) {
+                throw new IllegalArgumentException("A runtime DB connection limit requires a Standard customer limit");
+            }
             String ownerBootstrapEmail = ownerBootstrapEnabled
                     ? requiredWithFallback(
                             "PLATFORM_OWNER_SETUP_EMAIL",
@@ -958,9 +1174,10 @@ public final class ProductionBootstrapCli {
                     env("RUNTIME_DB_USERNAME", "scout_runtime"),
                     required("RUNTIME_DB_PASSWORD"),
                     env("EXPECTED_DB_NAME", databaseName(dbUrl)),
-                    Boolean.parseBoolean(env(
-                            "BOOTSTRAP_REPORT_ONLY",
-                            env("APP_SCHEMA_MIGRATION_REPORT_ONLY", "false"))),
+                    standardCustomerLimit,
+                    runtimeDbConnectionLimit,
+                    reportOnly,
+                    managedOperators,
                     ownerBootstrapEnabled,
                     ownerBootstrapEmail,
                     env("APP_SECURITY_BOOTSTRAP_PLATFORM_OWNERS_USERS_0_EXTERNAL_SUBJECT", ownerBootstrapEmail),

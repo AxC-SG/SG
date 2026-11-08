@@ -53,6 +53,7 @@ public class AwsDiscoverySyncService {
     private final TaskExecutor integrationQueueExecutor;
     private final TransactionTemplate transactionTemplate;
     private final IngestionJobService jobs;
+    private final ConnectorScheduleProgress scheduleProgress;
     private final CredentialEncryptionService credentialEncryptionService;
     private final WorkspaceService workspaceService;
     private final TenantService tenantService;
@@ -74,7 +75,8 @@ public class AwsDiscoverySyncService {
             WorkspaceService workspaceService,
             TenantService tenantService,
             TenantSchemaExecutionService tenantSchemaExecutionService,
-            IngestionJobService jobs
+            IngestionJobService jobs,
+            ConnectorScheduleProgress scheduleProgress
     ) {
         this.awsDiscoveryConfigRepository = awsDiscoveryConfigRepository;
         this.awsDiscoveryTargetRepository = awsDiscoveryTargetRepository;
@@ -91,6 +93,7 @@ public class AwsDiscoverySyncService {
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
         this.jobs = jobs;
+        this.scheduleProgress = scheduleProgress;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -117,7 +120,7 @@ public class AwsDiscoverySyncService {
     public SyncTriggerResponse triggerTarget(Tenant tenant, UUID targetId) {
         AwsDiscoveryTarget target = awsDiscoveryTargetService.requireTarget(tenant, targetId);
         ClaimedRun claimed = jobs.withAdmission(tenant, () -> {
-            ClaimedRun admitted = claimRunForConfig(target.getConfig(), "manual-target", true);
+            ClaimedRun admitted = claimRunForConfig(target.getConfig().getId(), tenant.getId(), "manual-target", null);
             if (!admitted.reusedActiveRun()) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
                     admitted.configId(), admitted.runId(), "manual-target", targetId);
             return admitted;
@@ -130,33 +133,34 @@ public class AwsDiscoverySyncService {
 
     @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSyncs() {
+        runScheduledSyncs(Instant.now());
+    }
+
+    void runScheduledSyncs(Instant sweepStartedAt) {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("aws-discovery.run-scheduled-syncs")) {
             return;
         }
-        List<ConfigRef> configs = TenantContext.runAsPlatform(() -> {
-            List<ConfigRef> scheduledConfigs = new ArrayList<>();
-            for (Tenant tenant : tenantService.listActiveTenants()) {
-                tenantSchemaExecutionService.run(tenant, () -> {
-                    awsDiscoveryConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "aws")
-                            .filter(config -> config.isEnabled() && config.isAutoSyncEnabled())
-                            .ifPresent(config -> scheduledConfigs.add(new ConfigRef(config.getId(), tenant.getId())));
-                    return null;
-                });
-            }
-            return scheduledConfigs;
-        });
-        for (ConfigRef configRef : configs) {
+        List<Tenant> tenants = TenantContext.runAsPlatform(tenantService::listActiveTenants);
+        for (Tenant tenant : tenants) {
             try {
-                Tenant tenant = tenantService.resolveTenantUuid(configRef.tenantId());
+                if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("aws-discovery.run-scheduled-syncs")) {
+                    break;
+                }
+                UUID configId = tenantSchemaExecutionService.run(tenant, () -> awsDiscoveryConfigRepository
+                        .findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "aws")
+                        .filter(config -> config.isEnabled() && config.isAutoSyncEnabled())
+                        .map(AwsDiscoveryConfig::getId).orElse(null));
+                if (configId == null) {
+                    continue;
+                }
                 jobs.withAdmission(tenant, () -> {
-                    AwsDiscoveryConfig config = awsDiscoveryConfigRepository.findById(configRef.configId()).orElse(null);
-                    ClaimedRun claimed = config == null ? null : claimScheduledRun(config);
+                    ClaimedRun claimed = claimRunForConfig(configId, tenant.getId(), "scheduled", sweepStartedAt);
                     if (claimed != null) jobs.enqueueConnectorJob(tenant, IngestionJobService.JOB_TYPE_AWS_DISCOVERY,
                             claimed.configId(), claimed.runId(), "scheduled", null);
                     return null;
                 });
             } catch (RuntimeException failure) {
-                LOG.warn("Scheduled connector {} admission deferred", configRef.configId());
+                LOG.warn("Scheduled AWS discovery admission deferred for tenant {}", tenant.getId());
             }
         }
     }
@@ -177,40 +181,35 @@ public class AwsDiscoverySyncService {
         if (!config.isEnabled()) {
             throw new IllegalStateException("AWS Cloud Discovery connector is disabled");
         }
-        return claimRunForConfig(config, "manual", true);
+        return claimRunForConfig(config.getId(), tenant.getId(), "manual", null);
     }
 
-    private ClaimedRun claimScheduledRun(AwsDiscoveryConfig config) {
-        return claimRunForConfig(config, "scheduled", false);
-    }
-
-    private ClaimedRun claimRunForConfig(AwsDiscoveryConfig config, String triggerMode, boolean allowReuseActiveRun) {
+    private ClaimedRun claimRunForConfig(UUID configId, UUID tenantId, String triggerMode, Instant sweepStartedAt) {
         // The configuration row is the admission lock, including when no run exists yet.
         // Tenant context and the transaction are established by every caller before this lock.
-        config = awsDiscoveryConfigRepository.findByIdAndTenantIdForUpdate(config.getId(), config.getTenant().getId())
+        AwsDiscoveryConfig config = awsDiscoveryConfigRepository.findByIdAndTenantIdForUpdate(configId, tenantId)
                 .orElseThrow(() -> new EntityNotFoundException("AWS Cloud Discovery config not found"));
         if (!isConfigured(config) || !config.isEnabled()) {
             throw new IllegalStateException("AWS customer connector is disabled or requires a server binding");
         }
-        if ("scheduled".equals(triggerMode)
-                && (!isConfigured(config) || !config.isEnabled() || !config.isAutoSyncEnabled() || !isDue(config))) {
+        if (sweepStartedAt != null && (!config.isAutoSyncEnabled() || !isDue(config, sweepStartedAt))) {
             return null;
         }
-        if ("manual".equals(triggerMode) && (!isConfigured(config) || !config.isEnabled())) {
-            throw new IllegalStateException("AWS Cloud Discovery connector is not configured or is disabled");
-        }
-        UUID tenantId = config.getTenant().getId();
         Optional<SyncRun> active = syncRunRepository.findActiveRunsByTenantAndSyncType(
                 tenantId, SYNC_TYPE_AWS_DISCOVERY,
                 List.of("queued", "running")
         ).stream().findFirst();
         if (active.isPresent()) {
-            if (!allowReuseActiveRun) {
+            if (sweepStartedAt != null) {
                 return null;
             }
             return new ClaimedRun(config.getId(), active.get().getId(), true);
         }
 
+        if (sweepStartedAt != null && !scheduleProgress.advance(
+                tenantId, ConnectorScheduleProgress.Kind.AWS_DISCOVERY, config.getId(), sweepStartedAt)) {
+            return null;
+        }
         List<String> regions = parseRegions(config.getRegionsJson());
         List<String> resourceTypes = parseResourceTypes(config.getResourceTypesJson());
 
@@ -229,7 +228,7 @@ public class AwsDiscoverySyncService {
         return new ClaimedRun(config.getId(), run.getId(), false);
     }
 
-    private boolean isDue(AwsDiscoveryConfig config) {
+    private boolean isDue(AwsDiscoveryConfig config, Instant sweepStartedAt) {
         SyncRun latest = syncRunRepository
                 .findTopBySyncTypeIgnoreCaseAndTenant_IdOrderByStartedAtDesc(SYNC_TYPE_AWS_DISCOVERY, config.getTenant().getId())
                 .orElse(null);
@@ -241,7 +240,7 @@ public class AwsDiscoverySyncService {
             return true;
         }
         int minutes = config.getIntervalMinutes() == null ? 1440 : Math.max(5, config.getIntervalMinutes());
-        return Duration.between(reference, Instant.now()).toMinutes() >= minutes;
+        return Duration.between(reference, sweepStartedAt).toMinutes() >= minutes;
     }
 
     // ── Execution ──────────────────────────────────────────────────────────────────────────────
@@ -704,7 +703,6 @@ public class AwsDiscoverySyncService {
             boolean reusedActiveRun
     ) {}
 
-    private record ConfigRef(UUID configId, UUID tenantId) {}
 
     private record TargetRunResult(
             int recordsFetched,

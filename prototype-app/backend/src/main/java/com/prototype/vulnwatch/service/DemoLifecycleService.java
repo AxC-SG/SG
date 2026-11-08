@@ -61,6 +61,8 @@ public class DemoLifecycleService {
     private TenantSchemaMigrationService tenantSchemaMigrationService;
     @Value("${app.demo.synchronous-tenant-provisioning-enabled:false}")
     private boolean synchronousTenantProvisioningEnabled;
+    @Value("${app.security.managed-auth.enabled:false}")
+    private boolean managedAuthEnabled;
 
     public DemoLifecycleService(
             DemoRequestRepository demoRequestRepository,
@@ -176,7 +178,17 @@ public class DemoLifecycleService {
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public DemoRequestResponse approve(UUID requestId, String actor, boolean addDemoData) {
+        if (managedAuthEnabled) {
+            if (TenantContext.getCurrentTenantId() != null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Return to platform scope to approve Standard onboarding");
+            }
+            if (addDemoData) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Standard onboarding cannot seed demo data");
+            }
+            return transactionTemplate.execute(status -> approveStandardRequest(requestId, actor));
+        }
         DemoRequest request = getRequest(requestId);
+        requireUncommittedRequest(request);
         Tenant tenant;
         if (request.getTenantId() != null) {
             tenant = tenantRepository.findById(request.getTenantId())
@@ -229,9 +241,26 @@ public class DemoLifecycleService {
         });
     }
 
+    private DemoRequestResponse approveStandardRequest(UUID requestId, String actor) {
+        DemoRequest request = getRequestForUpdate(requestId);
+        if (isStandardRequest(request)) {
+            return toRequestResponse(request);
+        }
+        if (!"PENDING".equals(request.getStatus()) || request.getTenantId() != null || latestInvite(requestId) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a pending request can start Standard onboarding");
+        }
+        request.setStatus("QUEUED");
+        request.setBootstrapStatus("STANDARD_APPROVED");
+        request.setDecidedAt(Instant.now());
+        request.setDecidedBy(requireText(actor, "approver"));
+        auditEventService.record("demo.request.standard_approved", "demo_request", requestId.toString(), null);
+        return toRequestResponse(request);
+    }
+
     @Transactional
     public DemoRequestResponse reject(UUID requestId, String reason, String actor) {
-        DemoRequest request = getRequest(requestId);
+        DemoRequest request = getRequestForUpdate(requestId);
+        requireUncommittedRequest(request);
         request.setStatus("REJECTED");
         request.setBootstrapStatus("REJECTED");
         request.setDecidedAt(Instant.now());
@@ -246,7 +275,9 @@ public class DemoLifecycleService {
     // locks held by its own tenant/invite reads.
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public DemoInviteResponse resendInvite(UUID requestId) {
+        requireLocalDemoSetup();
         DemoRequest request = getRequest(requestId);
+        requireUncommittedRequest(request);
         if (request.getTenantId() == null) {
             throw new DemoAccessException("DEMO_INVITE_INVALID", "Demo request has not been provisioned yet", HttpStatus.BAD_REQUEST);
         }
@@ -280,7 +311,9 @@ public class DemoLifecycleService {
 
     @Transactional
     public DemoSetupLinkResponse issueSetupLink(UUID requestId, String actor) {
+        requireLocalDemoSetup();
         DemoRequest request = demoRequestRepository.findByIdForUpdate(requestId).orElseThrow();
+        requireUncommittedRequest(request);
         if (request.getTenantId() == null) {
             throw new DemoAccessException("DEMO_SETUP_NOT_READY", "Demo request must be provisioned before password setup can be issued", HttpStatus.CONFLICT);
         }
@@ -323,7 +356,8 @@ public class DemoLifecycleService {
 
     @Transactional
     public void deleteRequest(UUID requestId, String actor) {
-        DemoRequest request = getRequest(requestId);
+        DemoRequest request = getRequestForUpdate(requestId);
+        requireUncommittedRequest(request);
         demoInviteRepository.deleteByRequest_Id(requestId);
         demoRequestRepository.delete(request);
         auditEventService.record(
@@ -571,6 +605,27 @@ public class DemoLifecycleService {
     private DemoRequest getRequest(UUID requestId) {
         return demoRequestRepository.findById(requestId)
                 .orElseThrow(() -> new DemoAccessException("DEMO_INVITE_INVALID", "Demo request not found", HttpStatus.NOT_FOUND));
+    }
+
+    private DemoRequest getRequestForUpdate(UUID requestId) {
+        return demoRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new DemoAccessException("DEMO_INVITE_INVALID", "Demo request not found", HttpStatus.NOT_FOUND));
+    }
+
+    private boolean isStandardRequest(DemoRequest request) {
+        return request.getBootstrapStatus() != null && request.getBootstrapStatus().startsWith("STANDARD_");
+    }
+
+    private void requireUncommittedRequest(DemoRequest request) {
+        if (isStandardRequest(request)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Approved Standard onboarding must be managed through the workspace lifecycle");
+        }
+    }
+
+    private void requireLocalDemoSetup() {
+        if (managedAuthEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Use the managed password setup process");
+        }
     }
 
     private DemoInvite findInvite(String token) {

@@ -191,6 +191,29 @@ class TenantServiceTest {
     }
 
     @Test
+    void backgroundRoutingRejectsSuspensionAndUnresolvedCustomerPlacement() {
+        UUID tenantId = UUID.randomUUID();
+        Tenant tenant = new Tenant();
+        tenant.setId(tenantId);
+        tenant.setClassification("CUSTOMER");
+        when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+
+        tenant.setSchemaName("tenant_customer");
+        tenant.setStatus("SUSPENDED");
+        assertThrows(ResponseStatusException.class, () -> tenantService.resolveActiveTenantForBackgroundWork(tenantId));
+
+        tenant.setStatus("ACTIVE");
+        tenant.setSchemaName(null);
+        assertThrows(ResponseStatusException.class, () -> tenantService.resolveActiveTenantForBackgroundWork(tenantId));
+
+        tenant.setSchemaName(TenantService.DEFAULT_TENANT_SCHEMA);
+        assertThrows(ResponseStatusException.class, () -> tenantService.resolveActiveTenantForBackgroundWork(tenantId));
+
+        tenant.setSchemaName("tenant_customer");
+        assertSame(tenant, tenantService.resolveActiveTenantForBackgroundWork(tenantId));
+    }
+
+    @Test
     void listActiveTenantsFiltersInactiveAndDeletedTenants() {
         Tenant active = new Tenant();
         active.setName("Active");

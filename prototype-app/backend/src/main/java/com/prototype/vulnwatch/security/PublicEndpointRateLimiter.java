@@ -64,6 +64,11 @@ public class PublicEndpointRateLimiter {
         check("login:email:" + fingerprint(email), 10, Duration.ofMinutes(15));
     }
 
+    public void checkManagedSignIn(HttpServletRequest request) {
+        checkGlobal("managed-sign-in");
+        check("managed-sign-in:ip:" + clientIp(request), 30, Duration.ofMinutes(15));
+    }
+
     public void checkInvite(HttpServletRequest request, String token) {
         checkGlobal("invite");
         check("invite:ip:" + clientIp(request), 60, Duration.ofMinutes(15));

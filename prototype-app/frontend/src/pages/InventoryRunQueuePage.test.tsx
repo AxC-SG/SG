@@ -7,6 +7,28 @@ import { InventoryRunQueuePage } from './InventoryRunQueuePage';
 describe('InventoryRunQueuePage', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it('shows accepted manual BOM imports and their outcome in the existing queue', async () => {
+    const job = {
+      jobId: 'manual-bom-1', jobType: 'BOM_UPLOAD', status: 'SUCCEEDED',
+      sourceType: 'bom-upload', assetIdentifier: 'checkout',
+      requestedAt: '2026-11-08T09:10:00Z', requestedBy: 'operator', attemptCount: 1,
+      resultJson: JSON.stringify({ bomId: 'bom-1', componentCount: 15 }),
+      failureCode: null, failureMessage: null, sbomUploadId: null,
+      startedAt: '2026-11-08T09:11:00Z', completedAt: '2026-11-08T09:12:00Z'
+    };
+    vi.spyOn(api, 'listIngestionJobs').mockResolvedValue({
+      items: [job], page: 0, size: 100, totalItems: 1, totalPages: 1
+    });
+    vi.spyOn(api, 'listSyncRuns').mockResolvedValue([]);
+
+    renderWithProviders(<InventoryRunQueuePage />);
+    const row = (await screen.findByText('Manual BOM import')).closest('tr')!;
+    expect(within(row).getByText('Completed')).toBeInTheDocument();
+    expect(within(row).getByText('15')).toBeInTheDocument();
+    expect(within(row).getByText('Asset identifier: checkout')).toBeInTheDocument();
+    expect(within(row).getByText('BOM ID: bom-1')).toBeInTheDocument();
+  });
+
   it('shows AWS, Azure, and Copilot AI discovery progress with provider details and errors', async () => {
     vi.spyOn(api, 'listIngestionJobs').mockResolvedValue({
       items: [{
@@ -266,7 +288,7 @@ describe('InventoryRunQueuePage', () => {
 
     renderWithProviders(<InventoryRunQueuePage />);
 
-    await waitFor(() => expect(screen.getByText(/Queued AI collection jobs could not be loaded: jobs offline\. Showing the runs that did load\./)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ingestion jobs could not be loaded: jobs offline\. Showing the runs that did load\./)).toBeInTheDocument());
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });

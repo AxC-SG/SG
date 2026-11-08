@@ -1,7 +1,7 @@
 import React from 'react';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { BrandMark } from './components/BrandMark';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Activity, Bot, Boxes, Bug, Building2, CalendarX, Flag, Gauge, Library, Plug, Send, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wrench } from 'lucide-react';
 import { AccountMenu } from './app/AccountMenu';
@@ -42,6 +42,7 @@ import {
 import { api, ApiError, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken, type TestPersona } from './api/client';
 import { ActorContextState, useActor } from './features/auth/context';
 import { useActorQuery } from './features/auth/queries';
+import { getManagedReturnPath, managedBrowserAuthEnabled, rememberManagedReturnPath, setManagedWorkspace } from './features/auth/managedSession';
 import { canUseEntitlement } from './features/auth/entitlements';
 import type { ActorContext } from './features/auth/types';
 import {
@@ -385,7 +386,11 @@ function defaultPathForActor(actor: ActorContext | null): string {
 
 function HomeRoute() {
   const actor = useActor();
-  return <Navigate to={defaultPathForActor(actor)} replace />;
+  const [returnPath] = React.useState(() => managedBrowserAuthEnabled ? getManagedReturnPath() : null);
+  React.useEffect(() => {
+    if (returnPath) rememberManagedReturnPath(null);
+  }, [returnPath]);
+  return <Navigate to={returnPath ?? defaultPathForActor(actor)} replace />;
 }
 
 function ExposureDashboardRoute() {
@@ -840,6 +845,7 @@ function AuthSessionBoundary({ children }: { children: React.ReactNode }) {
   }
 
   if (actorQuery.error instanceof ApiError && actorQuery.error.status === 401) {
+    if (managedBrowserAuthEnabled && location.pathname === '/') return <PublicLandingRoute />;
     clearStoredAuthToken();
     return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
@@ -978,11 +984,20 @@ function AppShell() {
     ? `Impersonating: ${testPersonas.activePersona.persona.label}`
     : null;
 
-  const handleLogout = React.useCallback(() => {
-    clearStoredAuthToken();
-    queryClient.clear();
-    navigate('/login', { replace: true });
-  }, [navigate, queryClient]);
+  const logout = useMutation({
+    mutationFn: async () => {
+      if (managedBrowserAuthEnabled) {
+        await api.managedLogout();
+        setManagedWorkspace(null);
+        rememberManagedReturnPath(null);
+      }
+      clearStoredAuthToken();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      navigate('/login', { replace: true });
+    }
+  });
 
   const openPersonaDialog = (): void => {
     setSettingsMenuOpen(false);
@@ -1223,10 +1238,12 @@ function AppShell() {
                     type="button"
                     className="settings-menu-item settings-menu-item-logout"
                     role="menuitem"
-                    onClick={handleLogout}
+                    onClick={() => logout.mutate()}
+                    disabled={logout.isPending}
                   >
-                    <span>Log out</span>
+                    <span>{logout.isPending ? 'Logging out…' : 'Log out'}</span>
                   </button>
+                  {logout.isError && <p role="alert">Could not log out. Try again.</p>}
                 </AccountMenu>
               </div>
               <button

@@ -15,11 +15,13 @@ class TenantSchemaReadinessHealthIndicatorTest {
         TenantSchemaStatusService service = org.mockito.Mockito.mock(TenantSchemaStatusService.class);
         PackagedMigrationCatalog catalog = new PackagedMigrationCatalog();
         when(service.readinessFailures(catalog.tenantTarget())).thenReturn(1L);
+        when(service.supportedTenantVersions()).thenReturn("20..20");
 
         var health = new TenantSchemaReadinessHealthIndicator(service, catalog).health();
 
         assertEquals(Status.UP, health.getStatus());
         assertEquals(1L,health.getDetails().get("unreadyTenantCount"));
+        assertEquals("20..20", health.getDetails().get("supportedTenantVersions"));
         assertEquals(catalog.tenantTarget(), health.getDetails().get("packagedTenantTarget"));
     }
 

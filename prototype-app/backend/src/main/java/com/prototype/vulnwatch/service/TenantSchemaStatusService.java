@@ -69,17 +69,29 @@ public class TenantSchemaStatusService {
         return new TenantSchemaStatusResponse(items, page, size, total == null ? 0 : total);
     }
 
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:14}")
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:20}")
     private int compatibleMinimum = TenantSchemaCompatibility.REQUIRED_MINIMUM;
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:14}")
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:20}")
     private int compatibleMaximum = TenantSchemaCompatibility.SUPPORTED_MAXIMUM;
+
+    public String supportedTenantVersions() {
+        return effectiveMinimum() + ".." + effectiveMaximum();
+    }
+
+    private int effectiveMinimum() {
+        return Math.max(TenantSchemaCompatibility.REQUIRED_MINIMUM, compatibleMinimum);
+    }
+
+    private int effectiveMaximum() {
+        return Math.min(TenantSchemaCompatibility.SUPPORTED_MAXIMUM, compatibleMaximum);
+    }
 
     public long readinessFailures(int ignoredPackagedTarget) {
         assertPlatformDependencies();
         Long count=jdbc.queryForObject("""
                 select count(*) from platform.tenants t left join platform.tenant_schema_versions v on v.tenant_id=t.id
                  where t.status='ACTIVE' and (v.tenant_id is null or v.status<>'CURRENT' or v.current_version<? or v.current_version>?)
-                """,Long.class,Math.max(TenantSchemaCompatibility.REQUIRED_MINIMUM,compatibleMinimum),Math.min(TenantSchemaCompatibility.SUPPORTED_MAXIMUM,compatibleMaximum));
+                """, Long.class, effectiveMinimum(), effectiveMaximum());
         return count==null ? 0 : count;
     }
 

@@ -66,9 +66,9 @@ jobs:
       - name: Enforce tenant migration ownership
         run: python3 .github/scripts/check-tenant-ddl.py
       - name: Validate schema migrator environment boundary
-        run: sh prototype-app/backend/scripts/test-run-render-migration-env.sh
+        run: sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
       - name: Shellcheck schema migrator scripts
-        run: shellcheck prototype-app/backend/scripts/run-render-migration.sh prototype-app/backend/scripts/test-run-render-migration-env.sh
+        run: shellcheck prototype-app/backend/scripts/run-schema-migration.sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
 
   policy-packages:
     runs-on: ubuntu-latest

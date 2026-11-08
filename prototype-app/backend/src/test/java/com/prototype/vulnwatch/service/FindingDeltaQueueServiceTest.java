@@ -401,6 +401,26 @@ class FindingDeltaQueueServiceTest {
     }
 
     @Test
+    void processPendingDeltasVisitsPeerBeforeStartingASecondBatchForTheHeavyTenant() {
+        Tenant heavy = tenantWithSchema(UUID.randomUUID());
+        Tenant peer = tenantWithSchema(UUID.randomUUID());
+        ReflectionTestUtils.setField(service, "maxBatchesPerTenantPerPoll", 2);
+        when(tenantService.listActiveTenants()).thenReturn(List.of(heavy, peer));
+        when(tenantSchemaExecutionService.run(any(Tenant.class), any(java.util.function.Supplier.class)))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(1)).get());
+        when(repository.pollPending(anyInt()))
+                .thenReturn(List.of(newEntry(1L, "fixture-event")), List.of(), List.of());
+
+        service.processPendingDeltas();
+
+        var order = org.mockito.Mockito.inOrder(tenantSchemaExecutionService);
+        order.verify(tenantSchemaExecutionService).run(eq(heavy), any(java.util.function.Supplier.class));
+        order.verify(tenantSchemaExecutionService).run(eq(peer), any(java.util.function.Supplier.class));
+        order.verify(tenantSchemaExecutionService).run(eq(heavy), any(java.util.function.Supplier.class));
+        order.verifyNoMoreInteractions();
+    }
+
+    @Test
     void recoverInterruptedProcessingEntriesRequeuesStaleWorkAndFailsExhaustedEntries() {
         Tenant tenant = tenantWithSchema(UUID.randomUUID());
         FindingDeltaQueueEntry retryable = newEntry(1L, FindingDeltaQueueService.SOFTWARE_DELTA);

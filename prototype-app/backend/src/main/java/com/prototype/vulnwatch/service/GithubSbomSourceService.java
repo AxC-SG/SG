@@ -56,6 +56,7 @@ public class GithubSbomSourceService {
     private final ObjectMapper objectMapper;
     private final TenantService tenantService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
+    private final ConnectorScheduleProgress scheduleProgress;
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
 
     public GithubSbomSourceService(
@@ -70,7 +71,8 @@ public class GithubSbomSourceService {
             TransactionTemplate transactionTemplate,
             ObjectMapper objectMapper,
             TenantService tenantService,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantSchemaExecutionService tenantSchemaExecutionService,
+            ConnectorScheduleProgress scheduleProgress
     ) {
         this.githubSbomSourceRepository = githubSbomSourceRepository;
         this.syncRunRepository = syncRunRepository;
@@ -84,6 +86,7 @@ public class GithubSbomSourceService {
         this.objectMapper = objectMapper;
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.scheduleProgress = scheduleProgress;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -125,6 +128,7 @@ public class GithubSbomSourceService {
         if (isSourceInFlight(source)) {
             throw new IllegalStateException("GitHub SBOM source is already queued or running and cannot be deleted");
         }
+        scheduleProgress.removeGithubSource(source.getTenant().getId(), id);
         githubSbomSourceRepository.delete(source);
     }
 
@@ -134,7 +138,7 @@ public class GithubSbomSourceService {
         return ingestionJobService.withAdmission(tenant, () -> {
             var active=ingestionJobService.activeGithubSourceRun(tenant,id);
             if (active.isPresent()) {var existing=requireRun(active.get());return new SyncTriggerResponse(existing.getId(),existing.getStatus(),"GitHub ingestion is already accepted");}
-            ClaimedGithubSourceRun claimed = claimSourceRun(tenant, id, false, true);
+            ClaimedGithubSourceRun claimed = claimSourceRun(tenant, id, null);
             enqueueClaimedSourceJob(tenant, claimed);
             return new SyncTriggerResponse(claimed.runId(), "queued", "GitHub ingestion queued");
         });
@@ -197,6 +201,10 @@ public class GithubSbomSourceService {
 
     @Scheduled(zone = "UTC", cron = "0 */5 * * * *")
     public void runScheduledSources() {
+        runScheduledSources(Instant.now());
+    }
+
+    void runScheduledSources(Instant sweepStartedAt) {
         if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("github-sbom.run-scheduled-sources")) {
             return;
         }
@@ -214,10 +222,13 @@ public class GithubSbomSourceService {
             return scheduled;
         });
         for (ClaimedGithubSourceRun source : scheduledSources) {
+            if (!backgroundTaskExecutionPolicy.allowsBackgroundTask("github-sbom.run-scheduled-sources")) {
+                break;
+            }
             try {
                 Tenant tenant = tenantService.resolveTenantUuid(source.tenantId());
                 ingestionJobService.withAdmission(tenant, () -> {
-                    ClaimedGithubSourceRun claimed = claimSourceRun(tenant, source.sourceId(), true, false);
+                    ClaimedGithubSourceRun claimed = claimSourceRun(tenant, source.sourceId(), sweepStartedAt);
                     if (claimed != null) enqueueClaimedSourceJob(tenant, claimed);
                     return null;
                 });
@@ -467,31 +478,31 @@ public class GithubSbomSourceService {
         return PATH_REPOSITORY_CBOM.equalsIgnoreCase(path) || PATH_REPOSITORY_AIBOM.equalsIgnoreCase(path);
     }
 
-    private ClaimedGithubSourceRun claimSourceRun(Tenant tenant, UUID sourceId, boolean requireDue, boolean failWhenUnavailable) {
+    private ClaimedGithubSourceRun claimSourceRun(Tenant tenant, UUID sourceId, Instant sweepStartedAt) {
         return tenantSchemaExecutionService.run(tenant, () -> transactionTemplate.execute(status -> {
             GithubSbomSource source = githubSbomSourceRepository.findByIdForUpdate(sourceId)
                     .orElseThrow(() -> new EntityNotFoundException("GitHub SBOM source not found: " + sourceId));
             if (!source.isEnabled()) {
-                if (failWhenUnavailable) {
+                if (sweepStartedAt == null) {
                     throw new IllegalStateException("GitHub SBOM source is disabled");
                 }
                 return null;
             }
             if (isSourceInFlight(source)) {
-                if (failWhenUnavailable) {
+                if (sweepStartedAt == null) {
                     throw new IllegalStateException("GitHub SBOM source is already queued or running");
                 }
                 return null;
             }
 
-            Instant now = Instant.now();
-            if (requireDue && !isDue(source, now)) {
+            if (sweepStartedAt != null && (!isDue(source, sweepStartedAt) || !scheduleProgress.advance(
+                    tenant.getId(), ConnectorScheduleProgress.Kind.GITHUB_SOURCE, sourceId, sweepStartedAt))) {
                 return null;
             }
 
             source.setLastRunStatus(SOURCE_STATUS_QUEUED);
             source.setLastError(null);
-            source.setLastRunAt(now);
+            source.setLastRunAt(Instant.now());
             source.touch();
             githubSbomSourceRepository.save(source);
 

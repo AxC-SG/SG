@@ -1,11 +1,50 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
+import { ActorContextState } from '../features/auth/context';
+import { submitBomFile } from '../features/connect/manualBomUpload';
 import { renderWithProviders } from '../test/test-utils';
 import { BomManagementPage } from './BomManagementPage';
 
+vi.mock('../features/connect/manualBomUpload', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../features/connect/manualBomUpload')>(),
+  durableBomUploadsEnabled: true,
+  submitBomFile: vi.fn()
+}));
+
 describe('BomManagementPage', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('queues a file from the existing form and shows its completed result in place', async () => {
+    vi.spyOn(api, 'listBomSources').mockResolvedValue([]);
+    vi.mocked(submitBomFile).mockResolvedValueOnce('job-1');
+    vi.spyOn(api, 'getIngestionJob').mockResolvedValueOnce({
+      jobId: 'job-1', jobType: 'BOM_UPLOAD', status: 'SUCCEEDED', sourceType: 'bom-upload',
+      assetIdentifier: 'checkout', requestedAt: '2026-11-08T09:10:00Z', requestedBy: 'admin',
+      attemptCount: 1, startedAt: '2026-11-08T09:10:01Z', completedAt: '2026-11-08T09:10:02Z',
+      resultJson: JSON.stringify({ bomId: 'bom-1', assetId: 'asset-1', bomType: 'SBOM', componentCount: 15 }),
+      failureCode: null, failureMessage: null, sbomUploadId: null
+    });
+    const { container } = renderWithProviders(
+      <ActorContextState.Provider value={{
+        creator: false, principal: 'admin', userId: 'admin', tenantId: 'tenant-1',
+        tenantName: 'Orchard', roles: ['TENANT_ADMIN']
+      }}>
+        <BomManagementPage includeGithubSources={false} />
+      </ActorContextState.Provider>
+    );
+    const file = new File(['{}'], 'checkout.json');
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/Asset Name/), { target: { value: 'Checkout' } });
+    fireEvent.change(screen.getByLabelText(/Asset Identifier/), { target: { value: 'checkout' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ingest SBOM' }));
+
+    expect(await screen.findByText('BOM import completed. Results are available below.')).toBeInTheDocument();
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(submitBomFile).toHaveBeenCalledWith(file, expect.objectContaining({
+      bomType: 'SBOM', assetIdentifier: 'checkout'
+    }), { tenantId: 'tenant-1', userId: 'admin' }, expect.any(Function));
+  });
 
   it('reports a failed saved-pipeline list with retry instead of "no saved pipelines"', async () => {
     vi.spyOn(api, 'listBomSources').mockResolvedValue([]);

@@ -152,7 +152,7 @@ public interface IngestionJobRepository extends JpaRepository<IngestionJob, UUID
 
     List<IngestionJob> findByStatus(String status);
 
-    @Query("SELECT COUNT(j) FROM IngestionJob j WHERE j.requestedAt >= :since AND j.jobType IN ('REMOTE_ENDPOINT','GITHUB_REPOSITORY','GITHUB_GHCR')")
+    @Query("SELECT COUNT(j) FROM IngestionJob j WHERE j.requestedAt >= :since AND j.jobType IN ('REMOTE_ENDPOINT','GITHUB_REPOSITORY','GITHUB_GHCR','BOM_UPLOAD')")
     long countAcceptedSince(@Param("since") Instant since);
 
     Page<IngestionJob> findAllByOrderByRequestedAtDescIdDesc(Pageable pageable);

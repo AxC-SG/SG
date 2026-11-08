@@ -84,6 +84,7 @@ public class LocalCredentialAuthService {
 
     @Transactional
     public AuthTokenResponse login(String email, String password) {
+        authTokenService.requireLocalMode();
         String normalizedEmail = normalizeEmail(email);
         String rawPassword = requirePassword(password);
         AppUser user = userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail).orElse(null);
@@ -178,6 +179,7 @@ public class LocalCredentialAuthService {
 
     @Transactional
     public AuthTokenResponse setupPassword(String setupToken, String password) {
+        authTokenService.requireLocalMode();
         if (!hasText(setupToken)) {
             throw invalidSetupToken();
         }
@@ -231,6 +233,7 @@ public class LocalCredentialAuthService {
     }
 
     public AuthTokenResponse switchTenantContext(String subject, UUID tenantId) {
+        authTokenService.requireLocalMode();
         return TenantContext.runAsPlatform(() -> switchTenantContextInPlatformScope(subject, tenantId));
     }
 
@@ -256,6 +259,7 @@ public class LocalCredentialAuthService {
     }
 
     public AuthTokenResponse clearTenantContext(String subject) {
+        authTokenService.requireLocalMode();
         UUID exitedTenantId = TenantContext.getCurrentTenantId();
         return TenantContext.runAsPlatform(() -> clearTenantContextInPlatformScope(subject, exitedTenantId));
     }
@@ -281,6 +285,7 @@ public class LocalCredentialAuthService {
 
     @Transactional
     public String issuePasswordSetupToken(String subject) {
+        authTokenService.requireLocalMode();
         AppUser user = userRepository.findByExternalSubjectForUpdate(requireText(subject, "subject"))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invited user not found"));
         String token = UUID.randomUUID() + "-" + UUID.randomUUID();
@@ -293,6 +298,7 @@ public class LocalCredentialAuthService {
 
     @Transactional
     public String exchangePasswordSetupToken(String setupToken) {
+        authTokenService.requireLocalMode();
         if (!hasText(setupToken)) {
             throw invalidSetupToken();
         }

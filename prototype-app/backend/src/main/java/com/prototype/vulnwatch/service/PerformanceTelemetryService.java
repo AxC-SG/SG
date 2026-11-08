@@ -67,6 +67,12 @@ public class PerformanceTelemetryService {
                     service -> service.observedValue(Snapshot::pendingCount));
             register(role, "scoutgrid.finding_delta_queue.oldest_age_seconds", "Oldest visible pending age among observed active tenants.",
                     service -> service.observedValue(Snapshot::oldestPendingAgeSeconds));
+            register(role, "ingestion.jobs.queue.depth", "Queued endpoint and GitHub jobs in active tenants.",
+                    service -> service.validValue(current -> current.ingestion().queued()));
+            register(role, "ingestion.jobs.active", "Queued and running endpoint and GitHub jobs in active tenants.",
+                    service -> service.validValue(current -> current.ingestion().active()));
+            register(role, "scoutgrid.ingestion.queue.oldest_visible_age_seconds", "Oldest eligible queued job across ingestion job types.",
+                    service -> service.validValue(current -> current.ingestion().oldestAgeSeconds()));
             register(role, "scoutgrid.finding_projection.stale_tenants", "Observed active tenants with a missing or stale projection.",
                     service -> service.observedValue(Snapshot::staleProjectionTenants));
             register(role, "scoutgrid.finding_projection.max_lag_seconds", "Maximum known projection lag; unknown when any observed projection is missing.",
@@ -107,6 +113,7 @@ public class PerformanceTelemetryService {
                 List<Tenant> tenants = tenantService.listTenants();
                 int eligible = 0, observed = 0, failed = 0, skipped = 0;
                 long pending = 0, oldest = 0, stale = 0, lag = 0;
+                IngestionSnapshot ingestion = new IngestionSnapshot(0, 0, 0);
                 boolean lagKnown = true;
                 for (Tenant tenant : tenants) {
                     if (tenant == null || tenant.getId() == null || !"ACTIVE".equalsIgnoreCase(tenant.getStatus())) {
@@ -118,6 +125,7 @@ public class PerformanceTelemetryService {
                         TenantSnapshot result = tenantSchemaExecutionService.run(tenant, () -> readTenantSnapshot(tenant, now));
                         pending += result.pendingCount();
                         oldest = Math.max(oldest, result.oldestPendingAgeSeconds());
+                        ingestion = ingestion.combine(result.ingestion());
                         stale += result.staleProjection() ? 1 : 0;
                         lag = Math.max(lag, result.projectionLagSeconds());
                         lagKnown &= result.projectionLagKnown();
@@ -128,20 +136,30 @@ public class PerformanceTelemetryService {
                     }
                 }
                 snapshot.set(new Snapshot(now, now, failed == 0 ? now : previous.lastSuccessfulAt(),
-                        eligible, observed, failed, skipped, false, pending, oldest, stale, lag, lagKnown));
+                        eligible, observed, failed, skipped, false, pending, oldest, ingestion, stale, lag, lagKnown));
             });
         } catch (RuntimeException ex) {
             snapshot.set(new Snapshot(now, previous.lastRefreshAt(), previous.lastSuccessfulAt(),
                     previous.eligibleTenants(), previous.observedTenants(), previous.failedTenants(), previous.skippedTenants(),
-                    true, previous.pendingCount(), previous.oldestPendingAgeSeconds(), previous.staleProjectionTenants(),
+                    true, previous.pendingCount(), previous.oldestPendingAgeSeconds(), previous.ingestion(),
+                    previous.staleProjectionTenants(),
                     previous.maxProjectionLagSeconds(), previous.projectionLagKnown()));
         }
     }
 
     private boolean isValid() {
-        Snapshot current = snapshot.get();
+        return isValid(snapshot.get());
+    }
+
+    private boolean isValid(Snapshot current) {
         return ownsRefresh && current.lastRefreshAt() != null && !current.discoveryFailed()
-                && current.failedTenants() == 0 && snapshotAgeSeconds() <= maximumSnapshotAgeSeconds;
+                && current.failedTenants() == 0
+                && Duration.between(current.lastRefreshAt(), clock.instant()).getSeconds() <= maximumSnapshotAgeSeconds;
+    }
+
+    private double validValue(ToDoubleFunction<Snapshot> value) {
+        Snapshot current = snapshot.get();
+        return isValid(current) ? value.applyAsDouble(current) : Double.NaN;
     }
 
     private double observedValue(ToDoubleFunction<Snapshot> value) {
@@ -191,15 +209,41 @@ public class PerformanceTelemetryService {
         return new TenantSnapshot(
                 pendingCount == null ? 0L : pendingCount,
                 oldestAgeSeconds,
+                readIngestionSnapshot(now),
                 staleProjection,
                 projectionLagSeconds,
                 lagKnown
         );
     }
 
+    private IngestionSnapshot readIngestionSnapshot(Instant now) {
+        return jdbcTemplate.queryForObject("""
+                select count(*) filter (where status = 'QUEUED' and legacy_type) as queued,
+                       count(*) filter (where legacy_type) as active,
+                       min(visible_at) filter (where status = 'QUEUED' and visible_at <= ?) as oldest
+                from (
+                    select status, visible_at, job_type in ('REMOTE_ENDPOINT', 'GITHUB_REPOSITORY', 'GITHUB_GHCR') as legacy_type
+                    from ingestion_jobs
+                    where status in ('QUEUED', 'RUNNING')
+                ) jobs
+                """, (row, index) -> {
+            Timestamp oldest = row.getTimestamp("oldest");
+            long age = oldest == null ? 0 : Math.max(0, Duration.between(oldest.toInstant(), now).getSeconds());
+            return new IngestionSnapshot(row.getLong("queued"), row.getLong("active"), age);
+        }, Timestamp.from(now));
+    }
+
+    private record IngestionSnapshot(long queued, long active, long oldestAgeSeconds) {
+        IngestionSnapshot combine(IngestionSnapshot next) {
+            return new IngestionSnapshot(queued + next.queued(), active + next.active(),
+                    Math.max(oldestAgeSeconds, next.oldestAgeSeconds()));
+        }
+    }
+
     private record TenantSnapshot(
             long pendingCount,
             long oldestPendingAgeSeconds,
+            IngestionSnapshot ingestion,
             boolean staleProjection,
             long projectionLagSeconds,
             boolean projectionLagKnown
@@ -208,10 +252,11 @@ public class PerformanceTelemetryService {
 
     private record Snapshot(Instant lastAttemptAt, Instant lastRefreshAt, Instant lastSuccessfulAt,
             int eligibleTenants, int observedTenants, int failedTenants, int skippedTenants, boolean discoveryFailed,
-            long pendingCount, long oldestPendingAgeSeconds, long staleProjectionTenants, long maxProjectionLagSeconds,
+            long pendingCount, long oldestPendingAgeSeconds, IngestionSnapshot ingestion,
+            long staleProjectionTenants, long maxProjectionLagSeconds,
             boolean projectionLagKnown) {
         static Snapshot empty() {
-            return new Snapshot(null, null, null, 0, 0, 0, 0, false, 0, 0, 0, 0, false);
+            return new Snapshot(null, null, null, 0, 0, 0, 0, false, 0, 0, new IngestionSnapshot(0, 0, 0), 0, 0, false);
         }
     }
 }

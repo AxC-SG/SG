@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type BomFetchPayload, type BomIngestionResult, type BomSource, type BomType, type CbomComponent, type CbomRiskFinding, type IngestionJob } from '../api/client';
 import { BomApiPanel } from '../features/bom-api/BomApiPanel';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { useActor } from '../features/auth/context';
+import { durableBomUploadsEnabled, maxBomUploadBytes, submitBomFile } from '../features/connect/manualBomUpload';
 import { useGithubSbomSourcesQuery, useSyncRunsQuery } from '../features/connect/queries';
 import type { GithubSbomSource, SyncRun } from '../features/connect/types';
 import { FindingSeverityChips } from '../features/findings/components/FindingSeverityChips';
@@ -196,6 +198,7 @@ export function BomManagementPage({
   initialSection = 'ingest',
 }: Props) {
   const queryClient = useQueryClient();
+  const actor = useActor();
 
   // ── Page section: ingest now, CI/CD pipelines, or CBOM governance ──
   const [section, setSection] = React.useState<BomManagementSection>(initialSection);
@@ -225,7 +228,7 @@ export function BomManagementPage({
   const [authorizationHeader, setAuthorizationHeader] = React.useState('');
   const [urlParsing, setUrlParsing] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [queuedJobId, setQueuedJobId] = React.useState<string | null>(null);
+  const [queuedJob, setQueuedJob] = React.useState<{ id: string; label: string } | null>(null);
   const [queueMessage, setQueueMessage] = React.useState('');
   const [queueMessageTone, setQueueMessageTone] = React.useState<'info' | 'success' | 'warning'>('info');
   const [ingestError, setIngestError] = React.useState('');
@@ -326,7 +329,7 @@ export function BomManagementPage({
     }
   }, [activeRunId, activeRunsQuery.data, githubSourcesQuery]);
 
-  // ── Job polling for URL fetch ──
+  // ── Job polling for manual imports ──
   const parseJobResult = React.useCallback((job: IngestionJob): BomIngestionResult | null => {
     if (!job.resultJson) return null;
     try {
@@ -352,35 +355,46 @@ export function BomManagementPage({
   }, [bomType]);
 
   React.useEffect(() => {
-    if (!queuedJobId) return;
+    if (!queuedJob) return;
+    const { id, label } = queuedJob;
     let cancelled = false;
+    let timeout: number | undefined;
     const poll = async () => {
       try {
-        const job = await api.getIngestionJob(queuedJobId);
+        const job = await api.getIngestionJob(id);
         if (cancelled) return;
         if (job.status === 'SUCCEEDED') {
           const parsed = parseJobResult(job);
           setIngestResult(parsed);
           setQueueMessageTone('success');
-          setQueueMessage(parsed ? 'BOM fetch completed successfully. Results are now available below.' : 'BOM fetch completed, but the result payload could not be read.');
-          setQueuedJobId(null);
+          setQueueMessage(parsed ? `${label} completed. Results are available below.` : `${label} completed. Review the outcome in Run History.`);
+          setQueuedJob(null);
         } else if (job.status === 'FAILED' || job.status === 'CANCELLED') {
-          setIngestError(job.failureMessage || 'BOM fetch failed.');
-          setQueuedJobId(null);
+          setQueueMessage('');
+          setIngestError(job.failureMessage || `${label} ${job.status.toLowerCase()}.`);
+          setQueuedJob(null);
         } else {
           setQueueMessageTone('info');
-          setQueueMessage(job.status === 'RUNNING'
-            ? `BOM fetch is running for job ${queuedJobId}.`
-            : `BOM fetch is queued for job ${queuedJobId}.`);
-          window.setTimeout(() => void poll(), 1500);
+          const progress = job.status === 'RUNNING'
+            ? `${label} is processing (job ${id}).`
+            : `${label} is queued (job ${id}).`;
+          setQueueMessage(label === 'BOM import' ? `${progress} You can leave and check Connectors → Run History.` : progress);
+          timeout = window.setTimeout(() => void poll(), 1500);
         }
       } catch (err) {
-        if (!cancelled) { setIngestError(err instanceof Error ? err.message : 'Failed to check job status.'); setQueuedJobId(null); }
+        if (!cancelled) {
+          setQueueMessage('');
+          setIngestError(err instanceof Error ? err.message : 'Failed to check job status.');
+          setQueuedJob(null);
+        }
       }
     };
     void poll();
-    return () => { cancelled = true; };
-  }, [parseJobResult, queuedJobId]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [parseJobResult, queuedJob]);
 
   // ── Manual ingestion handlers ──
   function applyMeta(meta: ExtractedMeta, src: string) {
@@ -393,10 +407,12 @@ export function BomManagementPage({
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
-    setFile(f);
-    setIngestError(''); setIngestResult(null); setQueuedJobId(null); setQueueMessage('');
+    const invalidSize = f && durableBomUploadsEnabled && (f.size === 0 || f.size > maxBomUploadBytes);
+    setFile(invalidSize ? null : f);
+    setIngestError(invalidSize ? 'Choose a BOM file between 1 byte and 50 MiB.' : '');
+    setIngestResult(null); setQueuedJob(null); setQueueMessage('');
     setMetaSource(null); setParseWarning('');
-    if (!f) return;
+    if (!f || invalidSize) return;
     const reader = new FileReader();
     reader.onload = ev => {
       const text = ev.target?.result as string;
@@ -429,7 +445,7 @@ export function BomManagementPage({
     if (!assetIdentifier.trim()) { setIngestError('Asset Identifier is required'); return; }
     if (manualMode === 'url' && !sourceUrl.trim()) { setIngestError('Source URL is required'); return; }
     if (manualMode === 'file' && !file) { setIngestError('Please select a BOM file'); return; }
-    setIngestError(''); setIngestResult(null); setQueuedJobId(null); setQueueMessage(''); setQueueMessageTone('info'); setLoading(true);
+    setIngestError(''); setIngestResult(null); setQueuedJob(null); setQueueMessage(''); setQueueMessageTone('info'); setLoading(true);
     try {
       if (manualMode === 'url') {
         const payload: BomFetchPayload = {
@@ -438,13 +454,23 @@ export function BomManagementPage({
           authorizationHeader: showAuthHeader && authorizationHeader.trim() ? authorizationHeader.trim() : undefined,
         };
         const accepted = await api.bomFetch(payload);
-        setQueuedJobId(accepted.jobId);
+        setQueuedJob({ id: accepted.jobId, label: 'BOM fetch' });
         setQueueMessageTone('info');
         setQueueMessage(
           accepted.existingJob
             ? `Using existing ingestion job ${accepted.jobId}. This page will update automatically when it finishes.`
             : `Queued ingestion job ${accepted.jobId}. This page will update automatically when processing starts and completes.`
         );
+      } else if (durableBomUploadsEnabled && file) {
+        if (!actor?.tenantId) throw new Error('Open a workspace before uploading a BOM.');
+        const jobId = await submitBomFile(file, {
+          bomType, assetType, assetName: assetName.trim(), assetIdentifier: assetIdentifier.trim(),
+          supplier: supplier.trim() || undefined,
+          sourceId: replaceSourceId || undefined,
+          completeness: assertsCompleteInventory && bomType !== 'CBOM' ? 'COMPLETE_ASSET_SOFTWARE' : undefined
+        }, { tenantId: actor.tenantId, userId: actor.userId }, setQueueMessage);
+        setQueueMessage(`Import accepted (job ${jobId}). You can leave and check Connectors → Run History.`);
+        setQueuedJob({ id: jobId, label: 'BOM import' });
       } else {
         const fd = new FormData();
         fd.append('file', file!); fd.append('bomType', bomType); fd.append('assetType', assetType);
@@ -459,6 +485,7 @@ export function BomManagementPage({
         setIngestResult(await api.bomUpload(fd));
       }
     } catch (err) {
+      setQueueMessage('');
       setIngestError(err instanceof Error ? err.message : 'Ingestion failed');
     } finally { setLoading(false); }
   }
@@ -736,7 +763,7 @@ export function BomManagementPage({
           {/* Actions */}
           <div className="form-actions-bar">
             <button type="button" className="btn btn-primary"
-              disabled={loading || (manualMode === 'file' ? !file : !sourceUrl.trim())}
+              disabled={loading || (manualMode === 'file' ? !file || (durableBomUploadsEnabled && !!queuedJob) : !sourceUrl.trim())}
               onClick={() => void submitManual()}>
               {loading ? 'Submitting…' : `Ingest ${BOM_META[bomType].short}`}
             </button>
@@ -1008,9 +1035,10 @@ export function BomManagementPage({
                       {currentSourceOpt?.hint && <span className="field-hint">{currentSourceOpt.hint}</span>}
                     </label>
                   )}
-                  <label>GitHub Token <span style={{ fontWeight: 400, color: 'var(--dp-text-2)' }}>(optional)</span>
+                  <label>GitHub Token
                     <input type="password" value={ghToken} onChange={e => setGhToken(e.target.value)}
-                      placeholder="ghp_… leave blank to use the global backend token" autoComplete="new-password" />
+                      placeholder="ghp_…" autoComplete="new-password" />
+                    <span className="field-hint">Save a tenant token for private repositories or GHCR. Leave blank for supported public repository sources.</span>
                   </label>
                 </div>
               </div>

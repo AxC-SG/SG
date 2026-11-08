@@ -117,15 +117,11 @@ public class SbomContentIngestionService {
             Consumer<Asset> assetCustomizer,
             boolean authoritativeForAssetSoftware
     ) throws IOException {
-        return tenantWorkRunner.runScopedChecked(tenant, () -> ingestScoped(tenant, assetType, assetName,
-                assetIdentifier, content, originalFilename, metadata, assetCustomizer, authoritativeForAssetSoftware));
+        return ingestPrepared(tenant, assetType, assetName, assetIdentifier, prepare(content), originalFilename,
+                metadata, assetCustomizer, authoritativeForAssetSoftware);
     }
 
-    private SbomIngestionResponse ingestScoped(
-            Tenant tenant, AssetType assetType, String assetName, String assetIdentifier,
-            byte[] content, String originalFilename, SbomIngestionSourceMetadata metadata,
-            Consumer<Asset> assetCustomizer, boolean authoritativeForAssetSoftware
-    ) throws IOException {
+    public PreparedContent prepare(byte[] content) throws IOException {
         BomInputLimits.checkBytes(content);
         SbomFormat format = sbomParserService.detectFormat(content);
         if (format == SbomFormat.UNKNOWN) {
@@ -135,6 +131,25 @@ public class SbomContentIngestionService {
         if (components.isEmpty()) {
             throw new IOException("No BOM components could be extracted from the submitted document");
         }
+        return new PreparedContent(format, List.copyOf(components), content.length, sha256(content));
+    }
+
+    public SbomIngestionResponse ingestPrepared(
+            Tenant tenant, AssetType assetType, String assetName, String assetIdentifier,
+            PreparedContent content, String originalFilename, SbomIngestionSourceMetadata metadata,
+            Consumer<Asset> assetCustomizer, boolean authoritativeForAssetSoftware
+    ) throws IOException {
+        return tenantWorkRunner.runScopedChecked(tenant, () -> ingestScoped(tenant, assetType, assetName,
+                assetIdentifier, content, originalFilename, metadata, assetCustomizer, authoritativeForAssetSoftware));
+    }
+
+    private SbomIngestionResponse ingestScoped(
+            Tenant tenant, AssetType assetType, String assetName, String assetIdentifier,
+            PreparedContent content, String originalFilename, SbomIngestionSourceMetadata metadata,
+            Consumer<Asset> assetCustomizer, boolean authoritativeForAssetSoftware
+    ) throws IOException {
+        SbomFormat format = content.format();
+        List<ParsedComponent> components = content.components();
         Asset asset = sbomUploadSupportService.resolveAsset(tenant, assetType, assetName, assetIdentifier);
         asset.setName(assetName);
         asset.setType(assetType);
@@ -163,8 +178,8 @@ public class SbomContentIngestionService {
         upload.setSourceEndpoint(metadata.sourceEndpoint());
         upload.setFetchStatusCode(metadata.fetchStatusCode());
         upload.setContentType(metadata.contentType());
-        upload.setContentLengthBytes(metadata.contentLengthBytes() == null ? (long) content.length : metadata.contentLengthBytes());
-        upload.setContentSha256(sha256(content));
+        upload.setContentLengthBytes(metadata.contentLengthBytes() == null ? (long) content.length() : metadata.contentLengthBytes());
+        upload.setContentSha256(content.sha256());
         upload.setComponentCount(0);
         upload.setFindingsGenerated(0);
         upload.setEvidenceJson(metadata.evidenceJson());
@@ -363,4 +378,6 @@ public class SbomContentIngestionService {
             return "";
         }
     }
+
+    public record PreparedContent(SbomFormat format, List<ParsedComponent> components, int length, String sha256) { }
 }

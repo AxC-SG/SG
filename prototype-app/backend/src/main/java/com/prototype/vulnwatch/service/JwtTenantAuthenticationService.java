@@ -93,6 +93,10 @@ public class JwtTenantAuthenticationService {
     }
 
     public AuthenticatedTenantActor authenticate(Jwt jwt, String requestUri) {
+        return authenticate(jwt, requestUri, false);
+    }
+
+    public AuthenticatedTenantActor authenticate(Jwt jwt, String requestUri, boolean serviceIdentityOnly) {
         Set<String> claimedRoles = extractJwtRoles(jwt);
         if (claimedRoles.contains("SERVICE_ACCOUNT")) {
             if (!claimedRoles.equals(Set.of("SERVICE_ACCOUNT")) || machineAuthorization == null) {
@@ -102,6 +106,9 @@ public class JwtTenantAuthenticationService {
             if (!hasText(tenantId)) tenantId = claimAsString(jwt, tenantIdClaim);
             if (!hasText(tenantId)) throw new ResponseStatusException(FORBIDDEN, "Service-account token requires an explicit tenant");
             return machineAuthorization.authenticate(resolveSubject(jwt), parseUuid(tenantId));
+        }
+        if (serviceIdentityOnly) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Managed sign-in is required for human users");
         }
         return authenticationTransactions == null ? authenticateHuman(jwt, requestUri)
                 : authenticationTransactions.execute(status -> authenticateHuman(jwt, requestUri));

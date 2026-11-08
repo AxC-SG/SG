@@ -12,11 +12,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgresIntegrationTest
+@TestPropertySource(properties = {
+        "app.correlation.delta-queue-sweep-budget-ms=500",
+        "app.correlation.delta-queue-transaction-timeout-seconds=2"
+})
 class DeltaQueueOwnershipPostgresIntegrationTest {
     private static final LocalPostgresTestDatabase.DatabaseConfig DB=LocalPostgresTestDatabase.provision("phase3_delta_ownership");
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry){PostgresITSupport.registerDatabaseProperties(registry,DB);}
@@ -94,6 +99,42 @@ class DeltaQueueOwnershipPostgresIntegrationTest {
         scoped.run(tenant,()->queue.processClaimedBatch(replacement));
         scoped.run(tenant,()->assertEquals(1,jdbc.queryForObject("select count(*) from finding_delta_queue where status='DONE'",Integer.class)));
     }
+
+    @Test
+    void slowFindingBatchRollsBackAndNextPollStartsAtTheUnvisitedWorkspace() throws Exception {
+        String slug = "delta-peer-" + UUID.randomUUID().toString().substring(0, 8);
+        Tenant peer = tenants.createTenant(slug, slug, "ENTERPRISE", null);
+        migrations.provisionNewTenant(peer);
+        scoped.run(tenant, () -> queue.enqueueNoiseReductionRefresh(tenant.getId(), "slow-fixture"));
+        scoped.run(peer, () -> queue.enqueueNoiseReductionRefresh(peer.getId(), "peer-fixture"));
+        var orderedTenants = tenants.listActiveTenants().stream().map(Tenant::getId).toList();
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                queue, "nextTenantOffset", orderedTenants.indexOf(tenant.getId()));
+        when(projection.refreshTenant(tenant.getId())).thenAnswer(call -> {
+            jdbc.update("insert into delta_effect values (1)");
+            return jdbc.queryForObject("select 1 from pg_sleep(15)", Integer.class);
+        });
+        when(projection.refreshTenant(peer.getId())).thenReturn(1);
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            executor.submit(queue::processPendingDeltas).get(8, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+        scoped.run(tenant, () -> {
+            assertEquals("PENDING", state());
+            assertEquals(0, jdbc.queryForObject("select count(*) from delta_effect", Integer.class));
+            assertEquals(1, jdbc.queryForObject("select attempt_count from finding_delta_queue", Integer.class));
+        });
+        scoped.run(peer, () -> assertEquals("PENDING", state()));
+
+        queue.processPendingDeltas();
+
+        scoped.run(peer, () -> assertEquals("DONE", state()));
+        verify(projection, times(1)).refreshTenant(tenant.getId());
+    }
+
     private List<FindingDeltaQueueEntry> claim(){return scoped.run(tenant,()->{queue.enqueueNoiseReductionRefresh(tenant.getId(),"ownership-test");return queue.claimBatch();});}
     private void stale(){scoped.run(tenant,()->jdbc.update("update finding_delta_queue set processing_started_at=now()-interval '2 hours'"));}
     private String state(){return jdbc.queryForObject("select status from finding_delta_queue",String.class);}

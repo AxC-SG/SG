@@ -91,12 +91,12 @@ public class HttpClientConfig {
     }
 
     @Bean(name = {"ingestionExecutor", "sbomJobExecutor"})
-    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
+    @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService", "bomUploadStorage"})
     public ThreadPoolTaskExecutor ingestionExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(50);
+        executor.setQueueCapacity(0);
         executor.setThreadNamePrefix("sbom-job-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
         configureShutdown(executor);

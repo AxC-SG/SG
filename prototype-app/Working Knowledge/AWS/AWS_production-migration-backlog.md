@@ -1,5 +1,7 @@
 # ScoutGrid production migration task register
 
+**Planning status.** This October backlog records the earlier task breakdown. Use the master for current tasks, dependencies and release gates, including the Amplify cutover in Part 1 and the Dedicated charter in Part 2. [AWS master migration plan](AWS_MASTER_MIGRATION_PLAN.md)
+
 **Date:** October 14, 2026. **Status:** proposed work, not an implementation completion report. **Target:** AWS core platform with Vercel frontend; fresh production PostgreSQL database. Read the rationale, costs, assumptions, and evidence in [production-architecture-review.md](</Users/gowrikarthik.gadela/Desktop/AI Projects/NoScan/prototype-app/docs/production-architecture-review.md>).
 
 This register covers **70 launch/migration tasks and 6 conditional expansion tasks** discovered through source review. Each row is a work package that can be split into engineering tickets. It is a comprehensive initial migration register, not a guarantee that unknown customer or live-account requirements cannot add work.

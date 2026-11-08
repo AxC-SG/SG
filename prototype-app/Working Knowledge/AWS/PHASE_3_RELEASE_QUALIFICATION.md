@@ -1,5 +1,7 @@
 # Phase 3 release qualification
 
+**Planning status.** This checklist records the October qualification work. Use the master for the current Standard launch gates and the separate Dedicated qualification. Reuse prior evidence only after checking it against the release candidate and environment. [AWS master migration plan](AWS_MASTER_MIGRATION_PLAN.md)
+
 As of October 21, 2026, local repairs and the current verification checkpoint are recorded in [implementation status](PHASE_3_IMPLEMENTATION_STATUS.md). Phase 3 remains **in progress and not release-qualified**. This checklist is a reviewable handoff, not authorization to deploy, modify a live database, rotate credentials, send real email or change service configuration.
 
 ## Local P30 containment checkpoint
