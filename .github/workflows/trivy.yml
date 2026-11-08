@@ -124,6 +124,8 @@ jobs:
           exit-code: '0'
 
       - name: Enforce image vulnerability gate
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         run: |
           trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-backend:${{ github.sha }}
           trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-frontend:${{ github.sha }}
