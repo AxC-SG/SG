@@ -30,6 +30,10 @@ Rules: DDL is forward-only; every cross-row reference is tenant-inclusive (`(ten
 no cross-tenant cascade; new tables are added to tenant purge coverage and `TenantSchemaFingerprint`; grants follow
 the existing tenant-role grant block used by V19.
 
+V20 as built: also adds `directory_search_token` (HMAC prefix tokens for users/groups). External IDs are stored as
+`external_id_enc` + `external_id_index` (blind index) so uniqueness never needs plaintext; PII columns carry a
+`LIKE 'enc:t1:%'` check. `TenantSchemaCompatibility` now requires tenant V20.
+
 Namespace uniqueness for `team.name_key` + `team_alias.alias_key` is enforced by one transactional
 `TeamNamespaceService` taking a tenant-scoped `pg_advisory_xact_lock`; table unique indexes are a backstop only.
 
@@ -135,7 +139,7 @@ the release authority, plus provider-tenant access dates (ServiceNow, Entra, Okt
 
 | # | Prerequisite | Status |
 |---|---|---|
-| 1 | Storage map, versions, RLS/grants/purge | Designed here; verify at implementation |
+| 1 | Storage map, versions, RLS/grants/purge | Platform V11 + tenant V20 implemented and IT-verified; V21/V22 pending |
 | 2 | KMS spike + cipher interface | Implemented (`security.tenantkey`, platform V11, local wrapper only); **spike OPEN** |
 | 3 | Identity key + search | Designed; **100k/300k plan OPEN** |
 | 4 | Authorization matrix | Designed |
