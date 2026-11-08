@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -146,7 +147,7 @@ class AdmissionBoundaryPostgresIntegrationTest {
 
     @Test
     void workerSnapshotMeasuresVisibleIngestionAgeWithoutScrapingTenantDatabases() {
-        Instant now = Instant.now();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         Tenant peer = tenant();
         UUID scan = jobs.enqueueEndpointJob(tenant, request("scan-fixture"), "test").jobId();
         UUID running = jobs.enqueueEndpointJob(tenant, request("running-fixture"), "test").jobId();

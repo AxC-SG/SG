@@ -64,7 +64,8 @@ public final class ProductionBootstrapCli {
                     } else {
                         int platformVersion = runPlatformMigrations(config);
                         StandardTenantEnrollment.configure(connection, config.standardCustomerLimit());
-                        provisionRuntimeRole(connection, config);
+                        provisionRuntimeRole(connection, config.runtimeDbUsername(),
+                                config.runtimeDbPassword(), config.runtimeDbConnectionLimit());
                         phases.add(Phase.success("platform_migrations", "version=" + platformVersion));
                         TenantSchema defaultTenant = ensureDefaultTenant(connection);
                         phases.add(Phase.success("default_tenant_registration", defaultTenant.schemaName()));
@@ -80,7 +81,8 @@ public final class ProductionBootstrapCli {
                         if (!tenantResult.success()) {
                             throw new BootstrapFailure("tenant_provisioning_failed", "Tenant provisioning failed");
                         }
-                        provisionRuntimeRole(connection, config);
+                        provisionRuntimeRole(connection, config.runtimeDbUsername(),
+                                config.runtimeDbPassword(), config.runtimeDbConnectionLimit());
                         phases.add(Phase.success("runtime_role_provisioning", config.runtimeDbUsername()));
                         verifyControlPlane(connection, config.runtimeDbUsername());
                         phases.add(Phase.success("owner_verification", "complete"));
@@ -705,8 +707,8 @@ public final class ProductionBootstrapCli {
         }
     }
 
-    private static void provisionRuntimeRole(Connection connection, Config config) throws SQLException {
-        String role = config.runtimeDbUsername();
+    private static void provisionRuntimeRole(Connection connection, String role, String password,
+                                             int maxConnections) throws SQLException {
         String quotedRole = quotedIdentifier(role);
         try (Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -724,10 +726,9 @@ public final class ProductionBootstrapCli {
                     where rolname = ?
                       and (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)
                     """, "runtime role has immutable unsafe attributes", role);
-            String connectionLimit = config.runtimeDbConnectionLimit() == 0
-                    ? "" : " connection limit " + config.runtimeDbConnectionLimit();
+            String connectionLimit = maxConnections == 0 ? "" : " connection limit " + maxConnections;
             statement.execute("alter role " + quotedRole + " with login noinherit password "
-                    + quotedLiteral(config.runtimeDbPassword()) + connectionLimit);
+                    + quotedLiteral(password) + connectionLimit);
             statement.execute("grant connect on database " + quotedIdentifier(connection.getCatalog()) + " to " + quotedRole);
             statement.execute("revoke create on database " + quotedIdentifier(connection.getCatalog()) + " from " + quotedRole);
             statement.execute("revoke create on schema public from " + quotedRole);
