@@ -1,0 +1,18 @@
+# ownership effective-owner benchmark  findings=100000 occurrences=500000 runs=10  2026-11-08T14:10:41Z
+PostgreSQL 16.15 (Homebrew) on aarch64-apple-darwin25.6.0, compiled by Apple clang version 21.0.0 (clang-2100.3.34.2), 64-bit
+seed:               set_config              
+seed: --------------------------------------
+seed:  00000000-0000-0000-0000-0000000000be
+seed: (1 row)
+seed: 
+seed: real 44.37
+seed: user 0.01
+seed: sys 0.01
+SET
+              set_config              
+--------------------------------------
+ 00000000-0000-0000-0000-0000000000be
+(1 row)
+
+== Q1 owner-team filter (first page of open findings owned by one team)
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:10: ERROR:  canceling statement due to user request
