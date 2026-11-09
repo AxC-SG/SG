@@ -132,4 +132,46 @@ class FindingQueryServiceTest {
         assertNull(response.assetType());
         assertNull(response.source());
     }
+
+    @Test
+    void canonicalOwnershipMapFillsTheExistingDisplayKeysFromTheEffectiveAssignment() {
+        UUID team = UUID.randomUUID();
+        UUID subject = UUID.randomUUID();
+        com.prototype.vulnwatch.domain.Asset asset = new com.prototype.vulnwatch.domain.Asset();
+        asset.setOwnerTeam("Legacy Ops");
+        asset.setSupportGroup("SN-NET-OPS");
+        var owned = new com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary(UUID.randomUUID(), "CORE", "CANONICAL",
+                subject, team, "Payments", "OWNED", subject, UUID.randomUUID(), "SERVICENOW", java.time.Instant.EPOCH, false, 0, null);
+
+        var map = FindingQueryService.canonicalOwnershipMap(owned, asset);
+        assertEquals("Payments", map.get("displayName"));
+        assertEquals("Payments", map.get("ownerTeam"));
+        assertEquals(team.toString(), map.get("ownerTeamId"));
+        assertEquals("OWNED", map.get("ownershipStatus"));
+        assertEquals("CANONICAL", map.get("authorityState"));
+        assertEquals("SERVICENOW", map.get("sourceSystem"));
+        // The raw CMDB support group stays visible as evidence, but the legacy owner_team label is gone.
+        assertEquals("SN-NET-OPS", map.get("supportGroup"));
+        assertTrue(map.values().stream().noneMatch("Legacy Ops"::equals));
+
+        var conflict = new com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary(UUID.randomUUID(), "CORE", "CANONICAL",
+                subject, null, null, "CONFLICT", subject, UUID.randomUUID(), "SERVICENOW", null, null, 0, null);
+        assertEquals("Ownership conflict", FindingQueryService.canonicalOwnershipMap(conflict, null).get("displayName"));
+        assertNull(FindingQueryService.canonicalOwnershipMap(conflict, null).get("ownerTeam"));
+
+        var unlinked = new com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary(UUID.randomUUID(), "CORE", "CANONICAL",
+                null, null, null, "UNOWNED", null, null, null, null, null, null, null);
+        assertEquals("Unowned", FindingQueryService.canonicalOwnershipMap(unlinked, null).get("displayName"));
+    }
+
+    @Test
+    void legacyOwnershipMapKeepsThePreCutoverDisplayAndMarksItPendingMigration() {
+        com.prototype.vulnwatch.domain.Asset asset = new com.prototype.vulnwatch.domain.Asset();
+        asset.setOwnerEmail("owner@example.test");
+        var map = FindingQueryService.legacyOwnershipMap(asset);
+        assertEquals("owner@example.test", map.get("displayName"));
+        assertEquals("", map.get("supportGroup"));
+        assertEquals("LEGACY_PENDING_MIGRATION", map.get("authorityState"));
+        assertEquals("Unassigned", FindingQueryService.legacyOwnershipMap(null).get("displayName"));
+    }
 }
