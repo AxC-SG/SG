@@ -138,6 +138,9 @@ class TeamNamespacePostgresIntegrationTest {
         var current = teams.team(root.id()).orElseThrow();
         assertBadRequest(() -> teams.updateTeam(root.id(), grandchild.id(), null, current.version(), "admin"));
         assertConflict(() -> teams.setStatus(root.id(), "ARCHIVED", current.version(), "admin"));
+        // Re-parenting under a root (whose own parent is null) walks to the top without error.
+        var other = teams.createTeam("Other Root", null, null, "admin");
+        assertThat(teams.updateTeam(other.id(), root.id(), null, other.version(), "admin").parentTeamId()).isEqualTo(root.id());
         teams.setStatus(grandchild.id(), "ARCHIVED", grandchild.version(), "admin");
         assertBadRequest(() -> teams.createTeam("Orphan", grandchild.id(), null, "admin"));
         assertConflict(() -> teams.createTeam("grandchild", null, null, "admin"));

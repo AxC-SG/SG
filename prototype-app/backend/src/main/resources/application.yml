@@ -349,6 +349,12 @@ app:
       # Comma-separated exact BigFix server host names tenants may connect to. Empty approves
       # nothing. Private addresses are allowed; loopback, link-local and metadata are not.
       allowed-hosts: ${BIGFIX_ALLOWED_HOSTS:}
+  ownership:
+    effective-cache:
+      # Ownership list filters and coverage counts read a cached effective result (design §7: the live walk
+      # missed the filter/coverage budgets). Changes are always recorded; this switches on the per-minute
+      # refresh and the cached reads. Detail reads and correctness-sensitive writes always use the live walk.
+      enabled: ${APP_OWNERSHIP_EFFECTIVE_CACHE_ENABLED:false}
   cmdb:
     servicenow:
       base-url: ${CMDB_SERVICENOW_BASE_URL:}

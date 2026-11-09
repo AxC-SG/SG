@@ -34,10 +34,12 @@ public class TeamNamespaceService {
 
     private final JdbcTemplate jdbc;
     private final AuditEventService audit;
+    private final OwnershipResolutionService resolution;
 
-    public TeamNamespaceService(JdbcTemplate jdbc, AuditEventService audit) {
+    public TeamNamespaceService(JdbcTemplate jdbc, AuditEventService audit, OwnershipResolutionService resolution) {
         this.jdbc = jdbc;
         this.audit = audit;
+        this.resolution = resolution;
     }
 
     @Transactional
@@ -105,6 +107,8 @@ public class TeamNamespaceService {
                 """, status, actor, teamId, expectedVersion);
         if (changed != 1) throw conflict("The team changed since it was loaded; reload and try again");
         audit.record("ownership.team.status_changed", "team", teamId.toString(), json("status", status));
+        // Claims naming an archived team become ineligible (plan §6.9 step 2); restoring makes them eligible again.
+        resolution.enqueueSubjectsClaimingTeam(teamId);
         return team(teamId).orElseThrow();
     }
 
@@ -159,6 +163,19 @@ public class TeamNamespaceService {
                         rs.getString(5), rs.getLong(6)), id).stream().findFirst();
     }
 
+    /** Bounded, name-ordered page of teams whose name starts with {@code prefix} (blank = all). */
+    @Transactional(readOnly = true)
+    public List<Team> list(String prefix, String status, int limit, int offset) {
+        String key = prefix == null ? "" : prefix.strip().toLowerCase(java.util.Locale.ROOT)
+                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return jdbc.query("""
+                SELECT id, name, parent_team_id, ticket_assignment_group, status, version FROM team
+                 WHERE name_key LIKE ? ESCAPE '\\' AND (?::text IS NULL OR status = ?)
+                 ORDER BY name_key LIMIT ? OFFSET ?
+                """, (rs, row) -> new Team(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, UUID.class), rs.getString(4),
+                rs.getString(5), rs.getLong(6)), key + "%", status, status, Math.max(1, Math.min(limit, 200)), Math.max(0, offset));
+    }
+
     @Transactional(readOnly = true)
     public List<Alias> aliases(UUID teamId) {
         return jdbc.query("SELECT id, team_id, alias, source_kind, source_id FROM team_alias WHERE team_id = ? ORDER BY alias_key",
@@ -185,7 +202,8 @@ public class TeamNamespaceService {
         for (int depth = 0; cursor != null; depth++) {
             if (cursor.equals(teamId)) return true;
             if (depth >= MAX_PARENT_DEPTH) throw badRequest("Team hierarchy is too deep");
-            cursor = jdbc.queryForList("SELECT parent_team_id FROM team WHERE id = ?", UUID.class, cursor).stream().findFirst().orElse(null);
+            List<UUID> next = jdbc.queryForList("SELECT parent_team_id FROM team WHERE id = ?", UUID.class, cursor);
+            cursor = next.isEmpty() ? null : next.get(0); // the list holds a null when the team has no parent
         }
         return false;
     }
