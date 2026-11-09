@@ -291,13 +291,13 @@ Start here in a new session. The plan is `docs/ownership-capability-mvp-plan.md`
 ### 11.1 Where the work is
 
 - Git worktree `../SG-ownership-mvp` (relative to the main checkout `SG/`), branch `feat/ownership-mvp`.
-- Committed: `764fe136` plan, `543e7620` Phase 0A design, `f9ea681e` Release 1 slice 1 (tenant data keys, platform
-  V11), `7bd38452` slice 2 (identity and team tables, tenant V20, `TeamNamespaceService`).
-- **Everything below is uncommitted** in that worktree: tenant V21 (ownership core, amended in place for the effective
-  cache — no shared database has V20–V22 applied) and V22, all `service/ownership/*` beyond slice 2, the four
-  ownership/directory controllers, the cache, the finding/asset compatibility reads, the inventory UI changes, the
-  Ownership & Directory hub, the benchmark harness under `backend/scripts/perf/`, the e2e fixture/journey updates and
-  this document's later sections.
+- Committed on `feat/ownership-mvp` (not pushed, no PR): `764fe136` plan, `543e7620` Phase 0A design, `f9ea681e`
+  slice 1 (tenant data keys, platform V11), `7bd38452` slice 2 (identity and team tables, tenant V20), then
+  `7084247d` ownership core and effective cache (tenant V21–V22), `d6f141b3` directory and CSV, `88b59f08`
+  ServiceNow producer, `225fe7e1` manual assignment, cutover and read adapter, `f4ac6b56` REST API and authorization,
+  `98852731` finding/asset compatibility reads, `5d44e93b` inventory UI, `f73058c8` Ownership & Directory hub and
+  `3f3739a5` benchmark harness and this status. Only the final tree was built and tested; the intermediate commits were
+  not compiled individually. gitleaks (repo config) found no leaks in these commits; no pre-commit hook is installed.
 - Frontend `node_modules` in the worktree were installed with `npm ci` (its lockfile differs from the main checkout).
 
 ### 11.2 Done in Release 1
@@ -333,10 +333,8 @@ tests) pass; e2e runner unit tests pass.
 
 ### 11.4 Next steps, in order
 
-1. **Commit the worktree in reviewable pieces** after one full `mvn -Ppostgres-it verify`: schema and core (V21/V22,
-   subject/claim/resolution/review services), directory and CSV, ServiceNow producer, authorization and controllers,
-   cutover, effective cache, finding/asset compatibility reads, inventory UI, Ownership & Directory hub, benchmark
-   harness and docs. Follow `CLAUDE.md` commit conventions; branch is already `feat/ownership-mvp`.
+1. **Run the full backend suite** `mvn -Ppostgres-it verify` on the branch (the work is committed, §11.1), then push
+   and open a PR against `main` when ready.
 2. **Browser and live verification**: `npm run e2e:build`, then the connect, experience and inventory journeys plus
    visual/affected-route/axe checks in the pinned Playwright image; a live session with a disposable tenant to check
    persistence after reload; screenshots at 390 px and 1280 px in both themes.
