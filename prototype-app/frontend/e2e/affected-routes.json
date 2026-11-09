@@ -33,7 +33,7 @@
   "inventory": [
    "^src/styles/ui2/inventory\\.css$",
    "^src/styles/(eol|ai-security)\\.css$",
-   "^src/features/(inventory|software-identities|eol|ai-security)/",
+   "^src/features/(inventory|software-identities|eol|ai-security|ownership)/",
    "^src/pages/(Inventory|Assets|HostAsset|SoftwareIdentit|Bom|AiInventory|AiAsset|AiKnowledge|AiBom|AiAgent|Eol|VulnRepoSoftwareAssets|VulnRepoHostAsset|CloudResources)"
   ],
   "governance": [
@@ -51,7 +51,7 @@
   "experience": [
    "^src/styles/ui2/experience\\.css$",
    "^src/styles/(exposure-dashboard|user-management|vuln-repo)\\.css$",
-   "^src/features/(admin|campaigns|configurations|dashboard|operations|vuln-repo-dashboard)/",
+   "^src/features/(admin|campaigns|configurations|dashboard|operations|ownership|vuln-repo-dashboard)/",
    "^src/pages/(ExposureDashboard|Dashboard|Campaign|Configurations|UserManagement|PlatformConsole|Platform|Operational|AuthorizedWorkspaces|VulnRepoDashboard)"
   ],
   "fix": [

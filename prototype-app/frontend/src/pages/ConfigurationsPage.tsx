@@ -17,6 +17,7 @@ import { useRiskPolicyQuery } from '../features/cve-workbench/queries';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
 import { AsyncSection } from '../components/AsyncSection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { OwnershipDirectoryHub } from '../features/ownership/OwnershipDirectoryHub';
 import {
   type AgentConfidenceLevel,
   type AssetInventoryCriterion,
@@ -2084,9 +2085,9 @@ export function ConfigurationsPage() {
         'Control when stale findings are automatically closed.',
     },
     ownership: {
-      title: 'Ownership',
+      title: 'Ownership & Directory',
       description:
-        'Route records to the right user group using rule-based ownership conditions.',
+        'Teams, people, groups and CSV imports that resolve each asset to one accountable owner team.',
     },
     'findings-score': {
       title: 'Findings Score',
@@ -2138,7 +2139,7 @@ export function ConfigurationsPage() {
           {activeSection === 'triage' && renderTriage()}
           {activeSection === 'sla' && renderSla()}
           {activeSection === 'automation' && renderAutomation()}
-          {activeSection === 'ownership' && renderOwnership()}
+          {activeSection === 'ownership' && <OwnershipDirectoryHub legacyRules={renderOwnership()} />}
           {activeSection === 'findings-score' && renderFindingsScore()}
           {activeSection === 'suppress' && renderSuppress()}
           {activeSection === 'auto-findings' && renderAutoFindings()}

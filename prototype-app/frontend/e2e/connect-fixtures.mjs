@@ -332,6 +332,10 @@ const riskPolicy = {
   triageExploitabilityWeight: 1.4, triageBlastRadiusWeight: 1.0, triageEolRiskWeight: 0.6, triageSlaBreachWeight: 1.2, triageMissingOwnerBoost: 0.5, triagePatchGapBoost: 0.3,
 };
 const ownershipCondition = (logic, conditions) => JSON.stringify({ logic, conditions: conditions.map(([table, column, operator, value]) => ({ table, column, operator, value })) });
+const ownershipTeams = [
+  { id: 'team-payments', name: 'Payments', parentTeamId: null, ticketAssignmentGroup: 'SN-PAYMENTS', status: 'ACTIVE', version: 2 },
+  { id: 'team-data', name: 'Data Platform', parentTeamId: null, ticketAssignmentGroup: null, status: 'ACTIVE', version: 1 },
+];
 const ownershipRules = [
   { id: OWNERSHIP_RULE_IDS[0], name: 'Payments services', condition: ownershipCondition('AND', [['ASSET', 'tags', 'contains', 'team:payments'], ['ASSET', 'environment', '=', 'production']]),
     userGroup: 'Payments Platform', executionOrder: 1, matchedCount: 142, createdAt: iso(-45), updatedAt: iso(-6) },
@@ -562,6 +566,24 @@ export function connectFixtureFor(rawUrl, method = 'GET', body = null) {
     if (isGet) return ok(ownershipRules);
     return ok({ id: 'own-rule-new', executionOrder: ownershipRules.length + 1, matchedCount: 0, createdAt: iso(0), updatedAt: iso(0), ...json });
   }
+  // Ownership & Directory hub (tenant still LEGACY: coverage is the canonical model's dark view)
+  if (path === '/ownership/coverage') {
+    return ok(params.get('consumer') === 'FINDINGS'
+      ? { authorityState: 'LEGACY_PENDING_MIGRATION', owned: 812, unowned: 96, conflict: 7, unlinked: 41, refreshing: 0 }
+      : { authorityState: 'LEGACY_PENDING_MIGRATION', owned: 1284, unowned: 132, conflict: 9, unlinked: 58, refreshing: 0 });
+  }
+  if (path === '/ownership/encryption') return ok({ ready: true, reason: null });
+  if (path === '/ownership/authority/CORE/qualification') {
+    return ok({ domain: 'CORE', state: 'LEGACY', passed: false, blockers: ['Domain must be DARK to qualify (is LEGACY)'], checks: {},
+      comparison: { match: 0, mismatch: 0, legacyOnly: 0, canonicalOnly: 0, bothEmpty: 0 }, reportHash: 'fixture-legacy-report' });
+  }
+  if (path === '/ownership/teams') {
+    if (isGet) return ok(ownershipTeams);
+    return ok({ id: 'team-new', parentTeamId: null, ticketAssignmentGroup: null, status: 'ACTIVE', version: 0, ...json });
+  }
+  if (/^\/ownership\/teams\/[^/]+\/aliases$/.test(path)) return ok(isGet ? [] : { id: 'alias-new', teamId: path.split('/')[3], sourceId: null, ...json });
+  if (path === '/ownership/review-items') return ok([]);
+  if (path === '/directory/groups') return ok([]);
   if (path === '/ownership-rules/apply') return ok({ updated: 540 });
   const ownership = path.match(/^\/ownership-rules\/([^/]+)(\/apply)?$/);
   if (ownership) {

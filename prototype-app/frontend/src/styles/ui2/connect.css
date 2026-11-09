@@ -842,3 +842,121 @@ html[data-ui='2'] .ui2-connect-family .cbom-rules-panel .cbom-report-actions {
   flex-wrap: wrap;
   gap: var(--dp-space-2, 8px);
 }
+
+/* ── Ownership & Directory hub (Configurations → Ownership; ownership MVP plan §9.1) ── */
+html[data-ui='2'] .ui2-connect-family .ownership-hub-view,
+html[data-ui='2'] .ui2-connect-family .ownership-panel {
+  display: grid;
+  gap: var(--dp-space-4);
+  min-width: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-search {
+  display: grid;
+  gap: var(--dp-space-1);
+  min-width: min(280px, 100%);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-coverage {
+  display: grid;
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius);
+  background: var(--dp-surface);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-coverage h3 {
+  margin: 0;
+  color: var(--dp-text);
+  font-size: var(--dp-text-md);
+  font-weight: 600;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--dp-space-2) var(--dp-space-4);
+  margin: 0;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-counts div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) 0;
+  border-bottom: 1px solid var(--dp-border);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-counts dt {
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-sm);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-counts dd {
+  margin: 0;
+  color: var(--dp-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-import-report {
+  display: grid;
+  gap: var(--dp-space-4);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-wrap {
+  overflow-wrap: anywhere;
+}
+
+/* Dialog bodies: the shared confirm-dialog panel with room for a form or a short list. */
+html[data-ui='2'] .ui2-connect-family .ownership-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-dialog-form,
+html[data-ui='2'] .ui2-connect-family .ownership-member-add {
+  display: grid;
+  gap: var(--dp-space-3);
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-alias-list {
+  display: grid;
+  gap: var(--dp-space-1);
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-alias-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface-2);
+  overflow-wrap: anywhere;
+}
+
+html[data-ui='2'] .ui2-connect-family .ownership-alias-list li > button {
+  margin-left: auto;
+}

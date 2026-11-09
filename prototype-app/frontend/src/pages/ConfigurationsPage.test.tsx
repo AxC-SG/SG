@@ -31,6 +31,9 @@ describe('ConfigurationsPage', () => {
     vi.spyOn(api, 'getAuthContext').mockResolvedValue(TENANT_ADMIN_CONTEXT);
     vi.spyOn(api, 'getRiskPolicy').mockResolvedValue(defaultRiskPolicy());
     vi.spyOn(api, 'listOwnershipRules').mockResolvedValue([]);
+    vi.spyOn(api, 'getOwnershipCoverage').mockResolvedValue({
+      authorityState: 'LEGACY_PENDING_MIGRATION', owned: 0, unowned: 0, conflict: 0, unlinked: 0, refreshing: 0,
+    });
     vi.spyOn(api, 'listSuppressionRules').mockResolvedValue([]);
     vi.spyOn(api, 'listVulnerabilitySourceFilterConfigs').mockResolvedValue([]);
   }
@@ -399,7 +402,9 @@ describe('ConfigurationsPage', () => {
       executionOrder: 1, matchedCount: 3, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z',
     };
     vi.spyOn(api, 'listOwnershipRules').mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([rule]);
-    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('ownership') });
+    // The legacy editor now lives in the Ownership & Directory hub's pending-migration view.
+    renderConfigPageAsTenantAdmin({ route: `${pathForConfigurationsView('ownership')}?view=legacy` });
+    expect(await screen.findByText(/Legacy ownership rules — pending migration/)).toBeInTheDocument();
 
     expect(await screen.findByText('Ownership rules could not be loaded.')).toBeInTheDocument();
     expect(screen.queryByText('No ownership rules defined yet.')).not.toBeInTheDocument();
