@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.FindingResponse;
+import com.prototype.vulnwatch.dto.FindingsFilter;
+import com.prototype.vulnwatch.dto.FindingsFilterRequest;
 import com.prototype.vulnwatch.service.FindingQueryService;
 import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TenantSchemaMigrationService;
@@ -24,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Real-PostgreSQL proof for the findings compatibility adapter (plan §15.3 step 4, §15.4): existing finding responses
@@ -112,6 +115,49 @@ class FindingOwnershipCompatibilityPostgresIntegrationTest {
         assertThat(detail.ownerGroup()).isEqualTo("Payments Platform");
     }
 
+    @Test
+    void ownerTeamAndStatusFiltersUseCanonicalOwnershipOnCursorPagingOnly() {
+        UUID asset = asset();
+        UUID owned = finding(asset, "VULNERABILITY", "legacy-rule-group");
+        UUID ai = finding(asset, "AI_POSTURE", "Payments");
+        UUID orphanAsset = asset();
+        UUID unowned = finding(orphanAsset, "VULNERABILITY", null);
+
+        // Legacy labels cannot be filtered by canonical team.
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> cursor(ownerFilter(payments, null))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode().value()).isEqualTo(409));
+
+        UUID subject = inventory.subjectForAsset(asset).orElseThrow();
+        inventory.subjectForFinding(owned);
+        inventory.subjectForAsset(orphanAsset);
+        inventory.subjectForFinding(unowned);
+        claims.recordClaim(new ClaimRequest(subject, payments, null, "SERVICENOW", "SERVICENOW", null, "cmdb_ci:web-1",
+                "v1", "sn", Instant.now(), null, null, null, "sn"));
+        setCoreCanonical();
+
+        assertThat(cursor(ownerFilter(payments, null))).as("the AI finding is pending migration, never team-filterable")
+                .containsExactly(owned);
+        assertThat(cursor(ownerFilter(null, "unowned"))).containsExactly(unowned);
+        assertThat(cursor(ownerFilter(payments, "CONFLICT"))).isEmpty();
+        assertThat(cursor(ownerFilter(null, null))).contains(owned, ai, unowned);
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> cursor(ownerFilter(null, "BOGUS"))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode().value()).isEqualTo(400));
+        // Offset (JPA) paging refuses instead of silently ignoring the filter.
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> findings.listByTenantPage(tenant, 0, 25, ownerFilter(payments, null))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode().value()).isEqualTo(400));
+    }
+
+    private java.util.List<UUID> cursor(FindingsFilter filter) {
+        return findings.listByTenantCursor(tenant, null, 50, filter).items().stream().map(FindingResponse::id).toList();
+    }
+
+    private static FindingsFilter ownerFilter(UUID teamId, String status) {
+        FindingsFilterRequest request = new FindingsFilterRequest();
+        request.setOwnerTeamId(teamId);
+        request.setOwnershipStatus(status);
+        return request.toFilter();
+    }
+
     private Map<UUID, FindingResponse> latest() {
         return findings.listLatestByTenant(tenant, 50).stream().collect(Collectors.toMap(FindingResponse::id, r -> r));
     }
@@ -120,7 +166,7 @@ class FindingOwnershipCompatibilityPostgresIntegrationTest {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO assets (id, business_criticality, created_at, identifier, name, state, type, owner_team, support_group)
-                VALUES (?, 'HIGH', now(), 'web-1', 'web-1', 'ACTIVE', 'HOST', 'Legacy Ops', 'SN-NET-OPS')""", id);
+                VALUES (?, 'HIGH', now(), ?, ?, 'ACTIVE', 'HOST', 'Legacy Ops', 'SN-NET-OPS')""", id, "web-" + id, "web-" + id);
         return id;
     }
 

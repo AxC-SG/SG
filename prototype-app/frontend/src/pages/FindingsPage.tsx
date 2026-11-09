@@ -25,6 +25,8 @@ import {
   useFindingSummaryQuery
 } from '../features/findings/queries';
 import { useFindingsCursorPaging, useFindingsQueryContext } from '../features/findings/hooks';
+import { useOwnershipCoverageQuery, useOwnershipTeamsQuery } from '../features/ownership/queries';
+import { findingOwnershipStatus } from '../features/ownership/resolvedOwnership';
 import { FindingsSummaryWidgets, type SourceState } from '../features/findings/components/FindingsSummaryWidgets';
 import { useRiskPolicyQuery } from '../features/cve-workbench/queries';
 import { useActor } from '../features/auth/context';
@@ -42,6 +44,7 @@ const ALL_COLUMNS = [
   { key: 'cveId',          label: 'CVE ID',         alwaysVisible: true  },
   { key: 'asset',          label: 'Asset',          alwaysVisible: false },
   { key: 'owner',          label: 'Owner',          alwaysVisible: false },
+  { key: 'ownershipStatus', label: 'Ownership Status', alwaysVisible: false },
   { key: 'supportGroup',   label: 'Support Group',  alwaysVisible: false },
   { key: 'package',        label: 'Package',        alwaysVisible: false },
   { key: 'severity',       label: 'Severity',       alwaysVisible: false },
@@ -62,7 +65,7 @@ const ALL_COLUMNS = [
 type ColKey = typeof ALL_COLUMNS[number]['key'];
 
 const DEFAULT_VISIBLE: ColKey[] = [
-  'findingId', 'cveId', 'asset', 'owner', 'supportGroup', 'package',
+  'findingId', 'cveId', 'asset', 'owner', 'ownershipStatus', 'supportGroup', 'package',
   'severity', 'status', 'creationSource', 'risk', 'priority', 'ownerGroup', 'assignedTo', 'dueDate', 'incidentId',
 ];
 
@@ -222,6 +225,13 @@ export function FindingsPage() {
   const colVisRef = React.useRef<HTMLDivElement | null>(null);
   const [groupFilter, setGroupFilter] = React.useState<{ field: string; value: string } | null>(null);
   const [unassignedOnly, setUnassignedOnly] = React.useState(false);
+  // Canonical owner filters by stable team ID (plan §9.7); offered only once findings ownership is canonical.
+  const [ownerTeamFilter, setOwnerTeamFilter] = React.useState('');
+  const [ownershipStatusFilter, setOwnershipStatusFilter] = React.useState<'' | 'OWNED' | 'UNOWNED' | 'CONFLICT'>('');
+  const findingsOwnershipCoverage = useOwnershipCoverageQuery('FINDINGS');
+  const canonicalFindingOwnership = findingsOwnershipCoverage.data?.authorityState === 'CANONICAL';
+  const ownerTeamsQuery = useOwnershipTeamsQuery('', 'ACTIVE', canonicalFindingOwnership);
+  const ownerTeams = ownerTeamsQuery.data ?? [];
   const [incidentLinked, setIncidentLinked] = React.useState(false);
   const [groupBy, setGroupBy] = React.useState<string[]>([]);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -272,7 +282,10 @@ export function FindingsPage() {
     supportGroup: colFilters.supportGroup.trim() || undefined,
     incidentLinked: incidentLinked || colFilters.incidentId.trim().length > 0 || undefined,
     assetType: assetTypeFilter.length > 0 ? assetTypeFilter : undefined,
-  }), [colFilters, dueDateBand, assetTypeFilter, groupFilter, unassignedOnly, incidentLinked]);
+    ownerTeamId: canonicalFindingOwnership && ownerTeamFilter ? ownerTeamFilter : undefined,
+    ownershipStatus: canonicalFindingOwnership && ownershipStatusFilter ? ownershipStatusFilter : undefined,
+  }), [colFilters, dueDateBand, assetTypeFilter, groupFilter, unassignedOnly, incidentLinked,
+    canonicalFindingOwnership, ownerTeamFilter, ownershipStatusFilter]);
 
   const availableQueues = queuesQuery.data ?? [];
   const {
@@ -421,6 +434,8 @@ export function FindingsPage() {
       supportGroup: adHocFilters.supportGroup ?? baseFilter.supportGroup,
       patchAvailable: adHocFilters.patchAvailable ?? baseFilter.patchAvailable,
       suppressedUntilBand: adHocFilters.suppressedUntilBand ?? baseFilter.suppressedUntilBand,
+      ownerTeamId: adHocFilters.ownerTeamId ?? baseFilter.ownerTeamId,
+      ownershipStatus: adHocFilters.ownershipStatus ?? baseFilter.ownershipStatus,
     };
   }
 
@@ -596,6 +611,8 @@ export function FindingsPage() {
     setIncidentLinked(false);
     setAssetTypeFilter([]);
     setDueDateBand(null);
+    setOwnerTeamFilter('');
+    setOwnershipStatusFilter('');
     setPage(0);
   }
 
@@ -619,6 +636,8 @@ export function FindingsPage() {
   if (colFilters.risk)     activeChips.push({ key:'risk', label:'Risk at least', value: colFilters.risk, onRemove:()=>setColFilter('risk','') });
   if (dueDateBand)         activeChips.push({ key:'dueDateBand', label:'SLA', value: fmt(dueDateBand), onRemove:()=>setDueDateBand(null) });
   if (assetTypeFilter.length>0) activeChips.push({ key:'assetType', label:'Asset Type', value: assetTypeFilter.map(fmt).join(', '), onRemove:()=>setAssetTypeFilter([]) });
+  if (canonicalFindingOwnership && ownerTeamFilter) activeChips.push({ key:'ownerTeam', label:'Owner Team', value: ownerTeams.find(t=>t.id===ownerTeamFilter)?.name ?? 'Selected team', onRemove:()=>setOwnerTeamFilter('') });
+  if (canonicalFindingOwnership && ownershipStatusFilter) activeChips.push({ key:'ownershipStatus', label:'Ownership', value: fmt(ownershipStatusFilter), onRemove:()=>setOwnershipStatusFilter('') });
 
   // ── selection ──────────────────────────────────────────────────────────────
   function toggleSelect(id: string) {
@@ -847,9 +866,16 @@ export function FindingsPage() {
     if (key==='owner') return (
       <div>
         <div className="fpl-cell-main">{ownershipDisplayName(row)}</div>
-        <div className="fpl-cell-sub">{row.ownership?.sourceSystem ? fmt(row.ownership.sourceSystem) : 'No ownership source'}</div>
+        <div className="fpl-cell-sub">
+          {row.ownership?.authorityState === 'LEGACY_PENDING_MIGRATION' ? 'Pending migration'
+            : row.ownership?.sourceSystem ? fmt(row.ownership.sourceSystem) : 'No ownership source'}
+        </div>
       </div>
     );
+    if (key==='ownershipStatus') {
+      const status = findingOwnershipStatus(row.ownership);
+      return <span className={status.className}>{status.label}</span>;
+    }
     if (key==='supportGroup') return ownershipSupportGroup(row)
       ? <span className="fpl-assigned">{ownershipSupportGroup(row)}</span>
       : <span className="fpl-empty">—</span>;
@@ -1068,6 +1094,27 @@ export function FindingsPage() {
         <div className="fpl-toolbar-left">
           <MultiGroupBy options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy}
             label="GROUP BY" placeholder="None" allowEmptyPrimary emptyPrimaryLabel="None" showSelectorsByDefault={false}/>
+
+          {canonicalFindingOwnership && (
+            <div className="fpl-owner-filters">
+              <label>
+                <span>Owner team</span>
+                <select value={ownerTeamFilter} onChange={e=>{ setOwnerTeamFilter(e.target.value); setPage(0); }} disabled={ownerTeamsQuery.isPending}>
+                  <option value="">Any team</option>
+                  {ownerTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Ownership</span>
+                <select value={ownershipStatusFilter} onChange={e=>{ setOwnershipStatusFilter(e.target.value as '' | 'OWNED' | 'UNOWNED' | 'CONFLICT'); setPage(0); }}>
+                  <option value="">Any status</option>
+                  <option value="OWNED">Owned</option>
+                  <option value="UNOWNED">Unowned</option>
+                  <option value="CONFLICT">Conflict</option>
+                </select>
+              </label>
+            </div>
+          )}
 
           <ActiveFilterChips filters={activeChips} onClearAll={clearAllFilters} />
         </div>

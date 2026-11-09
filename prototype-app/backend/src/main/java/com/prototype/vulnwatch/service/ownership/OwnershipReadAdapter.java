@@ -200,6 +200,33 @@ public class OwnershipReadAdapter {
         return jdbc.queryForList(sql, UUID.class, teamId, teamId, status, status, after, after, page);
     }
 
+    /**
+     * Subquery selecting the IDs of CORE (VULNERABILITY) findings whose effective owner team and/or status match, for
+     * the findings list's projection filter (plan §9.7). It binds {@code :ownershipTeamId} and {@code :ownershipStatus}
+     * (either may be null). Uses the effective cache when it is enabled, like {@link #filter}. Rejected with 409 while
+     * findings ownership is not canonical: legacy owner labels cannot be filtered by canonical team.
+     */
+    public String findingFilterSubquery(String status) {
+        if (!canonical(Consumer.FINDINGS, Domain.CORE)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Owner team and ownership status filters are available once findings ownership is canonical");
+        }
+        if (status != null && !Set.of("OWNED", "UNOWNED", "CONFLICT").contains(status)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Unknown ownership status");
+        }
+        return cache.enabled()
+                ? "SELECT f.id FROM findings f LEFT JOIN ownership_effective_cache c ON c.subject_id = f.ownership_subject_id"
+                        + " AND c.role = 'TECHNICAL_OWNER' WHERE f.finding_kind = 'VULNERABILITY'"
+                        + " AND (CAST(:ownershipTeamId AS uuid) IS NULL OR c.owner_team_id = :ownershipTeamId)"
+                        + " AND (CAST(:ownershipStatus AS text) IS NULL OR CASE WHEN f.ownership_subject_id IS NULL THEN 'UNOWNED'"
+                        + " ELSE c.ownership_status END = :ownershipStatus)"
+                : "SELECT f.id FROM findings f LEFT JOIN ownership_effective_assignment e ON e.subject_id = f.ownership_subject_id"
+                        + " WHERE f.finding_kind = 'VULNERABILITY'"
+                        + " AND (CAST(:ownershipTeamId AS uuid) IS NULL OR e.owner_team_id = :ownershipTeamId)"
+                        + " AND (CAST(:ownershipStatus AS text) IS NULL OR COALESCE(e.ownership_status, 'UNOWNED') = :ownershipStatus)";
+    }
+
     @Transactional(readOnly = true)
     public Coverage coverage(Consumer consumer) {
         boolean canonical = canonical(consumer, Domain.CORE);

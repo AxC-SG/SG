@@ -174,7 +174,10 @@ function mockFindingsWorkspace() {
   vi.spyOn(api, 'listFindingQueues').mockResolvedValue(FINDING_QUEUES);
   vi.spyOn(api, 'listFindingFilters').mockResolvedValue(FILTER_VALUES);
   vi.spyOn(api, 'getRiskPolicy').mockResolvedValue(RISK_POLICY);
-  return { listFindings, summary, distributions, backlog };
+  const coverage = vi.spyOn(api, 'getOwnershipCoverage').mockResolvedValue({
+    authorityState: 'LEGACY_PENDING_MIGRATION', owned: 0, unowned: 0, conflict: 0, unlinked: 0, refreshing: 0,
+  });
+  return { listFindings, summary, distributions, backlog, coverage };
 }
 
 describe('FindingsPage', () => {
@@ -237,6 +240,45 @@ describe('FindingsPage', () => {
     expect(screen.getByRole('dialog', { name: 'Resolve 1 Finding' })).toBeInTheDocument();
     finish();
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('marks legacy rows Pending migration and never offers canonical owner filters before cutover', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    listFindings.mockResolvedValue(pageOf([buildFinding({
+      ownership: { displayName: 'Legacy Ops', authority: 'LEGACY', authorityState: 'LEGACY_PENDING_MIGRATION' },
+    })]));
+    const teams = vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([]);
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    expect(await screen.findByText('F-001')).toBeInTheDocument();
+    expect(screen.getAllByText('Pending migration').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('Unowned')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Owner team')).not.toBeInTheDocument();
+    expect(teams).not.toHaveBeenCalled();
+  });
+
+  it('filters by stable owner team and status once findings ownership is canonical', async () => {
+    const { listFindings, coverage } = mockFindingsWorkspace();
+    coverage.mockResolvedValue({ authorityState: 'CANONICAL', owned: 1, unowned: 0, conflict: 0, unlinked: 0, refreshing: 0 });
+    listFindings.mockResolvedValue(pageOf([buildFinding({
+      ownerGroup: 'Payments',
+      ownership: { displayName: 'Payments', ownerTeam: 'Payments', authority: 'CANONICAL', authorityState: 'CANONICAL',
+        ownershipStatus: 'OWNED', ownerTeamId: 'team-pay', sourceSystem: 'SERVICENOW' },
+    })]));
+    vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([
+      { id: 'team-pay', name: 'Payments', parentTeamId: null, ticketAssignmentGroup: null, status: 'ACTIVE', version: 1 },
+    ]);
+    renderWithProviders(<FindingsPage />, { route: '/findings?queue=all-findings' });
+    expect(await screen.findByText('Owned', { selector: '.status-pill' })).toBeInTheDocument();
+
+    const teamSelect = await screen.findByLabelText('Owner team');
+    await screen.findByRole('option', { name: 'Payments' });
+    fireEvent.change(teamSelect, { target: { value: 'team-pay' } });
+    fireEvent.change(screen.getByLabelText('Ownership'), { target: { value: 'OWNED' } });
+    await waitFor(() => expect(listFindings).toHaveBeenLastCalledWith(expect.objectContaining({
+      ownerTeamId: 'team-pay', ownershipStatus: 'OWNED', limit: 25,
+    })));
+    // The chip names the team by its display name while the request carries only the stable ID.
+    expect(screen.getByRole('button', { name: 'Remove filter Owner Team: Payments' })).toBeInTheDocument();
   });
 
   it('preserves repeated deep-link filters and an explicit queue in the server request', async () => {

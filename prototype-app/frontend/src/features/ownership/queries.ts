@@ -23,11 +23,12 @@ export function useOwnershipCoverageQuery(consumer: 'INVENTORY' | 'FINDINGS') {
   return useQuery({ queryKey: ownershipKeys.coverage(consumer), queryFn: () => api.getOwnershipCoverage(consumer) });
 }
 
-export function useOwnershipTeamsQuery(q: string, status: 'ACTIVE' | 'ARCHIVED' | '') {
+export function useOwnershipTeamsQuery(q: string, status: 'ACTIVE' | 'ARCHIVED' | '', enabled = true) {
   return useQuery({
     queryKey: ownershipKeys.teams(q, status),
     queryFn: () => api.listOwnershipTeams({ q: q || undefined, status: status || undefined, limit: 200 }),
-    placeholderData: keepPreviousData
+    placeholderData: keepPreviousData,
+    enabled
   });
 }
 

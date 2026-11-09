@@ -29,6 +29,7 @@ public class FindingProjectionQueryService {
     private final FindingProjectionStatusService findingProjectionStatusService;
     private final FindingProjectionRefreshService findingProjectionRefreshService;
     private final TransactionTemplate readTransactionTemplate;
+    private com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads;
 
     public FindingProjectionQueryService(
             NamedParameterJdbcTemplate jdbcTemplate,
@@ -44,6 +45,12 @@ public class FindingProjectionQueryService {
         this.readTransactionTemplate = new TransactionTemplate(transactionManager);
         this.readTransactionTemplate.setReadOnly(true);
         this.readTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    /** Optional: canonical owner-team/status filtering (ownership plan §9.7); absent in narrow unit tests. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipReads(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads) {
+        this.ownershipReads = ownershipReads;
     }
 
     public void ensureTenantProjection(Tenant tenant) {
@@ -180,6 +187,7 @@ public class FindingProjectionQueryService {
     private SqlFilter buildSqlFilter(FindingsFilter filter) {
         MapSqlParameterSource params = new MapSqlParameterSource();
         StringBuilder where = new StringBuilder(" AND (finding_kind IS NULL OR finding_kind <> 'AI_RUNTIME') ");
+        appendOwnershipFilter(where, params, filter);
         appendInClause(where, params, "severity", "severity", upperValues(filter.severity()));
         appendInClause(where, params, "status", "status", upperValues(filter.status()));
         appendInClause(where, params, "decisionState", "decision_state", upperValues(filter.decisionState()));
@@ -358,6 +366,19 @@ public class FindingProjectionQueryService {
         }
         where.append(" = :").append(paramKey);
         params.addValue(paramKey, upper ? value.trim().toUpperCase(Locale.ROOT) : value.trim().toLowerCase(Locale.ROOT));
+    }
+
+    /** Owner team / ownership status by stable ID, resolved through the canonical model (never the free-text owner_group). */
+    private void appendOwnershipFilter(StringBuilder where, MapSqlParameterSource params, FindingsFilter filter) {
+        if (!filter.hasOwnershipFilter()) return;
+        if (ownershipReads == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Ownership filters are not available");
+        }
+        String status = FindingFilterSpecifications.hasText(filter.ownershipStatus())
+                ? filter.ownershipStatus().trim().toUpperCase(Locale.ROOT) : null;
+        where.append(" AND finding_id IN (").append(ownershipReads.findingFilterSubquery(status)).append(") ");
+        params.addValue("ownershipTeamId", filter.ownerTeamId()).addValue("ownershipStatus", status);
     }
 
     private void appendLikeIgnoreCase(StringBuilder where, MapSqlParameterSource params, String paramKey, String column, String value) {

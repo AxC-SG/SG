@@ -44,6 +44,24 @@ export function lacksResolvedOwner(ownership: ResolvedOwnership): boolean {
   return ownership.ownershipStatus !== 'OWNED';
 }
 
+/** Ownership status cell for a finding's compatibility map; legacy rows read Pending migration, never Unowned. */
+export function findingOwnershipStatus(ownership: { authorityState?: string; ownershipStatus?: string } | null | undefined): {
+  label: string;
+  className: string;
+} {
+  if (ownership?.authorityState !== 'CANONICAL') return { label: 'Pending migration', className: 'status-pill status-unknown' };
+  switch (ownership.ownershipStatus) {
+    case 'OWNED':
+      return { label: 'Owned', className: 'status-pill status-success' };
+    case 'CONFLICT':
+      return { label: 'Conflict', className: 'status-pill status-open' };
+    case 'UNOWNED':
+      return { label: 'Unowned', className: 'status-pill status-suppressed' };
+    default:
+      return { label: 'Refreshing', className: 'status-pill status-investigating' };
+  }
+}
+
 export function ownershipAssignmentKind(ownership: ResolvedOwnership): string | undefined {
   if (ownership.inheritanceDepth == null || ownership.ownershipStatus !== 'OWNED') return undefined;
   return ownership.inheritanceDepth === 0 ? 'Direct' : `Inherited (${ownership.inheritanceDepth} level${ownership.inheritanceDepth === 1 ? '' : 's'} up)`;

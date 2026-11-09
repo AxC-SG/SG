@@ -1178,6 +1178,8 @@ function buildFindingsSearchParams(params?: FindingsFilterModel): URLSearchParam
   params?.findingKind?.forEach((value) => searchParams.append('findingKind', value));
   params?.affectedAiResourceId?.forEach((value) => searchParams.append('affectedAiResourceId', value));
   if (params?.hasAffectedAiResource != null) searchParams.set('hasAffectedAiResource', String(params.hasAffectedAiResource));
+  if (params?.ownerTeamId) searchParams.set('ownerTeamId', params.ownerTeamId);
+  if (params?.ownershipStatus) searchParams.set('ownershipStatus', params.ownershipStatus);
   return searchParams;
 }
 

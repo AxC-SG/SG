@@ -1234,3 +1234,24 @@ html[data-ui='2'] .fd3-page .crypto-ticket-attempts ul {
   margin: 0 0 var(--dp-space-3, 12px);
   padding-left: var(--dp-space-5, 20px);
 }
+
+/* Canonical owner-team / ownership-status filters (ownership MVP plan §9.7); shown once findings ownership is canonical. */
+html[data-ui='2'] .fpl-root .fpl-owner-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+html[data-ui='2'] .fpl-root .fpl-owner-filters label {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-1);
+  color: var(--dp-text-2);
+  font-size: var(--dp-text-xs);
+}
+
+html[data-ui='2'] .fpl-root .fpl-owner-filters select {
+  max-width: 200px;
+  min-height: var(--dp-control-sm);
+}

@@ -293,7 +293,15 @@ public class PersonalFindingQueueService {
                 trimToNull(filter.supportGroup()),
                 filter.patchAvailable(),
                 trimToNull(filter.suppressedUntilBand()),
-                filter.assetType()
+                filter.assetType(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                // Saved queues keep the stable owner team (plan §9.7), never a display name.
+                filter.ownerTeamId(),
+                trimToNull(filter.ownershipStatus())
         );
     }
 

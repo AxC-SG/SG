@@ -104,7 +104,11 @@ public class FindingQueueResolutionService {
                 coalesceList(adHocFilter.assetType(), queueFilter.assetType()),
                 coalesceText(adHocFilter.groupField(), queueFilter.groupField()),
                 coalesceText(adHocFilter.groupValue(), queueFilter.groupValue()),
-                coalesceList(adHocFilter.findingKind(), queueFilter.findingKind())
+                coalesceList(adHocFilter.findingKind(), queueFilter.findingKind()),
+                null,
+                null,
+                adHocFilter.ownerTeamId() != null ? adHocFilter.ownerTeamId() : queueFilter.ownerTeamId(),
+                coalesceText(adHocFilter.ownershipStatus(), queueFilter.ownershipStatus())
         );
     }
 

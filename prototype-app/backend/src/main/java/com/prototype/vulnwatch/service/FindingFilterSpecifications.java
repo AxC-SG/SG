@@ -28,6 +28,12 @@ public final class FindingFilterSpecifications {
     }
 
     public static Specification<Finding> byFilter(Tenant tenant, FindingsFilter filter) {
+        if (filter.hasOwnershipFilter()) {
+            // The canonical ownership filter exists only on the projection (cursor) path; refusing here keeps both
+            // paths from returning different result sets for the same filter.
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Owner team and ownership status filters require cursor paging (pass limit or cursor)");
+        }
         return byTenant(tenant)
                 .and(bySeverity(filter.severity()))
                 .and(byStatus(filter.status()))
