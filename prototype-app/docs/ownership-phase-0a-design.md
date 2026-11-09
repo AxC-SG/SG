@@ -318,29 +318,36 @@ Start here in a new session. The plan is `docs/ownership-capability-mvp-plan.md`
 | Inventory reads | `AssetResponse.ownership` and `HostAssetDetailResponse.ownership` beside raw evidence; one set-based list read; host-detail findings use live team names | `AssetOwnershipCompatibilityPostgresIntegrationTest` |
 | Inventory UI | Host list owner column/search/missing-owner count and host-detail Resolved ownership / Observed evidence panels | `InventoryPage.test`, `HostAssetDetailPage.test`, `resolvedOwnership.test` |
 | Ownership & Directory hub | Overview, Teams, People, Groups, Imports, Review, Legacy rules (§8.1) | `OwnershipDirectoryHub.test` (9), `ConfigurationsPage.test` |
+| Findings page (§9.7) | Ownership Status column; Owner column marks legacy rows "Pending migration"; owner-team and status selects (stable team ID) shown only once findings ownership is canonical, with chips and saved views carrying `ownerTeamId`/`ownershipStatus` | `FindingsPage.test`, `FindingOwnershipCompatibilityPostgresIntegrationTest` |
+| Findings owner filter (server) | `FindingsFilter.ownerTeamId`/`ownershipStatus`; projection (cursor) path filters VULNERABILITY findings through the effective cache or live view; 409 while not canonical, 400 for unknown status; offset/JPA paging rejects the filter with 400 instead of diverging; queue merge and personal queues keep the fields | same IT, `FindingQueueServiceTest`, `FindingControllerTest` |
+| Tenant reset fix | `TenantSchemaService` missing-column reconciliation is limited to tables, so the V21 view no longer breaks schema reset or baseline adoption (approved 2026-11-09) | `TenantSchemaResetPostgresIntegrationTest`, `TenantSchemaParityPostgresIntegrationTest` |
 
-Last full runs (2026-11-08/09): backend `mvn -q verify` — 1,664 unit tests, 0 failures, JaCoCo and SpotBugs pass;
-ownership Postgres ITs all pass; frontend lint (0 errors), typecheck, build and `test:coverage` (113 files, 1,167
-tests) pass; e2e runner unit tests pass.
+Last full runs (2026-11-09): backend `mvn -Ppostgres-it clean verify` — unit stage passed, 644 Postgres IT tests with
+one error (`TenantSchemaResetPostgresIntegrationTest`, the V21 view regression), fixed and rerun green together with
+the parity, owner-filter and queue tests; then `mvn -q verify` — 1,605 unit tests, 0 failures, JaCoCo and SpotBugs
+pass. Frontend lint (0 errors), typecheck, build and `test:coverage` (113 files, 1,169 tests) pass.
 
 ### 11.3 Not verified yet
 
 - Playwright journeys, visual baselines and axe checks for the hub and inventory changes (Docker was unavailable).
   The connect fixtures and journey were updated but not run.
 - No run against a live backend session and no screenshots (required by `CLAUDE.md` for UI changes).
-- The full Postgres IT suite outside the ownership classes has not been run after the `FindingQueryService`,
-  `AssetQueryService` and `HostInventoryReadService` changes (`CustomerDemoDatasetPostgresIntegrationTest` was run).
+- The full Postgres IT suite was run once on the committed Release 1 tree; after the Findings filter and the tenant
+  reset fix only the affected classes were rerun.
+- Known limitation (pre-existing since tenant V6, not changed): the template-clone path used by schema reset and
+  baseline adoption copies tables, sequences, defaults, constraints and RLS but not functions, triggers or views. A
+  reset tenant therefore lacks `ownership_effective_for`, `ownership_effective_assignment`, the `ownership_event`
+  append-only trigger and the V6 intelligence triggers. Normal provisioning (empty schema + tenant Flyway) is
+  unaffected. Needs a separately approved change (copy them, or reset through Flyway).
 
 ### 11.4 Next steps, in order
 
-1. **Run the full backend suite** `mvn -Ppostgres-it verify` on the branch (the work is committed, §11.1), then push
-   and open a PR against `main` when ready.
+1. **Push and open a PR** against `main` when ready; rerun `mvn -Ppostgres-it verify` on the final tree first.
 2. **Browser and live verification**: `npm run e2e:build`, then the connect, experience and inventory journeys plus
    visual/affected-route/axe checks in the pinned Playwright image; a live session with a disposable tenant to check
    persistence after reload; screenshots at 390 px and 1280 px in both themes.
-3. **Findings page** (last Release 1 code item): Owner Team and Ownership Status columns and an owner-team/status filter
-   using `/api/ownership/findings/filter` and `features/ownership/resolvedOwnership.ts`; legacy rows keep today's
-   display and a Pending Migration marker (plan §9.7).
+3. **Template-clone limitation** (§11.3): decide whether schema reset should copy functions/triggers/views or run
+   through Flyway; it is pre-existing but now also affects ownership.
 4. **Resolve the TTL/anomaly divergence**: §5 of this document and the code use stale after 2 × interval, ineligible
    after 7 days, and an anomaly pause at > 20 % (min 50) of claims; plan §12.1/§12.3 specify stale after
    max(2 × interval, 24 h), expiry after max(3 × interval, 72 h) capped at 30 days, and a pause at ≥ 100 changes and
