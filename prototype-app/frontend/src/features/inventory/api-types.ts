@@ -1,3 +1,5 @@
+import type { ResolvedOwnership } from '../ownership/resolvedOwnership';
+
 export type Asset = {
   id: string;
   type: string;
@@ -11,6 +13,8 @@ export type Asset = {
   state: string;
   lastInventoryAt?: string;
   lastCmdbSyncAt?: string;
+  /** Resolved ownership; absent/null until inventory ownership is canonical. `ownerTeam`/`ownerEmail` stay raw evidence. */
+  ownership?: ResolvedOwnership | null;
 };
 
 export type HostAssetSummary = {
@@ -164,6 +168,7 @@ export type HostAssetDetail = {
   software: HostSoftwareInstanceRecord[];
   findings: HostFindingRecord[];
   applicableCves: HostApplicableCveRecord[];
+  ownership?: ResolvedOwnership | null;
 };
 
 export type InventoryComponentRecord = {

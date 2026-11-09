@@ -106,6 +106,46 @@ describe('InventoryPage', () => {
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
   });
 
+  it('shows the resolved owner team instead of raw CMDB owner fields once inventory ownership is canonical', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([
+      buildAsset({
+        ownerTeam: 'Legacy Ops',
+        ownership: {
+          objectId: 'asset-1',
+          authorityDomain: 'CORE',
+          authorityState: 'CANONICAL',
+          ownerTeamId: 'team-1',
+          ownerTeamName: 'Payments',
+          ownershipStatus: 'OWNED',
+        },
+      }),
+      buildAsset({
+        id: 'asset-2',
+        name: 'web-prod-02',
+        identifier: 'web-prod-02.example.com',
+        ownerTeam: 'Legacy Ops',
+        ownership: {
+          objectId: 'asset-2',
+          authorityDomain: 'CORE',
+          authorityState: 'CANONICAL',
+          ownershipStatus: 'UNOWNED',
+        },
+      }),
+    ]);
+    vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue(buildHostDetail());
+    renderWithProviders(<InventoryPage selectedView="hosts" />);
+    expect(await screen.findByRole('cell', { name: 'Payments' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Unowned' })).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: 'Legacy Ops' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the legacy owner display while ownership is pending migration', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue([buildAsset({ ownerTeam: 'Legacy Ops', ownership: null })]);
+    vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue(buildHostDetail());
+    renderWithProviders(<InventoryPage selectedView="hosts" />);
+    expect(await screen.findByRole('cell', { name: 'Legacy Ops' })).toBeInTheDocument();
+  });
+
   it('shows the empty inventory state when no hosts are returned instead of loading forever', async () => {
     vi.spyOn(api, 'listAssets').mockResolvedValue([]);
     renderWithProviders(<InventoryPage selectedView="hosts" />);

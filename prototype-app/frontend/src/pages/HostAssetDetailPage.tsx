@@ -15,6 +15,7 @@ import type { HostAssetDetail } from '../features/inventory/api-types';
 import { useHostAssetDetailQuery } from '../features/inventory/queries';
 import { readHostAssetIdFromSearch } from '../features/inventory/searchState';
 import { FixContextPanel } from '../features/fix-intelligence/FixContextPanel';
+import { isCanonicalOwnership, ownershipAssignmentKind, resolvedOwnerLabel } from '../features/ownership/resolvedOwnership';
 
 type HostAssetDetailPageProps = {
   assetId?: string | null;
@@ -702,7 +703,20 @@ function HostDetailSections({ assetId, hostDetail, loadingDetail, loadFailed = f
             </div>
           )}
 
-          <Panel title="Ownership">
+          {isCanonicalOwnership(hostDetail.ownership) && (
+            <Panel title="Resolved ownership">
+              <div className="fd3-kv-table">
+                <KVRow label="Owner team">{resolvedOwnerLabel(hostDetail.ownership)}</KVRow>
+                <KVRow label="Status">{hostDetail.ownership.ownershipStatus ?? 'Refreshing'}</KVRow>
+                <KVRow label="Assignment">{ownershipAssignmentKind(hostDetail.ownership)}</KVRow>
+                <KVRow label="Source">{hostDetail.ownership.sourceKind ?? undefined}</KVRow>
+                <KVRow label="Resolved">{hostDetail.ownership.resolvedAt ? formatTimestamp(hostDetail.ownership.resolvedAt) : undefined}</KVRow>
+                {hostDetail.ownership.stale && <KVRow label="Freshness">Source evidence is stale</KVRow>}
+              </div>
+            </Panel>
+          )}
+
+          <Panel title={isCanonicalOwnership(hostDetail.ownership) ? 'Observed ownership evidence' : 'Ownership'}>
             <div className="fd3-kv-table">
               <KVRow label="Owner">{hostDetail.host.ownerEmail}</KVRow>
               <KVRow label="Managed By">{hostDetail.host.managedBy}</KVRow>
