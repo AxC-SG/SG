@@ -20,10 +20,10 @@ Conventions copied from tenant V19: `-- migration-guard: tenant-only` header, `$
 
 | Migration | Contents |
 |---|---|
-| platform V11 `tenant_data_keys_and_ownership_authority` | `tenant_data_keys` (tenant, key version, KMS key ref, wrapped DEK, state, created/rotated); `ownership_domain_authority` (tenant, domain, state `LEGACY/DARK/CANONICAL`, accepted_by/at); `ownership_kill_switches` (source kind, tenant nullable, state) |
-| tenant V20 `identity_and_teams` | `team`, `team_alias`, `directory_user`, `directory_group`, `external_identity`, `external_group`, `directory_group_member`, `external_group_team_mapping`, `team_member`, `identity_source`, `identity_import_run` |
-| tenant V21 `ownership_core` | `ownership_subject`, `ownership_subject_edge`, `ownership_claim`, `ownership_assignment`, `ownership_review_item`, `ownership_event`, `ownership_effective_assignment` (view), optional `ownership_effective_cache` |
-| tenant V22 `ownership_projection_columns` | additive `ownership_subject_id`, `assignee_principal_id` on asset/finding projections; exception owner-snapshot columns (§7.3) |
+| platform V16 `tenant_data_keys_and_ownership_authority` | `tenant_data_keys` (tenant, key version, KMS key ref, wrapped DEK, state, created/rotated); `ownership_domain_authority` (tenant, domain, state `LEGACY/DARK/CANONICAL`, accepted_by/at); `ownership_kill_switches` (source kind, tenant nullable, state) |
+| tenant V21 `identity_and_teams` | `team`, `team_alias`, `directory_user`, `directory_group`, `external_identity`, `external_group`, `directory_group_member`, `external_group_team_mapping`, `team_member`, `identity_source`, `identity_import_run` |
+| tenant V22 `ownership_core` | `ownership_subject`, `ownership_subject_edge`, `ownership_claim`, `ownership_assignment`, `ownership_review_item`, `ownership_event`, `ownership_effective_assignment` (view), optional `ownership_effective_cache` |
+| tenant V23 `ownership_projection_columns` | additive `ownership_subject_id`, `assignee_principal_id` on asset/finding projections; exception owner-snapshot columns (§7.3) |
 | later releases | campaign/investigation columns (R2/R3), cleanup drops (post-GA) |
 
 Rules: DDL is forward-only; every cross-row reference is tenant-inclusive (`(tenant_id, id)` candidate keys);

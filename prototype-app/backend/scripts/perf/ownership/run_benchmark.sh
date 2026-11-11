@@ -35,7 +35,7 @@ INSERT INTO platform.tenants VALUES ('$TENANT');
 CREATE SCHEMA bench;
 SQL
 
-for m in V20__identity_and_teams.sql V21__ownership_core.sql; do
+for m in V21__identity_and_teams.sql V22__ownership_core.sql; do
   sed -e "s/\${tenantSchema}/bench/g" -e "s/\${tenantId}/$TENANT/g" "$MIGRATIONS/$m" | psql -X -q -v ON_ERROR_STOP=1 -d "$DB"
 done
 
