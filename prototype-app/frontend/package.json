@@ -22,7 +22,7 @@
     "test:e2e-runner": "node --test e2e/runner.test.mjs"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^3.1.1",
+    "@dagrejs/dagre": "^3.1.3",
     "@sentry/react": "^11.11.0",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-table": "^8.21.3",
