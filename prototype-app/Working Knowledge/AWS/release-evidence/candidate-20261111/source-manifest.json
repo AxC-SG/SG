@@ -7,6 +7,7 @@
     ".github/workflows/performance-governance.yml": "8ca272005f230035652e9d8c132688f3e8aab462476f37292aa26893785ce99f",
     ".github/workflows/quality.yml": "fe413ba912526f2392ab69629fadd8be286ed66103516c20f63934e657043453",
     ".github/workflows/trivy.yml": "a61ed4b1de893870493cf26c12231f1ab0a719a0cb1acda6be8d363ce2edfdc9",
+    ".gitleaks.toml": "8b398c2d9ac5571d4ce18cf0e8ca1dea98faab1eb2e250b64d6f84bf0fcca83a",
     "prototype-app/backend/Dockerfile": "0b5073ddddbd93eab44a0165280201f65529cf866e3387375a0f145b564dad3f",
     "prototype-app/backend/pom.xml": "3039f4f287b7588bbd23257ce2e012fc0ae1edf8e029edb0d4fa819c8a5f633b",
     "prototype-app/backend/src/test/java/com/prototype/vulnwatch/service/BomInputBoundsTest.java": "37869e3018b96af086316350bdd2dcfe5940fc8194d7bd84743713415295a74e",
