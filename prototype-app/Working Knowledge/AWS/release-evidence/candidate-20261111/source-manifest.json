@@ -3,7 +3,11 @@
   "included_files": {
     ".github/scripts/check-quality-gate.py": "8ee5616bf964b6cec24e3645b52dabbe91f2e47f1d92c14febf8468a08da1de0",
     ".github/scripts/test-ci-contracts.py": "dbc3fb7e541484e4b9c9fdb796ff2e79cd1f3f62028f639ac47660a358e02366",
-    ".github/workflows/quality.yml": "1794268373ae1fd4eef48a9fd53c109e3c97b4a520fc17c686eec07a5da6a251",
+    ".github/workflows/frontend-e2e-sweep.yml": "f9205f1be518f2256e86ec32b32a1087eefa987d8137cf23862166266a909760",
+    ".github/workflows/performance-governance.yml": "8ca272005f230035652e9d8c132688f3e8aab462476f37292aa26893785ce99f",
+    ".github/workflows/quality.yml": "fe413ba912526f2392ab69629fadd8be286ed66103516c20f63934e657043453",
+    ".github/workflows/trivy.yml": "a61ed4b1de893870493cf26c12231f1ab0a719a0cb1acda6be8d363ce2edfdc9",
+    "prototype-app/backend/Dockerfile": "0b5073ddddbd93eab44a0165280201f65529cf866e3387375a0f145b564dad3f",
     "prototype-app/frontend/e2e/axe-audit.mjs": "de680bac597369ff265bc802db05788bedbdad95adf3a8946d41a61d8647b9ab",
     "prototype-app/frontend/e2e/browser.mjs": "1e9487b8b8932b801485dd9e57eb0e5b1171b886dafaabca0f6d7c02f1fb9d9d",
     "prototype-app/frontend/e2e/connect-journey.mjs": "3abc49798c89624886a70edd0971e4b97cf8b8c4d8ee2fdf4ba447952d008780",
@@ -32,24 +36,25 @@
     "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-dark-1280.png": "88f11a7a09e34cf3501de5d7e1603e0620e91a0c0e938f98cd5a33c6556c2b7c",
     "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-light-1280.png": "0ec690ed548baeb9f8a6f80b27cb2087976ec39e4ce1b790648129d5907cdae6",
     "prototype-app/frontend/e2e/visual.spec.ts": "d112a52ad0124d155b903e44705d244aacc71aefee40058bd6b4421cf231d17e",
+    "prototype-app/frontend/package-lock.json": "874d28aec449881aead8d943f61ea95d67e5c703ff1e2b18f0542a5074f6044a",
+    "prototype-app/frontend/package.json": "85e37d2199580389a807e4d599e6e761048ede97317f78b0e58c74427b767167",
     "prototype-app/frontend/src/features/public-site/PublicSiteShell.tsx": "08ca87cb958a0141a10594e9e4480bf574f79e73099edc39f2298f741eb20992",
+    "prototype-app/frontend/src/lib/telemetryPrivacy.test.ts": "7b831f7340b5a7710ee116316705401d16b8c21db3637c2f946562b7fb0ebac6",
+    "prototype-app/frontend/src/lib/telemetryPrivacy.ts": "3d7b322c28b03625f2b971b7119ea2a88ddef502b29a8d4c06cbf65edefa1b45",
     "prototype-app/frontend/src/pages/DemoPublicPages.test.tsx": "c7f3c68f58fea44bdba7bba0d86bae057c5044afc58ceef70ba9a978b801a3b5",
     "prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx": "9d3f3e62d1854a73b7a8f85ee78169b779dc9a8146c7d2804485cba56bbc93bf",
     "prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx": "fc266a9f56e8d0f67eb14d2efcb35e90d9ce7143853886f24613ef90e135016c",
     "prototype-app/frontend/src/styles/ui2/app-base.css": "c56c66a39bb3078bc8f47077b2ab3419f76bf6e52cdf13cc7b50f6bfac4e2be5",
     "prototype-app/frontend/src/styles/ui2/cve-base.css": "0725c0e0447a74e6f95b75c1d4a3eeefbe7044e711b10bd9e93d06dbc5722844",
     "prototype-app/infrastructure/terraform/modules/standard-network/main.tf": "4907079711e731eae63581f91dbd188984febca3c22f82b47253106f0728f30a",
+    "prototype-app/infrastructure/terraform/modules/standard-network/tests/egress.tftest.hcl": "5b5dc7466ba82a7eabbde8d20a58132257297c21b8a82ca82461e122bf0f2325",
     "prototype-app/infrastructure/terraform/standard/data.tf": "c8609123dfc67aea505d6598561f43f7ed94c20c669023e9d4f22beffec55643",
     "prototype-app/infrastructure/terraform/standard/main.tf": "474e2668fdd5b4ce77ba93c024e03cd2c3b95240180b4cf26404ce99d929fe20",
     "prototype-app/infrastructure/terraform/standard/runtime.tf": "99b7213da78d9954b2e74f09c5fb5b1442d5e7349814626ca8d26f54a02e1c38",
-    "prototype-app/infrastructure/terraform/standard/tests/runtime.tftest.hcl": "069f18ce943752cfe0e84720f568871c81f7c9c67c6b623475409ba434cf1db2",
-    "prototype-app/infrastructure/terraform/modules/standard-network/tests/egress.tftest.hcl": "5b5dc7466ba82a7eabbde8d20a58132257297c21b8a82ca82461e122bf0f2325",
-    "prototype-app/infrastructure/terraform/standard/tests/integrated-lab.tftest.hcl": "2fce1d3bfe12a73f2138513843ce110342e0e105fb8c8fec4f7cfd9c55dc3c43"
+    "prototype-app/infrastructure/terraform/standard/tests/integrated-lab.tftest.hcl": "2fce1d3bfe12a73f2138513843ce110342e0e105fb8c8fec4f7cfd9c55dc3c43",
+    "prototype-app/infrastructure/terraform/standard/tests/runtime.tftest.hcl": "069f18ce943752cfe0e84720f568871c81f7c9c67c6b623475409ba434cf1db2"
   },
-  "frontend_comparison": {
-    "matched_files": 751,
-    "total_files": 752,
-    "only_difference": "CLAUDE.md retains base candidate documentation; application, test, build and screenshot bytes match local qualification"
-  },
-  "cloud_changes": false
+  "dependency_inputs": "consolidated-prs.json",
+  "cloud_changes": false,
+  "validation_status": "Fresh final-SHA CI and browser verification required; parent results do not transfer."
 }

@@ -36,7 +36,19 @@ describe('telemetry privacy boundary', () => {
   it('retains bounded diagnostics and keeps telemetry disabled without a DSN', () => {
     expect(privateTelemetryOptions('', 'production').enabled).toBe(false);
     expect(privateTelemetryOptions(undefined, 'test').enabled).toBe(false);
-    expect(privateTelemetryOptions('https://public@example.test/1', 'production').sendDefaultPii).toBe(false);
+    expect(privateTelemetryOptions('https://public@example.test/1', 'production').dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+      stackFrameVariables: false,
+      frameContextLines: 0,
+    });
     expect(scrubTelemetryBreadcrumb({ category: 'console', message: sentinel })).toBeNull();
     expect(scrubTelemetryBreadcrumb({ category: 'api', data: { method: 'POST', status: 401, path: `/setup#${sentinel}` } })?.data)
       .toEqual({ method: 'POST', status: 401, path: '/setup' });
