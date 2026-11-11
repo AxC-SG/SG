@@ -1,0 +1,8 @@
+{
+  "source_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1",
+  "archive_sha256": "f501f5fd37267d30bb8b7c1e9a08481ddca16a9816510712fea530f99c424ddf",
+  "image_config_digest": "sha256:86fe59b7be631d9aa7b4a2e2869c76223439acf8693f770ded6c00b912c63579",
+  "saved_oci_manifest_digest": "sha256:a77702d3d175e721b228ec11b89520abf606a371abb90257c908187e0d046410",
+  "loaded_image_id": "sha256:a77702d3d175e721b228ec11b89520abf606a371abb90257c908187e0d046410",
+  "registry_digest": null
+}

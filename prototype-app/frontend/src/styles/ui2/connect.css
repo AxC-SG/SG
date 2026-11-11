@@ -492,6 +492,7 @@ html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > h4 
   color: var(--dp-text);
   font-size: var(--dp-text-md);
   font-weight: 600;
+  line-height: 18px;
 }
 
 html[data-ui='2'] .ui2-connect-family .config-section-body > article.panel > p {

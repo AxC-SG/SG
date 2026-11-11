@@ -2,6 +2,18 @@
 
 Use this record for G00 and P14. Candidate evidence belongs in `release-evidence/<release-id>/` or the protected release artifact store.
 
+### November 11 — post-merge release retained; integrated lab remains open
+
+PR #68's DNS repair is merged at `5a95f54fb122ba3b920df130c5c049b43732a8e1`.
+All four required main workflows passed. The [post-merge record](release-evidence/postmerge-20261111/README.md)
+retains its exact scanned archive identity, all 35 packaged SQL comparisons,
+platform V15/tenant V20, and same-SHA frontend reports/journeys. A replacement
+candidate addresses two mobile screenshot failures, retains the frontend build,
+verifies both Docker image-store identity forms, and emits unattached scoped lab
+release policies. It needs fresh candidate/main checks after manual merge.
+No integrated AWS deployment, new run budget, production approval or gate closure
+is implied. Read the latest record before relying on the historical entries below.
+
 ## G00 — Open
 
 | Entry | Recorded decision or evidence still needed |

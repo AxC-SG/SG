@@ -70,6 +70,64 @@ variables {
   github_publisher        = null
 }
 
+# Distinct identities are necessary to test that service operators cannot select
+# the privileged migrator or pass its execution role.
+override_resource {
+  override_during = plan
+  target          = module.network.aws_subnet.tier["task-apse2-az1"]
+  values          = { id = "subnet-00000000000000001" }
+}
+override_resource {
+  override_during = plan
+  target          = module.network.aws_subnet.tier["task-apse2-az3"]
+  values          = { id = "subnet-00000000000000002" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_security_group.backend["migrator"]
+  values          = { id = "sg-00000000000000001" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.execution["migrator"]
+  values          = { arn = "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.execution["api"]
+  values          = { arn = "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.execution["worker"]
+  values          = { arn = "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.application["api"]
+  values          = { arn = "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.application["worker"]
+  values          = { arn = "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_ecs_task_definition.backend["migrator"]
+  values          = { arn = "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:1" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_ecs_task_definition.backend["api"]
+  values          = { arn = "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:1" }
+}
+override_resource {
+  override_during = plan
+  target          = aws_ecs_task_definition.backend["worker"]
+  values          = { arn = "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:1" }
+}
+
 run "prepare_integrated_lab_before_bootstrap" {
   command = plan
 
@@ -99,6 +157,22 @@ run "prepare_integrated_lab_before_bootstrap" {
       !strcontains(aws_iam_role_policy.execution["worker"].policy, var.backend_candidate.managed_installation.secret_arn)
     )
     error_message = "Prepare three task definitions behind HTTPS/WAF with one NAT, services stopped, and enrollment accessible only to the migrator."
+  }
+
+  assert {
+    condition = (
+      jsondecode(output.lab_operator_policy_documents.migration_operator).Statement[0].Resource == aws_ecs_task_definition.backend["migrator"].arn &&
+      jsondecode(output.lab_operator_policy_documents.migration_operator).Statement[2].Resource == aws_iam_role.execution["migrator"].arn &&
+      jsondecode(output.lab_operator_policy_documents.image_publisher).Statement[1].Resource == aws_ecr_repository.backend.arn &&
+      output.lab_migration_task_request.networkConfiguration.awsvpcConfiguration.assignPublicIp == "DISABLED" &&
+      output.lab_migration_task_request.count == 1 && !output.lab_migration_task_request.enableExecuteCommand &&
+      !strcontains(output.lab_operator_policy_documents.migration_operator, "GetSecretValue") &&
+      !strcontains(output.lab_operator_policy_documents.migration_operator, "RegisterTaskDefinition") &&
+      !strcontains(output.lab_operator_policy_documents.service_operator, aws_ecs_task_definition.backend["migrator"].arn) &&
+      !strcontains(output.lab_operator_policy_documents.service_operator, aws_iam_role.execution["migrator"].arn) &&
+      !strcontains(output.lab_operator_policy_documents.service_operator, "RegisterTaskDefinition")
+    )
+    error_message = "Unattached release policies must bind the exact migration revision/role and repository without direct secret reads or task registration."
   }
 }
 

@@ -140,3 +140,19 @@ e5fee07bece0bda99f8031c462fed2c0aa8d1655:prototype-app/docs/AWS/AWS_production-a
 # baseline commit 67742e15cdba322b4df50042e38bfb9ec3fe16c6. No credential;
 # keep this exception scoped to the original commit, path, rule, and line.
 576deb07ff654d0bad70f9781fc83e2115ec494c:prototype-app/Working Knowledge/New UI 2.0/BEHAVIOR_BASELINE_2026-10-24.json:generic-api-key:23
+
+# November 11 ancestry review: exact historical prose and localhost curl examples.
+# Nine headers use the documented change-me fixture; the remaining header exists
+# only in an obsolete localhost guide. No global rule, path or value suppression.
+71b55d4740d42c69cdb45be620f5bf5463a47a1a:prototype-app/docs/AWS/AWS_production-architecture-review.md:generic-api-key:152
+2793eefb9780181a42cb64900a77882bb33286e4:GHSA_NEXT_STEPS.md:curl-auth-header:75
+2793eefb9780181a42cb64900a77882bb33286e4:GHSA_NEXT_STEPS.md:curl-auth-header:86
+2793eefb9780181a42cb64900a77882bb33286e4:GHSA_NEXT_STEPS.md:curl-auth-header:90
+2793eefb9780181a42cb64900a77882bb33286e4:GHSA_NEXT_STEPS.md:curl-auth-header:94
+f42830ad4657f3abaf84c79d98ece18a79aec89a:GHSA_COMPLETE_IMPLEMENTATION.md:curl-auth-header:228
+f42830ad4657f3abaf84c79d98ece18a79aec89a:GHSA_COMPLETE_IMPLEMENTATION.md:curl-auth-header:235
+f42830ad4657f3abaf84c79d98ece18a79aec89a:GHSA_COMPLETE_IMPLEMENTATION.md:curl-auth-header:242
+e78b983e4cdae9344bde8b8d482a86c59d34d6ac:prototype-app/WEEK_2_PERFORMANCE_SECURITY_GUIDE.md:curl-auth-header:397
+e78b983e4cdae9344bde8b8d482a86c59d34d6ac:prototype-app/WEEK_2_PERFORMANCE_SECURITY_GUIDE.md:curl-auth-header:411
+e78b983e4cdae9344bde8b8d482a86c59d34d6ac:prototype-app/WEEK_2_PERFORMANCE_SECURITY_GUIDE.md:curl-auth-header:416
+034d4d9e6080b72659d614c3cf6ea1958a593090:prototype-app/docs/ai-grid-phase-2-implementation-plan.md:generic-api-key:278

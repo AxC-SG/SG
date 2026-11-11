@@ -39,6 +39,7 @@ jobs:
       - run: node --test prototype-app/frontend/e2e/runner.test.mjs
       - run: python3 .github/scripts/test-ci-contracts.py
       - run: python3 .github/scripts/test-maven-reports.py
+      - run: python3 .github/scripts/test-aws-backend-archive.py
       - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
 
   terraform:
@@ -132,6 +133,9 @@ jobs:
             --output "$RUNNER_TEMP/gitleaks.tar.gz"
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+      - name: Verify SQL checksum secret-scan controls
+        run: python3 .github/scripts/test-gitleaks-checksums.py --scanner "$RUNNER_TEMP/gitleaks"
+
       - name: Scan commit history for secrets
         env:
           GITLEAKS_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -166,6 +170,31 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:coverage
+
+      - name: Archive the paired frontend build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          QUALITY_RUN: ${{ github.run_id }}
+        run: |
+          mkdir -p candidate
+          find dist -type f -print0 | sort -z | xargs -0 sha256sum > candidate/files.sha256
+          tar -czf candidate/frontend.tar.gz -C dist .
+          archive_sha=$(sha256sum candidate/frontend.tar.gz | cut -d ' ' -f 1)
+          jq -n --arg sha "$SOURCE_SHA" --arg run "$QUALITY_RUN" --arg digest "$archive_sha" \
+            '{source_sha: $sha, quality_run: $run, archive_sha256: $digest,
+              build_profile: "CI defaults; live lab configuration requires a separately recorded build"}' \
+            > candidate/manifest.json
+
+      - name: Retain the paired frontend candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: aws-frontend-candidate-${{ github.run_id }}
+          path: prototype-app/frontend/candidate/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
 
       - name: Retain frontend verification reports
         if: always()
