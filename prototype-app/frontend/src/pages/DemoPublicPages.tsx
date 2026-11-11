@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, setStoredAuthToken } from '../api/client';
+import { api, clearStoredAuthToken, setStoredAuthToken } from '../api/client';
 import { getAuthContextQueryKey } from '../features/auth/queries';
+import { managedBrowserAuthEnabled, rememberManagedReturnPath, setManagedWorkspace } from '../features/auth/managedSession';
 import type { ActorContext } from '../features/auth/types';
 import { AnnouncementsIndexPage, NvidiaInceptionAnnouncementPage } from '../features/public-site/Announcements';
 import { PublicLandingPage } from '../features/public-site/LandingPage';
@@ -761,7 +762,9 @@ export function DemoRequestSuccessPage() {
     <PublicDemoShell compact>
       <section className="public-form-panel">
         <h1>Request received</h1>
-        <p>We’ll review the request and send an invite link after the Scoutgrid demo workspace is provisioned with the full guided experience.</p>
+        <p>{managedBrowserAuthEnabled
+          ? 'We’ll review your request. Once it’s approved and the workspace is ready, the designated administrator will receive a password setup email.'
+          : 'We’ll review the request and send an invite link after the Scoutgrid demo workspace is provisioned with the full guided experience.'}</p>
         <Link className="btn btn-secondary" to="/demo">Back to demo overview</Link>
       </section>
     </PublicDemoShell>
@@ -880,6 +883,42 @@ export function DemoInvitePage() {
 }
 
 export function TenantInvitePage() {
+  return managedBrowserAuthEnabled ? <ManagedTenantInvitePage /> : <LocalTenantInvitePage />;
+}
+
+function ManagedTenantInvitePage() {
+  const { token } = usePrivateLink();
+  const invitation = useMutation({
+    mutationFn: () => api.startManagedInvitation(token),
+    onSuccess: ({ authorizationUrl }) => {
+      if (new URL(authorizationUrl).protocol !== 'https:') throw new Error('Secure sign-in is unavailable.');
+      clearStoredAuthToken();
+      setManagedWorkspace(null);
+      rememberManagedReturnPath(null);
+      window.location.assign(authorizationUrl);
+    }
+  });
+  return (
+    <PublicDemoShell compact authEntry>
+      <section className="public-form-panel">
+        <h1>Workspace invite</h1>
+        {token && (
+          <button type="button" className="btn btn-primary" disabled={invitation.isPending} onClick={() => invitation.mutate()}>
+            {invitation.isPending ? 'Preparing sign-in…' : 'Continue to secure sign-in'}
+          </button>
+        )}
+        {(!token || invitation.isError) && (
+          <>
+            <div className="notice error" role="alert">Could not start sign-in from this invitation.</div>
+            <AuthLinkRecovery message="Ask your workspace administrator for a new invite, or sign in if you already accepted it." />
+          </>
+        )}
+      </section>
+    </PublicDemoShell>
+  );
+}
+
+function LocalTenantInvitePage() {
   const { token } = usePrivateLink();
   const navigate = useNavigate();
   const inviteQuery = useQuery({
@@ -952,6 +991,28 @@ export function TenantInvitePage() {
 }
 
 export function LoginPage() {
+  return managedBrowserAuthEnabled ? <ManagedLoginPage /> : <LocalLoginPage />;
+}
+
+function ManagedLoginPage() {
+  const [searchParams] = useSearchParams();
+  const startSignIn = () => {
+    clearStoredAuthToken();
+    setManagedWorkspace(null);
+    rememberManagedReturnPath(searchParams.get('next'));
+  };
+  return (
+    <PublicDemoShell compact authEntry>
+      <section className="public-form-panel">
+        <h1>Sign in to ScoutGrid</h1>
+        <p>Use your approved ScoutGrid account to sign in.</p>
+        <a className="btn btn-primary" href={api.managedLoginUrl()} onClick={startSignIn}>Sign in</a>
+      </section>
+    </PublicDemoShell>
+  );
+}
+
+function LocalLoginPage() {
   const [searchParams] = useSearchParams();
   const setupMode = searchParams.get('setup') === '1';
   const loginEmailParam = searchParams.get('email') ?? '';

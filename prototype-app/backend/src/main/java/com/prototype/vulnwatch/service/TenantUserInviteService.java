@@ -126,10 +126,21 @@ public class TenantUserInviteService {
 
     private TenantInviteValidationResponse acceptInviteInTenantScope(String token) {
         TenantUserInvite invite = identityAdministrationService.findInviteByTokenForUpdate(token);
+        assertAcceptable(invite);
+        TenantMembership membership = activateInvitation(invite);
+        String setupToken = localCredentialAuthService.issuePasswordSetupToken(invite.getExternalSubject());
+        recordAcceptance(invite, membership);
+        return toValidationResponse(invite, "Invite accepted", setupToken);
+    }
+
+    void assertAcceptable(TenantUserInvite invite) {
         TenantInviteValidationResponse validation = toValidationResponse(invite, null, null);
         if (!validation.valid()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, validation.message());
         }
+    }
+
+    TenantMembership activateInvitation(TenantUserInvite invite) {
         TenantMembership membership = identityAdministrationService.activateInvitedMembership(
                 invite.getTenant().getId(),
                 invite.getExternalSubject(),
@@ -141,7 +152,10 @@ public class TenantUserInviteService {
         invite.setStatus("ACCEPTED");
         invite.setAcceptedAt(Instant.now());
         identityAdministrationService.saveInvite(invite);
-        String setupToken = localCredentialAuthService.issuePasswordSetupToken(invite.getExternalSubject());
+        return membership;
+    }
+
+    void recordAcceptance(TenantUserInvite invite, TenantMembership membership) {
         auditEventService.recordExplicitActor(
                 invite.getTenant().getId(),
                 invite.getExternalSubject(),
@@ -151,7 +165,6 @@ public class TenantUserInviteService {
                 invite.getId().toString(),
                 "{\"tenantId\":\"" + invite.getTenant().getId() + "\",\"membershipId\":\"" + membership.getId() + "\"}",
                 "SUCCESS");
-        return toValidationResponse(invite, "Invite accepted", setupToken);
     }
 
     private TenantUserInvite deliverInvite(TenantUserInvite invite) {

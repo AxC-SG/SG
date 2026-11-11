@@ -69,15 +69,25 @@ public class IngestionAttemptService implements SmartInitializingSingleton {
 
     /** Capacity is always locked before a source/configuration row and a job row. */
     public void lockCapacity(UUID tenantId) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
-            throw new IllegalStateException("Capacity admission must join a transaction");
-        }
-        long key = tenantId.getMostSignificantBits() ^ tenantId.getLeastSignificantBits() ^ 0x4341504143495459L;
+        long key = capacityLockKey(tenantId);
         jdbc.execute((org.springframework.jdbc.core.PreparedStatementCreator) connection -> {
             var statement = connection.prepareStatement("select pg_advisory_xact_lock(?)");
             statement.setLong(1, key);
             return statement;
         }, java.sql.PreparedStatement::execute);
+    }
+
+    /** Workers leave a busy tenant for a later poll instead of waiting for its admission transaction. */
+    public boolean tryLockCapacity(UUID tenantId) {
+        return Boolean.TRUE.equals(jdbc.queryForObject(
+                "select pg_try_advisory_xact_lock(?)", Boolean.class, capacityLockKey(tenantId)));
+    }
+
+    private long capacityLockKey(UUID tenantId) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Capacity admission must join a transaction");
+        }
+        return tenantId.getMostSignificantBits() ^ tenantId.getLeastSignificantBits() ^ 0x4341504143495459L;
     }
 
     public void lockIdentity(UUID tenantId, String dedupeKey) {

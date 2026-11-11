@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -15,6 +15,7 @@ import com.prototype.vulnwatch.domain.BomType;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.BomFetchRequest;
 import com.prototype.vulnwatch.dto.BomSourceSelector;
+import com.prototype.vulnwatch.service.cbom.CbomIngestionResult;
 import com.prototype.vulnwatch.service.cbom.CbomIngestionService;
 import com.prototype.vulnwatch.service.sbomingestion.SbomIngestionSourceMetadata;
 import com.prototype.vulnwatch.repo.AssetRepository;
@@ -133,10 +134,10 @@ class BomUploadRollbackPostgresIntegrationTest {
         var initial = upload(BomType.CBOM, identifier, valid(BomType.CBOM, "1"), url);
         var before = snapshot(initial.assetId());
         assertFalse(before.get("cbom_risk_findings").isEmpty());
-        // Parsing/preflight succeeds. This failure occurs after the old CBOM is deactivated
-        // and the new source pointer is written, proving checked-exception rollback itself.
-        doThrow(new IOException("injected checked failure after source promotion"))
-                .when(cbomIngestionService).ingest(any(), any(), any(), any(byte[].class));
+        // The orchestrator rejects an empty persistence result after deactivating the old CBOM
+        // and updating the source pointer. The checked exception must roll both changes back.
+        doReturn(new CbomIngestionResult(0, 0))
+                .when(cbomIngestionService).ingestPrepared(any(), any(), any(), any());
 
         assertThrows(IOException.class, () -> upload(BomType.CBOM, identifier, valid(BomType.CBOM, "2"), url));
 

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.domain.IngestionJob;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.List;
@@ -34,6 +35,8 @@ class IngestionJobWorkerServiceTest {
     @Mock
     private IngestionJobExecutionService executionService;
     @Mock
+    private BomUploadService bomUploads;
+    @Mock
     private IngestionJobLockService ingestionJobLockService;
     @Mock
     private TenantService tenantService;
@@ -51,6 +54,7 @@ class IngestionJobWorkerServiceTest {
         service = new IngestionJobWorkerService(
                 ingestionJobService,
                 executionService,
+                bomUploads,
                 ingestionJobLockService,
                 tenantService,
                 tenantSchemaExecutionService,
@@ -67,18 +71,18 @@ class IngestionJobWorkerServiceTest {
         Tenant broken = tenant("broken");
         Tenant healthy = tenant("healthy");
         when(tenantService.listActiveTenants()).thenReturn(List.of(broken, healthy));
+        when(tenantService.resolveActiveTenantForBackgroundWork(broken.getId())).thenReturn(broken);
+        when(tenantService.resolveActiveTenantForBackgroundWork(healthy.getId())).thenReturn(healthy);
+        doAnswer(call -> {
+            call.getArgument(0, Runnable.class).run();
+            return null;
+        }).when(sbomJobExecutor).execute(any(Runnable.class));
         doThrow(new IllegalStateException("schema drift"))
-                .when(ingestionJobService).claimPendingJobs(broken, 10, 1);
-
-        UUID healthyTenantId = healthy.getId();
-        UUID healthyJobId = UUID.randomUUID();
-        when(ingestionJobService.claimPendingJobs(healthy, 10, 1))
-                .thenReturn(List.of(new IngestionJobService.ClaimedJobRef(healthyTenantId, healthyJobId)));
+                .when(ingestionJobService).claimPendingJobs(broken, 1, 1);
 
         service.pollJobs();
 
-        verify(ingestionJobService).claimPendingJobs(healthy, 10, 1);
-        verify(sbomJobExecutor).execute(org.mockito.ArgumentMatchers.any(Runnable.class));
+        verify(ingestionJobService).claimPendingJobs(healthy, 1, 1);
     }
 
     @Test
@@ -123,7 +127,12 @@ class IngestionJobWorkerServiceTest {
         Tenant first = tenant("first"), second = tenant("second");
         var ref = new IngestionJobService.ClaimedJobRef(first.getId(), UUID.randomUUID(), UUID.randomUUID());
         when(tenantService.listActiveTenants()).thenReturn(List.of(first, second));
-        when(ingestionJobService.claimPendingJobs(first, 10, 1)).thenAnswer(call -> {
+        when(tenantService.resolveActiveTenantForBackgroundWork(first.getId())).thenReturn(first);
+        doAnswer(call -> {
+            call.getArgument(0, Runnable.class).run();
+            return null;
+        }).when(sbomJobExecutor).execute(any(Runnable.class));
+        when(ingestionJobService.claimPendingJobs(first, 1, 1)).thenAnswer(call -> {
             policy.stopAcceptingWork();
             return List.of(ref);
         });
@@ -132,26 +141,34 @@ class IngestionJobWorkerServiceTest {
 
         verify(ingestionJobService).retryRejectedClaim(eq(ref), eq("WORKER_STOPPING"), any(), any());
         verify(ingestionJobService, never()).claimPendingJobsByType(any(), any(), any(Integer.class), any(Integer.class));
-        verify(ingestionJobService, never()).claimPendingJobs(second, 10, 1);
-        verify(sbomJobExecutor, never()).execute(any(Runnable.class));
+        verify(ingestionJobService, never()).claimPendingJobs(second, 1, 1);
+        verify(sbomJobExecutor).execute(any(Runnable.class));
     }
 
     @Test
-    void shutdownDuringDispatchReturnsRemainingClaimsToTheQueue() {
-        BackgroundTaskExecutionPolicy policy = BackgroundTaskExecutionPolicy.allowAll();
-        service.setBackgroundTaskExecutionPolicy(policy);
-        Tenant tenant = tenant("dispatch");
-        var first = new IngestionJobService.ClaimedJobRef(tenant.getId(), UUID.randomUUID(), UUID.randomUUID());
-        var next = new IngestionJobService.ClaimedJobRef(tenant.getId(), UUID.randomUUID(), UUID.randomUUID());
-        when(tenantService.listActiveTenants()).thenReturn(List.of(tenant));
-        when(ingestionJobService.claimPendingJobs(tenant, 10, 1)).thenReturn(List.of(first, next));
-        doAnswer(call -> { policy.stopAcceptingWork(); return null; }).when(sbomJobExecutor).execute(any());
+    void saturatedExecutorTakesNoLeaseAndNextPollResumesAtSkippedTenant() {
+        Tenant first = tenant("first"), second = tenant("second");
+        when(tenantService.listActiveTenants()).thenReturn(List.of(first, second));
+        when(tenantService.resolveActiveTenantForBackgroundWork(first.getId())).thenReturn(first);
+        when(tenantService.resolveActiveTenantForBackgroundWork(second.getId())).thenReturn(second);
+        var admission = new java.util.ArrayList<Runnable>();
+        doAnswer(call -> {
+            admission.add(call.getArgument(0, Runnable.class));
+            return null;
+        }).doThrow(new RejectedExecutionException()).doAnswer(call -> {
+            admission.add(call.getArgument(0, Runnable.class));
+            return null;
+        }).when(sbomJobExecutor).execute(any(Runnable.class));
 
         service.pollJobs();
+        org.mockito.Mockito.verifyNoInteractions(ingestionJobService);
+        admission.remove(0).run();
+        verify(ingestionJobService).claimPendingJobs(first, 1, 1);
+        verify(ingestionJobService, never()).claimPendingJobs(second, 1, 1);
 
-        verify(sbomJobExecutor).execute(any(Runnable.class));
-        verify(ingestionJobService).retryRejectedClaim(eq(next), eq("WORKER_STOPPING"), any(), any());
-        verify(ingestionJobService, never()).retryRejectedClaim(eq(first), any(), any(), any());
+        service.pollJobs();
+        admission.remove(0).run();
+        verify(ingestionJobService).claimPendingJobs(second, 1, 1);
     }
 
     @Test
@@ -196,12 +213,39 @@ class IngestionJobWorkerServiceTest {
         verify(ingestionJobService).markSucceeded(tenant.getId(), job.getId(), null, "{}");
     }
 
+    @Test
+    void bomUploadPreparesOutsideTheTransactionAndCommitsInsideIt() throws Exception {
+        Tenant tenant = tenant("upload");
+        IngestionJob job = executionFixture(tenant, IngestionJobService.JOB_TYPE_BOM_UPLOAD);
+        AtomicBoolean inTransaction = transactionFixture(tenant);
+        var upload = new BomUploadService.PreparedUpload(UUID.randomUUID(), null, null);
+        var result = new com.prototype.vulnwatch.dto.BomIngestionResultResponse(
+                UUID.randomUUID(), UUID.randomUUID(), "SBOM", "SPDX", "2.3", "SPDX", "JSON",
+                "SUPPORTED", true, List.of(), 1, 0, "ACTIVE", "CREATED");
+        when(bomUploads.prepare(tenant, job)).thenAnswer(invocation -> {
+            org.junit.jupiter.api.Assertions.assertFalse(inTransaction.get());
+            return upload;
+        });
+        when(bomUploads.persist(tenant, upload)).thenAnswer(invocation -> {
+            org.junit.jupiter.api.Assertions.assertTrue(inTransaction.get());
+            return result;
+        });
+        when(ingestionJobLockService.assetLockKey(tenant.getId(), job.getAssetIdentifier())).thenReturn(42L);
+        when(ingestionJobLockService.tryAcquireTransactionLock(42L)).thenReturn(true);
+        when(ingestionJobService.toJson(result)).thenReturn("{}");
+
+        service.execute(tenant.getId(), job.getId());
+
+        verify(ingestionJobService).markSucceeded(tenant.getId(), job.getId(), null, "{}");
+        verify(executionService, never()).execute(any(), any());
+    }
+
     private IngestionJob executionFixture(Tenant tenant, String type) {
         IngestionJob job = new IngestionJob();
         org.springframework.test.util.ReflectionTestUtils.setField(job, "id", UUID.randomUUID());
         job.setJobType(type);
         job.setAssetIdentifier("github:acme/app");
-        when(tenantService.resolveTenantUuid(tenant.getId())).thenReturn(tenant);
+        when(tenantService.resolveActiveTenantForBackgroundWork(tenant.getId())).thenReturn(tenant);
         when(ingestionJobService.loadJob(tenant.getId(), job.getId())).thenReturn(job);
         return job;
     }

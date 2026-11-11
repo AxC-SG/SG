@@ -197,6 +197,7 @@ class IngestionJobServiceTest {
     @Test
     void claimPendingJobsMarksClaimedRowsRunningAndIncrementsAttemptCount() throws Exception {
         Tenant tenant = tenant();
+        when(attempts.tryLockCapacity(tenant.getId())).thenReturn(true);
         IngestionJob first = queuedJob(tenant, "asset-1");
         IngestionJob second = queuedJob(tenant, "asset-2");
         UUID firstId = UUID.randomUUID();
@@ -214,7 +215,8 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
                         IngestionJobService.JOB_TYPE_SCCM_CMDB,
                         IngestionJobService.JOB_TYPE_GCP_DISCOVERY,
-                        IngestionJobService.JOB_TYPE_PATCH_SYNC)
+                        IngestionJobService.JOB_TYPE_PATCH_SYNC,
+                        IngestionJobService.JOB_TYPE_BOM_UPLOAD)
         )).thenReturn(0L);
         when(ingestionJobRepository.pollPendingExcludingJobTypes(
                 List.of(
@@ -226,7 +228,8 @@ class IngestionJobServiceTest {
                         IngestionJobService.JOB_TYPE_AWS_DISCOVERY,IngestionJobService.JOB_TYPE_SERVICENOW_CMDB,
                         IngestionJobService.JOB_TYPE_SCCM_CMDB,
                         IngestionJobService.JOB_TYPE_GCP_DISCOVERY,
-                        IngestionJobService.JOB_TYPE_PATCH_SYNC),
+                        IngestionJobService.JOB_TYPE_PATCH_SYNC,
+                        IngestionJobService.JOB_TYPE_BOM_UPLOAD),
                 2
         )).thenReturn(List.of(first, second));
 
@@ -247,6 +250,7 @@ class IngestionJobServiceTest {
     @Test
     void aiSecurityClaimerOnlyClaimsAiSecurityJobs() throws Exception {
         Tenant tenant = tenant();
+        when(attempts.tryLockCapacity(tenant.getId())).thenReturn(true);
         IngestionJob aiJob = queuedJob(tenant, "ai-security-aws");
         UUID jobId = UUID.randomUUID();
         setId(aiJob, jobId);
@@ -271,6 +275,7 @@ class IngestionJobServiceTest {
     @Test
     void recoverOnlyExpiredAttemptsAndRetainRetryableIntent() throws Exception {
         Tenant tenant = tenant();
+        when(attempts.tryLockCapacity(tenant.getId())).thenReturn(true);
         IngestionJob running = queuedJob(tenant, "asset-1");
         UUID jobId = UUID.randomUUID();
         setId(running, jobId);

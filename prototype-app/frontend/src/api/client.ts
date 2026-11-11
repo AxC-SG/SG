@@ -180,6 +180,24 @@ export type BomFetchPayload = {
   authorizationHeader?: string;
 };
 
+export type BomUploadMetadata = Pick<BomFetchPayload, 'bomType' | 'assetType' | 'assetName' | 'assetIdentifier' | 'supplier'> & {
+  sourceId?: string;
+  completeness?: 'COMPLETE_ASSET_SOFTWARE';
+};
+
+type BomUploadStatus = {
+  uploadId: string;
+  status: string;
+  expiresAt: string;
+  jobId: string | null;
+};
+
+type BomUploadTicket = {
+  upload: BomUploadStatus;
+  uploadUrl: string | null;
+  uploadHeaders: Record<string, string>;
+};
+
 export type BomIngestionResult = {
   bomId: string;
   assetId: string;
@@ -752,6 +770,7 @@ export type CampaignAiResponse = {
   generatedAt: string;
 };
 import { resolveApiBase } from './base';
+import { getManagedPlatformWorkspace, getManagedWorkspace, managedBrowserAuthEnabled } from '../features/auth/managedSession';
 import type {
   AiArtifactSummary,
   AiAssessmentProcessing,
@@ -917,7 +936,7 @@ async function parseApiError(response: Response): Promise<Error> {
   if (contentType.includes('application/json')) {
     try {
       const payload = await response.json() as ApiErrorPayload;
-      if (isJwtAuthFailure(response.status, payload)) {
+      if (!managedBrowserAuthEnabled && isJwtAuthFailure(response.status, payload)) {
         handleJwtAuthFailure();
       }
       return new ApiError(formatApiError(payload, fallback), response.status);
@@ -927,7 +946,7 @@ async function parseApiError(response: Response): Promise<Error> {
   }
 
   const text = (await response.text()).trim();
-  if (isJwtAuthFailure(response.status, undefined, text)) {
+  if (!managedBrowserAuthEnabled && isJwtAuthFailure(response.status, undefined, text)) {
     handleJwtAuthFailure();
   }
   return new ApiError(text || fallback, response.status);
@@ -1005,9 +1024,8 @@ function extractTokenRoles(payload: Record<string, unknown>): string[] {
   return [];
 }
 
-function currentPlatformTenantContext():
-  | { tenantId: string; roles: string[] }
-  | null {
+function currentPlatformTenantId(): string | null {
+  if (managedBrowserAuthEnabled) return getManagedPlatformWorkspace();
   const token = getStoredAuthToken().trim() || STATIC_AUTH_TOKEN.trim();
   if (!token) {
     return null;
@@ -1022,7 +1040,7 @@ function currentPlatformTenantContext():
     return null;
   }
   const tenantId = String(payload.active_tenant_id ?? payload.tenant_id ?? '').trim();
-  return tenantId ? { tenantId, roles } : null;
+  return tenantId || null;
 }
 
 function shouldConfirmPlatformAction(path: string, method: string): boolean {
@@ -1051,12 +1069,19 @@ function shouldConfirmPlatformAction(path: string, method: string): boolean {
   return sensitivePrefixes.some((prefix) => path.startsWith(prefix));
 }
 
-function buildApiHeaders(base?: HeadersInit, includeJsonContentType = true): Headers {
+function buildApiHeaders(base?: HeadersInit, includeJsonContentType = true, workspace?: string | null): Headers {
   const headers = new Headers(base ?? {});
   if (includeJsonContentType) {
     headers.set('Content-Type', 'application/json');
   }
-  applyAuthHeaders(headers);
+  if (managedBrowserAuthEnabled) {
+    const tenantId = workspace === undefined ? getManagedWorkspace() : workspace;
+    headers.delete('Authorization');
+    if (tenantId) headers.set('X-Scout-Workspace', tenantId);
+    else headers.delete('X-Scout-Workspace');
+  } else {
+    applyAuthHeaders(headers);
+  }
   return headers;
 }
 
@@ -1081,19 +1106,27 @@ function recordApiTiming(path: string, method: string, durationMs: number, statu
   });
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const headers = buildApiHeaders(options?.headers);
+async function addManagedCsrf(headers: Headers) {
+  const csrf = await publicRequest<{ headerName: string; token: string }>('/auth/csrf');
+  headers.set(csrf.headerName, csrf.token);
+}
+
+async function request<T>(path: string, options?: RequestInit, workspace?: string | null): Promise<T> {
+  const headers = buildApiHeaders(options?.headers, true, workspace);
   const method = options?.method?.toUpperCase() ?? 'GET';
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const platformTenantContext = typeof window === 'undefined' ? null : currentPlatformTenantContext();
-  if (platformTenantContext && shouldConfirmPlatformAction(path, method)) {
-    const confirmed = window.confirm(`Confirm action for tenant ${platformTenantContext.tenantId} as Platform Owner.`);
+  const platformTenantId = typeof window === 'undefined' ? null : currentPlatformTenantId();
+  if (platformTenantId && shouldConfirmPlatformAction(path, method)) {
+    const confirmed = window.confirm(`Confirm action for tenant ${platformTenantId} as Platform Owner.`);
     if (!confirmed) {
       throw new Error('Action cancelled');
     }
     headers.set('X-Platform-Action-Confirm', 'true');
-    headers.set('X-Platform-Action-Tenant', platformTenantContext.tenantId);
+    headers.set('X-Platform-Action-Tenant', platformTenantId);
     headers.set('X-Platform-Action-Time', new Date().toISOString());
+  }
+  if (managedBrowserAuthEnabled && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    await addManagedCsrf(headers);
   }
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -1109,6 +1142,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   );
 
   if (!response.ok) {
+    if (managedBrowserAuthEnabled && response.status === 401 && path !== '/me' && path !== '/auth/context'
+      && !path.startsWith('/auth/managed/')) {
+      handleJwtAuthFailure();
+    }
     throw await parseApiError(response);
   }
 
@@ -2398,6 +2435,13 @@ export const api = {
     }
   ),
   getAuthContext: () => request<AuthContext>('/me'),
+  getManagedAuthContext: (tenantId: string | null) => request<AuthContext>('/me', undefined, tenantId),
+  managedLoginUrl: () => `${API_BASE}/auth/managed/login`,
+  managedLogout: () => request<void>('/auth/managed/logout', { method: 'POST' }, null),
+  startManagedInvitation: (token: string) => request<{ authorizationUrl: string }>('/auth/managed/invitation', {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  }, null),
   login: (email: string, password: string) => publicRequest<AuthTokenResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password })
@@ -2561,7 +2605,7 @@ export const api = {
   listPlatformUserAuditEvents: () => request<AuditEvent[]>('/audit-events/platform-users'),
   exportAuditEventsCsv: async (): Promise<{ filename: string; csv: string }> => {
     const headers = buildApiHeaders(undefined, false);
-    const response = await fetch(`${API_BASE}/audit-events/export`, { headers });
+    const response = await fetch(`${API_BASE}/audit-events/export`, { headers, credentials: 'include' });
     if (!response.ok) {
       throw await parseApiError(response);
     }
@@ -2579,9 +2623,18 @@ export const api = {
     request<IngestionJob>(`/ingestion-jobs/${encodeURIComponent(jobId)}`),
   listIngestionJobs: (page = 0, size = 25) =>
     request<IngestionJobPage>(`/ingestion-jobs?page=${page}&size=${size}`),
+  createBomUpload: (payload: BomUploadMetadata & { filename: string; size: number; sha256: string }, key: string) =>
+    request<BomUploadTicket>('/bom/uploads', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': key },
+      body: JSON.stringify(payload)
+    }),
+  completeBomUpload: (uploadId: string) =>
+    request<BomUploadStatus>(`/bom/uploads/${encodeURIComponent(uploadId)}/complete`, { method: 'POST' }),
   bomUpload: async (formData: FormData): Promise<BomIngestionResult> => {
     const headers = buildApiHeaders(undefined, false);
-    const response = await fetch(`${API_BASE}/bom/upload`, { method: 'POST', body: formData, headers });
+    if (managedBrowserAuthEnabled) await addManagedCsrf(headers);
+    const response = await fetch(`${API_BASE}/bom/upload`, { method: 'POST', body: formData, headers, credentials: 'include' });
     if (!response.ok) throw await parseApiError(response);
     return response.json() as Promise<BomIngestionResult>;
   },

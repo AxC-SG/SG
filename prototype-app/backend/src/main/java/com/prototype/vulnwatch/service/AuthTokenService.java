@@ -96,10 +96,14 @@ public class AuthTokenService {
                 expiresAt);
     }
 
-    private void requireIssuerConfigured() {
+    void requireLocalMode() {
         if (!"LOCAL".equalsIgnoreCase(jwtMode)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Local credential token issuance is disabled in EXTERNAL JWT mode");
         }
+    }
+
+    private void requireIssuerConfigured() {
+        requireLocalMode();
         if (resolvedHmacSecret().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "APP_JWT_HMAC_SECRET is required for local credential login");
         }

@@ -22,6 +22,8 @@ import com.prototype.vulnwatch.domain.AwsDiscoveryTarget;
 import com.prototype.vulnwatch.domain.AzureAuthType;
 import com.prototype.vulnwatch.domain.AzureDiscoveryConfig;
 import com.prototype.vulnwatch.domain.AzureDiscoveryTarget;
+import com.prototype.vulnwatch.domain.GithubIngestionFrequency;
+import com.prototype.vulnwatch.domain.GithubSbomSource;
 import com.prototype.vulnwatch.domain.SccmCmdbConfig;
 import com.prototype.vulnwatch.domain.ServiceNowCmdbConfig;
 import com.prototype.vulnwatch.domain.SyncRun;
@@ -44,12 +46,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -92,6 +96,7 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
     @Autowired private IngestionJobWorkerService worker;
     @Autowired private GithubSbomSourceService github;
     @Autowired private com.prototype.vulnwatch.repo.GithubSbomSourceRepository githubSources;
+    @Autowired private JdbcTemplate jdbc;
 
     @MockitoBean private WorkspaceService workspace;
     @MockitoBean(name = "integrationQueueExecutor") private TaskExecutor queue;
@@ -205,6 +210,88 @@ class ConnectorSyncTenantScopingPostgresIntegrationTest {
         } finally {
             setAutoSync(recent, connector, false);
             setAutoSync(due, connector, false);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ConnectorScheduleProgress.Kind.class)
+    void overlappingSchedulesRememberTheAcceptedWindowAfterCompletion(ConnectorScheduleProgress.Kind kind)
+            throws Exception {
+        boolean awsSchedule = kind == ConnectorScheduleProgress.Kind.AWS_DISCOVERY;
+        Tenant tenant = configuredTenant(Connector.AWS_DISCOVERY, awsSchedule);
+        UUID sourceId = tenantExecution.run(tenant, () -> {
+            if (awsSchedule) {
+                return awsConfigs.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "aws").orElseThrow().getId();
+            }
+            GithubSbomSource source = new GithubSbomSource();
+            source.setTenant(tenant);
+            source.setName("Scheduled source");
+            source.setOwner("offline");
+            source.setRepo("repository");
+            source.setAssetName("Scheduled source");
+            source.setAssetIdentifier("scheduled-source");
+            source.setFrequency(GithubIngestionFrequency.INTERVAL);
+            source.setIntervalMinutes(5);
+            return githubSources.saveAndFlush(source).getId();
+        });
+        Instant window = Instant.parse("2026-11-07T10:00:00Z");
+        Consumer<Instant> sweep = awsSchedule ? aws::runScheduledSyncs : github::runScheduledSources;
+        var executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            var first = executor.submit(() -> { await(start); sweep.accept(window); });
+            var second = executor.submit(() -> { await(start); sweep.accept(window.plusSeconds(12)); });
+            start.countDown();
+            first.get(30, TimeUnit.SECONDS);
+            second.get(30, TimeUnit.SECONDS);
+            assertEquals(1, runs.findByTenant_IdOrderByStartedAtDesc(tenant.getId()).size());
+            assertEquals(1L, tenantExecution.run(tenant, () -> jobs.count()));
+            assertEquals(window, jdbc.queryForObject("""
+                    select last_occurrence_at from platform.connector_schedule_progress
+                    where tenant_id = ? and schedule_kind = ? and source_id = ?
+                    """, java.sql.Timestamp.class, tenant.getId(), kind.name(), sourceId).toInstant());
+
+            // Make the source due again so the repeat tests the durable cursor, not the interval or active-run check.
+            jdbc.update("update platform.sync_runs set status = 'completed', completed_at = ? where tenant_id = ?",
+                    java.sql.Timestamp.from(window.minusSeconds(172800)), tenant.getId());
+            tenantExecution.run(tenant, () -> {
+                jdbc.update("update ingestion_jobs set status = 'SUCCEEDED', completed_at = now()");
+                if (!awsSchedule) {
+                    jdbc.update("update github_sbom_sources set last_run_status = 'SUCCESS', last_run_at = ? where id = ?",
+                            java.sql.Timestamp.from(window.minusSeconds(86400)), sourceId);
+                }
+            });
+            sweep.accept(window.plusSeconds(30));
+            sweep.accept(window.minusSeconds(300));
+            assertEquals(1L, tenantExecution.run(tenant, () -> jobs.count()));
+
+            sweep.accept(window.plusSeconds(300));
+            assertEquals(2L, tenantExecution.run(tenant, () -> jobs.count()));
+            org.mockito.Mockito.verifyNoInteractions(queue);
+        } finally {
+            executor.shutdownNow();
+            if (awsSchedule) {
+                setAutoSync(tenant, Connector.AWS_DISCOVERY, false);
+            } else {
+                tenantExecution.run(tenant, () -> { jdbc.update("update github_sbom_sources set enabled = false where id = ?", sourceId); });
+            }
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void unavailableWorkspaceDoesNotStopAwsSchedulingForItsPeer() {
+        Tenant unavailable = configuredTenant(Connector.AWS_DISCOVERY, true);
+        Tenant due = configuredTenant(Connector.AWS_DISCOVERY, true);
+        String schema = unavailable.getSchemaName();
+        jdbc.execute("alter schema " + schema + " rename to " + schema + "_offline");
+        try {
+            aws.runScheduledSyncs();
+            assertTrue(tenantRuns(unavailable, Connector.AWS_DISCOVERY).isEmpty());
+            assertEquals(1L, tenantExecution.run(due, () -> jobs.count()));
+        } finally {
+            jdbc.execute("alter schema " + schema + "_offline rename to " + schema);
+            setAutoSync(unavailable, Connector.AWS_DISCOVERY, false);
+            setAutoSync(due, Connector.AWS_DISCOVERY, false);
         }
     }
 

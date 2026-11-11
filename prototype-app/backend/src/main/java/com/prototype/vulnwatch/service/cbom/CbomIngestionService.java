@@ -92,9 +92,21 @@ public class CbomIngestionService {
     }
 
     public CbomIngestionResult ingest(Tenant tenant, Asset asset, BomIngestionRecord sourceBom, byte[] content) throws IOException {
+        return ingestPrepared(tenant, asset, sourceBom, prepare(content));
+    }
+
+    public PreparedContent prepare(byte[] content) throws IOException {
         CbomSecretDetector.ScanResult secrets = secretDetector.rejectSecretBearing(content);
-        recordSecretWarnings(sourceBom, secrets);
         List<CbomParsedComponent> parsedComponents = parser.parse(content);
+        var relationships = relationshipExtractor == null ? List.<CbomRelationshipExtractor.DeclaredRelationship>of()
+                : relationshipExtractor.extract(content);
+        return new PreparedContent(secrets, List.copyOf(parsedComponents), List.copyOf(relationships));
+    }
+
+    public CbomIngestionResult ingestPrepared(Tenant tenant, Asset asset, BomIngestionRecord sourceBom,
+                                              PreparedContent content) {
+        recordSecretWarnings(sourceBom, content.secrets());
+        List<CbomParsedComponent> parsedComponents = content.components();
         CbomRiskEngine.RuleParameters ruleParameters = parameters(tenant);
         int findingCount = 0;
         List<java.util.UUID> touchedComponents = new java.util.ArrayList<>();
@@ -116,7 +128,7 @@ public class CbomIngestionService {
             touchedComponents.add(component.getId());
             findingCount += evaluated.size();
         }
-        persistDeclaredRelationships(tenant,sourceBom,asset,content);
+        persistDeclaredRelationships(tenant,sourceBom,asset,content.relationships());
         postureService.rollUp(tenant, asset, sourceBom);
         publishMirrorDeltas(tenant, touchedComponents.isEmpty() ? List.of() : findingRepository
                 .findByTenant_IdAndComponent_IdIn(tenant.getId(), touchedComponents).stream()
@@ -127,14 +139,18 @@ public class CbomIngestionService {
         return new CbomIngestionResult(parsedComponents.size(), findingCount);
     }
 
-    private void persistDeclaredRelationships(Tenant tenant,BomIngestionRecord sourceBom,Asset asset,byte[] content){
+    public record PreparedContent(CbomSecretDetector.ScanResult secrets, List<CbomParsedComponent> components,
+                                  List<CbomRelationshipExtractor.DeclaredRelationship> relationships) { }
+
+    private void persistDeclaredRelationships(Tenant tenant,BomIngestionRecord sourceBom,Asset asset,
+            List<CbomRelationshipExtractor.DeclaredRelationship> relationships){
         if(relationshipExtractor==null||relationshipRepository==null)return;
         java.util.Map<String,CbomComponent> byRef=new java.util.HashMap<>();
         List<CbomComponent> active=componentRepository.findByTenant_IdAndSourceBom_IdAndActiveTrue(tenant.getId(),sourceBom.getId());
         for(CbomComponent component:active)if(component.getBomRef()!=null)byRef.put(component.getBomRef(),component);
         relationshipRepository.deleteBySourceBom_Id(sourceBom.getId());
         java.util.List<com.prototype.vulnwatch.domain.CbomRelationship> declared=new java.util.ArrayList<>();
-        for(var pair:relationshipExtractor.extract(content)){CbomComponent source=byRef.get(pair.sourceRef()),target=byRef.get(pair.targetRef());
+        for(var pair:relationships){CbomComponent source=byRef.get(pair.sourceRef()),target=byRef.get(pair.targetRef());
             if(source==null||target==null)continue;
             declared.add(relationship(tenant,sourceBom,"COMPONENT",source.getId(),"COMPONENT",target.getId(),pair.relationshipType(),pair.evidenceSummary()));}
         // Application relationship: the owning asset uses every cryptographic asset its CBOM declares.

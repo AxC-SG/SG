@@ -119,18 +119,18 @@ class MaintenanceOverlapPostgresIntegrationTest {
         BackgroundTaskExecutionPolicy policy = BackgroundTaskExecutionPolicy.allowAll();
         IngestionJobService observedJobs = spy(jobs);
         doAnswer(call -> {
-            var claimed = jobs.claimPendingJobs(tenant, 10, 1);
+            var claimed = jobs.claimPendingJobs(tenant, 1, 1);
             policy.stopAcceptingWork();
             return claimed;
-        }).when(observedJobs).claimPendingJobs(tenant, 10, 1);
+        }).when(observedJobs).claimPendingJobs(tenant, 1, 1);
         TenantService catalog = mock(TenantService.class);
         when(catalog.listActiveTenants()).thenReturn(List.of(tenant));
-        org.springframework.core.task.TaskExecutor executor = mock(org.springframework.core.task.TaskExecutor.class);
-        var worker = new IngestionJobWorkerService(observedJobs, mock(IngestionJobExecutionService.class),
+        when(catalog.resolveActiveTenantForBackgroundWork(tenant.getId())).thenReturn(tenant);
+        org.springframework.core.task.TaskExecutor executor = Runnable::run;
+        var worker = new IngestionJobWorkerService(observedJobs, mock(IngestionJobExecutionService.class), mock(BomUploadService.class),
                 mock(IngestionJobLockService.class), catalog, scoped, executor, new TransactionTemplate(manager), 10, 1, 5000);
         worker.setBackgroundTaskExecutionPolicy(policy);
         worker.pollJobs();
-        verifyNoInteractions(executor);
         var queued = jobs.loadJob(tenant.getId(), id);
         assertEquals("QUEUED", queued.getStatus());
         assertEquals("WORKER_STOPPING", queued.getFailureCode());

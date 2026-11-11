@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import com.prototype.vulnwatch.service.AuthenticatedTenantActor;
 import com.prototype.vulnwatch.service.JwtTenantAuthenticationService;
+import com.prototype.vulnwatch.service.ManagedBrowserAuthService;
+import com.prototype.vulnwatch.controller.ManagedBrowserAuthController;
 import com.prototype.vulnwatch.service.TenantContext;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,6 +44,12 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private String configuredDefaultUserId;
     private final ObjectProvider<JwtDecoder> jwtDecoderProvider;
     private final ObjectProvider<JwtTenantAuthenticationService> jwtTenantAuthenticationServiceProvider;
+    private ManagedBrowserAuthService managedBrowserAuth;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setManagedBrowserAuth(ManagedBrowserAuthService managedBrowserAuth) {
+        this.managedBrowserAuth = managedBrowserAuth;
+    }
 
     public ApiKeyAuthenticationFilter(
             ObjectProvider<JwtDecoder> jwtDecoderProvider,
@@ -60,6 +68,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 && !"/actuator/info".equals(path);
         // A BOM ingest key was already authenticated by BomIngestKeyAuthenticationFilter.
         if (request.getAttribute(BomIngestKeyAuthenticationFilter.AUTHENTICATED) != null) {
+            return true;
+        }
+        if (managedBrowserAuth != null && Set.of(ManagedBrowserAuthController.LOGIN_PATH,
+                ManagedBrowserAuthController.CALLBACK_PATH, ManagedBrowserAuthController.LOGOUT_PATH,
+                ManagedBrowserAuthController.INVITATION_PATH).contains(path)) {
             return true;
         }
         return (!path.startsWith("/api/") && !protectedActuatorEndpoint)
@@ -101,6 +114,28 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                 TenantContext.clear();
             }
             return;
+        }
+
+        if (managedBrowserAuth != null) {
+            var session = org.springframework.web.util.WebUtils.getCookie(request, ManagedBrowserAuthService.SESSION_COOKIE);
+            if (session != null) {
+                AuthenticatedTenantActor actor;
+                try {
+                    actor = managedBrowserAuth.authenticate(session.getValue(),
+                            request.getHeader(ManagedBrowserAuthService.WORKSPACE_HEADER), request.getRequestURI());
+                } catch (ResponseStatusException ex) {
+                    reject(response, ex.getStatusCode().value(), "Managed session or workspace was rejected");
+                    return;
+                }
+                try {
+                    installActor(actor);
+                    response.setHeader("Cache-Control", "no-store");
+                    filterChain.doFilter(request, response);
+                } finally {
+                    TenantContext.clear();
+                }
+                return;
+            }
         }
 
         String providedApiKey = request.getHeader("X-API-Key");
@@ -159,45 +194,46 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
         try {
             Jwt jwt = jwtDecoder.decode(token);
-            AuthenticatedTenantActor actor = jwtTenantAuthenticationService.authenticate(
-                    jwt,
-                    request == null ? null : request.getRequestURI());
-            List<SimpleGrantedAuthority> authorities = actor.roles().stream()
-                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
-                    .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toCollection(ArrayList::new));
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    actor.subject(),
-                    null,
-                    authorities);
-            authentication.setDetails(new TenantAuthenticationDetails(
-                    actor.tenantId(),
-                    actor.tenantName(),
-                    actor.subject(),
-                    actor.email(),
-                    actor.displayName(),
-                    Set.copyOf(actor.roles()),
-                    actor.accessMode(),
-                    actor.accessReferenceId(),
-                    actor.accessExpiresAt()));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        request.setAttribute(VERIFIED_HEADER_AUTH,Boolean.TRUE);
-            TenantContext.setCurrentTenantId(actor.tenantId());
-            TenantContext.setCurrentSchemaName(actor.tenantSchemaName());
-            MDC.put(RequestCorrelationFilter.ACTOR_ID_MDC_KEY, actor.subject());
-            MDC.put(RequestCorrelationFilter.TENANT_ID_MDC_KEY, actor.tenantId() == null ? "" : actor.tenantId().toString());
-            MDC.put(RequestCorrelationFilter.ACTOR_ROLES_MDC_KEY, String.join(",", actor.roles()));
+            AuthenticatedTenantActor actor = managedBrowserAuth == null
+                    ? jwtTenantAuthenticationService.authenticate(jwt, request.getRequestURI())
+                    : jwtTenantAuthenticationService.authenticate(jwt, request.getRequestURI(), true);
+            installActor(actor);
+            request.setAttribute(VERIFIED_HEADER_AUTH, Boolean.TRUE);
             return true;
         } catch (JwtException ex) {
             reject(response, "Invalid JWT");
             return false;
         } catch (ResponseStatusException ex) {
-            response.setStatus(ex.getStatusCode().value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            String message = ex.getReason() == null ? "Unauthorized" : ex.getReason();
-            response.getWriter().write("{\"error\":\"" + message + "\"}");
+            reject(response, ex.getStatusCode().value(), ex.getReason() == null ? "Unauthorized" : ex.getReason());
             return false;
         }
+    }
+
+    private void installActor(AuthenticatedTenantActor actor) {
+        List<SimpleGrantedAuthority> authorities = actor.roles().stream()
+                .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toCollection(ArrayList::new));
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                actor.subject(),
+                null,
+                authorities);
+        authentication.setDetails(new TenantAuthenticationDetails(
+                actor.tenantId(),
+                actor.tenantName(),
+                actor.subject(),
+                actor.email(),
+                actor.displayName(),
+                Set.copyOf(actor.roles()),
+                actor.accessMode(),
+                actor.accessReferenceId(),
+                actor.accessExpiresAt()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        TenantContext.setCurrentTenantId(actor.tenantId());
+        TenantContext.setCurrentSchemaName(actor.tenantSchemaName());
+        MDC.put(RequestCorrelationFilter.ACTOR_ID_MDC_KEY, actor.subject());
+        MDC.put(RequestCorrelationFilter.TENANT_ID_MDC_KEY, actor.tenantId() == null ? "" : actor.tenantId().toString());
+        MDC.put(RequestCorrelationFilter.ACTOR_ROLES_MDC_KEY, String.join(",", actor.roles()));
     }
 
     private boolean constantTimeEquals(String left, String right) {
@@ -210,7 +246,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void reject(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        reject(response, HttpServletResponse.SC_UNAUTHORIZED, message);
+    }
+
+    private void reject(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write("{\"error\":\"" + message + "\"}");
     }

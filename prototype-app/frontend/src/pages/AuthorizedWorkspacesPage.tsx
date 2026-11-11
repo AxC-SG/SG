@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api, setStoredAuthToken } from '../api/client';
 import { useActor } from '../features/auth/context';
+import { getAuthContextQueryKey } from '../features/auth/queries';
+import { managedBrowserAuthEnabled, setManagedWorkspace } from '../features/auth/managedSession';
 import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection';
 
 function listState(query: { isPending: boolean; isError: boolean; data?: unknown[] }, count: number): AsyncSectionState {
@@ -34,19 +36,35 @@ export function AuthorizedWorkspacesPage() {
     queryKey: ['invited-support-grants'],
     queryFn: api.listInvitedSupportGrants
   });
+  const changeManagedWorkspace = async (tenantId: string | null) => {
+    const context = await api.getManagedAuthContext(tenantId);
+    if (context.tenantId !== tenantId || context.userId !== actor?.userId) {
+      throw new Error('Could not verify access to this workspace.');
+    }
+    await queryClient.cancelQueries();
+    setManagedWorkspace(tenantId, context.roles.includes('PLATFORM_OWNER'));
+    queryClient.clear();
+    queryClient.setQueryData(getAuthContextQueryKey('managed-session'), context);
+  };
   const enterWorkspace = useMutation({
-    mutationFn: api.selectTenantContext,
+    mutationFn: async (tenantId: string) => managedBrowserAuthEnabled
+      ? changeManagedWorkspace(tenantId)
+      : api.selectTenantContext(tenantId),
     onSuccess: (response) => {
-      setStoredAuthToken(response.token);
-      queryClient.clear();
+      if (response) {
+        setStoredAuthToken(response.token);
+        queryClient.clear();
+      }
       navigate('/exposure', { replace: true });
     }
   });
   const returnToPlatform = useMutation({
-    mutationFn: api.clearTenantContext,
+    mutationFn: async () => managedBrowserAuthEnabled ? changeManagedWorkspace(null) : api.clearTenantContext(),
     onSuccess: (response) => {
-      setStoredAuthToken(response.token);
-      queryClient.clear();
+      if (response) {
+        setStoredAuthToken(response.token);
+        queryClient.clear();
+      }
       navigate('/authorized-workspaces', { replace: true });
     }
   });
@@ -75,7 +93,7 @@ export function AuthorizedWorkspacesPage() {
             <button
               type="button"
               className="btn btn-secondary"
-              disabled={returnToPlatform.isPending}
+            disabled={returnToPlatform.isPending || enterWorkspace.isPending}
               onClick={() => returnToPlatform.mutate()}
             >
               {returnToPlatform.isPending ? 'Returning…' : 'Return to platform scope'}
@@ -117,7 +135,7 @@ export function AuthorizedWorkspacesPage() {
                           <button
                             type="button"
                             className="btn btn-primary btn-sm"
-                            disabled={enterWorkspace.isPending}
+                            disabled={enterWorkspace.isPending || returnToPlatform.isPending}
                             onClick={() => enterWorkspace.mutate(workspace.id)}
                           >
                             {enterWorkspace.isPending && enterWorkspace.variables === workspace.id

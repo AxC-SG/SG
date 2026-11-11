@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -378,14 +379,24 @@ public class IdentityAdministrationService {
 
     @Transactional(readOnly = true)
     public UUID findInviteTenantId(String token) {
-        return tenantUserInviteRepository.findTenantIdByTokenHash(InvitationTokens.hash(token))
+        return findInviteTenantIdByHash(InvitationTokens.hash(token))
                 .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UUID> findInviteTenantIdByHash(String hash) {
+        return tenantUserInviteRepository.findTenantIdByTokenHash(hash);
     }
 
     @Transactional
     public TenantUserInvite findInviteByTokenForUpdate(String token) {
-        return tenantUserInviteRepository.findByTokenHashForUpdate(InvitationTokens.hash(token))
+        return findInviteByHashForUpdate(InvitationTokens.hash(token))
                 .orElseThrow(() -> new IllegalArgumentException("Invite not found"));
+    }
+
+    @Transactional
+    public Optional<TenantUserInvite> findInviteByHashForUpdate(String hash) {
+        return tenantUserInviteRepository.findByTokenHashForUpdate(hash);
     }
 
     @Transactional
@@ -399,7 +410,7 @@ public class IdentityAdministrationService {
         return tenantUserInviteRepository.findFirstByTenantIdAndEmailIgnoreCaseAndStatusInOrderByCreatedAtDesc(
                 tenantId,
                 requireText(email, "email"),
-                List.of("READY", "SENT", "DELIVERY_ERROR")
+                List.of("READY", "QUEUED", "SENT", "DELIVERY_ERROR")
         ).isPresent();
     }
 
