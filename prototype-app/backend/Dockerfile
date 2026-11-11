@@ -7,8 +7,8 @@ RUN mvn -q -DskipTests package
 
 FROM eclipse-temurin:25-jre-jammy AS runtime
 WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends busybox-static postgresql-client \
+RUN apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends busybox-static postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system vulnwatch \
     && adduser --system --ingroup vulnwatch vulnwatch
