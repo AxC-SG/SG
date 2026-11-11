@@ -15,6 +15,14 @@ regexTarget = "line"
 regexes = ['''^\s*"prototype-app/frontend/e2e/visual-baselines/ui2/[^"\r\n]+\.png":\s*"[a-f0-9]{64}",?\s*$''']
 
 [[allowlists]]
+description = "Verified SQL SHA-256 records in the exact post-merge packaged-source manifest"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^prototype-app/Working Knowledge/AWS/release-evidence/postmerge-20261111/packaged-source-verification\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"postgres_reset/(V9__bom_ingest_api_keys|V2__invitation_token_hashes)\.sql":\s*"[a-f0-9]{64}",?\s*$''']
+
+[[allowlists]]
 description = "Public Auth0 client identifiers in checked-in MCP and frontend documentation"
 rules = ["generic-api-key"]
 paths = [

@@ -1,0 +1,29 @@
+{
+  "playwright_image": "mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d",
+  "visual_comparisons_passed": 172,
+  "connect_repetitions_passed": 40,
+  "route_checks": {
+    "dark": 390,
+    "light": 390,
+    "widths": [
+      390,
+      768,
+      1280,
+      1440
+    ],
+    "orphans": 0,
+    "overflow": 0,
+    "page_errors": 0,
+    "console_errors": 0,
+    "unexpected_requests": 0
+  },
+  "sweep_steps_passed": 4,
+  "sweep_steps_total": 4,
+  "visual_max_diff_pixel_ratio": "0.001",
+  "accessibility_baseline_changed": false,
+  "journey_baseline_changed": false,
+  "live_aws_browser_qualification": false,
+  "frontend_git_tree": "7bce5b3c3f30368aef7a3c3d9acd3b7fd0373aef",
+  "bundle_file_count": 100,
+  "bundle_manifest_sha256": "9e9b73e2b80b7adaa0d848796c750b0836a70b58dd6b31b3ac6db6a0287b0345"
+}

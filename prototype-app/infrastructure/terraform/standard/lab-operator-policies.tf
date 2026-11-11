@@ -104,6 +104,75 @@ locals {
         }
       ]
     })
+    service_operator = jsonencode({
+      Version = "2012-10-17"
+      Statement = concat(flatten([
+        for role in ["api", "worker"] : [
+          for operation in ["CreateService", "UpdateService"] : {
+            Sid      = "${operation}${title(role)}"
+            Effect   = "Allow"
+            Action   = ["ecs:${operation}"]
+            Resource = "arn:aws:ecs:${var.aws_region}:${var.account_id}:service/${local.name}/${role}"
+            Condition = {
+              ArnEquals = {
+                "ecs:cluster"         = aws_ecs_cluster.standard["standard"].arn
+                "ecs:task-definition" = aws_ecs_task_definition.backend[role].arn
+              }
+              StringEquals = merge({ "aws:RequestedRegion" = var.aws_region }, operation == "CreateService" ? {
+                "aws:RequestTag/Application" = "ScoutGrid"
+                "aws:RequestTag/Environment" = "lab"
+                } : {
+                "aws:ResourceTag/Application" = "ScoutGrid"
+                "aws:ResourceTag/Environment" = "lab"
+              })
+              StringEqualsIfExists = {
+                "ecs:enable-execute-command" = "false"
+                "ecs:enable-ebs-volumes"     = "false"
+              }
+              BoolIfExists                = { "ecs:auto-assign-public-ip" = "false" }
+              "ForAllValues:StringEquals" = { "ecs:subnet" = module.network.boundaries.task_subnet_ids }
+              Null                        = { "ecs:subnet" = "false" }
+            }
+          }
+        ]
+        ]), [
+        {
+          Sid       = "PassOnlyApiAndWorkerRoles"
+          Effect    = "Allow"
+          Action    = ["iam:PassRole"]
+          Resource  = flatten([for role in ["api", "worker"] : [aws_iam_role.execution[role].arn, aws_iam_role.application[role].arn]])
+          Condition = { StringEquals = { "iam:PassedToService" = "ecs-tasks.amazonaws.com" } }
+        },
+        {
+          Sid      = "TagOnlyNewLabServices"
+          Effect   = "Allow"
+          Action   = ["ecs:TagResource"]
+          Resource = [for role in ["api", "worker"] : "arn:aws:ecs:${var.aws_region}:${var.account_id}:service/${local.name}/${role}"]
+          Condition = {
+            StringEquals = {
+              "ecs:CreateAction"           = "CreateService"
+              "aws:RequestedRegion"        = var.aws_region
+              "aws:RequestTag/Application" = "ScoutGrid"
+              "aws:RequestTag/Environment" = "lab"
+            }
+          }
+        },
+        {
+          Sid      = "InspectAndDeleteOnlyTaggedLabServices"
+          Effect   = "Allow"
+          Action   = ["ecs:DescribeServices", "ecs:DeleteService"]
+          Resource = [for role in ["api", "worker"] : "arn:aws:ecs:${var.aws_region}:${var.account_id}:service/${local.name}/${role}"]
+          Condition = {
+            ArnEquals = { "ecs:cluster" = aws_ecs_cluster.standard["standard"].arn }
+            StringEquals = {
+              "aws:RequestedRegion"         = var.aws_region
+              "aws:ResourceTag/Application" = "ScoutGrid"
+              "aws:ResourceTag/Environment" = "lab"
+            }
+          }
+        }
+      ])
+    })
   } : {}
 }
 

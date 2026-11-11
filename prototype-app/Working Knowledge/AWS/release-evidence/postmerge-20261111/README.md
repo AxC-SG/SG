@@ -54,8 +54,9 @@ height. Four affected Connect baselines were reviewed in before/after sheets;
 all source labels, enabled states and controls remain present. The unchanged
 0.001 screenshot tolerance passed all 40 repeated Connect comparisons and all
 172 full visual comparisons. Accessibility and journey baselines are unchanged.
-The four-width route/accessibility sweep is being rerun; its final result belongs
-in the PR validation record. This is automated visual review, not owner design
+The four-width local route/accessibility sweep also passed: 780 route checks
+and no new accessibility regressions. Exact-branch remote qualification remains
+recorded in the PR validation results. This is automated visual review, not owner design
 approval or live AWS browser qualification.
 
 Branch `codex/aws-part1-integrated-lab` is based on the verified main SHA above.
@@ -66,13 +67,13 @@ source, and do not reuse `cd741250` artifacts.
 
 ## Access and live entry conditions
 
-The Standard root now emits unattached image-publisher and migration-operator
+The Standard root now emits unattached image-publisher, migration-operator and service-operator
 policy documents, bound to the actual plan's repository, exact task revision,
 execution role and cluster, plus a private exit-once launch request. No role or
 policy is attached by these outputs. The offline suite passed all 18 Standard
 plans; the two affected plans passed again after correcting condition operators.
-AWS Access Analyzer returned zero findings for both generated documents, and
-20 positive/negative IAM simulations passed. The simulation ARNs are explicitly
+AWS Access Analyzer returned zero findings for all three generated documents, and
+38 positive/negative IAM simulations passed with distinct task and role identities. The simulation ARNs are explicitly
 synthetic; repeat on final live ARNs and effective assumed roles before use.
 
 The migration operator can pass only the migrator execution role and cannot
@@ -82,6 +83,10 @@ constrain command/environment overrides or RunTask subnet/security-group/public-
 parameters. Treat this as a privileged, trusted, short-lived release session;
 review the exact launch request. These documents do not constitute a complete
 infrastructure apply/teardown role or authorize arbitrary IAM policy writes.
+The service operator can select only the exact API/worker revisions and private
+subnets; it cannot select or pass the migrator, register task definitions, or run
+one-shot tasks. IAM does not cap service desired counts, so reviewed plans and
+the bounded run procedure still govern spend.
 
 A fresh metadata-only AWS inventory confirmed account `736486260824`, Sydney,
 with no ACM certificates, secrets, ECR repositories, ECS clusters, RDS instances,
@@ -103,3 +108,16 @@ imports, isolation and scheduling/replacement qualification, security/observabil
 Stage B ten-customer/24-hour capacity, timed recovery, production approval/cutover
 and stabilization. The disposable lab budget does not authorize Stage B or
 production. Preserve the previous keys' December 11 deletion schedules.
+
+The pinned Gitleaks scan initially matched two verified SQL checksum records.
+The exception is limited to the exact manifest, two SQL record names, hash shape
+and generic-api-key rule. A full candidate-ancestry scan also reviewed twelve
+historical documentation matches: two ordinary prose lines and ten localhost
+curl examples. Their exceptions are exact commit/file/rule/line fingerprints.
+Five positive/negative controls preserve detection of credential-shaped values,
+wrong paths and new curl headers in the same historical filename. The complete
+candidate ancestry passed after source review; no scanner scope was reduced.
+
+Cloudflare DNS access is available in the signed-in owner session. The eleven
+observed records contain no lab hostnames; production still points to Vercel and
+Render. No DNS records were created or changed.

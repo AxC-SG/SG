@@ -1,0 +1,16 @@
+{
+  "observed_date": "2026-11-11",
+  "provider": "Cloudflare",
+  "domain": "scoutgrid.io",
+  "signed_in_session_available": true,
+  "records_observed": 11,
+  "lab_hostnames_present": false,
+  "lab_hostnames": [
+    "lab.scoutgrid.io",
+    "api-lab.scoutgrid.io"
+  ],
+  "production_frontend": "Vercel",
+  "production_api": "Render",
+  "mutations": false,
+  "certificate_or_routing_targets_assigned": false
+}

@@ -23,7 +23,7 @@ match exact main source. Same-SHA frontend reports/journeys are retained locally
 The current branch fixes source-title line height and four reviewed Connect
 snapshots, adds retained frontend build evidence, verifies classic/containerd
 image identities without dropping integrity checks, and emits unattached lab
-publisher/migrator policies and a private launch request. Keep all future changes
+publisher/migrator/service policies and a private launch request. Keep all future changes
 in one active PR for the owner's manual merge. Never merge or enable auto-merge.
 These changes require fresh candidate checks and new main artifacts after merge.
 Check the PR for the latest full browser sweep/CI outcome; recorded base-main
