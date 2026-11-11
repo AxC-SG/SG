@@ -78,12 +78,29 @@ variable "vpc_cidr" {
   }
 }
 
+variable "nat_gateway_mode" {
+  description = "Use single only for a bounded disposable lab. Production requires independent zonal egress."
+  type        = string
+  default     = "zonal"
+
+  validation {
+    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
+    error_message = "Use zonal or single NAT gateway mode."
+  }
+
+  validation {
+    condition     = var.environment != "production" || var.nat_gateway_mode == "zonal"
+    error_message = "Production requires one NAT gateway per selected AZ."
+  }
+}
+
 module "network" {
   source = "../modules/standard-network"
 
   name                  = "scoutgrid-${var.environment}"
   vpc_cidr              = var.vpc_cidr
   availability_zone_ids = var.availability_zone_ids
+  nat_gateway_mode      = var.nat_gateway_mode
 }
 
 output "network" {

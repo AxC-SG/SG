@@ -16,7 +16,7 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { newContext } from './browser.mjs';
+import { newContext, waitForPageReady } from './browser.mjs';
 import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 import { APPROVED_PLATFORM_POLICY_ID, PRIMARY_POLICY_ID, platformActor } from './governance-fixtures.mjs';
 import { PRIMARY_CVE } from './cve-fixtures.mjs';
@@ -98,6 +98,7 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
       if (url.origin !== new URL(base).origin && !EXPECTED_EXTERNAL_HOSTS.has(url.hostname)) externalRequests.push(`${request.method()} ${url.origin}${url.pathname}`);
     });
     const inspect = async (route, via) => {
+      await waitForPageReady(page);
       await page.waitForTimeout(700);
       const state = await page.evaluate((roots) => {
         const content = document.querySelector('main.content') ?? document.body;

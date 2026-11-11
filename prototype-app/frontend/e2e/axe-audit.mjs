@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { newContext } from './browser.mjs';
+import { newContext, waitForPageReady } from './browser.mjs';
 import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
 import { platformActor } from './governance-fixtures.mjs';
 import { ALL_ROUTES, routeEntry } from './routes.mjs';
@@ -48,6 +48,7 @@ for (const theme of themes) for (const width of widths) {
     page.on('pageerror', (error) => pageErrors.push(`${theme} ${page.url().replace(base, '')}: ${error.message}`));
     for (const route of routes) {
       await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+      await waitForPageReady(page);
       if (injectCss) await page.addStyleTag({ content: injectCss });
       await page.waitForTimeout(600);
       await page.evaluate(axeSource);

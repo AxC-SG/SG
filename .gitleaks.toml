@@ -7,6 +7,14 @@ useDefault = true
 # Do not suppress a detected secret by value.
 
 [[allowlists]]
+description = "SHA-256 checksums of reviewed PNG baselines in the Standard candidate manifest"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^prototype-app/Working Knowledge/AWS/release-evidence/candidate-20261111/source-manifest\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"prototype-app/frontend/e2e/visual-baselines/ui2/[^"\r\n]+\.png":\s*"[a-f0-9]{64}",?\s*$''']
+
+[[allowlists]]
 description = "Public Auth0 client identifiers in checked-in MCP and frontend documentation"
 rules = ["generic-api-key"]
 paths = [
