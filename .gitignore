@@ -24,6 +24,7 @@ prototype-app/frontend/playwright-report/
 # Dependency caches
 node_modules/
 prototype-app/frontend/node_modules/
+prototype-app/infrastructure/terraform/**/.terraform/
 .vercel
 
 # Secrets and credentials — never commit

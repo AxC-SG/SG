@@ -100,6 +100,19 @@ run "prepare_integrated_lab_before_bootstrap" {
     )
     error_message = "Prepare three task definitions behind HTTPS/WAF with one NAT, services stopped, and enrollment accessible only to the migrator."
   }
+
+  assert {
+    condition = (
+      jsondecode(output.lab_operator_policy_documents.migration_operator).Statement[0].Resource == aws_ecs_task_definition.backend["migrator"].arn &&
+      jsondecode(output.lab_operator_policy_documents.migration_operator).Statement[2].Resource == aws_iam_role.execution["migrator"].arn &&
+      jsondecode(output.lab_operator_policy_documents.image_publisher).Statement[1].Resource == aws_ecr_repository.backend.arn &&
+      output.lab_migration_task_request.networkConfiguration.awsvpcConfiguration.assignPublicIp == "DISABLED" &&
+      output.lab_migration_task_request.count == 1 && !output.lab_migration_task_request.enableExecuteCommand &&
+      !strcontains(output.lab_operator_policy_documents.migration_operator, "GetSecretValue") &&
+      !strcontains(output.lab_operator_policy_documents.migration_operator, "RegisterTaskDefinition")
+    )
+    error_message = "Unattached release policies must bind the exact migration revision/role and repository without direct secret reads or task registration."
+  }
 }
 
 run "start_integrated_lab_after_enrollment_removed" {

@@ -1,0 +1,14 @@
+{
+  "source_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1",
+  "backend_archive_local": "/private/tmp/scoutgrid-postmerge-artifacts/main-5a95f54/backend/image.tar.gz",
+  "archive_sha256": "f501f5fd37267d30bb8b7c1e9a08481ddca16a9816510712fea530f99c424ddf",
+  "registry_digest": null,
+  "frontend_build_archive_retained_by_main_workflow": false,
+  "frontend_reports_and_journeys_retained": true,
+  "replacement_candidate_branch": "codex/aws-part1-integrated-lab",
+  "replacement_candidate_requires_fresh_main_checks_and_artifacts": true,
+  "cloud_resources_created": false,
+  "production_authorized": false,
+  "integrated_run_authorized": false,
+  "primary_workspace_changed_entries": 217
+}

@@ -1,0 +1,117 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "account": "736486260824",
+    "region": "ap-southeast-2",
+    "read_only": true,
+    "inventory": {
+      "acm": {
+        "CertificateSummaryList": []
+      },
+      "secretsmanager": {
+        "SecretList": []
+      },
+      "ecr": {
+        "repositories": []
+      },
+      "ecs": {
+        "clusterArns": []
+      },
+      "rds": {
+        "DBInstances": []
+      },
+      "elbv2": {
+        "LoadBalancers": []
+      },
+      "amplify": {
+        "apps": []
+      },
+      "cognito-idp": {
+        "UserPools": []
+      },
+      "route53": {
+        "HostedZones": []
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "sts",
+      "operation": "GetCallerIdentity",
+      "status": "success"
+    },
+    {
+      "service": "acm",
+      "operation": "ListCertificates",
+      "status": "success",
+      "n_items": {
+        "CertificateSummaryList": 0
+      }
+    },
+    {
+      "service": "secretsmanager",
+      "operation": "ListSecrets",
+      "status": "success",
+      "n_items": {
+        "SecretList": 0
+      }
+    },
+    {
+      "service": "ecr",
+      "operation": "DescribeRepositories",
+      "status": "success",
+      "n_items": {
+        "repositories": 0
+      }
+    },
+    {
+      "service": "ecs",
+      "operation": "ListClusters",
+      "status": "success",
+      "n_items": {
+        "clusterArns": 0
+      }
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "success",
+      "n_items": {
+        "DBInstances": 0
+      }
+    },
+    {
+      "service": "elbv2",
+      "operation": "DescribeLoadBalancers",
+      "status": "success",
+      "n_items": {
+        "LoadBalancers": 0
+      }
+    },
+    {
+      "service": "amplify",
+      "operation": "ListApps",
+      "status": "success",
+      "n_items": {
+        "apps": 0
+      }
+    },
+    {
+      "service": "cognito-idp",
+      "operation": "ListUserPools",
+      "status": "success",
+      "n_items": {
+        "UserPools": 0
+      }
+    },
+    {
+      "service": "route53",
+      "operation": "ListHostedZones",
+      "status": "success",
+      "n_items": {
+        "HostedZones": 0
+      }
+    }
+  ]
+}

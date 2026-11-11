@@ -1,0 +1,25 @@
+{
+  "review": "Before/after sheets inspected for four Connect cases; source titles now use an explicit 18px line height. No content, roles, states, accessibility baseline, journey baseline or screenshot tolerance changes.",
+  "snapshots": [
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-dark-1280.png",
+      "before_sha256": "aeb640106ae13f515cdbdfe75167c1ec631008c8fd38a69a61f21df9be9f206f",
+      "after_sha256": "945a0bf395366f9b808b8bacfa9b0dbd295c6a9968c81b71469479b9d72346f5"
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-dark-390.png",
+      "before_sha256": "b01ffca1a131cc0978f8655b67b0cc9943d3736c456d4481bdf4158ac70cec16",
+      "after_sha256": "a9f97a9ec43e1687d549cb1e156427043197d15f010d6dc1a1516c4e82bf2f38"
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-light-1280.png",
+      "before_sha256": "d8f0a31c9b42e451d222fdf34e1246624f4f849bd769434fffb4f222b97f107c",
+      "after_sha256": "c51f5b10e01dd73343bfa0f2537e7541e71a5567faf1f9dec8e2d11c735329c6"
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-light-390.png",
+      "before_sha256": "7a78cf06325c6d9c8e42dfa63b5bc751162798d012c1aff213955ea0e5e75faf",
+      "after_sha256": "367ae807fdc7a0af361138ec6120d60f9410198c9a0e69bd464302dcd42c9aba"
+    }
+  ]
+}

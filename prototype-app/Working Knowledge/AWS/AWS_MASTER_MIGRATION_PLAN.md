@@ -4,6 +4,16 @@
 
 This is the single authoritative execution plan for application prerequisites, AWS implementation, configurable tenant isolation, qualification and production cutover. It consolidates the November 1/2 migration plan and November 5/6 architecture reviews. Earlier plans and closure ledgers are supporting evidence, not competing execution instructions. The [previous full plan](Archive/AWS_FINAL_MIGRATION_PLAN_2026-11-02.md) is preserved unchanged for historical detail.
 
+**Latest execution update — November 11, 2026:** PRs #67 and #68 are manually merged.
+The four required main checks passed at `5a95f54fb122ba3b920df130c5c049b43732a8e1`,
+and its exact scanned archive and paired frontend reports are retained in the
+[post-merge record](release-evidence/postmerge-20261111/README.md). The next
+candidate repairs two mobile screenshot failures and strengthens artifact/access
+preparation; it still requires fresh candidate/main qualification after manual
+merge. The integrated application lab remains undeployed, its new run reserve is
+unapproved, and no production change or Part 1 completion is claimed. Older
+execution updates below are historical.
+
 ## 1. Objective and release structure
 
 Prepare and release ScoutGrid on AWS with one codebase, one schema release track and a platform-managed choice of **Standard** or **Dedicated** tenant storage. Preserve tenant isolation, accepted work, authorized identity, safe upgrades and recoverability throughout onboarding and operation.

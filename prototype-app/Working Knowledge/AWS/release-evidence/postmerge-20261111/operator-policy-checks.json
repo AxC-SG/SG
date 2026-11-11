@@ -1,0 +1,694 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "account": "736486260824",
+    "synthetic_plan_arns": true,
+    "attached": false,
+    "effective_live_permissions_proven": false,
+    "policies": {
+      "image_publisher": {
+        "Statement": [
+          {
+            "Action": [
+              "ecr:GetAuthorizationToken"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "*",
+            "Sid": "AuthenticateSelectedRegistry"
+          },
+          {
+            "Action": [
+              "ecr:BatchCheckLayerAvailability",
+              "ecr:BatchGetImage",
+              "ecr:CompleteLayerUpload",
+              "ecr:DescribeImages",
+              "ecr:DescribeRepositories",
+              "ecr:InitiateLayerUpload",
+              "ecr:PutImage",
+              "ecr:UploadLayerPart"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+            "Sid": "PublishOnlyLabBackend"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "migration_operator": {
+        "Statement": [
+          {
+            "Action": [
+              "ecs:RunTask"
+            ],
+            "Condition": {
+              "ArnEquals": {
+                "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+              },
+              "StringEquals": {
+                "aws:RequestTag/Application": "ScoutGrid",
+                "aws:RequestTag/Environment": "lab",
+                "aws:RequestTag/ReleasePurpose": "Migration",
+                "aws:RequestedRegion": "ap-southeast-2"
+              },
+              "StringEqualsIfExists": {
+                "ecs:enable-ebs-volumes": "false",
+                "ecs:enable-execute-command": "false"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+            "Sid": "RunOnlyReviewedMigratorRevision"
+          },
+          {
+            "Action": [
+              "ecs:TagResource"
+            ],
+            "Condition": {
+              "ForAllValues:StringEquals": {
+                "aws:TagKeys": [
+                  "Application",
+                  "Environment",
+                  "ReleasePurpose"
+                ]
+              },
+              "Null": {
+                "aws:TagKeys": "false"
+              },
+              "StringEquals": {
+                "aws:RequestTag/Application": "ScoutGrid",
+                "aws:RequestTag/Environment": "lab",
+                "aws:RequestTag/ReleasePurpose": "Migration",
+                "aws:RequestedRegion": "ap-southeast-2",
+                "ecs:CreateAction": "RunTask"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*",
+            "Sid": "TagOnlyTasksAtApprovedLaunch"
+          },
+          {
+            "Action": [
+              "iam:PassRole"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "iam:PassedToService": "ecs-tasks.amazonaws.com"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:iam::736486260824:role/test",
+            "Sid": "PassOnlyMigratorExecutionRole"
+          },
+          {
+            "Action": [
+              "ecs:DescribeTasks",
+              "ecs:StopTask"
+            ],
+            "Condition": {
+              "ArnEquals": {
+                "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+              },
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2",
+                "aws:ResourceTag/Application": "ScoutGrid",
+                "aws:ResourceTag/Environment": "lab",
+                "aws:ResourceTag/ReleasePurpose": "Migration"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*",
+            "Sid": "InspectOrStopOnlyTaggedLabMigrations"
+          },
+          {
+            "Action": [
+              "logs:DescribeLogStreams"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/test",
+            "Sid": "ReadMigratorLogStreams"
+          },
+          {
+            "Action": [
+              "logs:GetLogEvents"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2"
+              }
+            },
+            "Effect": "Allow",
+            "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/test:log-stream:migrator/*",
+            "Sid": "ReadOnlyMigratorLogEvents"
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    },
+    "validation": {
+      "image_publisher": {
+        "findings": []
+      },
+      "migration_operator": {
+        "findings": []
+      }
+    },
+    "simulations": [
+      {
+        "name": "publish target",
+        "profile": "image_publisher",
+        "action": "ecr:PutImage",
+        "resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+        "expected": "allowed",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "decisions": [
+          "allowed"
+        ],
+        "passed": true
+      },
+      {
+        "name": "registry auth",
+        "profile": "image_publisher",
+        "action": "ecr:GetAuthorizationToken",
+        "resource": "*",
+        "expected": "allowed",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "decisions": [
+          "allowed"
+        ],
+        "passed": true
+      },
+      {
+        "name": "wrong repository",
+        "profile": "image_publisher",
+        "action": "ecr:PutImage",
+        "resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend-other",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "production repository",
+        "profile": "image_publisher",
+        "action": "ecr:PutImage",
+        "resource": "arn:aws:ecr:us-east-1:560246495987:repository/scoutgrid-production-backend",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "us-east-1"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "wrong region",
+        "profile": "image_publisher",
+        "action": "ecr:PutImage",
+        "resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "us-east-1"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "repository deletion",
+        "profile": "image_publisher",
+        "action": "ecr:DeleteRepository",
+        "resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "publisher cannot launch",
+        "profile": "image_publisher",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "reviewed migration",
+        "profile": "migration_operator",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+        "expected": "allowed",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false"
+        },
+        "decisions": [
+          "allowed"
+        ],
+        "passed": true
+      },
+      {
+        "name": "wrong revision",
+        "profile": "migration_operator",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:2",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "wrong cluster",
+        "profile": "migration_operator",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab-other",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "exec enabled",
+        "profile": "migration_operator",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "true"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "missing purpose",
+        "profile": "migration_operator",
+        "action": "ecs:RunTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "ecs:enable-execute-command": "false"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "exact passrole",
+        "profile": "migration_operator",
+        "action": "iam:PassRole",
+        "resource": "arn:aws:iam::736486260824:role/test",
+        "expected": "allowed",
+        "context": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        },
+        "decisions": [
+          "allowed"
+        ],
+        "passed": true
+      },
+      {
+        "name": "unrelated passrole",
+        "profile": "migration_operator",
+        "action": "iam:PassRole",
+        "resource": "arn:aws:iam::736486260824:role/test-other",
+        "expected": "implicitDeny",
+        "context": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "wrong passrole service",
+        "profile": "migration_operator",
+        "action": "iam:PassRole",
+        "resource": "arn:aws:iam::736486260824:role/test",
+        "expected": "implicitDeny",
+        "context": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "tag at launch",
+        "profile": "migration_operator",
+        "action": "ecs:TagResource",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/00000000000000000000000000000001",
+        "expected": "allowed",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false",
+          "ecs:CreateAction": "RunTask",
+          "aws:TagKeys": [
+            "Application",
+            "Environment",
+            "ReleasePurpose"
+          ]
+        },
+        "decisions": [
+          "allowed"
+        ],
+        "passed": true
+      },
+      {
+        "name": "missing tag keys",
+        "profile": "migration_operator",
+        "action": "ecs:TagResource",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/00000000000000000000000000000001",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false",
+          "ecs:CreateAction": "RunTask"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "standalone retag",
+        "profile": "migration_operator",
+        "action": "ecs:TagResource",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/00000000000000000000000000000001",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false",
+          "aws:TagKeys": [
+            "Application",
+            "Environment",
+            "ReleasePurpose"
+          ]
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "untagged task stop",
+        "profile": "migration_operator",
+        "action": "ecs:StopTask",
+        "resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/00000000000000000000000000000001",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      },
+      {
+        "name": "cannot register",
+        "profile": "migration_operator",
+        "action": "ecs:RegisterTaskDefinition",
+        "resource": "*",
+        "expected": "implicitDeny",
+        "context": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/ReleasePurpose": "Migration",
+          "ecs:enable-execute-command": "false"
+        },
+        "decisions": [
+          "implicitDeny"
+        ],
+        "passed": true
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "sts",
+      "operation": "GetCallerIdentity",
+      "status": "success"
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    }
+  ]
+}
