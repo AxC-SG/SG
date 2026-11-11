@@ -47,6 +47,20 @@ class ContractsTest(unittest.TestCase):
             self.assertNotIn('master', events)
             self.assertIn('main', events)
 
+    def test_terraform_validation_is_required_and_offline(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/quality.yml').read_text()
+        job = workflow.split('  terraform:\n', 1)[1].split('\n  migration-validation:', 1)[0]
+        required = workflow.split('  required:\n', 1)[1]
+        self.assertIn('terraform', gate.ALWAYS_JOBS)
+        self.assertRegex(required, r'needs: \[[^\n]*\bterraform\b')
+        self.assertEqual(job.count('terraform init -backend=false -lockfile=readonly -input=false'), 2)
+        self.assertEqual(job.count('terraform test -no-color'), 2)
+        self.assertIn('cp ../../standard/.terraform.lock.hcl .terraform.lock.hcl', job)
+        self.assertNotIn('id-token:', job)
+        self.assertNotIn('configure-aws-credentials', job)
+        self.assertNotIn('terraform apply', job)
+
     def test_selection(self):
         for files in [["README.md"], ["prototype-app/docs/frontend.md"]]:
             self.assertEqual(classifier.classify(files, "pull_request"), dict(application=False, performance=False))

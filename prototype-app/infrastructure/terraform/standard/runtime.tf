@@ -142,7 +142,7 @@ resource "aws_security_group" "backend" {
 resource "aws_vpc_security_group_egress_rule" "backend_https" {
   for_each          = local.backend_tasks
   security_group_id = aws_security_group.backend[each.key].id
-  description       = "HTTPS through zonal NAT or S3 gateway"
+  description       = "HTTPS through reviewed NAT topology or S3 gateway"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "tcp"
   from_port         = 443

@@ -41,6 +41,37 @@ jobs:
       - run: python3 .github/scripts/test-maven-reports.py
       - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
 
+  terraform:
+    name: Offline Terraform validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install verified Terraform CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/terraform-cli"
+          curl --fail --silent --show-error --location \
+            https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_amd64.zip \
+            --output "$RUNNER_TEMP/terraform.zip"
+          echo "0dbe3fcc268eb670801af6a6456799d1ae26e72e73797f6c6167e18aafd1fd9a  $RUNNER_TEMP/terraform.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/terraform.zip" -d "$RUNNER_TEMP/terraform-cli"
+          echo "$RUNNER_TEMP/terraform-cli" >> "$GITHUB_PATH"
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive prototype-app/infrastructure/terraform
+      - name: Validate and test the Standard configuration without a backend
+        working-directory: prototype-app/infrastructure/terraform/standard
+        run: |
+          terraform init -backend=false -lockfile=readonly -input=false
+          terraform validate -no-color
+          terraform test -no-color
+      - name: Validate and test network routing with the same provider lock
+        working-directory: prototype-app/infrastructure/terraform/modules/standard-network
+        run: |
+          cp ../../standard/.terraform.lock.hcl .terraform.lock.hcl
+          terraform init -backend=false -lockfile=readonly -input=false
+          terraform validate -no-color
+          terraform test -no-color
+
   migration-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -287,7 +318,7 @@ jobs:
   required:
     name: Quality gate
     if: always()
-    needs: [changes, ci-contracts, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres]
+    needs: [changes, ci-contracts, terraform, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

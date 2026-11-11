@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { FIXED_TIME } from './time.mjs';
+import { expect } from '@playwright/test';
 
 export const CONTEXT_OPTIONS = { locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' };
 
@@ -30,6 +31,13 @@ const NO_MOTION = '*, *::before, *::after { animation-duration: 0s !important; a
   + 'transition-duration: 0s !important; transition-delay: 0s !important; caret-color: transparent !important; }';
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+
+// Network idle can precede a lazy route mounting its queries. Audit and capture
+// the rendered page after its loading state, rather than accepting a quiet frame.
+export async function waitForPageReady(page) {
+  await expect(page.getByRole('main')).toBeVisible();
+  await expect(page.getByText(/^Loading(?:\b|…|\.\.\.)/).filter({ visible: true })).toHaveCount(0);
+}
 
 /** Applies the deterministic settings to a context created with CONTEXT_OPTIONS. */
 export async function prepareContext(context) {

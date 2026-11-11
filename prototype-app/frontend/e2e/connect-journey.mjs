@@ -80,6 +80,8 @@ for (const theme of themes) {
   await unconfiguredAws.context.route((url) => url.pathname === '/api/connectors/ai-security/aws',
     (route) => route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }));
   await unconfiguredAws.page.goto(`${base}/connect?connectSource=ai-security-aws`, { waitUntil: 'networkidle' });
+  await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).waitFor();
+  await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').filter({ hasText: /^Not configured$/ }).waitFor();
   check(tag('unconfigured AWS AI connector shows initial setup'),
     await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).isVisible()
     && await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').textContent() === 'Not configured');
@@ -255,7 +257,7 @@ for (const theme of themes) {
   // ── Copilot Studio standalone route ─────────────────────────────────────
   const copilot = await newPage(theme, 1440);
   await copilot.page.goto(`${base}/connect/copilot-studio`, { waitUntil: 'networkidle' });
-  await copilot.page.getByText('Configured organizations').waitFor();
+  await copilot.page.getByRole('heading', { name: 'Configured organizations', exact: true }).waitFor();
   copilot.requests.length = 0;
   await copilot.page.getByRole('button', { name: 'Run discovery' }).click();
   await copilot.page.getByRole('status').filter({ hasText: /Discovery (already queued|queued)/ }).waitFor();
@@ -269,6 +271,7 @@ for (const theme of themes) {
   await settle(owner.page);
   check(tag('platform owner /connect redirects to vuln-intel'), here(owner.page) === '/platform/vuln-intel', here(owner.page));
   await owner.page.getByText('NVD Vulnerability Feed').first().waitFor();
+  await owner.page.locator('.platform-feed-card', { hasText: 'GitHub Advisory Database (GHSA)' }).getByText('Sync failed').waitFor();
   check(tag('feed catalog shows the GHSA failure'), await owner.page.locator('.platform-feed-card', { hasText: 'GitHub Advisory Database (GHSA)' }).getByText('Sync failed').isVisible());
   await shot(owner.page, tag('platform-feeds'));
   await owner.page.locator('.platform-feed-card', { hasText: 'NVD Vulnerability Feed' }).click();
