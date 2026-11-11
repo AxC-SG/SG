@@ -64,8 +64,8 @@ public class OwnershipEffectiveCacheService {
     public void enqueueAll(Collection<UUID> subjectIds, String reason) {
         if (subjectIds.isEmpty()) return;
         jdbc.update("""
-                INSERT INTO ownership_cache_invalidation (subject_id, reason)
-                SELECT id, ? FROM unnest(?::uuid[]) AS id
+                INSERT INTO ownership_cache_invalidation (tenant_id, subject_id, reason)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, id, ? FROM unnest(?::uuid[]) AS id
                 ON CONFLICT (tenant_id, subject_id) DO UPDATE SET reason = EXCLUDED.reason, enqueued_at = clock_timestamp()
                 """, reason, array(subjectIds));
     }
@@ -138,8 +138,8 @@ public class OwnershipEffectiveCacheService {
     @Transactional
     public int reconcileMissing(int limit) {
         return jdbc.update("""
-                INSERT INTO ownership_cache_invalidation (subject_id, reason)
-                SELECT s.id, 'REBUILD' FROM ownership_subject s
+                INSERT INTO ownership_cache_invalidation (tenant_id, subject_id, reason)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, s.id, 'REBUILD' FROM ownership_subject s
                  WHERE s.lifecycle_status = 'ACTIVE'
                    AND NOT EXISTS (SELECT 1 FROM ownership_effective_cache c WHERE c.subject_id = s.id AND c.role = 'TECHNICAL_OWNER')
                    AND NOT EXISTS (SELECT 1 FROM ownership_cache_invalidation q WHERE q.subject_id = s.id)
@@ -163,9 +163,9 @@ public class OwnershipEffectiveCacheService {
 
     private int insertMissing(List<UUID> subjectIds) {
         return jdbc.update("""
-                INSERT INTO ownership_effective_cache (subject_id, ownership_status, owner_team_id, origin_subject_id, assignment_id,
+                INSERT INTO ownership_effective_cache (tenant_id, subject_id, ownership_status, owner_team_id, origin_subject_id, assignment_id,
                     origin_assignment_version, inheritance_path, inheritance_depth, refreshed_at)
-                SELECT s.id, """ + COMPUTED_COLUMNS + """
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, s.id, """ + COMPUTED_COLUMNS + """
                 , clock_timestamp()
                   FROM ownership_subject s CROSS JOIN LATERAL ownership_effective_for(s.id) e
                   LEFT JOIN ownership_assignment a ON a.id = e.ownership_assignment_id

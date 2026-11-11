@@ -34,8 +34,8 @@ public class OwnershipReviewService {
     public UUID raise(String itemType, String dedupeKey, UUID subjectId, String sourceKind, Map<String, ?> details) {
         if (!TYPES.contains(itemType)) throw new IllegalArgumentException("Unknown review item type");
         return jdbc.queryForObject("""
-                INSERT INTO ownership_review_item (id, item_type, dedupe_key, subject_id, source_kind, details)
-                VALUES (?, ?, ?, ?, ?, ?::jsonb)
+                INSERT INTO ownership_review_item (tenant_id, id, item_type, dedupe_key, subject_id, source_kind, details)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?::jsonb)
                 ON CONFLICT (tenant_id, dedupe_key) WHERE state = 'OPEN'
                 DO UPDATE SET occurrence_count = ownership_review_item.occurrence_count + 1,
                               last_seen_at = now(), details = EXCLUDED.details
@@ -51,9 +51,9 @@ public class OwnershipReviewService {
                                byte[] valueIndex, Map<String, ?> details) {
         if (!TYPES.contains(itemType)) throw new IllegalArgumentException("Unknown review item type");
         return jdbc.queryForObject("""
-                INSERT INTO ownership_review_item (id, item_type, dedupe_key, subject_id, source_kind, unresolved_value_enc,
+                INSERT INTO ownership_review_item (tenant_id, id, item_type, dedupe_key, subject_id, source_kind, unresolved_value_enc,
                                                    unresolved_value_index, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 ON CONFLICT (tenant_id, dedupe_key) WHERE state = 'OPEN'
                 DO UPDATE SET occurrence_count = ownership_review_item.occurrence_count + 1,
                               last_seen_at = now(), details = EXCLUDED.details

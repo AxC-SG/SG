@@ -58,9 +58,9 @@ public class OwnershipClaimService {
 
         String key = idempotencyKey(req);
         List<UUID> inserted = jdbc.queryForList("""
-                INSERT INTO ownership_claim (id, subject_id, role, team_id, principal_user_id, source_kind, priority_class, source_id,
+                INSERT INTO ownership_claim (tenant_id, id, subject_id, role, team_id, principal_user_id, source_kind, priority_class, source_id,
                     source_ref, idempotency_key, producer_version, observed_at, stale_after, expires_at, reason, actor)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
                 RETURNING id
                 """, UUID.class, UUID.randomUUID(), req.subjectId(), ROLE, req.teamId(), req.principalUserId(), req.sourceKind(),

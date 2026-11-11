@@ -27,8 +27,8 @@ public class OwnershipEvents {
         Map<String, Object> details = new LinkedHashMap<>();
         for (int i = 0; i < detailPairs.length; i += 2) details.put((String) detailPairs[i], detailPairs[i + 1]);
         jdbc.update("""
-                INSERT INTO ownership_event (id, event_type, subject_id, assignment_id, claim_id, actor, details)
-                VALUES (?, ?, ?, ?, ?, ?, ?::jsonb)
+                INSERT INTO ownership_event (tenant_id, id, event_type, subject_id, assignment_id, claim_id, actor, details)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 """, UUID.randomUUID(), eventType, subjectId, assignmentId, claimId, actor, json(details));
     }
 

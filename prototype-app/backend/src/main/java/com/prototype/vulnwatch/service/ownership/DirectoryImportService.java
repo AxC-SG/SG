@@ -103,9 +103,9 @@ public class DirectoryImportService {
         runner.runScoped(tenant, () -> {
             UUID source = directory.csvSource(actor);
             jdbc.update("""
-                    INSERT INTO identity_import_run (id, source_id, kind, state, file_sha256, rows_total, rows_created, rows_updated,
+                    INSERT INTO identity_import_run (tenant_id, id, source_id, kind, state, file_sha256, rows_total, rows_created, rows_updated,
                                                      rows_unchanged, rows_rejected, actor)
-                    VALUES (?, ?, ?, 'VALIDATED', ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, 'VALIDATED', ?, ?, ?, ?, ?, ?, ?)
                     """, runId, source, kind.runKind, sha256(file), records.size() - 1, plan.count(Outcome.CREATE),
                     plan.count(Outcome.UPDATE), plan.count(Outcome.UNCHANGED), plan.rejectedCount(), actor);
         });

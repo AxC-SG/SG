@@ -60,6 +60,35 @@ class OwnershipWriterControlTest {
         WRITERS.values().stream().filter(p -> p != NO_WRITER).forEach(p -> assertThat(p).exists());
     }
 
+    /**
+     * Every insert into an ownership table writes tenant_id from the session tenant as its first value. The column
+     * default is not safe: the tenant schema repair copies defaults from tenant_default, so a default can carry
+     * another tenant's id.
+     */
+    @Test
+    void everyOwnershipInsertWritesTheSessionTenant() throws IOException {
+        Pattern insert = Pattern.compile("(?is)\\binsert\\s+into\\s+(?!platform\\.)(\\w+)\\s*\\(\\s*(\\w+)");
+        Pattern firstValue = Pattern.compile("(?is)\\b(?:values\\s*\\(|select\\s+(?:distinct\\s+)?)\\s*"
+                + Pattern.quote("NULLIF(current_setting('app.current_tenant_id', true), '')::uuid,"));
+        Pattern valuesStart = Pattern.compile("(?is)\\b(?:values\\s*\\(|select\\s)");
+        List<String> offenders = new ArrayList<>();
+        int checked = 0;
+        for (Path writer : WRITERS.values().stream().distinct().toList()) {
+            String text = Files.readString(writer);
+            var matcher = insert.matcher(text);
+            while (matcher.find()) {
+                if (!WRITERS.containsKey(matcher.group(1).toLowerCase())) continue;
+                checked++;
+                var start = valuesStart.matcher(text);
+                boolean ok = "tenant_id".equalsIgnoreCase(matcher.group(2)) && start.find(matcher.end())
+                        && firstValue.matcher(text).region(start.start(), text.length()).lookingAt();
+                if (!ok) offenders.add(matcher.group(1) + " <- " + writer.getFileName());
+            }
+        }
+        assertThat(offenders).isEmpty();
+        assertThat(checked).isGreaterThanOrEqualTo(WRITERS.size());
+    }
+
     @Test
     void patternRecognisesWritesWithoutMatchingLongerTableNames() {
         assertThat(writePattern("team").matcher("INSERT INTO team (id)").find()).isTrue();

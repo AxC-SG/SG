@@ -44,8 +44,8 @@ public class OwnershipSubjectService {
         String context = contextKey == null ? "" : contextKey;
         UUID candidate = UUID.randomUUID();
         int inserted = jdbc.update("""
-                INSERT INTO ownership_subject (id, subject_type, source_object_id, context_key, generation)
-                VALUES (?, ?, ?, ?, COALESCE((SELECT max(generation) + 1 FROM ownership_subject
+                INSERT INTO ownership_subject (tenant_id, id, subject_type, source_object_id, context_key, generation)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, COALESCE((SELECT max(generation) + 1 FROM ownership_subject
                                                WHERE subject_type = ? AND source_object_id = ? AND context_key = ?), 1))
                 ON CONFLICT (tenant_id, subject_type, source_object_id, context_key) WHERE lifecycle_status = 'ACTIVE' DO NOTHING
                 """, candidate, subjectType, sourceObjectId, context, subjectType, sourceObjectId, context);
@@ -64,8 +64,8 @@ public class OwnershipSubjectService {
     @Transactional
     public int registerUnlinkedAssets(int limit) {
         List<UUID> created = jdbc.queryForList("""
-                INSERT INTO ownership_subject (id, subject_type, source_object_id)
-                SELECT gen_random_uuid(), a.type, a.id::text FROM assets a
+                INSERT INTO ownership_subject (tenant_id, id, subject_type, source_object_id)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, gen_random_uuid(), a.type, a.id::text FROM assets a
                  WHERE a.ownership_subject_id IS NULL AND a.type IN ('APPLICATION','HOST','CONTAINER_IMAGE','CLOUD_RESOURCE')
                  ORDER BY a.id LIMIT ?
                 ON CONFLICT (tenant_id, subject_type, source_object_id, context_key) WHERE lifecycle_status = 'ACTIVE' DO NOTHING
@@ -101,7 +101,7 @@ public class OwnershipSubjectService {
         if (below + 1 + above > MAX_HOPS) throw bad("Ownership chains are limited to " + MAX_HOPS + " parent hops");
         retireEdge(childId);
         UUID edgeId = UUID.randomUUID();
-        jdbc.update("INSERT INTO ownership_subject_edge (id, child_subject_id, parent_subject_id, created_by) VALUES (?, ?, ?, ?)",
+        jdbc.update("INSERT INTO ownership_subject_edge (tenant_id, id, child_subject_id, parent_subject_id, created_by) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?)",
                 edgeId, childId, parentId, actor);
         cache.enqueue(childId, "TOPOLOGY_CHANGED");
         events.record("TOPOLOGY_CHANGED", childId, null, null, actor, "edgeId", edgeId, "fromParentId", current.orElse(null),

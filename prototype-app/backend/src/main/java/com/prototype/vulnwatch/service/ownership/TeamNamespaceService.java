@@ -51,8 +51,8 @@ public class TeamNamespaceService {
         if (parentTeamId != null) requireActiveTeam(parentTeamId);
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO team (id, name, name_key, parent_team_id, ticket_assignment_group, created_by, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO team (tenant_id, id, name, name_key, parent_team_id, ticket_assignment_group, created_by, updated_by)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?)
                 """, id, display, key, parentTeamId, blankToNull(ticketAssignmentGroup), actor, actor);
         audit.record("ownership.team.created", "team", id.toString(), json("name", display, "parentTeamId", parentTeamId));
         return team(id).orElseThrow();
@@ -125,7 +125,7 @@ public class TeamNamespaceService {
         requireFree(key, null);
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO team_alias (id, team_id, alias, alias_key, source_kind, source_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO team_alias (tenant_id, id, team_id, alias, alias_key, source_kind, source_id, created_by) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?)
                 """, id, teamId, display, key, sourceKind, sourceId, actor);
         audit.record("ownership.team_alias.added", "team", teamId.toString(), json("alias", display, "sourceKind", sourceKind));
         return new Alias(id, teamId, display, sourceKind, sourceId);

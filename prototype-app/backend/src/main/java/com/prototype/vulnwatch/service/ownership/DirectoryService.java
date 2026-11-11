@@ -77,7 +77,7 @@ public class DirectoryService {
         List<UUID> existing = jdbc.queryForList("SELECT id FROM identity_source WHERE kind = ? ORDER BY created_at LIMIT 1", UUID.class, kind);
         if (!existing.isEmpty()) return existing.get(0);
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO identity_source (id, kind, display_name, state, health, created_by) VALUES (?, ?, ?, 'ENABLED', 'HEALTHY', ?)",
+        jdbc.update("INSERT INTO identity_source (tenant_id, id, kind, display_name, state, health, created_by) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, 'ENABLED', 'HEALTHY', ?)",
                 id, kind, name, actor);
         audit.record("ownership.identity_source.created", "identity_source", id.toString(), OwnershipEvents.json(Map.of("kind", kind)));
         return id;
@@ -97,9 +97,9 @@ public class DirectoryService {
         if (managerUserId != null) requireUser(managerUserId);
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                INSERT INTO directory_user (id, display_name_enc, email_enc, email_index, employee_id_enc, employee_id_index,
+                INSERT INTO directory_user (tenant_id, id, display_name_enc, email_enc, email_index, employee_id_enc, employee_id_index,
                                             manager_user_id, created_source_id, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, cipher.encrypt(tenant, P_NAME, name),
                 normalizedEmail == null ? null : cipher.encrypt(tenant, P_EMAIL, normalizedEmail),
                 normalizedEmail == null ? null : cipher.blindIndex(tenant, P_EMAIL, normalizedEmail),
@@ -214,7 +214,7 @@ public class DirectoryService {
         requireReady();
         String name = displayName(displayName);
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO directory_group (id, display_name, name_key, created_source_id, created_by) VALUES (?, ?, ?, ?, ?)",
+        jdbc.update("INSERT INTO directory_group (tenant_id, id, display_name, name_key, created_source_id, created_by) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?)",
                 id, name, name.toLowerCase(Locale.ROOT), sourceId, actor);
         audit.record("ownership.directory_group.created", "directory_group", id.toString(), OwnershipEvents.json(Map.of("sourceId", sourceId)));
         return group(id).orElseThrow();
@@ -261,7 +261,7 @@ public class DirectoryService {
         group(groupId).orElseThrow(() -> notFound("Group not found"));
         requireUser(userId);
         int changed = jdbc.update("""
-                INSERT INTO directory_group_member (id, group_id, user_id, source_id) VALUES (?, ?, ?, ?)
+                INSERT INTO directory_group_member (tenant_id, id, group_id, user_id, source_id) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?)
                 ON CONFLICT (tenant_id, group_id, user_id, source_id)
                 DO UPDATE SET status = 'ACTIVE', observed_at = now(), updated_at = now() WHERE directory_group_member.status <> 'ACTIVE'
                 """, UUID.randomUUID(), groupId, userId, sourceId);
@@ -309,8 +309,8 @@ public class DirectoryService {
         UUID tenant = requireReady();
         String key = externalKey(externalId);
         int changed = jdbc.update("""
-                INSERT INTO external_identity (id, source_id, external_id_enc, external_id_index, user_id, link_status, last_seen_run_id)
-                VALUES (?, ?, ?, ?, ?, 'LINKED', ?)
+                INSERT INTO external_identity (tenant_id, id, source_id, external_id_enc, external_id_index, user_id, link_status, last_seen_run_id)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, 'LINKED', ?)
                 ON CONFLICT (tenant_id, source_id, external_id_index)
                 DO UPDATE SET observed_at = now(), updated_at = now(), last_seen_run_id = EXCLUDED.last_seen_run_id
                  WHERE external_identity.user_id = EXCLUDED.user_id
@@ -330,8 +330,8 @@ public class DirectoryService {
         UUID tenant = requireReady();
         String key = externalKey(externalId);
         int changed = jdbc.update("""
-                INSERT INTO external_group (id, source_id, external_id_enc, external_id_index, display_name, group_id, last_seen_run_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO external_group (tenant_id, id, source_id, external_id_enc, external_id_index, display_name, group_id, last_seen_run_id)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (tenant_id, source_id, external_id_index)
                 DO UPDATE SET display_name = EXCLUDED.display_name, observed_at = now(), updated_at = now(),
                               last_seen_run_id = EXCLUDED.last_seen_run_id
@@ -362,7 +362,7 @@ public class DirectoryService {
             for (int n = MIN_PREFIX; n <= Math.min(word.length(), MAX_PREFIX); n++) prefixes.add(word.substring(0, n));
         }
         for (String prefix : prefixes) {
-            jdbc.update("INSERT INTO directory_search_token (entity_kind, entity_id, token) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+            jdbc.update("INSERT INTO directory_search_token (tenant_id, entity_kind, entity_id, token) VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?) ON CONFLICT DO NOTHING",
                     kind, id, cipher.blindIndex(tenant, P_SEARCH, prefix));
         }
     }

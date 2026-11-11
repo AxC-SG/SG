@@ -77,9 +77,9 @@ public class OwnershipResolutionService {
         String conflictTeams = "{" + String.join(",", result.conflictTeamIds().stream().map(UUID::toString).toList()) + "}";
         if (existing.isEmpty()) {
             jdbc.update("""
-                    INSERT INTO ownership_assignment (id, subject_id, role, status, team_id, winning_claim_id, winning_priority,
+                    INSERT INTO ownership_assignment (tenant_id, id, subject_id, role, status, team_id, winning_claim_id, winning_priority,
                         winning_source_kind, conflict_team_ids, reason, resolver_version, input_watermark, resolved_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::uuid[], ?, ?, ?, now())
+                    VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?::uuid[], ?, ?, ?, now())
                     """, assignmentId, subjectId, ROLE, result.status().name(), result.teamId(), result.winningClaimId(),
                     result.winningPriority(), result.winningSourceKind(), conflictTeams, result.reason(),
                     OwnershipResolver.RESOLVER_VERSION, result.inputWatermark());
@@ -118,8 +118,8 @@ public class OwnershipResolutionService {
     @Transactional
     public int enqueueSubjectsClaimingTeam(UUID teamId) {
         return jdbc.update("""
-                INSERT INTO ownership_resolution_queue (subject_id, reason)
-                SELECT DISTINCT subject_id, 'TEAM_STATUS_CHANGED' FROM ownership_claim WHERE team_id = ? AND status = 'ACTIVE'
+                INSERT INTO ownership_resolution_queue (tenant_id, subject_id, reason)
+                SELECT DISTINCT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, subject_id, 'TEAM_STATUS_CHANGED' FROM ownership_claim WHERE team_id = ? AND status = 'ACTIVE'
                 ON CONFLICT (tenant_id, subject_id) DO NOTHING
                 """, teamId);
     }
