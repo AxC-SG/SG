@@ -61,6 +61,19 @@ class ContractsTest(unittest.TestCase):
         self.assertNotIn('configure-aws-credentials', job)
         self.assertNotIn('terraform apply', job)
 
+    def test_image_builds_use_explicit_dns_and_fail_closed_package_indexes(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/trivy.yml').read_text()
+        for name in ['images', 'aws-candidate']:
+            job = workflow.split(f'  {name}:\n', 1)[1].split('\n  aws-candidate:', 1)[0]
+            self.assertIn('buildkitd-config: .github/buildkitd.toml', job)
+        config = (root / '.github/buildkitd.toml').read_text()
+        self.assertIn('[dns]', config)
+        self.assertIn('nameservers = ["1.1.1.1", "8.8.8.8"]', config)
+        dockerfile = (root / 'prototype-app/backend/Dockerfile').read_text()
+        self.assertIn('APT::Update::Error-Mode=any update', dockerfile)
+        self.assertIn('Acquire::Retries=3', dockerfile)
+
     def test_selection(self):
         for files in [["README.md"], ["prototype-app/docs/frontend.md"]]:
             self.assertEqual(classifier.classify(files, "pull_request"), dict(application=False, performance=False))
