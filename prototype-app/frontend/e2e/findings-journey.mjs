@@ -93,8 +93,8 @@ for (const theme of themes) {
   // Column multi-select filter popover (Status), two values accumulate.
   await page.waitForTimeout(500);
   const popover = page.locator('.fpl-col-filter-popover');
-  await page.locator('.fpl-th', { hasText: 'Status' }).locator('.fpl-filter-btn').click();
-  if (!(await popover.isVisible())) await page.locator('.fpl-th', { hasText: 'Status' }).locator('.fpl-filter-btn').click();
+  await page.locator('.fpl-th', { has: page.locator('.fpl-th-label', { hasText: /^Status$/ }) }).locator('.fpl-filter-btn').click();
+  if (!(await popover.isVisible())) await page.locator('.fpl-th', { has: page.locator('.fpl-th-label', { hasText: /^Status$/ }) }).locator('.fpl-filter-btn').click();
   await popover.waitFor();
   await requestFrom(page, '/findings', () => popover.locator('.fpl-col-filter-check', { hasText: /^\s*Open\s*$/i }).first().click());
   const statusRequest = await requestFrom(page, '/findings', () => popover.locator('.fpl-col-filter-check', { hasText: /Resolved/i }).first().click());

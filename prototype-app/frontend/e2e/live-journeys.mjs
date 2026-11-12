@@ -140,7 +140,7 @@ async function findingsJourney(theme) {
 
   // Multi-column narrowing: two Status values accumulate.
   const popover = page.locator('.fpl-col-filter-popover');
-  const statusFilter = page.locator('.fpl-th', { hasText: 'Status' }).locator('.fpl-filter-btn');
+  const statusFilter = page.locator('.fpl-th', { has: page.locator('.fpl-th-label', { hasText: /^Status$/ }) }).locator('.fpl-filter-btn');
   await statusFilter.click();
   if (!(await popover.isVisible())) await statusFilter.click();
   await popover.waitFor();
