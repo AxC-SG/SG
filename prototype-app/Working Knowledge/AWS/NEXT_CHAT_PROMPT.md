@@ -15,7 +15,14 @@ passed: Quality 43067107769, Trivy 43067107850, Semgrep 43067107669 and Performa
 43067107897. Full browser sweep 43061543315 passed on that PR head.
 
 The owner explicitly authorized one replacement PR for the subsequent budget
-records and Terraform budget guard. Use the budget branch above; do not reopen
+records and Terraform budget guard: PR #70. Its first Trivy run 43131822238 failed
+because the two exact-PURL Spring advisory exceptions expired at 00:00 UTC on
+November 12. Fresh vendor/source review confirms no XSLT views or SSE fragments.
+The repair renews only those exceptions until 00:00 UTC November 19 and adds the
+applicability guard to the AWS candidate job. See
+`prototype-app/docs/security-scan-exceptions.md`. Eight CI contracts and the two
+applicability controls pass locally. Verify the repaired head's remote checks;
+never reuse the first failed run or earlier successful source as its evidence. Use the budget branch above; do not reopen
 #69 or create concurrent change PRs. The owner merges manually. Never merge or
 enable auto-merge. Verify the replacement PR's current state before acting.
 Current qualification is retained in
