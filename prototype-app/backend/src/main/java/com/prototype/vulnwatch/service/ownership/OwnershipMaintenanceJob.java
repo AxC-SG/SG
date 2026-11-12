@@ -1,6 +1,7 @@
 package com.prototype.vulnwatch.service.ownership;
 
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.service.BackgroundTaskExecutionPolicy;
 import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TenantService;
 import com.prototype.vulnwatch.service.TenantWorkRunner;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Component;
  * Keeps stored direct results current without user action (plan §12.2): expires past-expiry claims and drains the
  * re-resolution queue. Each batch is its own tenant-scoped transaction; a run does a bounded number of batches per
  * tenant so one busy tenant cannot starve the rest. One tenant's failure is logged and does not stop the others.
+ * Like the other background jobs, the scheduled entry points do nothing on {@code api} and {@code schema-migrator}
+ * nodes ({@link BackgroundTaskExecutionPolicy}).
  */
 @Component
 public class OwnershipMaintenanceJob {
@@ -29,12 +32,14 @@ public class OwnershipMaintenanceJob {
     private final InventorySubjectAdapter inventory;
     private final OwnershipAuthorityService authority;
     private final OwnershipEffectiveCacheService cache;
+    private final BackgroundTaskExecutionPolicy backgroundTasks;
     private final int batchSize;
     private final int maxBatchesPerTenant;
 
     public OwnershipMaintenanceJob(TenantService tenants, TenantWorkRunner runner, OwnershipClaimService claims,
                                    OwnershipResolutionService resolution, InventorySubjectAdapter inventory,
                                    OwnershipAuthorityService authority, OwnershipEffectiveCacheService cache,
+                                   BackgroundTaskExecutionPolicy backgroundTasks,
                                    @Value("${app.ownership.maintenance.batch-size:500}") int batchSize,
                                    @Value("${app.ownership.maintenance.max-batches-per-tenant:20}") int maxBatchesPerTenant) {
         this.tenants = tenants;
@@ -44,12 +49,14 @@ public class OwnershipMaintenanceJob {
         this.inventory = inventory;
         this.authority = authority;
         this.cache = cache;
+        this.backgroundTasks = backgroundTasks;
         this.batchSize = batchSize;
         this.maxBatchesPerTenant = maxBatchesPerTenant;
     }
 
     @Scheduled(zone = "UTC", cron = "${app.ownership.maintenance.cron:0 * * * * *}")
     public void run() {
+        if (!backgroundTasks.allowsBackgroundTask("ownership.maintenance")) return;
         List<Tenant> active = TenantContext.runAsPlatform(tenants::listActiveTenants);
         for (Tenant tenant : active) {
             try {
@@ -84,6 +91,7 @@ public class OwnershipMaintenanceJob {
     @Scheduled(zone = "UTC", cron = "${app.ownership.effective-cache.reconcile-cron:0 7 * * * *}")
     public void reconcileCache() {
         if (!cache.enabled()) return;
+        if (!backgroundTasks.allowsBackgroundTask("ownership.effective-cache-reconcile")) return;
         for (Tenant tenant : TenantContext.runAsPlatform(tenants::listActiveTenants)) {
             try {
                 drain(tenant, () -> cache.reconcileMissing(cacheBatchSize()), cacheBatchSize());
