@@ -4897,15 +4897,15 @@ html:where([data-ui='2']),
 }
 
 :where(html[data-ui='2']) .inv-status-done {
-  background: color-mix(in srgb, #16a34a 12%, transparent);
-  border-color: color-mix(in srgb, #16a34a 40%, transparent);
-  color: #15803d;
+  background: color-mix(in srgb, var(--dp-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--dp-success) 40%, transparent);
+  color: var(--dp-success);
 }
 
 :where(html[data-ui='2']) .inv-status-in-progress {
-  background: color-mix(in srgb, #f59e0b 12%, transparent);
-  border-color: color-mix(in srgb, #f59e0b 40%, transparent);
-  color: #b45309;
+  background: color-mix(in srgb, var(--dp-warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--dp-warning) 40%, transparent);
+  color: var(--dp-warning);
 }
 
 :where(html[data-ui='2']) .inv-status-not-started {
@@ -4915,9 +4915,9 @@ html:where([data-ui='2']),
 }
 
 :where(html[data-ui='2']) .inv-status-applicable {
-  background: color-mix(in srgb, #3b82f6 10%, transparent);
-  border-color: color-mix(in srgb, #3b82f6 40%, transparent);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--dp-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--dp-accent) 40%, transparent);
+  color: var(--dp-accent);
 }
 
 :where(html[data-ui='2']) .status-auto_closed {

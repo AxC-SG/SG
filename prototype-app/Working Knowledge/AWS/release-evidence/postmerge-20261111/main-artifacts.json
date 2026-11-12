@@ -1,0 +1,77 @@
+[
+  {
+    "id": 13869680364,
+    "name": "trivy-images-43050166880",
+    "size_in_bytes": 36132,
+    "digest": "sha256:4bf233b7d06e940b386039ca664c9dfa8f0d674f0d8d2f86e129fa4bb14c5e8b",
+    "expired": false,
+    "expires_at": "2026-11-25T15:43:48Z",
+    "workflow_run": {
+      "id": 43050166880,
+      "repository_id": 1427276590,
+      "head_repository_id": 1427276590,
+      "head_branch": "main",
+      "head_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1"
+    }
+  },
+  {
+    "id": 13868309205,
+    "name": "aws-backend-candidate-43050166880",
+    "size_in_bytes": 323137691,
+    "digest": "sha256:9c0db617a09792aefcddc3c3706f7d6703447e4f3f1a13ac479697dbb60a62c6",
+    "expired": false,
+    "expires_at": "2026-11-25T15:41:10Z",
+    "workflow_run": {
+      "id": 43050166880,
+      "repository_id": 1427276590,
+      "head_repository_id": 1427276590,
+      "head_branch": "main",
+      "head_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1"
+    }
+  },
+  {
+    "id": 13867854632,
+    "name": "trivy-aws-backend-43050166880",
+    "size_in_bytes": 582,
+    "digest": "sha256:f5f37b6bc2e18c43cfea370676e6a90d6ca480efc467e28ae15abcc00cecedef",
+    "expired": false,
+    "expires_at": "2026-11-25T15:40:57Z",
+    "workflow_run": {
+      "id": 43050166880,
+      "repository_id": 1427276590,
+      "head_repository_id": 1427276590,
+      "head_branch": "main",
+      "head_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1"
+    }
+  },
+  {
+    "id": 13869477383,
+    "name": "frontend-e2e-43050167812",
+    "size_in_bytes": 40882849,
+    "digest": "sha256:802601f201cedbf19e355969e43b85fe971611f2fdc513f9f41e4de601fab4d5",
+    "expired": false,
+    "expires_at": "2026-11-25T15:45:30Z",
+    "workflow_run": {
+      "id": 43050167812,
+      "repository_id": 1427276590,
+      "head_repository_id": 1427276590,
+      "head_branch": "main",
+      "head_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1"
+    }
+  },
+  {
+    "id": 13869341741,
+    "name": "frontend-43050167812",
+    "size_in_bytes": 1998157,
+    "digest": "sha256:c95bf9a800b0990a0f1c7fc99599733e63cc6e6b02ecd5a3cf9d739cfbfe3b3a",
+    "expired": false,
+    "expires_at": "2026-11-25T15:40:32Z",
+    "workflow_run": {
+      "id": 43050167812,
+      "repository_id": 1427276590,
+      "head_repository_id": 1427276590,
+      "head_branch": "main",
+      "head_sha": "5a95f54fb122ba3b920df130c5c049b43732a8e1"
+    }
+  }
+]

@@ -1,0 +1,259 @@
+{
+  "observed_utc": "2026-11-11T17:20:55.578739+00:00",
+  "metadata_only": true,
+  "role_names": [
+    "AccountFullAccessRole",
+    "ScoutGridSydneyLabPlan"
+  ],
+  "plan_role": {
+    "name": "ScoutGridSydneyLabPlan",
+    "detail": {
+      "Role": {
+        "Path": "/",
+        "RoleName": "ScoutGridSydneyLabPlan",
+        "RoleId": "AROA2W6QAQBMHKNN7Q6ZB",
+        "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabPlan",
+        "CreateDate": "2026-11-09T15:24:31+00:00",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Description": "Sydney ScoutGrid Terraform foundation planning and state lock",
+        "MaxSessionDuration": 3600,
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "ScoutGrid"
+          },
+          {
+            "Key": "Environment",
+            "Value": "lab"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "TerraformPlan"
+          }
+        ],
+        "RoleLastUsed": {
+          "LastUsedDate": "2026-11-09T16:04:24+00:00",
+          "Region": "ap-southeast-2"
+        }
+      }
+    },
+    "inline": {
+      "SydneyLabPlan": {
+        "RoleName": "ScoutGridSydneyLabPlan",
+        "PolicyName": "SydneyLabPlan",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "LocateLabStateBucket",
+              "Effect": "Allow",
+              "Action": "s3:GetBucketLocation",
+              "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+            },
+            {
+              "Sid": "ListLabStateBucket",
+              "Effect": "Allow",
+              "Action": "s3:ListBucket",
+              "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+            },
+            {
+              "Sid": "ReadLabState",
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+            },
+            {
+              "Sid": "ManageLabStateLock",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+              ],
+              "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
+            },
+            {
+              "Sid": "UseSydneyStateKeyThroughS3",
+              "Effect": "Allow",
+              "Action": [
+                "kms:Decrypt",
+                "kms:GenerateDataKey"
+              ],
+              "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+              "Condition": {
+                "StringEquals": {
+                  "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
+                  "kms:CallerAccount": "736486260824",
+                  "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+                }
+              }
+            },
+            {
+              "Sid": "ReadSydneyFoundationInputs",
+              "Effect": "Allow",
+              "Action": [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeVpcs",
+                "rds:DescribeDBEngineVersions"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestedRegion": "ap-southeast-2"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "attached": {
+      "AttachedPolicies": []
+    },
+    "managed": {}
+  },
+  "ecs": {
+    "clusterArns": []
+  },
+  "rds": {
+    "DBInstances": []
+  },
+  "ecr": {
+    "repositories": []
+  },
+  "secrets_metadata": {
+    "SecretList": []
+  },
+  "retired_keys": [
+    {
+      "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/22cf6682-3133-47bd-af3e-200a1464b054",
+      "state": "PendingDeletion",
+      "deletion_date": "2026-12-11T04:47:23.527000+00:00"
+    },
+    {
+      "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/ddb15ff2-ac4a-4eaa-92d4-7b697706ea11",
+      "state": "PendingDeletion",
+      "deletion_date": "2026-12-11T04:45:33.250000+00:00"
+    }
+  ],
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "ListRoles",
+      "status": "success",
+      "n_items": {
+        "Roles": 14
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "secretsmanager",
+      "operation": "ListSecrets",
+      "status": "success",
+      "n_items": {
+        "SecretList": 0
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "ecs",
+      "operation": "ListClusters",
+      "status": "success",
+      "n_items": {
+        "clusterArns": 0
+      }
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "success",
+      "n_items": {
+        "DBInstances": 0
+      }
+    },
+    {
+      "service": "ecr",
+      "operation": "DescribeRepositories",
+      "status": "success",
+      "n_items": {
+        "repositories": 0
+      }
+    }
+  ]
+}

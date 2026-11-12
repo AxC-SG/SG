@@ -18,8 +18,28 @@ variable "availability_zone_ids" {
   type = list(string)
 }
 
+variable "nat_gateway_mode" {
+  description = "zonal creates a NAT in each AZ; single shares the first selected AZ's NAT for disposable labs."
+  type        = string
+  default     = "zonal"
+
+  validation {
+    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
+    error_message = "Use zonal or single NAT gateway mode."
+  }
+}
+
 locals {
   zones = { for index, id in var.availability_zone_ids : id => index }
+  nat_zones = {
+    for zone, index in local.zones : zone => index
+    if var.nat_gateway_mode == "zonal" || index == 0
+  }
+  task_egress_nat_zones = {
+    for zone in var.availability_zone_ids : zone => (
+      var.nat_gateway_mode == "single" ? var.availability_zone_ids[0] : zone
+    )
+  }
   subnets = merge([
     for tier, offset in { public = 0, task = 2, database = 4 } : {
       for zone, index in local.zones : "${tier}-${zone}" => {
@@ -56,13 +76,13 @@ resource "aws_internet_gateway" "public" {
 }
 
 resource "aws_eip" "egress" {
-  for_each = local.zones
+  for_each = local.nat_zones
   domain   = "vpc"
   tags     = { Name = "${var.name}-${each.key}" }
 }
 
 resource "aws_nat_gateway" "zonal" {
-  for_each = local.zones
+  for_each = local.nat_zones
 
   subnet_id     = aws_subnet.tier["public-${each.key}"].id
   allocation_id = aws_eip.egress[each.key].id
@@ -91,7 +111,7 @@ resource "aws_route" "task_egress" {
 
   route_table_id         = aws_route_table.tier["task-${each.key}"].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.zonal[each.key].id
+  nat_gateway_id         = aws_nat_gateway.zonal[local.task_egress_nat_zones[each.key]].id
 }
 
 resource "aws_route_table_association" "tier" {
@@ -111,12 +131,14 @@ resource "aws_vpc_endpoint" "s3" {
 
 output "boundaries" {
   value = {
-    vpc_id              = aws_vpc.standard.id
-    public_subnet_ids   = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].id]
-    public_subnet_cidrs = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].cidr_block]
-    task_subnet_ids     = [for zone in var.availability_zone_ids : aws_subnet.tier["task-${zone}"].id]
-    database_subnet_ids = [for zone in var.availability_zone_ids : aws_subnet.tier["database-${zone}"].id]
-    egress_ips_by_zone  = { for zone, address in aws_eip.egress : zone => address.public_ip }
-    s3_endpoint_id      = aws_vpc_endpoint.s3.id
+    vpc_id                = aws_vpc.standard.id
+    public_subnet_ids     = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].id]
+    public_subnet_cidrs   = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].cidr_block]
+    task_subnet_ids       = [for zone in var.availability_zone_ids : aws_subnet.tier["task-${zone}"].id]
+    database_subnet_ids   = [for zone in var.availability_zone_ids : aws_subnet.tier["database-${zone}"].id]
+    egress_ips_by_zone    = { for zone, address in aws_eip.egress : zone => address.public_ip }
+    nat_gateway_mode      = var.nat_gateway_mode
+    task_egress_nat_zones = local.task_egress_nat_zones
+    s3_endpoint_id        = aws_vpc_endpoint.s3.id
   }
 }

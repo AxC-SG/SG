@@ -244,6 +244,7 @@ for (const theme of themes) {
   const gated = await newPage(theme, 1440, { ...actor, entitlements: { 'ai.security': false } });
   for (const route of ['/inventory/ai', `/inventory/ai/${PRIMARY_AI_ASSET_ID}`, '/inventory/ai/declared-resources', `/inventory/ai/declared-resources/${PRIMARY_DECLARED_RESOURCE_ID}`]) {
     await gated.page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+    await gated.page.waitForURL((url) => url.pathname === '/exposure');
     await settle(gated.page);
     check(tag(`ai.security=false redirects ${route} to /exposure`), new URL(gated.page.url()).pathname === '/exposure', here(gated.page));
   }

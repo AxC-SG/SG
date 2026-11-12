@@ -47,6 +47,33 @@ class ContractsTest(unittest.TestCase):
             self.assertNotIn('master', events)
             self.assertIn('main', events)
 
+    def test_terraform_validation_is_required_and_offline(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/quality.yml').read_text()
+        job = workflow.split('  terraform:\n', 1)[1].split('\n  migration-validation:', 1)[0]
+        required = workflow.split('  required:\n', 1)[1]
+        self.assertIn('terraform', gate.ALWAYS_JOBS)
+        self.assertRegex(required, r'needs: \[[^\n]*\bterraform\b')
+        self.assertEqual(job.count('terraform init -backend=false -lockfile=readonly -input=false'), 2)
+        self.assertEqual(job.count('terraform test -no-color'), 2)
+        self.assertIn('cp ../../standard/.terraform.lock.hcl .terraform.lock.hcl', job)
+        self.assertNotIn('id-token:', job)
+        self.assertNotIn('configure-aws-credentials', job)
+        self.assertNotIn('terraform apply', job)
+
+    def test_image_builds_use_explicit_dns_and_fail_closed_package_indexes(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/trivy.yml').read_text()
+        for name in ['images', 'aws-candidate']:
+            job = workflow.split(f'  {name}:\n', 1)[1].split('\n  aws-candidate:', 1)[0]
+            self.assertIn('buildkitd-config: .github/buildkitd.toml', job)
+        config = (root / '.github/buildkitd.toml').read_text()
+        self.assertIn('[dns]', config)
+        self.assertIn('nameservers = ["1.1.1.1", "8.8.8.8"]', config)
+        dockerfile = (root / 'prototype-app/backend/Dockerfile').read_text()
+        self.assertIn('APT::Update::Error-Mode=any update', dockerfile)
+        self.assertIn('Acquire::Retries=3', dockerfile)
+
     def test_selection(self):
         for files in [["README.md"], ["prototype-app/docs/frontend.md"]]:
             self.assertEqual(classifier.classify(files, "pull_request"), dict(application=False, performance=False))
@@ -54,6 +81,18 @@ class ContractsTest(unittest.TestCase):
         for files in [[], ["prototype-app/docs/data.json"], ["prototype-app/frontend/src/App.tsx"], [".github/workflows/quality.yml"], ["README.md", "package.json"]]:
             self.assertTrue(classifier.classify(files, "pull_request")["application"])
         self.assertTrue(classifier.classify([".github/scripts/check-quality-gate.py"], "pull_request")["performance"])
+
+    def test_every_trivy_job_checks_spring_applicability_before_scanning(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/trivy.yml').read_text()
+        jobs = re.split(r'(?m)^  [a-z][a-z-]*:\n', workflow.split('jobs:\n', 1)[1])[1:]
+        self.assertEqual(len(jobs), 3)
+        for job in jobs:
+            check = job.index('python3 .github/scripts/check-spring-advisory-applicability.py')
+            controls = job.index('python3 .github/scripts/test-spring-advisory-applicability.py')
+            scan = job.index('uses: aquasecurity/trivy-action@')
+            self.assertLess(controls, check)
+            self.assertLess(check, scan)
 
     def needs(self, application="true"):
         result = {key: dict(result="success") for key in gate.APPLICATION_JOBS | gate.ALWAYS_JOBS}

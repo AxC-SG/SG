@@ -79,7 +79,21 @@ export function privateTelemetryOptions(dsn: string | undefined, mode: string): 
     dsn,
     enabled: Boolean(dsn?.trim()),
     environment: mode,
-    sendDefaultPii: false,
+    // SDK 11 defaults to broader collection. Preserve the application's explicit
+    // privacy boundary before data enters the SDK, as well as scrubbing output.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+      stackFrameVariables: false,
+      frameContextLines: 0,
+    },
     // Keep error capture, but remove automatic DOM/console/request breadcrumbs
     // and raw browser request/referrer collection before they enter the scope.
     integrations: (defaults) => defaults.filter((integration) => !['Breadcrumbs', 'HttpContext'].includes(integration.name)),

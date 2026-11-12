@@ -2,7 +2,7 @@
 // Fixture-backed and deterministic (see browser.mjs); not authenticated staging evidence.
 // E2E_ROUTES (comma-separated paths) and E2E_WIDTHS narrow the run for e2e:affected.
 import { expect, test } from '@playwright/test';
-import { prepareContext } from './browser.mjs';
+import { prepareContext, waitForPageReady } from './browser.mjs';
 import { actor, routeFixtures } from './fixtures.mjs';
 import { platformActor } from './governance-fixtures.mjs';
 import { ALL_ROUTES, routeEntry } from './routes.mjs';
@@ -29,6 +29,7 @@ for (const [path, who] of routes) {
         page.on('pageerror', (error) => errors.push(error.message));
         await page.setViewportSize({ width, height: 900 });
         await page.goto(path, { waitUntil: 'networkidle' });
+        await waitForPageReady(page);
         await page.evaluate(() => document.fonts.ready);
         await expect(page).toHaveScreenshot(nameOf(path, theme, width), { fullPage: true });
         expect(errors).toEqual([]);

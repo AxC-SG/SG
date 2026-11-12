@@ -4,6 +4,22 @@
 
 This is the single authoritative execution plan for application prerequisites, AWS implementation, configurable tenant isolation, qualification and production cutover. It consolidates the November 1/2 migration plan and November 5/6 architecture reviews. Earlier plans and closure ledgers are supporting evidence, not competing execution instructions. The [previous full plan](Archive/AWS_FINAL_MIGRATION_PLAN_2026-11-02.md) is preserved unchanged for historical detail.
 
+**Latest execution update — November 12, 2026:** PR #69 was manually merged as
+`4678580ab0a84c6cd2dfd96a02cfedc168e0a9cf`. All four required main workflows and
+the full browser sweep on its identical PR source tree passed. Retain and verify
+that exact SHA's backend/frontend pair; a configured lab frontend is separate.
+The owner authorized one replacement PR for the subsequent budget records/guard.
+After any new merge, qualify that exact new main SHA and its new artifacts.
+
+The owner authorized **$50 inclusive monthly Sydney lab spend**, superseding older
+$20/pending-approval statements. Allocate **$25 inclusive** to the application run;
+November 12's conservative prior-run bound is about $4.59, with $20.41 unallocated
+monthly contingency. Target four hours and finish cleanup by eight. See the
+[current execution authorization](release-evidence/postmerge-20261111/EXECUTION_AUTHORIZATION_20261111.md)
+and [reproducible budget](release-evidence/postmerge-20261111/authorized-budget-20261111.json).
+The application lab remains undeployed. Release/access/secret prerequisites and
+all remaining live qualification gates remain open. Older entries are historical.
+
 ## 1. Objective and release structure
 
 Prepare and release ScoutGrid on AWS with one codebase, one schema release track and a platform-managed choice of **Standard** or **Dedicated** tenant storage. Preserve tenant isolation, accepted work, authorized identity, safe upgrades and recoverability throughout onboarding and operation.

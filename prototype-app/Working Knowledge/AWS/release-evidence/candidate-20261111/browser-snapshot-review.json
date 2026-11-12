@@ -1,0 +1,534 @@
+{
+  "old_browser": "153.0.8010.12",
+  "new_browser": "158.0.8127.18",
+  "playwright": "1.65.0",
+  "review": "Automated before/after/diff review of all 58 cases, plus the unchanged prior application build captured in the new browser. No product design approval is implied.",
+  "baseline_update_count": 58,
+  "unchanged_candidate_snapshots": 114,
+  "maxDiffPixelRatio": 0.001,
+  "accessibility_and_journey_baselines_changed": false,
+  "snapshots": [
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-dark-390.png",
+      "route": "/connect",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "d3252e10b62b829387740b7f50522bd10b1a905e5197f837c65c9838510059db",
+      "after_sha256": "b01ffca1a131cc0978f8655b67b0cc9943d3736c456d4481bdf4158ac70cec16",
+      "browser_comparison_different_pixels": 6342
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/connect-light-390.png",
+      "route": "/connect",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "4953b8fd88933533b6a17ab8a53856429bb25ca3b01d541716bbc14edbce9eb7",
+      "after_sha256": "7a78cf06325c6d9c8e42dfa63b5bc751162798d012c1aff213955ea0e5e75faf",
+      "browser_comparison_different_pixels": 44
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-blog-dark-1280.png",
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "6d8a98af78739b83344c302594438d380813939223c94122a5f44348122349e1",
+      "after_sha256": "184b27cf91be6c19c6fcbcbc6db4039f8c03e9f463f5c367589a6a9d62430463",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-blog-dark-390.png",
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "a18caf7fddc31dcdc1b0c243c286323fedecc22b82d840a0d93cdffc8aec6588",
+      "after_sha256": "8b24515024e9ecac473abf54395437e484d069569740abd6017fcb905793cad2",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-blog-light-1280.png",
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "6d8a98af78739b83344c302594438d380813939223c94122a5f44348122349e1",
+      "after_sha256": "184b27cf91be6c19c6fcbcbc6db4039f8c03e9f463f5c367589a6a9d62430463",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-blog-light-390.png",
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "a18caf7fddc31dcdc1b0c243c286323fedecc22b82d840a0d93cdffc8aec6588",
+      "after_sha256": "8b24515024e9ecac473abf54395437e484d069569740abd6017fcb905793cad2",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-dark-1280.png",
+      "route": "/demo",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "67b9710a19f9c67726c7ba36cad2926901f82efeeda4a23839bc04141c720f6a",
+      "after_sha256": "f56a64339aa8075373ee2e66072046ed76c8b6ccf2ed022ed613b2896791e542",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-dark-390.png",
+      "route": "/demo",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "f78d470389d5358ec38b122fe89074fee99e6995c4ad7c263a04953a6b78b324",
+      "after_sha256": "8005d4186cb4e845e7b3104c851a74feff403c58c7d505a4b0710c0d4cc578d9",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-light-1280.png",
+      "route": "/demo",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "67b9710a19f9c67726c7ba36cad2926901f82efeeda4a23839bc04141c720f6a",
+      "after_sha256": "f56a64339aa8075373ee2e66072046ed76c8b6ccf2ed022ed613b2896791e542",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/demo-light-390.png",
+      "route": "/demo",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "f78d470389d5358ec38b122fe89074fee99e6995c4ad7c263a04953a6b78b324",
+      "after_sha256": "8005d4186cb4e845e7b3104c851a74feff403c58c7d505a4b0710c0d4cc578d9",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/exposure-dark-1280.png",
+      "route": "/exposure",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "01d2df570d18532e7e48255a7abd615215e293fd18a786b8d3ce5ac40068c09a",
+      "after_sha256": "47b001b1657c5d46e7e068dc907516bd34f0c4efa05926d8b6e21fb02294a4a3",
+      "browser_comparison_different_pixels": 13
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/exposure-dark-390.png",
+      "route": "/exposure",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "4cd1b530ef1c7ddae92065ffeaea0066a04a3e61e3ff33c75431bb4bad3166d0",
+      "after_sha256": "40fd9d6b7b87d2a46ee09a1a64f2f8602438ec4f629fd7322b8b1ec5d5c437b6",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/exposure-light-1280.png",
+      "route": "/exposure",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "ca644c42779c1b8a8235158dcf29c5e013884a163a015c1672e8b77b644c3795",
+      "after_sha256": "7107268fd3cbbe02c54390948f42bc6f6bb1929c706a40d6a2ac5b621bb40ecb",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/exposure-light-390.png",
+      "route": "/exposure",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "50e6ae44cb8022b1ed59bab5f718e812672315d7de72b9a8e4eabacbad80c519",
+      "after_sha256": "35c4c2d78ba88d99d9690b6a33e1d304e96b7a0b3209cedb7f96c2b5c8c5ad12",
+      "browser_comparison_different_pixels": 26
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-ai-dark-1280.png",
+      "route": "/findings/ai",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "f7598c33f9a153e1c72f6f21c32b7f28bbf191cf72f2c8eac0bd724a5c249dea",
+      "after_sha256": "c4c6b58d0668faaedc33aab60a74d187a806db20f8f67da0ecc4771eed9c5ec0",
+      "browser_comparison_different_pixels": 51
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-ai-dark-390.png",
+      "route": "/findings/ai",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "1b1d2dcef8a61974fe52d5270f7ed509fcf116dd15f6599eb601d5859fd55c94",
+      "after_sha256": "2ad0494d7aecf9a562477b7cb89b9088af3125087e4019d52ad7f1d089841e4b",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-ai-light-1280.png",
+      "route": "/findings/ai",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "c92f9f5114ae303d04ff3cb9c007cf2522328d36f35fc1a50ad63f6c6ee39996",
+      "after_sha256": "84750f2e33226c43d0f79aa59571c3ff019dc3c0ae8fa7984235404ca964f26e",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-ai-light-390.png",
+      "route": "/findings/ai",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "61b97df19e47db3f84f4f34d7228dfdb0c7af27f9c9b5acab64e60d02d8cdc86",
+      "after_sha256": "8b5f201b089dcc16d3e468c6a9e092f350b5e72ec84a64f9db9f588199ac3a59",
+      "browser_comparison_different_pixels": 8
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-dark-1280.png",
+      "route": "/findings",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "ce326f7da76b24b07288562fced846b728e8e97f49f2b0da9830cdd77e0d4bb3",
+      "after_sha256": "9e70ef4db11464c71fd6236c7ff04abc9cffba73091406df9c592df1a93dbae8",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-dark-390.png",
+      "route": "/findings",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "28f32d5a77a65576c34c84dc7a504cf701a91d54d41e6e8b7b18ee6ee107586e",
+      "after_sha256": "38606f44dc66d8099524c3d6616360b3f912cc199dc849a4f18cf8c9c0c19fa9",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-light-1280.png",
+      "route": "/findings",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "966533b62b86df434214f10a8617548c933c8400b9c59ccfe67c3ed9355c24ba",
+      "after_sha256": "601c935ab169646d5309f09c4c67f7ac632c496ca5744581061365d5e71cf00b",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/findings-light-390.png",
+      "route": "/findings",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "fecc851e01baec5ce62b6ab37c3e17fc573a972fe09fa8ada3ce3a9266d227aa",
+      "after_sha256": "85251355f3d75a8e0dea7bf478e308bf0cee927fed23d02fbf8d0e1acca7a654",
+      "browser_comparison_different_pixels": 32
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-ai-agent-claims-triage-dark-1280.png",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "d9b00fd7a53c441e57f8f005311e60e1ce122da9b449e4867adbac409fe3ea2b",
+      "after_sha256": "8bc78ec5361d8e7fefaf35e76e8508ad3cab75ce1be695d332756700fde89ee4",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-ai-agent-claims-triage-dark-390.png",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "ca208bc5226a7aa902a91504752f5463193038ff184fa02c3ede9805577eb044",
+      "after_sha256": "6ce530ccf4b37623cef3f74049c51094912ac4aa9d138a36b54951a09c96d4a0",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-ai-agent-claims-triage-light-1280.png",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "e766e95e71ff976413acc81172aa6698c61b5d4b783ee5c08509dd86bd9801c1",
+      "after_sha256": "ac1a3278d6d1035f1246a4680d16fa51c9ff56e7bd3712724cbbfe6261151647",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-ai-ai-agent-claims-triage-light-390.png",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "cfcd9ae175ddacf484cf80b2df4c9372534239d6606cf3845e90c8f4a3270604",
+      "after_sha256": "b8640ff99ce0f1da2c8a383de29ccdb94accb245d94ede32ce737eb4d88348ae",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-hosts-host-prod-api-gw-01-dark-1280.png",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "e3e9901fbc2263b6141d1bfb056550c9fb53141dabea39fb154cd5aff2489608",
+      "after_sha256": "ea2d8879ffac7dfb474a5415ea4768d460e7ecbeec8410d5a2b3d62b730860e9",
+      "browser_comparison_different_pixels": 24
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-hosts-host-prod-api-gw-01-light-1280.png",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "91776f84f23b1c86bc13fc025c94ebdcb5c587f45867106df2ee65e9acccb9e3",
+      "after_sha256": "33e1934f3993cf0d7dfff6dc384cbe23babd64aa69e2cdbb6eef2c730c17ba57",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-software-identities-si-log4j-core-light-1280.png",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "26539fb25a6a15fa5ceabe41f7ea992d372e7a5e78ebb0ca3c34077bf8c5dff4",
+      "after_sha256": "a24fac32f18068efcc1193ed976fb35d851bd5f401e320de1ea219723bdbeca6",
+      "browser_comparison_different_pixels": 7
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-software-identities-si-log4j-core-dark-1280.png",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "d6aff3aec35747a04a9705207ce66f2cb7e2c72afbe93697491168a17bf0c8ab",
+      "after_sha256": "d0b779fa7563cddff21ada0a4d9d23cb86a6cb1145a894791a66ad7c10b298d1",
+      "browser_comparison_different_pixels": 6
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-software-identities-si-log4j-core-light-390.png",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "4615f07824704650c8214bcb3558227f8240b192adb89529f2c6f6390e0d72cc",
+      "after_sha256": "b4e979395f9e51f550ac4d181ef04a601a5d45c262fa221de7449ceea59f7d62",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/inventory-software-identities-si-log4j-core-dark-390.png",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "a08c02561c599d2d8958241d88c5c952fb08ad4c2a5c70ba083500cc7fd82a3b",
+      "after_sha256": "98a9da01c29c48c0295751114b9fe2a5ee02ed98385008ea18387766baa14b57",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-azure-foundry-content-filter-blocking-dark-1280.png",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "fe7301513f884e5fe70aa497ca3e5d175355d66590fd55a4b805ef6613580928",
+      "after_sha256": "b81ce23e9799a36338362bdd0edd5e7ed58e5fec6f0c7ffe91dcdeb0d88e2904",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-azure-foundry-content-filter-blocking-light-1280.png",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "ee84b939c1029e2b4019a0dbf97faeac41b4aa4054dd10261e1b831e12480d67",
+      "after_sha256": "866b37200217ee4c59140792cf01e408485f26442f7a60f4d7c7e3a672ac97bc",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-azure-foundry-content-filter-blocking-dark-390.png",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "f7b6c22aa4fb7bd9a646e43fdd054163fa83ecd698bf02fc2411bc16c87c7c05",
+      "after_sha256": "bfc0418a3354b1fdb0a433dd91e5a55dedee3ce80d5be43cd7c0df8cc2f9a545",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-azure-foundry-content-filter-blocking-light-390.png",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "4fd96f2bb30c907ac6be8db8745276ed394eb79bbf40a70c712bd4d1329bae17",
+      "after_sha256": "7a195c7c24b1344e62dffee844b869bb2f3adf13ff27b318822afa87dc780fb6",
+      "browser_comparison_different_pixels": 39
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-dark-1280.png",
+      "route": "/platform/ai-policies",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "31e45974081b4a944eb2b9570007875dc6724fc304ca645c5a3bb2e53c010286",
+      "after_sha256": "1a05460d88a1ec8f5e2c003c17a4dfda6fc4c796eb4b14065854835da9d60701",
+      "browser_comparison_different_pixels": 25
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-dark-390.png",
+      "route": "/platform/ai-policies",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "2838e96c054a3a98547187a486eefe754831766ebd576851c491ce75765ac29e",
+      "after_sha256": "e348e77ca490407e016fe14514cd3779a988f5e6800a237b38338a81d74e6fc6",
+      "browser_comparison_different_pixels": 26
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-light-1280.png",
+      "route": "/platform/ai-policies",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "846fee1236684899f9988e36cf0b04b70dee871b36aea60c9f2817af8804cfc4",
+      "after_sha256": "74932b9e1ca77898a51562504e461f0e89088b38e62cd7bfba64e87c61cba8b7",
+      "browser_comparison_different_pixels": 16
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-ai-policies-light-390.png",
+      "route": "/platform/ai-policies",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "939a5acee44242aa6c7da5a97dd957e0cade92c368f0159bd0007440bfaafe61",
+      "after_sha256": "e8fe37a1048bb827eb1aaf790c89dbf8dccd0eeb553f71c78525dc1d20f8a1f8",
+      "browser_comparison_different_pixels": 29
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-tenants-dark-1280.png",
+      "route": "/platform/tenants",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "71ec229639ab209a7f48a9ae8ea5eaa6dd875991f3a6e77f652c36008389b3c9",
+      "after_sha256": "1001e336be4502624c7801242ffa1d6884bded9a4f90f95c6ae19e9624bee351",
+      "browser_comparison_different_pixels": 35
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-tenants-dark-390.png",
+      "route": "/platform/tenants",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "6d070e129c98b5f9f8f92daa2d4a7fe9514e45a6606684e0ddb50d894aa5eb2f",
+      "after_sha256": "aad9f357f48e2850b8a459dc7207a8d6f7469a107377f52244f531ab7b95b89c",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-tenants-light-1280.png",
+      "route": "/platform/tenants",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "42ac41a142f8073d797994c74edd14c220342a488006fc14e37db3d2cc283bac",
+      "after_sha256": "d2091c62ee3e41858ff3fc23b81e090e62cd22a5cb4a4c5c812c19ab6e3019c5",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/platform-tenants-light-390.png",
+      "route": "/platform/tenants",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "469bbb75fcff9085f8d1055a318df8cff5195fa9749d1c8bec2cb1f8088022a1",
+      "after_sha256": "5890d992c53e7ab45c8dbf68dde2e8a62aebbd6fe22a1a88c035a7d1745e3c66",
+      "browser_comparison_different_pixels": 36
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/policies-policy-aws-2-dark-1280.png",
+      "route": "/policies/policy.aws.2",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "4b108b54296b7f6c001151be5fae22a8ae3c7fdfde7a8d857606c565aac40308",
+      "after_sha256": "78eda6ba06bc83b2034504f0295bf728b40b5e641af26cf1cf8a23c73315cf6d",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/policies-policy-aws-2-dark-390.png",
+      "route": "/policies/policy.aws.2",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "aa87f8fe0afb431fab617e47fddd10a06b3314d2957d55395d4987dc64199318",
+      "after_sha256": "7692151648255016dd07f990ac3c05e95d7fb8d5de6f7fdfdaa5cff53838f061",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/policies-policy-aws-2-light-1280.png",
+      "route": "/policies/policy.aws.2",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "c9e067b2da68886e650a7a2b24716ea628020a0ff4d99c8e9407a28d43853854",
+      "after_sha256": "befced030479d1f47bbb303bfb18836ed82f37beab1f2220cae22c837ede769d",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/policies-policy-aws-2-light-390.png",
+      "route": "/policies/policy.aws.2",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "c460bac722a5399704b5058fbd9ca4baabadf92416b140f2c415a765d3f83dc7",
+      "after_sha256": "0e5dcc78ca8e302e16f56ebd12afaf85efc5151a037abee325b78d44d4d1f9d3",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-campaigns-campaign-openssl-q4-dark-1280.png",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "3068e372c8d187f2fafa9686aaaa119a9701b66f71bef6549961ba8370453ea7",
+      "after_sha256": "2da00394d0630e40d5727d5586c87f27f1fe4e959e8d5882c93167f9e5915922",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-campaigns-campaign-openssl-q4-dark-390.png",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "6d0e78fc96fe08f9a12403fa49baf47167b718f3263953b23753173e3a44f845",
+      "after_sha256": "86dc8bd575d85cf56e627d869496d61152836146759d19b32d8f47c56ee2ab99",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-campaigns-campaign-openssl-q4-light-1280.png",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "26913ad4fcf23b7732401f43c7ca656c25c21ebba01b24aff61b2ba12261689c",
+      "after_sha256": "828780d94ce7f94b8cf7b9dfcba92239b057312d175490494a72d2e690f4b973",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-campaigns-campaign-openssl-q4-light-390.png",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "27e5a7a6204bb6403fd42d8afa98ab5b727df5c911efc063113316fc3b827567",
+      "after_sha256": "da59ef8c5caca638a49d6611fe19046f814d58139330d4184d64c5961e664a9b",
+      "browser_comparison_different_pixels": 40
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-assets-dark-390.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "a9a6148fff7e0e7726014b9d1746e48986731330f4b04b18d24adade12bda8d7",
+      "after_sha256": "cb1d8060a3afffa5056525f678c289f425597e478697c36834b94571e9891299",
+      "browser_comparison_different_pixels": 4
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-assets-light-390.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "80265bce27b2919b958ff9ddd68356fdf42691ccb3b8bdb45857182a5c79d7d0",
+      "after_sha256": "8c68628a90361fc8f65effee854be9d2bf03fa8ff79f91b18ceeecdaa24281c4",
+      "browser_comparison_different_pixels": 64
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-dark-1280.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "dark",
+      "width": 1280,
+      "before_sha256": "54d9a39d9bd97870da18e0401c409eb8d2fc7dbc49afe7360160f47dc7effa5e",
+      "after_sha256": "ef556ba95155e4bd006980ee9eec68fde20763c577e78c6feedd465c882588bc",
+      "browser_comparison_different_pixels": 24
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-dark-390.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "dark",
+      "width": 390,
+      "before_sha256": "f2e24e5053e245041c53a9e938bda7b6681e552365e2cb06fb55cf7f40042521",
+      "after_sha256": "c56aec57dc56b6c951fa2a2fc6cf4d8153e8352fb2e2bec2f841ce245e904102",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-light-1280.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "light",
+      "width": 1280,
+      "before_sha256": "e648a47a19872a85e66d85dc8deddbcbf810caa6d616c4100c540cf542c50d0b",
+      "after_sha256": "a7ae5a2c4fb2308ecf4e7c36348353c02aed8293271678993af45bdfb0e16a0f",
+      "browser_comparison_different_pixels": 0
+    },
+    {
+      "path": "prototype-app/frontend/e2e/visual-baselines/ui2/vuln-repo-org-cves-CVE-2026-31337-light-390.png",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "light",
+      "width": 390,
+      "before_sha256": "d7c97191f2e5144877ef8b8a17dc3f330540e6b8eeb27fc8a35c98835607a629",
+      "after_sha256": "fe543c0f69e8dfe5a003958c20ac8c08350a9b55b890a49c79de71a64a469d76",
+      "browser_comparison_different_pixels": 39
+    }
+  ]
+}

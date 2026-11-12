@@ -11,9 +11,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 class BomInputBoundsTest {
     private final SbomParserService parser = new SbomParserService(new ObjectMapper());
@@ -53,9 +56,23 @@ class BomInputBoundsTest {
     }
 
     @Test
-    void deepXmlTextUsesFiniteIterationAndJsonKeepsExistingJacksonDepthBound() {
-        String xml = "<bom><components><component><name>" + "<x>".repeat(10_000)
-                + "a" + "</x>".repeat(10_000) + "</name></component></components></bom>";
+    void deepXmlTextUsesFiniteIterationAndJsonKeepsExistingJacksonDepthBound() throws Exception {
+        // Exercise the traversal independently of the JDK parser's depth ceiling.
+        // Java 25 rejects XML deeper than 100 elements before traversal begins.
+        var document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+        Element name = document.createElement("name");
+        document.appendChild(name);
+        Node parent = name;
+        for (int depth = 0; depth < 10_000; depth++) {
+            Element child = document.createElement("x");
+            parent.appendChild(child);
+            parent = child;
+        }
+        parent.appendChild(document.createTextNode("a"));
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () ->
+                assertEquals("a", BomInputLimits.xmlText(name)));
+        String xml = "<bom><components><component><name>" + "<x>".repeat(64)
+                + "a" + "</x>".repeat(64) + "</name></component></components></bom>";
         assertTimeoutPreemptively(Duration.ofSeconds(10), () ->
                 assertEquals("a", parser.parse(bytes(xml)).get(0).packageName()));
         String json = "{\"components\":[],\"extra\":" + "[".repeat(2_000)

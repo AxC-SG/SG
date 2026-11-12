@@ -1,0 +1,18 @@
+{
+  "account": "736486260824",
+  "observed_date_utc": "2026-11-11",
+  "period_start": "2026-11-01",
+  "period_end_exclusive": "2026-11-12",
+  "metric": "UnblendedCost",
+  "excluded_record_types": ["Credit", "Refund"],
+  "estimated_usd": "0.0202323141",
+  "all_days_estimated": true,
+  "november_11_posted_usage_usd": "0",
+  "foundation_unposted_charges_reconciled": false,
+  "tax_final": false,
+  "aws_budgets_returned": [],
+  "monthly_ceiling_usd": "50",
+  "application_run_reserve_inclusive_usd": "25",
+  "integrated_run_budget_authorized": true,
+  "live_budget_created_or_updated": false
+}

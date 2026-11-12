@@ -661,11 +661,11 @@ export function VulnRepoVulnerabilitiesPage() {
             const orgImpact = computeOrgImpact(item, r.score, 0);
             const orgImpactStyle: React.CSSProperties =
               orgImpact === 'HIGH'
-                ? { background: '#9b233522', color: '#9b2335', border: '1px solid #9b233544' }
+                ? { background: 'var(--cve-impact-high-bg)', color: 'var(--cve-impact-high-text)', border: '1px solid var(--cve-impact-high-border)' }
                 : orgImpact === 'MEDIUM'
-                  ? { background: '#b7791f22', color: '#b7791f', border: '1px solid #b7791f44' }
+                  ? { background: 'var(--cve-impact-medium-bg)', color: 'var(--cve-impact-medium-text)', border: '1px solid var(--cve-impact-medium-border)' }
                   : orgImpact === 'LOW'
-                    ? { background: '#2d6a4f22', color: '#2d6a4f', border: '1px solid #2d6a4f44' }
+                    ? { background: 'var(--cve-impact-low-bg)', color: 'var(--cve-impact-low-text)', border: '1px solid var(--cve-impact-low-border)' }
                     : { background: 'var(--dp-surface-2)', color: 'var(--dp-text-2)', border: '1px solid var(--dp-border)' };
             const orgImpactLabel = orgImpact === 'NONE' ? 'No' : orgImpact.charAt(0) + orgImpact.slice(1).toLowerCase();
             const cls = `risk-score-badge risk-score-badge--${riskScoreLabel(r.score).toLowerCase()}`;

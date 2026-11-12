@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
     env:
-      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.63.0-noble
+      E2E_PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.65.0-noble
       E2E_VERSIONS: ui2
     defaults:
       run:

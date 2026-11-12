@@ -5,7 +5,7 @@ import os
 import sys
 
 APPLICATION_JOBS = {"frontend", "frontend-e2e", "backend", "backend-postgres"}
-ALWAYS_JOBS = {"changes", "migration-validation", "migration-boundaries", "policy-packages", "secrets", "ci-contracts"}
+ALWAYS_JOBS = {"changes", "migration-validation", "migration-boundaries", "policy-packages", "secrets", "ci-contracts", "terraform"}
 
 
 def failures(needs):

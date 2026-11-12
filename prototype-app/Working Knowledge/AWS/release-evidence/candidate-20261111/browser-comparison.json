@@ -1,0 +1,875 @@
+{
+  "browser": "158.0.8127.18",
+  "results": [
+    {
+      "name": "connect-dark-390",
+      "route": "/connect",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3540
+      ],
+      "new_build_dimensions": [
+        390,
+        3540
+      ],
+      "different_pixels": 6342
+    },
+    {
+      "name": "connect-light-390",
+      "route": "/connect",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3540
+      ],
+      "new_build_dimensions": [
+        390,
+        3540
+      ],
+      "different_pixels": 44
+    },
+    {
+      "name": "demo-blog-dark-1280",
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1794
+      ],
+      "new_build_dimensions": [
+        1280,
+        1794
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-blog-dark-390",
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3134
+      ],
+      "new_build_dimensions": [
+        390,
+        3134
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-blog-light-1280",
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1794
+      ],
+      "new_build_dimensions": [
+        1280,
+        1794
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-blog-light-390",
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3134
+      ],
+      "new_build_dimensions": [
+        390,
+        3134
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-dark-1280",
+      "route": "/demo",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        5354
+      ],
+      "new_build_dimensions": [
+        1280,
+        5354
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-dark-390",
+      "route": "/demo",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        8005
+      ],
+      "new_build_dimensions": [
+        390,
+        8005
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-light-1280",
+      "route": "/demo",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        5354
+      ],
+      "new_build_dimensions": [
+        1280,
+        5354
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "demo-light-390",
+      "route": "/demo",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        8005
+      ],
+      "new_build_dimensions": [
+        390,
+        8005
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "exposure-dark-1280",
+      "route": "/exposure",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2201
+      ],
+      "new_build_dimensions": [
+        1280,
+        2201
+      ],
+      "different_pixels": 13
+    },
+    {
+      "name": "exposure-dark-390",
+      "route": "/exposure",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3535
+      ],
+      "new_build_dimensions": [
+        390,
+        3535
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "exposure-light-1280",
+      "route": "/exposure",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2201
+      ],
+      "new_build_dimensions": [
+        1280,
+        2201
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "exposure-light-390",
+      "route": "/exposure",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        3535
+      ],
+      "new_build_dimensions": [
+        390,
+        3535
+      ],
+      "different_pixels": 26
+    },
+    {
+      "name": "findings-ai-dark-1280",
+      "route": "/findings/ai",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1002
+      ],
+      "new_build_dimensions": [
+        1280,
+        1002
+      ],
+      "different_pixels": 51
+    },
+    {
+      "name": "findings-ai-dark-390",
+      "route": "/findings/ai",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1548
+      ],
+      "new_build_dimensions": [
+        390,
+        1548
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "findings-ai-light-1280",
+      "route": "/findings/ai",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1002
+      ],
+      "new_build_dimensions": [
+        1280,
+        1002
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "findings-ai-light-390",
+      "route": "/findings/ai",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1548
+      ],
+      "new_build_dimensions": [
+        390,
+        1548
+      ],
+      "different_pixels": 8
+    },
+    {
+      "name": "findings-dark-1280",
+      "route": "/findings",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2270
+      ],
+      "new_build_dimensions": [
+        1280,
+        2270
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "findings-dark-390",
+      "route": "/findings",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2878
+      ],
+      "new_build_dimensions": [
+        390,
+        2878
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "findings-light-1280",
+      "route": "/findings",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2270
+      ],
+      "new_build_dimensions": [
+        1280,
+        2270
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "findings-light-390",
+      "route": "/findings",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2878
+      ],
+      "new_build_dimensions": [
+        390,
+        2878
+      ],
+      "different_pixels": 32
+    },
+    {
+      "name": "inventory-ai-ai-agent-claims-triage-dark-1280",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2399
+      ],
+      "new_build_dimensions": [
+        1280,
+        2399
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-ai-ai-agent-claims-triage-dark-390",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2993
+      ],
+      "new_build_dimensions": [
+        390,
+        2993
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-ai-ai-agent-claims-triage-light-1280",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2399
+      ],
+      "new_build_dimensions": [
+        1280,
+        2399
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-ai-ai-agent-claims-triage-light-390",
+      "route": "/inventory/ai/ai-agent-claims-triage",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2993
+      ],
+      "new_build_dimensions": [
+        390,
+        2993
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-hosts-host-prod-api-gw-01-dark-1280",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1499
+      ],
+      "new_build_dimensions": [
+        1280,
+        1499
+      ],
+      "different_pixels": 24
+    },
+    {
+      "name": "inventory-hosts-host-prod-api-gw-01-light-1280",
+      "route": "/inventory/hosts/host-prod-api-gw-01",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1499
+      ],
+      "new_build_dimensions": [
+        1280,
+        1499
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-software-identities-si-log4j-core-light-1280",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2043
+      ],
+      "new_build_dimensions": [
+        1280,
+        2043
+      ],
+      "different_pixels": 7
+    },
+    {
+      "name": "inventory-software-identities-si-log4j-core-dark-1280",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        2043
+      ],
+      "new_build_dimensions": [
+        1280,
+        2043
+      ],
+      "different_pixels": 6
+    },
+    {
+      "name": "inventory-software-identities-si-log4j-core-light-390",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2495
+      ],
+      "new_build_dimensions": [
+        390,
+        2495
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "inventory-software-identities-si-log4j-core-dark-390",
+      "route": "/inventory/software-identities/si-log4j-core",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2495
+      ],
+      "new_build_dimensions": [
+        390,
+        2495
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "platform-ai-policies-azure-c23c5-lter-blocking-dark-1280",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1145
+      ],
+      "new_build_dimensions": [
+        1280,
+        1145
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "platform-ai-policies-azure-15f39-ter-blocking-light-1280",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1145
+      ],
+      "new_build_dimensions": [
+        1280,
+        1145
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "platform-ai-policies-azure-fa34b-ilter-blocking-dark-390",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1646
+      ],
+      "new_build_dimensions": [
+        390,
+        1646
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "platform-ai-policies-azure-1eb1c-lter-blocking-light-390",
+      "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1646
+      ],
+      "new_build_dimensions": [
+        390,
+        1646
+      ],
+      "different_pixels": 39
+    },
+    {
+      "name": "platform-ai-policies-dark-1280",
+      "route": "/platform/ai-policies",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1913
+      ],
+      "new_build_dimensions": [
+        1280,
+        1913
+      ],
+      "different_pixels": 25
+    },
+    {
+      "name": "platform-ai-policies-dark-390",
+      "route": "/platform/ai-policies",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2417
+      ],
+      "new_build_dimensions": [
+        390,
+        2417
+      ],
+      "different_pixels": 26
+    },
+    {
+      "name": "platform-ai-policies-light-1280",
+      "route": "/platform/ai-policies",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1913
+      ],
+      "new_build_dimensions": [
+        1280,
+        1913
+      ],
+      "different_pixels": 16
+    },
+    {
+      "name": "platform-ai-policies-light-390",
+      "route": "/platform/ai-policies",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2417
+      ],
+      "new_build_dimensions": [
+        390,
+        2417
+      ],
+      "different_pixels": 29
+    },
+    {
+      "name": "platform-tenants-dark-1280",
+      "route": "/platform/tenants",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1450
+      ],
+      "new_build_dimensions": [
+        1280,
+        1450
+      ],
+      "different_pixels": 35
+    },
+    {
+      "name": "platform-tenants-dark-390",
+      "route": "/platform/tenants",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2028
+      ],
+      "new_build_dimensions": [
+        390,
+        2028
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "platform-tenants-light-1280",
+      "route": "/platform/tenants",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1450
+      ],
+      "new_build_dimensions": [
+        1280,
+        1450
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "platform-tenants-light-390",
+      "route": "/platform/tenants",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2028
+      ],
+      "new_build_dimensions": [
+        390,
+        2028
+      ],
+      "different_pixels": 36
+    },
+    {
+      "name": "policies-policy-aws-2-dark-1280",
+      "route": "/policies/policy.aws.2",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1413
+      ],
+      "new_build_dimensions": [
+        1280,
+        1413
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "policies-policy-aws-2-dark-390",
+      "route": "/policies/policy.aws.2",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2162
+      ],
+      "new_build_dimensions": [
+        390,
+        2162
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "policies-policy-aws-2-light-1280",
+      "route": "/policies/policy.aws.2",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1413
+      ],
+      "new_build_dimensions": [
+        1280,
+        1413
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "policies-policy-aws-2-light-390",
+      "route": "/policies/policy.aws.2",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2162
+      ],
+      "new_build_dimensions": [
+        390,
+        2162
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "vuln-repo-campaigns-campaign-openssl-q4-dark-1280",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1180
+      ],
+      "new_build_dimensions": [
+        1280,
+        1180
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "vuln-repo-campaigns-campaign-openssl-q4-dark-390",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2315
+      ],
+      "new_build_dimensions": [
+        390,
+        2315
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "vuln-repo-campaigns-campaign-openssl-q4-light-1280",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1180
+      ],
+      "new_build_dimensions": [
+        1280,
+        1180
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "vuln-repo-campaigns-campaign-openssl-q4-light-390",
+      "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2315
+      ],
+      "new_build_dimensions": [
+        390,
+        2315
+      ],
+      "different_pixels": 40
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-assets-dark-390",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1139
+      ],
+      "new_build_dimensions": [
+        390,
+        1139
+      ],
+      "different_pixels": 4
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-assets-light-390",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        1139
+      ],
+      "new_build_dimensions": [
+        390,
+        1139
+      ],
+      "different_pixels": 64
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-dark-1280",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "dark",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1540
+      ],
+      "new_build_dimensions": [
+        1280,
+        1540
+      ],
+      "different_pixels": 24
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-dark-390",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "dark",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2717
+      ],
+      "new_build_dimensions": [
+        390,
+        2717
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-light-1280",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "light",
+      "width": 1280,
+      "old_build_dimensions": [
+        1280,
+        1540
+      ],
+      "new_build_dimensions": [
+        1280,
+        1540
+      ],
+      "different_pixels": 0
+    },
+    {
+      "name": "vuln-repo-org-cves-CVE-2026-31337-light-390",
+      "route": "/vuln-repo/org-cves/CVE-2026-31337",
+      "theme": "light",
+      "width": 390,
+      "old_build_dimensions": [
+        390,
+        2717
+      ],
+      "new_build_dimensions": [
+        390,
+        2717
+      ],
+      "different_pixels": 39
+    }
+  ]
+}

@@ -101,7 +101,7 @@ function SiteHeader({ onLogout }: { onLogout?: () => void }) {
   return (
     <header className="sgw-nav">
       <div className="sgw-nav-inner">
-        <Link to="/demo" className="sgw-nav-brand" aria-label={`${SITE_NAME} home`}>
+        <Link to="/demo" className="sgw-nav-brand" aria-label={`${SITE_NAME} – AI Security home`}>
           <SiteLogo />
         </Link>
         <nav className="sgw-nav-links" aria-label={`${SITE_NAME} site`}>

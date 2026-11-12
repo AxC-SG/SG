@@ -1,0 +1,54 @@
+{
+  "base_sha": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "pull_requests": [
+    {
+      "pr": 59,
+      "url": "https://github.com/AxC-SG/SG/pull/59",
+      "head_sha": "6e7d4a72ef1f10abfa02dddbe78cec0ab9eeb746",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 60,
+      "url": "https://github.com/AxC-SG/SG/pull/60",
+      "head_sha": "def4d13d608c5d4849a07ae0827dc82ee6fef847",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 61,
+      "url": "https://github.com/AxC-SG/SG/pull/61",
+      "head_sha": "aa1db90f7fa535c33a8ab73f0785388a2440ab41",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 62,
+      "url": "https://github.com/AxC-SG/SG/pull/62",
+      "head_sha": "1d2048ca7f4efccdb5cad314fbb36ddcc3418459",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 63,
+      "url": "https://github.com/AxC-SG/SG/pull/63",
+      "head_sha": "9540457213930275862727e9e674e619dd448d05",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 64,
+      "url": "https://github.com/AxC-SG/SG/pull/64",
+      "head_sha": "6a06b3275055e1e7bc85dca96283cc579105d6c6",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 65,
+      "url": "https://github.com/AxC-SG/SG/pull/65",
+      "head_sha": "9d654a21766f15034afbeb2a97b47394d07aa370",
+      "included_as_ancestor": true
+    },
+    {
+      "pr": 66,
+      "url": "https://github.com/AxC-SG/SG/pull/66",
+      "head_sha": "771550cd0015694bc0a5d3d8d009d491d6da70f3",
+      "included_as_ancestor": true
+    }
+  ],
+  "merge_policy": "Owner merges the combined PR manually after checks complete; no auto-merge or deployment."
+}

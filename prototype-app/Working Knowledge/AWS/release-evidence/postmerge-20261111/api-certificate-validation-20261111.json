@@ -1,0 +1,36 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "CertificateArn": "arn:aws:acm:ap-southeast-2:736486260824:certificate/2fdafd2b-1c89-47d0-80ba-d27158736e40",
+    "DomainName": "api-lab.scoutgrid.io",
+    "Status": "ISSUED",
+    "DomainValidationOptions": [
+      {
+        "DomainName": "api-lab.scoutgrid.io",
+        "ValidationDomain": "api-lab.scoutgrid.io",
+        "ValidationStatus": "SUCCESS",
+        "ResourceRecord": {
+          "Name": "_62ca8e284273e6c9feb063274b88f0c6.api-lab.scoutgrid.io.",
+          "Type": "CNAME",
+          "Value": "_7969bc1f72c5e93b4980475661a1c07f.wzccmgtwzk.acm-validations.aws."
+        },
+        "ValidationMethod": "DNS"
+      }
+    ],
+    "Options": {
+      "CertificateTransparencyLoggingPreference": "ENABLED",
+      "Export": "DISABLED"
+    },
+    "NotBefore": "2026-11-11T16:07:15+00:00",
+    "NotAfter": "2027-05-28T17:07:15+00:00",
+    "InUseBy": []
+  },
+  "api_calls": [
+    {
+      "service": "acm",
+      "operation": "DescribeCertificate",
+      "status": "success"
+    }
+  ]
+}

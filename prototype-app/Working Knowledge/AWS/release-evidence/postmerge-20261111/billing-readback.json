@@ -1,0 +1,17 @@
+{
+  "account": "736486260824",
+  "period_start": "2026-11-01",
+  "period_end_exclusive": "2026-11-12",
+  "metric": "UnblendedCost",
+  "excluded_record_types": [
+    "Credit",
+    "Refund"
+  ],
+  "estimated_usd": "0.0202323141",
+  "foundation_unposted_charges_reconciled": false,
+  "tax_final": false,
+  "monthly_ceiling_usd": "20",
+  "integrated_run_reserve_usd": "15",
+  "integrated_run_approved": false,
+  "observed_date_utc": "2026-11-11"
+}

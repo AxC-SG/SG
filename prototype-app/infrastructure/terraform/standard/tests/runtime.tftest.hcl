@@ -83,6 +83,15 @@ run "foundation_without_candidate" {
   command = plan
 
   assert {
+    condition = (
+      output.network.nat_gateway_mode == "zonal" &&
+      length(output.network.egress_ips_by_zone) == 2 &&
+      alltrue([for zone, nat_zone in output.network.task_egress_nat_zones : zone == nat_zone])
+    )
+    error_message = "The production default must retain one NAT per AZ."
+  }
+
+  assert {
     condition     = length(aws_ecs_task_definition.backend) == 0 && length(aws_lb.api) == 0
     error_message = "Foundation-only configuration must omit the application runtime."
   }
@@ -469,13 +478,30 @@ run "scoped_security_monitoring_and_monthly_cost_alerts" {
   }
 }
 
+run "accept_lab_budget_at_owner_allowance" {
+  command = plan
+
+  variables {
+    environment = "lab"
+    monthly_budget = {
+      amount_usd     = 50
+      operator_email = "billing@example.com"
+    }
+  }
+
+  assert {
+    condition     = aws_budgets_budget.standard[0].limit_amount == "50"
+    error_message = "The lab must accept the owner's inclusive $50 monthly ceiling."
+  }
+}
+
 run "reject_lab_budget_above_owner_allowance" {
   command = plan
 
   variables {
     environment = "lab"
     monthly_budget = {
-      amount_usd     = 20
+      amount_usd     = 50.01
       operator_email = "billing@example.com"
     }
   }
@@ -582,4 +608,51 @@ run "sydney_lab_rejects_other_region_credentials" {
   }
 
   expect_failures = [var.backend_candidate]
+}
+
+run "sydney_single_nat_foundation" {
+  command = plan
+
+  variables {
+    account_id            = "736486260824"
+    environment           = "lab"
+    aws_region            = "ap-southeast-2"
+    availability_zone_ids = ["apse2-az1", "apse2-az3"]
+    nat_gateway_mode      = "single"
+  }
+
+  assert {
+    condition = (
+      output.network.nat_gateway_mode == "single" &&
+      toset(keys(output.network.egress_ips_by_zone)) == toset(["apse2-az1"]) &&
+      output.network.task_egress_nat_zones == { "apse2-az1" = "apse2-az1", "apse2-az3" = "apse2-az1" } &&
+      length(output.network.public_subnet_ids) == 2 &&
+      length(output.network.task_subnet_ids) == 2 &&
+      length(output.network.database_subnet_ids) == 2 &&
+      !aws_db_instance.standard.multi_az && !aws_db_instance.standard.publicly_accessible &&
+      aws_ecr_repository.backend.image_tag_mutability == "IMMUTABLE" &&
+      length(aws_iam_role.github_publisher) == 0 && length(aws_ecs_service.backend) == 0
+    )
+    error_message = "The lab must share one NAT while keeping two-AZ networking, private Single-AZ RDS, ECR, and publishing disabled."
+  }
+}
+
+run "reject_single_nat_in_production" {
+  command = plan
+
+  variables {
+    nat_gateway_mode = "single"
+  }
+
+  expect_failures = [var.nat_gateway_mode]
+}
+
+run "reject_unknown_nat_topology" {
+  command = plan
+
+  variables {
+    nat_gateway_mode = "none"
+  }
+
+  expect_failures = [var.nat_gateway_mode]
 }

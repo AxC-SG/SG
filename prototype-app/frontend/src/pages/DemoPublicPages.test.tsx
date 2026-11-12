@@ -94,7 +94,7 @@ describe('Demo public pages', () => {
     renderWithProviders(<DemoLandingPage />, { route: '/demo' });
 
     const banner = within(screen.getByRole('banner'));
-    expect(banner.getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
+    expect(banner.getByRole('link', { name: 'Scoutgrid – AI Security home' })).toHaveAttribute('href', '/demo');
     const navigation = within(screen.getByRole('navigation', { name: 'Scoutgrid site' }));
     expect(navigation.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#platform');
     expect(navigation.getByRole('link', { name: 'Products' })).toHaveAttribute('href', '/demo#products');
@@ -248,7 +248,7 @@ describe('Demo public pages', () => {
   it('gives the login page the new top bar without the site footer', () => {
     renderWithProviders(<LoginPage />, { route: '/login' });
 
-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Scoutgrid – AI Security home' })).toHaveAttribute('href', '/demo');
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 

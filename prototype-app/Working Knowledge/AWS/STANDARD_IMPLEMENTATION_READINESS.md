@@ -2,6 +2,22 @@
 
 Use this record for G00 and P14. Candidate evidence belongs in `release-evidence/<release-id>/` or the protected release artifact store.
 
+**Latest execution update — November 12, 2026:** PR #69 was manually merged as
+`4678580ab0a84c6cd2dfd96a02cfedc168e0a9cf`. All four required main workflows and
+the full browser sweep on its identical PR source tree passed. Retain and verify
+that exact SHA's backend/frontend pair; a configured lab frontend is separate.
+The owner authorized one replacement PR for the subsequent budget records/guard.
+After any new merge, qualify that exact new main SHA and its new artifacts.
+
+The owner authorized **$50 inclusive monthly Sydney lab spend**, superseding older
+$20/pending-approval statements. Allocate **$25 inclusive** to the application run;
+November 12's conservative prior-run bound is about $4.59, with $20.41 unallocated
+monthly contingency. Target four hours and finish cleanup by eight. See the
+[current execution authorization](release-evidence/postmerge-20261111/EXECUTION_AUTHORIZATION_20261111.md)
+and [reproducible budget](release-evidence/postmerge-20261111/authorized-budget-20261111.json).
+The application lab remains undeployed. Release/access/secret prerequisites and
+all remaining live qualification gates remain open. Older entries are historical.
+
 ## G00 — Open
 
 | Entry | Recorded decision or evidence still needed |
@@ -11,7 +27,7 @@ Use this record for G00 and P14. Candidate evidence belongs in `release-evidence
 | Recovery | Same account and region. RPO at most 15 minutes and RTO at most four hours. Starting PITR retention is seven days for the lab and 14 days for production. |
 | Workload | Freeze one, three and ten customer fixtures with up to 1,000 assets and 100,000 associations per customer, shared corpus and active SG Internal. Capture isolated provider fixture baselines and 2 sustained/10 burst API RPS. |
 | AWS account and DNS inventory | The disposable lab remains in account `736486260824`, Sydney (`ap-southeast-2`). The owner selected TeamSG Management (`560246495987`) for production. Use Northern Virginia (`us-east-1`) as the lower-cost production region. Confirm scoped deployment roles, AZ IDs, CIDRs, data location requirements, DNS and named owners. |
-| Team and spend | The owner authorized a disposable lab under $20 per month, with teardown after each test. Stage B sizing and ongoing infrastructure require separate budget review. Name the product, platform, backend, quality, release and on-call owners. Record approved external data flows. |
+| Team and spend | The owner authorized a $50 USD inclusive monthly Sydney lab ceiling on November 11, including prior/unposted charges, tax and contingency. Allocate $25 inclusive to the application run; target four hours and complete cleanup by eight. Teardown follows each test. Stage B sizing and ongoing infrastructure require separate budget review. Name the product, platform, backend, quality, release and on-call owners. Record approved external data flows. |
 | Legacy and reset targets | Confirm current hosting, database and schema identifiers, writers, backups, holds and test-only data. Record each verified target and its reuse or retirement disposition before any reset. |
 | Migration baseline | Retain the existing append-only histories. The connector scheduling candidate advances the platform head to V15. The tenant head remains V20. Verify both heads against the packaged candidate. Fresh production bootstrap creates only SG Internal. |
 
@@ -280,10 +296,10 @@ The [security operations configuration](../../infrastructure/terraform/standard/
 
 The account security owner enables or verifies GuardDuty foundational detection in the designated region and records enabled protection plans and the usage estimate. For a new standalone detector, explicitly disable unapproved optional features during creation. AWS can enable omitted features by default. Supply the verified detector ID as `operations.guardduty_detector_id`. EventBridge selects that detector's findings at severity 4 or greater and noncompliance changes for the configured AWS Config rules. Both routes use a dedicated, account-local `operations.security_topic_arn` with a confirmed operator subscription. The EventBridge execution role can publish only to that topic. Verify topic encryption and key permissions before use. Alerts carry the finding ID or rule name, account, region and EventBridge event ID. [GuardDuty detector defaults](https://docs.aws.amazon.com/cli/latest/reference/guardduty/create-detector.html) · [EventBridge target permissions](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-events-iam-roles.html)
 
-Set `monthly_budget` independently using the approved monthly USD amount and billing operator email. The [budget configuration](../../infrastructure/terraform/standard/budget.tf) tracks the entire account, with actual alerts above 80% and forecast alerts above 100%. It accepts a lab amount below $20. Budget alerts can lag usage, so enforce the lab limit through a reviewed resource estimate, run duration and teardown. Use the dedicated account scope to include untagged shared charges. [AWS Budgets update cadence](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)
+Set `monthly_budget` independently using the approved monthly USD amount and billing operator email. The [budget configuration](../../infrastructure/terraform/standard/budget.tf) tracks the entire account, with actual alerts above 80% and forecast alerts above 100%. It accepts a positive lab amount up to the authorized $50 ceiling. This is an alert amount, not a real-time spending cap. Budget alerts can lag usage, so enforce the lab limit through a reviewed resource estimate, run duration and teardown. Use the dedicated account scope to include untagged shared charges. [AWS Budgets update cadence](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)
 
 The worker availability alarm uses the existing ECS Container Insights service task count. It alarms when running count is below the configured desired count or when samples disappear. For lab evidence, generate a GuardDuty sample finding, demonstrate a Config rule evaluation and encrypted history delivery, and capture SNS receipt. Verify worker alarm and recovery under controlled replacement, then record the budget subscriber and actual or forecast notification evidence. [ECS Container Insights metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-metrics-ECS.html)
 
-Terraform formatting and validation passed, along with 11 mocked plans. The plans cover opt-in behavior, archive grants, scoped event routing, worker alarm settings, and rejection of a lab budget at or above $20.
+Terraform formatting and validation passed, along with 11 mocked plans. The plans cover opt-in behavior, archive grants, scoped event routing, worker alarm settings, and the historical below-$20 lab guard. The November 11 update accepts $50 and rejects $50.01; fresh verification is recorded with the current PR.
 
 Live CloudTrail delivery and digest verification, detector enablement, Config evaluations, SNS and budget receipt, application telemetry alerts and restore access remain open.
