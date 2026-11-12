@@ -13,11 +13,22 @@ variable "cognito_domain_prefix" {
   type        = string
 }
 
+variable "cognito_mfa_configuration" {
+  description = "Cognito MFA for platform and tenant sign-in: ON (required), OPTIONAL or OFF. OFF in every environment by owner decision on November 12, 2026."
+  type        = string
+  default     = "OFF"
+
+  validation {
+    condition     = contains(["ON", "OPTIONAL", "OFF"], var.cognito_mfa_configuration)
+    error_message = "Use ON, OPTIONAL or OFF."
+  }
+}
+
 resource "aws_cognito_user_pool" "humans" {
   name                     = "${local.name}-humans"
   user_pool_tier           = "ESSENTIALS"
   deletion_protection      = "ACTIVE"
-  mfa_configuration        = "ON"
+  mfa_configuration        = var.cognito_mfa_configuration
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
@@ -25,8 +36,11 @@ resource "aws_cognito_user_pool" "humans" {
     case_sensitive = false
   }
 
-  software_token_mfa_configuration {
-    enabled = true
+  dynamic "software_token_mfa_configuration" {
+    for_each = var.cognito_mfa_configuration == "OFF" ? [] : [true]
+    content {
+      enabled = true
+    }
   }
 
   account_recovery_setting {
