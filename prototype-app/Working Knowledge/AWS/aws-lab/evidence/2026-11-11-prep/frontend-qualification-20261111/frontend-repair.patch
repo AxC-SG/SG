@@ -1,0 +1,256 @@
+diff --git a/prototype-app/frontend/e2e/axe-audit.mjs b/prototype-app/frontend/e2e/axe-audit.mjs
+index 213d28c5..13a0667f 100644
+--- a/prototype-app/frontend/e2e/axe-audit.mjs
++++ b/prototype-app/frontend/e2e/axe-audit.mjs
+@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
+ import { chromium } from '@playwright/test';
+ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
+-import { newContext } from './browser.mjs';
++import { newContext, waitForPageReady } from './browser.mjs';
+ import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
+ import { platformActor } from './governance-fixtures.mjs';
+ import { ALL_ROUTES, routeEntry } from './routes.mjs';
+@@ -48,6 +48,7 @@ for (const theme of themes) for (const width of widths) {
+     page.on('pageerror', (error) => pageErrors.push(`${theme} ${page.url().replace(base, '')}: ${error.message}`));
+     for (const route of routes) {
+       await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
++      await waitForPageReady(page);
+       if (injectCss) await page.addStyleTag({ content: injectCss });
+       await page.waitForTimeout(600);
+       await page.evaluate(axeSource);
+diff --git a/prototype-app/frontend/e2e/browser.mjs b/prototype-app/frontend/e2e/browser.mjs
+index 55409b0a..b1f38d2f 100644
+--- a/prototype-app/frontend/e2e/browser.mjs
++++ b/prototype-app/frontend/e2e/browser.mjs
+@@ -8,6 +8,7 @@
+ import { readFileSync } from 'node:fs';
+ import { createRequire } from 'node:module';
+ import { FIXED_TIME } from './time.mjs';
++import { expect } from '@playwright/test';
+ 
+ export const CONTEXT_OPTIONS = { locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' };
+ 
+@@ -31,6 +32,13 @@ const NO_MOTION = '*, *::before, *::after { animation-duration: 0s !important; a
+ 
+ const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+ 
++// Network idle can precede a lazy route mounting its queries. Audit and capture
++// the rendered page after its loading state, rather than accepting a quiet frame.
++export async function waitForPageReady(page) {
++  await expect(page.getByRole('main')).toBeVisible();
++  await expect(page.getByText(/^Loading(?:\b|…|\.\.\.)/).filter({ visible: true })).toHaveCount(0);
++}
++
+ /** Applies the deterministic settings to a context created with CONTEXT_OPTIONS. */
+ export async function prepareContext(context) {
+   await context.clock.setFixedTime(FIXED_TIME);
+diff --git a/prototype-app/frontend/e2e/connect-journey.mjs b/prototype-app/frontend/e2e/connect-journey.mjs
+index 2f524c55..3896cff7 100644
+--- a/prototype-app/frontend/e2e/connect-journey.mjs
++++ b/prototype-app/frontend/e2e/connect-journey.mjs
+@@ -80,6 +80,8 @@ for (const theme of themes) {
+   await unconfiguredAws.context.route((url) => url.pathname === '/api/connectors/ai-security/aws',
+     (route) => route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }));
+   await unconfiguredAws.page.goto(`${base}/connect?connectSource=ai-security-aws`, { waitUntil: 'networkidle' });
++  await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).waitFor();
++  await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').filter({ hasText: /^Not configured$/ }).waitFor();
+   check(tag('unconfigured AWS AI connector shows initial setup'),
+     await unconfiguredAws.page.getByRole('button', { name: 'Save connection' }).isVisible()
+     && await unconfiguredAws.page.locator('.ai-security-hero.connector .status-pill').textContent() === 'Not configured');
+@@ -255,7 +257,7 @@ for (const theme of themes) {
+   // ── Copilot Studio standalone route ─────────────────────────────────────
+   const copilot = await newPage(theme, 1440);
+   await copilot.page.goto(`${base}/connect/copilot-studio`, { waitUntil: 'networkidle' });
+-  await copilot.page.getByText('Configured organizations').waitFor();
++  await copilot.page.getByRole('heading', { name: 'Configured organizations', exact: true }).waitFor();
+   copilot.requests.length = 0;
+   await copilot.page.getByRole('button', { name: 'Run discovery' }).click();
+   await copilot.page.getByRole('status').filter({ hasText: /Discovery (already queued|queued)/ }).waitFor();
+@@ -269,6 +271,7 @@ for (const theme of themes) {
+   await settle(owner.page);
+   check(tag('platform owner /connect redirects to vuln-intel'), here(owner.page) === '/platform/vuln-intel', here(owner.page));
+   await owner.page.getByText('NVD Vulnerability Feed').first().waitFor();
++  await owner.page.locator('.platform-feed-card', { hasText: 'GitHub Advisory Database (GHSA)' }).getByText('Sync failed').waitFor();
+   check(tag('feed catalog shows the GHSA failure'), await owner.page.locator('.platform-feed-card', { hasText: 'GitHub Advisory Database (GHSA)' }).getByText('Sync failed').isVisible());
+   await shot(owner.page, tag('platform-feeds'));
+   await owner.page.locator('.platform-feed-card', { hasText: 'NVD Vulnerability Feed' }).click();
+diff --git a/prototype-app/frontend/e2e/inventory-journey.mjs b/prototype-app/frontend/e2e/inventory-journey.mjs
+index 63e6fe4e..ecd6f613 100644
+--- a/prototype-app/frontend/e2e/inventory-journey.mjs
++++ b/prototype-app/frontend/e2e/inventory-journey.mjs
+@@ -244,6 +244,7 @@ for (const theme of themes) {
+   const gated = await newPage(theme, 1440, { ...actor, entitlements: { 'ai.security': false } });
+   for (const route of ['/inventory/ai', `/inventory/ai/${PRIMARY_AI_ASSET_ID}`, '/inventory/ai/declared-resources', `/inventory/ai/declared-resources/${PRIMARY_DECLARED_RESOURCE_ID}`]) {
+     await gated.page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
++    await gated.page.waitForURL((url) => url.pathname === '/exposure');
+     await settle(gated.page);
+     check(tag(`ai.security=false redirects ${route} to /exposure`), new URL(gated.page.url()).pathname === '/exposure', here(gated.page));
+   }
+diff --git a/prototype-app/frontend/e2e/route-sweep.mjs b/prototype-app/frontend/e2e/route-sweep.mjs
+index d0f17f3c..fa3676a6 100644
+--- a/prototype-app/frontend/e2e/route-sweep.mjs
++++ b/prototype-app/frontend/e2e/route-sweep.mjs
+@@ -16,7 +16,7 @@
+ import { chromium } from '@playwright/test';
+ import { mkdirSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
+-import { newContext } from './browser.mjs';
++import { newContext, waitForPageReady } from './browser.mjs';
+ import { actor, failOnUnexpectedApi, routeFixtures } from './fixtures.mjs';
+ import { APPROVED_PLATFORM_POLICY_ID, PRIMARY_POLICY_ID, platformActor } from './governance-fixtures.mjs';
+ import { PRIMARY_CVE } from './cve-fixtures.mjs';
+@@ -98,6 +98,7 @@ async function sweep(who, routes, { unauthenticated = false, navClicks = false }
+       if (url.origin !== new URL(base).origin && !EXPECTED_EXTERNAL_HOSTS.has(url.hostname)) externalRequests.push(`${request.method()} ${url.origin}${url.pathname}`);
+     });
+     const inspect = async (route, via) => {
++      await waitForPageReady(page);
+       await page.waitForTimeout(700);
+       const state = await page.evaluate((roots) => {
+         const content = document.querySelector('main.content') ?? document.body;
+diff --git a/prototype-app/frontend/e2e/visual.spec.ts b/prototype-app/frontend/e2e/visual.spec.ts
+index a8b4a00d..98bffd2a 100644
+--- a/prototype-app/frontend/e2e/visual.spec.ts
++++ b/prototype-app/frontend/e2e/visual.spec.ts
+@@ -2,7 +2,7 @@
+ // Fixture-backed and deterministic (see browser.mjs); not authenticated staging evidence.
+ // E2E_ROUTES (comma-separated paths) and E2E_WIDTHS narrow the run for e2e:affected.
+ import { expect, test } from '@playwright/test';
+-import { prepareContext } from './browser.mjs';
++import { prepareContext, waitForPageReady } from './browser.mjs';
+ import { actor, routeFixtures } from './fixtures.mjs';
+ import { platformActor } from './governance-fixtures.mjs';
+ import { ALL_ROUTES, routeEntry } from './routes.mjs';
+@@ -29,6 +29,7 @@ for (const [path, who] of routes) {
+         page.on('pageerror', (error) => errors.push(error.message));
+         await page.setViewportSize({ width, height: 900 });
+         await page.goto(path, { waitUntil: 'networkidle' });
++        await waitForPageReady(page);
+         await page.evaluate(() => document.fonts.ready);
+         await expect(page).toHaveScreenshot(nameOf(path, theme, width), { fullPage: true });
+         expect(errors).toEqual([]);
+diff --git a/prototype-app/frontend/src/features/public-site/PublicSiteShell.tsx b/prototype-app/frontend/src/features/public-site/PublicSiteShell.tsx
+index cc06b966..8fcce32e 100644
+--- a/prototype-app/frontend/src/features/public-site/PublicSiteShell.tsx
++++ b/prototype-app/frontend/src/features/public-site/PublicSiteShell.tsx
+@@ -101,7 +101,7 @@ function SiteHeader({ onLogout }: { onLogout?: () => void }) {
+   return (
+     <header className="sgw-nav">
+       <div className="sgw-nav-inner">
+-        <Link to="/demo" className="sgw-nav-brand" aria-label={`${SITE_NAME} home`}>
++        <Link to="/demo" className="sgw-nav-brand" aria-label={`${SITE_NAME} – AI Security home`}>
+           <SiteLogo />
+         </Link>
+         <nav className="sgw-nav-links" aria-label={`${SITE_NAME} site`}>
+diff --git a/prototype-app/frontend/src/pages/DemoPublicPages.test.tsx b/prototype-app/frontend/src/pages/DemoPublicPages.test.tsx
+index 55dd37ba..9c7bc405 100644
+--- a/prototype-app/frontend/src/pages/DemoPublicPages.test.tsx
++++ b/prototype-app/frontend/src/pages/DemoPublicPages.test.tsx
+@@ -94,7 +94,7 @@ describe('Demo public pages', () => {
+     renderWithProviders(<DemoLandingPage />, { route: '/demo' });
+ 
+     const banner = within(screen.getByRole('banner'));
+-    expect(banner.getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
++    expect(banner.getByRole('link', { name: 'Scoutgrid – AI Security home' })).toHaveAttribute('href', '/demo');
+     const navigation = within(screen.getByRole('navigation', { name: 'Scoutgrid site' }));
+     expect(navigation.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/demo#platform');
+     expect(navigation.getByRole('link', { name: 'Products' })).toHaveAttribute('href', '/demo#products');
+@@ -248,7 +248,7 @@ describe('Demo public pages', () => {
+   it('gives the login page the new top bar without the site footer', () => {
+     renderWithProviders(<LoginPage />, { route: '/login' });
+ 
+-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Scoutgrid home' })).toHaveAttribute('href', '/demo');
++    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Scoutgrid – AI Security home' })).toHaveAttribute('href', '/demo');
+     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+   });
+ 
+diff --git a/prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx b/prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx
+index 8a162377..a2b80c66 100644
+--- a/prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx
++++ b/prototype-app/frontend/src/pages/VulnRepoOrgCvePage.tsx
+@@ -343,11 +343,11 @@ export function VulnRepoOrgCvePage({
+         const orgImpact = computeOrgImpact(item, riskResult.score, 0);
+         const orgImpactStyle: React.CSSProperties =
+           orgImpact === 'HIGH'
+-            ? { background: '#9b233522', color: '#9b2335', border: '1px solid #9b233544' }
++            ? { background: 'var(--cve-impact-high-bg)', color: 'var(--cve-impact-high-text)', border: '1px solid var(--cve-impact-high-border)' }
+             : orgImpact === 'MEDIUM'
+-              ? { background: '#b7791f22', color: '#b7791f', border: '1px solid #b7791f44' }
++              ? { background: 'var(--cve-impact-medium-bg)', color: 'var(--cve-impact-medium-text)', border: '1px solid var(--cve-impact-medium-border)' }
+               : orgImpact === 'LOW'
+-                ? { background: '#2d6a4f22', color: '#2d6a4f', border: '1px solid #2d6a4f44' }
++                ? { background: 'var(--cve-impact-low-bg)', color: 'var(--cve-impact-low-text)', border: '1px solid var(--cve-impact-low-border)' }
+                 : { background: 'var(--dp-surface-2)', color: 'var(--dp-text-2)', border: '1px solid var(--dp-border)' };
+         const orgImpactLabel = orgImpact === 'NONE' ? 'No' : orgImpact.charAt(0) + orgImpact.slice(1).toLowerCase();
+         return {
+diff --git a/prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx b/prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx
+index c1188944..72413011 100644
+--- a/prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx
++++ b/prototype-app/frontend/src/pages/VulnRepoVulnerabilitiesPage.tsx
+@@ -661,11 +661,11 @@ export function VulnRepoVulnerabilitiesPage() {
+             const orgImpact = computeOrgImpact(item, r.score, 0);
+             const orgImpactStyle: React.CSSProperties =
+               orgImpact === 'HIGH'
+-                ? { background: '#9b233522', color: '#9b2335', border: '1px solid #9b233544' }
++                ? { background: 'var(--cve-impact-high-bg)', color: 'var(--cve-impact-high-text)', border: '1px solid var(--cve-impact-high-border)' }
+                 : orgImpact === 'MEDIUM'
+-                  ? { background: '#b7791f22', color: '#b7791f', border: '1px solid #b7791f44' }
++                  ? { background: 'var(--cve-impact-medium-bg)', color: 'var(--cve-impact-medium-text)', border: '1px solid var(--cve-impact-medium-border)' }
+                   : orgImpact === 'LOW'
+-                    ? { background: '#2d6a4f22', color: '#2d6a4f', border: '1px solid #2d6a4f44' }
++                    ? { background: 'var(--cve-impact-low-bg)', color: 'var(--cve-impact-low-text)', border: '1px solid var(--cve-impact-low-border)' }
+                     : { background: 'var(--dp-surface-2)', color: 'var(--dp-text-2)', border: '1px solid var(--dp-border)' };
+             const orgImpactLabel = orgImpact === 'NONE' ? 'No' : orgImpact.charAt(0) + orgImpact.slice(1).toLowerCase();
+             const cls = `risk-score-badge risk-score-badge--${riskScoreLabel(r.score).toLowerCase()}`;
+diff --git a/prototype-app/frontend/src/styles/ui2/app-base.css b/prototype-app/frontend/src/styles/ui2/app-base.css
+index b355fb18..ad90fde1 100644
+--- a/prototype-app/frontend/src/styles/ui2/app-base.css
++++ b/prototype-app/frontend/src/styles/ui2/app-base.css
+@@ -4897,15 +4897,15 @@ html:where([data-ui='2']),
+ }
+ 
+ :where(html[data-ui='2']) .inv-status-done {
+-  background: color-mix(in srgb, #16a34a 12%, transparent);
+-  border-color: color-mix(in srgb, #16a34a 40%, transparent);
+-  color: #15803d;
++  background: color-mix(in srgb, var(--dp-success) 12%, transparent);
++  border-color: color-mix(in srgb, var(--dp-success) 40%, transparent);
++  color: var(--dp-success);
+ }
+ 
+ :where(html[data-ui='2']) .inv-status-in-progress {
+-  background: color-mix(in srgb, #f59e0b 12%, transparent);
+-  border-color: color-mix(in srgb, #f59e0b 40%, transparent);
+-  color: #b45309;
++  background: color-mix(in srgb, var(--dp-warning) 12%, transparent);
++  border-color: color-mix(in srgb, var(--dp-warning) 40%, transparent);
++  color: var(--dp-warning);
+ }
+ 
+ :where(html[data-ui='2']) .inv-status-not-started {
+@@ -4915,9 +4915,9 @@ html:where([data-ui='2']),
+ }
+ 
+ :where(html[data-ui='2']) .inv-status-applicable {
+-  background: color-mix(in srgb, #3b82f6 10%, transparent);
+-  border-color: color-mix(in srgb, #3b82f6 40%, transparent);
+-  color: #2563eb;
++  background: color-mix(in srgb, var(--dp-accent) 10%, transparent);
++  border-color: color-mix(in srgb, var(--dp-accent) 40%, transparent);
++  color: var(--dp-accent);
+ }
+ 
+ :where(html[data-ui='2']) .status-auto_closed {
+diff --git a/prototype-app/frontend/src/styles/ui2/cve-base.css b/prototype-app/frontend/src/styles/ui2/cve-base.css
+index 8c89637b..8973f36c 100644
+--- a/prototype-app/frontend/src/styles/ui2/cve-base.css
++++ b/prototype-app/frontend/src/styles/ui2/cve-base.css
+@@ -7778,7 +7778,7 @@
+ 
+ :where(html[data-ui='2']) .vuln-repo-scope-btn.is-active {
+   background: var(--dp-accent);
+-  color: #fff;
++  color: var(--dp-accent-fg);
+ }
+ 
+ :where(html[data-ui='2']) .intel-col-header-inner {

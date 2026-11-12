@@ -1,0 +1,1106 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:35:13.990571+00:00",
+    "vpcs": [
+      {
+        "OwnerId": "736486260824",
+        "InstanceTenancy": "default",
+        "CidrBlockAssociationSet": [
+          {
+            "AssociationId": "vpc-cidr-assoc-093bd24404e9eae81",
+            "CidrBlock": "10.21.0.0/16",
+            "CidrBlockState": {
+              "State": "associated"
+            }
+          }
+        ],
+        "IsDefault": false,
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "lab"
+          },
+          {
+            "Key": "Name",
+            "Value": "scoutgrid-lab"
+          },
+          {
+            "Key": "Application",
+            "Value": "ScoutGrid"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "Terraform"
+          },
+          {
+            "Key": "Profile",
+            "Value": "Standard"
+          }
+        ],
+        "BlockPublicAccessStates": {
+          "InternetGatewayBlockMode": "off"
+        },
+        "VpcId": "vpc-0086ef85ee121f76c",
+        "State": "available",
+        "CidrBlock": "10.21.0.0/16",
+        "DhcpOptionsId": "dopt-006be7df5a06dd3c1"
+      }
+    ],
+    "resources": {
+      "subnets": {
+        "Subnets": [
+          {
+            "AvailabilityZoneId": "apse2-az3",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-public-apse2-az3"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0cee1253ff1128285",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0cee1253ff1128285",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.32.0/19",
+            "AvailableIpAddressCount": 8187,
+            "AvailabilityZone": "ap-southeast-2b",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          },
+          {
+            "AvailabilityZoneId": "apse2-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-task-apse2-az1"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0158a2f6531242fc3",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0158a2f6531242fc3",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.64.0/19",
+            "AvailableIpAddressCount": 8187,
+            "AvailabilityZone": "ap-southeast-2a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          },
+          {
+            "AvailabilityZoneId": "apse2-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-public-apse2-az1"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0a5682fd3ca22881c",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0a5682fd3ca22881c",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.0.0/19",
+            "AvailableIpAddressCount": 8186,
+            "AvailabilityZone": "ap-southeast-2a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          },
+          {
+            "AvailabilityZoneId": "apse2-az3",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-database-apse2-az3"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-02e49121c453e2a45",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-02e49121c453e2a45",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.160.0/19",
+            "AvailableIpAddressCount": 8187,
+            "AvailabilityZone": "ap-southeast-2b",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          },
+          {
+            "AvailabilityZoneId": "apse2-az3",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-task-apse2-az3"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0563f758e167524f5",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0563f758e167524f5",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.96.0/19",
+            "AvailableIpAddressCount": 8187,
+            "AvailabilityZone": "ap-southeast-2b",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          },
+          {
+            "AvailabilityZoneId": "apse2-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "736486260824",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-database-apse2-az1"
+              }
+            ],
+            "SubnetArn": "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-00a0f5c664e073ddf",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+              "HostnameType": "ip-name",
+              "EnableResourceNameDnsARecord": false,
+              "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+              "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-00a0f5c664e073ddf",
+            "State": "available",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "CidrBlock": "10.21.128.0/19",
+            "AvailableIpAddressCount": 8186,
+            "AvailabilityZone": "ap-southeast-2a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+          }
+        ]
+      },
+      "routes": {
+        "RouteTables": [
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-0d523c10f6cf225b1",
+                "RouteTableId": "rtb-062821eb3e7c5f9fe",
+                "SubnetId": "subnet-0a5682fd3ca22881c",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-062821eb3e7c5f9fe",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              },
+              {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": "igw-04102ba63bce7f765",
+                "Origin": "CreateRoute",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-public-apse2-az1"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-0e4c7a625a18d5958",
+                "RouteTableId": "rtb-0980c7795c3891b63",
+                "SubnetId": "subnet-0563f758e167524f5",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-0980c7795c3891b63",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              },
+              {
+                "DestinationPrefixListId": "pl-6ca54005",
+                "GatewayId": "vpce-008d276acf0f6e0fb",
+                "Origin": "CreateRoute",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-task-apse2-az3"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-0f902136531e1838a",
+                "RouteTableId": "rtb-01c4a47557334afb8",
+                "SubnetId": "subnet-00a0f5c664e073ddf",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-01c4a47557334afb8",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-database-apse2-az1"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-0406f5ca811995a07",
+                "RouteTableId": "rtb-062bc08e02e04b2d1",
+                "SubnetId": "subnet-0cee1253ff1128285",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-062bc08e02e04b2d1",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              },
+              {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": "igw-04102ba63bce7f765",
+                "Origin": "CreateRoute",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-public-apse2-az3"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": true,
+                "RouteTableAssociationId": "rtbassoc-03d9c61c47741fc99",
+                "RouteTableId": "rtb-0a7863595d74005f1",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-0a7863595d74005f1",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              }
+            ],
+            "Tags": [],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-07c5df59268782a27",
+                "RouteTableId": "rtb-0ea5f3d8c7fee4ee9",
+                "SubnetId": "subnet-0158a2f6531242fc3",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-0ea5f3d8c7fee4ee9",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              },
+              {
+                "DestinationPrefixListId": "pl-6ca54005",
+                "GatewayId": "vpce-008d276acf0f6e0fb",
+                "Origin": "CreateRoute",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-task-apse2-az1"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          },
+          {
+            "Associations": [
+              {
+                "Main": false,
+                "RouteTableAssociationId": "rtbassoc-060147006e938c9f3",
+                "RouteTableId": "rtb-07dbff4b20ba62739",
+                "SubnetId": "subnet-02e49121c453e2a45",
+                "AssociationState": {
+                  "State": "associated"
+                }
+              }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-07dbff4b20ba62739",
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.21.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              }
+            ],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-database-apse2-az3"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "OwnerId": "736486260824"
+          }
+        ]
+      },
+      "groups": {
+        "SecurityGroups": [
+          {
+            "GroupId": "sg-0050a182ec08cbd61",
+            "IpPermissionsEgress": [
+              {
+                "IpProtocol": "-1",
+                "UserIdGroupPairs": [],
+                "IpRanges": [
+                  {
+                    "CidrIp": "0.0.0.0/0"
+                  }
+                ],
+                "Ipv6Ranges": [],
+                "PrefixListIds": []
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "SecurityGroupArn": "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-0050a182ec08cbd61",
+            "OwnerId": "736486260824",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "IpPermissions": [
+              {
+                "IpProtocol": "-1",
+                "UserIdGroupPairs": [
+                  {
+                    "UserId": "736486260824",
+                    "GroupId": "sg-0050a182ec08cbd61"
+                  }
+                ],
+                "IpRanges": [],
+                "Ipv6Ranges": [],
+                "PrefixListIds": []
+              }
+            ]
+          },
+          {
+            "GroupId": "sg-06d88c1de163490ee",
+            "IpPermissionsEgress": [],
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              }
+            ],
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "SecurityGroupArn": "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-06d88c1de163490ee",
+            "OwnerId": "736486260824",
+            "GroupName": "scoutgrid-lab-postgres",
+            "Description": "Standard PostgreSQL, ingress added only for approved task groups",
+            "IpPermissions": []
+          }
+        ]
+      },
+      "nat": {
+        "NatGateways": [
+          {
+            "CreateTime": "2026-11-12T10:34:49+00:00",
+            "NatGatewayAddresses": [
+              {
+                "AllocationId": "eipalloc-01435757a70e8c46c",
+                "NetworkInterfaceId": "eni-0e30f7e35dd9ce62d",
+                "PrivateIp": "10.21.25.232",
+                "IsPrimary": true,
+                "Status": "associating"
+              }
+            ],
+            "NatGatewayId": "nat-013d0cfcce592ba33",
+            "State": "pending",
+            "SubnetId": "subnet-0a5682fd3ca22881c",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-apse2-az1"
+              }
+            ],
+            "ConnectivityType": "public",
+            "AvailabilityMode": "zonal",
+            "AttachedAppliances": []
+          }
+        ]
+      },
+      "gateway": {
+        "InternetGateways": [
+          {
+            "Attachments": [
+              {
+                "State": "available",
+                "VpcId": "vpc-0086ef85ee121f76c"
+              }
+            ],
+            "InternetGatewayId": "igw-04102ba63bce7f765",
+            "OwnerId": "736486260824",
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              }
+            ]
+          }
+        ]
+      },
+      "endpoints": {
+        "VpcEndpoints": [
+          {
+            "VpcEndpointId": "vpce-008d276acf0f6e0fb",
+            "VpcEndpointType": "Gateway",
+            "VpcId": "vpc-0086ef85ee121f76c",
+            "ServiceName": "com.amazonaws.ap-southeast-2.s3",
+            "State": "available",
+            "PolicyDocument": "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"*\",\"Resource\":\"*\"}]}",
+            "RouteTableIds": [
+              "rtb-0980c7795c3891b63",
+              "rtb-0ea5f3d8c7fee4ee9"
+            ],
+            "SubnetIds": [],
+            "Groups": [],
+            "IpAddressType": "ipv4",
+            "DnsOptions": {
+              "DnsRecordIpType": "service-defined"
+            },
+            "PrivateDnsEnabled": false,
+            "RequesterManaged": false,
+            "NetworkInterfaceIds": [],
+            "DnsEntries": [],
+            "CreationTimestamp": "2026-11-12T10:34:47+00:00",
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-s3"
+              }
+            ],
+            "OwnerId": "736486260824",
+            "ServiceRegion": "ap-southeast-2"
+          }
+        ]
+      },
+      "addresses": {
+        "Addresses": [
+          {
+            "AllocationId": "eipalloc-01435757a70e8c46c",
+            "Domain": "vpc",
+            "Tags": [
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "Name",
+                "Value": "scoutgrid-lab-apse2-az1"
+              }
+            ],
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "ap-southeast-2",
+            "PublicIp": "3.105.208.125"
+          }
+        ]
+      },
+      "db": {
+        "DBInstances": [
+          {
+            "DBInstanceIdentifier": "scoutgrid-lab",
+            "DBInstanceClass": "db.t4g.medium",
+            "Engine": "postgres",
+            "DBInstanceStatus": "creating",
+            "MasterUsername": "scout_install_owner",
+            "DBName": "scoutgrid",
+            "AllocatedStorage": 100,
+            "PreferredBackupWindow": "12:47-13:17",
+            "BackupRetentionPeriod": 7,
+            "DBSecurityGroups": [],
+            "VpcSecurityGroups": [
+              {
+                "VpcSecurityGroupId": "sg-06d88c1de163490ee",
+                "Status": "active"
+              }
+            ],
+            "DBParameterGroups": [
+              {
+                "DBParameterGroupName": "scoutgrid-lab-postgres16",
+                "ParameterApplyStatus": "in-sync"
+              }
+            ],
+            "AvailabilityZone": "ap-southeast-2a",
+            "DBSubnetGroup": {
+              "DBSubnetGroupName": "scoutgrid-lab",
+              "DBSubnetGroupDescription": "Managed by Terraform",
+              "VpcId": "vpc-0086ef85ee121f76c",
+              "SubnetGroupStatus": "Complete",
+              "Subnets": [
+                {
+                  "SubnetIdentifier": "subnet-02e49121c453e2a45",
+                  "SubnetAvailabilityZone": {
+                    "Name": "ap-southeast-2b"
+                  },
+                  "SubnetOutpost": {},
+                  "SubnetStatus": "Active"
+                },
+                {
+                  "SubnetIdentifier": "subnet-00a0f5c664e073ddf",
+                  "SubnetAvailabilityZone": {
+                    "Name": "ap-southeast-2a"
+                  },
+                  "SubnetOutpost": {},
+                  "SubnetStatus": "Active"
+                }
+              ]
+            },
+            "PreferredMaintenanceWindow": "sat:18:48-sat:19:18",
+            "UpgradeRolloutOrder": "second",
+            "PendingModifiedValues": {},
+            "MultiAZ": false,
+            "EngineVersion": "16.15",
+            "AutoMinorVersionUpgrade": false,
+            "ReadReplicaDBInstanceIdentifiers": [],
+            "LicenseModel": "postgresql-license",
+            "Iops": 3000,
+            "StorageThroughput": 125,
+            "OptionGroupMemberships": [
+              {
+                "OptionGroupName": "default:postgres-16",
+                "Status": "in-sync"
+              }
+            ],
+            "PubliclyAccessible": false,
+            "StorageType": "gp3",
+            "DbInstancePort": 0,
+            "StorageEncrypted": true,
+            "KmsKeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+            "DbiResourceId": "db-ZUXM3Z25GTYNPA7VPSZFBAIDIQ",
+            "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+            "DomainMemberships": [],
+            "CopyTagsToSnapshot": true,
+            "MonitoringInterval": 0,
+            "DBInstanceArn": "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+            "IAMDatabaseAuthenticationEnabled": false,
+            "DatabaseInsightsMode": "standard",
+            "PerformanceInsightsEnabled": false,
+            "DeletionProtection": true,
+            "AssociatedRoles": [],
+            "MaxAllocatedStorage": 200,
+            "TagList": [
+              {
+                "Key": "Environment",
+                "Value": "lab"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "Terraform"
+              },
+              {
+                "Key": "Application",
+                "Value": "ScoutGrid"
+              },
+              {
+                "Key": "Profile",
+                "Value": "Standard"
+              }
+            ],
+            "CustomerOwnedIpEnabled": false,
+            "NetworkType": "IPV4",
+            "ActivityStreamStatus": "stopped",
+            "BackupTarget": "region",
+            "CertificateDetails": {
+              "CAIdentifier": "rds-ca-rsa2048-g1"
+            },
+            "MasterUserSecret": {
+              "SecretArn": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:rds!db-f5fb7dc4-a48d-4d0c-9adc-463c0fa1fa0b-BytOt6",
+              "SecretStatus": "creating",
+              "KmsKeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27"
+            },
+            "DedicatedLogVolume": false,
+            "IsStorageConfigUpgradeAvailable": false,
+            "EngineLifecycleSupport": "open-source-rds-extended-support"
+          }
+        ]
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcs",
+      "status": "success",
+      "n_items": {
+        "Vpcs": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeSubnets",
+      "status": "success",
+      "n_items": {
+        "Subnets": 6
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeRouteTables",
+      "status": "success",
+      "n_items": {
+        "RouteTables": 7
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeSecurityGroups",
+      "status": "success",
+      "n_items": {
+        "SecurityGroups": 2
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeNatGateways",
+      "status": "success",
+      "n_items": {
+        "NatGateways": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeInternetGateways",
+      "status": "success",
+      "n_items": {
+        "InternetGateways": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcEndpoints",
+      "status": "success",
+      "n_items": {
+        "VpcEndpoints": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeAddresses",
+      "status": "success",
+      "n_items": {
+        "Addresses": 1
+      }
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "success",
+      "n_items": {
+        "DBInstances": 1
+      }
+    }
+  ]
+}

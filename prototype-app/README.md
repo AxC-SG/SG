@@ -104,7 +104,7 @@ LOCAL mode uses ACTIVE DB users, bcrypt passwords and current stored grants/memb
 
 ### Platform-owner bootstrap boundary
 
-Application-startup owner seeding is local/test only and rejected in a deployed runtime. Deployed platform/tenant migration, runtime grants and any explicitly enabled owner identity/setup-link operation belong to the separate `ProductionBootstrapCli` using privileged migration credentials. The permanent API uses only the restricted runtime identity. The [wrapper](backend/scripts/run-render-migration.sh) and [grant script](backend/scripts/provision-runtime-role.sql) are the operational sources; invoking them against a live target, sending setup email or rotating keys is outside this documentation task's authorization.
+Application-startup owner seeding is local/test only and rejected in a deployed runtime. Deployed platform/tenant migration, runtime grants and any explicitly enabled owner identity/setup-link operation belong to the separate `ProductionBootstrapCli` using privileged migration credentials. The permanent API uses only the restricted runtime identity. The [wrapper](backend/scripts/run-schema-migration.sh) and [grant script](backend/scripts/provision-runtime-role.sql) are the operational sources; invoking them against a live target, sending setup email or rotating keys is outside this documentation task's authorization.
 
 Tenant/demo invitations use hashed records, fragment links with POST exchange, and encrypted durable delivery intent. Retry/reconciliation preserves unknown provider outcomes; provider acceptance does not prove inbox delivery. See [delivery](docs/backend.md#durable-work-scheduling-and-delivery).
 

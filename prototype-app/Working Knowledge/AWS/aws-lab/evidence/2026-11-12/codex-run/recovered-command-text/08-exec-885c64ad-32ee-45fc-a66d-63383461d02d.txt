@@ -1,0 +1,23 @@
+python3 - <<'PY'
+from pathlib import Path
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py');s=p.read_text().replace("domains/scoutgrid.io", "domains/lab.scoutgrid.io")
+insert='''identity_operator=[
+ statement('EnrollOnlyApprovedAliasesInCapturedPool','cognito-idp','AdminCreateUser AdminGetUser DescribeUserPool',arn('cognito-idp','userpool/RENDER_FRESH_POOL_ID')),
+]
+frontend_operator=[
+ statement('DeployOnlyCapturedLabBranch','amplify','CreateDeployment StartDeployment GetBranch ListJobs',arn('amplify','apps/RENDER_FRESH_APP_ID/branches/lab')),
+ statement('ReadOnlyCapturedLabDeploymentJobs','amplify','GetJob',arn('amplify','apps/RENDER_FRESH_APP_ID/branches/lab/jobs/*')),
+ statement('ReadOnlyCapturedLabApp','amplify','GetApp ListDomainAssociations',arn('amplify','apps/RENDER_FRESH_APP_ID')),
+ statement('AssociateOnlyLabChildDomain','amplify','CreateDomainAssociation GetDomainAssociation',arn('amplify','apps/RENDER_FRESH_APP_ID/domains/lab.scoutgrid.io')),
+]
+retirement=[
+ statement('RetireOnlyCapturedFreshSecretsWithRecovery','secretsmanager','DeleteSecret',[arn('secretsmanager','secret:[REDACTED_SECRET]'),arn('secretsmanager','secret:[REDACTED_SECRET]'),arn('secretsmanager','secret:[REDACTED_SECRET]')],extra={'NumericEquals':{'secretsmanager:RecoveryWindowInDays':7},'BoolIfExists':{'secretsmanager:ForceDeleteWithoutRecovery':'false'}}),
+ statement('ScheduleOnlyCapturedFreshKeysAfterConsumersRemoved','kms','ScheduleKeyDeletion',[arn('kms','key/RENDER_FRESH_DATABASE_KEY'),arn('kms','key/RENDER_FRESH_OBJECT_KEY'),arn('kms','key/RENDER_FRESH_APPLICATION_KEY')],extra={'NumericEquals':{'kms:ScheduleKeyDeletionPendingWindowInDays':30}}),
+]
+'''
+s=s.replace("policies={'secret-custody.template'",insert+"policies={'identity-operator.template':identity_operator,'frontend-operator.template':frontend_operator,'retirement.template':retirement,'secret-custody.template'")
+p.write_text(s)
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/render-synthetic-policy-fixtures.py');s=p.read_text().replace("'RENDER_FRESH_APPLICATION_KEY':'22222222-2222-2222-2222-222222222222',", "'RENDER_FRESH_APPLICATION_KEY':'22222222-2222-2222-2222-222222222222',\n 'RENDER_FRESH_OBJECT_KEY':'44444444-4444-4444-4444-444444444444',\n 'RENDER_CAPTURED_RUNTIME_SECRET':'scoutgrid-lab/runtime-db-a1b2c3',\n 'RENDER_CAPTURED_APPLICATION_SECRET':'scoutgrid-lab/application-settings-a1b2c3',\n 'RENDER_CAPTURED_ENROLLMENT_SECRET':'scoutgrid-lab/managed-installation-a1b2c3',")
+p.write_text(s)
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-manifest.log && python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/render-synthetic-policy-fixtures.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/synthetic-policies.json

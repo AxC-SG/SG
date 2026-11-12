@@ -1,0 +1,2299 @@
+{
+  "status": "success",
+  "hint": "Hint: this result is 42,659 characters, so a client may show only part of it (the start, or the start and end). Return less: only the fields you need, or counts and a sample instead of every record.",
+  "stdout": "",
+  "return_value": {
+    "read_at": "2026-11-12T09:57:21.223978+00:00",
+    "roles": [
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabPlan",
+          "RoleId": "AROA2W6QAQBMHKNN7Q6ZB",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabPlan",
+          "CreateDate": "2026-11-09T15:24:31+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Sydney ScoutGrid Terraform foundation planning and state lock",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Purpose",
+              "Value": "TerraformPlan"
+            }
+          ],
+          "RoleLastUsed": {
+            "LastUsedDate": "2026-11-12T03:33:28+00:00",
+            "Region": "ap-southeast-2"
+          }
+        },
+        "attached": [],
+        "inline": [
+          {
+            "RoleName": "ScoutGridSydneyLabPlan",
+            "PolicyName": "ProviderBucketMetadataCorrection",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadOnlyNamedLabBucketWebsiteMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketWebsite"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:ResourceAccount": "736486260824"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "RoleName": "ScoutGridSydneyLabPlan",
+            "PolicyName": "SydneyLabPlan",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadExactStateBucket",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+                },
+                {
+                  "Sid": "ReadExactState",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject"
+                  ],
+                  "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+                },
+                {
+                  "Sid": "ManageOnlyExactStateLock",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
+                },
+                {
+                  "Sid": "UseStateKeyOnlyThroughS3",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey"
+                  ],
+                  "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2",
+                      "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
+                      "kms:CallerAccount": "736486260824",
+                      "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyNetworkMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:DescribeAddresses",
+                    "ec2:DescribeAddressesAttribute",
+                    "ec2:DescribeAvailabilityZones",
+                    "ec2:DescribeInternetGateways",
+                    "ec2:DescribeManagedPrefixLists",
+                    "ec2:DescribeNatGateways",
+                    "ec2:DescribeNetworkAcls",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribePrefixLists",
+                    "ec2:DescribeRouteTables",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSecurityGroupRules",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeVpcAttribute",
+                    "ec2:DescribeVpcEndpoints",
+                    "ec2:DescribeVpcEndpointServices",
+                    "ec2:DescribeVpcs"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyRdsProviderMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "rds:DescribeDBInstances",
+                    "rds:DescribeDBEngineVersions",
+                    "rds:DescribeDBParameterGroups",
+                    "rds:DescribeDBParameters",
+                    "rds:DescribeDBSubnetGroups",
+                    "rds:DescribeDBSnapshots",
+                    "rds:DescribeDBInstanceAutomatedBackups"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadNamedDatabaseTags",
+                  "Effect": "Allow",
+                  "Action": [
+                    "rds:ListTagsForResource"
+                  ],
+                  "Resource": [
+                    "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+                    "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+                    "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadFreshLabKeyMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:DescribeKey",
+                    "kms:GetKeyPolicy",
+                    "kms:GetKeyRotationStatus",
+                    "kms:ListResourceTags"
+                  ],
+                  "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2",
+                      "aws:ResourceTag/Application": "ScoutGrid",
+                      "aws:ResourceTag/Environment": "lab"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadNamedLabBucketMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucket",
+                    "s3:GetBucketLocation",
+                    "s3:GetBucketPolicy",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketCORS",
+                    "s3:GetBucketVersioning",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetBucketLogging",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetReplicationConfiguration",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketOwnershipControls",
+                    "s3:GetBucketTagging"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:ResourceAccount": "736486260824"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyPoolMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cognito-idp:DescribeUserPool",
+                    "cognito-idp:GetUserPoolMfaConfig",
+                    "cognito-idp:ListTagsForResource",
+                    "cognito-idp:DescribeResourceServer",
+                    "cognito-idp:DescribeUserPoolClient",
+                    "cognito-idp:ListUserPoolClients",
+                    "cognito-idp:DescribeManagedLoginBranding",
+                    "cognito-idp:DescribeManagedLoginBrandingByClient"
+                  ],
+                  "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "LocateSydneyPoolAndDomain",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cognito-idp:ListUserPools",
+                    "cognito-idp:DescribeUserPoolDomain"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyFrontendMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "amplify:GetApp",
+                    "amplify:GetBranch",
+                    "amplify:GetDomainAssociation",
+                    "amplify:ListDomainAssociations",
+                    "amplify:ListTagsForResource"
+                  ],
+                  "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadNamedRepositoryMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:DescribeRepositories",
+                    "ecr:DescribeImages",
+                    "ecr:ListImages",
+                    "ecr:ListTagsForResource"
+                  ],
+                  "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadLabEcsMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:DescribeClusters",
+                    "ecs:DescribeServices",
+                    "ecs:DescribeTasks",
+                    "ecs:ListTagsForResource"
+                  ],
+                  "Resource": [
+                    "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+                    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/*",
+                    "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadTaskDefinitionMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ListOnlyLabClusterServicesAndTasks",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:ListServices",
+                    "ecs:ListTasks"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    },
+                    "ArnEquals": {
+                      "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyEcsLists",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:ListClusters",
+                    "ecs:ListTaskDefinitions"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadExactRuntimeRoleMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetRole",
+                    "iam:GetRolePolicy",
+                    "iam:ListRolePolicies",
+                    "iam:ListAttachedRolePolicies"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+                    "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution",
+                    "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
+                    "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+                    "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task"
+                  ]
+                },
+                {
+                  "Sid": "ReadSydneyAlbProviderMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:DescribeLoadBalancers",
+                    "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:DescribeTargetGroupAttributes",
+                    "elasticloadbalancing:DescribeTargetHealth",
+                    "elasticloadbalancing:DescribeListeners",
+                    "elasticloadbalancing:DescribeListenerAttributes",
+                    "elasticloadbalancing:DescribeRules",
+                    "elasticloadbalancing:DescribeTags"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadNamedRegionalWaf",
+                  "Effect": "Allow",
+                  "Action": [
+                    "wafv2:GetWebACL",
+                    "wafv2:ListTagsForResource"
+                  ],
+                  "Resource": "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadAlbWafAssociation",
+                  "Effect": "Allow",
+                  "Action": [
+                    "wafv2:GetWebACLForResource"
+                  ],
+                  "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadSydneyWafLists",
+                  "Effect": "Allow",
+                  "Action": [
+                    "wafv2:ListWebACLs"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadLogGroupMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:DescribeLogGroups"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadLabLogGroupTags",
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:ListTagsForResource"
+                  ],
+                  "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "ReadLabSecretMetadataOnly",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:DescribeSecret",
+                    "secretsmanager:ListSecretVersionIds"
+                  ],
+                  "Resource": [
+                    "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/runtime-db-??????",
+                    "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/application-settings-??????",
+                    "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/managed-installation-??????"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "DenySecretValueRetrieval",
+                  "Effect": "Deny",
+                  "Action": [
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:BatchGetSecretValue"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "ProtectRetainedBackend",
+                  "Effect": "Deny",
+                  "Action": [
+                    "ecr:DeleteRepository",
+                    "ecr:BatchDeleteImage",
+                    "ecr:PutImageTagMutability"
+                  ],
+                  "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend"
+                },
+                {
+                  "Sid": "ProtectStateAndHistory",
+                  "Effect": "Deny",
+                  "Action": [
+                    "s3:DeleteBucket",
+                    "s3:DeleteObject",
+                    "s3:DeleteObjectVersion"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+                    "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+                  ]
+                },
+                {
+                  "Sid": "PreserveRetiredKeySchedules",
+                  "Effect": "Deny",
+                  "Action": [
+                    "kms:CancelKeyDeletion",
+                    "kms:EnableKey"
+                  ],
+                  "Resource": [
+                    "arn:aws:kms:ap-southeast-2:736486260824:key/22cf6682-3133-47bd-af3e-200a1464b054",
+                    "arn:aws:kms:ap-southeast-2:736486260824:key/ddb15ff2-ac4a-4eaa-92d4-7b697706ea11"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabImagePublish",
+          "RoleId": "AROA2W6QAQBMFLE5JRHHF",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabImagePublish",
+          "CreateDate": "2026-11-12T02:53:08+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved exact backend publication to the Sydney lab ECR repository",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Purpose",
+              "Value": "ExactCandidatePublish"
+            }
+          ],
+          "RoleLastUsed": {
+            "LastUsedDate": "2026-11-12T03:09:37+00:00",
+            "Region": "ap-southeast-2"
+          }
+        },
+        "attached": [],
+        "inline": [
+          {
+            "RoleName": "ScoutGridSydneyLabImagePublish",
+            "PolicyName": "ExactLabRepositoryPublish",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "AuthenticateOnlyInSydney",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetAuthorizationToken"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                },
+                {
+                  "Sid": "PublishOnlyApprovedLabRepository",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload",
+                    "ecr:PutImage",
+                    "ecr:DescribeRepositories",
+                    "ecr:DescribeImages",
+                    "ecr:BatchGetImage"
+                  ],
+                  "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabBootstrap",
+          "RoleId": "AROA2W6QAQBMKZJ4VHTXU",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabBootstrap",
+          "CreateDate": "2026-11-12T03:28:10+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {
+            "LastUsedDate": "2026-11-12T03:53:37+00:00",
+            "Region": "ap-southeast-2"
+          }
+        },
+        "attached": [
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part1",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1"
+          },
+          {
+            "PolicyName": "ScoutGridSydneyLab-trusted-runtime-bootstrap-part1",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-runtime-bootstrap-part1"
+          },
+          {
+            "PolicyName": "ScoutGridSydneyLab-trusted-foundation-bootstrap-part1",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-foundation-bootstrap-part1"
+          },
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part2",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2"
+          }
+        ],
+        "inline": [
+          {
+            "RoleName": "ScoutGridSydneyLabBootstrap",
+            "PolicyName": "ProviderBootstrapMfaCorrection",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ConfigureMfaOnlyOnFreshTaggedSydneyLabPool",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cognito-idp:SetUserPoolMfaConfig"
+                  ],
+                  "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/*",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:RequestedRegion": "ap-southeast-2",
+                      "aws:ResourceTag/Application": "ScoutGrid",
+                      "aws:ResourceTag/Environment": "lab",
+                      "aws:ResourceTag/Profile": "Standard",
+                      "aws:ResourceTag/ManagedBy": "Terraform"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "RoleName": "ScoutGridSydneyLabBootstrap",
+            "PolicyName": "ProviderBucketMetadataCorrection",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadOnlyNamedLabBucketWebsiteMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketWebsite"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:ResourceAccount": "736486260824"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabApply",
+          "RoleId": "AROA2W6QAQBMG4ZOIKQAS",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabApply",
+          "CreateDate": "2026-11-12T03:28:11+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {
+            "LastUsedDate": "2026-11-12T03:33:28+00:00",
+            "Region": "ap-southeast-2"
+          }
+        },
+        "attached": [
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part1",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1"
+          },
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part2",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2"
+          }
+        ],
+        "inline": [
+          {
+            "RoleName": "ScoutGridSydneyLabApply",
+            "PolicyName": "ProviderBucketMetadataCorrection",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadOnlyNamedLabBucketWebsiteMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketWebsite"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:ResourceAccount": "736486260824"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabTeardown",
+          "RoleId": "AROA2W6QAQBMPKHZNVGBA",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabTeardown",
+          "CreateDate": "2026-11-12T03:28:11+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {
+            "LastUsedDate": "2026-11-12T03:55:13+00:00",
+            "Region": "ap-southeast-2"
+          }
+        },
+        "attached": [
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part1",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1"
+          },
+          {
+            "PolicyName": "ScoutGridSydneyLab-common-read-state-part2",
+            "PolicyArn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2"
+          }
+        ],
+        "inline": [
+          {
+            "RoleName": "ScoutGridSydneyLabTeardown",
+            "PolicyName": "ProviderBucketMetadataCorrection",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadOnlyNamedLabBucketWebsiteMetadata",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketWebsite"
+                  ],
+                  "Resource": [
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                    "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:ResourceAccount": "736486260824"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabMigration",
+          "RoleId": "AROA2W6QAQBMKJ3DWFEJR",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabMigration",
+          "CreateDate": "2026-11-12T03:28:11+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {}
+        },
+        "attached": [],
+        "inline": []
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabService",
+          "RoleId": "AROA2W6QAQBMP4R3OPU3R",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabService",
+          "CreateDate": "2026-11-12T03:28:12+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {}
+        },
+        "attached": [],
+        "inline": []
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabSecretCustody",
+          "RoleId": "AROA2W6QAQBMJMWACSGJC",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabSecretCustody",
+          "CreateDate": "2026-11-12T03:28:12+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {}
+        },
+        "attached": [],
+        "inline": []
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabIdentity",
+          "RoleId": "AROA2W6QAQBMKDXZWLFRL",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabIdentity",
+          "CreateDate": "2026-11-12T03:28:12+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {}
+        },
+        "attached": [],
+        "inline": []
+      },
+      {
+        "role": {
+          "Path": "/",
+          "RoleName": "ScoutGridSydneyLabFrontend",
+          "RoleId": "AROA2W6QAQBMPRARRAKFL",
+          "Arn": "arn:aws:iam::736486260824:role/ScoutGridSydneyLabFrontend",
+          "CreateDate": "2026-11-12T03:28:13+00:00",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Description": "Explicit owner-approved bounded ScoutGrid Sydney lab operator; only reviewed phased grants",
+          "MaxSessionDuration": 3600,
+          "Tags": [
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            },
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "ManagedBy",
+              "Value": "ScoutGridReleaseOperator"
+            }
+          ],
+          "RoleLastUsed": {}
+        },
+        "attached": [],
+        "inline": []
+      }
+    ],
+    "policies": [
+      {
+        "arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1",
+        "metadata": {
+          "PolicyName": "ScoutGridSydneyLab-common-read-state-part1",
+          "PolicyId": "ANPA2W6QAQBMKMBWF3NER",
+          "Arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1",
+          "Path": "/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 3,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "Description": "Owner-reviewed Sydney lab scope; remove after bounded lab",
+          "CreateDate": "2026-11-12T03:28:13+00:00",
+          "UpdateDate": "2026-11-12T03:28:13+00:00",
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            }
+          ]
+        },
+        "version": {
+          "Document": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "ReadExactStateBucket",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetBucketLocation",
+                  "s3:ListBucket"
+                ],
+                "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+              },
+              {
+                "Sid": "ReadExactState",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject"
+                ],
+                "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+              },
+              {
+                "Sid": "ManageOnlyExactStateLock",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject",
+                  "s3:DeleteObject"
+                ],
+                "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
+              },
+              {
+                "Sid": "UseStateKeyOnlyThroughS3",
+                "Effect": "Allow",
+                "Action": [
+                  "kms:Decrypt",
+                  "kms:GenerateDataKey"
+                ],
+                "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
+                    "kms:CallerAccount": "736486260824",
+                    "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyNetworkMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:DescribeAddresses",
+                  "ec2:DescribeAddressesAttribute",
+                  "ec2:DescribeAvailabilityZones",
+                  "ec2:DescribeInternetGateways",
+                  "ec2:DescribeManagedPrefixLists",
+                  "ec2:DescribeNatGateways",
+                  "ec2:DescribeNetworkAcls",
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DescribePrefixLists",
+                  "ec2:DescribeRouteTables",
+                  "ec2:DescribeSecurityGroups",
+                  "ec2:DescribeSecurityGroupRules",
+                  "ec2:DescribeSubnets",
+                  "ec2:DescribeVpcAttribute",
+                  "ec2:DescribeVpcEndpoints",
+                  "ec2:DescribeVpcEndpointServices",
+                  "ec2:DescribeVpcs"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyRdsProviderMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "rds:DescribeDBInstances",
+                  "rds:DescribeDBEngineVersions",
+                  "rds:DescribeDBParameterGroups",
+                  "rds:DescribeDBParameters",
+                  "rds:DescribeDBSubnetGroups",
+                  "rds:DescribeDBSnapshots",
+                  "rds:DescribeDBInstanceAutomatedBackups"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadNamedDatabaseTags",
+                "Effect": "Allow",
+                "Action": [
+                  "rds:ListTagsForResource"
+                ],
+                "Resource": [
+                  "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+                  "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+                  "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadFreshLabKeyMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "kms:DescribeKey",
+                  "kms:GetKeyPolicy",
+                  "kms:GetKeyRotationStatus",
+                  "kms:ListResourceTags"
+                ],
+                "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:ResourceTag/Application": "ScoutGrid",
+                    "aws:ResourceTag/Environment": "lab"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadNamedLabBucketMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:ListBucket",
+                  "s3:GetBucketLocation",
+                  "s3:GetBucketPolicy",
+                  "s3:GetBucketAcl",
+                  "s3:GetBucketCORS",
+                  "s3:GetBucketVersioning",
+                  "s3:GetAccelerateConfiguration",
+                  "s3:GetBucketRequestPayment",
+                  "s3:GetBucketLogging",
+                  "s3:GetLifecycleConfiguration",
+                  "s3:GetReplicationConfiguration",
+                  "s3:GetEncryptionConfiguration",
+                  "s3:GetBucketObjectLockConfiguration",
+                  "s3:GetBucketPublicAccessBlock",
+                  "s3:GetBucketOwnershipControls",
+                  "s3:GetBucketTagging"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "s3:ResourceAccount": "736486260824"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyPoolMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:DescribeUserPool",
+                  "cognito-idp:GetUserPoolMfaConfig",
+                  "cognito-idp:ListTagsForResource",
+                  "cognito-idp:DescribeResourceServer",
+                  "cognito-idp:DescribeUserPoolClient",
+                  "cognito-idp:ListUserPoolClients",
+                  "cognito-idp:DescribeManagedLoginBranding",
+                  "cognito-idp:DescribeManagedLoginBrandingByClient"
+                ],
+                "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "LocateSydneyPoolAndDomain",
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:ListUserPools",
+                  "cognito-idp:DescribeUserPoolDomain"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyFrontendMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "amplify:GetApp",
+                  "amplify:GetBranch",
+                  "amplify:GetDomainAssociation",
+                  "amplify:ListDomainAssociations",
+                  "amplify:ListTagsForResource"
+                ],
+                "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadNamedRepositoryMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "ecr:DescribeRepositories",
+                  "ecr:DescribeImages",
+                  "ecr:ListImages",
+                  "ecr:ListTagsForResource"
+                ],
+                "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadLabEcsMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:DescribeClusters",
+                  "ecs:DescribeServices",
+                  "ecs:DescribeTasks",
+                  "ecs:ListTagsForResource"
+                ],
+                "Resource": [
+                  "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+                  "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/*",
+                  "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadTaskDefinitionMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:DescribeTaskDefinition"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              }
+            ]
+          },
+          "VersionId": "v1",
+          "IsDefaultVersion": true,
+          "CreateDate": "2026-11-12T03:28:13+00:00"
+        }
+      },
+      {
+        "arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2",
+        "metadata": {
+          "PolicyName": "ScoutGridSydneyLab-common-read-state-part2",
+          "PolicyId": "ANPA2W6QAQBMJJRXCOUH7",
+          "Arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2",
+          "Path": "/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 3,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "Description": "Owner-reviewed Sydney lab scope; remove after bounded lab",
+          "CreateDate": "2026-11-12T03:28:14+00:00",
+          "UpdateDate": "2026-11-12T03:28:14+00:00",
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            }
+          ]
+        },
+        "version": {
+          "Document": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "ListOnlyLabClusterServicesAndTasks",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:ListServices",
+                  "ecs:ListTasks"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  },
+                  "ArnEquals": {
+                    "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyEcsLists",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:ListClusters",
+                  "ecs:ListTaskDefinitions"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadExactRuntimeRoleMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "iam:GetRole",
+                  "iam:GetRolePolicy",
+                  "iam:ListRolePolicies",
+                  "iam:ListAttachedRolePolicies"
+                ],
+                "Resource": [
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task"
+                ]
+              },
+              {
+                "Sid": "ReadSydneyAlbProviderMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "elasticloadbalancing:DescribeLoadBalancers",
+                  "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                  "elasticloadbalancing:DescribeTargetGroups",
+                  "elasticloadbalancing:DescribeTargetGroupAttributes",
+                  "elasticloadbalancing:DescribeTargetHealth",
+                  "elasticloadbalancing:DescribeListeners",
+                  "elasticloadbalancing:DescribeListenerAttributes",
+                  "elasticloadbalancing:DescribeRules",
+                  "elasticloadbalancing:DescribeTags"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadNamedRegionalWaf",
+                "Effect": "Allow",
+                "Action": [
+                  "wafv2:GetWebACL",
+                  "wafv2:ListTagsForResource"
+                ],
+                "Resource": "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadAlbWafAssociation",
+                "Effect": "Allow",
+                "Action": [
+                  "wafv2:GetWebACLForResource"
+                ],
+                "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadSydneyWafLists",
+                "Effect": "Allow",
+                "Action": [
+                  "wafv2:ListWebACLs"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadLogGroupMetadata",
+                "Effect": "Allow",
+                "Action": [
+                  "logs:DescribeLogGroups"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadLabLogGroupTags",
+                "Effect": "Allow",
+                "Action": [
+                  "logs:ListTagsForResource"
+                ],
+                "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ReadLabSecretMetadataOnly",
+                "Effect": "Allow",
+                "Action": [
+                  "secretsmanager:DescribeSecret",
+                  "secretsmanager:ListSecretVersionIds"
+                ],
+                "Resource": [
+                  "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/runtime-db-??????",
+                  "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/application-settings-??????",
+                  "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/managed-installation-??????"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "DenySecretValueRetrieval",
+                "Effect": "Deny",
+                "Action": [
+                  "secretsmanager:GetSecretValue",
+                  "secretsmanager:BatchGetSecretValue"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Sid": "ProtectRetainedBackend",
+                "Effect": "Deny",
+                "Action": [
+                  "ecr:DeleteRepository",
+                  "ecr:BatchDeleteImage",
+                  "ecr:PutImageTagMutability"
+                ],
+                "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend"
+              },
+              {
+                "Sid": "ProtectStateAndHistory",
+                "Effect": "Deny",
+                "Action": [
+                  "s3:DeleteBucket",
+                  "s3:DeleteObject",
+                  "s3:DeleteObjectVersion"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+                  "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+                ]
+              },
+              {
+                "Sid": "PreserveRetiredKeySchedules",
+                "Effect": "Deny",
+                "Action": [
+                  "kms:CancelKeyDeletion",
+                  "kms:EnableKey"
+                ],
+                "Resource": [
+                  "arn:aws:kms:ap-southeast-2:736486260824:key/22cf6682-3133-47bd-af3e-200a1464b054",
+                  "arn:aws:kms:ap-southeast-2:736486260824:key/ddb15ff2-ac4a-4eaa-92d4-7b697706ea11"
+                ]
+              },
+              {
+                "Sid": "WriteOnlyExactCurrentState",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:PutObject"
+                ],
+                "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+              }
+            ]
+          },
+          "VersionId": "v1",
+          "IsDefaultVersion": true,
+          "CreateDate": "2026-11-12T03:28:14+00:00"
+        }
+      },
+      {
+        "arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-foundation-bootstrap-part1",
+        "metadata": {
+          "PolicyName": "ScoutGridSydneyLab-trusted-foundation-bootstrap-part1",
+          "PolicyId": "ANPA2W6QAQBMLYNMBSFYD",
+          "Arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-foundation-bootstrap-part1",
+          "Path": "/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 1,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "Description": "Owner-reviewed Sydney lab scope; remove after bounded lab",
+          "CreateDate": "2026-11-12T03:28:14+00:00",
+          "UpdateDate": "2026-11-12T03:28:14+00:00",
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            }
+          ]
+        },
+        "version": {
+          "Document": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "CreateTaggedFreshSymmetricKeys",
+                "Effect": "Allow",
+                "Action": [
+                  "kms:CreateKey"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": [
+                      "Terraform",
+                      "ScoutGridReleaseOperator"
+                    ],
+                    "kms:KeySpec": "SYMMETRIC_DEFAULT",
+                    "kms:KeyUsage": "ENCRYPT_DECRYPT",
+                    "kms:KeyOrigin": "AWS_KMS"
+                  },
+                  "BoolIfExists": {
+                    "kms:MultiRegion": "false",
+                    "kms:BypassPolicyLockoutSafetyCheck": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "EnableRotationOnFreshLabKeys",
+                "Effect": "Allow",
+                "Action": [
+                  "kms:EnableKeyRotation"
+                ],
+                "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:ResourceTag/Application": "ScoutGrid",
+                    "aws:ResourceTag/Environment": "lab",
+                    "aws:ResourceTag/Profile": "Standard",
+                    "aws:ResourceTag/ManagedBy": [
+                      "Terraform",
+                      "ScoutGridReleaseOperator"
+                    ]
+                  }
+                }
+              },
+              {
+                "Sid": "TagFreshLabKeys",
+                "Effect": "Allow",
+                "Action": [
+                  "kms:TagResource"
+                ],
+                "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": [
+                      "Terraform",
+                      "ScoutGridReleaseOperator"
+                    ],
+                    "aws:ResourceTag/Application": "ScoutGrid",
+                    "aws:ResourceTag/Environment": "lab",
+                    "aws:ResourceTag/Profile": "Standard",
+                    "aws:ResourceTag/ManagedBy": [
+                      "Terraform",
+                      "ScoutGridReleaseOperator"
+                    ]
+                  }
+                }
+              },
+              {
+                "Sid": "CreateOnlyNamedSydneyLabBuckets",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:CreateBucket"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "s3:LocationConstraint": "ap-southeast-2"
+                  }
+                }
+              },
+              {
+                "Sid": "ConfigureOnlyLabArtifactBuckets",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:PutBucketPublicAccessBlock",
+                  "s3:PutBucketOwnershipControls",
+                  "s3:PutBucketVersioning",
+                  "s3:PutEncryptionConfiguration",
+                  "s3:PutBucketPolicy",
+                  "s3:PutBucketCORS",
+                  "s3:PutBucketTagging"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+                ]
+              },
+              {
+                "Sid": "CreateTaggedLabIdentityPool",
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:CreateUserPool"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  }
+                }
+              },
+              {
+                "Sid": "CreateTaggedLabFrontend",
+                "Effect": "Allow",
+                "Action": [
+                  "amplify:CreateApp"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  }
+                }
+              },
+              {
+                "Sid": "CreateOnlyEcsServiceLinkedRole",
+                "Effect": "Allow",
+                "Action": [
+                  "iam:CreateServiceLinkedRole"
+                ],
+                "Resource": "arn:aws:iam::736486260824:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+                "Condition": {
+                  "StringEquals": {
+                    "iam:AWSServiceName": "ecs.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          },
+          "VersionId": "v1",
+          "IsDefaultVersion": true,
+          "CreateDate": "2026-11-12T03:28:14+00:00"
+        }
+      },
+      {
+        "arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-runtime-bootstrap-part1",
+        "metadata": {
+          "PolicyName": "ScoutGridSydneyLab-trusted-runtime-bootstrap-part1",
+          "PolicyId": "ANPA2W6QAQBMDNGLFRELP",
+          "Arn": "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-trusted-runtime-bootstrap-part1",
+          "Path": "/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 1,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "Description": "Owner-reviewed Sydney lab scope; remove after bounded lab",
+          "CreateDate": "2026-11-12T03:28:14+00:00",
+          "UpdateDate": "2026-11-12T03:28:14+00:00",
+          "Tags": [
+            {
+              "Key": "Environment",
+              "Value": "lab"
+            },
+            {
+              "Key": "Application",
+              "Value": "ScoutGrid"
+            }
+          ]
+        },
+        "version": {
+          "Document": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "ManageOnlyFiveReviewedRuntimeRoles",
+                "Effect": "Allow",
+                "Action": [
+                  "iam:CreateRole",
+                  "iam:GetRole",
+                  "iam:UpdateAssumeRolePolicy",
+                  "iam:PutRolePolicy",
+                  "iam:GetRolePolicy",
+                  "iam:ListRolePolicies",
+                  "iam:ListAttachedRolePolicies",
+                  "iam:TagRole",
+                  "iam:UntagRole"
+                ],
+                "Resource": [
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task"
+                ]
+              },
+              {
+                "Sid": "PassOnlyReviewedTaskRolesToEcs",
+                "Effect": "Allow",
+                "Action": [
+                  "iam:PassRole"
+                ],
+                "Resource": [
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+                  "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                  }
+                }
+              },
+              {
+                "Sid": "RegisterReviewedApiTaskDefinition",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:RegisterTaskDefinition"
+                ],
+                "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  },
+                  "StringEqualsIfExists": {
+                    "ecs:privileged": "false"
+                  },
+                  "NumericEquals": {
+                    "ecs:task-cpu": 512,
+                    "ecs:task-memory": 2048
+                  },
+                  "ForAllValues:StringEquals": {
+                    "ecs:compute-compatibility": "FARGATE"
+                  },
+                  "Null": {
+                    "ecs:compute-compatibility": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "RegisterReviewedWorkerTaskDefinition",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:RegisterTaskDefinition"
+                ],
+                "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  },
+                  "StringEqualsIfExists": {
+                    "ecs:privileged": "false"
+                  },
+                  "NumericEquals": {
+                    "ecs:task-cpu": 1024,
+                    "ecs:task-memory": 4096
+                  },
+                  "ForAllValues:StringEquals": {
+                    "ecs:compute-compatibility": "FARGATE"
+                  },
+                  "Null": {
+                    "ecs:compute-compatibility": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "RegisterReviewedMigratorTaskDefinition",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:RegisterTaskDefinition"
+                ],
+                "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  },
+                  "StringEqualsIfExists": {
+                    "ecs:privileged": "false"
+                  },
+                  "NumericEquals": {
+                    "ecs:task-cpu": 1024,
+                    "ecs:task-memory": 4096
+                  },
+                  "ForAllValues:StringEquals": {
+                    "ecs:compute-compatibility": "FARGATE"
+                  },
+                  "Null": {
+                    "ecs:compute-compatibility": "false"
+                  }
+                }
+              },
+              {
+                "Sid": "TagNewReviewedTaskDefinitions",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:TagResource"
+                ],
+                "Resource": [
+                  "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:*",
+                  "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:*",
+                  "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:*"
+                ],
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "ap-southeast-2",
+                    "aws:RequestTag/Application": "ScoutGrid",
+                    "aws:RequestTag/Environment": "lab",
+                    "aws:RequestTag/Profile": "Standard",
+                    "aws:RequestTag/ManagedBy": "Terraform"
+                  }
+                }
+              }
+            ]
+          },
+          "VersionId": "v1",
+          "IsDefaultVersion": true,
+          "CreateDate": "2026-11-12T03:28:14+00:00"
+        }
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 2
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 4
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 2
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 2
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 2
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    }
+  ]
+}

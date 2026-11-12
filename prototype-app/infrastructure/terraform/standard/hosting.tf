@@ -35,18 +35,18 @@ resource "aws_amplify_app" "frontend" {
     target = "/index.html"
   }
 
-  custom_headers = yamlencode({
-    customHeaders = [
-      {
-        pattern = "**"
-        headers = [for key, value in local.frontend_security_headers : { key = key, value = value }]
-      },
-      {
-        pattern = "/assets/**"
-        headers = [{ key = "Cache-Control", value = "public, max-age=31536000, immutable" }]
-      }
-    ]
-  })
+  # Amplify stores custom headers as a compact JSON array. Sending that exact form avoids a
+  # permanent in-place diff (YAML input is normalized to JSON on read).
+  custom_headers = jsonencode([
+    {
+      pattern = "**"
+      headers = [for key, value in local.frontend_security_headers : { key = key, value = value }]
+    },
+    {
+      pattern = "/assets/**"
+      headers = [{ key = "Cache-Control", value = "public, max-age=31536000, immutable" }]
+    }
+  ])
 }
 
 resource "aws_amplify_branch" "frontend" {

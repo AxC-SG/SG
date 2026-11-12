@@ -1,0 +1,77 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T11:04:45.278360+00:00",
+    "simulations": [
+      {
+        "case": "tagged_group",
+        "decision": "allowed",
+        "expected": "allowed"
+      },
+      {
+        "case": "captured_vpc",
+        "decision": "allowed",
+        "expected": "allowed"
+      },
+      {
+        "case": "unrelated_vpc",
+        "decision": "implicitDeny",
+        "expected": "implicitDeny"
+      },
+      {
+        "case": "named_cluster",
+        "decision": "allowed",
+        "expected": "allowed"
+      },
+      {
+        "case": "named_logs",
+        "decision": "allowed",
+        "expected": "allowed"
+      }
+    ],
+    "no_resources_created": true
+  },
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    }
+  ]
+}

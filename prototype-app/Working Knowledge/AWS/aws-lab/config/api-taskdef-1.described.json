@@ -1,0 +1,268 @@
+{
+    "taskDefinition": {
+        "taskDefinitionArn": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:1",
+        "containerDefinitions": [
+            {
+                "name": "api",
+                "image": "736486260824.dkr.ecr.ap-southeast-2.amazonaws.com/scoutgrid-lab-backend@sha256:e0477a842367866505e469c7dc97aef77759fce5febf3a59d10d49acbe3a3ad5",
+                "cpu": 0,
+                "portMappings": [
+                    {
+                        "containerPort": 8080,
+                        "hostPort": 8080,
+                        "protocol": "tcp"
+                    }
+                ],
+                "essential": true,
+                "environment": [
+                    {
+                        "name": "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE",
+                        "value": "health"
+                    },
+                    {
+                        "name": "SERVER_ADDRESS",
+                        "value": "0.0.0.0"
+                    },
+                    {
+                        "name": "SPRING_PROFILES_ACTIVE",
+                        "value": "prod"
+                    },
+                    {
+                        "name": "APP_MANAGED_AUTH_CLIENT_ID",
+                        "value": "7egknl0kls1dkrkk3fmvcioev1"
+                    },
+                    {
+                        "name": "APP_SECURITY_JWT_AUDIENCE",
+                        "value": "https://api-lab.scoutgrid.io"
+                    },
+                    {
+                        "name": "APP_PUBLIC_RATE_LIMIT_TRUSTED_PROXY_CIDRS",
+                        "value": "10.21.0.0/19,10.21.32.0/19"
+                    },
+                    {
+                        "name": "DB_MIN_IDLE",
+                        "value": "1"
+                    },
+                    {
+                        "name": "APP_BOM_UPLOADS_ENABLED",
+                        "value": "true"
+                    },
+                    {
+                        "name": "APP_JWT_AUTH_MODE",
+                        "value": "EXTERNAL"
+                    },
+                    {
+                        "name": "APP_MANAGED_AUTH_LOGIN_ORIGIN",
+                        "value": "https://scoutgrid-lab-736486260824.auth.ap-southeast-2.amazoncognito.com"
+                    },
+                    {
+                        "name": "APP_RUNTIME_ROLE",
+                        "value": "api"
+                    },
+                    {
+                        "name": "APP_CORS_ALLOWED_ORIGINS",
+                        "value": "https://lab.scoutgrid.io"
+                    },
+                    {
+                        "name": "DB_URL",
+                        "value": "jdbc:postgresql://scoutgrid-lab.ct4us0gw0d3y.ap-southeast-2.rds.amazonaws.com:5432/scoutgrid?sslmode=verify-full&sslrootcert=/app/rds-ca-ap-southeast-2.pem&connectTimeout=10&socketTimeout=30"
+                    },
+                    {
+                        "name": "APP_SCHEMA_MIGRATION_ENABLED",
+                        "value": "false"
+                    },
+                    {
+                        "name": "SERVER_PORT",
+                        "value": "8080"
+                    },
+                    {
+                        "name": "AWS_REGION",
+                        "value": "ap-southeast-2"
+                    },
+                    {
+                        "name": "APP_PLATFORM_MIGRATION_ENABLED",
+                        "value": "false"
+                    },
+                    {
+                        "name": "APP_TURNSTILE_EXPECTED_HOSTNAME",
+                        "value": "lab.scoutgrid.io"
+                    },
+                    {
+                        "name": "APP_JWT_ISSUER_URI",
+                        "value": "https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_fPdRmnVqM"
+                    },
+                    {
+                        "name": "APP_ENVIRONMENT",
+                        "value": "preproduction"
+                    },
+                    {
+                        "name": "APP_MANAGED_AUTH_ENABLED",
+                        "value": "true"
+                    },
+                    {
+                        "name": "APP_BOM_UPLOADS_BUCKET",
+                        "value": "scoutgrid-lab-736486260824-imports"
+                    },
+                    {
+                        "name": "APP_DEMO_APP_BASE_URL",
+                        "value": "https://lab.scoutgrid.io"
+                    },
+                    {
+                        "name": "APP_BOM_UPLOADS_REGION",
+                        "value": "ap-southeast-2"
+                    },
+                    {
+                        "name": "DB_MAX_POOL_SIZE",
+                        "value": "6"
+                    },
+                    {
+                        "name": "APP_JWT_JWK_SET_URI",
+                        "value": "https://cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_fPdRmnVqM/.well-known/jwks.json"
+                    }
+                ],
+                "mountPoints": [],
+                "volumesFrom": [],
+                "linuxParameters": {
+                    "initProcessEnabled": true
+                },
+                "secrets": [
+                    {
+                        "name": "APP_AI_SECURITY_IDENTITY_HMAC_KEY",
+                        "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/application-settings-9RiIwg:ai_identity_hmac_key::"
+                    },
+                    {
+                        "name": "APP_CREDENTIAL_ENCRYPTION_KEY",
+                        "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/application-settings-9RiIwg:credential_encryption_key::"
+                    },
+                    {
+                        "name": "APP_TURNSTILE_SECRET_KEY",
+                        "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/application-settings-9RiIwg:turnstile_secret_key::"
+                    },
+                    {
+                        "name": "DB_PASSWORD",
+                        "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/runtime-db-4KTTWJ:password::"
+                    },
+                    {
+                        "name": "DB_USERNAME",
+                        "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/runtime-db-4KTTWJ:username::"
+                    }
+                ],
+                "stopTimeout": 120,
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "/ecs/scoutgrid-lab/api",
+                        "mode": "blocking",
+                        "awslogs-region": "ap-southeast-2",
+                        "awslogs-stream-prefix": "api"
+                    }
+                },
+                "healthCheck": {
+                    "command": [
+                        "CMD",
+                        "busybox",
+                        "wget",
+                        "-q",
+                        "-O",
+                        "/dev/null",
+                        "http://127.0.0.1:8080/actuator/health/liveness"
+                    ],
+                    "interval": 30,
+                    "timeout": 5,
+                    "retries": 3,
+                    "startPeriod": 120
+                },
+                "systemControls": []
+            }
+        ],
+        "family": "scoutgrid-lab-api",
+        "taskRoleArn": "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+        "executionRoleArn": "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+        "networkMode": "awsvpc",
+        "revision": 1,
+        "volumes": [],
+        "status": "ACTIVE",
+        "requiresAttributes": [
+            {
+                "name": "ecs.capability.execution-role-awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.ecr-auth"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.28"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.21"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.task-iam-role"
+            },
+            {
+                "name": "ecs.capability.container-health-check"
+            },
+            {
+                "name": "ecs.capability.execution-role-ecr-pull"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+            },
+            {
+                "name": "ecs.capability.task-eni"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+            },
+            {
+                "name": "ecs.capability.secrets.asm.environment-variables"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.25"
+            },
+            {
+                "name": "ecs.capability.container-ordering"
+            }
+        ],
+        "placementConstraints": [],
+        "compatibilities": [
+            "EC2",
+            "FARGATE",
+            "MANAGED_INSTANCES"
+        ],
+        "runtimePlatform": {
+            "cpuArchitecture": "X86_64",
+            "operatingSystemFamily": "LINUX"
+        },
+        "requiresCompatibilities": [
+            "FARGATE"
+        ],
+        "cpu": "512",
+        "memory": "2048",
+        "registeredAt": "2026-11-12T18:59:31.739000+05:30",
+        "registeredBy": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabBootstrap/claude-takeover-sglab-bootstrap"
+    },
+    "tags": [
+        {
+            "key": "Environment",
+            "value": "lab"
+        },
+        {
+            "key": "ManagedBy",
+            "value": "Terraform"
+        },
+        {
+            "key": "Application",
+            "value": "ScoutGrid"
+        },
+        {
+            "key": "Profile",
+            "value": "Standard"
+        }
+    ]
+}

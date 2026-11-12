@@ -1,0 +1,103 @@
+cat > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py <<'PY'
+"""Render review-only scopes for Terraform HCL resources; never attach policies."""
+from pathlib import Path
+import json,hashlib,fnmatch
+root=Path(__file__).resolve().parent
+account,region='736486260824','ap-southeast-2'
+def arn(service,tail):return f'arn:aws:{service}:{region}:{account}:{tail}'
+region_values={'aws:RequestedRegion':region}
+tags={'Application':'ScoutGrid','Environment':'lab','Profile':'Standard','ManagedBy':'Terraform'}
+def tagged(kind):return {f'aws:{kind}Tag/{k}':v for k,v in tags.items()}
+def statement(sid,service,actions,resources='*',equals=None,extra=None,regional=True):
+ s={'Sid':sid,'Effect':'Allow','Action':[service+':'+a for a in actions.split()],'Resource':resources}
+ c={'StringEquals':dict(region_values)} if regional else {}
+ if equals:c.setdefault('StringEquals',{}).update(equals)
+ if extra:
+  for op,values in extra.items():c.setdefault(op,{}).update(values)
+ if c:s['Condition']=c
+ return s
+base=json.loads((root/'sydney-integrated-plan-policy.json').read_text())['Statement']
+# Common role documents remain separate from mutable infrastructure scopes.
+common=base+[statement('WriteOnlyExactCurrentState','s3','PutObject',f'arn:aws:s3:::scoutgrid-lab-tfstate-{account}-{region}/standard/lab/terraform.tfstate',regional=False)]
+def ec2(types):return [arn('ec2',t+'/*') for t in types.split()]
+buckets=[f'arn:aws:s3:::scoutgrid-lab-{account}-{k}' for k in ['imports','exports']]
+bootstrap=[
+ statement('CreateTaggedFreshSymmetricKeys','kms','CreateKey',equals=tagged('Request')),
+ statement('EnableRotationOnFreshLabKeys','kms','EnableKeyRotation',arn('kms','key/*'),tagged('Resource')),
+ statement('TagFreshLabKeys','kms','TagResource',arn('kms','key/*'),{**tagged('Request'),**tagged('Resource')}),
+ statement('CreateOnlyNamedSydneyLabBuckets','s3','CreateBucket',buckets,{'s3:LocationConstraint':region},regional=False),
+ statement('ConfigureOnlyLabArtifactBuckets','s3','PutBucketPublicAccessBlock PutBucketOwnershipControls PutBucketVersioning PutEncryptionConfiguration PutBucketPolicy PutBucketCORS PutBucketTagging',buckets,regional=False),
+ statement('CreateTaggedLabIdentityPool','cognito-idp','CreateUserPool',equals=tagged('Request')),
+ statement('CreateTaggedLabFrontend','amplify','CreateApp',equals=tagged('Request')),
+ statement('CreateOnlyEcsServiceLinkedRole','iam','CreateServiceLinkedRole',f'arn:aws:iam::{account}:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS',{'iam:AWSServiceName':'ecs.amazonaws.com'},regional=False),
+]
+foundation=[
+ statement('CreateTaggedNetworkRoots','ec2','AllocateAddress CreateInternetGateway CreateVpc',ec2('elastic-ip internet-gateway vpc'),tagged('Request')),
+ statement('CreateTaggedVpcChildren','ec2','CreateRouteTable CreateSecurityGroup CreateSubnet',ec2('route-table security-group subnet'),tagged('Request')),
+ statement('CreateTaggedSingleNat','ec2','CreateNatGateway',ec2('natgateway'),tagged('Request')),
+ statement('CreateTaggedS3Endpoint','ec2','CreateVpcEndpoint',ec2('vpc-endpoint'),{**tagged('Request'),'ec2:VpceServiceName':f'com.amazonaws.{region}.s3'}),
+ statement('TagOnlyNewNetworkResources','ec2','CreateTags',ec2('elastic-ip internet-gateway vpc route-table security-group subnet natgateway vpc-endpoint'),{**tagged('Request'),'ec2:CreateAction':['AllocateAddress','CreateInternetGateway','CreateVpc','CreateRouteTable','CreateSecurityGroup','CreateSubnet','CreateNatGateway','CreateVpcEndpoint']}),
+ statement('UseOnlyTaggedLabVpc','ec2','CreateSubnet CreateRouteTable CreateSecurityGroup CreateNatGateway CreateVpcEndpoint AttachInternetGateway ModifyVpcAttribute',ec2('vpc'),tagged('Resource')),
+ statement('UseOnlyTaggedNatInputs','ec2','CreateNatGateway',ec2('subnet elastic-ip'),tagged('Resource')),
+ statement('UseOnlyTaggedEndpointRoutes','ec2','CreateVpcEndpoint',ec2('route-table'),tagged('Resource')),
+ statement('AttachOnlyTaggedGateway','ec2','AttachInternetGateway',ec2('internet-gateway'),tagged('Resource')),
+ statement('ConfigureOnlyTaggedRoutes','ec2','AssociateRouteTable CreateRoute',ec2('route-table'),tagged('Resource')),
+ statement('ConfigureOnlyTaggedSubnets','ec2','AssociateRouteTable ModifySubnetAttribute',ec2('subnet'),tagged('Resource')),
+ statement('RemoveDefaultDbEgress','ec2','RevokeSecurityGroupEgress',ec2('security-group'),tagged('Resource')),
+ statement('CreateNamedDatabaseGroups','rds','CreateDBParameterGroup CreateDBSubnetGroup',[arn('rds','pg:scoutgrid-lab-postgres16'),arn('rds','subgrp:scoutgrid-lab')],tagged('Request')),
+ statement('ConfigureNamedDatabaseParameters','rds','ModifyDBParameterGroup',arn('rds','pg:scoutgrid-lab-postgres16')),
+ statement('CreateOnlyPrivateEncryptedManagedPasswordDb','rds','CreateDBInstance',[arn('rds','db:scoutgrid-lab'),arn('rds','pg:scoutgrid-lab-postgres16'),arn('rds','subgrp:scoutgrid-lab')],tagged('Request'),{'Bool':{'rds:PubliclyAccessible':'false','rds:ManageMasterUserPassword':'true'}}),
+ statement('TagNamedDatabaseResources','rds','AddTagsToResource',[arn('rds','db:scoutgrid-lab'),arn('rds','pg:scoutgrid-lab-postgres16'),arn('rds','subgrp:scoutgrid-lab')],tagged('Request')),
+ statement('UseFreshDatabaseKeyThroughAwsServices','kms','Decrypt GenerateDataKey',arn('kms','key/RENDER_FRESH_DATABASE_KEY'),{'kms:CallerAccount':account,'kms:ViaService':[f'rds.{region}.amazonaws.com',f'secretsmanager.{region}.amazonaws.com']}),
+ statement('GrantFreshDatabaseKeyToAwsResources','kms','CreateGrant',arn('kms','key/RENDER_FRESH_DATABASE_KEY'),{'kms:CallerAccount':account,'kms:ViaService':[f'rds.{region}.amazonaws.com',f'secretsmanager.{region}.amazonaws.com']},{'Bool':{'kms:GrantIsForAWSResource':'true'}}),
+ statement('OnlyRdsForwardedManagedSecretSetup','secretsmanager','CreateSecret TagResource',arn('secretsmanager','secret:rds!db-*'),extra={'ForAnyValue:StringEquals':{'aws:CalledVia':'rds.amazonaws.com'}}),
+ statement('ReadAwsManagedSecretsKey','kms','DescribeKey',arn('kms','key/*'),extra={'ForAnyValue:StringEquals':{'kms:ResourceAliases':'alias/aws/secretsmanager'}}),
+ statement('ConfigureExactNewIdentityPool','cognito-idp','CreateResourceServer CreateUserPoolClient CreateUserPoolDomain CreateManagedLoginBranding',arn('cognito-idp','userpool/RENDER_FRESH_POOL_ID')),
+ statement('CreateExactLabFrontendBranch','amplify','CreateBranch TagResource',arn('amplify','apps/RENDER_FRESH_APP_ID/branches/lab'),tagged('Request')),
+ statement('CreateImmutableNamedRepository','ecr','CreateRepository TagResource',arn('ecr','repository/scoutgrid-lab-backend'),tagged('Request')),
+]
+roles=[f'arn:aws:iam::{account}:role/scoutgrid-lab-{r}' for r in ['api-execution','worker-execution','migrator-execution','api-task','worker-task']]
+trusted_runtime=[
+ statement('ManageOnlyFiveReviewedRuntimeRoles','iam','CreateRole GetRole UpdateAssumeRolePolicy PutRolePolicy GetRolePolicy ListRolePolicies ListAttachedRolePolicies TagRole UntagRole',roles,regional=False),
+ statement('PassOnlyReviewedTaskRolesToEcs','iam','PassRole',roles,{'iam:PassedToService':'ecs-tasks.amazonaws.com'},regional=False),
+ statement('RegisterOnlyReviewedTaskDefinitions','ecs','RegisterTaskDefinition',equals=tagged('Request')),
+ statement('TagNewReviewedTaskDefinitions','ecs','TagResource',[arn('ecs',f'task-definition/scoutgrid-lab-{r}:*') for r in ['api','worker','migrator']],tagged('Request')),
+]
+# This inventory-bound cleanup template intentionally cannot render without every
+# captured resource identity and the separate data/key/backup disposition decision.
+cleanup=[
+ statement('StopOnlyCapturedLabServices','ecs','UpdateService DeleteService',[arn('ecs','service/scoutgrid-lab/api'),arn('ecs','service/scoutgrid-lab/worker')]),
+ statement('StopOnlyCapturedLabTasks','ecs','StopTask',arn('ecs','task/scoutgrid-lab/RENDER_CAPTURED_TASK_ID')),
+ statement('DeregisterOnlyCapturedTaskRevisions','ecs','DeregisterTaskDefinition',arn('ecs','task-definition/RENDER_CAPTURED_TASK_REVISION')),
+ statement('DeleteOnlyLabCluster','ecs','DeleteCluster',arn('ecs','cluster/scoutgrid-lab')),
+ statement('DeleteCapturedRuntimeRoles','iam','DeleteRolePolicy DeleteRole',roles,regional=False),
+ statement('DeleteCapturedLogGroups','logs','DeleteLogGroup',[arn('logs',f'log-group:/ecs/scoutgrid-lab/{r}:*') for r in ['api','worker','migrator']]),
+ statement('DisableAndDeleteCapturedDatabase','rds','ModifyDBInstance DeleteDBInstance',arn('rds','db:scoutgrid-lab')),
+ statement('DeleteCapturedDbGroups','rds','DeleteDBParameterGroup DeleteDBSubnetGroup',[arn('rds','pg:scoutgrid-lab-postgres16'),arn('rds','subgrp:scoutgrid-lab')]),
+ statement('DeleteOnlyCapturedDisposableBackup','rds','DeleteDBSnapshot',arn('rds','snapshot:RENDER_CAPTURED_APPROVED_SNAPSHOT')),
+ statement('DeleteCapturedFrontend','amplify','DeleteDomainAssociation DeleteBranch DeleteApp',arn('amplify','apps/RENDER_FRESH_APP_ID*')),
+ statement('DisableAndDeleteCapturedPool','cognito-idp','UpdateUserPool DeleteUserPool DeleteResourceServer DeleteUserPoolClient DeleteUserPoolDomain DeleteManagedLoginBranding',arn('cognito-idp','userpool/RENDER_FRESH_POOL_ID')),
+ statement('EmptyOnlyCapturedLabObjectVersions','s3','DeleteObject DeleteObjectVersion AbortMultipartUpload',[b+'/RENDER_CAPTURED_APPROVED_OBJECT_KEY' for b in buckets],regional=False),
+ statement('ListAndDeleteOnlyLabArtifactBuckets','s3','ListBucket ListBucketVersions ListBucketMultipartUploads DeleteBucket DeleteBucketPolicy PutBucketPublicAccessBlock PutBucketOwnershipControls PutBucketVersioning PutEncryptionConfiguration PutBucketCORS',buckets,regional=False),
+ statement('DeleteCapturedRegionalWebAcl','wafv2','DisassociateWebACL DeleteWebACL',arn('wafv2','regional/webacl/scoutgrid-lab-api/RENDER_CAPTURED_WEBACL_ID')),
+ statement('RemoveCapturedAlbWafAssociation','wafv2','DisassociateWebACL',arn('elasticloadbalancing','loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID')),
+ statement('DeleteCapturedAlbTree','elasticloadbalancing','DeleteLoadBalancer DeleteTargetGroup DeleteListener DeleteRule',[arn('elasticloadbalancing',v) for v in ['loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID','targetgroup/scoutgrid-lab-api/RENDER_CAPTURED_TARGET_ID','listener/app/scoutgrid-lab-api/RENDER_CAPTURED_LISTENER_PATH','listener-rule/app/scoutgrid-lab-api/RENDER_CAPTURED_RULE_PATH']]),
+]
+for kind,actions in [('vpc','DeleteVpc'),('subnet','DeleteSubnet DisassociateRouteTable'),('route-table','DeleteRouteTable DeleteRoute DisassociateRouteTable'),('internet-gateway','DetachInternetGateway DeleteInternetGateway'),('elastic-ip','ReleaseAddress'),('natgateway','DeleteNatGateway'),('vpc-endpoint','DeleteVpcEndpoints'),('security-group','DeleteSecurityGroup RevokeSecurityGroupIngress RevokeSecurityGroupEgress')]:
+ cleanup.append(statement('DeleteCaptured'+kind.replace('-','').title(),'ec2',actions,arn('ec2',kind+'/RENDER_CAPTURED_'+kind.replace('-','_').upper()+'_ID')))
+policies={'common-read-state':common,'trusted-foundation-bootstrap':bootstrap,'foundation-apply.template':foundation,'trusted-runtime-bootstrap':trusted_runtime,'inventory-cleanup.template':cleanup}
+manifest={}
+for name,statements in policies.items():
+ for s in statements:
+  for action in s['Action']:
+   service,a=action.split(':',1);reference=json.loads((root/f'service-reference/{service}.json').read_text())
+   assert any(fnmatch.fnmatch(x['Name'],a) for x in reference['Actions']),action
+ data=(json.dumps({'Version':'2012-10-17','Statement':statements},indent=2)+'\n').encode()
+ path=root/(name+'.json');path.write_bytes(data)
+ manifest[name]={'file':str(path),'sha256':hashlib.sha256(data).hexdigest(),'statements':len(statements),'compact_bytes':len(json.dumps({'Version':'2012-10-17','Statement':statements},separators=(',',':'))),'render_required':'RENDER_' in data.decode(),'attached':False}
+trust={'Version':'2012-10-17','Statement':[{'Effect':'Allow','Principal':{'AWS':f'arn:aws:iam::{account}:role/managed/AccountFullAccessRole'},'Action':'sts:AssumeRole'}]}
+(root/'operator-trust.json').write_text(json.dumps(trust,indent=2)+'\n')
+(root/'execution-policy-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+print(json.dumps(manifest,indent=2))
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py

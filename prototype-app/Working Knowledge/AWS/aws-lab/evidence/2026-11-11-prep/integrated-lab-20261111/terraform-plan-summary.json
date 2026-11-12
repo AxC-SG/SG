@@ -1,0 +1,1725 @@
+{
+  "mode": "mocked-only; no AWS resources created",
+  "terraform_version": "1.13.5",
+  "aws_provider_version": "6.64.0",
+  "plans": {
+    "prepare_integrated_lab_before_bootstrap": {
+      "timestamp": "2026-11-11T14:57:39.427407+05:30",
+      "actions": {
+        "create": 93
+      },
+      "resources_by_type": {
+        "aws_amplify_app": 1,
+        "aws_amplify_branch": 1,
+        "aws_cloudwatch_log_group": 3,
+        "aws_cognito_managed_login_branding": 1,
+        "aws_cognito_resource_server": 1,
+        "aws_cognito_user_pool": 1,
+        "aws_cognito_user_pool_client": 1,
+        "aws_cognito_user_pool_domain": 1,
+        "aws_db_instance": 1,
+        "aws_db_parameter_group": 1,
+        "aws_db_subnet_group": 1,
+        "aws_ecr_repository": 1,
+        "aws_ecs_cluster": 1,
+        "aws_ecs_task_definition": 3,
+        "aws_iam_role": 5,
+        "aws_iam_role_policy": 5,
+        "aws_kms_key": 2,
+        "aws_lb": 1,
+        "aws_lb_listener": 1,
+        "aws_lb_listener_rule": 1,
+        "aws_lb_target_group": 1,
+        "aws_s3_bucket": 2,
+        "aws_s3_bucket_cors_configuration": 1,
+        "aws_s3_bucket_ownership_controls": 2,
+        "aws_s3_bucket_policy": 2,
+        "aws_s3_bucket_public_access_block": 2,
+        "aws_s3_bucket_server_side_encryption_configuration": 2,
+        "aws_s3_bucket_versioning": 2,
+        "aws_security_group": 5,
+        "aws_vpc_security_group_egress_rule": 7,
+        "aws_vpc_security_group_ingress_rule": 5,
+        "aws_wafv2_web_acl": 1,
+        "aws_wafv2_web_acl_association": 1,
+        "aws_eip": 1,
+        "aws_internet_gateway": 1,
+        "aws_nat_gateway": 1,
+        "aws_route": 4,
+        "aws_route_table": 6,
+        "aws_route_table_association": 6,
+        "aws_subnet": 6,
+        "aws_vpc": 1,
+        "aws_vpc_endpoint": 1
+      },
+      "resources": [
+        {
+          "address": "aws_amplify_app.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_amplify_branch.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_managed_login_branding.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_resource_server.standard_api",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool.humans",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_client.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_domain.login",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_instance.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_parameter_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_subnet_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecr_repository.backend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_cluster.standard[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.application[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.application[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.imports[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.imports[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.objects",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_listener.https[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_listener_rule.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_target_group.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_cors_configuration.imports",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.alb[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.alb_to_api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.alb_https[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.api_from_alb[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_wafv2_web_acl.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_wafv2_web_acl_association.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_eip.egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_internet_gateway.public",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_nat_gateway.zonal[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc_endpoint.s3",
+          "actions": [
+            "create"
+          ]
+        }
+      ]
+    },
+    "start_integrated_lab_after_enrollment_removed": {
+      "timestamp": "2026-11-11T14:57:39.880004+05:30",
+      "actions": {
+        "create": 95
+      },
+      "resources_by_type": {
+        "aws_amplify_app": 1,
+        "aws_amplify_branch": 1,
+        "aws_cloudwatch_log_group": 3,
+        "aws_cognito_managed_login_branding": 1,
+        "aws_cognito_resource_server": 1,
+        "aws_cognito_user_pool": 1,
+        "aws_cognito_user_pool_client": 1,
+        "aws_cognito_user_pool_domain": 1,
+        "aws_db_instance": 1,
+        "aws_db_parameter_group": 1,
+        "aws_db_subnet_group": 1,
+        "aws_ecr_repository": 1,
+        "aws_ecs_cluster": 1,
+        "aws_ecs_service": 2,
+        "aws_ecs_task_definition": 3,
+        "aws_iam_role": 5,
+        "aws_iam_role_policy": 5,
+        "aws_kms_key": 2,
+        "aws_lb": 1,
+        "aws_lb_listener": 1,
+        "aws_lb_listener_rule": 1,
+        "aws_lb_target_group": 1,
+        "aws_s3_bucket": 2,
+        "aws_s3_bucket_cors_configuration": 1,
+        "aws_s3_bucket_ownership_controls": 2,
+        "aws_s3_bucket_policy": 2,
+        "aws_s3_bucket_public_access_block": 2,
+        "aws_s3_bucket_server_side_encryption_configuration": 2,
+        "aws_s3_bucket_versioning": 2,
+        "aws_security_group": 5,
+        "aws_vpc_security_group_egress_rule": 7,
+        "aws_vpc_security_group_ingress_rule": 5,
+        "aws_wafv2_web_acl": 1,
+        "aws_wafv2_web_acl_association": 1,
+        "aws_eip": 1,
+        "aws_internet_gateway": 1,
+        "aws_nat_gateway": 1,
+        "aws_route": 4,
+        "aws_route_table": 6,
+        "aws_route_table_association": 6,
+        "aws_subnet": 6,
+        "aws_vpc": 1,
+        "aws_vpc_endpoint": 1
+      },
+      "resources": [
+        {
+          "address": "aws_amplify_app.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_amplify_branch.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cloudwatch_log_group.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_managed_login_branding.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_resource_server.standard_api",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool.humans",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_client.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_domain.login",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_instance.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_parameter_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_subnet_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecr_repository.backend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_cluster.standard[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_service.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_service.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecs_task_definition.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.application[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.application[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role.execution[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.execution[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.imports[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_iam_role_policy.imports[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.objects",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_listener.https[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_listener_rule.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_lb_target_group.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_cors_configuration.imports",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.alb[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.alb_to_api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_https[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_egress_rule.backend_to_database[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.alb_https[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.api_from_alb[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"api\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"migrator\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_vpc_security_group_ingress_rule.database_from_backend[\"worker\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_wafv2_web_acl.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_wafv2_web_acl_association.api[\"standard\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_eip.egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_internet_gateway.public",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_nat_gateway.zonal[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc_endpoint.s3",
+          "actions": [
+            "create"
+          ]
+        }
+      ]
+    },
+    "sydney_single_nat_foundation": {
+      "timestamp": "2026-11-11T14:57:44.216976+05:30",
+      "actions": {
+        "create": 54
+      },
+      "resources_by_type": {
+        "aws_amplify_app": 1,
+        "aws_amplify_branch": 1,
+        "aws_cognito_managed_login_branding": 1,
+        "aws_cognito_resource_server": 1,
+        "aws_cognito_user_pool": 1,
+        "aws_cognito_user_pool_client": 1,
+        "aws_cognito_user_pool_domain": 1,
+        "aws_db_instance": 1,
+        "aws_db_parameter_group": 1,
+        "aws_db_subnet_group": 1,
+        "aws_ecr_repository": 1,
+        "aws_kms_key": 2,
+        "aws_s3_bucket": 2,
+        "aws_s3_bucket_cors_configuration": 1,
+        "aws_s3_bucket_ownership_controls": 2,
+        "aws_s3_bucket_policy": 2,
+        "aws_s3_bucket_public_access_block": 2,
+        "aws_s3_bucket_server_side_encryption_configuration": 2,
+        "aws_s3_bucket_versioning": 2,
+        "aws_security_group": 1,
+        "aws_eip": 1,
+        "aws_internet_gateway": 1,
+        "aws_nat_gateway": 1,
+        "aws_route": 4,
+        "aws_route_table": 6,
+        "aws_route_table_association": 6,
+        "aws_subnet": 6,
+        "aws_vpc": 1,
+        "aws_vpc_endpoint": 1
+      },
+      "resources": [
+        {
+          "address": "aws_amplify_app.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_amplify_branch.frontend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_managed_login_branding.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_resource_server.standard_api",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool.humans",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_client.browser",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_cognito_user_pool_domain.login",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_instance.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_parameter_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_db_subnet_group.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_ecr_repository.backend",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_kms_key.objects",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_cors_configuration.imports",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_ownership_controls.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_policy.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_public_access_block.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"exports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_s3_bucket_versioning.artifacts[\"imports\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "aws_security_group.database",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_eip.egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_internet_gateway.public",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_nat_gateway.zonal[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.public[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route.task_egress[\"apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_route_table_association.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"database-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"public-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az1\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_subnet.tier[\"task-apse2-az3\"]",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc.standard",
+          "actions": [
+            "create"
+          ]
+        },
+        {
+          "address": "module.network.aws_vpc_endpoint.s3",
+          "actions": [
+            "create"
+          ]
+        }
+      ]
+    }
+  },
+  "standard_test_results": [
+    {
+      "path": "tests/integrated-lab.tftest.hcl",
+      "run": "prepare_integrated_lab_before_bootstrap",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/integrated-lab.tftest.hcl",
+      "run": "start_integrated_lab_after_enrollment_removed",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "foundation_without_candidate",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "audit_foundation_uses_private_archive_and_exact_service_permissions",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "prepare_candidate_before_bootstrap",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "separate_runtime_roles",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_mutable_image",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "publisher_can_only_push_to_standard_repository",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "prepare_managed_operator_enrollment",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_managed_enrollment_with_services_running",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_external_operations_destinations",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "scoped_security_monitoring_and_monthly_cost_alerts",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_lab_budget_above_owner_allowance",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "sydney_lab_uses_regional_runtime_and_release_targets",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "sydney_lab_rejects_other_region_credentials",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "sydney_single_nat_foundation",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_single_nat_in_production",
+      "progress": "complete",
+      "status": "pass"
+    },
+    {
+      "path": "tests/runtime.tftest.hcl",
+      "run": "reject_unknown_nat_topology",
+      "progress": "complete",
+      "status": "pass"
+    }
+  ],
+  "standard_test_summary": {
+    "status": "pass",
+    "passed": 18,
+    "failed": 0,
+    "errored": 0,
+    "skipped": 0
+  },
+  "network_test_summary": {
+    "passed": 2,
+    "failed": 0,
+    "log": "terraform-network-tests.log"
+  }
+}

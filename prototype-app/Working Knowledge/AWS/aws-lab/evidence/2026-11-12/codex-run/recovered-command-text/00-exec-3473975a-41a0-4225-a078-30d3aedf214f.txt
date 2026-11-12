@@ -1,0 +1,91 @@
+python3 - <<'PY'
+from pathlib import Path
+import json,hashlib
+root=Path('/private/tmp/scoutgrid-part1-postmerge-20261111/prototype-app/Working Knowledge/AWS');e=root/'release-evidence/postmerge-20261112';a=e/'access-review'
+readback={'checked_at':'2026-11-12T04:01:58.544736+00:00','evidence_method':'Successful AWS Core response observed in this chat; all five exact policy readbacks matched','approval_reference':'call_67dcd42f241b4d15ba3bcf91c168ab16; Authorize these exact provider corrections','readback':[{'role':r,'inline_policy':'ProviderBucketMetadataCorrection','document_file':'provider-bucket-read-addendum.json','matches':True} for r in ['ScoutGridSydneyLabPlan','ScoutGridSydneyLabBootstrap','ScoutGridSydneyLabApply','ScoutGridSydneyLabTeardown']]+[{'role':'ScoutGridSydneyLabBootstrap','inline_policy':'ProviderBootstrapMfaCorrection','document_file':'provider-bootstrap-mfa-addendum.json','matches':True}],'mfa_resource_tightening_after_capture_required':True,'application_resources_created':False,'billable_clock_started':False}
+(a/'provider-correction-grant-readback.json').write_text(json.dumps(readback,indent=2)+'\n')
+status='''LATEST HANDOFF — November 12, 2026, after 04:01:58 UTC (09:31:58 IST)
+
+Owner requested a fresh-chat prompt before any billable application creation.
+NO Terraform apply, ECR publication, secret creation, Cognito user enrollment,
+application-routing DNS change or application stack start has occurred.
+The billable clock has NOT started. The 17-create bootstrap plan is UNAPPLIED.
+
+The separate provider permission addendum is now EXPLICITLY APPROVED and ATTACHED,
+not pending. Owner answer: “Authorize these exact provider corrections” via
+call_67dcd42f241b4d15ba3bcf91c168ab16. Five inline-policy readbacks matched exactly
+at 04:01:58 UTC: ProviderBucketMetadataCorrection on Plan/Bootstrap/Apply/Teardown,
+and ProviderBootstrapMfaCorrection only on Bootstrap. See
+access-review/provider-correction-grant-readback.json. Do not request these same
+grants again. Original approved packet policy hashes remain unchanged. Tighten
+Bootstrap MFA Resource to the exact fresh pool ARN immediately after capture,
+retaining resource-tag/region conditions. Post-correction effective principal and
+caller checks remain necessary before use.
+
+Backend loaded-image verification passed, including the qualified main verifier.
+Owner independently APPROVED the configured frontend ZIP/configuration via
+call_13a46e0c930543cda8d94a9e90a0379a. See FRONTEND_PUBLICATION_REVIEW.md and
+frontend-lab-manifest.json. ZIP SHA-256:
+22ea96f50dfd5f7f166b76725081233e4e2335d7824629205a61a387dce6cc17.
+Backend publication and publisher-role approvals also remain valid.
+
+Owner created and securely stored the lab Turnstile pair. Public site key:
+0x4AAAAAAF9qZ1T6AfbbM6kS, only lab.scoutgrid.io, Managed, no pre-clearance.
+Secret result screen was not inspected. Do not request the secret in chat.
+
+CloudShell source/tooling was restored under /tmp/scoutgrid-plan-0ae3de9 after
+its previous /tmp expired. Exact backend is loaded. Fresh Bootstrap-role plan
+at 03:53:44 UTC has 17 creates, no updates/deletes/NAT/DB/ECR/services. Plan hash:
+d2cc0390997868f55e9d5076187055323b5ca9fd125a197f3846eab4a83f3c7e.
+Known settings and Teardown actual caller/metadata were reviewed. Review JSON:
+/tmp/scoutgrid-plan-0ae3de9/standard/bootstrap-plan-review.json.
+Reverify existence/hash/source/account/state before use; regenerate if stale.
+Do not use the older vanished foundation plan.
+
+Persistent CloudShell home files include image.tar.gz, backend-loaded-verification.json,
+scoutgrid-plan-source.tar.gz (SHA f9c0d6cb52daf2739970fd140a23cf9b226b6c269da610a45fd7839573a5fa21),
+and scoutgrid-preflight-tools.tar.gz (SHA 5c43a4a87fba6fce51a1513a9382327888ea0c23d061a33dcea1b34e5ad9c26b).
+The extracted scoutgrid-preflight-tools/ contains the qualified image verifier,
+backend manifest, approved configured frontend ZIP/manifest, owner-secret-entry.py
+and scoped-bootstrap-plan.py. Secret entry is prepared only; final binding/key/
+policy/effective checks are prerequisites. Owner enters the lab secret at the
+hidden prompt and completes password/MFA steps. Never retrieve secret values.
+
+Main recheck still 0ae3de9f4e4f7b1f784622d31656f30a89499043; primary workspace
+still exactly 217 changed entries, untouched. Fresh costs at 03:47:01 UTC remain
+$0.2371053074 estimated posted, conservative prior bound $4.5932471614, $25 run
+reserve, $20.4067528386 headroom in the authorized $50 inclusive month. Both old
+keys retain their exact December 11 schedules. Refresh cost/state/inventory before
+first billable create and freeze its clock; target four hours, cleanup by eight.
+
+Next: complete effective addendum checks and freeze cleanup execution sequence;
+review/revalidate the exact bootstrap plan, then bounded dependency creation only
+when ready. Capture IDs immediately; bind/analyze/simulate/read back cleanup and
+execution subsets before the next phase. CLEANUP_EXECUTION_SEQUENCE.md is prepared,
+not completed live-plan evidence. Then exact ECR push/digest, custody, enrollment,
+exit-once bootstrap/idempotency, remove enrollment access, API/worker, frontend,
+managed sign-in/onboarding/upload/isolation/scheduling tests and verified cleanup.
+No source/target/action expansion is implicitly approved.
+
+Gitleaks on new evidence reported two generic-key matches in SQL-file SHA-256
+entries (retained-pair-verification.json lines 36/37). They were verified as
+checksum metadata, not secrets; no suppressions were added. All evidence JSON
+parsed, original approved policy hashes matched. No new PR or operational commit/
+push exists. Preserve manual merge ownership and the dirty primary workspace.
+
+--- Earlier evidence/history; status above supersedes pending statements ---
+
+'''
+p=root/'NEXT_CHAT_PROMPT.md';p.write_text(status+p.read_text())
+p=e/'README.md';s=p.read_text();s+='\nLATEST: provider corrections were explicitly approved and all five inline-policy\nreadbacks matched at 04:01:58 UTC. See provider-correction-grant-readback.json.\nThe 17-create bootstrap plan is still UNAPPLIED. No billable clock has started.\nRead the latest handoff at the top of NEXT_CHAT_PROMPT.md before continuing.\n';p.write_text(s)
+p=a/'PROVIDER_PERMISSION_ADDENDUM.md';s=p.read_text().replace('# Provider permission addendum — pending owner approval','# Provider permission addendum — owner approved and attached');s+='\nOwner approved via call_67dcd42f241b4d15ba3bcf91c168ab16. All five exact inline\npolicy readbacks matched at 04:01:58 UTC; no application apply occurred.\n';p.write_text(s)
+p=a/'provider-permission-addendum-manifest.json';d=json.loads(p.read_text());d['status']='owner approved; attached and exact readbacks verified';d['approval_reference']='call_67dcd42f241b4d15ba3bcf91c168ab16';p.write_text(json.dumps(d,indent=2)+'\n')
+for name in ['AWS_MASTER_MIGRATION_PLAN.md','STANDARD_IMPLEMENTATION_READINESS.md']:
+ p=root/name;p.write_text('LATEST: read the November 12 04:01:58 UTC handoff at the top of\nNEXT_CHAT_PROMPT.md. Provider corrections and configured frontend publication\nare approved. No application apply/publication or billable clock has started.\n\n'+p.read_text())
+external=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112')
+for n in ['provider-correction-grant-readback.json','provider-permission-addendum-manifest.json','PROVIDER_PERMISSION_ADDENDUM.md','provider-bucket-read-addendum.json','provider-bootstrap-mfa-addendum.json','provider-addendum-validation.json','CLEANUP_EXECUTION_SEQUENCE.md']:(external/n).write_bytes((a/n).read_bytes())
+for p in e.rglob('*.json'):json.loads(p.read_text())
+m=json.loads((a/'role-grant-manifest.json').read_text())
+for n,h in m['files'].items():assert hashlib.sha256((a/n).read_bytes()).hexdigest()==h,n
+print('Saved fresh handoff and exact approved grant evidence. No application mutation.')
+PY

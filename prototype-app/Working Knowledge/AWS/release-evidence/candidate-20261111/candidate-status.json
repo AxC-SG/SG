@@ -1,0 +1,44 @@
+{
+  "candidate_sha": "03bb9a6737ea9961298d90c74b9772557f2c0081",
+  "branch": "codex/consolidate-aws-part1-and-dependencies",
+  "pr_url": "https://github.com/AxC-SG/SG/pull/67",
+  "published": true,
+  "merged": true,
+  "manual_merge_owner": "user",
+  "superseded_prs": [
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66
+  ],
+  "isolated_checkout": "/private/tmp/scoutgrid-rc-20261111.ZMJ9pR/repo",
+  "ci_status": "All four required PR workflows passed. Post-merge main: Semgrep and Performance success; Quality running; Trivy image builds failed on Ubuntu archive DNS resolution. Full browser sweep was still running at handoff.",
+  "workflow_runs": {
+    "quality": 43036174624,
+    "trivy": 43036174628,
+    "semgrep": 43036174842,
+    "performance": 43036175416,
+    "browser_sweep": 43036289397
+  },
+  "local_browser_comparisons_passed": 172,
+  "local_secret_scan": "full candidate history passed; wrong-path and credential-shaped negative controls detected",
+  "cloud_changes": false,
+  "initial_candidate_patch": "candidate.patch retains initial c458688 candidate only; review the published PR for the consolidated revision",
+  "merge_sha": "b65b1ee852cfe7b73375db6c075091c3c9c6a351",
+  "main_push_runs": {
+    "quality": 43040446827,
+    "trivy": 43040446585,
+    "semgrep": 43040446802,
+    "performance": 43040447029
+  },
+  "branch_cleanup": {
+    "remote_merged_branches_deleted": 5,
+    "local_candidate_branches_deleted": 2,
+    "temporary_pr_refs_removed": 8,
+    "preserved": "Unmerged docs/ui2-browser-ci, feat/ownership-mvp, and active codex/aws-part-1-implementation with existing workspace edits."
+  }
+}

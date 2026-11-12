@@ -1,0 +1,35 @@
+# REVIEW TEMPLATE ONLY. REQUIRED_* references deliberately fail validation.
+# Do not replace these with credential values; supply metadata ARNs/digests only.
+account_id              = "736486260824"
+environment             = "lab"
+aws_region              = "ap-southeast-2"
+availability_zone_ids   = ["apse2-az1", "apse2-az3"]
+nat_gateway_mode        = "single"
+vpc_cidr                = "10.21.0.0/16"
+postgres_engine_version = "16.15"
+frontend_origin         = "https://lab.scoutgrid.io"
+api_origin              = "https://api-lab.scoutgrid.io"
+cognito_domain_prefix   = "scoutgrid-lab-736486260824"
+github_publisher        = null
+
+backend_candidate = {
+  image_digest        = "REQUIRED_IMMUTABLE_ECR_DIGEST"
+  certificate_arn     = "REQUIRED_ISSUED_SYDNEY_ACM_CERTIFICATE_ARN"
+  runtime_db_secret   = "REQUIRED_RUNTIME_DATABASE_SECRET_ARN"
+  application_secret  = "REQUIRED_APPLICATION_SECRET_ARN"
+  secrets_kms_key_arn = "REQUIRED_APPLICATION_SECRETS_KMS_KEY_ARN"
+  start_services      = false
+  enable_bom_uploads  = false
+  enable_managed_auth = false
+  customer_limit      = 10
+  managed_installation = {
+    secret_arn = "REQUIRED_REVIEWED_OPERATOR_ENROLLMENT_SECRET_ARN"
+    version_id = "REQUIRED_REVIEWED_SECRET_VERSION_ID"
+  }
+}
+
+# After successful bootstrap and retry: remove managed_installation, verify the
+# task revision no longer has enrollment-secret access, then review the plan
+# enabling the two services and the lab-only browser authentication/upload flags.
+# Security operations and monthly budget inputs need their own reviewed owners,
+# destinations and usage estimate before enablement; the mock omits them.

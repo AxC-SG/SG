@@ -1,0 +1,26 @@
+{
+  "original_ci_run": 42965698489,
+  "original_new_entries": 70,
+  "original_new_entries_still_present": 0,
+  "current_per_element_entries": 379,
+  "baseline_per_element_entries": 2345,
+  "new_entries": 0,
+  "resolved_baseline_entries": 1966,
+  "current_violation_rows": 242,
+  "remaining_known_entries": 379,
+  "matrix": {
+    "themes": [
+      "dark",
+      "light"
+    ],
+    "widths": [
+      390,
+      768,
+      1280,
+      1440
+    ]
+  },
+  "baseline_changed": false,
+  "baseline_sha256": "de854ac103e4be68d2cc8fdb98ee5b58abfa05e85f3114a1e08cc5ea1761b46d",
+  "limitation": "Passing the unchanged-baseline comparison does not mean zero accessibility defects; 379 known per-element entries remain."
+}

@@ -1,0 +1,192 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "CreateOnlyTaggedPublicLabAlb",
+   "Effect": "Allow",
+   "Action": [
+    "elasticloadbalancing:CreateLoadBalancer"
+   ],
+   "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/Profile": "Standard",
+     "aws:RequestTag/ManagedBy": "Terraform"
+    },
+    "StringEqualsIfExists": {
+     "elasticloadbalancing:Scheme": "internet-facing"
+    }
+   }
+  },
+  {
+   "Sid": "CreateOnlyTaggedLabTarget",
+   "Effect": "Allow",
+   "Action": [
+    "elasticloadbalancing:CreateTargetGroup"
+   ],
+   "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/Profile": "Standard",
+     "aws:RequestTag/ManagedBy": "Terraform"
+    }
+   }
+  },
+  {
+   "Sid": "CreateOnlyHttpsLabListener",
+   "Effect": "Allow",
+   "Action": [
+    "elasticloadbalancing:CreateListener"
+   ],
+   "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    },
+    "ForAllValues:StringEquals": {
+     "elasticloadbalancing:ListenerProtocol": "HTTPS",
+     "elasticloadbalancing:SecurityPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    },
+    "Null": {
+     "elasticloadbalancing:ListenerProtocol": "false",
+     "elasticloadbalancing:SecurityPolicy": "false"
+    }
+   }
+  },
+  {
+   "Sid": "CreateOnlyLabHostRule",
+   "Effect": "Allow",
+   "Action": [
+    "elasticloadbalancing:CreateRule"
+   ],
+   "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener/app/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "ConfigureOnlyCapturedAlbTree",
+   "Effect": "Allow",
+   "Action": [
+    "elasticloadbalancing:ModifyLoadBalancerAttributes",
+    "elasticloadbalancing:ModifyTargetGroupAttributes",
+    "elasticloadbalancing:AddTags"
+   ],
+   "Resource": [
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/scoutgrid-lab-api/*",
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener/app/scoutgrid-lab-api/*",
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener-rule/app/scoutgrid-lab-api/*"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "CreateOnlyTaggedNamedRegionalWaf",
+   "Effect": "Allow",
+   "Action": [
+    "wafv2:CreateWebACL",
+    "wafv2:TagResource"
+   ],
+   "Resource": "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/Profile": "Standard",
+     "aws:RequestTag/ManagedBy": "Terraform"
+    }
+   }
+  },
+  {
+   "Sid": "AssociateOnlyCapturedRegionalWafAndAlb",
+   "Effect": "Allow",
+   "Action": [
+    "wafv2:AssociateWebACL"
+   ],
+   "Resource": [
+    "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/*",
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "AttachWafOnlyToLabAlb",
+   "Effect": "Allow",
+   "Action": "elasticloadbalancing:SetWebAcl",
+   "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "UseAwsManagedWafRuleGroups",
+   "Effect": "Allow",
+   "Action": "wafv2:CreateWebACL",
+   "Resource": "arn:aws:wafv2:ap-southeast-2:*:regional/managedruleset/*/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "CreateOnlyElbServiceLinkedRole",
+   "Effect": "Allow",
+   "Action": "iam:CreateServiceLinkedRole",
+   "Resource": "arn:aws:iam::736486260824:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing",
+   "Condition": {
+    "StringEquals": {
+     "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+    }
+   }
+  },
+  {
+   "Sid": "ElbCreationReadOnlyChecks",
+   "Effect": "Allow",
+   "Action": [
+    "ec2:DescribeAccountAttributes"
+   ],
+   "Resource": "*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "ReadLabAlbWafAssociation",
+   "Effect": "Allow",
+   "Action": [
+    "wafv2:GetWebACLForResource"
+   ],
+   "Resource": [
+    "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/*/*",
+    "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  }
+ ]
+}

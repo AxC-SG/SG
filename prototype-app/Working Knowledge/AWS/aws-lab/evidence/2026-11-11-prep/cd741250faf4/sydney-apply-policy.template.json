@@ -1,0 +1,746 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LocateLabStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+    },
+    {
+      "Sid": "ListLabStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+    },
+    {
+      "Sid": "ReadWriteExactState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+    },
+    {
+      "Sid": "ManageLabStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
+    },
+    {
+      "Sid": "UseSydneyStateKeyThroughS3",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
+          "kms:CallerAccount": "736486260824",
+          "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSydneyNetworking",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribePrefixLists",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:DescribeVpcEndpointServices",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeAddressesAttribute"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSydneyDatabaseInstances",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:db:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabParameterGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBParameters"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabSubnetGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBSubnetGroups"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabDatabaseTags",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadBootstrapKeys",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:GetKeyRotationStatus",
+        "kms:ListResourceTags"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_DB_KEY_ID",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_OBJECT_KEY_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabBucketMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketVersioning",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketLogging",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketOwnershipControls",
+        "s3:ListTagsForResource",
+        "s3:GetBucketTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+        "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": "736486260824"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabPool",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:GetUserPoolMfaConfig",
+        "cognito-idp:ListTagsForResource",
+        "cognito-idp:DescribeResourceServer",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:ListUserPoolClients",
+        "cognito-idp:DescribeManagedLoginBranding",
+        "cognito-idp:DescribeManagedLoginBrandingByClient"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/BOOTSTRAP_COGNITO_POOL_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadCognitoDomainByName",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPoolDomain"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabAmplifyApp",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetApp",
+        "amplify:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabAmplifyBranch",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetBranch",
+        "amplify:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID/branches/lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:DescribeRepositories",
+        "ecr:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedNetworkRoots",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AllocateAddress",
+        "ec2:CreateInternetGateway",
+        "ec2:CreateVpc"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:internet-gateway/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedVpcChildren",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateRouteTable",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateSubnet"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedNatGateway",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNatGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:natgateway/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedS3Endpoint",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpcEndpoint"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc-endpoint/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform",
+          "ec2:VpceServiceName": "com.amazonaws.ap-southeast-2.s3"
+        }
+      }
+    },
+    {
+      "Sid": "TagNewNetworkResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:internet-gateway/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:natgateway/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc-endpoint/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform",
+          "ec2:CreateAction": [
+            "AllocateAddress",
+            "CreateInternetGateway",
+            "CreateNatGateway",
+            "CreateRouteTable",
+            "CreateSecurityGroup",
+            "CreateSubnet",
+            "CreateVpc",
+            "CreateVpcEndpoint"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "UseLabVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateNatGateway",
+        "ec2:CreateVpcEndpoint",
+        "ec2:AttachInternetGateway",
+        "ec2:ModifyVpcAttribute"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "UseLabNatInputs",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNatGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "UseLabEndpointRouteTables",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpcEndpoint"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "AttachLabGateway",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:internet-gateway/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureLabRoutes",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AssociateRouteTable",
+        "ec2:CreateRoute"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureLabSubnets",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AssociateRouteTable",
+        "ec2:ModifySubnetAttribute"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveDefaultLabDatabaseEgress",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:ResourceTag/Application": "ScoutGrid",
+          "aws:ResourceTag/Environment": "lab",
+          "aws:ResourceTag/Profile": "Standard",
+          "aws:ResourceTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateNamedLabDatabaseGroups",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBParameterGroup",
+        "rds:CreateDBSubnetGroup"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "SetLabDatabaseParameters",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBParameterGroup"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreatePrivateLabDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "Bool": {
+          "rds:PubliclyAccessible": "false",
+          "rds:ManageMasterUserPassword": "true"
+        },
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "TagNamedLabDatabaseResources",
+      "Effect": "Allow",
+      "Action": [
+        "rds:AddTagsToResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "DescribeDefaultSecretsManagerKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/*",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "kms:ResourceAliases": "alias/aws/secretsmanager"
+        },
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "AllowIntegratedLabDbCrypto",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_DB_KEY_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "kms:CallerAccount": "736486260824",
+          "kms:ViaService": [
+            "rds.ap-southeast-2.amazonaws.com",
+            "secretsmanager.ap-southeast-2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateIntegratedLabDbGrant",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateGrant"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_DB_KEY_ID",
+      "Condition": {
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        },
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "kms:CallerAccount": "736486260824",
+          "kms:ViaService": [
+            "rds.ap-southeast-2.amazonaws.com",
+            "secretsmanager.ap-southeast-2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "AllowRdsForwardedSecretSetup",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:TagResource"
+      ],
+      "Resource": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:rds!db-*",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:CalledVia": "rds.amazonaws.com"
+        },
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateLabPoolComponents",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateResourceServer",
+        "cognito-idp:CreateUserPoolClient",
+        "cognito-idp:CreateUserPoolDomain",
+        "cognito-idp:CreateManagedLoginBranding"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/BOOTSTRAP_COGNITO_POOL_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedLabAmplifyBranch",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:CreateBranch",
+        "amplify:TagResource"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID/branches/lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedLabEcrRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:CreateRepository",
+        "ecr:TagResource"
+      ],
+      "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "UpdateLabAmplifyApp",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:UpdateApp"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

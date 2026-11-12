@@ -1,0 +1,566 @@
+{
+  "source_ci_run": 42965698489,
+  "new_entries": [
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(1) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(2) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(3) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(4) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(5) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/org-cves",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": ".org-cve-row:nth-child(6) > td:nth-child(8) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(1) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(1) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(2) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(2) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(3) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(3) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(4) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(5) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(6) > td:nth-child(7) > span"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/login",
+      "theme": "dark",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "dark",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "dark",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "dark",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(1) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(2) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(3) > td:nth-child(9) > .inv-status-applicable.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "dark",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/login",
+      "theme": "dark",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "dark",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "dark",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "dark",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/login",
+      "theme": "dark",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "dark",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "dark",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "dark",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/login",
+      "theme": "dark",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "dark",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "dark",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "dark",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "dark",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 390,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/login",
+      "theme": "light",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "light",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "light",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "light",
+      "width": 390,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(4) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(5) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/vuln-repo/vulnerabilities",
+      "theme": "light",
+      "width": 768,
+      "rule": "color-contrast",
+      "impact": "serious",
+      "target": "tr:nth-child(6) > td:nth-child(9) > .inv-status-done.inv-status-badge"
+    },
+    {
+      "route": "/login",
+      "theme": "light",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "light",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "light",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "light",
+      "width": 768,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/login",
+      "theme": "light",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "light",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "light",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "light",
+      "width": 1280,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/login",
+      "theme": "light",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/setup",
+      "theme": "light",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo",
+      "theme": "light",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/blog",
+      "theme": "light",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    },
+    {
+      "route": "/demo/request",
+      "theme": "light",
+      "width": 1440,
+      "rule": "label-content-name-mismatch",
+      "impact": "serious",
+      "target": ".sgw-nav-brand"
+    }
+  ],
+  "new_count": 70
+}

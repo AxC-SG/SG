@@ -1,0 +1,7 @@
+bucket              = "scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+key                 = "standard/lab/terraform.tfstate"
+region              = "ap-southeast-2"
+allowed_account_ids = ["736486260824"]
+encrypt             = true
+kms_key_id          = "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a"
+use_lockfile        = true

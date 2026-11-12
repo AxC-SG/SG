@@ -1,0 +1,23 @@
+python3 - <<'PY'
+from pathlib import Path
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py');s=p.read_text().replace("{'Bool':{'ecs:privileged':'false'},'StringEquals':{'ecs:compute-compatibility':'FARGATE','ecs:task-cpu':['512','1024'],'ecs:task-memory':['2048','4096']}}", "{'BoolIfExists':{'ecs:privileged':'false'},'StringEquals':{'ecs:task-cpu':['512','1024'],'ecs:task-memory':['2048','4096']},'ForAllValues:StringEquals':{'ecs:compute-compatibility':'FARGATE'},'Null':{'ecs:compute-compatibility':'false'}}")
+insert='''secret_custody=[
+ statement('CreateOnlyThreeEncryptedLabSecrets','secretsmanager','CreateSecret',[arn('secretsmanager','secret:[REDACTED_SECRET]'+n+'-??????') for n in ['runtime-db','application-settings','managed-installation']],{**tagged('Request'),'secretsmanager:KmsKeyArn':arn('kms','key/RENDER_FRESH_APPLICATION_KEY')}),
+ statement('TagOnlyThreeLabSecrets','secretsmanager','TagResource',[arn('secretsmanager','secret:[REDACTED_SECRET]'+n+'-??????') for n in ['runtime-db','application-settings','managed-installation']],tagged('Request')),
+ statement('WriteAndInspectOnlyLabSecretVersions','secretsmanager','PutSecretValue UpdateSecretVersionStage DescribeSecret ListSecretVersionIds',[arn('secretsmanager','secret:[REDACTED_SECRET]'+n+'-??????') for n in ['runtime-db','application-settings','managed-installation']],tagged('Resource')),
+ statement('EncryptOnlyNewSecretValuesThroughSecretsManager','kms','GenerateDataKey',arn('kms','key/RENDER_FRESH_APPLICATION_KEY'),{'kms:ViaService':f'secretsmanager.{region}.amazonaws.com','kms:CallerAccount':account}),
+ {'Sid':'NeverRetrieveSecretValues','Effect':'Deny','Action':['secretsmanager:GetSecretValue','secretsmanager:BatchGetSecretValue'],'Resource':'*'},
+]
+'''
+s=s.replace("policies={'runtime-infra-apply.template'",insert+"policies={'secret-custody.template':secret_custody,'runtime-infra-apply.template'")
+p.write_text(s)
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-manifest.log
+python3 - <<'PY'
+from pathlib import Path
+import json
+r=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/service-reference/secretsmanager.json')
+x=json.loads(r.read_text())
+for a in x['Actions']:
+ if a['Name']=='CreateSecret':print(a['ActionConditionKeys'])
+PY

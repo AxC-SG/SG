@@ -1,0 +1,30 @@
+{
+  "journeys": {
+    "connect": {
+      "assertions": 122,
+      "failed": 0
+    },
+    "cve": {
+      "assertions": 94,
+      "failed": 0
+    },
+    "experience": {
+      "assertions": 264,
+      "failed": 0
+    },
+    "findings": {
+      "assertions": 67,
+      "failed": 0
+    },
+    "governance": {
+      "assertions": 168,
+      "failed": 0
+    },
+    "inventory": {
+      "assertions": 108,
+      "failed": 0
+    }
+  },
+  "total_assertions": 823,
+  "failures": 0
+}

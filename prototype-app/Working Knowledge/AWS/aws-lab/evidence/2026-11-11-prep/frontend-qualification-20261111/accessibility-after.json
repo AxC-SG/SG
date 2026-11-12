@@ -1,0 +1,4072 @@
+[
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/findings/ai",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".panel.ai-security-table-panel:nth-child(3)",
+    "targets": [
+      ".panel.ai-security-table-panel:nth-child(3)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".cvd-ov-kev-overdue",
+    "targets": [
+      ".cvd-ov-kev-overdue",
+      ".cvrs-mini-title",
+      ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-ov-kev-overdue",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#121216",
+        "ratio": 4.16,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "tr:nth-child(1) > td:nth-child(8) > span",
+    "targets": [
+      "tr:nth-child(1) > td:nth-child(8) > span",
+      "tr:nth-child(2) > td:nth-child(8) > span",
+      "tr:nth-child(3) > td:nth-child(8) > span",
+      "tr:nth-child(4) > td:nth-child(8) > span"
+    ],
+    "contrast": [
+      {
+        "target": "tr:nth-child(1) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(2) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(3) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(4) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/policies",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 2,
+    "sample": "div:nth-child(2) > .table-scroll",
+    "targets": [
+      "div:nth-child(2) > .table-scroll",
+      "div:nth-child(3) > .table-scroll"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-detail-value:nth-child(2) > .cd-avatar",
+      ".cd-notify-row:nth-child(1) > .cd-avatar",
+      ".cd-notify-row:nth-child(2) > .cd-avatar"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#2d181c",
+        "ratio": 4.43,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-detail-value:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(1) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 2,
+    "sample": ".cd-stage-rail",
+    "targets": [
+      ".cd-stage-rail",
+      ".cd-team-table"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/platform/tenants",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".table-scroll:nth-child(7)",
+    "targets": [
+      ".table-scroll:nth-child(7)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".cvd-ov-kev-overdue",
+    "targets": [
+      ".cvd-ov-kev-overdue",
+      ".cvrs-mini-title",
+      ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-ov-kev-overdue",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#121216",
+        "ratio": 4.16,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "tr:nth-child(1) > td:nth-child(8) > span",
+    "targets": [
+      "tr:nth-child(1) > td:nth-child(8) > span",
+      "tr:nth-child(2) > td:nth-child(8) > span",
+      "tr:nth-child(3) > td:nth-child(8) > span",
+      "tr:nth-child(4) > td:nth-child(8) > span"
+    ],
+    "contrast": [
+      {
+        "target": "tr:nth-child(1) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(2) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(3) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(4) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-detail-value:nth-child(2) > .cd-avatar",
+      ".cd-notify-row:nth-child(1) > .cd-avatar",
+      ".cd-notify-row:nth-child(2) > .cd-avatar"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#2d181c",
+        "ratio": 4.43,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-detail-value:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(1) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".cvd-ov-kev-overdue",
+    "targets": [
+      ".cvd-ov-kev-overdue",
+      ".cvrs-mini-title",
+      ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-ov-kev-overdue",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#121216",
+        "ratio": 4.16,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "tr:nth-child(1) > td:nth-child(8) > span",
+    "targets": [
+      "tr:nth-child(1) > td:nth-child(8) > span",
+      "tr:nth-child(2) > td:nth-child(8) > span",
+      "tr:nth-child(3) > td:nth-child(8) > span",
+      "tr:nth-child(4) > td:nth-child(8) > span"
+    ],
+    "contrast": [
+      {
+        "target": "tr:nth-child(1) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(2) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(3) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(4) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-detail-value:nth-child(2) > .cd-avatar",
+      ".cd-notify-row:nth-child(1) > .cd-avatar",
+      ".cd-notify-row:nth-child(2) > .cd-avatar"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#2d181c",
+        "ratio": 4.43,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-detail-value:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(1) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 5,
+    "sample": ".cvd-ov-kev-overdue",
+    "targets": [
+      ".cvd-ov-kev-overdue",
+      ".cvrs-mini-title",
+      ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+      ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-ov-kev-overdue",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#121216",
+        "ratio": 4.16,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(1) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(2) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cvrs-mini-event-row:nth-child(3) > .cvrs-mini-event-delta.up",
+        "fg": "#dc2626",
+        "bg": "#121216",
+        "ratio": 3.86,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "tr:nth-child(1) > td:nth-child(8) > span",
+    "targets": [
+      "tr:nth-child(1) > td:nth-child(8) > span",
+      "tr:nth-child(2) > td:nth-child(8) > span",
+      "tr:nth-child(3) > td:nth-child(8) > span",
+      "tr:nth-child(4) > td:nth-child(8) > span"
+    ],
+    "contrast": [
+      {
+        "target": "tr:nth-child(1) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(2) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(3) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": "tr:nth-child(4) > td:nth-child(8) > span",
+        "fg": "#9b2335",
+        "bg": "#24141a",
+        "ratio": 2.25,
+        "size": "8.3pt (11px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-detail-value:nth-child(2) > .cd-avatar",
+      ".cd-notify-row:nth-child(1) > .cd-avatar",
+      ".cd-notify-row:nth-child(2) > .cd-avatar"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#2d181c",
+        "ratio": 4.43,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-detail-value:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(1) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      },
+      {
+        "target": ".cd-notify-row:nth-child(2) > .cd-avatar",
+        "fg": "#ffffff",
+        "bg": "#8b8cf8",
+        "ratio": 2.91,
+        "size": "6.8pt (9px)"
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/findings/ai",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".panel.ai-security-table-panel:nth-child(3)",
+    "targets": [
+      ".panel.ai-security-table-panel:nth-child(3)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvrs-mini-title",
+    "targets": [
+      ".cvrs-mini-title"
+    ],
+    "contrast": [
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#ffffff",
+        "ratio": 4.49,
+        "size": "7.5pt (10px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".status-unknown",
+    "targets": [
+      ".status-unknown"
+    ],
+    "contrast": [
+      {
+        "target": ".status-unknown",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/policies",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 2,
+    "sample": "div:nth-child(2) > .table-scroll",
+    "targets": [
+      "div:nth-child(2) > .table-scroll",
+      "div:nth-child(3) > .table-scroll"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/policies/policy.aws.2",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+    "targets": [
+      "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/campaigns",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".blocked",
+    "targets": [
+      ".blocked",
+      ".review",
+      ".closed"
+    ],
+    "contrast": [
+      {
+        "target": ".blocked",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".review",
+        "fg": "#f59e0b",
+        "bg": "#fef5e7",
+        "ratio": 1.98,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".closed",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 6,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+      ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+      ".cd-progress-resolved",
+      ".cd-sla-days",
+      ".cd-evidence-partial"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#fde9e9",
+        "ratio": 3.22,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-progress-resolved",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-sla-days",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "36.0pt (48px)"
+      },
+      {
+        "target": ".cd-evidence-partial",
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "ratio": 2.14,
+        "size": "9.8pt (13px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 2,
+    "sample": ".cd-stage-rail",
+    "targets": [
+      ".cd-stage-rail",
+      ".cd-team-table"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/tenants",
+    "rule": "scrollable-region-focusable",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".table-scroll:nth-child(7)",
+    "targets": [
+      ".table-scroll:nth-child(7)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvrs-mini-title",
+    "targets": [
+      ".cvrs-mini-title"
+    ],
+    "contrast": [
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#ffffff",
+        "ratio": 4.49,
+        "size": "7.5pt (10px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".status-unknown",
+    "targets": [
+      ".status-unknown"
+    ],
+    "contrast": [
+      {
+        "target": ".status-unknown",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/policies/policy.aws.2",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+    "targets": [
+      "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/campaigns",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".blocked",
+    "targets": [
+      ".blocked",
+      ".review",
+      ".closed"
+    ],
+    "contrast": [
+      {
+        "target": ".blocked",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".review",
+        "fg": "#f59e0b",
+        "bg": "#fef5e7",
+        "ratio": 1.98,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".closed",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 9,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+      ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+      ".cd-progress-resolved",
+      ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-sla-days",
+      ".cd-evidence-partial"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#fde9e9",
+        "ratio": 3.22,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-progress-resolved",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-sla-days",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "36.0pt (48px)"
+      },
+      {
+        "target": ".cd-evidence-partial",
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "ratio": 2.14,
+        "size": "9.8pt (13px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/findings",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+    "targets": [
+      ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+      ".fpl-tr:nth-child(14) > td:nth-child(9) > .status-auto_closed.status-pill",
+      ".fpl-tr:nth-child(21) > td:nth-child(9) > .status-auto_closed.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": ".fpl-tr:nth-child(14) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": ".fpl-tr:nth-child(21) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvrs-mini-title",
+    "targets": [
+      ".cvrs-mini-title"
+    ],
+    "contrast": [
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#ffffff",
+        "ratio": 4.49,
+        "size": "7.5pt (10px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".status-unknown",
+    "targets": [
+      ".status-unknown"
+    ],
+    "contrast": [
+      {
+        "target": ".status-unknown",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/policies/policy.aws.2",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+    "targets": [
+      "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/campaigns",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".blocked",
+    "targets": [
+      ".blocked",
+      ".review",
+      ".closed"
+    ],
+    "contrast": [
+      {
+        "target": ".blocked",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".review",
+        "fg": "#f59e0b",
+        "bg": "#fef5e7",
+        "ratio": 1.98,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".closed",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 9,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+      ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+      ".cd-progress-resolved",
+      ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-sla-days",
+      ".cd-evidence-partial"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#fde9e9",
+        "ratio": 3.22,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-progress-resolved",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-sla-days",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "36.0pt (48px)"
+      },
+      {
+        "target": ".cd-evidence-partial",
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "ratio": 2.14,
+        "size": "9.8pt (13px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/findings",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+    "targets": [
+      ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+      ".fpl-tr:nth-child(14) > td:nth-child(9) > .status-auto_closed.status-pill",
+      ".fpl-tr:nth-child(21) > td:nth-child(9) > .status-auto_closed.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".fpl-tr:nth-child(7) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": ".fpl-tr:nth-child(14) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": ".fpl-tr:nth-child(21) > td:nth-child(9) > .status-auto_closed.status-pill",
+        "fg": "#7b8aa6",
+        "bg": "#fafafa",
+        "ratio": 3.33,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvrs-mini-title",
+    "targets": [
+      ".cvrs-mini-title"
+    ],
+    "contrast": [
+      {
+        "target": ".cvrs-mini-title",
+        "fg": "#e0332a",
+        "bg": "#ffffff",
+        "ratio": 4.49,
+        "size": "7.5pt (10px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(1)",
+    "targets": [
+      "th:nth-child(1)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "label",
+    "impact": "critical",
+    "nodes": 5,
+    "sample": "th:nth-child(1) > input[type=\"checkbox\"]",
+    "targets": [
+      "th:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(1) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(2) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(3) > td:nth-child(1) > input[type=\"checkbox\"]",
+      "tr:nth-child(4) > td:nth-child(1) > input[type=\"checkbox\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/org-cves/CVE-2026-31337/assets",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 2,
+    "sample": "td:nth-child(5) > select",
+    "targets": [
+      "td:nth-child(5) > select",
+      "td:nth-child(8) > select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".status-unknown",
+    "targets": [
+      ".status-unknown"
+    ],
+    "contrast": [
+      {
+        "target": ".status-unknown",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".ai-overview-strip > div > h3",
+    "targets": [
+      ".ai-overview-strip > div > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory/hosts/host-prod-api-gw-01",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory/software-identities/si-log4j-core",
+    "rule": "select-name",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": "select",
+    "targets": [
+      "select"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/inventory/ai/ai-agent-claims-triage",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".fd3-tab-bar",
+    "targets": [
+      ".fd3-tab-bar"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/policies/policy.aws.2",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/connect",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".connect-source-section:nth-child(1) > .connect-source-section-head > h4",
+    "targets": [
+      ".connect-source-section:nth-child(1) > .connect-source-section-head > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/connect/run-history",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/connect?connectSource=servicenow-cmdb",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".form-section:nth-child(3) > h4",
+    "targets": [
+      ".form-section:nth-child(3) > h4"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 4,
+    "sample": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+    "targets": [
+      "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+      "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill"
+    ],
+    "contrast": [
+      {
+        "target": "article:nth-child(1) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(2) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(3) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      },
+      {
+        "target": "article:nth-child(4) > .vuln-repo-dashboard-unresolved-copy > .vuln-repo-dashboard-item-tags > .status-unknown.status-pill",
+        "fg": "#d88f3d",
+        "bg": "#fafafa",
+        "ratio": 2.54,
+        "size": "8.6pt (11.5px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3",
+    "targets": [
+      "section:nth-child(1) > .panel-header > .vuln-repo-dashboard-section-copy > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/campaigns",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 3,
+    "sample": ".blocked",
+    "targets": [
+      ".blocked",
+      ".review",
+      ".closed"
+    ],
+    "contrast": [
+      {
+        "target": ".blocked",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".review",
+        "fg": "#f59e0b",
+        "bg": "#fef5e7",
+        "ratio": 1.98,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".closed",
+        "fg": "#ef4444",
+        "bg": "#fdecec",
+        "ratio": 3.29,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/vuln-repo/campaigns/campaign-openssl-q4",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 9,
+    "sample": ".cd-severity-badge",
+    "targets": [
+      ".cd-severity-badge",
+      ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+      ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+      ".cd-progress-resolved",
+      ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+      ".cd-sla-days",
+      ".cd-evidence-partial"
+    ],
+    "contrast": [
+      {
+        "target": ".cd-severity-badge",
+        "fg": "#ef4444",
+        "bg": "#fde9e9",
+        "ratio": 3.22,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(1) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-stage--done.cd-stage:nth-child(3) > .cd-stage-label",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "8.3pt (11px)"
+      },
+      {
+        "target": ".cd-progress-resolved",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "9.0pt (12px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(2) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(3) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-team-row:nth-child(4) > .cd-team-pill.cd-team-pill--ok",
+        "fg": "#21d07a",
+        "bg": "#e4f9ef",
+        "ratio": 1.84,
+        "size": "7.5pt (10px)"
+      },
+      {
+        "target": ".cd-sla-days",
+        "fg": "#21d07a",
+        "bg": "#ffffff",
+        "ratio": 2.02,
+        "size": "36.0pt (48px)"
+      },
+      {
+        "target": ".cd-evidence-partial",
+        "fg": "#f59e0b",
+        "bg": "#ffffff",
+        "ratio": 2.14,
+        "size": "9.8pt (13px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/admin/users",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/admin/users",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/admin/audit",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/configurations/suppress",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th:nth-child(8)",
+    "targets": [
+      "th:nth-child(8)"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/platform/ai-policies",
+    "rule": "empty-table-header",
+    "impact": "minor",
+    "nodes": 1,
+    "sample": "th[aria-label=\"Actions\"]",
+    "targets": [
+      "th[aria-label=\"Actions\"]"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/platform/ai-policies/azure.foundry.content-filter-blocking",
+    "rule": "color-contrast",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".cvd-status-pill",
+    "targets": [
+      ".cvd-status-pill"
+    ],
+    "contrast": [
+      {
+        "target": ".cvd-status-pill",
+        "fg": "#16a34a",
+        "bg": "#e8f6ed",
+        "ratio": 2.95,
+        "size": "9.0pt (12px)"
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/platform/tenants",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": "h3",
+    "targets": [
+      "h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/platform/operations",
+    "rule": "aria-required-children",
+    "impact": "critical",
+    "nodes": 1,
+    "sample": ".section-tab-row",
+    "targets": [
+      ".section-tab-row"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/platform/operations",
+    "rule": "heading-order",
+    "impact": "moderate",
+    "nodes": 1,
+    "sample": ".platform-ops-hero > .panel-header > div:nth-child(1) > h3",
+    "targets": [
+      ".platform-ops-hero > .panel-header > div:nth-child(1) > h3"
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "route": "/demo/request",
+    "rule": "aria-prohibited-attr",
+    "impact": "serious",
+    "nodes": 1,
+    "sample": ".turnstile-field",
+    "targets": [
+      ".turnstile-field"
+    ]
+  }
+]

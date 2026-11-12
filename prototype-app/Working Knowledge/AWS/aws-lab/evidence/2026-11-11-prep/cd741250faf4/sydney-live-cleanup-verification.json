@@ -1,0 +1,225 @@
+{
+  "account_id": "736486260824",
+  "region": "ap-southeast-2",
+  "checked_at_utc": "2026-11-11T09:04:31.864660+00:00",
+  "final_state_written_utc": "2026-11-11T04:49:27Z",
+  "final_managed_resource_count": 0,
+  "aws_readback": {
+    "identity": {
+      "UserId": "AROA2W6QAQBMP6WRBPGFI:b49814c8-30c1-707c-bb68-1602ef32a403",
+      "Account": "736486260824",
+      "Arn": "arn:aws:sts::736486260824:assumed-role/AccountFullAccessRole/b49814c8-30c1-707c-bb68-1602ef32a403"
+    },
+    "dbs": {
+      "DBInstances": []
+    },
+    "snapshots": {
+      "DBSnapshots": []
+    },
+    "backups": {
+      "DBInstanceAutomatedBackups": []
+    },
+    "vpcs": {
+      "Vpcs": []
+    },
+    "addresses": {
+      "Addresses": []
+    },
+    "nats": {
+      "NatGateways": []
+    },
+    "repositories": {
+      "repositories": []
+    },
+    "apps": {
+      "apps": []
+    },
+    "pools": {
+      "UserPools": []
+    },
+    "buckets": {
+      "Buckets": [
+        {
+          "Name": "scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+          "CreationDate": "2026-11-09T15:15:23+00:00",
+          "BucketArn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+        }
+      ],
+      "Owner": {
+        "ID": "cdffb096ae0a36d197f315a7a92fe4c5b8fe2b732f433270bb1190fe39d22184"
+      }
+    },
+    "db_key": {
+      "KeyMetadata": {
+        "AWSAccountId": "736486260824",
+        "KeyId": "22cf6682-3133-47bd-af3e-200a1464b054",
+        "Arn": "arn:aws:kms:ap-southeast-2:736486260824:key/22cf6682-3133-47bd-af3e-200a1464b054",
+        "CreationDate": "2026-11-11T03:49:07.109000+00:00",
+        "Enabled": false,
+        "Description": "scoutgrid-lab PostgreSQL and recovery",
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "KeyState": "PendingDeletion",
+        "DeletionDate": "2026-12-11T04:47:23.527000+00:00",
+        "Origin": "AWS_KMS",
+        "KeyManager": "CUSTOMER",
+        "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "EncryptionAlgorithms": [
+          "SYMMETRIC_DEFAULT"
+        ],
+        "MultiRegion": false,
+        "CurrentKeyMaterialId": "bee95d15c63d3946f8787272bf8e308c08be795f2e21d3e1851d987dc2d004b9"
+      }
+    },
+    "object_key": {
+      "KeyMetadata": {
+        "AWSAccountId": "736486260824",
+        "KeyId": "ddb15ff2-ac4a-4eaa-92d4-7b697706ea11",
+        "Arn": "arn:aws:kms:ap-southeast-2:736486260824:key/ddb15ff2-ac4a-4eaa-92d4-7b697706ea11",
+        "CreationDate": "2026-11-11T03:49:07.120000+00:00",
+        "Enabled": false,
+        "Description": "scoutgrid-lab import and export objects",
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "KeyState": "PendingDeletion",
+        "DeletionDate": "2026-12-11T04:45:33.250000+00:00",
+        "Origin": "AWS_KMS",
+        "KeyManager": "CUSTOMER",
+        "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "EncryptionAlgorithms": [
+          "SYMMETRIC_DEFAULT"
+        ],
+        "MultiRegion": false,
+        "CurrentKeyMaterialId": "c453c7c208e0bf94d8337ec99a43f660ee9a17dd31e352f6d96991fc215b5de4"
+      }
+    },
+    "secret": "An error occurred (ResourceNotFoundException) when calling the DescribeSecret operation: Secrets Manager can't find the specified secret."
+  },
+  "aws_api_calls": [
+    {
+      "service": "sts",
+      "operation": "GetCallerIdentity",
+      "status": "success"
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "success",
+      "n_items": {
+        "DBInstances": 0
+      }
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBSnapshots",
+      "status": "success",
+      "n_items": {
+        "DBSnapshots": 0
+      }
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstanceAutomatedBackups",
+      "status": "success",
+      "n_items": {
+        "DBInstanceAutomatedBackups": 0
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcs",
+      "status": "success",
+      "n_items": {
+        "Vpcs": 0
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeAddresses",
+      "status": "success",
+      "n_items": {
+        "Addresses": 0
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeNatGateways",
+      "status": "success",
+      "n_items": {
+        "NatGateways": 0
+      }
+    },
+    {
+      "service": "ecr",
+      "operation": "DescribeRepositories",
+      "status": "success",
+      "n_items": {
+        "repositories": 0
+      }
+    },
+    {
+      "service": "amplify",
+      "operation": "ListApps",
+      "status": "success",
+      "n_items": {
+        "apps": 0
+      }
+    },
+    {
+      "service": "cognito-idp",
+      "operation": "ListUserPools",
+      "status": "success",
+      "n_items": {
+        "UserPools": 0
+      }
+    },
+    {
+      "service": "s3",
+      "operation": "ListBuckets",
+      "status": "success",
+      "n_items": {
+        "Buckets": 1
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "secretsmanager",
+      "operation": "DescribeSecret",
+      "status": "error",
+      "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the DescribeSecret operation: Secrets Manager can't find the specified secret."
+    }
+  ],
+  "iam_and_state_verification": {
+    "remaining_temporary_roles": [],
+    "remaining_temporary_policies": [],
+    "retained_roles": [
+      "AWSServiceRoleForRDS",
+      "ScoutGridSydneyLabPlan"
+    ],
+    "state_latest": [
+      {
+        "Key": "standard/lab/terraform.tfstate",
+        "LastModified": "2026-11-11T04:49:27+00:00",
+        "Size": 2212
+      }
+    ],
+    "latest_delete_markers": [
+      {
+        "Key": "standard/lab/terraform.tfstate.tflock",
+        "LastModified": "2026-11-11T04:49:27+00:00"
+      }
+    ],
+    "checked_at_utc": "2026-11-11T09:04:31.864660+00:00"
+  },
+  "billing_reconciliation": "Pending refreshed Cost Explorer data; retained versioned Terraform state storage and requests remain possible.",
+  "kms_physical_deletion": "Scheduled for December 11, 2026; not yet physically deleted."
+}

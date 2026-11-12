@@ -1,0 +1,36 @@
+{
+  "vpc": [
+    "vpc-0086ef85ee121f76c"
+  ],
+  "subnet": [
+    "subnet-0cee1253ff1128285",
+    "subnet-0158a2f6531242fc3",
+    "subnet-0a5682fd3ca22881c",
+    "subnet-02e49121c453e2a45",
+    "subnet-0563f758e167524f5",
+    "subnet-00a0f5c664e073ddf"
+  ],
+  "route-table": [
+    "rtb-062821eb3e7c5f9fe",
+    "rtb-0980c7795c3891b63",
+    "rtb-01c4a47557334afb8",
+    "rtb-062bc08e02e04b2d1",
+    "rtb-0ea5f3d8c7fee4ee9",
+    "rtb-07dbff4b20ba62739"
+  ],
+  "security-group": [
+    "sg-06d88c1de163490ee"
+  ],
+  "natgateway": [
+    "nat-013d0cfcce592ba33"
+  ],
+  "internet-gateway": [
+    "igw-04102ba63bce7f765"
+  ],
+  "vpc-endpoint": [
+    "vpce-008d276acf0f6e0fb"
+  ],
+  "elastic-ip": [
+    "eipalloc-01435757a70e8c46c"
+  ]
+}

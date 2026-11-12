@@ -1,6 +1,30 @@
 # Deployment sources
 
-Canonical repository: [AxG-SG/SG](https://github.com/AxG-SG/SG).
+Canonical repository: [AxC-SG/SG](https://github.com/AxC-SG/SG), repository ID `1427276590`. GitHub confirmed this current owner on 5 November 2026 (Asia/Kolkata). Earlier `AxonCyber-SG/SG` and `AxG-SG/SG` references describe previous locations of the same repository. GitHub now reports a private repository owned by the personal account `AxC-SG`; the local Git origin matches it.
+
+## Current verification — 5 November 2026
+
+| Component | Verified state | Remaining work |
+| --- | --- | --- |
+| Resend | `scoutgrid.io` verified, sending enabled; only `ScoutGrid_Application_Email_2026_11` remains; no webhooks | No repository setting to change; preserve the working key and verified sender |
+| Render backend | `scout-backend` now references `AxC-SG/SG`, branch `main`, auto deploy disabled | Three latest attempts of commit `98155ae6d11e909fe87402a809c0f0804c5c8cd6` are `update_failed`; inspect diagnostics before another rollout |
+| Render migrator | `scout-tenant-migrator-demotest1` still references `ggkarthik/Scout` | Review its role, command, and database target before repointing or deploying it |
+| Render Postgres | `scoutdb-preprod-v1` is `available`, PostgreSQL 18, Oregon | No Git source connection; replacement or migration is a separate release operation |
+| Vercel frontend | Project query filtered by repository ID `1427276590` returns `scout-frontend`; production uses SG's `main` | The separate latest preview is blocked with a team-configuration troubleshooting link |
+
+Production domain `scoutgrid.io` points to Vercel deployment `dpl_9QvQ8GErSssZmv2tvdjULp28RTdf`, which is `READY`. Its Git metadata identifies `AxC-SG/SG`, `main`, commit `98155ae6d11e909fe87402a809c0f0804c5c8cd6`, and source `git`. The Git connection and a production frontend deployment from SG are established.
+
+The latest preview `dpl_5FJghgbSRbwM3VLVFfbLj2JpvKeX`, branch `docs/ui2-browser-ci`, commit `f9426447e18c6f3c4c836e3f1c14e0943fb93a22`, is `BLOCKED`. It is not the deployment serving production. Inspect commit attribution and the Git login connection; the error link alone does not establish the exact cause. The former private-organization/Hobby diagnosis must not be applied automatically to the repository's current personal owner. Do not make the repository public, change subscriptions, rewrite authorship, or weaken deployment protection to bypass this failure. See [Vercel collaboration troubleshooting](https://vercel.com/docs/deployments/troubleshoot-project-collaboration#team-configuration).
+
+Render's latest failed attempt is `dep-dblv93g8v5cc73d2ail0`, finished on 5 November 2026 at 03:15:48 UTC. Updated source configuration does not establish a successful release or current workload health. No backend failure cause or schema compatibility is claimed by this check.
+
+`render.yaml` now declares `AxC-SG/SG`. Preserve the live service's root `prototype-app/backend`, Docker context `.`, Dockerfile `./Dockerfile`, and readiness path `/actuator/health/readiness`. The Blueprint remains a preproduction definition with repository-root Docker paths. Do not perform a full Blueprint sync solely to update the repository URL: its compute plan and environment profile differ from the live service.
+
+This recheck changes only the local repository URL and documentation. It does not publish changes, deploy code, modify external settings or database state, rotate credentials, or send email.
+
+## Historical checkpoint — 1 November 2026
+
+The sections below retain the earlier migration evidence and instructions as recorded on 1 November. Pending Git-linking work and public-visibility statements below are superseded by the current verification above.
 
 Configuration changes are maintained on `codex/resend-email-setup`. Production continues to use `main`; the feature branch is the preview and review source until merged.
 

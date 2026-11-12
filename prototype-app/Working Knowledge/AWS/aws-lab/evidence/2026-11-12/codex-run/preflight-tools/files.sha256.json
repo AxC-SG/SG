@@ -1,0 +1,8 @@
+{
+  "scoped-bootstrap-plan.py": "5840063e29d35ed59374c2b80d5b48e83a43d33cde49babbfad077644ac2e972",
+  "owner-secret-entry.py": "48f69a4226aed06323252544121a275f9eadb56d0c58026d2915e1f1a12f3752",
+  "verify-aws-backend-archive.py": "098ef0bd2525fcad998f4303f172106d12d0a3ae636ce9550c6c3906ccda7967",
+  "backend-manifest.json": "49daf56def26f4e61dfed6620f09540339c9116360750de7cd2118fd35d350a2",
+  "frontend-lab.zip": "22ea96f50dfd5f7f166b76725081233e4e2335d7824629205a61a387dce6cc17",
+  "frontend-lab-manifest.json": "f1921bc29e87dff2ef311f2d7c955af3b117988483a16a4f7a2d12e2fb383a9b"
+}

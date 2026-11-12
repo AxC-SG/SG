@@ -1,0 +1,30 @@
+python3 - <<'PY'
+from pathlib import Path
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py');s=p.read_text()
+s=s.replace("statement('CreateTaggedFreshSymmetricKeys','kms','CreateKey',equals=tagged('Request'))", "statement('CreateTaggedFreshSymmetricKeys','kms','CreateKey',equals={**tagged('Request'),'kms:KeySpec':'SYMMETRIC_DEFAULT','kms:KeyUsage':'ENCRYPT_DECRYPT','kms:KeyOrigin':'AWS_KMS'},extra={'BoolIfExists':{'kms:MultiRegion':'false','kms:BypassPolicyLockoutSafetyCheck':'false'}})")
+s=s.replace("statement('RegisterOnlyReviewedTaskDefinitions','ecs','RegisterTaskDefinition',equals=tagged('Request'))", "statement('RegisterOnlyReviewedTaskDefinitions','ecs','RegisterTaskDefinition',[arn('ecs',f'task-definition/scoutgrid-lab-{r}:*') for r in ['api','worker','migrator']],tagged('Request'),{'Bool':{'ecs:privileged':'false'},'StringEquals':{'ecs:compute-compatibility':'FARGATE','ecs:task-cpu':['512','1024'],'ecs:task-memory':['2048','4096']}})")
+s=s.replace("('vpc','DeleteVpc')", "('vpc','DeleteVpc DetachInternetGateway')")
+s=s.replace("arn('amplify','apps/RENDER_FRESH_APP_ID*')", "[arn('amplify','apps/RENDER_FRESH_APP_ID'),arn('amplify','apps/RENDER_FRESH_APP_ID/branches/lab'),arn('amplify','apps/RENDER_FRESH_APP_ID/domains/scoutgrid.io')]")
+insert='''runtime_infra=[
+ statement('CreateTaggedRuntimeGroups','ec2','CreateSecurityGroup',ec2('security-group'),tagged('Request')),
+ statement('CreateGroupsOnlyInCapturedVpc','ec2','CreateSecurityGroup',arn('ec2','vpc/RENDER_FRESH_VPC_ID')),
+ statement('TagOnlyNewRuntimeGroupsAndRules','ec2','CreateTags',ec2('security-group security-group-rule'),{**tagged('Request'),'ec2:CreateAction':['CreateSecurityGroup','AuthorizeSecurityGroupIngress','AuthorizeSecurityGroupEgress']}),
+ statement('ConfigureOnlyCapturedRuntimeGroups','ec2','AuthorizeSecurityGroupIngress AuthorizeSecurityGroupEgress RevokeSecurityGroupIngress RevokeSecurityGroupEgress',[arn('ec2','security-group/RENDER_CAPTURED_'+r+'_GROUP') for r in ['DATABASE','ALB','API','WORKER','MIGRATOR']]),
+ statement('CreateOnlyTaggedLabCluster','ecs','CreateCluster TagResource',arn('ecs','cluster/scoutgrid-lab'),tagged('Request')),
+ statement('ConfigureOnlyLabCluster','ecs','UpdateClusterSettings',arn('ecs','cluster/scoutgrid-lab')),
+ statement('CreateOnlyTaggedRuntimeLogs','logs','CreateLogGroup',[arn('logs',f'log-group:/ecs/scoutgrid-lab/{r}:*') for r in ['api','worker','migrator']],tagged('Request')),
+ statement('ConfigureOnlyRuntimeLogRetention','logs','PutRetentionPolicy TagResource',[arn('logs',f'log-group:/ecs/scoutgrid-lab/{r}:*') for r in ['api','worker','migrator']]),
+ statement('CreateOnlyTaggedPublicLabAlb','elasticloadbalancing','CreateLoadBalancer',arn('elasticloadbalancing','loadbalancer/app/scoutgrid-lab-api/*'),{**tagged('Request'),'elasticloadbalancing:Scheme':'internet-facing'}),
+ statement('CreateOnlyTaggedLabTarget','elasticloadbalancing','CreateTargetGroup',arn('elasticloadbalancing','targetgroup/scoutgrid-lab-api/*'),tagged('Request')),
+ statement('CreateOnlyHttpsLabListener','elasticloadbalancing','CreateListener',arn('elasticloadbalancing','loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID'),{'elasticloadbalancing:ListenerProtocol':'HTTPS','elasticloadbalancing:SecurityPolicy':'ELBSecurityPolicy-TLS13-1-2-2021-06'}),
+ statement('CreateOnlyLabHostRule','elasticloadbalancing','CreateRule',arn('elasticloadbalancing','listener/app/scoutgrid-lab-api/RENDER_CAPTURED_LISTENER_PATH')),
+ statement('ConfigureOnlyCapturedAlbTree','elasticloadbalancing','ModifyLoadBalancerAttributes ModifyTargetGroupAttributes AddTags',[arn('elasticloadbalancing','loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID'),arn('elasticloadbalancing','targetgroup/scoutgrid-lab-api/RENDER_CAPTURED_TARGET_ID'),arn('elasticloadbalancing','listener/app/scoutgrid-lab-api/RENDER_CAPTURED_LISTENER_PATH'),arn('elasticloadbalancing','listener-rule/app/scoutgrid-lab-api/RENDER_CAPTURED_RULE_PATH')]),
+ statement('CreateOnlyTaggedNamedRegionalWaf','wafv2','CreateWebACL TagResource',arn('wafv2','regional/webacl/scoutgrid-lab-api/*'),tagged('Request')),
+ statement('AssociateOnlyCapturedRegionalWafAndAlb','wafv2','AssociateWebACL',[arn('wafv2','regional/webacl/scoutgrid-lab-api/RENDER_CAPTURED_WEBACL_ID'),arn('elasticloadbalancing','loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID')]),
+]
+'''
+s=s.replace("policies={'common-read-state'",insert+"policies={'runtime-infra-apply.template':runtime_infra,'common-read-state'")
+s += '''\n# Managed policies have a 6,144-character limit; keep every attachable shard\n# below 5,500 bytes rather than overflowing the aggregate inline-role quota.\nshard_manifest={}\nfor name,statements in policies.items():\n chunks=[];current=[]\n for item in statements:\n  candidate=current+[item]\n  size=len(json.dumps({'Version':'2012-10-17','Statement':candidate},separators=(',',':')))\n  if size>5500 and current:chunks.append(current);current=[item]\n  else:current=candidate\n if current:chunks.append(current)\n for index,chunk in enumerate(chunks,1):\n  doc={'Version':'2012-10-17','Statement':chunk}; compact=json.dumps(doc,separators=(',',':'))\n  assert len(compact)<=5500\n  name_with_index=f'{name}.part{index}.json';path=root/name_with_index;path.write_text(compact+'\\n')\n  shard_manifest[name_with_index]={'sha256':hashlib.sha256((compact+'\\n').encode()).hexdigest(),'compact_bytes':len(compact),'attached':False}\n(root/'managed-policy-shards.json').write_text(json.dumps(shard_manifest,indent=2)+'\\n')\nprint('Managed policy shard size checks passed.')\n'''
+p.write_text(s)
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py

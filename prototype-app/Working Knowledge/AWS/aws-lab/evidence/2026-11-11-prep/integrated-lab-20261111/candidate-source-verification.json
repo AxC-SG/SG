@@ -1,0 +1,19 @@
+{
+  "source_sha": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "remote_tree_truncated": false,
+  "cached_release_source_matching_blobs": 2597,
+  "changed": [],
+  "missing": [],
+  "scope": [
+    "prototype-app/backend/",
+    "prototype-app/frontend/",
+    ".github/",
+    "prototype-app/infrastructure/terraform/"
+  ],
+  "image_archive_verified_sha256": "5fa3237a27ee8539f908bf8619d0d93a4b8ff953867cb40d552a9aac59bd5bf2",
+  "verified_packaged_heads": {
+    "platform": 15,
+    "tenant": 20
+  },
+  "offline_image_inspection": "non-root linux/amd64 config ID, both pinned RDS CA bundles, wrapper bytes and all 35 migration bytes matched"
+}
