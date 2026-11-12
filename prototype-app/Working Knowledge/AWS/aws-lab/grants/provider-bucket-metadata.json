@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ReadOnlyNamedLabBucketWebsiteMetadata",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketWebsite"
+            ],
+            "Resource": [
+                "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "s3:ResourceAccount": "736486260824"
+                }
+            }
+        }
+    ]
+}

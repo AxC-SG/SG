@@ -1,0 +1,277 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateTaggedRuntimeGroups",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateGroupsOnlyInCapturedVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": "arn:aws:ec2:ap-southeast-2:736486260824:vpc/RENDER_FRESH_VPC_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "TagOnlyNewRuntimeGroupsAndRules",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group-rule/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform",
+          "ec2:CreateAction": [
+            "CreateSecurityGroup",
+            "AuthorizeSecurityGroupIngress",
+            "AuthorizeSecurityGroupEgress"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyCapturedRuntimeGroups",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/RENDER_CAPTURED_DATABASE_GROUP",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/RENDER_CAPTURED_ALB_GROUP",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/RENDER_CAPTURED_API_GROUP",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/RENDER_CAPTURED_WORKER_GROUP",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/RENDER_CAPTURED_MIGRATOR_GROUP"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedLabCluster",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:CreateCluster",
+        "ecs:TagResource"
+      ],
+      "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyLabCluster",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:UpdateClusterSettings"
+      ],
+      "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedRuntimeLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator:*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyRuntimeLogRetention",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutRetentionPolicy",
+        "logs:TagResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator:*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedPublicLabAlb",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform",
+          "elasticloadbalancing:Scheme": "internet-facing"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedLabTarget",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateTargetGroup"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/scoutgrid-lab-api/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyHttpsLabListener",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateListener"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "ForAllValues:StringEquals": {
+          "elasticloadbalancing:ListenerProtocol": "HTTPS",
+          "elasticloadbalancing:SecurityPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+        },
+        "Null": {
+          "elasticloadbalancing:ListenerProtocol": "false",
+          "elasticloadbalancing:SecurityPolicy": "false"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyLabHostRule",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateRule"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener/app/scoutgrid-lab-api/RENDER_CAPTURED_LISTENER_PATH",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyCapturedAlbTree",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:AddTags"
+      ],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID",
+        "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/scoutgrid-lab-api/RENDER_CAPTURED_TARGET_ID",
+        "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener/app/scoutgrid-lab-api/RENDER_CAPTURED_LISTENER_PATH",
+        "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener-rule/app/scoutgrid-lab-api/RENDER_CAPTURED_RULE_PATH"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedNamedRegionalWaf",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:CreateWebACL",
+        "wafv2:TagResource"
+      ],
+      "Resource": "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "AssociateOnlyCapturedRegionalWafAndAlb",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:AssociateWebACL"
+      ],
+      "Resource": [
+        "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/scoutgrid-lab-api/RENDER_CAPTURED_WEBACL_ID",
+        "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/RENDER_CAPTURED_ALB_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

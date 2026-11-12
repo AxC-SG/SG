@@ -1,0 +1,81 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAndDeleteOnlyLabArtifactBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:ListBucketMultipartUploads",
+        "s3:DeleteBucket",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketCORS"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+        "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+      ]
+    },
+    {
+      "Sid": "ScheduleOnlyCapturedFreshKeysAfterConsumersRemoved",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ScheduleKeyDeletion"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/86e1efc7-4b96-4172-8e80-276c939f920d"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "NumericEquals": {
+          "kms:ScheduleKeyDeletionPendingWindowInDays": 30
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedFrontend",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:DeleteDomainAssociation",
+        "amplify:DeleteBranch",
+        "amplify:DeleteApp"
+      ],
+      "Resource": [
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/branches/lab",
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/domains/lab.scoutgrid.io"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DisableAndDeleteCapturedPool",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DeleteResourceServer",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DeleteManagedLoginBranding"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

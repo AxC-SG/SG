@@ -1,0 +1,22 @@
+{
+  "source_sha": "0ae3de9f4e4f7b1f784622d31656f30a89499043",
+  "status": "read-only plan preparation; no apply authorized by this bundle",
+  "files": {
+    "standard/data.tf": "c8609123dfc67aea505d6598561f43f7ed94c20c669023e9d4f22beffec55643",
+    "standard/identity.tf": "d8c0f7fbf4a94106e326a458fba36750210876c653c9d1eb5cd833a5197420c5",
+    "standard/main.tf": "474e2668fdd5b4ce77ba93c024e03cd2c3b95240180b4cf26404ce99d929fe20",
+    "standard/security-operations.tf": "8b50eb18adf7b638e6be1516b27514ab51aacb7e1c70fd1e00921a6d2a489610",
+    "standard/operations.tf": "40fcd3707a5d26ceb7d0a64c491e467d20c90d8baf64ed368c0b0fe9cfd301aa",
+    "standard/runtime.tf": "99b7213da78d9954b2e74f09c5fb5b1442d5e7349814626ca8d26f54a02e1c38",
+    "standard/ingress.tf": "b57afe9f71a3c2d70b41686f19698fb6178c3b16b8c3299f241fb60b3b0e1f93",
+    "standard/lab-operator-policies.tf": "4b5954a1a2f2ca850f231d14219beeff820b70d5b59d016d5448cf75aebf9697",
+    "standard/budget.tf": "51bf1e9eeb5a875000f969ff07db972ce099a2b7aa1aff0f8ebdd96e4c7f841f",
+    "standard/release-iam.tf": "49a94265773451f73e567188821251ee523a0c401f7dcf15c2e40ad1b49a8b98",
+    "standard/runtime-iam.tf": "9251ac9ea253c7d1670824041edd7bf93eef5a3683cada9f27175f4801dd6548",
+    "standard/hosting.tf": "2a99ca4a215c8fbf2b65ba8a46e791cb1c517cff1b8d262a69b9c8f975d460a9",
+    "modules/standard-network/main.tf": "4907079711e731eae63581f91dbd188984febca3c22f82b47253106f0728f30a",
+    "standard/.terraform.lock.hcl": "e886989ab9e8d7b04856fa55a588c9f9a7d9b868245428ee1f0582083cb52313",
+    "standard/sydney-lab.s3.tfbackend": "91086b5c7bedf9060e91a8a2572fe871d40270a3f6921e0eec20f92f9dfc2b16",
+    "standard/sydney-lab.foundation.tfvars": "1e9a8bdab07c6af05068e77393f2821f32ae7e13e553695d9a5fbe56aa9b9ed4"
+  }
+}

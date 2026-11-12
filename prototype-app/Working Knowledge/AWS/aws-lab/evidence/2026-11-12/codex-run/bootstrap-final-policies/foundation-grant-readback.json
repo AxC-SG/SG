@@ -1,0 +1,86 @@
+{
+  "status": "error",
+  "error": "NameError: name 'ClientError' is not defined",
+  "stdout": "",
+  "stderr": "Error calling function call_boto3 with arguments {'service_name': 'iam', 'operation_name': 'GetPolicy', 'params': {'PolicyArn': 'arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-foundation-apply-bound-part1'}}: An error occurred (NoSuchEntity) when calling the GetPolicy operation: Policy arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-foundation-apply-bound-part1 was not found.\n",
+  "api_calls": [
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "error",
+      "error": "NoSuchEntityException: An error occurred (NoSuchEntity) when calling the GetPolicy operation: Policy arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-foundation-apply-bound-part1 was not found."
+    }
+  ]
+}

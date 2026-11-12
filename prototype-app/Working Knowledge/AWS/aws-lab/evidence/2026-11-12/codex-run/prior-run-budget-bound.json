@@ -1,0 +1,51 @@
+{
+  "status": "conservative planning bound; not a final bill or guaranteed hard cost cap",
+  "account": "736486260824",
+  "region": "ap-southeast-2",
+  "known_usage_window_utc": [
+    "2026-11-11T03:49:02Z",
+    "2026-11-11T04:49:27Z"
+  ],
+  "usage_evidence": "All four prior NAT traffic series and RDS CPUSurplusCreditsCharged returned real Complete zero datapoints at 04:00 UTC. Missing data was not treated as zero. No app workloads, identities, Amplify jobs or ECR images existed during the completed foundation. Cleanup inventory verified removal.",
+  "country_evidence": "AWS Account GetContactInformation returned IN; all addresses and identifiers omitted. TaxSettings registration type PAN, no country returned.",
+  "tax_assumption": "0.18",
+  "tax_source": "https://aws.amazon.com/tax-help/india/",
+  "prior_cost_items": {
+    "two_hours_all_foundation_fixed_components": "0.4978082191780821917808219178",
+    "two_kms_keys_one_secret_full_month": "2.40",
+    "backup_and_storage_reserve": "0.12",
+    "original_api_request_reserve": "0.01394",
+    "transfer_reserve_despite_zero_nat": "0.10",
+    "additional_api_and_metering_reserve": "0.10"
+  },
+  "posted_included_as_additional_not_subtracted": "0.0202323141",
+  "prior_cost_bound_including_tax_and_50_cent_variance": "4.337337029268136986301369863",
+  "approved_reserve": "15",
+  "monthly_limit": "20",
+  "combined_prior_bound_plus_full_reserve": "19.33733702926813698630136986",
+  "fits_monthly_ceiling": true,
+  "application_scenarios": {
+    "4": {
+      "before_tax": "11.93369260273972602739726027",
+      "including_18_percent_tax_and_50_cent_variance": "14.58175727123287671232876712"
+    },
+    "4.5": {
+      "before_tax": "12.15729917808219178082191780",
+      "including_18_percent_tax_and_50_cent_variance": "14.84561303013698630136986300"
+    },
+    "8": {
+      "before_tax": "13.72254520547945205479452055",
+      "including_18_percent_tax_and_50_cent_variance": "16.69260334246575342465753425"
+    }
+  },
+  "maximum_model_hours_within_15_including_tax_and_variance": "4.792559409171586401835656338",
+  "operational_boundary": "Target complete cleanup by hour four; start cleanup by hour three or sooner on failure. 4.5 hours is the tighter planned absolute cleanup deadline; approved eight hours remains only an outer emergency limit and cannot authorize exceeding $15. Check current usage and stop sooner if allowances are exceeded.",
+  "excluded": [
+    "production",
+    "24-hour capacity soak",
+    "new security-control retention programme",
+    "unbounded feed/provider jobs"
+  ],
+  "billable_stack_started": false,
+  "remaining_release_access_secret_preconditions_not_waived": true
+}

@@ -1,0 +1,101 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:21:57.069519+00:00",
+    "simulations": [
+      {
+        "case": "create_tagged_vpc",
+        "decision": "allowed",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      },
+      {
+        "case": "create_exact_ecr",
+        "decision": "allowed",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      },
+      {
+        "case": "reject_other_ecr",
+        "decision": "implicitDeny",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      },
+      {
+        "case": "reject_iam_write",
+        "decision": "implicitDeny",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      },
+      {
+        "case": "reject_secret_value",
+        "decision": "explicitDeny",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      },
+      {
+        "case": "reject_ecr_delete",
+        "decision": "explicitDeny",
+        "organizations": {
+          "AllowedByOrganizations": true
+        }
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+ "cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+ "serviceName": "api",
+ "taskDefinition": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:1",
+ "launchType": "FARGATE",
+ "platformVersion": "1.4.0",
+ "desiredCount": 1,
+ "deploymentConfiguration": {
+  "maximumPercent": 200,
+  "minimumHealthyPercent": 100,
+  "deploymentCircuitBreaker": {
+   "enable": true,
+   "rollback": true
+  }
+ },
+ "networkConfiguration": {
+  "awsvpcConfiguration": {
+   "subnets": [
+    "subnet-0158a2f6531242fc3",
+    "subnet-0563f758e167524f5"
+   ],
+   "securityGroups": [
+    "sg-07592c41df9f8cec1"
+   ],
+   "assignPublicIp": "DISABLED"
+  }
+ },
+ "enableExecuteCommand": false,
+ "tags": [
+  {
+   "key": "Application",
+   "value": "ScoutGrid"
+  },
+  {
+   "key": "Environment",
+   "value": "lab"
+  },
+  {
+   "key": "ManagedBy",
+   "value": "Terraform"
+  },
+  {
+   "key": "Profile",
+   "value": "Standard"
+  }
+ ],
+ "loadBalancers": [
+  {
+   "targetGroupArn": "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/scoutgrid-lab-api/923d6d12ba1b7c1d",
+   "containerName": "api",
+   "containerPort": 8080
+  }
+ ],
+ "healthCheckGracePeriodSeconds": 120
+}

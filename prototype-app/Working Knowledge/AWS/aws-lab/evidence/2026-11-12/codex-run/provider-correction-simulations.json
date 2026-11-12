@@ -1,0 +1,609 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:00:20.389485+00:00",
+    "bucket_checks": [
+      {
+        "role": "Plan",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "s3:GetBucketWebsite",
+              "EvalResourceName": "arn:aws:s3:::${BucketName}/${KeyName}",
+              "EvalDecision": "implicitDeny",
+              "MatchedStatements": [
+                {
+                  "SourcePolicyId": "role_ScoutGridSydneyLabPlan_ProviderBucketMetadataCorrection",
+                  "SourcePolicyType": "IAM Policy",
+                  "StartPosition": {
+                    "Line": 1,
+                    "Column": 38
+                  },
+                  "EndPosition": {
+                    "Line": 1,
+                    "Column": 315
+                  }
+                }
+              ],
+              "MissingContextValues": [
+                "kms:ViaService",
+                "kms:CallerAccount",
+                "ecs:cluster",
+                "kms:EncryptionContext:aws:s3:arn",
+                "aws:ResourceTag/Application",
+                "aws:ResourceTag/Environment"
+              ],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabPlan_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-exports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabPlan_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::unrelated-scoutgrid-verification",
+                  "EvalResourceDecision": "implicitDeny",
+                  "MissingContextValues": [
+                    "kms:ViaService",
+                    "kms:CallerAccount",
+                    "ecs:cluster",
+                    "kms:EncryptionContext:aws:s3:arn",
+                    "aws:ResourceTag/Application",
+                    "aws:ResourceTag/Environment"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "role": "Bootstrap",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "s3:GetBucketWebsite",
+              "EvalResourceName": "arn:aws:s3:::${BucketName}/${KeyName}",
+              "EvalDecision": "implicitDeny",
+              "MatchedStatements": [
+                {
+                  "SourcePolicyId": "role_ScoutGridSydneyLabBootstrap_ProviderBucketMetadataCorrection",
+                  "SourcePolicyType": "IAM Policy",
+                  "StartPosition": {
+                    "Line": 1,
+                    "Column": 38
+                  },
+                  "EndPosition": {
+                    "Line": 1,
+                    "Column": 315
+                  }
+                }
+              ],
+              "MissingContextValues": [
+                "kms:BypassPolicyLockoutSafetyCheck",
+                "kms:KeyUsage",
+                "iam:AWSServiceName",
+                "aws:ResourceTag/ManagedBy",
+                "ecs:task-cpu",
+                "kms:KeySpec",
+                "ecs:cluster",
+                "kms:EncryptionContext:aws:s3:arn",
+                "iam:PassedToService",
+                "aws:RequestTag/Application",
+                "ecs:compute-compatibility",
+                "ecs:privileged",
+                "kms:ViaService",
+                "kms:CallerAccount",
+                "ecs:task-memory",
+                "kms:MultiRegion",
+                "aws:RequestTag/ManagedBy",
+                "aws:RequestTag/Environment",
+                "aws:ResourceTag/Profile",
+                "kms:KeyOrigin",
+                "s3:LocationConstraint",
+                "aws:RequestTag/Profile",
+                "aws:ResourceTag/Application",
+                "aws:ResourceTag/Environment"
+              ],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabBootstrap_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-exports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabBootstrap_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::unrelated-scoutgrid-verification",
+                  "EvalResourceDecision": "implicitDeny",
+                  "MissingContextValues": [
+                    "aws:ResourceTag/ManagedBy",
+                    "kms:KeySpec",
+                    "ecs:cluster",
+                    "kms:EncryptionContext:aws:s3:arn",
+                    "kms:ViaService",
+                    "kms:CallerAccount",
+                    "ecs:task-memory",
+                    "kms:MultiRegion",
+                    "aws:ResourceTag/Profile",
+                    "kms:KeyOrigin",
+                    "aws:RequestTag/Profile",
+                    "kms:BypassPolicyLockoutSafetyCheck",
+                    "kms:KeyUsage",
+                    "iam:AWSServiceName",
+                    "ecs:task-cpu",
+                    "iam:PassedToService",
+                    "aws:RequestTag/Application",
+                    "ecs:compute-compatibility",
+                    "ecs:privileged",
+                    "aws:RequestTag/ManagedBy",
+                    "aws:RequestTag/Environment",
+                    "s3:LocationConstraint",
+                    "aws:ResourceTag/Application",
+                    "aws:ResourceTag/Environment"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "role": "Apply",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "s3:GetBucketWebsite",
+              "EvalResourceName": "arn:aws:s3:::${BucketName}/${KeyName}",
+              "EvalDecision": "implicitDeny",
+              "MatchedStatements": [
+                {
+                  "SourcePolicyId": "role_ScoutGridSydneyLabApply_ProviderBucketMetadataCorrection",
+                  "SourcePolicyType": "IAM Policy",
+                  "StartPosition": {
+                    "Line": 1,
+                    "Column": 38
+                  },
+                  "EndPosition": {
+                    "Line": 1,
+                    "Column": 315
+                  }
+                }
+              ],
+              "MissingContextValues": [
+                "kms:ViaService",
+                "kms:CallerAccount",
+                "ecs:cluster",
+                "kms:EncryptionContext:aws:s3:arn",
+                "aws:ResourceTag/Application",
+                "aws:ResourceTag/Environment"
+              ],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabApply_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-exports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabApply_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::unrelated-scoutgrid-verification",
+                  "EvalResourceDecision": "implicitDeny",
+                  "MissingContextValues": [
+                    "kms:ViaService",
+                    "kms:CallerAccount",
+                    "ecs:cluster",
+                    "kms:EncryptionContext:aws:s3:arn",
+                    "aws:ResourceTag/Application",
+                    "aws:ResourceTag/Environment"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "role": "Teardown",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "s3:GetBucketWebsite",
+              "EvalResourceName": "arn:aws:s3:::${BucketName}/${KeyName}",
+              "EvalDecision": "implicitDeny",
+              "MatchedStatements": [
+                {
+                  "SourcePolicyId": "role_ScoutGridSydneyLabTeardown_ProviderBucketMetadataCorrection",
+                  "SourcePolicyType": "IAM Policy",
+                  "StartPosition": {
+                    "Line": 1,
+                    "Column": 38
+                  },
+                  "EndPosition": {
+                    "Line": 1,
+                    "Column": 315
+                  }
+                }
+              ],
+              "MissingContextValues": [
+                "kms:ViaService",
+                "kms:CallerAccount",
+                "ecs:cluster",
+                "kms:EncryptionContext:aws:s3:arn",
+                "aws:ResourceTag/Application",
+                "aws:ResourceTag/Environment"
+              ],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabTeardown_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::scoutgrid-lab-736486260824-exports",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabTeardown_ProviderBucketMetadataCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 315
+                      }
+                    }
+                  ]
+                },
+                {
+                  "EvalResourceName": "arn:aws:s3:::unrelated-scoutgrid-verification",
+                  "EvalResourceDecision": "implicitDeny",
+                  "MissingContextValues": [
+                    "kms:ViaService",
+                    "kms:CallerAccount",
+                    "ecs:cluster",
+                    "kms:EncryptionContext:aws:s3:arn",
+                    "aws:ResourceTag/Application",
+                    "aws:ResourceTag/Environment"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "mfa_checks": [
+      {
+        "case": "all_required_tags",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "cognito-idp:SetUserPoolMfaConfig",
+              "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+              "EvalDecision": "allowed",
+              "MatchedStatements": [
+                {
+                  "SourcePolicyId": "role_ScoutGridSydneyLabBootstrap_ProviderBootstrapMfaCorrection",
+                  "SourcePolicyType": "IAM Policy",
+                  "StartPosition": {
+                    "Line": 1,
+                    "Column": 38
+                  },
+                  "EndPosition": {
+                    "Line": 1,
+                    "Column": 450
+                  }
+                }
+              ],
+              "MissingContextValues": [],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+                  "EvalResourceDecision": "allowed",
+                  "MatchedStatements": [
+                    {
+                      "SourcePolicyId": "role_ScoutGridSydneyLabBootstrap_ProviderBootstrapMfaCorrection",
+                      "SourcePolicyType": "IAM Policy",
+                      "StartPosition": {
+                        "Line": 1,
+                        "Column": 38
+                      },
+                      "EndPosition": {
+                        "Line": 1,
+                        "Column": 450
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "case": "missing_tags",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "cognito-idp:SetUserPoolMfaConfig",
+              "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+              "EvalDecision": "implicitDeny",
+              "MatchedStatements": [],
+              "MissingContextValues": [
+                "aws:ResourceTag/ManagedBy",
+                "kms:KeySpec",
+                "ecs:cluster",
+                "kms:EncryptionContext:aws:s3:arn",
+                "kms:ViaService",
+                "kms:CallerAccount",
+                "ecs:task-memory",
+                "kms:MultiRegion",
+                "aws:ResourceTag/Profile",
+                "kms:KeyOrigin",
+                "aws:RequestTag/Profile",
+                "kms:BypassPolicyLockoutSafetyCheck",
+                "kms:KeyUsage",
+                "iam:AWSServiceName",
+                "ecs:task-cpu",
+                "s3:ResourceAccount",
+                "iam:PassedToService",
+                "aws:RequestTag/Application",
+                "ecs:compute-compatibility",
+                "ecs:privileged",
+                "aws:RequestTag/ManagedBy",
+                "aws:RequestTag/Environment",
+                "s3:LocationConstraint",
+                "aws:ResourceTag/Application",
+                "aws:ResourceTag/Environment"
+              ],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": true
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+                  "EvalResourceDecision": "implicitDeny",
+                  "MissingContextValues": [
+                    "aws:ResourceTag/ManagedBy",
+                    "kms:KeySpec",
+                    "ecs:cluster",
+                    "kms:EncryptionContext:aws:s3:arn",
+                    "kms:ViaService",
+                    "kms:CallerAccount",
+                    "ecs:task-memory",
+                    "kms:MultiRegion",
+                    "aws:ResourceTag/Profile",
+                    "kms:KeyOrigin",
+                    "aws:RequestTag/Profile",
+                    "kms:BypassPolicyLockoutSafetyCheck",
+                    "kms:KeyUsage",
+                    "iam:AWSServiceName",
+                    "ecs:task-cpu",
+                    "s3:ResourceAccount",
+                    "iam:PassedToService",
+                    "aws:RequestTag/Application",
+                    "ecs:compute-compatibility",
+                    "ecs:privileged",
+                    "aws:RequestTag/ManagedBy",
+                    "aws:RequestTag/Environment",
+                    "s3:LocationConstraint",
+                    "aws:ResourceTag/Application",
+                    "aws:ResourceTag/Environment"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "case": "wrong_region",
+        "evaluation": {
+          "EvaluationResults": [
+            {
+              "EvalActionName": "cognito-idp:SetUserPoolMfaConfig",
+              "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+              "EvalDecision": "explicitDeny",
+              "MatchedStatements": [],
+              "MissingContextValues": [],
+              "OrganizationsDecisionDetail": {
+                "AllowedByOrganizations": false
+              },
+              "EvalDecisionDetails": {},
+              "ResourceSpecificResults": [
+                {
+                  "EvalResourceName": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_PermissionProbe",
+                  "EvalResourceDecision": "explicitDeny"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulatePrincipalPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    }
+  ]
+}

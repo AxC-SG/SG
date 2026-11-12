@@ -1,0 +1,29 @@
+{
+  "status": "LOCAL_QUALIFICATION_PASSED",
+  "release_gates_completed": false,
+  "production_or_aws_application_deployed": false,
+  "checks": {
+    "lint_errors": 0,
+    "lint_existing_warnings": 2,
+    "typescript": "passed",
+    "guarded_build": "passed",
+    "direct_route_boundary_checks": 15,
+    "public_link_history_checks": 20,
+    "unit_files_passed": 113,
+    "unit_tests_passed": 1159,
+    "unit_tests_failed": 0,
+    "runner_contract_tests_passed": 5,
+    "readiness_probe_conditions_passed": 3,
+    "functional_journey_assertions_passed": 823,
+    "functional_journey_assertions_failed": 0,
+    "visual_comparisons_passed": 172,
+    "visual_comparisons_failed": 0,
+    "route_checks_passed": 780,
+    "route_violations": 0,
+    "new_accessibility_regressions": 0,
+    "original_70_new_accessibility_entries_still_present": 0,
+    "known_accessibility_entries_remaining": 379
+  },
+  "image": "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+  "next_required": "Isolate/review a new candidate commit; run all required same-SHA CI checks and record new artifacts and independent approval before AWS publication/deployment."
+}

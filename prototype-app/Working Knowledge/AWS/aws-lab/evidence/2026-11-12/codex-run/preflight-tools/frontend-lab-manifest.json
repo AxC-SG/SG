@@ -1,0 +1,429 @@
+{
+  "source_sha": "0ae3de9f4e4f7b1f784622d31656f30a89499043",
+  "built_at": "2026-11-12T03:48:05.031264+00:00",
+  "node": "v24.22.3",
+  "build_command": "npm run build",
+  "package_lock_sha256": "874d28aec449881aead8d943f61ea95d67e5c703ff1e2b18f0542a5074f6044a",
+  "configuration": {
+    "VITE_API_BASE": "https://api-lab.scoutgrid.io",
+    "VITE_MANAGED_BROWSER_AUTH_ENABLED": "true",
+    "VITE_DURABLE_BOM_UPLOADS_ENABLED": "true",
+    "VITE_TURNSTILE_SITE_KEY": "0x4AAAAAAF9qZ1T6AfbbM6kS",
+    "VITE_ENABLE_TEST_PERSONAS": "false",
+    "VITE_LOCAL_DEV": "false",
+    "VITE_SENTRY_DSN": ""
+  },
+  "archive_sha256": "2539daf5b86445e30892d5fc47dc7e338121772a2496d7edb301bfe1941f9a4e",
+  "deployment_zip_sha256": "22ea96f50dfd5f7f166b76725081233e4e2335d7824629205a61a387dce6cc17",
+  "files": [
+    {
+      "path": "assets/AiAssetDetailPage-BP3Pd69l.js",
+      "sha256": "a9cf5cc87ee1653c562653cff285b756e5ff75bdd6af2d76daab9a5fc3632986"
+    },
+    {
+      "path": "assets/AiBomDeclaredResourceDetailPage-D4vvj030.js",
+      "sha256": "ab44ec61777be074c39353d88bc66453d9dc739a5d482e3a04b420b92435c3ee"
+    },
+    {
+      "path": "assets/AiBomDeclaredResourcesPage-COUzFZDw.js",
+      "sha256": "fb767c909144700c14f7440f3e5ffb8f3fc477922852dcc7972cdc749d095556"
+    },
+    {
+      "path": "assets/AiExposuresPage-CrlGVJII.js",
+      "sha256": "4ce927356701ff692b4e091b93ef01ad4503f0ab26ea0c7cc0eae733bff1df61"
+    },
+    {
+      "path": "assets/AiFindingDetailPage-BeVXzcq4.js",
+      "sha256": "ad2a21b664168aca536aaabfef235ba22f3d641efe82dda595d7f239e51dee73"
+    },
+    {
+      "path": "assets/AiFindingsPage-CTouzIBt.js",
+      "sha256": "67b6e2a767e47d4cc07f6a319ca290612b3e925b61857db6bb9af30d64ee7df3"
+    },
+    {
+      "path": "assets/AiInventoryAssetsPage-DXm2bdbB.js",
+      "sha256": "3fddfc00e49d958a0119d87d03fcdfeb29283fd4762da94f17249fdcddf5a2e6"
+    },
+    {
+      "path": "assets/AiInventoryPage-INxpTInR.js",
+      "sha256": "81085ece2e935dc9e6755a193cd48e5b3dff418a1e42f1524ac070880a6cfdc5"
+    },
+    {
+      "path": "assets/AiKnowledgeMcpInventoryPage-D3JDdVhH.js",
+      "sha256": "4579a99cc854ed8ae1f4cc90c3923fdeaefc18da35d981fd0ba90dd69d85ee4e"
+    },
+    {
+      "path": "assets/AiPoliciesPage-C2Xr99D7.js",
+      "sha256": "800113001d4e4a5ca9f7ba377906e5786b42454faf65bc76d53ccd47b10f382b"
+    },
+    {
+      "path": "assets/AiPolicyDetailPage-Bh75VhOq.js",
+      "sha256": "60d48d76f4610689205ca4dde2af875311f19eef246b995fad33e118bd392612"
+    },
+    {
+      "path": "assets/ApplicationDetailPanel-B_sh8p2k.js",
+      "sha256": "f1e30ea3bc02087e1a5b84e5150c0af0504d8eb8867b77c6b99e17bdf9e41614"
+    },
+    {
+      "path": "assets/ApplicationsDashboard-CSDrxphJ.js",
+      "sha256": "ee44bc235da53238c2fa3068766a18f4e1a8f2193c4ffc0b344e66ec782b4cf7"
+    },
+    {
+      "path": "assets/AsyncSection-BbTYM2R1.js",
+      "sha256": "a4f1d3dd252c0cf163be785248bcd3d51f8f38378497df77bba525f2e069e082"
+    },
+    {
+      "path": "assets/AuthorizedWorkspacesPage-QRxvBMEu.js",
+      "sha256": "2289060c87be800125e2190799cba9e48f000ae1c6245e246ed4a33d6e08acc4"
+    },
+    {
+      "path": "assets/BomComponents-DJJ7Bkph.js",
+      "sha256": "69d44b1e1544a106d18bdd264732757e61f271545f6792b240c30d9bb8b4d081"
+    },
+    {
+      "path": "assets/BomInventoryPage-Ci0JQEo9.js",
+      "sha256": "3fc25dd5a4237478a722157d152b0447fb1011ad0dbf0e558d2899a87b958290"
+    },
+    {
+      "path": "assets/CVEInvestigationSummary-D0z5z25o.js",
+      "sha256": "5708a9bade0dcd88d80f4d4b70235dbf32b84f28febaca7ce0ba031408cc1ee0"
+    },
+    {
+      "path": "assets/CampaignDetailPage-dRR01yuG.js",
+      "sha256": "18a0a5f739d82137b2b4a7798650a8cfa0bcfda86c1ce0122e4277e7399b48a4"
+    },
+    {
+      "path": "assets/CampaignsPage-D50f9mnc.js",
+      "sha256": "783797a1e445f347e7f5a988815c3219e551532833aaee70c67ac4568b20c69f"
+    },
+    {
+      "path": "assets/CbomBlastRadius-elIii_pA.js",
+      "sha256": "be91e19ac37500bcfcca6697d3ed65f3f78031ff876de8a11f7829634244e2ce"
+    },
+    {
+      "path": "assets/CbomComponentDetailPanel-CmchSCMo.js",
+      "sha256": "e468942ca6f7505148cc7f6a9de8bf03ffbfd16591756ed3d62737d1b4c5a8bc"
+    },
+    {
+      "path": "assets/CloudResourcesPage-BRJPrAiz.js",
+      "sha256": "bd93c919ace31788774646baceb36652267b8ae2e62bc91abd71b3495c2a46cd"
+    },
+    {
+      "path": "assets/CompanyPages-nIJOnU0V.js",
+      "sha256": "58e1f9c5f1ae233081fda9433eba69c248139f6cd3a6af134198915998accd96"
+    },
+    {
+      "path": "assets/ConfigurationsPage--UWp1sjO.js",
+      "sha256": "6f8b13c31a23a5cde2dad90ef95439154f3610a6610a64a0f5282e893d13c40d"
+    },
+    {
+      "path": "assets/ConfirmDialog-Btxep6Ze.js",
+      "sha256": "02381bc59b46cffd5de1eafa7d2de0cdbb6ccf454938f5bed1ab36af5507c9b9"
+    },
+    {
+      "path": "assets/ConnectPage-Cw67R8RV.js",
+      "sha256": "8e79170db8e7e0ecfd32deea9165b4416db7eaf7281322fd60ab1dcecbd50ab8"
+    },
+    {
+      "path": "assets/CopilotStudioConnectorPage-DMeYlwqG.js",
+      "sha256": "667d7f06a7b13a0a8f134dd719fd36b8e73a5c2b682ccc31bcdd2b65445b4aea"
+    },
+    {
+      "path": "assets/DataTable-B_yJhoyX.js",
+      "sha256": "1e906b3383a2fc93a55e1d8b96d27ad5345797853a67449e93f4e839f8fa1e0a"
+    },
+    {
+      "path": "assets/DemoPublicPages-KgQjJ7ky.js",
+      "sha256": "a58148ef3257bc26fc22d4548dd656f3a55296828e957ac8223dbaaba3e68251"
+    },
+    {
+      "path": "assets/Dialog-VAXuK3Fr.js",
+      "sha256": "ecfea03539fbae2fc8e0b7e0afedb9c2a21cbc4abed7153dffe14a9e8e7ba43e"
+    },
+    {
+      "path": "assets/EolBadge-DrY8VpeG.js",
+      "sha256": "84ff9be4b8daf40205b61f861e852dae175ad7a3b24bb721a2d15b7b6212951c"
+    },
+    {
+      "path": "assets/EolSourcePanel-CbTC1Fw-.js",
+      "sha256": "498ce0491a69c5726b9c01bd89e408f48304b99d10773869caa60d2b174329a0"
+    },
+    {
+      "path": "assets/ExposureDashboardPage-CgNPpC0H.js",
+      "sha256": "d17d2d4ed3a55ac8a1d388d51533c8ef9ba3a1b5b97829cea8edcb1c155bba14"
+    },
+    {
+      "path": "assets/FindingDetailPage-cVAMFrfO.js",
+      "sha256": "68ab521c5be4f6024d42d75364e79c4ed8b2891a7a3fccab473a513636fd45fb"
+    },
+    {
+      "path": "assets/FindingSeverityChips-D5XEBOD-.js",
+      "sha256": "597ec75f1bc1f246459308dcf698e7d42e9572566e9b4741d6726f3ac066af5c"
+    },
+    {
+      "path": "assets/FindingsPage-BIAiQVow.js",
+      "sha256": "6e2195c0a4a819f8de9689f64d164c70734e1124db3e53d7b275a514cff60da7"
+    },
+    {
+      "path": "assets/FixContextPanel-DlybXGZA.js",
+      "sha256": "085183dde2b107c9d7584bd9b27ad147bb98a99874ce08b5a9542624524bd59d"
+    },
+    {
+      "path": "assets/FixControlForm-Du6PZjB0.js",
+      "sha256": "0dada1c7c9eb5ed995bde5ef23713c3b476326c29fb356bd2eaced615255737b"
+    },
+    {
+      "path": "assets/FixDetailPage-4QyTjb-g.js",
+      "sha256": "eedaa0a0b5efd925cfb638d9a48a5c891fc1eb904c585ea743b61978483f59f7"
+    },
+    {
+      "path": "assets/FixIntelligencePage-DB7VoCTh.js",
+      "sha256": "d7816b201a6a39c7a2544bf97f1f5d8dd0b78e2869629f2b3cb7bea51809b2e3"
+    },
+    {
+      "path": "assets/FplWidgets-4LWQYtOk.js",
+      "sha256": "0d771b3fc52752142ef648f15c71ab6032a7c66c1d036d8b73c74a4cdb68b0ed"
+    },
+    {
+      "path": "assets/HostAssetDetailPage-BbjTaXnc.js",
+      "sha256": "3ca0b7bf35275b7a2e222d81da0142c1896f9d5dcca142ae9be23f62e500f093"
+    },
+    {
+      "path": "assets/InventoryComponentViewsPage-gsA2BpsT.js",
+      "sha256": "a7ee093489f7ae420887331e25d62a2c05f8639fb93d4082bf26086ea5269afb"
+    },
+    {
+      "path": "assets/InventoryOverviewPage-B-S8wADB.js",
+      "sha256": "a6d73b045ddf88fd0ef2470a575aaab7c1eb5519d7bc8925d890ca736f07294c"
+    },
+    {
+      "path": "assets/InventoryOverviewPanel-CRR3oGK2.js",
+      "sha256": "0353fdd37c61279830294d362011ea5ea4184f089a008a88c735219cc6c3dd00"
+    },
+    {
+      "path": "assets/InventoryPage-9gEjXGK6.js",
+      "sha256": "a1c80099eede4c26e052317ec402e43c6dc6617bcb59f52c44457039c16f682a"
+    },
+    {
+      "path": "assets/InventoryShell-D51Tsrn7.js",
+      "sha256": "e23836ae1192fa2961044d738e0bfd5cf856f6060cdd32f48279591b69c8d0d6"
+    },
+    {
+      "path": "assets/MetricInfoIcon-DnX8ptIz.js",
+      "sha256": "b5edea4a87c876770f08fb649ea6e149d4e09ab3d35bab05f2b2f0d4b640feee"
+    },
+    {
+      "path": "assets/MetricValue-CKkn8IPy.js",
+      "sha256": "f1add3fbaee93e24074e3a8f278e02d8f6f144f845ffe1efe8744a72b9309184"
+    },
+    {
+      "path": "assets/MultiGroupBy-CEk9O8bT.js",
+      "sha256": "272707c3429294a0a1e31de800eeaf0a2b1ecd4c24ac8423230d8bb93fb30b28"
+    },
+    {
+      "path": "assets/OperationalDashboardPage-DxuGdUN7.js",
+      "sha256": "63ca189c773f6f2e93b35db82cd3b19fd0bf32673fe45acb68c2a0169d15dce0"
+    },
+    {
+      "path": "assets/PageFreshnessStatus-CZ8DQuuy.js",
+      "sha256": "51e6761e7acc412c969046162e1087261f0fed649aceff967b27afa67a34ee01"
+    },
+    {
+      "path": "assets/PlatformAiPolicyDetailPage-C5HDYH-l.js",
+      "sha256": "3fd4b8d5b66085e71918c0df9155c4ab9db0d2a3755604b3aa6b9b46df021757"
+    },
+    {
+      "path": "assets/PlatformConsolePage-0p2HFT_o.js",
+      "sha256": "137b38baed5a9739cd2390ed30a872901bd199c9d69f355ee66dfad7195b0737"
+    },
+    {
+      "path": "assets/PlatformVulnIntelDetailPage-atulWc9A.js",
+      "sha256": "00807c62effb905cd58526e6f906b33a9c7d91adfa502694d5c8807aff8ecf01"
+    },
+    {
+      "path": "assets/ProviderLogo-DRXZ6hrk.js",
+      "sha256": "e938e99a440b8e6266aa54e83998bf5ecc923ffa509a134c9ead961e0e94bcdd"
+    },
+    {
+      "path": "assets/QueueControls-CbMIoiKi.js",
+      "sha256": "8f5b5f9fe704a619558624a363d17982c4e3461d267b435cd89142f8658b89a4"
+    },
+    {
+      "path": "assets/SegmentedControl-DCJTLLLs.js",
+      "sha256": "18e45b61a3873fe76492d535aad970688a5d1b63ff76c48b9b27862f9eb89d67"
+    },
+    {
+      "path": "assets/SoftwareIdentitiesPage-i66Ewve1.js",
+      "sha256": "eb712d6c67afab0567759e93f703c38068d586e16655a653f38ebd19a016aa66"
+    },
+    {
+      "path": "assets/SoftwareIdentityDetailPage-CAmSWCMt.js",
+      "sha256": "6e1efc68d4bb6f9eea47aa26ef4ae751bfc5fc6bfdef839b4166f65d2d3b4fe9"
+    },
+    {
+      "path": "assets/StatCard-CfzZ8_Ya.js",
+      "sha256": "f98f42b636e5eacf201556cbb22272dc9e47a23d34bd92f4f3c1e0d7bf9e7dbb"
+    },
+    {
+      "path": "assets/UserManagementPage-DU2jbwv2.js",
+      "sha256": "654a0f19a1bf9dd0a0b38eb683294e79410dc1f60fdaa6d77ec07c95d8588c5d"
+    },
+    {
+      "path": "assets/VulnRepoCveAssetsPage-_caLD4Qq.js",
+      "sha256": "860ad3c3bee73d99736fca45df28282d491dad391415223892fda4fc96b7253b"
+    },
+    {
+      "path": "assets/VulnRepoCveSoftwarePage-CWmpR7Az.js",
+      "sha256": "090cedda86c25c299d428334453046f10bf638864d1cf9203368fdad887f4633"
+    },
+    {
+      "path": "assets/VulnRepoDashboardPage-_A_4AyTk.js",
+      "sha256": "eea5df18ff69fc1b4269165ab4144a200c0831fd0370bb57a346b0cb890cae12"
+    },
+    {
+      "path": "assets/VulnRepoOrgCvePage-ClOxKq_A.js",
+      "sha256": "954fa4c4aabdb10bf39de1f2945bd00d0da3dc7d72fb932035706e9de95c7ff1"
+    },
+    {
+      "path": "assets/VulnRepoSoftwareAssetsPage-C_Exhahj.js",
+      "sha256": "5b735046888d0c06303ea2027a701045c648c92c8ae28b0515a17e7f3457d7ba"
+    },
+    {
+      "path": "assets/VulnRepoVulnerabilitiesPage-pA8M8my8.js",
+      "sha256": "0066752aa67fa5091565fadc4045ed0df8ef07f26565159b3657a02de04015a2"
+    },
+    {
+      "path": "assets/api-BEEFoUdT.js",
+      "sha256": "66f46940c03b0b8a02abc452c6aea9e3b5e66932c2d133b92385af1347955031"
+    },
+    {
+      "path": "assets/api-BOp5j5UT.js",
+      "sha256": "49976d30b584a850a071d2f80d367ccf819d9e901192d6c6511f38aa284c072c"
+    },
+    {
+      "path": "assets/api-Ckfi7PJt.js",
+      "sha256": "8dd2ab46b5fc66f8c2d7ba0e9d0cb28e9936e3ca5e8603c71d60de71b5bcc7e9"
+    },
+    {
+      "path": "assets/assessment-_dje4LIW.js",
+      "sha256": "d2cd3c9a1afecf5ffebddefb1f6d3a1c3e71ed8fee7686d7f745e90e88dfc05e"
+    },
+    {
+      "path": "assets/client-CpHbUjze.js",
+      "sha256": "7fa7f0cd5720d63e7b5d83a1c0408bb399f17d2c34a8f89da3b9108e2828e718"
+    },
+    {
+      "path": "assets/formatting-Pu85w1Ot.js",
+      "sha256": "838bfbe68ce21b4789273506cd145b8cdb6307242d901d3182697d2b9b78fb5d"
+    },
+    {
+      "path": "assets/helpers-DVu8gjK9.js",
+      "sha256": "680dc472c74696238c744580cbcb8fde9c5dd72f42a2932938e016fd3cb9faad"
+    },
+    {
+      "path": "assets/index-Czmyr5aa.js",
+      "sha256": "80208ce70dd8ef98683d0fc2eca908393305937f62f108d1d0dff659ddaa2029"
+    },
+    {
+      "path": "assets/index-yzJpn3PY.css",
+      "sha256": "f38c80121356c37972dd5cc6ba83f92066cd7133f65a33a905a100c98d8497f5"
+    },
+    {
+      "path": "assets/investigation-context-CcBYNuiW.js",
+      "sha256": "487ca60ff4cce65a6d79e7484cb4a7a468a437992dab42cb77fcb30513ed3956"
+    },
+    {
+      "path": "assets/labels-D_Cm98qZ.js",
+      "sha256": "c016481020046c331b599e0366f2e58aa0fdafe9adfa48e2f76682c8ad7921ab"
+    },
+    {
+      "path": "assets/polling-DXllOKm1.js",
+      "sha256": "b110e1a899bda0947cfff78ed33329c9467ada075a9dfd62917addf79faf9ed3"
+    },
+    {
+      "path": "assets/queries-0izK-XJE.js",
+      "sha256": "cfbd43a635d4eab31f7af98dec4e36d1bc9ad4185dfb61ba8968de0731c92b5f"
+    },
+    {
+      "path": "assets/queries-Bf1idNaw.js",
+      "sha256": "b631463a25d6b6858e1f569274d3836422955e0cf35ba682434232b64672080c"
+    },
+    {
+      "path": "assets/queries-C47GeA0y.js",
+      "sha256": "cd711cddf7e8eb9c2b4cf40070eca2b93aefefdd6b2b8b749ad68308a56194ca"
+    },
+    {
+      "path": "assets/queries-D1nyxrVK.js",
+      "sha256": "faf6c06a16c55ca2e0df2eb95c7b41381157605bd2b1dbee1386ae4f6e7e17e3"
+    },
+    {
+      "path": "assets/queries-D4odJ1LP.js",
+      "sha256": "9b778fc7bab4ae83f19b3fdece7bc4f31825d0e950ee8762708bdffeed6ae810"
+    },
+    {
+      "path": "assets/queries-Div3kZn4.js",
+      "sha256": "742da53df36f932f87ed4c48cd729a021f4a2a3548f9d2836522bc746caf6c8a"
+    },
+    {
+      "path": "assets/queries-f8f7Mdk3.js",
+      "sha256": "ec39ccb087a68bbedef10770959fddfb25c55ad26cb3fffeb04a24a5371087af"
+    },
+    {
+      "path": "assets/queries-sqQMvv1h.js",
+      "sha256": "ce3a955f37a69df3d5e4550d4959950d49f5677c41c49389e8aaad24698e0173"
+    },
+    {
+      "path": "assets/riskScoring-oqi5vYhm.js",
+      "sha256": "4522e141183c11cc8c0c624b5d36e715113526789baf10b098d090089878e070"
+    },
+    {
+      "path": "assets/searchState-CjLJbrxi.js",
+      "sha256": "eb81541715257777ba431cfd75ff3abd07ca6de14bddc7077ce5533d0c7426a9"
+    },
+    {
+      "path": "assets/time-mWrPJBZm.js",
+      "sha256": "9c0c7a1499c73720fad206de7ce26a5a2af49b6b257f02a2210fedbcfa4283f4"
+    },
+    {
+      "path": "assets/useDebouncedValue-DIfZRBDc.js",
+      "sha256": "a08775a0c899a6e676c419dc49d10982d2a10f930ae869c892032a996d50ed84"
+    },
+    {
+      "path": "assets/useQueries-t_Y3DaXl.js",
+      "sha256": "231de8e2b9a7be98e705b5012a40912b441268eb29c4d407344f89a2f52f2690"
+    },
+    {
+      "path": "blog/scout-mythos-readiness-onepager.pdf",
+      "sha256": "b6aba38b8f5ba2c492c466c3e1f810ea6cc935ccfb6e440f2365a1ac695e6b36"
+    },
+    {
+      "path": "brand/nvidia-inception-program-logo.png",
+      "sha256": "996c7cc67cd4c9ab005908b7089d66867889a2ea1c003dceaad40f3c441d583b"
+    },
+    {
+      "path": "favicon.svg",
+      "sha256": "232c5db01369bc61de86c704cee3157237c8817aad132955619614f1f78f2150"
+    },
+    {
+      "path": "index.html",
+      "sha256": "71f38513dffa178be0714e1b2a514ab24c3044a65b44c5a4772ecc99894a2005"
+    },
+    {
+      "path": "og-cover.png",
+      "sha256": "26342f573fb740d677a0873937bff780c0e6815afd8d65062c6a025915d23d3c"
+    },
+    {
+      "path": "robots.txt",
+      "sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95"
+    }
+  ],
+  "production_bundle_guard_passed": true,
+  "archive_files_verified": true,
+  "published": false,
+  "independent_configured_frontend_approval": {
+    "decision": "approved exact ZIP and configuration",
+    "reviewer": "owner; independent of Codex publishing action",
+    "reference": "call_13a46e0c930543cda8d94a9e90a0379a",
+    "answer": "Approve this exact lab frontend publication"
+  }
+}

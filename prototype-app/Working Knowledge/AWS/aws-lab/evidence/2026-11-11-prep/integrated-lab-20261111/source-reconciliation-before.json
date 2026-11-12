@@ -1,0 +1,14 @@
+{
+  "source_sha": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "matched": 2591,
+  "changed": [
+    "prototype-app/backend/CLAUDE.md",
+    "prototype-app/backend/Dockerfile",
+    "prototype-app/frontend/CLAUDE.md",
+    "prototype-app/infrastructure/terraform/standard/data.tf"
+  ],
+  "missing": [
+    "prototype-app/backend/scripts/run-render-migration.sh",
+    "prototype-app/backend/scripts/test-run-render-migration-env.sh"
+  ]
+}

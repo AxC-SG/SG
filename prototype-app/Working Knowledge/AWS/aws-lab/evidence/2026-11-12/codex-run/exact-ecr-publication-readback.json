@@ -1,0 +1,118 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T11:43:05.981633+00:00",
+    "image_details": [
+      {
+        "registryId": "736486260824",
+        "repositoryName": "scoutgrid-lab-backend",
+        "imageDigest": "sha256:e0477a842367866505e469c7dc97aef77759fce5febf3a59d10d49acbe3a3ad5",
+        "imageTags": [
+          "candidate-0ae3de9-43137000995"
+        ],
+        "imageSizeInBytes": 310747034,
+        "imagePushedAt": "2026-11-12T11:39:43.134000+00:00",
+        "imageManifestMediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "artifactMediaType": "application/vnd.docker.container.image.v1+json",
+        "lastRecordedPullTime": "2026-11-12T11:39:43.368000+00:00",
+        "imageStatus": "ACTIVE"
+      }
+    ],
+    "image_id": {
+      "imageDigest": "sha256:e0477a842367866505e469c7dc97aef77759fce5febf3a59d10d49acbe3a3ad5",
+      "imageTag": "candidate-0ae3de9-43137000995"
+    },
+    "manifest": {
+      "schemaVersion": 2,
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "config": {
+        "mediaType": "application/vnd.docker.container.image.v1+json",
+        "size": 9263,
+        "digest": "sha256:0186580fbd1634f2ae45bec3eff29e872b4296c817d76836d5f23d2e335e1b98"
+      },
+      "layers": [
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 30667139,
+          "digest": "sha256:ce08fa9e1d3e27220dae8420593d91195f45b415305e43abd22c2191d18ce18c"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 11370689,
+          "digest": "sha256:667fc5305044240eafd0c6f5b8f7e49b374daedf73ddd20558d37edd38492b14"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 63063492,
+          "digest": "sha256:21834f56ae1587a102d2a2d62a7053bd3ccf6aadffa3da24a39bf3846f4f0a91"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 32,
+          "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 2463,
+          "digest": "sha256:53a8c7e2482f18be32f58fd0bb2f364f2ac4314fe55ae76cefa45ec348b7f0ca"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 92,
+          "digest": "sha256:094639d22ec6461a064a109b61bccdb9b0ee8822dfee658ba8e3e8b58516e936"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 17288948,
+          "digest": "sha256:1542ca7b363e869447c4049823cbde27e0d33b4d435c32141b73525a312f053c"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 188324200,
+          "digest": "sha256:da26c1ef5d96a159efd4249bb1741ece09c96f84a7d0248478640e66eba3727b"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 7410,
+          "digest": "sha256:312fc4a58d9e15db84fc03dff40971a10149be41784bae6c18c888ae70ae2100"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 7426,
+          "digest": "sha256:ebdcef606fc6a5f2bb26a06d71a32b8e94e30a5938c13ba9aaeb0902d775158f"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 3003,
+          "digest": "sha256:d695ed8f474ad450ddf1a6cf8681a64c1bf4842fa72d59c36088e7b5667798cd"
+        },
+        {
+          "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+          "size": 2877,
+          "digest": "sha256:5fa6623abdf12502d708db61366c89dc34181b653be65bdeedf9bb2bf3ceeb3e"
+        }
+      ]
+    },
+    "exact_configuration_digest_verified": true
+  },
+  "api_calls": [
+    {
+      "service": "ecr",
+      "operation": "DescribeImages",
+      "status": "success",
+      "n_items": {
+        "imageDetails": 1
+      }
+    },
+    {
+      "service": "ecr",
+      "operation": "BatchGetImage",
+      "status": "success",
+      "n_items": {
+        "images": 1,
+        "failures": 0
+      }
+    }
+  ]
+}

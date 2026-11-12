@@ -1,0 +1,42 @@
+{
+  "status": "offline_preparation_passed; live_application_not_deployed",
+  "checks": {
+    "terraform_format": "passed",
+    "terraform_validate": "passed",
+    "standard_mock_tests": {
+      "passed": 18,
+      "failed": 0
+    },
+    "network_mock_tests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "retained_ecr_template_validate": "passed",
+    "image_archive_and_source_verification": "passed",
+    "json_and_local_link_validation": "passed",
+    "image_publisher_access_analyzer_findings": 0,
+    "git_diff_check": "passed"
+  },
+  "unresolved": [
+    "independent candidate approval",
+    "new candidate commit and required same-SHA CI for the locally repaired frontend",
+    "ECR publication/digest",
+    "issued ACM certificate and actual DNS access",
+    "runtime and pinned enrollment secret references",
+    "full integrated operator policy review and simulations",
+    "new integrated run cost/access/teardown authorization",
+    "Amplify custom_headers serialization round-trip"
+  ],
+  "live_actions_this_pass": [
+    "read-only AWS inventory, pricing and billing",
+    "IAM policy validation only"
+  ],
+  "part_1_complete": false,
+  "frontend_local_repair_evidence": "../frontend-qualification-20261111/README.md",
+  "confirmed_operator_emails": {
+    "platform_owner": "scoutgrid.io@gmail.com",
+    "sg_internal_tenant_admin": "scoutgridtenant@gmail.com",
+    "confirmed_date": "2026-11-11",
+    "identity_status": "Email inputs confirmed by owner; Cognito accounts, verified subject mappings and pinned enrollment secret version remain unverified."
+  }
+}

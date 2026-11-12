@@ -1,0 +1,70 @@
+{
+  "account_id": "736486260824",
+  "region": "ap-southeast-2",
+  "billing_start_utc": "2026-11-11T03:49:02Z",
+  "source_archive_sha256": "3a601fd9fb107d69804d117c1ab6adcc56f552719375b55526c5118ea14ceee8",
+  "network": {
+    "vpc_id": "vpc-033e4897774c33efc",
+    "subnet_ids": [
+      "subnet-008dc88218b3ae806",
+      "subnet-014050006ddf770f8",
+      "subnet-0484d3c4b61a61e1a",
+      "subnet-0536ee811fd49bde2",
+      "subnet-0f286b601308eb729",
+      "subnet-0f8c7aca2057edb03"
+    ],
+    "route_table_ids": [
+      "rtb-024ac6b74daa3d8d2",
+      "rtb-05fab3286a9ec4f17",
+      "rtb-07121770526fda3e9",
+      "rtb-0959ce0d2c14ab0c1",
+      "rtb-0a09fe60533efb083",
+      "rtb-0bfd635af2b44d9c6"
+    ],
+    "internet_gateway_id": "igw-08792626d43182ed6",
+    "nat_gateway_ids": [
+      "nat-02da364a7730c98e4",
+      "nat-0047917b1374a7937"
+    ],
+    "elastic_ip_allocation_ids": [
+      "eipalloc-0043513ada0eefdc6",
+      "eipalloc-0bfd688ca9ba1efcf"
+    ],
+    "s3_endpoint_id": "vpce-0e1b0bc0254075d21",
+    "database_security_group_id": "sg-05bad96e22071790c"
+  },
+  "database": {
+    "identifier": "scoutgrid-lab",
+    "resource_id": "db-DIS4TJ4VYNKQNJROIYVVKOGCAY",
+    "managed_secret_arn": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:rds!db-3cb0d539-554a-42d8-a7a3-53e7c69843c7-ebPIby"
+  },
+  "kms": {
+    "database_key_id": "22cf6682-3133-47bd-af3e-200a1464b054",
+    "object_key_id": "ddb15ff2-ac4a-4eaa-92d4-7b697706ea11"
+  },
+  "identity": {
+    "cognito_pool_id": "ap-southeast-2_XEOIpLHx6",
+    "domain": "scoutgrid-lab-736486260824"
+  },
+  "hosting": {
+    "amplify_app_id": "d1r4wn9kt8tehk",
+    "branch": "lab",
+    "ecr_repository": "scoutgrid-lab-backend"
+  },
+  "buckets": [
+    "scoutgrid-lab-736486260824-imports",
+    "scoutgrid-lab-736486260824-exports"
+  ],
+  "cleanup": {
+  "final_state_written_utc": "2026-11-11T04:49:27Z",
+  "final_managed_resource_count": 0,
+  "verified_at_utc": "2026-11-11T09:04:31.864660+00:00",
+  "temporary_roles_removed": true,
+  "temporary_policies_removed": true,
+  "kms_state": "PendingDeletion",
+  "object_key_deletion_utc": "2026-12-11T04:45:33.250000Z",
+  "database_key_deletion_utc": "2026-12-11T04:47:23.527000Z",
+  "verification_file": "sydney-live-cleanup-verification.json",
+  "billing_reconciliation": "Pending refreshed Cost Explorer usage"
+}
+}

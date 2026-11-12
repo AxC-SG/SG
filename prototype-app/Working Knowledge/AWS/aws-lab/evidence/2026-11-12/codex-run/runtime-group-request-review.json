@@ -1,0 +1,17 @@
+{
+  "account": "736486260824",
+  "region": "ap-southeast-2",
+  "role": "ScoutGridSydneyLabApply",
+  "vpc_id": "vpc-0086ef85ee121f76c",
+  "source_sha": "0ae3de9f4e4f7b1f784622d31656f30a89499043",
+  "source": "prototype-app/infrastructure/terraform/standard/runtime.tf and ingress.tf",
+  "groups": [
+    {"name": "scoutgrid-lab-api", "description": "Standard ECS api network boundary", "terraform_address": "aws_security_group.backend[\"api\"]"},
+    {"name": "scoutgrid-lab-worker", "description": "Standard ECS worker network boundary", "terraform_address": "aws_security_group.backend[\"worker\"]"},
+    {"name": "scoutgrid-lab-migrator", "description": "Standard ECS migrator network boundary", "terraform_address": "aws_security_group.backend[\"migrator\"]"},
+    {"name": "scoutgrid-lab-alb", "description": "Public HTTPS entry point for the Standard API", "terraform_address": "aws_security_group.alb[\"standard\"]"}
+  ],
+  "tags": {"Application":"ScoutGrid","Environment":"lab","Profile":"Standard","ManagedBy":"Terraform"},
+  "procedure": "Review candidate plan first. Reconcile existing groups. Create only absent groups under actual Apply, capture immediately, bind exact configuration and cleanup IDs, revoke only each captured group's default egress, then import at the qualified Terraform address before applying reviewed standalone rules. Never bind RENDER or synthetic IDs. No workload starts before boundaries pass.",
+  "executed": false
+}

@@ -1,0 +1,1 @@
+{"Version":"2012-10-17","Statement":[{"Sid":"ReadLabAlbWafAssociation","Effect":"Allow","Action":"wafv2:GetWebACLForResource","Resource":["arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/*/*","arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/scoutgrid-lab-api/*"],"Condition":{"StringEquals":{"aws:RequestedRegion":"ap-southeast-2"}}}]}

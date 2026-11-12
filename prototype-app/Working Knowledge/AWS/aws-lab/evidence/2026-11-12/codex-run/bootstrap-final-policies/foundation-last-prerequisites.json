@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "rds_service_role": {
+      "arn": "arn:aws:iam::736486260824:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+      "trust": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "rds.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    },
+    "vpcs": [
+      {
+        "id": "vpc-07714a831d9e5ff18",
+        "cidr": "172.31.0.0/16",
+        "tags": []
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcs",
+      "status": "success",
+      "n_items": {
+        "Vpcs": 1
+      }
+    }
+  ]
+}

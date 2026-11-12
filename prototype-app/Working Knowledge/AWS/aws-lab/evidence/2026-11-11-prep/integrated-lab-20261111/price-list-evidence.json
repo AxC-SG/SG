@@ -1,0 +1,722 @@
+{
+  "queried_at_utc": "2026-11-11T09:25:56.934691+00:00",
+  "api_calls": [
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 3
+      }
+    },
+    {
+      "service": "pricing",
+      "operation": "GetProducts",
+      "status": "success",
+      "n_items": {
+        "PriceList": 1
+      }
+    }
+  ],
+  "fixed": {
+    "nat_hour": {
+      "service_code": "AmazonEC2",
+      "products": [
+        {
+          "product": {
+            "productFamily": "NAT Gateway",
+            "attributes": {
+              "regionCode": "ap-southeast-2",
+              "servicecode": "AmazonEC2",
+              "groupDescription": "Hourly charge for NAT Gateways",
+              "usagetype": "APS2-NatGateway-Hours",
+              "locationType": "AWS Region",
+              "location": "Asia Pacific (Sydney)",
+              "servicename": "Amazon Elastic Compute Cloud",
+              "operation": "NatGateway",
+              "group": "NGW:NatGateway"
+            },
+            "sku": "NUKV5QPTHVFBW7DE"
+          },
+          "serviceCode": "AmazonEC2",
+          "terms": {
+            "OnDemand": {
+              "NUKV5QPTHVFBW7DE.JRTCKXETXF": {
+                "priceDimensions": {
+                  "NUKV5QPTHVFBW7DE.JRTCKXETXF.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "$0.059 per NAT Gateway Hour",
+                    "appliesTo": [],
+                    "rateCode": "NUKV5QPTHVFBW7DE.JRTCKXETXF.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0590000000"
+                    }
+                  }
+                },
+                "sku": "NUKV5QPTHVFBW7DE",
+                "effectiveDate": "2026-11-01T00:00:00Z",
+                "offerTermCode": "JRTCKXETXF",
+                "termAttributes": {}
+              }
+            }
+          },
+          "version": "20261110173852",
+          "publicationDate": "2026-11-10T17:38:52Z"
+        }
+      ]
+    },
+    "nat_gb": {
+      "service_code": "AmazonEC2",
+      "products": [
+        {
+          "product": {
+            "productFamily": "NAT Gateway",
+            "attributes": {
+              "regionCode": "ap-southeast-2",
+              "servicecode": "AmazonEC2",
+              "groupDescription": "Charge for per GB data processed by NatGateways",
+              "usagetype": "APS2-NatGateway-Bytes",
+              "locationType": "AWS Region",
+              "location": "Asia Pacific (Sydney)",
+              "servicename": "Amazon Elastic Compute Cloud",
+              "operation": "NatGateway",
+              "group": "NGW:NatGateway"
+            },
+            "sku": "KSHYFCUNWFSUXCAV"
+          },
+          "serviceCode": "AmazonEC2",
+          "terms": {
+            "OnDemand": {
+              "KSHYFCUNWFSUXCAV.JRTCKXETXF": {
+                "priceDimensions": {
+                  "KSHYFCUNWFSUXCAV.JRTCKXETXF.6YS6EN2CT7": {
+                    "unit": "GB",
+                    "endRange": "Inf",
+                    "description": "$0.059 per GB Data Processed by NAT Gateways",
+                    "appliesTo": [],
+                    "rateCode": "KSHYFCUNWFSUXCAV.JRTCKXETXF.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0590000000"
+                    }
+                  }
+                },
+                "sku": "KSHYFCUNWFSUXCAV",
+                "effectiveDate": "2026-11-01T00:00:00Z",
+                "offerTermCode": "JRTCKXETXF",
+                "termAttributes": {}
+              }
+            }
+          },
+          "version": "20261110173852",
+          "publicationDate": "2026-11-10T17:38:52Z"
+        }
+      ]
+    },
+    "public_ipv4": {
+      "service_code": "AmazonVPC",
+      "products": [
+        {
+          "product": {
+            "attributes": {
+              "regionCode": "ap-southeast-2",
+              "servicecode": "AmazonVPC",
+              "groupDescription": "Hourly charge for In-use Public IPv4 Addresses",
+              "usagetype": "APS2-PublicIPv4:InUseAddress",
+              "locationType": "AWS Region",
+              "location": "Asia Pacific (Sydney)",
+              "servicename": "Amazon Virtual Private Cloud",
+              "operation": "",
+              "group": "VPCPublicIPv4Address"
+            },
+            "sku": "JZP2PURP9VVQ96GH"
+          },
+          "serviceCode": "AmazonVPC",
+          "terms": {
+            "OnDemand": {
+              "JZP2PURP9VVQ96GH.JRTCKXETXF": {
+                "priceDimensions": {
+                  "JZP2PURP9VVQ96GH.JRTCKXETXF.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "$0.005 per In-use public IPv4 address per hour",
+                    "appliesTo": [],
+                    "rateCode": "JZP2PURP9VVQ96GH.JRTCKXETXF.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0050000000"
+                    }
+                  }
+                },
+                "sku": "JZP2PURP9VVQ96GH",
+                "effectiveDate": "2026-11-01T00:00:00Z",
+                "offerTermCode": "JRTCKXETXF",
+                "termAttributes": {}
+              }
+            }
+          },
+          "version": "20261105181945",
+          "publicationDate": "2026-11-05T18:19:45Z"
+        }
+      ]
+    },
+    "alb_hour": {
+      "service_code": "AWSELB",
+      "products": [
+        {
+          "product": {
+            "productFamily": "Load Balancer-Application",
+            "attributes": {
+              "regionCode": "ap-southeast-2",
+              "servicecode": "AWSELB",
+              "groupDescription": "LoadBalancer hourly usage by Application Load Balancer",
+              "usagetype": "APS2-LoadBalancerUsage",
+              "locationType": "AWS Region",
+              "location": "Asia Pacific (Sydney)",
+              "servicename": "Elastic Load Balancing",
+              "operation": "LoadBalancing:Application",
+              "group": "ELB:Balancing"
+            },
+            "sku": "M84CYHYUVJ4USFHD"
+          },
+          "serviceCode": "AWSELB",
+          "terms": {
+            "OnDemand": {
+              "M84CYHYUVJ4USFHD.JRTCKXETXF": {
+                "priceDimensions": {
+                  "M84CYHYUVJ4USFHD.JRTCKXETXF.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "$0.0252 per Application LoadBalancer-hour (or partial hour)",
+                    "appliesTo": [],
+                    "rateCode": "M84CYHYUVJ4USFHD.JRTCKXETXF.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0252000000"
+                    }
+                  }
+                },
+                "sku": "M84CYHYUVJ4USFHD",
+                "effectiveDate": "2026-11-01T00:00:00Z",
+                "offerTermCode": "JRTCKXETXF",
+                "termAttributes": {}
+              }
+            }
+          },
+          "version": "20261105220241",
+          "publicationDate": "2026-11-05T22:02:41Z"
+        }
+      ]
+    },
+    "rds_hour": {
+      "service_code": "AmazonRDS",
+      "products": [
+        {
+          "product": {
+            "productFamily": "Database Instance",
+            "attributes": {
+              "engineCode": "14",
+              "instanceTypeFamily": "T4G",
+              "memory": "4 GiB",
+              "vcpu": "2",
+              "instanceType": "db.t4g.medium",
+              "unbundledLicensing": "FALSE",
+              "usagetype": "APS2-InstanceUsage:db.t4g.medium",
+              "locationType": "AWS Region",
+              "storage": "EBS Only",
+              "normalizationSizeFactor": "2",
+              "instanceFamily": "General purpose",
+              "databaseEngine": "PostgreSQL",
+              "regionCode": "ap-southeast-2",
+              "servicecode": "AmazonRDS",
+              "physicalProcessor": "AWS Graviton2",
+              "licenseModel": "No license required",
+              "currentGeneration": "Yes",
+              "networkPerformance": "Up to 5 Gigabit",
+              "deploymentOption": "Single-AZ",
+              "location": "Asia Pacific (Sydney)",
+              "servicename": "Amazon Relational Database Service",
+              "processorArchitecture": "64-bit",
+              "operation": "CreateDBInstance:0014"
+            },
+            "sku": "39ZQQE2APEWYQ3US"
+          },
+          "serviceCode": "AmazonRDS",
+          "terms": {
+            "OnDemand": {
+              "39ZQQE2APEWYQ3US.JRTCKXETXF": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.JRTCKXETXF.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "$ 0.102 per RDS db.t4g.medium Single-AZ instance hour (or partial hour) running PostgreSQL",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.JRTCKXETXF.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.1020000000"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-01T00:00:00Z",
+                "offerTermCode": "JRTCKXETXF",
+                "termAttributes": {}
+              }
+            },
+            "Reserved": {
+              "39ZQQE2APEWYQ3US.HU7G6KETJZ": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.HU7G6KETJZ.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "PostgreSQL, db.t4g.medium reserved instance applied",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.HU7G6KETJZ.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0381000000"
+                    }
+                  },
+                  "39ZQQE2APEWYQ3US.HU7G6KETJZ.2TG2D8R56U": {
+                    "unit": "Quantity",
+                    "description": "Upfront Fee",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.HU7G6KETJZ.2TG2D8R56U",
+                    "pricePerUnit": {
+                      "USD": "334"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-29T07:08:09Z",
+                "offerTermCode": "HU7G6KETJZ",
+                "termAttributes": {
+                  "LeaseContractLength": "1yr",
+                  "OfferingClass": "standard",
+                  "PurchaseOption": "Partial Upfront"
+                }
+              },
+              "39ZQQE2APEWYQ3US.38NPMPTW36": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.38NPMPTW36.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "PostgreSQL, db.t4g.medium reserved instance applied",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.38NPMPTW36.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0295000000"
+                    }
+                  },
+                  "39ZQQE2APEWYQ3US.38NPMPTW36.2TG2D8R56U": {
+                    "unit": "Quantity",
+                    "description": "Upfront Fee",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.38NPMPTW36.2TG2D8R56U",
+                    "pricePerUnit": {
+                      "USD": "774"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-29T07:08:09Z",
+                "offerTermCode": "38NPMPTW36",
+                "termAttributes": {
+                  "LeaseContractLength": "3yr",
+                  "OfferingClass": "standard",
+                  "PurchaseOption": "Partial Upfront"
+                }
+              },
+              "39ZQQE2APEWYQ3US.6QCMYABX3D": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.6QCMYABX3D.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "PostgreSQL, db.t4g.medium reserved instance applied",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.6QCMYABX3D.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0000000000"
+                    }
+                  },
+                  "39ZQQE2APEWYQ3US.6QCMYABX3D.2TG2D8R56U": {
+                    "unit": "Quantity",
+                    "description": "Upfront Fee",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.6QCMYABX3D.2TG2D8R56U",
+                    "pricePerUnit": {
+                      "USD": "650"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-29T07:08:09Z",
+                "offerTermCode": "6QCMYABX3D",
+                "termAttributes": {
+                  "LeaseContractLength": "1yr",
+                  "OfferingClass": "standard",
+                  "PurchaseOption": "All Upfront"
+                }
+              },
+              "39ZQQE2APEWYQ3US.NQ3QZPMQV9": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.NQ3QZPMQV9.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "PostgreSQL, db.t4g.medium reserved instance applied",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.NQ3QZPMQV9.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0000000000"
+                    }
+                  },
+                  "39ZQQE2APEWYQ3US.NQ3QZPMQV9.2TG2D8R56U": {
+                    "unit": "Quantity",
+                    "description": "Upfront Fee",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.NQ3QZPMQV9.2TG2D8R56U",
+                    "pricePerUnit": {
+                      "USD": "1522"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-29T07:08:09Z",
+                "offerTermCode": "NQ3QZPMQV9",
+                "termAttributes": {
+                  "LeaseContractLength": "3yr",
+                  "OfferingClass": "standard",
+                  "PurchaseOption": "All Upfront"
+                }
+              },
+              "39ZQQE2APEWYQ3US.4NA7Y494T4": {
+                "priceDimensions": {
+                  "39ZQQE2APEWYQ3US.4NA7Y494T4.6YS6EN2CT7": {
+                    "unit": "Hrs",
+                    "endRange": "Inf",
+                    "description": "PostgreSQL, db.t4g.medium reserved instance applied",
+                    "appliesTo": [],
+                    "rateCode": "39ZQQE2APEWYQ3US.4NA7Y494T4.6YS6EN2CT7",
+                    "beginRange": "0",
+                    "pricePerUnit": {
+                      "USD": "0.0803000000"
+                    }
+                  }
+                },
+                "sku": "39ZQQE2APEWYQ3US",
+                "effectiveDate": "2026-10-29T07:08:09Z",
+                "offerTermCode": "4NA7Y494T4",
+                "termAttributes": {
+                  "LeaseContractLength": "1yr",
+                  "OfferingClass": "standard",
+                  "PurchaseOption": "No Upfront"
+                }
+              }
+            }
+          },
+          "version": "20261029070635",
+          "publicationDate": "2026-10-29T07:06:35Z"
+        }
+      ]
+    }
+  },
+  "runtime": {
+    "fargate_cpu": {
+      "service_code": "AmazonECS",
+      "products": [
+        {
+          "sku": "MMQG9GMCKV4JUBKW",
+          "attributes": {
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AmazonECS",
+            "tenancy": "Shared",
+            "usagetype": "APS2-Fargate-vCPU-Hours:perCPU",
+            "locationType": "AWS Region",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Amazon Elastic Container Service",
+            "cputype": "perCPU",
+            "operation": ""
+          },
+          "terms": {
+            "MMQG9GMCKV4JUBKW.JRTCKXETXF": {
+              "priceDimensions": {
+                "MMQG9GMCKV4JUBKW.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "hours",
+                  "endRange": "Inf",
+                  "description": "AWS Fargate - vCPU - Asia Pacific (Sydney)",
+                  "appliesTo": [],
+                  "rateCode": "MMQG9GMCKV4JUBKW.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.0485600000"
+                  }
+                }
+              },
+              "sku": "MMQG9GMCKV4JUBKW",
+              "effectiveDate": "2026-10-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        }
+      ]
+    },
+    "fargate_memory": {
+      "service_code": "AmazonECS",
+      "products": [
+        {
+          "sku": "RWBFR84TYF5JT44P",
+          "attributes": {
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AmazonECS",
+            "tenancy": "Shared",
+            "usagetype": "APS2-Fargate-GB-Hours",
+            "locationType": "AWS Region",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Amazon Elastic Container Service",
+            "memorytype": "perGB",
+            "operation": ""
+          },
+          "terms": {
+            "RWBFR84TYF5JT44P.JRTCKXETXF": {
+              "priceDimensions": {
+                "RWBFR84TYF5JT44P.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "hours",
+                  "endRange": "Inf",
+                  "description": "AWS Fargate - Memory - Asia Pacific (Sydney)",
+                  "appliesTo": [],
+                  "rateCode": "RWBFR84TYF5JT44P.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.0053200000"
+                  }
+                }
+              },
+              "sku": "RWBFR84TYF5JT44P",
+              "effectiveDate": "2026-10-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        }
+      ]
+    },
+    "alb_lcu": {
+      "service_code": "AWSELB",
+      "products": [
+        {
+          "sku": "46R3WW3V55XEDMAA",
+          "attributes": {
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AWSELB",
+            "groupDescription": "Used Network Load Balancer capacity units-hr",
+            "usagetype": "APS2-LCUUsage",
+            "locationType": "AWS Region",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Elastic Load Balancing",
+            "operation": "LoadBalancing:Network",
+            "group": "ELB:Balancing"
+          },
+          "terms": {
+            "46R3WW3V55XEDMAA.JRTCKXETXF": {
+              "priceDimensions": {
+                "46R3WW3V55XEDMAA.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "LCU-Hrs",
+                  "endRange": "Inf",
+                  "description": "$0.006 per used Network load balancer capacity unit-hour (or partial hour)",
+                  "appliesTo": [],
+                  "rateCode": "46R3WW3V55XEDMAA.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.0060000000"
+                  }
+                }
+              },
+              "sku": "46R3WW3V55XEDMAA",
+              "effectiveDate": "2026-11-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        },
+        {
+          "sku": "6CFSD9EDEA5XS33F",
+          "attributes": {
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AWSELB",
+            "groupDescription": "Used Application Load Balancer capacity units-hr",
+            "usagetype": "APS2-LCUUsage",
+            "locationType": "AWS Region",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Elastic Load Balancing",
+            "operation": "LoadBalancing:Application",
+            "group": "ELB:Balancing"
+          },
+          "terms": {
+            "6CFSD9EDEA5XS33F.JRTCKXETXF": {
+              "priceDimensions": {
+                "6CFSD9EDEA5XS33F.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "LCU-Hrs",
+                  "endRange": "Inf",
+                  "description": "$0.008 per used Application load balancer capacity unit-hour (or partial hour)",
+                  "appliesTo": [],
+                  "rateCode": "6CFSD9EDEA5XS33F.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.0080000000"
+                  }
+                }
+              },
+              "sku": "6CFSD9EDEA5XS33F",
+              "effectiveDate": "2026-11-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        },
+        {
+          "sku": "S59GWHQHYYQR5UZF",
+          "attributes": {
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AWSELB",
+            "groupDescription": "Used Gateway Load Balancer capacity units-hr",
+            "usagetype": "APS2-LCUUsage",
+            "locationType": "AWS Region",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Elastic Load Balancing",
+            "operation": "LoadBalancing:Gateway",
+            "group": "ELB:Balancing"
+          },
+          "terms": {
+            "S59GWHQHYYQR5UZF.JRTCKXETXF": {
+              "priceDimensions": {
+                "S59GWHQHYYQR5UZF.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "LCU-Hrs",
+                  "endRange": "Inf",
+                  "description": "$0.0040 per used Gateway load balancer capacity unit-hour (or partial hour) in Asia Pacific (Sydney)",
+                  "appliesTo": [],
+                  "rateCode": "S59GWHQHYYQR5UZF.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.0040000000"
+                  }
+                }
+              },
+              "sku": "S59GWHQHYYQR5UZF",
+              "effectiveDate": "2026-11-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        }
+      ]
+    },
+    "rds_storage": {
+      "service_code": "AmazonRDS",
+      "products": [
+        {
+          "sku": "XVCEBKZQD46QGPYP",
+          "attributes": {
+            "volumeType": "General Purpose-GP3",
+            "engineCode": "14",
+            "usagetype": "APS2-RDS:GP3-Storage",
+            "locationType": "AWS Region",
+            "maxVolumeSize": "16 TB",
+            "databaseEngine": "PostgreSQL",
+            "storageMedia": "SSD",
+            "regionCode": "ap-southeast-2",
+            "servicecode": "AmazonRDS",
+            "deploymentOption": "Single-AZ",
+            "location": "Asia Pacific (Sydney)",
+            "servicename": "Amazon Relational Database Service",
+            "operation": "CreateDBInstance:0014",
+            "minVolumeSize": "5 GB"
+          },
+          "terms": {
+            "XVCEBKZQD46QGPYP.JRTCKXETXF": {
+              "priceDimensions": {
+                "XVCEBKZQD46QGPYP.JRTCKXETXF.6YS6EN2CT7": {
+                  "unit": "GB-Mo",
+                  "endRange": "Inf",
+                  "description": "$0.138 per GB-month of provisioned GP3 storage running PostgreSQL",
+                  "appliesTo": [],
+                  "rateCode": "XVCEBKZQD46QGPYP.JRTCKXETXF.6YS6EN2CT7",
+                  "beginRange": "0",
+                  "pricePerUnit": {
+                    "USD": "0.1380000000"
+                  }
+                }
+              },
+              "sku": "XVCEBKZQD46QGPYP",
+              "effectiveDate": "2026-10-01T00:00:00Z",
+              "offerTermCode": "JRTCKXETXF",
+              "termAttributes": {}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

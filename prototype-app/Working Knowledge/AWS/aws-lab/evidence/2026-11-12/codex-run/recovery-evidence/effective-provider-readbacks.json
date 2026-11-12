@@ -1,0 +1,75 @@
+{
+  "checked_at": "2026-11-12T10:01:28.099875+00:00",
+  "roles": [
+    {
+      "caller": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabPlan/sg-effective-read-20261112",
+      "checks": [
+        {
+          "bucket": "scoutgrid-lab-736486260824-imports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-736486260824-exports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+          "result": "AccessDenied"
+        }
+      ]
+    },
+    {
+      "caller": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabBootstrap/sg-effective-read-20261112",
+      "checks": [
+        {
+          "bucket": "scoutgrid-lab-736486260824-imports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-736486260824-exports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+          "result": "AccessDenied"
+        }
+      ]
+    },
+    {
+      "caller": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabApply/sg-effective-read-20261112",
+      "checks": [
+        {
+          "bucket": "scoutgrid-lab-736486260824-imports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-736486260824-exports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+          "result": "AccessDenied"
+        }
+      ]
+    },
+    {
+      "caller": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabTeardown/sg-effective-read-20261112",
+      "checks": [
+        {
+          "bucket": "scoutgrid-lab-736486260824-imports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-736486260824-exports",
+          "result": "NoSuchBucket"
+        },
+        {
+          "bucket": "scoutgrid-lab-tfstate-736486260824-ap-southeast-2",
+          "result": "AccessDenied"
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "mutation": false
+}
