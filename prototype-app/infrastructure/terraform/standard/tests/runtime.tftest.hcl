@@ -478,13 +478,30 @@ run "scoped_security_monitoring_and_monthly_cost_alerts" {
   }
 }
 
+run "accept_lab_budget_at_owner_allowance" {
+  command = plan
+
+  variables {
+    environment = "lab"
+    monthly_budget = {
+      amount_usd     = 50
+      operator_email = "billing@example.com"
+    }
+  }
+
+  assert {
+    condition     = aws_budgets_budget.standard[0].limit_amount == "50"
+    error_message = "The lab must accept the owner's inclusive $50 monthly ceiling."
+  }
+}
+
 run "reject_lab_budget_above_owner_allowance" {
   command = plan
 
   variables {
     environment = "lab"
     monthly_budget = {
-      amount_usd     = 20
+      amount_usd     = 50.01
       operator_email = "billing@example.com"
     }
   }
