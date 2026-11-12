@@ -54,6 +54,7 @@ frontend/src/
     findings/               Finding type, queries, filters
     cve-workbench/          OrgSpecificCveExposureRecord, CveDetail, assessment helpers, scoring
     configurations/         RiskPolicy, OwnershipRule, SuppressionRule
+    ownership/              Ownership & Directory hub panels and dialogs, queries, permissions, resolvedOwnership helpers, types
     inventory/              Asset, HostAssetDetail, InventoryComponentPage, searchState, helpers
     connect/                Connector configs, SyncRun types, queries
     operations/             OperationalDashboard, SLO, quality types and queries
@@ -134,7 +135,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 | `/admin/:adminView?` | `AdminRoute` (`UserManagementPage`) | Default `users`; also `invites`, `roles`, `service-accounts`, `audit` (no `support-access` route view exists) |
 | `/platform/:platformView?` | `PlatformRoute` (`PlatformConsolePage`) | Default `tenants`; platform owner console. `ai-policies` sub-view renders `PlatformAiPolicyStudio` for global governed catalog/distribution/rollout; tenant coverage and telemetry are intentionally absent until a workspace is selected. Nav label: "Policy Distribution" |
 | `/platform/ai-policies/:policyId` | `PlatformAiPolicyDetailRoute` | Platform AI policy detail (`/vuln-repo/policies` redirects to `/platform/ai-policies`) |
-| `/configurations/:configView?` | `ConfigurationsPage` | Default `sla`; SLA, Triage, Automation, Ownership, Findings Score, Suppression, Auto-Finding (Vulnerability Sources moved to the Connect page — see below) |
+| `/configurations/:configView?` | `ConfigurationsPage` | Default `sla`; SLA, Triage, Automation, Ownership & Directory (sub-view in `?view=`), Findings Score, Suppression, Auto-Finding (Vulnerability Sources moved to the Connect page — see below) |
 | `/authorized-workspaces` | `AuthorizedWorkspacesRoute` (`AuthorizedWorkspacesPage`) | Platform-owner-only list of tenant-approved support access grants |
 | `/demo` | `DemoLandingPage` | Public demo landing |
 | `/demo/blog` | `BlogIndexPage` | Public demo blog index |
@@ -385,6 +386,29 @@ Files: `types.ts`, `CampaignDetailPage.tsx` — undocumented until now; a fully 
 
 `CampaignDetailPage.tsx` is large (2000+ lines) — lifecycle stage UI, KPI tiles, severity/team accountability breakdowns, insight UI (generative assistance hard off for deployed pilot; deterministic paths retained), advisory fetch, and add-assets/add-CVE modals. Routed at `/vuln-repo/campaigns` and `/vuln-repo/campaigns/:id`.
 
+### ownership (`src/features/ownership/`)
+
+Ownership MVP Release 1 (PR #71). `OwnershipDirectoryHub` renders inside the Configurations "Ownership & Directory" section. The `view` search parameter selects the panel; `overview` is the default and drops the parameter.
+
+| View | Panel | Shown to | Content |
+|---|---|---|---|
+| `overview` | `OverviewPanel`, `CutoverPanel` | all tenant roles | Inventory and finding ownership coverage; tenant-key readiness and provisioning (`TENANT_ADMIN`); CORE cutover report with start-dark, no-go and report-hash-bound go (`TENANT_ADMIN`) |
+| `teams` | `TeamsPanel`, `TeamAliasesDialog` | all tenant roles; writes for tenant/inventory admins | Search, active/archived, create, rename, ticket group, archive/restore with confirmation, aliases |
+| `people` | `PeoplePanel` | roles that can view the directory | Name-prefix search from 2 letters, masked contact fields, add, deactivate/reactivate |
+| `groups` | `GroupsPanel`, `GroupMembersDialog` | roles that can view the directory | Create, deactivate/reactivate, members (names resolved for the first 25) |
+| `imports` | `ImportsPanel` | `TENANT_ADMIN` | Template download, dry run, commit bound to the preview token |
+| `review` | `ReviewPanel` | all tenant roles; resolve/dismiss for admins | Open/resolved/dismissed, type filter, resolve or dismiss with a note |
+| `legacy` | the existing rule editor | while inventory ownership is `LEGACY_PENDING_MIGRATION` | Labelled "Legacy rules — pending migration" |
+
+`permissions.ts` mirrors the backend `OwnershipAuthorization` matrix for visibility only. `queries.ts` holds the React Query hooks (`useOwnershipCoverageQuery`, `useOwnershipTeamsQuery`, and others). Sources and group-to-team mappings are not shown until their endpoints exist (Releases 2–3).
+
+`resolvedOwnership.ts` reads the canonical envelope on assets and findings. Pages show the resolved team only when `authorityState` is `CANONICAL`:
+- **Inventory hosts:** owner column, owner search and missing-owner count use the resolved team.
+- **Host detail:** Resolved ownership and Observed ownership evidence panels; the raw `ownerTeam`/`ownerEmail`/`supportGroup` evidence is never relabelled.
+- **Findings:** an Ownership Status column; legacy rows show "Pending migration" in Owner. Owner-team and ownership-status filters appear only when `useOwnershipCoverageQuery('FINDINGS')` reports `CANONICAL`; they filter by stable team ID and are carried by filter chips and saved views (`ownerTeamId`, `ownershipStatus`).
+
+Tests: `OwnershipDirectoryHub.test.tsx`, `resolvedOwnership.test.ts`, and the Configurations, Findings, Inventory and HostAssetDetail page tests. [The Phase 0A design](ownership-phase-0a-design.md) §11.3 lists the hub's browser verification (journeys, visual baselines, axe, a live session and screenshots) as not yet done.
+
 ### ai-security (`src/features/ai-security/`)
 
 Files: `types.ts`, `categories.ts`, `assessment.ts`, `AiDependencyGraph.tsx`, `graph-layout.ts`, `AiBaselineSection.tsx`, `AiInventoryOverviewStrip.tsx`, `ProviderLogo.tsx`, `useAssessmentUpdates.ts`, `test-support.ts`
@@ -608,7 +632,13 @@ clearStoredAuthToken(): void               // removes from localStorage
 - `getRiskPolicy()` -> `RiskPolicy`
 - `updateRiskPolicy(payload)` -> `RiskPolicy`
 - `listOwnershipRules()` -> `OwnershipRuleResponse[]`
-- `createOwnershipRule(payload)`, `updateOwnershipRule(id, payload)`, `deleteOwnershipRule(id)`
+- `createOwnershipRule(payload)`, `updateOwnershipRule(id, payload)`, `deleteOwnershipRule(id)` (legacy rules, kept until the CORE ownership cutover)
+
+**Ownership & Directory** (`/api/ownership/**`, `/api/directory/**`):
+- Teams: `listOwnershipTeams`, `createOwnershipTeam`, `updateOwnershipTeam`, `listOwnershipTeamAliases`, `addOwnershipTeamAlias`, `removeOwnershipTeamAlias`
+- People and groups: `searchDirectoryPeople`, `getDirectoryPerson`, `createDirectoryPerson`, `updateDirectoryPerson`, `searchDirectoryGroups`, `createDirectoryGroup`, `updateDirectoryGroup`, `listDirectoryGroupMembers`, `addDirectoryGroupMember`, `removeDirectoryGroupMember`
+- Imports: `downloadDirectoryImportTemplate`, `previewDirectoryImport`, `commitDirectoryImport` (commit is bound to the preview token)
+- Review, coverage and cutover: `listOwnershipReviewItems`, `closeOwnershipReviewItem`, `getOwnershipCoverage`, `getOwnershipEncryption`, `provisionOwnershipEncryption`, `getOwnershipQualification`, `transitionOwnershipAuthority`
 - `listSuppressionRules()` -> `SuppressionRule[]`
 - `createSuppressionRule(payload)`, `updateSuppressionRule(id, payload)`, `deleteSuppressionRule(id)`
 
@@ -776,6 +806,8 @@ Types are **feature-colocated**, not centralized. `src/types/index.ts` re-export
 | `Tenant`, `TenantMember`, `PlatformUser`, `ServiceAccount`, `AuditEvent`, `TenantSupportGrant` | `src/features/admin/types.ts` |
 | `AiSecurityArtifact`, `AiSecurityFinding`, `AiSecurityPolicy`, `AiGridSystem`, `AiGridCoverage`, `AiGridExposureDetail`, and all other AI Security/Grid types | `src/features/ai-security/types.ts` |
 | `OwnershipSummary` | `src/types/ownership.ts` |
+| Ownership hub types (teams, aliases, directory people/groups/members, imports, review items, coverage, encryption, authority and qualification) | `src/features/ownership/types.ts` |
+| `ResolvedOwnership` envelope helpers | `src/features/ownership/resolvedOwnership.ts` |
 | `PolicyWeights` | `src/lib/riskScoring.ts` |
 | `DataTableColumn`, `DataTableRow` | `src/components/DataTable.tsx` |
 | `MultiGroupByOption` | `src/components/MultiGroupBy.tsx` |
@@ -886,7 +918,7 @@ Note: `endoflife-date`, `euvd-feed`, and `jvn-feed` are declared in the `Connect
 
 ### Configurations page sections
 
-7 sections in sidebar order: SLA & Remediation -> S.AI Prioritization (AI badge) -> Workflow Automation -> Ownership -> Findings Score -> Suppression Rules -> Auto-Finding Rules. All except Ownership persist to a single `RiskPolicy` record via `PUT /api/risk-policy`. Call `applyTriageDefaults()` on API responses to fill missing triage fields for older backends that predate the 6 triage weight fields.
+7 sections in sidebar order: SLA & Remediation -> S.AI Prioritization (AI badge) -> Workflow Automation -> Ownership & Directory -> Findings Score -> Suppression Rules -> Auto-Finding Rules. All except Ownership & Directory persist to a single `RiskPolicy` record via `PUT /api/risk-policy`. Call `applyTriageDefaults()` on API responses to fill missing triage fields for older backends that predate the 6 triage weight fields.
 
 Vulnerability Sources (the per-tenant feed filter rule editor, `VulnerabilitySourcesSection`) is no longer a Configurations tab — it now renders inside a collapsible "Vulnerability Intelligence" accordion on the Connect page (`/connect/sources`, gated by `canManageSourceFilters(actor)`).
 

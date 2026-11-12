@@ -2,7 +2,9 @@
 
 Status: draft for approval  
 Source plan: `docs/ownership-capability-mvp-plan.md` §16.2  
-Baseline: `main` @ `98155ae6` — tenant migrations V1–V19, platform migrations V1–V10.
+Baseline: `main` @ `98155ae6` — tenant migrations V1–V19, platform migrations V1–V10.  
+Renumbered 2026-11-11 (`761fb5ab`) after `main` reached platform V15 / tenant V20: this work is now platform **V16** and
+tenant **V21–V23**. Every version below uses the renumbered values.
 
 This document records the repository-grounded decisions for the nine Release-1 prerequisites. Items that need
 deployed infrastructure, production-scale data or people are marked **OPEN** and must be closed by their owners
@@ -11,8 +13,9 @@ that the open items change configuration, not structure.
 
 ## 1. Storage map and migrations (prerequisite 1)
 
-Next free versions: **tenant V20**, **platform V11** (re-verify before each merge; `PackagedMigrationCatalog`
-derives targets from the highest packaged version and rejects gaps/duplicates).
+Versions as merged into this branch: **platform V16**, **tenant V21–V23** (re-verify before each merge;
+`PackagedMigrationCatalog` derives targets from the highest packaged version and rejects gaps/duplicates). The next free
+versions after this work are platform V17 and tenant V24.
 
 Conventions copied from tenant V19: `-- migration-guard: tenant-only` header, `${tenantSchema}` /
 `${tenantId}`, `tenant_id uuid NOT NULL DEFAULT '${tenantId}'::uuid REFERENCES platform.tenants(id)`,
@@ -30,26 +33,27 @@ Rules: DDL is forward-only; every cross-row reference is tenant-inclusive (`(ten
 no cross-tenant cascade; new tables are added to tenant purge coverage and `TenantSchemaFingerprint`; grants follow
 the existing tenant-role grant block used by V19.
 
-V20 as built: also adds `directory_search_token` (HMAC prefix tokens for users/groups). External IDs are stored as
+V21 as built: also adds `directory_search_token` (HMAC prefix tokens for users/groups). External IDs are stored as
 `external_id_enc` + `external_id_index` (blind index) so uniqueness never needs plaintext; PII columns carry a
-`LIKE 'enc:t1:%'` check. `TenantSchemaCompatibility` now requires tenant V20.
+`LIKE 'enc:t1:%'` check. `TenantSchemaCompatibility` now requires tenant V23 (minimum and maximum).
 
-V21 as built: claim `priority` is a generated column from `priority_class`, and source kind/class pairs are
+V22 as built: claim `priority` is a generated column from `priority_class`, and source kind/class pairs are
 checked in SQL. `ownership_assignment.status` adds `NONE` (claims exist, none eligible) so the row and its ID
 survive for exception snapshots while readers fall through to the parent. The effective view is
-`security_invoker` (requires PostgreSQL 15+; Render default is 16). Single writers: `OwnershipSubjectService`
+`security_invoker` (requires PostgreSQL 15+; local development and the AWS RDS target use 16). Single writers: `OwnershipSubjectService`
 (subjects/edges; rejects cycles and > 6 hops at write time), `OwnershipClaimService` (claims, idempotent per
 observation, supersedes per source reference), `OwnershipResolutionService` (assignments), `OwnershipReviewService`
 (review items), `OwnershipEvents` (append-only, trigger-enforced). `ownership_effective_cache` has no writer.
-V21 also adds `ownership_resolution_queue`: team archive/restore enqueues affected subjects in one set-based insert,
+V22 also adds `ownership_resolution_queue`: team archive/restore enqueues affected subjects in one set-based insert,
 and `OwnershipMaintenanceJob` (every minute, per tenant, bounded batches in separate transactions) expires claims and
 drains the queue.
 
-V22 as built: adds `(tenant_id, id)` candidate keys on `assets`/`findings`; `assets.ownership_subject_id`,
+V23 as built: adds `(tenant_id, id)` candidate keys on `assets`/`findings`; `assets.ownership_subject_id`,
 `findings.ownership_subject_id`, `findings.assignee_principal_id` (FK to `platform.app_users`; tenant membership is
 checked by the writer, because a tenant-inclusive FK to memberships would block membership removal); the four §7.3
 snapshot columns on `finding_suppression_requests`; and `owner_team_id`/`ownership_assignment_id` on `finding_events`
-for direct suppression, false-positive and accepted-risk decisions. Nothing populates or reads these yet.
+for direct suppression, false-positive and accepted-risk decisions. The cutover populate step links `ownership_subject_id`
+(§8.1); nothing populates the assignee or snapshot columns yet.
 
 Namespace uniqueness for `team.name_key` + `team_alias.alias_key` is enforced by one transactional
 `TeamNamespaceService` taking a tenant-scoped `pg_advisory_xact_lock`; table unique indexes are a backstop only.
@@ -86,7 +90,8 @@ TenantKeyRegistry            : platform.tenant_data_keys, caffeine cache (bounde
   prefix search uses bounded n-gram tokens of the normalized display name under the same HMAC key (limit set by the
   100k/300k plan check below).
 
-**OPEN (blocking):** deployed Render→KMS spike (auth, wrap/unwrap latency, rotation, outage, redacted logging).
+**OPEN (blocking):** deployed KMS spike (auth, wrap/unwrap latency, rotation, outage, redacted logging). Hosting has
+moved from Render to AWS, so the spike now runs from the ECS task role; `AwsKmsKeyWrapper` is not built yet.
 Until it passes, no production PII write and no new connector-secret write; Release-1 code ships behind the
 readiness gate with `LocalKeyWrapper` in local/test only.
 
@@ -142,7 +147,7 @@ ServiceNow admin.
 Harness (to be built in Release 1 week 1, under `backend/scripts/perf/ownership/`): seeds 1M/3M findings and
 5M/15M occurrence topology into a disposable Postgres, then records `EXPLAIN (ANALYZE, BUFFERS)` and p95 for:
 owner-team filter, status filter, ownership coverage count, single-subject explanation. Decision rule: if p95
-misses plan §13 budgets, enable `ownership_effective_cache` (schema ships in V21 but is unused until then).
+misses plan §13 budgets, enable `ownership_effective_cache` (schema ships in V22 but is unused until then).
 **OPEN:** results.
 
 Local smoke run (2026-11-08, PostgreSQL 16.15 on a developer Mac, 100k findings / 500k occurrences = one tenth of
@@ -173,7 +178,7 @@ Decision under the rule above: the live LATERAL walk is adequate for single-subj
 correctness-sensitive writes, but owner-team filtering and coverage aggregation need `ownership_effective_cache`
 (or an equivalent projection) before the inventory/findings read waves are enabled at expected size.
 
-Cache as built (V21 amended before first merge; no shared database had V20–V22 applied):
+Cache as built (the core migration was amended before first merge; no shared database had the ownership migrations applied):
 
 - `ownership_effective_cache` stores per subject only stable IDs (status, team, origin subject, assignment and its
   version), depth and `inheritance_path` — the subjects the walk visited, the subject first. A GIN index on the path
@@ -271,11 +276,11 @@ the release authority, plus provider-tenant access dates (ServiceNow, Entra, Okt
 
 | # | Prerequisite | Status |
 |---|---|---|
-| 1 | Storage map, versions, RLS/grants/purge | Platform V11 + tenant V20–V22 implemented and IT-verified |
-| 2 | KMS spike + cipher interface | Implemented (`security.tenantkey`, platform V11, local wrapper only); **spike OPEN** |
+| 1 | Storage map, versions, RLS/grants/purge | Platform V16 + tenant V21–V23 implemented and IT-verified |
+| 2 | KMS spike + cipher interface | Implemented (`security.tenantkey`, platform V16, local wrapper only); **spike OPEN** |
 | 3 | Identity key + search | Manual + CSV directory implemented and IT-verified; **100k/300k plan OPEN** |
 | 4 | Authorization matrix | `OwnershipAuthorization` implemented; every ownership endpoint guarded and role × endpoint IT-verified |
-| 5 | Precedence/inheritance/TTL | Resolver, view, scheduled expiry sweep and re-resolution queue implemented (V21); thresholds **need product confirmation** |
+| 5 | Precedence/inheritance/TTL | Resolver, view, scheduled expiry sweep and re-resolution queue implemented (V22); thresholds **need product confirmation** |
 | 6 | ServiceNow CMDB contract | `ServiceNowOwnershipProducer` implemented against the initial contract (support_group; department behind a flag) and IT-verified; **samples OPEN** |
 | 7 | Effective-owner benchmark | Harness at `backend/scripts/perf/ownership/`; smoke run: filter/coverage miss → `ownership_effective_cache` implemented (§7) and IT-verified; **expected/qualification-size results OPEN** |
 | 8 | Authority/read-flag/adapter plan | `OwnershipAuthorityService`, `OwnershipReadAdapter`, `OwnershipCutoverService` implemented and IT-verified (CORE only) |
@@ -284,28 +289,32 @@ the release authority, plus provider-tenant access dates (ServiceNow, Entra, Okt
 Implementation proceeds against these interfaces. Anything marked OPEN is enforced in code as a disabled-by-default
 switch (publication, identity-source enablement, domain authority) so unfinished evidence cannot be bypassed at runtime.
 
-## 11. Release 1 progress and handoff (updated 2026-11-09)
+## 11. Release 1 progress and handoff (updated 2026-11-12)
 
 Start here in a new session. The plan is `docs/ownership-capability-mvp-plan.md`; this document records what is built.
 
 ### 11.1 Where the work is
 
-- Git worktree `../SG-ownership-mvp` (relative to the main checkout `SG/`), branch `feat/ownership-mvp`.
-- Committed on `feat/ownership-mvp` (not pushed, no PR): `764fe136` plan, `543e7620` Phase 0A design, `f9ea681e`
-  slice 1 (tenant data keys, platform V11), `7bd38452` slice 2 (identity and team tables, tenant V20), then
-  `7084247d` ownership core and effective cache (tenant V21–V22), `d6f141b3` directory and CSV, `88b59f08`
-  ServiceNow producer, `225fe7e1` manual assignment, cutover and read adapter, `f4ac6b56` REST API and authorization,
-  `98852731` finding/asset compatibility reads, `5d44e93b` inventory UI, `f73058c8` Ownership & Directory hub and
-  `3f3739a5` benchmark harness and this status. Only the final tree was built and tested; the intermediate commits were
-  not compiled individually. gitleaks (repo config) found no leaks in these commits; no pre-commit hook is installed.
-- Frontend `node_modules` in the worktree were installed with `npm ci` (its lockfile differs from the main checkout).
+- Branch `feat/ownership-mvp`, pushed, open as **PR #71** against `main`. The local worktree is `../SG-ownership-mvp`
+  (relative to the main checkout `SG/`).
+- Release 1 commits: `764fe136` plan, `543e7620` Phase 0A design, `f9ea681e` slice 1 (tenant data keys), `7bd38452`
+  slice 2 (identity and team tables), `7084247d` ownership core and effective cache, `d6f141b3` directory and CSV,
+  `88b59f08` ServiceNow producer, `225fe7e1` manual assignment, cutover and read adapter, `f4ac6b56` REST API and
+  authorization, `98852731` finding/asset compatibility reads, `5d44e93b` inventory UI, `f73058c8` Ownership & Directory
+  hub, `3f3739a5` benchmark harness and status, `43aece55` tenant reset fix, `829e4765` Findings owner filter.
+- Later commits: `223d3cf1` service updates and a local AI Grid demo seed (test sources only), `761fb5ab` migration
+  renumbering (platform V11→V16, tenant V20–V22→V21–V23) after `main` advanced, merges from `main`, and `ec837d81`
+  e2e journey header fix.
+- Only the final tree was built and tested; intermediate commits were not compiled individually. The demo seed
+  (`backend/src/test/java/com/prototype/vulnwatch/devseed/AiGridDemoSeed.java`) is intentionally committed in test
+  sources, so it is never packaged; it runs only with the `local` profile.
 
 ### 11.2 Done in Release 1
 
 | Area | Built | Verified by |
 |---|---|---|
 | Tenant encryption | `security.tenantkey` (cipher, blind index, local wrapper, registry), readiness gate on PII writes | `TenantDataCipherTest`, `TenantKeyRegistryPostgresIntegrationTest` |
-| Identity and teams | V20 tables; one shared team/alias namespace under an advisory lock | `TeamNamespacePostgresIntegrationTest`, writer-control test |
+| Identity and teams | V21 tables; one shared team/alias namespace under an advisory lock | `TeamNamespacePostgresIntegrationTest`, writer-control test |
 | Directory | Manual people/groups/memberships, encrypted prefix search, CSV preview/commit (5 kinds) | `DirectoryPostgresIntegrationTest` |
 | Ownership core | Subjects, ≤ 6-hop edges, claims, direct assignments, effective view, review items, events, expiry sweep, re-resolution queue | `OwnershipCorePostgresIntegrationTest`, `OwnershipResolverTest` |
 | Manual assignment | Reason, expiry, analyst scope and limits, impact preview, revoke | `ManualAssignmentPostgresIntegrationTest` |
@@ -320,10 +329,10 @@ Start here in a new session. The plan is `docs/ownership-capability-mvp-plan.md`
 | Ownership & Directory hub | Overview, Teams, People, Groups, Imports, Review, Legacy rules (§8.1) | `OwnershipDirectoryHub.test` (9), `ConfigurationsPage.test` |
 | Findings page (§9.7) | Ownership Status column; Owner column marks legacy rows "Pending migration"; owner-team and status selects (stable team ID) shown only once findings ownership is canonical, with chips and saved views carrying `ownerTeamId`/`ownershipStatus` | `FindingsPage.test`, `FindingOwnershipCompatibilityPostgresIntegrationTest` |
 | Findings owner filter (server) | `FindingsFilter.ownerTeamId`/`ownershipStatus`; projection (cursor) path filters VULNERABILITY findings through the effective cache or live view; 409 while not canonical, 400 for unknown status; offset/JPA paging rejects the filter with 400 instead of diverging; queue merge and personal queues keep the fields | same IT, `FindingQueueServiceTest`, `FindingControllerTest` |
-| Tenant reset fix | `TenantSchemaService` missing-column reconciliation is limited to tables, so the V21 view no longer breaks schema reset or baseline adoption (approved 2026-11-09) | `TenantSchemaResetPostgresIntegrationTest`, `TenantSchemaParityPostgresIntegrationTest` |
+| Tenant reset fix | `TenantSchemaService` missing-column reconciliation is limited to tables, so the V22 view no longer breaks schema reset or baseline adoption (approved 2026-11-09) | `TenantSchemaResetPostgresIntegrationTest`, `TenantSchemaParityPostgresIntegrationTest` |
 
 Last full runs (2026-11-09): backend `mvn -Ppostgres-it clean verify` — unit stage passed, 644 Postgres IT tests with
-one error (`TenantSchemaResetPostgresIntegrationTest`, the V21 view regression), fixed and rerun green together with
+one error (`TenantSchemaResetPostgresIntegrationTest`, the ownership view regression), fixed and rerun green together with
 the parity, owner-filter and queue tests; then `mvn -q verify` — 1,605 unit tests, 0 failures, JaCoCo and SpotBugs
 pass. Frontend lint (0 errors), typecheck, build and `test:coverage` (113 files, 1,169 tests) pass.
 
@@ -339,10 +348,13 @@ pass. Frontend lint (0 errors), typecheck, build and `test:coverage` (113 files,
   reset tenant therefore lacks `ownership_effective_for`, `ownership_effective_assignment`, the `ownership_event`
   append-only trigger and the V6 intelligence triggers. Normal provisioning (empty schema + tenant Flyway) is
   unaffected. Needs a separately approved change (copy them, or reset through Flyway).
+- Fixed 2026-11-13: `OwnershipMaintenanceJob`'s scheduled callbacks now check
+  `BackgroundTaskExecutionPolicy.allowsBackgroundTask`, so `api` and `schema-migrator` nodes skip them
+  (`OwnershipMaintenanceJobTest`). Overlap between worker nodes is not yet tested.
 
 ### 11.4 Next steps, in order
 
-1. **Push and open a PR** against `main` when ready; rerun `mvn -Ppostgres-it verify` on the final tree first.
+1. **Done:** pushed and opened as PR #71. Rerun `mvn -Ppostgres-it verify` on the final merged tree before merging.
 2. **Browser and live verification**: `npm run e2e:build`, then the connect, experience and inventory journeys plus
    visual/affected-route/axe checks in the pinned Playwright image; a live session with a disposable tenant to check
    persistence after reload; screenshots at 390 px and 1280 px in both themes.
@@ -352,7 +364,7 @@ pass. Frontend lint (0 errors), typecheck, build and `test:coverage` (113 files,
    after 7 days, and an anomaly pause at > 20 % (min 50) of claims; plan §12.1/§12.3 specify stale after
    max(2 × interval, 24 h), expiry after max(3 × interval, 72 h) capped at 30 days, and a pause at ≥ 100 changes and
    ≥ 10 %, or ≥ 10,000 changes. Align one to the other with product sign-off.
-5. **Open Phase 0A evidence** (§10): deployed Render→KMS spike (infrastructure); benchmark at 1M/5M and 3M/15M on
+5. **Open Phase 0A evidence** (§10): deployed KMS spike on AWS (infrastructure); benchmark at 1M/5M and 3M/15M on
    representative hardware, including a 10⁵–10⁶-row invalidation subtree; 100k/300k-user search query plans; a real
    ServiceNow CMDB sample and permission list; named leads and release authority (§9).
 6. **Canary rehearsal** on an internal tenant: LEGACY → DARK → qualify → CANONICAL with the 24 h gates and consumer
