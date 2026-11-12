@@ -26,7 +26,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 /**
- * Local-only demo seed for AI Grid (not part of the product, not committed). Boots the backend context against the
+ * Local-only demo seed for AI Grid. It is not part of the product and lives in test sources, so it is never packaged
+ * into the application jar. Boots the backend context against the
  * local database without the web server or schedulers and feeds observation envelopes through the same ingest path
  * the AWS and Azure connectors use, so the product's own fact producers, assessment worker and published AI policies
  * decide which AI_POSTURE findings open. Usage: java ... AiGridDemoSeed [tenant-slug]
