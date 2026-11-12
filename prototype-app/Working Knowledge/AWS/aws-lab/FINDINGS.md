@@ -2,6 +2,20 @@
 
 Found while deploying candidate `0ae3de9` to the Sydney lab. Fix these in one PR on main before the next lab run and before production. Severity reflects impact on a production launch.
 
+## Status in branch `codex/aws-lab-and-workspace-sync`
+
+| # | Status | Change |
+|---|---|---|
+| 1 | **Fixed** | `runtime.tf` sets `HTTP_OUTBOUND_ALLOWED_HOSTS` on api and worker: the backend default plus `cognito=<login domain>,cognito-idp.<region>.amazonaws.com`. A new `runtime.tftest.hcl` assertion compares the list with `application.yml` and requires the Cognito entry; the test fails when the entry is removed. |
+| 2 | **Fixed** | ECS service `health_check_grace_period_seconds` 120 → 300, with a test assertion that fails at 120. Startup time itself is not yet investigated. |
+| 3 | **Root cause found; fix awaits owner approval** | `TenantService.listActiveTenants()` reads the platform tenant registry without declaring platform scope. Pollers that call it outside `TenantContext.runAsPlatform` (for example `AiGridAssessmentWorker.recover`, `AiBomProjectionWorker`, every 5 s) check out an unscoped connection. Production marks it with the no-tenant sentinel, so RLS stays closed and no data leaks. Proposed fix: wrap the read in `TenantContext.runAsPlatform` inside `listActiveTenants()`, with a unit test. `TenantService` is on the never-touch list. |
+| 4 | **Fixed in the grant and run order** | `grants/bootstrap-retire-migrator-revision.json` allows `ecs:DeregisterTaskDefinition` on `*` (AWS accepts no narrower resource), limited to Sydney. Retire the enrollment migrator (step 8) before planning services (step 9), so no pending migrator replacement is pulled into the service plan. The ARN-scoped grant attached on November 12 was ineffective and is kept as `bootstrap-deregister-migrator.INEFFECTIVE-scoped-arn.json`. |
+| 5 | **Fixed** | `hosting.tf` sends `custom_headers` as the compact JSON array Amplify stores. Plan against the lab shows no Amplify change. |
+| 6 / 6a | **Superseded by decision** | MFA is off everywhere (`identity.tf`). |
+| 7 | **Open (production decision)** | Needs a sender domain and SES identity before production onboarding. |
+| 8 | **Open (configuration)** | Needs the Resend, OpenAI and Sentry values decided and added to `application-settings`. |
+| Dependabot #94 | **Fixed** | `minimatch` (dev-only, via ESLint) forced to `^11.0.1` with an npm override; lock resolves 11.0.8. Lint, typecheck, build and unit tests pass. |
+
 ## Application and Terraform
 
 | # | Finding | Evidence | Fix | Severity |
