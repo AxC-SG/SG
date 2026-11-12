@@ -3,6 +3,24 @@
 Part 1 remains open. This record separates verified main release bytes from the
 replacement frontend/release-tooling candidate and the undeployed Sydney lab.
 
+## Latest continuation — November 12
+
+The owner manually merged PR #69 at `4678580ab0a84c6cd2dfd96a02cfedc168e0a9cf`.
+All four main-push workflows passed: Quality 43067107769, Trivy 43067107850,
+Semgrep 43067107669 and Performance 43067107897. Browser sweep 43061543315 passed
+on PR head `5dfb9ed3`; its tree exactly matches the merged commit. Exact new-main
+backend and frontend artifacts are retained in
+`/private/tmp/scoutgrid-postmerge-artifacts/main-4678580/`; offline verification
+is recorded there. These remain unpublished and the frontend uses CI defaults.
+The older `5a95f54` evidence below remains historical.
+
+The owner authorized one replacement PR for the $50 budget records and guard,
+on branch `codex/aws-part1-budget-50`. It is the sole active change PR. After its
+manual merge, qualify the exact new main SHA and retain its new backend/frontend
+pair. Do not treat prior artifacts as qualification for changed source. Read the
+[current authorization](EXECUTION_AUTHORIZATION_20261111.md) and handoff for the
+$25 inclusive application reserve and outstanding release/access/secret work.
+
 ## Verified main release
 
 PR #68 was manually merged as `5a95f54fb122ba3b920df130c5c049b43732a8e1`.
@@ -95,13 +113,24 @@ were created, no credentials/secret values were retrieved, and no production
 change occurred. The primary workspace remains on its original branch with
 217 changed entries; all edits are in the isolated temporary checkout.
 
-The latest billing read is an estimated $0.0202323141 for November, excluding
-credits/refunds. Foundation charges are not fully posted/reconciled and tax is
-not final. This does not establish available budget. The proposed $15 integrated
-run reserve within the $20 monthly ceiling remains unapproved. Complete the
-infrastructure/operator scopes, live plans, DNS access, secret custody and
-candidate approval before requesting bounded execution. The previous 56-resource
-foundation exercise must not be repeated on its own.
+The November 12 billing refresh estimates $0.2371053074, excluding credits/refunds.
+Some foundation usage has posted; final usage and tax remain unreconciled. The
+updated bound deliberately adds posted costs to the retained allowance, without
+netting out overlap, to avoid undercounting. The owner has
+superseded the historical $20 ceiling with **$50 total for the month**, inclusive
+of prior/unposted charges, tax and contingency, and authorized the bounded
+application lab. Allocate **$25 inclusive** to the application run; the conservative
+prior-run bound is $4.59 and modeled eight-hour application cost is $16.69 inclusive.
+The remaining $20.41 is unallocated contingency, not authorization for more scope.
+Target four hours; complete cleanup by eight. See the [current authorization](EXECUTION_AUTHORIZATION_20261111.md)
+and [reproducible budget](authorized-budget-20261111.json). Do not re-request this
+budget approval. The old `billing-readback.json`, `lab-inventory.json` and
+`dns-readiness.json` are historical observations; the current readback confirms
+an issued, unused, non-exportable API ACM certificate and its saved DNS-only CNAME.
+No application routing record or billable application stack exists. Complete
+infrastructure/operator scopes, live plans, secret custody and independent exact
+candidate approval before billable creation. The previous 56-resource foundation
+exercise must not be repeated on its own.
 
 Part 1 still requires live managed sign-in, onboarding and email receipt, durable
 imports, isolation and scheduling/replacement qualification, security/observability,
@@ -120,4 +149,5 @@ candidate ancestry passed after source review; no scanner scope was reduced.
 
 Cloudflare DNS access is available in the signed-in owner session. The eleven
 observed records contain no lab hostnames; production still points to Vercel and
-Render. No DNS records were created or changed.
+Render. That was the earlier inventory. The exact API ACM validation CNAME was subsequently
+owner-approved and saved; no application-routing DNS record has been created.

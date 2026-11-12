@@ -1,0 +1,42 @@
+{
+  "status": "authorized allocation; conservative planning estimate, not a final bill or guaranteed hard cost cap",
+  "account": "736486260824",
+  "region": "ap-southeast-2",
+  "authorized_date": "2026-11-11",
+  "billing_observed_utc": "2026-11-12T00:59:39.968736+00:00",
+  "authorization": "Owner continuation prompt supersedes older $20 monthly/$15 run and unapproved-budget statements; no repeat budget approval required.",
+  "monthly_ceiling_including_prior_unposted_tax_contingency_usd": "50",
+  "application_run_reserve_inclusive_usd": "25",
+  "prior_run_bound_including_tax_variance_usd": "4.593247161362136986301369863",
+  "combined_allocated_usd": "29.59324716136213698630136986",
+  "unallocated_monthly_headroom_usd": "20.40675283863786301369863014",
+  "estimated_posted_excluding_credits_refunds_usd": "0.2371053074",
+  "prior_unposted_accounting": "Bound includes posted charges additionally, two fixed-component hours, full-month retired-key/secret allowance, usage/storage reserves, 18% tax and $0.50 variance. Missing data is not zero; posted foundation charges are not netted off the retained bound, deliberately avoiding undercounting; final usage and tax remain unreconciled.",
+  "tax_assumption": "0.18",
+  "tax_source": "https://aws.amazon.com/tax-help/india/",
+  "application_scenarios": {
+    "4": {
+      "before_tax_usd": "11.93369260273972602739726027",
+      "including_tax_and_variance_usd": "14.58175727123287671232876712",
+      "reserve_margin_usd": "10.41824272876712328767123288"
+    },
+    "8": {
+      "before_tax_usd": "13.72254520547945205479452055",
+      "including_tax_and_variance_usd": "16.69260334246575342465753425",
+      "reserve_margin_usd": "8.30739665753424657534246575"
+    }
+  },
+  "target_hours": 4,
+  "cleanup_completed_by_hours": 8,
+  "clock_start": "first new billable application dependency creation",
+  "operational_boundary": "Start cleanup at hour four if tests are incomplete, sooner on failure, unexpected usage or loss of cleanup capability. Finish by eight hours. Do not exceed $25 run reserve or $50 inclusive monthly ceiling. Contingency is not permission to extend duration or scope.",
+  "operator": "Codex executes and verifies cleanup in the active chat; owner is fallback",
+  "excluded": [
+    "production",
+    "24-hour capacity soak",
+    "new security-control retention programme",
+    "unbounded feed/provider jobs"
+  ],
+  "remaining_release_access_secret_preconditions_not_waived": true,
+  "billable_stack_started": false
+}

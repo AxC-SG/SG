@@ -1,34 +1,38 @@
-# Proposed bounded Sydney application run
+# Authorized bounded Sydney application run
 
-**Not approved; do not execute from this document alone.** This is the next
+**Budget and bounded execution authorized by the owner on November 11.**
+The $50 inclusive monthly ceiling supersedes the older $20/$15 statements.
+Release, access and secret prerequisites below remain required. This is the next
 application milestone, not Part 1 production approval or another standalone
 foundation exercise.
 
-| Item | Proposed boundary |
+| Item | Authorized boundary |
 | --- | --- |
 | Account and region | `736486260824`, `ap-southeast-2` only |
-| Release | Final manually merged PR #69 SHA; four successful same-SHA main checks, retained scanned archive, paired frontend build/config and independent exact-candidate approval |
+| Release | Final manually merged budget-replacement PR SHA after #69; four successful same-SHA main checks, retained scanned archive, paired frontend build/config and independent exact-candidate approval |
 | Hosts | `lab.scoutgrid.io`, `api-lab.scoutgrid.io`, and their exact ACM/Amplify validation records; production records unchanged |
 | Capacity | One NAT/EIP, two-AZ private task/DB subnet boundaries, private Single-AZ PostgreSQL 16.15 `db.t4g.medium`/100 GiB, one 0.5 vCPU/2 GiB API and one 1 vCPU/4 GiB worker |
 | Execution | Bootstrap with services stopped; exactly one SG Internal; remove enrollment access before starting API/worker; ten-customer policy retained |
-| Spend | Up to $15 reserved for this run, subject to all posted/known unposted charges and tax/variance fitting within the existing $20 monthly ceiling |
+| Spend | Allocate $25 inclusive to this run; all prior/known unposted charges, tax and contingency must fit within the authorized $50 total monthly ceiling |
 | Clock | Target four hours from first billable create; start cleanup at hour four if tests are incomplete; finish cleanup by hour eight |
 | Operator | Codex in this active chat executes and verifies cleanup; owner must be available as fallback and for credential setup/browser sign-in |
 | Publication | Scoped operator publishes the exact scanned image; record ECR registry digest; `github_publisher = null` |
 | Tests | Managed sign-in/role separation, one approved customer onboarding flow, durable BOM upload through findings, tenant/object denial checks, and bounded scheduling/replacement tests |
 
-The previously prepared model reserves approximately $11.93 before tax for four
-hours and $13.72 before tax for eight, including conservative usage/retention
-allowances. These are planning allowances, not a guaranteed bill. The latest
-billing read is estimated and does not yet reconcile the completed foundation
-run. Do not start if a conservative reconciliation, tax and variance cannot fit
+The retained model is approximately $14.58 at four hours and $16.69 at eight,
+including assumed 18% tax and $0.50 variance. The conservative prior-run bound is
+$4.59, leaving $20.41 unallocated after the $25 application reserve. See
+[reproducible allocation](authorized-budget-20261111.json) and its calculator.
+The reserves include conservative usage/retention allowances. These are planning allowances, not a guaranteed bill. The latest
+November 12 billing read is estimated; final foundation usage and tax are
+unreconciled, with conservative overlap retained in the bound. Do not start if a conservative reconciliation, tax and variance cannot fit
 the monthly ceiling. No 24-hour capacity soak or new security-control retention
 programme is included in this reserve.
 
 Before billable creation, complete the reviewed infrastructure/cleanup access
 scope, a fresh scoped execution path, protected state/backend verification,
 candidate decision, DNS plan, secret custody and cleanup inventory. The three
-unattached policy profiles in this PR cover publication, migrations and API/worker
+unattached policy profiles merged through PR #69 cover publication, migrations and API/worker
 service operation; they are not a complete infrastructure apply role. Revalidate
 generated ARNs and effective assumed permissions after provisioning dependencies.
 Do not attach old foundation policies with retired resource IDs or revive old
