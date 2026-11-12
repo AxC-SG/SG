@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -23,13 +26,17 @@ public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final TenantSchemaService tenantSchemaService;
+    private final TransactionTemplate registryReadTransactions;
 
     public TenantService(
             TenantRepository tenantRepository,
-            TenantSchemaService tenantSchemaService
+            TenantSchemaService tenantSchemaService,
+            PlatformTransactionManager transactionManager
     ) {
         this.tenantRepository = tenantRepository;
         this.tenantSchemaService = tenantSchemaService;
+        this.registryReadTransactions = new TransactionTemplate(transactionManager);
+        this.registryReadTransactions.setReadOnly(true);
     }
 
     @Transactional
@@ -81,9 +88,27 @@ public class TenantService {
         return tenantRepository.findAllByOrderByCreatedAtAsc();
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Reads the platform tenant registry for background fan-out.
+     *
+     * <p>Deliberately not {@code @Transactional}: the tenant-aware datasource configures a
+     * connection when the transaction acquires it, so platform scope must be established
+     * before the read-only transaction opens. A caller that already holds a transaction must
+     * have opened it in platform scope; switching scope now cannot reconfigure its connection.
+     */
     public List<Tenant> listActiveTenants() {
-        return tenantRepository.findAllByOrderByCreatedAtAsc().stream()
+        List<Tenant> registry;
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            if (!TenantContext.isPlatformContext()) {
+                throw new IllegalStateException(
+                        "The tenant registry must be read in platform scope; open the caller's transaction inside TenantContext.runAsPlatform");
+            }
+            registry = tenantRepository.findAllByOrderByCreatedAtAsc();
+        } else {
+            registry = TenantContext.runAsPlatform(() ->
+                    registryReadTransactions.execute(status -> tenantRepository.findAllByOrderByCreatedAtAsc()));
+        }
+        return registry.stream()
                 .filter(this::isActiveTenantForBackgroundWork)
                 .toList();
     }
