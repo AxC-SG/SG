@@ -23,6 +23,25 @@ regexTarget = "line"
 regexes = ['''^\s*"postgres_reset/(V9__bom_ingest_api_keys|V2__invitation_token_hashes)\.sql":\s*"[a-f0-9]{64}",?\s*$''']
 
 [[allowlists]]
+description = "AWS KMS CurrentKeyMaterialId identifiers (public metadata, not key material) in Sydney lab readbacks"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^prototype-app/Working Knowledge/AWS/aws-lab/evidence/[^\r\n]+\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"CurrentKeyMaterialId":\s*"[a-f0-9]{64}",?\s*$''']
+
+[[allowlists]]
+description = "SHA-256 file records in the two Sydney lab source manifests"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = [
+  '''^prototype-app/Working Knowledge/AWS/aws-lab/evidence/2026-11-12/codex-run/preflight-tools/files\.sha256\.json$''',
+  '''^prototype-app/Working Knowledge/AWS/aws-lab/evidence/2026-11-11-prep/frontend-qualification-20261111/frontend-source-manifest\.json$'''
+]
+regexTarget = "line"
+regexes = ['''^\s*"[^"\r\n]+\.(png|py|json|ts|tsx|mjs|css|html|svg)":\s*"[a-f0-9]{64}",?\s*$''']
+
+[[allowlists]]
 description = "Public Auth0 client identifiers in checked-in MCP and frontend documentation"
 rules = ["generic-api-key"]
 paths = [

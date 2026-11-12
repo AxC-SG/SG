@@ -1,0 +1,120 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:08:54.484146+00:00",
+    "checks": {
+      "events_pool": [],
+      "events_app": [],
+      "pools": {
+        "UserPools": []
+      },
+      "apps": {
+        "apps": []
+      },
+      "database_key": {
+        "KeyMetadata": {
+          "AWSAccountId": "736486260824",
+          "KeyId": "1706ce52-4d97-4738-b435-3d715a77cb27",
+          "Arn": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+          "CreationDate": "2026-11-12T10:07:42.210000+00:00",
+          "Enabled": true,
+          "Description": "scoutgrid-lab PostgreSQL and recovery",
+          "KeyUsage": "ENCRYPT_DECRYPT",
+          "KeyState": "Enabled",
+          "Origin": "AWS_KMS",
+          "KeyManager": "CUSTOMER",
+          "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+          "KeySpec": "SYMMETRIC_DEFAULT",
+          "EncryptionAlgorithms": [
+            "SYMMETRIC_DEFAULT"
+          ],
+          "MultiRegion": false,
+          "CurrentKeyMaterialId": "ea7df361ee5cde4e6bcb9a4ad717bbf648a6a880690fd7bc1ddc2d6e73418ff1"
+        }
+      },
+      "object_key": {
+        "KeyMetadata": {
+          "AWSAccountId": "736486260824",
+          "KeyId": "86e1efc7-4b96-4172-8e80-276c939f920d",
+          "Arn": "arn:aws:kms:ap-southeast-2:736486260824:key/86e1efc7-4b96-4172-8e80-276c939f920d",
+          "CreationDate": "2026-11-12T10:07:42.209000+00:00",
+          "Enabled": true,
+          "Description": "scoutgrid-lab import and export objects",
+          "KeyUsage": "ENCRYPT_DECRYPT",
+          "KeyState": "Enabled",
+          "Origin": "AWS_KMS",
+          "KeyManager": "CUSTOMER",
+          "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+          "KeySpec": "SYMMETRIC_DEFAULT",
+          "EncryptionAlgorithms": [
+            "SYMMETRIC_DEFAULT"
+          ],
+          "MultiRegion": false,
+          "CurrentKeyMaterialId": "770bf04030cc2d4d53fe363acd4f09c64d7aa181be78aceada6bf4c992af87ae"
+        }
+      },
+      "state": {
+        "AcceptRanges": "bytes",
+        "LastModified": "2026-11-12T10:07:52+00:00",
+        "ContentLength": 25173,
+        "ETag": "\"93166a1248f9c5a40b662e5d4f52b6b9\"",
+        "VersionId": ".ZSJ57t9Q4nnRmAAGluvG3oPfWEqVYtZ",
+        "ContentType": "application/json",
+        "ServerSideEncryption": "aws:kms",
+        "Metadata": {},
+        "SSEKMSKeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+        "BucketKeyEnabled": true
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "cloudtrail",
+      "operation": "LookupEvents",
+      "status": "success",
+      "n_items": {
+        "Events": 0
+      }
+    },
+    {
+      "service": "cloudtrail",
+      "operation": "LookupEvents",
+      "status": "success",
+      "n_items": {
+        "Events": 0
+      }
+    },
+    {
+      "service": "cognito-idp",
+      "operation": "ListUserPools",
+      "status": "success",
+      "n_items": {
+        "UserPools": 0
+      }
+    },
+    {
+      "service": "amplify",
+      "operation": "ListApps",
+      "status": "success",
+      "n_items": {
+        "apps": 0
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "s3",
+      "operation": "HeadObject",
+      "status": "success"
+    }
+  ]
+}

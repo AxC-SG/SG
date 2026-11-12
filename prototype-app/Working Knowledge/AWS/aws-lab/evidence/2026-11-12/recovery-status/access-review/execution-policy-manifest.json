@@ -1,0 +1,82 @@
+{
+  "identity-operator.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/identity-operator.template.json",
+    "sha256": "48c70543558d738e50c54e42632d92e8ba9bd25d0fcf38e9192bba9e020160c4",
+    "statements": 1,
+    "compact_bytes": 365,
+    "render_required": true,
+    "attached": false
+  },
+  "frontend-operator.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/frontend-operator.template.json",
+    "sha256": "7e5217299f95ddd699282d5dbfeae59514061269d2dd10ab7add465befdab6ce",
+    "statements": 4,
+    "compact_bytes": 1193,
+    "render_required": true,
+    "attached": false
+  },
+  "retirement.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/retirement.template.json",
+    "sha256": "91dcf97ca61b0bc7556a67814fb3b0f0588ecb7fa99e8dde98cd388f41d64e1d",
+    "statements": 2,
+    "compact_bytes": 1045,
+    "render_required": true,
+    "attached": false
+  },
+  "secret-custody.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/secret-custody.template.json",
+    "sha256": "f949e420395424a1390b9922e33f9558a44f46c51d17ac6f9dd7c9c4c1027e52",
+    "statements": 5,
+    "compact_bytes": 3058,
+    "render_required": true,
+    "attached": false
+  },
+  "runtime-infra-apply.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/runtime-infra-apply.template.json",
+    "sha256": "0acf60630d6825dc007850fe707e01a2d5d480178c3d7408163aeeb2e7b22238",
+    "statements": 15,
+    "compact_bytes": 6923,
+    "render_required": true,
+    "attached": false
+  },
+  "common-read-state": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/common-read-state.json",
+    "sha256": "ccba1ca67221c6db4e410abaffbecd948818729823523ec3fbb6c56b7ce9d69e",
+    "statements": 30,
+    "compact_bytes": 9659,
+    "render_required": false,
+    "attached": false
+  },
+  "trusted-foundation-bootstrap": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/trusted-foundation-bootstrap.json",
+    "sha256": "e917e87a48dd9da4122dd282c9ca9e5978f4a0e1b29f0006ac4be49006a1c8cd",
+    "statements": 8,
+    "compact_bytes": 3097,
+    "render_required": false,
+    "attached": false
+  },
+  "foundation-apply.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/foundation-apply.template.json",
+    "sha256": "d7d44cfba6ecc612a014fe92cdc9fbbcd39e384a53d9338b342ede19f4c5446c",
+    "statements": 23,
+    "compact_bytes": 10280,
+    "render_required": true,
+    "attached": false
+  },
+  "trusted-runtime-bootstrap": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/trusted-runtime-bootstrap.json",
+    "sha256": "71dc6082768d590c9f021fae50b3251276f442deef499ae95be88a563125b491",
+    "statements": 6,
+    "compact_bytes": 3578,
+    "render_required": false,
+    "attached": false
+  },
+  "inventory-cleanup.template": {
+    "file": "/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/inventory-cleanup.template.json",
+    "sha256": "cb9cb53606e69369d6d7a3933a3ca8a1dbdebad10366b8dcb3b2f2cea843b5f3",
+    "statements": 24,
+    "compact_bytes": 8025,
+    "render_required": true,
+    "attached": false
+  }
+}

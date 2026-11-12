@@ -1,0 +1,576 @@
+--- a/prototype-app/infrastructure/terraform/modules/standard-network/main.tf
++++ b/prototype-app/infrastructure/terraform/modules/standard-network/main.tf
+@@ -18,8 +18,28 @@
+   type = list(string)
+ }
+ 
++variable "nat_gateway_mode" {
++  description = "zonal creates a NAT in each AZ; single shares the first selected AZ's NAT for disposable labs."
++  type        = string
++  default     = "zonal"
++
++  validation {
++    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
++    error_message = "Use zonal or single NAT gateway mode."
++  }
++}
++
+ locals {
+   zones = { for index, id in var.availability_zone_ids : id => index }
++  nat_zones = {
++    for zone, index in local.zones : zone => index
++    if var.nat_gateway_mode == "zonal" || index == 0
++  }
++  task_egress_nat_zones = {
++    for zone in var.availability_zone_ids : zone => (
++      var.nat_gateway_mode == "single" ? var.availability_zone_ids[0] : zone
++    )
++  }
+   subnets = merge([
+     for tier, offset in { public = 0, task = 2, database = 4 } : {
+       for zone, index in local.zones : "${tier}-${zone}" => {
+@@ -56,13 +76,13 @@
+ }
+ 
+ resource "aws_eip" "egress" {
+-  for_each = local.zones
++  for_each = local.nat_zones
+   domain   = "vpc"
+   tags     = { Name = "${var.name}-${each.key}" }
+ }
+ 
+ resource "aws_nat_gateway" "zonal" {
+-  for_each = local.zones
++  for_each = local.nat_zones
+ 
+   subnet_id     = aws_subnet.tier["public-${each.key}"].id
+   allocation_id = aws_eip.egress[each.key].id
+@@ -91,7 +111,7 @@
+ 
+   route_table_id         = aws_route_table.tier["task-${each.key}"].id
+   destination_cidr_block = "0.0.0.0/0"
+-  nat_gateway_id         = aws_nat_gateway.zonal[each.key].id
++  nat_gateway_id         = aws_nat_gateway.zonal[local.task_egress_nat_zones[each.key]].id
+ }
+ 
+ resource "aws_route_table_association" "tier" {
+@@ -111,12 +131,14 @@
+ 
+ output "boundaries" {
+   value = {
+-    vpc_id              = aws_vpc.standard.id
+-    public_subnet_ids   = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].id]
+-    public_subnet_cidrs = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].cidr_block]
+-    task_subnet_ids     = [for zone in var.availability_zone_ids : aws_subnet.tier["task-${zone}"].id]
+-    database_subnet_ids = [for zone in var.availability_zone_ids : aws_subnet.tier["database-${zone}"].id]
+-    egress_ips_by_zone  = { for zone, address in aws_eip.egress : zone => address.public_ip }
+-    s3_endpoint_id      = aws_vpc_endpoint.s3.id
++    vpc_id                = aws_vpc.standard.id
++    public_subnet_ids     = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].id]
++    public_subnet_cidrs   = [for zone in var.availability_zone_ids : aws_subnet.tier["public-${zone}"].cidr_block]
++    task_subnet_ids       = [for zone in var.availability_zone_ids : aws_subnet.tier["task-${zone}"].id]
++    database_subnet_ids   = [for zone in var.availability_zone_ids : aws_subnet.tier["database-${zone}"].id]
++    egress_ips_by_zone    = { for zone, address in aws_eip.egress : zone => address.public_ip }
++    nat_gateway_mode      = var.nat_gateway_mode
++    task_egress_nat_zones = local.task_egress_nat_zones
++    s3_endpoint_id        = aws_vpc_endpoint.s3.id
+   }
+ }
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/modules/standard-network/tests/egress.tftest.hcl
+@@ -0,0 +1,64 @@
++mock_provider "aws" {
++  mock_data "aws_region" {
++    defaults = { region = "ap-southeast-2" }
++  }
++}
++
++variables {
++  name                  = "scoutgrid-lab"
++  vpc_cidr              = "10.21.0.0/16"
++  availability_zone_ids = ["apse2-az3", "apse2-az1"]
++}
++
++run "default_keeps_independent_zonal_egress" {
++  command = apply
++
++  assert {
++    condition = (
++      length(aws_nat_gateway.zonal) == 2 && length(aws_eip.egress) == 2 &&
++      alltrue([for zone in var.availability_zone_ids :
++        aws_route.task_egress[zone].nat_gateway_id == aws_nat_gateway.zonal[zone].id &&
++        aws_nat_gateway.zonal[zone].subnet_id == aws_subnet.tier["public-${zone}"].id
++      ])
++    )
++    error_message = "The default must retain a NAT and EIP in each task subnet's AZ."
++  }
++}
++
++run "single_nat_keeps_two_az_boundaries" {
++  command = apply
++
++  variables {
++    nat_gateway_mode = "single"
++  }
++
++  assert {
++    condition = (
++      toset(keys(aws_nat_gateway.zonal)) == toset(["apse2-az3"]) &&
++      toset(keys(aws_eip.egress)) == toset(["apse2-az3"]) &&
++      aws_nat_gateway.zonal["apse2-az3"].allocation_id == aws_eip.egress["apse2-az3"].id &&
++      aws_nat_gateway.zonal["apse2-az3"].subnet_id == aws_subnet.tier["public-apse2-az3"].id &&
++      alltrue([for route in aws_route.task_egress :
++        route.nat_gateway_id == aws_nat_gateway.zonal["apse2-az3"].id
++      ])
++    )
++    error_message = "Both task subnet routes must share the NAT in the first selected AZ, preserving its EIP."
++  }
++
++  assert {
++    condition = (
++      length(aws_subnet.tier) == 6 && length(aws_route_table.tier) == 6 &&
++      length(aws_route.public) == 2 && length(aws_route.task_egress) == 2 &&
++      length(aws_route_table_association.tier) == 6 &&
++      length(output.boundaries.public_subnet_ids) == 2 &&
++      length(output.boundaries.task_subnet_ids) == 2 &&
++      length(output.boundaries.database_subnet_ids) == 2 &&
++      length(aws_vpc_endpoint.s3.route_table_ids) == 2 &&
++      alltrue([for subnet in aws_subnet.tier : !subnet.map_public_ip_on_launch]) &&
++      alltrue([for zone in var.availability_zone_ids :
++        !contains([for route in aws_route.task_egress : route.route_table_id], aws_route_table.tier["database-${zone}"].id)
++      ])
++    )
++    error_message = "Single NAT must preserve two AZs, private task/database subnets and S3 endpoint routes, without adding DB internet routes."
++  }
++}
+--- a/prototype-app/infrastructure/terraform/standard/data.tf
++++ b/prototype-app/infrastructure/terraform/standard/data.tf
+@@ -58,8 +58,9 @@
+   family = "postgres16"
+ 
+   parameter {
+-    name  = "rds.force_ssl"
+-    value = "1"
++    name         = "rds.force_ssl"
++    value        = "1"
++    apply_method = "pending-reboot"
+   }
+ }
+ 
+--- a/prototype-app/infrastructure/terraform/standard/main.tf
++++ b/prototype-app/infrastructure/terraform/standard/main.tf
+@@ -78,12 +78,29 @@
+   }
+ }
+ 
++variable "nat_gateway_mode" {
++  description = "Use single only for a bounded disposable lab. Production requires independent zonal egress."
++  type        = string
++  default     = "zonal"
++
++  validation {
++    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
++    error_message = "Use zonal or single NAT gateway mode."
++  }
++
++  validation {
++    condition     = var.environment != "production" || var.nat_gateway_mode == "zonal"
++    error_message = "Production requires one NAT gateway per selected AZ."
++  }
++}
++
+ module "network" {
+   source = "../modules/standard-network"
+ 
+   name                  = "scoutgrid-${var.environment}"
+   vpc_cidr              = var.vpc_cidr
+   availability_zone_ids = var.availability_zone_ids
++  nat_gateway_mode      = var.nat_gateway_mode
+ }
+ 
+ output "network" {
+--- a/prototype-app/infrastructure/terraform/standard/runtime.tf
++++ b/prototype-app/infrastructure/terraform/standard/runtime.tf
+@@ -142,7 +142,7 @@
+ resource "aws_vpc_security_group_egress_rule" "backend_https" {
+   for_each          = local.backend_tasks
+   security_group_id = aws_security_group.backend[each.key].id
+-  description       = "HTTPS through zonal NAT or S3 gateway"
++  description       = "HTTPS through reviewed NAT topology or S3 gateway"
+   cidr_ipv4         = "0.0.0.0/0"
+   ip_protocol       = "tcp"
+   from_port         = 443
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/scripts/bootstrap-sydney-state.sh
+@@ -0,0 +1,67 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++account_id=736486260824
++region=ap-southeast-2
++bucket=scoutgrid-lab-tfstate-736486260824-ap-southeast-2
++state_key=standard/lab/terraform.tfstate
++
++case "${1:-verify}" in
++  create|verify) action="${1:-verify}" ;;
++  *) echo "Usage: $0 [create|verify]" >&2; exit 2 ;;
++esac
++
++export AWS_PAGER=""
++actual_account=$(aws sts get-caller-identity --region "$region" --query Account --output text)
++if [[ "$actual_account" != "$account_id" ]]; then
++  printf 'Expected AWS account %s, got %s.\n' "$account_id" "$actual_account" >&2
++  exit 1
++fi
++
++s3_bucket() {
++  local operation=$1
++  shift
++  aws s3api "$operation" --region "$region" --bucket "$bucket" \
++    --expected-bucket-owner "$account_id" "$@"
++}
++
++if [[ "$action" == create ]]; then
++  existing=$(aws s3api list-buckets --region "$region" \
++    --query "length(Buckets[?Name=='$bucket'])" --output text)
++  if [[ "$existing" != 0 ]]; then
++    echo "The bucket already exists. Run verify to inspect its settings." >&2
++    exit 1
++  fi
++
++  aws s3api create-bucket --region "$region" --bucket "$bucket" \
++    --create-bucket-configuration "LocationConstraint=$region" \
++    --object-ownership BucketOwnerEnforced
++  aws s3api wait bucket-exists --region "$region" --bucket "$bucket" \
++    --expected-bucket-owner "$account_id"
++  s3_bucket put-public-access-block --public-access-block-configuration \
++    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
++  s3_bucket put-bucket-encryption --server-side-encryption-configuration \
++    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"aws:kms"},"BucketKeyEnabled":true}]}'
++  s3_bucket put-bucket-versioning --versioning-configuration Status=Enabled
++  s3_bucket put-bucket-tagging --tagging \
++    'TagSet=[{Key=Application,Value=ScoutGrid},{Key=Environment,Value=lab},{Key=Purpose,Value=TerraformState}]'
++fi
++
++location=$(s3_bucket get-bucket-location --query LocationConstraint --output text)
++ownership=$(s3_bucket get-bucket-ownership-controls --query 'OwnershipControls.Rules[0].ObjectOwnership' --output text)
++private=$(s3_bucket get-public-access-block --query 'PublicAccessBlockConfiguration.*' --output text)
++versioning=$(s3_bucket get-bucket-versioning --query Status --output text)
++encryption=$(s3_bucket get-bucket-encryption \
++  --query 'ServerSideEncryptionConfiguration.Rules[0].[ApplyServerSideEncryptionByDefault.SSEAlgorithm,BucketKeyEnabled]' \
++  --output text)
++
++if [[ "$location" != "$region" || "$ownership" != BucketOwnerEnforced ||
++      "$private" != $'True\tTrue\tTrue\tTrue' || "$versioning" != Enabled ||
++      "$encryption" != $'aws:kms\tTrue' ]]; then
++  printf 'State bucket verification failed. Region=%s, ownership=%s, public access blocks=%s, versioning=%s, encryption=%s\n' \
++    "$location" "$ownership" "$private" "$versioning" "$encryption" >&2
++  exit 1
++fi
++
++printf 'Verified private, versioned SSE-KMS state bucket %s in %s.\n' "$bucket" "$region"
++printf 'State key %s\nLock key %s.tflock\n' "$state_key" "$state_key"
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/scripts/sydney-plan-role-permissions.json
+@@ -0,0 +1,53 @@
++{
++  "Version": "2012-10-17",
++  "Statement": [
++    {
++      "Sid": "LocateLabStateBucket",
++      "Effect": "Allow",
++      "Action": "s3:GetBucketLocation",
++      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
++    },
++    {
++      "Sid": "ListLabStateBucket",
++      "Effect": "Allow",
++      "Action": "s3:ListBucket",
++      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
++    },
++    {
++      "Sid": "ReadLabState",
++      "Effect": "Allow",
++      "Action": "s3:GetObject",
++      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
++    },
++    {
++      "Sid": "ManageLabStateLock",
++      "Effect": "Allow",
++      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
++      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
++    },
++    {
++      "Sid": "UseSydneyStateKeyThroughS3",
++      "Effect": "Allow",
++      "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
++      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
++      "Condition": {
++        "StringEquals": {
++          "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
++          "kms:CallerAccount": "736486260824",
++          "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
++        }
++      }
++    },
++    {
++      "Sid": "ReadSydneyFoundationInputs",
++      "Effect": "Allow",
++      "Action": ["ec2:DescribeAvailabilityZones", "ec2:DescribeVpcs", "rds:DescribeDBEngineVersions"],
++      "Resource": "*",
++      "Condition": {
++        "StringEquals": {
++          "aws:RequestedRegion": "ap-southeast-2"
++        }
++      }
++    }
++  ]
++}
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/scripts/sydney-plan-role-trust.json
+@@ -0,0 +1,12 @@
++{
++  "Version": "2012-10-17",
++  "Statement": [
++    {
++      "Effect": "Allow",
++      "Principal": {
++        "AWS": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole"
++      },
++      "Action": "sts:AssumeRole"
++    }
++  ]
++}
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/sydney-lab.foundation.tfvars
+@@ -0,0 +1,13 @@
++# Hostnames confirmed November 11; recheck CIDR, budget and run authorization before applying.
++account_id              = "736486260824"
++environment             = "lab"
++aws_region              = "ap-southeast-2"
++availability_zone_ids   = ["apse2-az1", "apse2-az3"]
++nat_gateway_mode        = "single"
++vpc_cidr                = "10.21.0.0/16"
++postgres_engine_version = "16.15"
++frontend_origin         = "https://lab.scoutgrid.io"
++api_origin              = "https://api-lab.scoutgrid.io"
++cognito_domain_prefix   = "scoutgrid-lab-736486260824"
++backend_candidate       = null
++github_publisher        = null
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/sydney-lab.s3.tfbackend
+@@ -0,0 +1,7 @@
++bucket              = "scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
++key                 = "standard/lab/terraform.tfstate"
++region              = "ap-southeast-2"
++allowed_account_ids = ["736486260824"]
++encrypt             = true
++kms_key_id          = "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a"
++use_lockfile        = true
+--- /dev/null
++++ b/prototype-app/infrastructure/terraform/standard/tests/integrated-lab.tftest.hcl
+@@ -0,0 +1,135 @@
++# Synthetic references only. This plan cannot establish live certificate, secret,
++# DNS, image publication or operator enrollment readiness.
++mock_provider "aws" {
++  override_during = plan
++
++  mock_resource "aws_kms_key" {
++    defaults = { arn = "arn:aws:kms:ap-southeast-2:736486260824:key/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" }
++  }
++  mock_resource "aws_lb" {
++    defaults = { arn = "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:loadbalancer/app/test/aaaaaaaaaaaaaaaa" }
++  }
++  mock_resource "aws_lb_target_group" {
++    defaults = { arn = "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:targetgroup/test/bbbbbbbbbbbbbbbb" }
++  }
++  mock_resource "aws_lb_listener" {
++    defaults = { arn = "arn:aws:elasticloadbalancing:ap-southeast-2:736486260824:listener/app/test/aaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbb" }
++  }
++  mock_resource "aws_wafv2_web_acl" {
++    defaults = { arn = "arn:aws:wafv2:ap-southeast-2:736486260824:regional/webacl/test/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" }
++  }
++  mock_resource "aws_iam_role" {
++    defaults = { arn = "arn:aws:iam::736486260824:role/test" }
++  }
++  mock_resource "aws_ecs_cluster" {
++    defaults = { arn = "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab" }
++  }
++  mock_resource "aws_ecs_task_definition" {
++    defaults = { arn = "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/test:1" }
++  }
++  mock_resource "aws_cognito_user_pool" {
++    defaults = { endpoint = "cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_testpool" }
++  }
++  mock_resource "aws_cognito_user_pool_client" {
++    defaults = { id = "scoutgridbrowserclient" }
++  }
++  mock_resource "aws_cloudwatch_log_group" {
++    defaults = { arn = "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/test" }
++  }
++  mock_resource "aws_db_instance" {
++    defaults = {
++      address  = "scoutgrid.example.ap-southeast-2.rds.amazonaws.com"
++      endpoint = "scoutgrid.example.ap-southeast-2.rds.amazonaws.com:5432"
++      master_user_secret = [{
++        secret_arn = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:rds-owner-a1b2c3" # gitleaks:allow synthetic test fixture
++      }]
++    }
++  }
++  mock_resource "aws_ecr_repository" {
++    defaults = {
++      arn            = "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend"
++      repository_url = "736486260824.dkr.ecr.ap-southeast-2.amazonaws.com/scoutgrid-lab-backend"
++    }
++  }
++  mock_resource "aws_s3_bucket" {
++    defaults = { arn = "arn:aws:s3:::scoutgrid-lab-736486260824-imports" }
++  }
++}
++
++variables {
++  account_id              = "736486260824"
++  environment             = "lab"
++  aws_region              = "ap-southeast-2"
++  availability_zone_ids   = ["apse2-az1", "apse2-az3"]
++  nat_gateway_mode        = "single"
++  vpc_cidr                = "10.21.0.0/16"
++  postgres_engine_version = "16.15"
++  frontend_origin         = "https://lab.scoutgrid.io"
++  api_origin              = "https://api-lab.scoutgrid.io"
++  cognito_domain_prefix   = "scoutgrid-lab-736486260824"
++  github_publisher        = null
++}
++
++run "prepare_integrated_lab_before_bootstrap" {
++  command = plan
++
++  variables {
++    backend_candidate = {
++      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
++      certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
++      runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
++      application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
++      secrets_kms_key_arn = "arn:aws:kms:ap-southeast-2:736486260824:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
++      managed_installation = {
++        secret_arn = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:operator-enrollment-a1b2c3" # gitleaks:allow synthetic test fixture
++        version_id = "11111111-2222-3333-4444-555555555555"
++      }
++    }
++  }
++
++  assert {
++    condition = (
++      length(aws_ecs_task_definition.backend) == 3 && length(aws_ecs_service.backend) == 0 &&
++      length(aws_lb.api) == 1 && length(aws_wafv2_web_acl.api) == 1 &&
++      length(output.network.egress_ips_by_zone) == 1 &&
++      output.network.task_egress_nat_zones == { "apse2-az1" = "apse2-az1", "apse2-az3" = "apse2-az1" } &&
++      output.backend_runtime.runtime_db_connection_budget == { steady = 12, rollout = 24, login_limit = 25 } &&
++      length(aws_iam_role.github_publisher) == 0 &&
++      !strcontains(aws_iam_role_policy.execution["api"].policy, var.backend_candidate.managed_installation.secret_arn) &&
++      !strcontains(aws_iam_role_policy.execution["worker"].policy, var.backend_candidate.managed_installation.secret_arn)
++    )
++    error_message = "Prepare three task definitions behind HTTPS/WAF with one NAT, services stopped, and enrollment accessible only to the migrator."
++  }
++}
++
++run "start_integrated_lab_after_enrollment_removed" {
++  command = plan
++
++  variables {
++    backend_candidate = {
++      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
++      certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
++      runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
++      application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
++      secrets_kms_key_arn = "arn:aws:kms:ap-southeast-2:736486260824:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
++      start_services      = true
++      enable_managed_auth = true
++      enable_bom_uploads  = true
++    }
++  }
++
++  assert {
++    condition = (
++      toset(keys(aws_ecs_service.backend)) == toset(["api", "worker"]) &&
++      alltrue([for service in aws_ecs_service.backend :
++        service.desired_count == 1 && !one(service.network_configuration).assign_public_ip
++      ]) &&
++      length(output.network.egress_ips_by_zone) == 1 &&
++      alltrue([for policy in aws_iam_role_policy.execution : !strcontains(policy.policy, "operator-enrollment")]) &&
++      alltrue([for task in aws_ecs_task_definition.backend :
++        one(jsondecode(task.container_definitions)).logConfiguration.options["awslogs-region"] == "ap-southeast-2"
++      ])
++    )
++    error_message = "Start exactly one private API and worker only after removing enrollment references, keeping Sydney logs and one lab NAT."
++  }
++}
+--- a/prototype-app/infrastructure/terraform/standard/tests/runtime.tftest.hcl
++++ b/prototype-app/infrastructure/terraform/standard/tests/runtime.tftest.hcl
+@@ -81,6 +81,15 @@
+ 
+ run "foundation_without_candidate" {
+   command = plan
++
++  assert {
++    condition = (
++      output.network.nat_gateway_mode == "zonal" &&
++      length(output.network.egress_ips_by_zone) == 2 &&
++      alltrue([for zone, nat_zone in output.network.task_egress_nat_zones : zone == nat_zone])
++    )
++    error_message = "The production default must retain one NAT per AZ."
++  }
+ 
+   assert {
+     condition     = length(aws_ecs_task_definition.backend) == 0 && length(aws_lb.api) == 0
+@@ -583,3 +592,50 @@
+ 
+   expect_failures = [var.backend_candidate]
+ }
++
++run "sydney_single_nat_foundation" {
++  command = plan
++
++  variables {
++    account_id            = "736486260824"
++    environment           = "lab"
++    aws_region            = "ap-southeast-2"
++    availability_zone_ids = ["apse2-az1", "apse2-az3"]
++    nat_gateway_mode      = "single"
++  }
++
++  assert {
++    condition = (
++      output.network.nat_gateway_mode == "single" &&
++      toset(keys(output.network.egress_ips_by_zone)) == toset(["apse2-az1"]) &&
++      output.network.task_egress_nat_zones == { "apse2-az1" = "apse2-az1", "apse2-az3" = "apse2-az1" } &&
++      length(output.network.public_subnet_ids) == 2 &&
++      length(output.network.task_subnet_ids) == 2 &&
++      length(output.network.database_subnet_ids) == 2 &&
++      !aws_db_instance.standard.multi_az && !aws_db_instance.standard.publicly_accessible &&
++      aws_ecr_repository.backend.image_tag_mutability == "IMMUTABLE" &&
++      length(aws_iam_role.github_publisher) == 0 && length(aws_ecs_service.backend) == 0
++    )
++    error_message = "The lab must share one NAT while keeping two-AZ networking, private Single-AZ RDS, ECR, and publishing disabled."
++  }
++}
++
++run "reject_single_nat_in_production" {
++  command = plan
++
++  variables {
++    nat_gateway_mode = "single"
++  }
++
++  expect_failures = [var.nat_gateway_mode]
++}
++
++run "reject_unknown_nat_topology" {
++  command = plan
++
++  variables {
++    nat_gateway_mode = "none"
++  }
++
++  expect_failures = [var.nat_gateway_mode]
++}

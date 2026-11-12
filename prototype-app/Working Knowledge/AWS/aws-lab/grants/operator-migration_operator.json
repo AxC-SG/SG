@@ -1,0 +1,114 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "ecs:RunTask"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+    },
+    "StringEquals": {
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/ReleasePurpose": "Migration",
+     "aws:RequestedRegion": "ap-southeast-2"
+    },
+    "StringEqualsIfExists": {
+     "ecs:enable-ebs-volumes": "false",
+     "ecs:enable-execute-command": "false"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:1",
+   "Sid": "RunOnlyReviewedMigratorRevision"
+  },
+  {
+   "Action": [
+    "ecs:TagResource"
+   ],
+   "Condition": {
+    "ForAllValues:StringEquals": {
+     "aws:TagKeys": [
+      "Application",
+      "Environment",
+      "ReleasePurpose"
+     ]
+    },
+    "Null": {
+     "aws:TagKeys": "false"
+    },
+    "StringEquals": {
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/ReleasePurpose": "Migration",
+     "aws:RequestedRegion": "ap-southeast-2",
+     "ecs:CreateAction": "RunTask"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*",
+   "Sid": "TagOnlyTasksAtApprovedLaunch"
+  },
+  {
+   "Action": [
+    "iam:PassRole"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "iam:PassedToService": "ecs-tasks.amazonaws.com"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
+   "Sid": "PassOnlyMigratorExecutionRole"
+  },
+  {
+   "Action": [
+    "ecs:DescribeTasks",
+    "ecs:StopTask"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+    },
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:ResourceTag/Application": "ScoutGrid",
+     "aws:ResourceTag/Environment": "lab",
+     "aws:ResourceTag/ReleasePurpose": "Migration"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/*",
+   "Sid": "InspectOrStopOnlyTaggedLabMigrations"
+  },
+  {
+   "Action": [
+    "logs:DescribeLogStreams"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator",
+   "Sid": "ReadMigratorLogStreams"
+  },
+  {
+   "Action": [
+    "logs:GetLogEvents"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator:log-stream:migrator/*",
+   "Sid": "ReadOnlyMigratorLogEvents"
+  }
+ ],
+ "Version": "2012-10-17"
+}

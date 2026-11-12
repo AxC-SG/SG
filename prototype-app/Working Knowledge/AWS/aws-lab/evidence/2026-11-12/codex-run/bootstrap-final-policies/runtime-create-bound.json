@@ -1,0 +1,132 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateTaggedRuntimeGroups",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "CreateGroupsOnlyInCapturedVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": "arn:aws:ec2:ap-southeast-2:736486260824:vpc/vpc-0086ef85ee121f76c",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "TagOnlyNewRuntimeGroupsAndRules",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/*",
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group-rule/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform",
+          "ec2:CreateAction": [
+            "CreateSecurityGroup",
+            "AuthorizeSecurityGroupIngress",
+            "AuthorizeSecurityGroupEgress"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedLabCluster",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:CreateCluster",
+        "ecs:TagResource"
+      ],
+      "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyLabCluster",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:UpdateClusterSettings"
+      ],
+      "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTaggedRuntimeLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator:*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2",
+          "aws:RequestTag/Application": "ScoutGrid",
+          "aws:RequestTag/Environment": "lab",
+          "aws:RequestTag/Profile": "Standard",
+          "aws:RequestTag/ManagedBy": "Terraform"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyRuntimeLogRetention",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutRetentionPolicy",
+        "logs:TagResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/migrator:*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

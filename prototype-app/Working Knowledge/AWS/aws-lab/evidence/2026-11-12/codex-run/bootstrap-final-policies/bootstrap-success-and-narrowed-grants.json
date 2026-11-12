@@ -1,0 +1,191 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:18:13.895329+00:00",
+    "pool": {
+      "id": "ap-southeast-2_fPdRmnVqM",
+      "arn": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+      "tags": {
+        "Application": "ScoutGrid",
+        "Environment": "lab",
+        "ManagedBy": "Terraform",
+        "Profile": "Standard"
+      },
+      "deletion_protection": "ACTIVE",
+      "mfa": {
+        "SoftwareTokenMfaConfiguration": {
+          "Enabled": true
+        },
+        "MfaConfiguration": "ON"
+      }
+    },
+    "app": {
+      "id": "d20ebk72hfk5ft",
+      "arn": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+      "tags": {
+        "Environment": "lab",
+        "ManagedBy": "Terraform",
+        "Application": "ScoutGrid",
+        "Profile": "Standard"
+      },
+      "default_domain": "d20ebk72hfk5ft.amplifyapp.com"
+    },
+    "tightened_readbacks": [
+      {
+        "RoleName": "ScoutGridSydneyLabBootstrap",
+        "PolicyName": "ProviderBootstrapMfaCorrection",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ConfigureMfaOnlyOnFreshTaggedSydneyLabPool",
+              "Effect": "Allow",
+              "Action": [
+                "cognito-idp:SetUserPoolMfaConfig"
+              ],
+              "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestedRegion": "ap-southeast-2",
+                  "aws:ResourceTag/Application": "ScoutGrid",
+                  "aws:ResourceTag/Environment": "lab",
+                  "aws:ResourceTag/Profile": "Standard",
+                  "aws:ResourceTag/ManagedBy": "Terraform"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "RoleName": "ScoutGridSydneyLabBootstrap",
+        "PolicyName": "ProviderBootstrapTaggingCorrection",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "TagOnlyNewReviewedLabAmplifyApp",
+              "Effect": "Allow",
+              "Action": [
+                "amplify:TagResource"
+              ],
+              "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestedRegion": "ap-southeast-2",
+                  "aws:RequestTag/Application": "ScoutGrid",
+                  "aws:RequestTag/Environment": "lab",
+                  "aws:RequestTag/Profile": "Standard",
+                  "aws:RequestTag/ManagedBy": "Terraform"
+                },
+                "ForAllValues:StringEquals": {
+                  "aws:TagKeys": [
+                    "Application",
+                    "Environment",
+                    "Profile",
+                    "ManagedBy"
+                  ]
+                },
+                "Null": {
+                  "aws:TagKeys": "false"
+                }
+              }
+            },
+            {
+              "Sid": "TagOnlyNewReviewedLabCognitoPool",
+              "Effect": "Allow",
+              "Action": [
+                "cognito-idp:TagResource"
+              ],
+              "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestedRegion": "ap-southeast-2",
+                  "aws:RequestTag/Application": "ScoutGrid",
+                  "aws:RequestTag/Environment": "lab",
+                  "aws:RequestTag/Profile": "Standard",
+                  "aws:RequestTag/ManagedBy": "Terraform"
+                },
+                "ForAllValues:StringEquals": {
+                  "aws:TagKeys": [
+                    "Application",
+                    "Environment",
+                    "Profile",
+                    "ManagedBy"
+                  ]
+                },
+                "Null": {
+                  "aws:TagKeys": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "cognito-idp",
+      "operation": "DescribeUserPool",
+      "status": "success"
+    },
+    {
+      "service": "cognito-idp",
+      "operation": "GetUserPoolMfaConfig",
+      "status": "success"
+    },
+    {
+      "service": "amplify",
+      "operation": "GetApp",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "PutRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "PutRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    }
+  ]
+}

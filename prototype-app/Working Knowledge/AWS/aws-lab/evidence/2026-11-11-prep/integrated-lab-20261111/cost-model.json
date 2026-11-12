@@ -1,0 +1,51 @@
+{
+  "status": "PROPOSED; not approved for a new run; not a final bill or a hard cost cap",
+  "monthly_limit_usd": "20",
+  "proposed_run_reserve_usd": "15",
+  "pre_run_condition": "All other posted plus known unposted monthly charges must be below $5; include the completed foundation run.",
+  "hours_target": 4,
+  "cleanup_contingency_deadline_hours": 8,
+  "hourly_usd": {
+    "one_nat": "0.0590000000",
+    "nat_and_minimum_two_alb_public_ips": "0.0150000000",
+    "rds_single_az": "0.1020000000",
+    "rds_100_gib_gp3": "0.01890410958904109589041095890",
+    "api_and_worker": "0.10476000000",
+    "alb": "0.0252000000",
+    "one_alb_lcu_allowance": "0.0080000000",
+    "waf_acl_and_two_managed_rule_references": "0.009589041095890410958904109589"
+  },
+  "steady_hourly_subtotal_usd": "0.3424531506849315068493150685",
+  "one_nat_plus_ip_monthly_usd_at_730_hours": "46.7200000000",
+  "usage_reserves_usd": {
+    "three_kms_keys_and_four_secrets_full_month_allowance": "4.60",
+    "five_gb_nat_processing": "0.2950000000",
+    "other_transfer_including_cross_az": "1",
+    "24_surplus_t4g_vcpu_hours_dated_rate_allowance": "1.80",
+    "backup_and_s3_storage_dated_allowance": "0.12",
+    "one_gb_month_retained_ecr": "0.10",
+    "logs_container_insights_amplify_identity_and_email_allowance": "2",
+    "100000_waf_requests": "0.06",
+    "other_api_requests": "0.10"
+  },
+  "scenarios": {
+    "4": {
+      "hours": 4,
+      "modeled_usd_before_tax": "11.93369260273972602739726027"
+    },
+    "8": {
+      "hours": 8,
+      "modeled_usd_before_tax": "13.72254520547945205479452055"
+    }
+  },
+  "estimated_spend_returned_on_2026_11_11_usd": "0.0202267829",
+  "billing_caveat": "All returned days are estimated; November 11 is zero in this reading and today's foundation usage is not reconciled.",
+  "excluded": [
+    "tax",
+    "new domain registration",
+    "production",
+    "24-hour capacity soak",
+    "new GuardDuty/Config/CloudTrail archive coverage",
+    "unbounded provider scans or reference feed catch-up"
+  ]
+}

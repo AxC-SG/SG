@@ -1,0 +1,235 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:43:52.065121+00:00",
+    "keys": [
+      {
+        "id": "1706ce52-4d97-4738-b435-3d715a77cb27",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+        "description": "scoutgrid-lab PostgreSQL and recovery",
+        "state": "Enabled",
+        "created": "2026-11-12T10:07:42.210000+00:00",
+        "tags": [
+          {
+            "TagKey": "Application",
+            "TagValue": "ScoutGrid"
+          },
+          {
+            "TagKey": "Environment",
+            "TagValue": "lab"
+          },
+          {
+            "TagKey": "ManagedBy",
+            "TagValue": "Terraform"
+          },
+          {
+            "TagKey": "Profile",
+            "TagValue": "Standard"
+          }
+        ]
+      },
+      {
+        "id": "22cf6682-3133-47bd-af3e-200a1464b054",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/22cf6682-3133-47bd-af3e-200a1464b054",
+        "description": "scoutgrid-lab PostgreSQL and recovery",
+        "state": "PendingDeletion",
+        "created": "2026-11-11T03:49:07.109000+00:00",
+        "tags": [
+          {
+            "TagKey": "Application",
+            "TagValue": "ScoutGrid"
+          },
+          {
+            "TagKey": "Environment",
+            "TagValue": "lab"
+          },
+          {
+            "TagKey": "ManagedBy",
+            "TagValue": "Terraform"
+          },
+          {
+            "TagKey": "Profile",
+            "TagValue": "Standard"
+          }
+        ]
+      },
+      {
+        "id": "2731031f-d79e-4db9-afe6-94fb01cba15a",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+        "description": "Default key that protects my S3 objects when no other key is defined",
+        "state": "Enabled",
+        "created": "2026-11-09T15:15:45.998000+00:00",
+        "tags": []
+      },
+      {
+        "id": "84ec4739-874c-47b1-a4c4-22ef7f06995c",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/84ec4739-874c-47b1-a4c4-22ef7f06995c",
+        "description": "Default key that protects my Secrets Manager data when no other key is defined",
+        "state": "Enabled",
+        "created": "2026-11-11T04:08:36.528000+00:00",
+        "tags": []
+      },
+      {
+        "id": "86e1efc7-4b96-4172-8e80-276c939f920d",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/86e1efc7-4b96-4172-8e80-276c939f920d",
+        "description": "scoutgrid-lab import and export objects",
+        "state": "Enabled",
+        "created": "2026-11-12T10:07:42.209000+00:00",
+        "tags": [
+          {
+            "TagKey": "Application",
+            "TagValue": "ScoutGrid"
+          },
+          {
+            "TagKey": "Environment",
+            "TagValue": "lab"
+          },
+          {
+            "TagKey": "ManagedBy",
+            "TagValue": "Terraform"
+          },
+          {
+            "TagKey": "Profile",
+            "TagValue": "Standard"
+          }
+        ]
+      },
+      {
+        "id": "ddb15ff2-ac4a-4eaa-92d4-7b697706ea11",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/ddb15ff2-ac4a-4eaa-92d4-7b697706ea11",
+        "description": "scoutgrid-lab import and export objects",
+        "state": "PendingDeletion",
+        "created": "2026-11-11T03:49:07.120000+00:00",
+        "tags": [
+          {
+            "TagKey": "Application",
+            "TagValue": "ScoutGrid"
+          },
+          {
+            "TagKey": "Environment",
+            "TagValue": "lab"
+          },
+          {
+            "TagKey": "ManagedBy",
+            "TagValue": "Terraform"
+          },
+          {
+            "TagKey": "Profile",
+            "TagValue": "Standard"
+          }
+        ]
+      },
+      {
+        "id": "f5878475-aa29-401e-9b5b-d1fe33b83b5e",
+        "arn": "arn:aws:kms:ap-southeast-2:736486260824:key/f5878475-aa29-401e-9b5b-d1fe33b83b5e",
+        "description": "Default key that protects my ACM private keys when no other key is defined",
+        "state": "Enabled",
+        "created": "2026-11-11T16:56:55.941000+00:00",
+        "tags": []
+      }
+    ],
+    "application_key_exists": false
+  },
+  "api_calls": [
+    {
+      "service": "kms",
+      "operation": "ListKeys",
+      "status": "success",
+      "n_items": {
+        "Keys": 7
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 4
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 4
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 0
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 0
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 4
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 4
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 0
+      }
+    }
+  ]
+}

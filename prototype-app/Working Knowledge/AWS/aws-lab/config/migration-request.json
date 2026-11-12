@@ -1,0 +1,34 @@
+{
+ "cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+ "count": 1,
+ "enableExecuteCommand": false,
+ "launchType": "FARGATE",
+ "networkConfiguration": {
+  "awsvpcConfiguration": {
+   "assignPublicIp": "DISABLED",
+   "securityGroups": [
+    "sg-0f5e24f3cdffc3340"
+   ],
+   "subnets": [
+    "subnet-0158a2f6531242fc3",
+    "subnet-0563f758e167524f5"
+   ]
+  }
+ },
+ "platformVersion": "1.4.0",
+ "tags": [
+  {
+   "key": "Application",
+   "value": "ScoutGrid"
+  },
+  {
+   "key": "Environment",
+   "value": "lab"
+  },
+  {
+   "key": "ReleasePurpose",
+   "value": "Migration"
+  }
+ ],
+ "taskDefinition": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:1"
+}

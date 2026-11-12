@@ -1,0 +1,72 @@
+[
+  {
+    "service": "ec2",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/ec2/ec2.json",
+    "sha256": "cd51c775ca955eeaf2df0104c4301753372abb64701ab17523a2622207583c56"
+  },
+  {
+    "service": "rds",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/rds/rds.json",
+    "sha256": "3cb3a41470e4d1c01a6a52530fa443801da06e4307a64b8c8df12ce84fe2775f"
+  },
+  {
+    "service": "s3",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/s3/s3.json",
+    "sha256": "42a0406559f357e77fad1e4a77c1d3d9aa62bc90da4dd990c13149ae92147c6d"
+  },
+  {
+    "service": "kms",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/kms/kms.json",
+    "sha256": "85377382ef857be893afce73c8b73c92aa31979742abd676ba3e357fd3890932"
+  },
+  {
+    "service": "amplify",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/amplify/amplify.json",
+    "sha256": "21b64b0d0412486a6167b73242fb3275a310ddea071ef07492d5a34794bc8784"
+  },
+  {
+    "service": "cognito-idp",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/cognito-idp/cognito-idp.json",
+    "sha256": "484d0f04cf62747375d43d1d672ecd6ffbd9dc1e7a98a3e226960db1f85d9bff"
+  },
+  {
+    "service": "ecs",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/ecs/ecs.json",
+    "sha256": "96094c278dce8df1f366468921a1e49489e273102df30d7143396158d50b1b9e"
+  },
+  {
+    "service": "elasticloadbalancing",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/elasticloadbalancing/elasticloadbalancing.json",
+    "sha256": "6f9036a57bf0c487046d5cbb987ba056fdf70f6e8168e2da6a59421802979269"
+  },
+  {
+    "service": "wafv2",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/wafv2/wafv2.json",
+    "sha256": "265d112dce2ea2326ee1a2ab14f17bf58b6191cb4d818bf73e1f41bb98b344f1"
+  },
+  {
+    "service": "logs",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/logs/logs.json",
+    "sha256": "5e16b4603657001213b545db6d8e29356d15e24a179c927a699a91a8080796ad"
+  },
+  {
+    "service": "iam",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/iam/iam.json",
+    "sha256": "64bbb6ee09c1ef7757b3cc32106cd26d4067b54142f8b873b5cab8a20a372191"
+  },
+  {
+    "service": "ecr",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/ecr/ecr.json",
+    "sha256": "bd92badabf8462ee76fa92f8914d8957a148747e35475e822efaba178651a064"
+  },
+  {
+    "service": "secretsmanager",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/secretsmanager/secretsmanager.json",
+    "sha256": "a56123cf6b2ce7b740b9e3980da5c2556a197251cd7c0eb9b73a12a7564454ab"
+  },
+  {
+    "service": "budgets",
+    "url": "https://servicereference.us-east-1.amazonaws.com/v1/budgets/budgets.json",
+    "sha256": "8ac73d63b48998e38c365e037c5c54086a6871096c00ab53db1b9fa4abfca413"
+  }
+]

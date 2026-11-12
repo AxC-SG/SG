@@ -1,0 +1,620 @@
+{
+  "planned_at": "2026-11-12T10:01:46.841124+00:00",
+  "caller": "arn:aws:sts::736486260824:assumed-role/ScoutGridSydneyLabBootstrap/sg-bootstrap-plan-20261112",
+  "source_sha": "0ae3de9f4e4f7b1f784622d31656f30a89499043",
+  "source_manifest_verified": true,
+  "plan_sha256": "78235d54dc6268f8ea95e7cb15becf53a9beb1ab99aa2aab2c6a5eb7fc3cad31",
+  "resources": [
+    {
+      "address": "aws_amplify_app.frontend",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "access_token": null,
+        "auto_branch_creation_patterns": null,
+        "basic_auth_credentials": null,
+        "compute_role_arn": null,
+        "custom_rule": [
+          {
+            "condition": null,
+            "source": "</^\\/(?!assets(?:\\/|$))[^.]*$/>",
+            "status": "200",
+            "target": "/index.html"
+          }
+        ],
+        "description": null,
+        "enable_auto_branch_creation": false,
+        "enable_basic_auth": null,
+        "enable_branch_auto_build": false,
+        "enable_branch_auto_deletion": null,
+        "environment_variables": null,
+        "iam_service_role_arn": null,
+        "name": "scoutgrid-lab-frontend",
+        "oauth_token": null,
+        "platform": "WEB",
+        "region": "ap-southeast-2",
+        "repository": null,
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        }
+      },
+      "after_unknown": {
+        "arn": true,
+        "auto_branch_creation_config": true,
+        "build_spec": true,
+        "cache_config": true,
+        "custom_headers": true,
+        "custom_rule": [
+          {}
+        ],
+        "default_domain": true,
+        "id": true,
+        "job_config": true,
+        "production_branch": true,
+        "tags_all": {}
+      }
+    },
+    {
+      "address": "aws_cognito_user_pool.humans",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "account_recovery_setting": [
+          {
+            "recovery_mechanism": [
+              {
+                "name": "verified_email",
+                "priority": 1
+              }
+            ]
+          }
+        ],
+        "admin_create_user_config": [
+          {
+            "allow_admin_create_user_only": true,
+            "invite_message_template": [
+              {
+                "email_message": "<p>Your ScoutGrid account is ready.</p><p><a href=\"https://lab.scoutgrid.io/login\">Set your password</a>. Sign in with the work email that received this message and the temporary password below, then choose a new password.</p><p>Temporary password: <strong>{####}</strong></p><p>Account reference: {username}</p>",
+                "email_subject": "Set your ScoutGrid password",
+                "sms_message": "Your ScoutGrid account is {username}. Temporary password: {####}"
+              }
+            ]
+          }
+        ],
+        "alias_attributes": null,
+        "auto_verified_attributes": [
+          "email"
+        ],
+        "deletion_protection": "ACTIVE",
+        "device_configuration": [],
+        "email_configuration": [],
+        "email_mfa_configuration": [],
+        "lambda_config": [],
+        "mfa_configuration": "ON",
+        "name": "scoutgrid-lab-humans",
+        "region": "ap-southeast-2",
+        "schema": [],
+        "sms_authentication_message": null,
+        "software_token_mfa_configuration": [
+          {
+            "enabled": true
+          }
+        ],
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        },
+        "user_attribute_update_settings": [],
+        "user_pool_add_ons": [],
+        "user_pool_tier": "ESSENTIALS",
+        "username_attributes": [
+          "email"
+        ],
+        "username_configuration": [
+          {
+            "case_sensitive": false
+          }
+        ],
+        "web_authn_configuration": []
+      },
+      "after_unknown": {
+        "account_recovery_setting": [
+          {
+            "recovery_mechanism": [
+              {}
+            ]
+          }
+        ],
+        "admin_create_user_config": [
+          {
+            "invite_message_template": [
+              {}
+            ]
+          }
+        ],
+        "arn": true,
+        "auto_verified_attributes": [
+          false
+        ],
+        "creation_date": true,
+        "custom_domain": true,
+        "device_configuration": [],
+        "domain": true,
+        "email_configuration": [],
+        "email_mfa_configuration": [],
+        "email_verification_message": true,
+        "email_verification_subject": true,
+        "endpoint": true,
+        "estimated_number_of_users": true,
+        "id": true,
+        "lambda_config": [],
+        "last_modified_date": true,
+        "password_policy": true,
+        "schema": [],
+        "sign_in_policy": true,
+        "sms_configuration": true,
+        "sms_verification_message": true,
+        "software_token_mfa_configuration": [
+          {}
+        ],
+        "tags_all": {},
+        "user_attribute_update_settings": [],
+        "user_pool_add_ons": [],
+        "username_attributes": [
+          false
+        ],
+        "username_configuration": [
+          {}
+        ],
+        "verification_message_template": true,
+        "web_authn_configuration": []
+      }
+    },
+    {
+      "address": "aws_kms_key.database",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "bypass_policy_lockout_safety_check": false,
+        "custom_key_store_id": null,
+        "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+        "deletion_window_in_days": null,
+        "description": "scoutgrid-lab PostgreSQL and recovery",
+        "enable_key_rotation": true,
+        "is_enabled": true,
+        "key_usage": "ENCRYPT_DECRYPT",
+        "region": "ap-southeast-2",
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        },
+        "timeouts": null,
+        "xks_key_id": null
+      },
+      "after_unknown": {
+        "arn": true,
+        "id": true,
+        "key_id": true,
+        "multi_region": true,
+        "policy": true,
+        "rotation_period_in_days": true,
+        "tags_all": {}
+      }
+    },
+    {
+      "address": "aws_kms_key.objects",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "bypass_policy_lockout_safety_check": false,
+        "custom_key_store_id": null,
+        "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+        "deletion_window_in_days": null,
+        "description": "scoutgrid-lab import and export objects",
+        "enable_key_rotation": true,
+        "is_enabled": true,
+        "key_usage": "ENCRYPT_DECRYPT",
+        "region": "ap-southeast-2",
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        },
+        "timeouts": null,
+        "xks_key_id": null
+      },
+      "after_unknown": {
+        "arn": true,
+        "id": true,
+        "key_id": true,
+        "multi_region": true,
+        "policy": true,
+        "rotation_period_in_days": true,
+        "tags_all": {}
+      }
+    },
+    {
+      "address": "aws_s3_bucket.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "bucket": "scoutgrid-lab-736486260824-exports",
+        "force_destroy": false,
+        "region": "ap-southeast-2",
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        },
+        "timeouts": null
+      },
+      "after_unknown": {
+        "acceleration_status": true,
+        "acl": true,
+        "arn": true,
+        "bucket_domain_name": true,
+        "bucket_namespace": true,
+        "bucket_prefix": true,
+        "bucket_region": true,
+        "bucket_regional_domain_name": true,
+        "cors_rule": true,
+        "grant": true,
+        "hosted_zone_id": true,
+        "id": true,
+        "lifecycle_rule": true,
+        "logging": true,
+        "object_lock_configuration": true,
+        "object_lock_enabled": true,
+        "policy": true,
+        "replication_configuration": true,
+        "request_payer": true,
+        "server_side_encryption_configuration": true,
+        "tags_all": {},
+        "versioning": true,
+        "website": true,
+        "website_domain": true,
+        "website_endpoint": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "bucket": "scoutgrid-lab-736486260824-imports",
+        "force_destroy": false,
+        "region": "ap-southeast-2",
+        "tags": null,
+        "tags_all": {
+          "Application": "ScoutGrid",
+          "Environment": "lab",
+          "ManagedBy": "Terraform",
+          "Profile": "Standard"
+        },
+        "timeouts": null
+      },
+      "after_unknown": {
+        "acceleration_status": true,
+        "acl": true,
+        "arn": true,
+        "bucket_domain_name": true,
+        "bucket_namespace": true,
+        "bucket_prefix": true,
+        "bucket_region": true,
+        "bucket_regional_domain_name": true,
+        "cors_rule": true,
+        "grant": true,
+        "hosted_zone_id": true,
+        "id": true,
+        "lifecycle_rule": true,
+        "logging": true,
+        "object_lock_configuration": true,
+        "object_lock_enabled": true,
+        "policy": true,
+        "replication_configuration": true,
+        "request_payer": true,
+        "server_side_encryption_configuration": true,
+        "tags_all": {},
+        "versioning": true,
+        "website": true,
+        "website_domain": true,
+        "website_endpoint": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_cors_configuration.imports",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "cors_rule": [
+          {
+            "allowed_headers": [
+              "content-type",
+              "if-none-match",
+              "x-amz-checksum-sha256",
+              "x-amz-sdk-checksum-algorithm"
+            ],
+            "allowed_methods": [
+              "PUT"
+            ],
+            "allowed_origins": [
+              "https://lab.scoutgrid.io"
+            ],
+            "expose_headers": [],
+            "id": "",
+            "max_age_seconds": 300
+          }
+        ],
+        "expected_bucket_owner": null,
+        "region": "ap-southeast-2"
+      },
+      "after_unknown": {
+        "bucket": true,
+        "cors_rule": [
+          {
+            "allowed_headers": [
+              false,
+              false,
+              false,
+              false
+            ],
+            "allowed_methods": [
+              false
+            ],
+            "allowed_origins": [
+              false
+            ],
+            "expose_headers": []
+          }
+        ],
+        "id": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_ownership_controls.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "region": "ap-southeast-2",
+        "rule": [
+          {
+            "object_ownership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "rule": [
+          {}
+        ]
+      }
+    },
+    {
+      "address": "aws_s3_bucket_ownership_controls.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "region": "ap-southeast-2",
+        "rule": [
+          {
+            "object_ownership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "rule": [
+          {}
+        ]
+      }
+    },
+    {
+      "address": "aws_s3_bucket_policy.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "region": "ap-southeast-2"
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "policy": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_policy.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "region": "ap-southeast-2"
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "policy": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "block_public_acls": true,
+        "block_public_policy": true,
+        "ignore_public_acls": true,
+        "region": "ap-southeast-2",
+        "restrict_public_buckets": true,
+        "skip_destroy": null
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "block_public_acls": true,
+        "block_public_policy": true,
+        "ignore_public_acls": true,
+        "region": "ap-southeast-2",
+        "restrict_public_buckets": true,
+        "skip_destroy": null
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true
+      }
+    },
+    {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "expected_bucket_owner": null,
+        "region": "ap-southeast-2",
+        "rule": [
+          {
+            "apply_server_side_encryption_by_default": [
+              {
+                "sse_algorithm": "aws:kms"
+              }
+            ],
+            "bucket_key_enabled": true
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "rule": [
+          {
+            "apply_server_side_encryption_by_default": [
+              {
+                "kms_master_key_id": true
+              }
+            ],
+            "blocked_encryption_types": true
+          }
+        ]
+      }
+    },
+    {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "expected_bucket_owner": null,
+        "region": "ap-southeast-2",
+        "rule": [
+          {
+            "apply_server_side_encryption_by_default": [
+              {
+                "sse_algorithm": "aws:kms"
+              }
+            ],
+            "bucket_key_enabled": true
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "rule": [
+          {
+            "apply_server_side_encryption_by_default": [
+              {
+                "kms_master_key_id": true
+              }
+            ],
+            "blocked_encryption_types": true
+          }
+        ]
+      }
+    },
+    {
+      "address": "aws_s3_bucket_versioning.artifacts[\"exports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "expected_bucket_owner": null,
+        "mfa": null,
+        "region": "ap-southeast-2",
+        "versioning_configuration": [
+          {
+            "status": "Enabled"
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "versioning_configuration": [
+          {
+            "mfa_delete": true
+          }
+        ]
+      }
+    },
+    {
+      "address": "aws_s3_bucket_versioning.artifacts[\"imports\"]",
+      "actions": [
+        "create"
+      ],
+      "after": {
+        "expected_bucket_owner": null,
+        "mfa": null,
+        "region": "ap-southeast-2",
+        "versioning_configuration": [
+          {
+            "status": "Enabled"
+          }
+        ]
+      },
+      "after_unknown": {
+        "bucket": true,
+        "id": true,
+        "versioning_configuration": [
+          {
+            "mfa_delete": true
+          }
+        ]
+      }
+    }
+  ],
+  "applied": false
+}

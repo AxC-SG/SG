@@ -1,0 +1,7 @@
+{
+  "time_utc": "2026-11-12T11:30:33Z",
+  "event": "CloudShell restarted; temporary root gone; persistent artifacts and binding survived; live secret metadata empty",
+  "new_root": "~/scoutgrid-active-20261112",
+  "clock_unchanged": true,
+  "cleanup_start_utc": "2026-11-12T14:07:33Z"
+}

@@ -1,0 +1,47 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RetireOnlyCapturedFreshSecretsWithRecovery",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DeleteSecret"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:RENDER_CAPTURED_RUNTIME_SECRET",
+        "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:RENDER_CAPTURED_APPLICATION_SECRET",
+        "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:RENDER_CAPTURED_ENROLLMENT_SECRET"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "NumericEquals": {
+          "secretsmanager:RecoveryWindowInDays": 7
+        },
+        "BoolIfExists": {
+          "secretsmanager:ForceDeleteWithoutRecovery": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ScheduleOnlyCapturedFreshKeysAfterConsumersRemoved",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ScheduleKeyDeletion"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/RENDER_FRESH_DATABASE_KEY",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/RENDER_FRESH_OBJECT_KEY"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "NumericEquals": {
+          "kms:ScheduleKeyDeletionPendingWindowInDays": 30
+        }
+      }
+    }
+  ]
+}

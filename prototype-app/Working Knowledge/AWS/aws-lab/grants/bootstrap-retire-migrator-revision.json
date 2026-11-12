@@ -1,0 +1,16 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "RetireSupersededMigratorRevisions",
+   "Effect": "Allow",
+   "Action": "ecs:DeregisterTaskDefinition",
+   "Resource": "*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  }
+ ]
+}

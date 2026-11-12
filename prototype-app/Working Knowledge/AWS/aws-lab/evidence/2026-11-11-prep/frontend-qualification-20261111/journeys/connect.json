@@ -1,0 +1,612 @@
+[
+  {
+    "name": "unconfigured AWS AI connector shows initial setup_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unconfigured AWS AI connector does not show a load error_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "catalog renders 16 connector cards_dark",
+    "ok": true,
+    "detail": "16"
+  },
+  {
+    "name": "inventory, BOM, ticketing then patch sections_dark",
+    "ok": true,
+    "detail": "Inventory|BOM Management|Incident & Ticketing Tools|Patch Management"
+  },
+  {
+    "name": "ServiceNow status reports last sync_dark",
+    "ok": true,
+    "detail": "Last sync · 6 hr ago"
+  },
+  {
+    "name": "SCCM status reports failure_dark",
+    "ok": true,
+    "detail": "Last sync failed · 9 days ago"
+  },
+  {
+    "name": "Azure status reports paused for the pilot_dark",
+    "ok": true,
+    "detail": "Paused for the pilot — read-only"
+  },
+  {
+    "name": "dot classes carry health_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "four patch-management cards_dark",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "vulnerability intelligence accordion expanded_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "9 tenant source switches_dark",
+    "ok": true,
+    "detail": "9"
+  },
+  {
+    "name": "correlation-disabled sources render Disabled_dark",
+    "ok": true,
+    "detail": "3"
+  },
+  {
+    "name": "NVD switch sends enabledForCorrelation false_dark",
+    "ok": true,
+    "detail": "{\"enabledForCorrelation\":false,\"isVulnerable\":true,\"hasKev\":false,\"cvssV3Severity\":\"HIGH\",\"knownRansomwareCampaignUse\":false,\"cvssScore\":7}"
+  },
+  {
+    "name": "accordion collapses_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "card opens ?connectSource=servicenow-cmdb_dark",
+    "ok": true,
+    "detail": "/connect?connectSource=servicenow-cmdb"
+  },
+  {
+    "name": "invalid save sends the typed baseUrl_dark",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"http://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "validation message shown_dark",
+    "ok": true,
+    "detail": "[VALIDATION_FAILED] Connector configuration is invalid (baseUrl: must be an https:// URL)"
+  },
+  {
+    "name": "form keeps the rejected value_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "save payload carries no blank secret_dark",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"http://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "valid save succeeds without error_dark",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"https://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "test connection posts_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Escape returns to catalog_dark",
+    "ok": true,
+    "detail": "/connect"
+  },
+  {
+    "name": "target test posts for the sandbox target_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "target failure message shown_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SCCM is a live connector form_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "patch SCCM card opens its connector form_dark",
+    "ok": true,
+    "detail": "/connect?connectSource=patch-sccm"
+  },
+  {
+    "name": "Azure is contained read-only_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tenant NVD feed stays platform-owned_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "retired patch connector id is dropped_dark",
+    "ok": true,
+    "detail": "/connect?keep=1"
+  },
+  {
+    "name": "run history route_dark",
+    "ok": true,
+    "detail": "/connect/run-history"
+  },
+  {
+    "name": "run queue lists runs and jobs_dark",
+    "ok": true,
+    "detail": "10"
+  },
+  {
+    "name": "failed run status visible_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "refresh refetches runs_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SLA renders thresholds_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SLA save sends criticalThreshold 8.5_dark",
+    "ok": true,
+    "detail": "{\"criticalThreshold\":8.5,\"highThreshold\":7,\"criticalSlaDays\":7,\"highSlaDays\":30,\"mediumSlaDays\":60,\"lowSlaDays\":120,\"assetCriticalSlaMultiplier\":0.5,\"assetHighSlaMultiplier\":0.75,\"assetMediumSlaMultiplier\":1,\"assetLowSlaMultiplier\":1.5,\"autoCloseEnabled\":true,\"autoCloseAssetIdentifier\":\"\",\"autoCloseAfterDays\":14,\"autoCloseRequiredConsecutiveMisses\":3,\"autoCloseNotObservedEnabled\":true,\"autoCloseComponentRemovedEnabled\":true,\"autoCloseAssetRetiredEnabled\":true,\"autoCloseSourceDisabledEnabled\":false,\"autoCloseDuplicateEnabled\":true,\"autoCloseRunIntervalDays\":1,\"autoCloseLastRunAt\":\"2026-10-23T21:36:00.000Z\",\"findingGenerationMode\":\"AUTO\",\"findingsScoreConfig\":\"[{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"cvssScore\\\",\\\"values\\\":[{\\\"operator\\\":\\\">=\\\",\\\"value\\\":\\\"9\\\",\\\"weight\\\":0.25},{\\\"operator\\\":\\\"<=\\\",\\\"value\\\":\\\"8\\\",\\\"weight\\\":0.1}]},{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"isInKev\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.25}]},{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"exploitExists\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.15}]},{\\\"table\\\":\\\"ASSET\\\",\\\"column\\\":\\\"businessCriticality\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"high\\\",\\\"weight\\\":0.2}]},{\\\"table\\\":\\\"ASSET\\\",\\\"column\\\":\\\"internetFacing\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.15}]}]\",\"triageExploitabilityWeight\":1.4,\"triageBlastRadiusWeight\":1,\"triageEolRiskWeight\":0.6,\"triageSlaBreachWeight\":1.2,\"triageMissingOwnerBoost\":0.5,\"triagePatchGapBoost\":0.3}"
+  },
+  {
+    "name": "ownership lists 3 rules_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "suppression lists 3 rules_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "execute posts the approved rule_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "in-review rule cannot execute_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on tenant journey_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "auditor source switches are disabled_dark",
+    "ok": true,
+    "detail": "9"
+  },
+  {
+    "name": "auditor cannot test AWS targets_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "AI connectors hidden without entitlement_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "copilot route redirects without entitlement_dark",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "copilot run discovery posts and reports the job_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform owner /connect redirects to vuln-intel_dark",
+    "ok": true,
+    "detail": "/platform/vuln-intel"
+  },
+  {
+    "name": "feed catalog shows the GHSA failure_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "feed card opens the NVD detail_dark",
+    "ok": true,
+    "detail": "/platform/vuln-intel?feed=nvd"
+  },
+  {
+    "name": "no page errors on platform journey_dark",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "no page overflow at 390px /connect_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect?connectSource=aws-discovery_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect?connectSource=bom-management_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect/run-history_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect/copilot-studio_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/sla_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/triage_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/ownership_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/findings-score_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/suppress_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/auto-findings_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /platform/vuln-intel_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unconfigured AWS AI connector shows initial setup_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "unconfigured AWS AI connector does not show a load error_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "catalog renders 16 connector cards_light",
+    "ok": true,
+    "detail": "16"
+  },
+  {
+    "name": "inventory, BOM, ticketing then patch sections_light",
+    "ok": true,
+    "detail": "Inventory|BOM Management|Incident & Ticketing Tools|Patch Management"
+  },
+  {
+    "name": "ServiceNow status reports last sync_light",
+    "ok": true,
+    "detail": "Last sync · 6 hr ago"
+  },
+  {
+    "name": "SCCM status reports failure_light",
+    "ok": true,
+    "detail": "Last sync failed · 9 days ago"
+  },
+  {
+    "name": "Azure status reports paused for the pilot_light",
+    "ok": true,
+    "detail": "Paused for the pilot — read-only"
+  },
+  {
+    "name": "dot classes carry health_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "four patch-management cards_light",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "vulnerability intelligence accordion expanded_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "9 tenant source switches_light",
+    "ok": true,
+    "detail": "9"
+  },
+  {
+    "name": "correlation-disabled sources render Disabled_light",
+    "ok": true,
+    "detail": "3"
+  },
+  {
+    "name": "NVD switch sends enabledForCorrelation false_light",
+    "ok": true,
+    "detail": "{\"enabledForCorrelation\":false,\"isVulnerable\":true,\"hasKev\":false,\"cvssV3Severity\":\"HIGH\",\"knownRansomwareCampaignUse\":false,\"cvssScore\":7}"
+  },
+  {
+    "name": "accordion collapses_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "card opens ?connectSource=servicenow-cmdb_light",
+    "ok": true,
+    "detail": "/connect?connectSource=servicenow-cmdb"
+  },
+  {
+    "name": "invalid save sends the typed baseUrl_light",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"http://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "validation message shown_light",
+    "ok": true,
+    "detail": "[VALIDATION_FAILED] Connector configuration is invalid (baseUrl: must be an https:// URL)"
+  },
+  {
+    "name": "form keeps the rejected value_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "save payload carries no blank secret_light",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"http://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "valid save succeeds without error_light",
+    "ok": true,
+    "detail": "{\"baseUrl\":\"https://cmdb.example.test\",\"authType\":\"BASIC\",\"username\":\"svc-scoutgrid-cmdb\",\"installTable\":\"cmdb_sam_sw_install\",\"discoveryModelTable\":\"cmdb_sam_sw_discovery_model\",\"ciTable\":\"cmdb_ci\",\"installQuery\":\"\",\"discoveryQuery\":\"\",\"installFields\":\"sys_id,display_name,publisher,version,install_date,last_scanned,last_used,active_install,unlicensed_install,installed_on,discovery_model\",\"discoveryFields\":\"sys_id,primary_key,normalized_product,normalized_publisher,normalized_version,product_hash,version_hash,full_version,platform,language,normalization_status,approved,low_confidence\",\"pageSize\":1000,\"enabled\":true,\"autoSyncEnabled\":true,\"intervalMinutes\":720}"
+  },
+  {
+    "name": "test connection posts_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Escape returns to catalog_light",
+    "ok": true,
+    "detail": "/connect"
+  },
+  {
+    "name": "target test posts for the sandbox target_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "target failure message shown_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SCCM is a live connector form_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "patch SCCM card opens its connector form_light",
+    "ok": true,
+    "detail": "/connect?connectSource=patch-sccm"
+  },
+  {
+    "name": "Azure is contained read-only_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tenant NVD feed stays platform-owned_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "retired patch connector id is dropped_light",
+    "ok": true,
+    "detail": "/connect?keep=1"
+  },
+  {
+    "name": "run history route_light",
+    "ok": true,
+    "detail": "/connect/run-history"
+  },
+  {
+    "name": "run queue lists runs and jobs_light",
+    "ok": true,
+    "detail": "10"
+  },
+  {
+    "name": "failed run status visible_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "refresh refetches runs_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SLA renders thresholds_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "SLA save sends criticalThreshold 8.5_light",
+    "ok": true,
+    "detail": "{\"criticalThreshold\":8.5,\"highThreshold\":7,\"criticalSlaDays\":7,\"highSlaDays\":30,\"mediumSlaDays\":60,\"lowSlaDays\":120,\"assetCriticalSlaMultiplier\":0.5,\"assetHighSlaMultiplier\":0.75,\"assetMediumSlaMultiplier\":1,\"assetLowSlaMultiplier\":1.5,\"autoCloseEnabled\":true,\"autoCloseAssetIdentifier\":\"\",\"autoCloseAfterDays\":14,\"autoCloseRequiredConsecutiveMisses\":3,\"autoCloseNotObservedEnabled\":true,\"autoCloseComponentRemovedEnabled\":true,\"autoCloseAssetRetiredEnabled\":true,\"autoCloseSourceDisabledEnabled\":false,\"autoCloseDuplicateEnabled\":true,\"autoCloseRunIntervalDays\":1,\"autoCloseLastRunAt\":\"2026-10-23T21:36:00.000Z\",\"findingGenerationMode\":\"AUTO\",\"findingsScoreConfig\":\"[{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"cvssScore\\\",\\\"values\\\":[{\\\"operator\\\":\\\">=\\\",\\\"value\\\":\\\"9\\\",\\\"weight\\\":0.25},{\\\"operator\\\":\\\"<=\\\",\\\"value\\\":\\\"8\\\",\\\"weight\\\":0.1}]},{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"isInKev\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.25}]},{\\\"table\\\":\\\"VULNERABILITY\\\",\\\"column\\\":\\\"exploitExists\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.15}]},{\\\"table\\\":\\\"ASSET\\\",\\\"column\\\":\\\"businessCriticality\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"high\\\",\\\"weight\\\":0.2}]},{\\\"table\\\":\\\"ASSET\\\",\\\"column\\\":\\\"internetFacing\\\",\\\"values\\\":[{\\\"operator\\\":\\\"=\\\",\\\"value\\\":\\\"true\\\",\\\"weight\\\":0.15}]}]\",\"triageExploitabilityWeight\":1.4,\"triageBlastRadiusWeight\":1,\"triageEolRiskWeight\":0.6,\"triageSlaBreachWeight\":1.2,\"triageMissingOwnerBoost\":0.5,\"triagePatchGapBoost\":0.3}"
+  },
+  {
+    "name": "ownership lists 3 rules_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "suppression lists 3 rules_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "execute posts the approved rule_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "in-review rule cannot execute_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors on tenant journey_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "auditor source switches are disabled_light",
+    "ok": true,
+    "detail": "9"
+  },
+  {
+    "name": "auditor cannot test AWS targets_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "AI connectors hidden without entitlement_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "copilot route redirects without entitlement_light",
+    "ok": true,
+    "detail": "/exposure"
+  },
+  {
+    "name": "copilot run discovery posts and reports the job_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "platform owner /connect redirects to vuln-intel_light",
+    "ok": true,
+    "detail": "/platform/vuln-intel"
+  },
+  {
+    "name": "feed catalog shows the GHSA failure_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "feed card opens the NVD detail_light",
+    "ok": true,
+    "detail": "/platform/vuln-intel?feed=nvd"
+  },
+  {
+    "name": "no page errors on platform journey_light",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "no page overflow at 390px /connect_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect?connectSource=aws-discovery_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect?connectSource=bom-management_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect/run-history_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /connect/copilot-studio_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/sla_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/triage_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/ownership_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/findings-score_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/suppress_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /configurations/auto-findings_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page overflow at 390px /platform/vuln-intel_light",
+    "ok": true,
+    "detail": ""
+  }
+]

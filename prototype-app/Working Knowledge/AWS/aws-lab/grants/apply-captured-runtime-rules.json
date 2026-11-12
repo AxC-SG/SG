@@ -1,0 +1,45 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "ConfigureOnlyCapturedRuntimeGroups",
+   "Effect": "Allow",
+   "Action": [
+    "ec2:AuthorizeSecurityGroupIngress",
+    "ec2:AuthorizeSecurityGroupEgress",
+    "ec2:RevokeSecurityGroupIngress",
+    "ec2:RevokeSecurityGroupEgress"
+   ],
+   "Resource": [
+    "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-06d88c1de163490ee",
+    "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-005aeabb0f669e2c7",
+    "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-0f5e24f3cdffc3340",
+    "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-01d46ada0c49432b7",
+    "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-07592c41df9f8cec1"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "TaggedRulesOnCapturedGroupsOnly",
+   "Effect": "Allow",
+   "Action": [
+    "ec2:AuthorizeSecurityGroupIngress",
+    "ec2:AuthorizeSecurityGroupEgress"
+   ],
+   "Resource": "arn:aws:ec2:ap-southeast-2:736486260824:security-group-rule/*",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestTag/Profile": "Standard",
+     "aws:RequestTag/ManagedBy": "Terraform"
+    }
+   }
+  }
+ ]
+}

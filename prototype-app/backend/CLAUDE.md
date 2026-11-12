@@ -217,10 +217,9 @@ docker run --env-file /path/to/private/local-runtime.env -p 8080:8080 vulnwatch-
 
 JVM flags in the image: `-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=10.0 -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError`.
 
-## Production bootstrap (Render)
+## Production bootstrap on ECS
 
-The permanent `scout-backend` web service (`render.yaml`, repo root) never runs schema migrations itself (`APP_SCHEMA_MIGRATION_ENABLED=false`) and is only ever given the restricted `scout_runtime` Postgres role — never the owner/migration role. Schema bootstrap (platform + tenant migrations, runtime-role provisioning, control-plane verification, optional platform-owner setup-link email) runs from a **separate, temporary** Render web service via `backend/scripts/run-render-migration.sh`, which execs `com.prototype.vulnwatch.migration.ProductionBootstrapCli` (a standalone `main()`, no Spring context) and then holds the container open in a completion-only maintenance state so Render's process supervisor doesn't restart it and re-run the privileged bootstrap. The SQL-level role provisioning is `backend/scripts/provision-runtime-role.sql` (automated, self-verifying). Operational entrypoints are [bootstrap wrapper](scripts/run-render-migration.sh) and [runtime grants](scripts/provision-runtime-role.sql). Follow [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>) before any separately authorized environment operation.
-
+The API and worker use the restricted `scout_runtime` PostgreSQL role. A standalone ECS task runs the [bootstrap wrapper](scripts/run-schema-migration.sh) with `--run-once` and the migration role. It invokes `ProductionBootstrapCli` without starting Spring, applies platform and tenant migrations, and verifies the runtime role grants before exiting. See [runtime grants](scripts/provision-runtime-role.sql) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
 ## AI-BOM correlation boundary
 

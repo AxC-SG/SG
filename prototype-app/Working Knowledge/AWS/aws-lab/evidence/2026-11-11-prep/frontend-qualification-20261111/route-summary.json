@@ -1,0 +1,36 @@
+{
+  "dark": {
+    "checks": 390,
+    "nav_checks": 86,
+    "widths": [
+      390,
+      768,
+      1280,
+      1440
+    ],
+    "orphans": 0,
+    "overflow": 0,
+    "page_errors": 0,
+    "console_errors": 0,
+    "unexpected_requests": 0,
+    "wrong_ui_boundary": 0,
+    "wrong_authenticated_landmarks": 0
+  },
+  "light": {
+    "checks": 390,
+    "nav_checks": 86,
+    "widths": [
+      390,
+      768,
+      1280,
+      1440
+    ],
+    "orphans": 0,
+    "overflow": 0,
+    "page_errors": 0,
+    "console_errors": 0,
+    "unexpected_requests": 0,
+    "wrong_ui_boundary": 0,
+    "wrong_authenticated_landmarks": 0
+  }
+}

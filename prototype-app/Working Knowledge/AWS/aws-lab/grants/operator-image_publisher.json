@@ -1,0 +1,38 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "ecr:GetAuthorizationToken"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "*",
+   "Sid": "AuthenticateSelectedRegistry"
+  },
+  {
+   "Action": [
+    "ecr:BatchCheckLayerAvailability",
+    "ecr:BatchGetImage",
+    "ecr:CompleteLayerUpload",
+    "ecr:DescribeImages",
+    "ecr:DescribeRepositories",
+    "ecr:InitiateLayerUpload",
+    "ecr:PutImage",
+    "ecr:UploadLayerPart"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+   "Sid": "PublishOnlyLabBackend"
+  }
+ ],
+ "Version": "2012-10-17"
+}

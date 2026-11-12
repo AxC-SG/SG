@@ -1,0 +1,6 @@
+python3 - <<'PY'
+from pathlib import Path
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py');s=p.read_text().replace("'ScoutGridReleaseOperator']})),", "'ScoutGridReleaseOperator']}),").replace("'ScoutGridReleaseOperator'})),", "'ScoutGridReleaseOperator'}),")
+p.write_text(s)
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-manifest.log && python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/render-synthetic-policy-fixtures.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/synthetic-policies.json

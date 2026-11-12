@@ -1,0 +1,565 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LocateLabStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+    },
+    {
+      "Sid": "ListLabStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+    },
+    {
+      "Sid": "ReadWriteExactState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate"
+    },
+    {
+      "Sid": "ManageLabStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock"
+    },
+    {
+      "Sid": "UseSydneyStateKeyThroughS3",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "arn:aws:kms:ap-southeast-2:736486260824:key/2731031f-d79e-4db9-afe6-94fb01cba15a",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.ap-southeast-2.amazonaws.com",
+          "kms:CallerAccount": "736486260824",
+          "kms:EncryptionContext:aws:s3:arn": "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSydneyNetworking",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribePrefixLists",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:DescribeVpcEndpointServices",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeAddressesAttribute"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSydneyDatabaseInstances",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:db:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabParameterGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBParameters"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabSubnetGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBSubnetGroups"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabDatabaseTags",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadBootstrapKeys",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:GetKeyRotationStatus",
+        "kms:ListResourceTags"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_DB_KEY_ID",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_OBJECT_KEY_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabBucketMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketVersioning",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketLogging",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketOwnershipControls",
+        "s3:ListTagsForResource",
+        "s3:GetBucketTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+        "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": "736486260824"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabPool",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:GetUserPoolMfaConfig",
+        "cognito-idp:ListTagsForResource",
+        "cognito-idp:DescribeResourceServer",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:ListUserPoolClients",
+        "cognito-idp:DescribeManagedLoginBranding",
+        "cognito-idp:DescribeManagedLoginBrandingByClient"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/BOOTSTRAP_COGNITO_POOL_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadCognitoDomainByName",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPoolDomain"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabAmplifyApp",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetApp",
+        "amplify:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabAmplifyBranch",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetBranch",
+        "amplify:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID/branches/lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:DescribeRepositories",
+        "ecr:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork1",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVpc",
+        "ec2:DetachInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc/CREATED_VPC_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork2",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSubnet",
+        "ec2:DisassociateRouteTable"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_1_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_2_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_3_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_4_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_5_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/CREATED_SUBNET_6_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork3",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteRouteTable",
+        "ec2:DeleteRoute",
+        "ec2:DisassociateRouteTable"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_1_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_2_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_3_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_4_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_5_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/CREATED_ROUTE_TABLE_6_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork4",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DetachInternetGateway",
+        "ec2:DeleteInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:internet-gateway/CREATED_INTERNET_GATEWAY_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork5",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ReleaseAddress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/CREATED_EIP_1_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/CREATED_EIP_2_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork6",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteNatGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:natgateway/CREATED_NAT_1_ID",
+        "arn:aws:ec2:ap-southeast-2:736486260824:natgateway/CREATED_NAT_2_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork7",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVpcEndpoints"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc-endpoint/CREATED_S3_ENDPOINT_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabNetwork8",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSecurityGroup"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/CREATED_DB_SECURITY_GROUP_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBInstance",
+        "rds:DeleteDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabParameterGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DeleteDBParameterGroup"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabSubnetGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DeleteDBSubnetGroup"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadLabManagedSecretMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:CREATED_RDS_SECRET_NAME",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RetireLabKeys",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ScheduleKeyDeletion"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_DB_KEY_ID",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/BOOTSTRAP_OBJECT_KEY_ID"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "InspectAndRemoveEmptyLabBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucketVersions",
+        "s3:ListBucketMultipartUploads",
+        "s3:DeleteBucket",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+        "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": "736486260824"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabImportsCors",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutBucketCORS"
+      ],
+      "Resource": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": "736486260824"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabCognito",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DeleteResourceServer",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DeleteManagedLoginBranding"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/BOOTSTRAP_COGNITO_POOL_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabAmplifyBranch",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:DeleteBranch"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID/branches/lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RemoveLabAmplifyApp",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:DeleteApp"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/BOOTSTRAP_AMPLIFY_APP_ID",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "InspectAndRemoveEmptyLabRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:ListImages",
+        "ecr:DeleteRepository"
+      ],
+      "Resource": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

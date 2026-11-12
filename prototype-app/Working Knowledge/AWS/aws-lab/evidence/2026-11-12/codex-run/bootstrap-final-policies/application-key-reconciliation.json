@@ -1,0 +1,115 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:49:56.690403+00:00",
+    "key": {
+      "AWSAccountId": "736486260824",
+      "KeyId": "084de131-918e-43dd-a56f-aa8f6d6f0174",
+      "Arn": "arn:aws:kms:ap-southeast-2:736486260824:key/084de131-918e-43dd-a56f-aa8f6d6f0174",
+      "CreationDate": "2026-11-12T10:46:50.079000+00:00",
+      "Enabled": true,
+      "Description": "scoutgrid-lab application secret recovery",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "KeyState": "Enabled",
+      "Origin": "AWS_KMS",
+      "KeyManager": "CUSTOMER",
+      "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "EncryptionAlgorithms": [
+        "SYMMETRIC_DEFAULT"
+      ],
+      "MultiRegion": false,
+      "CurrentKeyMaterialId": "88eb698c42d08587ac9103ac715194a553ff18b23bc6fe51134af741d5b48244"
+    },
+    "rotation": {
+      "KeyRotationEnabled": true,
+      "KeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/084de131-918e-43dd-a56f-aa8f6d6f0174",
+      "RotationPeriodInDays": 365,
+      "NextRotationDate": "2027-11-12T10:46:50.195000+00:00"
+    },
+    "tags": {
+      "Tags": [
+        {
+          "TagKey": "Application",
+          "TagValue": "ScoutGrid"
+        },
+        {
+          "TagKey": "Environment",
+          "TagValue": "lab"
+        },
+        {
+          "TagKey": "ManagedBy",
+          "TagValue": "ScoutGridReleaseOperator"
+        },
+        {
+          "TagKey": "Profile",
+          "TagValue": "Standard"
+        }
+      ]
+    }
+  },
+  "api_calls": [
+    {
+      "service": "kms",
+      "operation": "ListKeys",
+      "status": "success",
+      "n_items": {
+        "Keys": 8
+      }
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "GetKeyRotationStatus",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "ListResourceTags",
+      "status": "success",
+      "n_items": {
+        "Tags": 4
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DeployOnlyCapturedLabBranch",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:CreateDeployment",
+        "amplify:StartDeployment",
+        "amplify:GetBranch",
+        "amplify:ListJobs"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/branches/lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadOnlyCapturedLabDeploymentJobs",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetJob"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/branches/lab/jobs/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadOnlyCapturedLabApp",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetApp",
+        "amplify:ListDomainAssociations"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "AssociateOnlyLabChildDomain",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:CreateDomainAssociation",
+        "amplify:GetDomainAssociation"
+      ],
+      "Resource": "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/domains/lab.scoutgrid.io",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

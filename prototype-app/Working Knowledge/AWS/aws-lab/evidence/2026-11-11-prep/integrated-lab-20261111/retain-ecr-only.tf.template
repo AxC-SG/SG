@@ -1,0 +1,41 @@
+# Review-only teardown configuration. Use in an isolated lab copy AFTER
+# stopping tasks, clearing disposable data, and disabling RDS/Cognito protection.
+# Use a NORMAL plan against the same state; never use plan -destroy here.
+terraform {
+  required_version = ">= 1.11.0, < 2.0.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.64.0"
+    }
+  }
+  backend "s3" {
+    encrypt      = true
+    use_lockfile = true
+  }
+}
+
+provider "aws" {
+  region              = "ap-southeast-2"
+  allowed_account_ids = ["736486260824"]
+  default_tags {
+    tags = {
+      Application = "ScoutGrid"
+      Environment = "lab"
+      Profile     = "Standard"
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+# Preserve the full root's exact Terraform address and repository settings.
+resource "aws_ecr_repository" "backend" {
+  name                 = "scoutgrid-lab-backend"
+  image_tag_mutability = "IMMUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  lifecycle {
+    prevent_destroy = true
+  }
+}

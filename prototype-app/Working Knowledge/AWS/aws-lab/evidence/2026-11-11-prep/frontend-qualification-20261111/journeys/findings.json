@@ -1,0 +1,337 @@
+[
+  {
+    "name": "list renders 25 rows (cursor page size)_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "list page info_dark",
+    "ok": true,
+    "detail": "Previous\nPage 1 of 3\nNext | Showing 1–25 of 62 findings"
+  },
+  {
+    "name": "severity widget sends severity=CRITICAL_dark",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&severity=CRITICAL"
+  },
+  {
+    "name": "aggregates not re-requested with severity_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "severity widget marks legend active_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "severity widget marks widget active_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "same severity again toggles off_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "status column values accumulate_dark",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&status=OPEN&status=RESOLVED"
+  },
+  {
+    "name": "filter chip shown_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "next page sends cursor_dark",
+    "ok": true,
+    "detail": "?cursor=c1&limit=25&queueKey=all-findings"
+  },
+  {
+    "name": "page 2 info_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "prev returns to page 1_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row click selects_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row click stays on list_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "selected badge_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "group-by requests server groups_dark",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "group cards render_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "group aggregates carry no ad-hoc table filters_dark",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "finding link opens detail_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "back returns to findings_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai list default OPEN_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai provider sent_dark",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&provider=AWS"
+  },
+  {
+    "name": "ai row navigates to detail with returnTo_dark",
+    "ok": true,
+    "detail": "/findings/ai/ai-finding-1?returnTo=%2Ffindings%2Fai"
+  },
+  {
+    "name": "ai detail back returns_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai vulnerabilities scope_dark",
+    "ok": true,
+    "detail": "?size=100&status=OPEN&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai vulnerabilities keeps scope on status change_dark",
+    "ok": true,
+    "detail": "?size=100&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "exposure row opens detail_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/vulnerabilities_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/exposures_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/exposures/exposure-1_dark",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "list renders 25 rows (cursor page size)_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "list page info_light",
+    "ok": true,
+    "detail": "Previous\nPage 1 of 3\nNext | Showing 1–25 of 62 findings"
+  },
+  {
+    "name": "severity widget sends severity=CRITICAL_light",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&severity=CRITICAL"
+  },
+  {
+    "name": "aggregates not re-requested with severity_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "severity widget marks legend active_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "severity widget marks widget active_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "same severity again toggles off_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "status column values accumulate_light",
+    "ok": true,
+    "detail": "?limit=25&queueKey=all-findings&status=OPEN&status=RESOLVED"
+  },
+  {
+    "name": "filter chip shown_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "next page sends cursor_light",
+    "ok": true,
+    "detail": "?cursor=c1&limit=25&queueKey=all-findings"
+  },
+  {
+    "name": "page 2 info_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "prev returns to page 1_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row click selects_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "row click stays on list_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "selected badge_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "group-by requests server groups_light",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "group cards render_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "group aggregates carry no ad-hoc table filters_light",
+    "ok": true,
+    "detail": "?queueKey=all-findings&field=severity"
+  },
+  {
+    "name": "finding link opens detail_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "back returns to findings_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai list default OPEN_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai provider sent_light",
+    "ok": true,
+    "detail": "?page=0&size=100&status=OPEN&provider=AWS"
+  },
+  {
+    "name": "ai row navigates to detail with returnTo_light",
+    "ok": true,
+    "detail": "/findings/ai/ai-finding-1?returnTo=%2Ffindings%2Fai"
+  },
+  {
+    "name": "ai detail back returns_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai vulnerabilities scope_light",
+    "ok": true,
+    "detail": "?size=100&status=OPEN&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "ai vulnerabilities keeps scope on status change_light",
+    "ok": true,
+    "detail": "?size=100&findingKind=VULNERABILITY&hasAffectedAiResource=true"
+  },
+  {
+    "name": "exposure row opens detail_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page errors_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/vulnerabilities_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/exposures_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "390px no page overflow /findings/ai/exposures/exposure-1_light",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ai findings redirect without entitlement",
+    "ok": true,
+    "detail": "/exposure"
+  }
+]
