@@ -1,11 +1,11 @@
 # Final Resend email configuration
 
-Verified on 1 November 2026 (Asia/Kolkata).
+Email configuration and workflows verified on 1 November 2026 (Asia/Kolkata); account inventory rechecked on 5 November 2026.
 
 ## Configuration
 
 - Provider: Resend, connected and configured through MCP.
-- Source repository: [AxG-SG/SG](https://github.com/AxG-SG/SG). Resend is an API-based delivery provider; the Render backend owns the Git source connection. See [deployment sources](deployment-sources.md) for the repository migration status.
+- Source repository: [AxC-SG/SG](https://github.com/AxC-SG/SG), repository ID `1427276590`. GitHub confirmed this current owner on 5 November 2026; earlier `AxonCyber-SG` and `AxG-SG` references name previous locations of this repository. Resend is an API-based delivery provider; the Render backend owns the Git source connection. See [deployment sources](deployment-sources.md) for the repository migration status.
 - Verified sending domain: `scoutgrid.io`; DKIM and SPF verified, sending enabled.
 - Sender: `Scout.ai <noreply@scoutgrid.io>`.
 - Application key: `ScoutGrid_Application_Email_2026_11`, sending-only and restricted to the verified domain.
@@ -14,6 +14,8 @@ Verified on 1 November 2026 (Asia/Kolkata).
 - Open and click tracking: disabled. Receiving remains disabled; outbound transactional email does not require it.
 - Runtime email secrets reside in Render service environment settings and the ignored private `backend/.env.local` file. No credential values are in this document or committed source.
 - Superseded credential cleanup: completed after explicit confirmation. `Scout_Render_Production_v2`, `Scout_Render_Production`, and `Onboarding` were revoked through Resend MCP. A subsequent key listing confirmed only `ScoutGrid_Application_Email_2026_11` remains.
+
+The 5 November account check confirmed that the same application key is the only remaining key, `scoutgrid.io` is verified with sending enabled, and no webhooks are configured. Recent provider logs retain successful application `POST /emails` requests from 1 November. This recheck did not change credentials, send email, or establish a new hosted end-to-end delivery result. A repository transfer does not require recreating the Resend domain or key.
 
 The Render configuration update merged only `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_DOMAIN`, and `APP_DEMO_APP_BASE_URL`. Other service configuration was preserved. Render automatically deployed the update, and deployment `dep-dbjdierbc2fs73ch0m6g` reached `live`. Both the hosted readiness endpoint and public login destination returned HTTP 200.
 
