@@ -1,0 +1,15 @@
+{
+  "image_id": "sha256:1e48f3a8ace25d3a402eba21aeb9fffcb22bc7dfb8ba7662ce1ca5291cb03176",
+  "migration_heads": {
+    "platform": 15,
+    "tenant": 20
+  },
+  "platform": "linux/amd64",
+  "rds_ca_sha256_by_region": {
+    "ap-southeast-2": "d73890748b5a95551800df8a6f07c9c800e32ed34da7e6c9505918bf8ac2398b",
+    "us-east-1": "b1711d12bae51838581281e23b6cb97b1074016873b4dafc80ed14002462dd77"
+  },
+  "source_sha": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "candidate_run": "42509402323",
+  "archive_sha256": "5fa3237a27ee8539f908bf8619d0d93a4b8ff953867cb40d552a9aac59bd5bf2"
+}

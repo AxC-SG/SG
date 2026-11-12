@@ -79,8 +79,36 @@ locals {
   db_owner_arn   = aws_db_instance.standard.master_user_secret[0].secret_arn
   imports_arn    = aws_s3_bucket.artifacts["imports"].arn
   cognito_issuer = "https://${aws_cognito_user_pool.humans.endpoint}"
+  cognito_login  = "${aws_cognito_user_pool_domain.login.domain}.auth.${var.aws_region}.amazoncognito.com"
+
+  # Setting HTTP_OUTBOUND_ALLOWED_HOSTS replaces the backend default, so this repeats the
+  # default from backend application.yml (app.http.outbound.allowed-hosts) and adds the
+  # Cognito hosts that managed sign-in calls for the token exchange and signing keys.
+  # Keep the two lists in step; tests/runtime.tftest.hcl checks the Cognito entry.
+  outbound_allowed_hosts = join(";", [
+    "github=api.github.com",
+    "nvd=services.nvd.nist.gov",
+    "epss=api.first.org",
+    "eol=endoflife.date",
+    "openai=api.openai.com",
+    "resend=api.resend.com",
+    "turnstile=challenges.cloudflare.com",
+    "kev=www.cisa.gov",
+    "jvn=jvndb.jvn.jp",
+    "euvd=euvdservices.enisa.europa.eu",
+    "csaf-microsoft=msrc.microsoft.com",
+    "csaf-redhat=security.access.redhat.com",
+    "csaf-cisa=www.cisa.gov",
+    "osv=api.osv.dev",
+    "msrc=api.msrc.microsoft.com",
+    "azure-management=management.azure.com",
+    "gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com",
+    "intune=graph.microsoft.com,login.microsoftonline.com",
+    "cognito=${local.cognito_login},cognito-idp.${var.aws_region}.amazonaws.com",
+  ])
 
   runtime_environment = {
+    HTTP_OUTBOUND_ALLOWED_HOSTS               = local.outbound_allowed_hosts
     SPRING_PROFILES_ACTIVE                    = "prod"
     APP_ENVIRONMENT                           = local.is_production ? "production" : "preproduction"
     SERVER_PORT                               = tostring(local.app_port)
@@ -194,7 +222,7 @@ resource "aws_ecs_task_definition" "backend" {
         APP_RUNTIME_ROLE              = each.key
         APP_BOM_UPLOADS_ENABLED       = tostring(each.key == "api" && var.backend_candidate.enable_bom_uploads)
         APP_MANAGED_AUTH_ENABLED      = tostring(each.key == "api" && var.backend_candidate.enable_managed_auth)
-        APP_MANAGED_AUTH_LOGIN_ORIGIN = "https://${aws_cognito_user_pool_domain.login.domain}.auth.${var.aws_region}.amazoncognito.com"
+        APP_MANAGED_AUTH_LOGIN_ORIGIN = "https://${local.cognito_login}"
         APP_MANAGED_AUTH_CLIENT_ID    = aws_cognito_user_pool_client.browser.id
         DB_MAX_POOL_SIZE              = tostring(each.value.db_pool_size)
         SERVER_ADDRESS                = each.key == "worker" ? "127.0.0.1" : "0.0.0.0"
@@ -239,7 +267,7 @@ resource "aws_ecs_service" "backend" {
   desired_count                      = each.value.replicas
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = local.backend_deployment_maximum_percent
-  health_check_grace_period_seconds  = 120
+  health_check_grace_period_seconds  = 300
   wait_for_steady_state              = true
   enable_execute_command             = false
 

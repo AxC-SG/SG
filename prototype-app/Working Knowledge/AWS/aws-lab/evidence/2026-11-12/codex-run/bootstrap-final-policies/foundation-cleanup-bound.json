@@ -1,0 +1,249 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAndDeleteOnlyLabArtifactBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:ListBucketMultipartUploads",
+        "s3:DeleteBucket",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketCORS"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+        "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+      ]
+    },
+    {
+      "Sid": "ScheduleOnlyCapturedFreshKeysAfterConsumersRemoved",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ScheduleKeyDeletion"
+      ],
+      "Resource": [
+        "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+        "arn:aws:kms:ap-southeast-2:736486260824:key/86e1efc7-4b96-4172-8e80-276c939f920d"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        },
+        "NumericEquals": {
+          "kms:ScheduleKeyDeletionPendingWindowInDays": 30
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedFrontend",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:DeleteDomainAssociation",
+        "amplify:DeleteBranch",
+        "amplify:DeleteApp"
+      ],
+      "Resource": [
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/branches/lab",
+        "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/domains/lab.scoutgrid.io"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DisableAndDeleteCapturedPool",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DeleteResourceServer",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DeleteUserPoolDomain",
+        "cognito-idp:DeleteManagedLoginBranding"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DisableAndDeleteCapturedDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBInstance",
+        "rds:DeleteDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedDbGroups",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DeleteDBParameterGroup",
+        "rds:DeleteDBSubnetGroup"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-southeast-2:736486260824:pg:scoutgrid-lab-postgres16",
+        "arn:aws:rds:ap-southeast-2:736486260824:subgrp:scoutgrid-lab"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVpc",
+        "ec2:DetachInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc/vpc-0086ef85ee121f76c"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedSubnet",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSubnet",
+        "ec2:DisassociateRouteTable"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0cee1253ff1128285",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0158a2f6531242fc3",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0a5682fd3ca22881c",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-02e49121c453e2a45",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-0563f758e167524f5",
+        "arn:aws:ec2:ap-southeast-2:736486260824:subnet/subnet-00a0f5c664e073ddf"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedRoutetable",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteRouteTable",
+        "ec2:DeleteRoute",
+        "ec2:DisassociateRouteTable"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-062821eb3e7c5f9fe",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-0980c7795c3891b63",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-01c4a47557334afb8",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-062bc08e02e04b2d1",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-0ea5f3d8c7fee4ee9",
+        "arn:aws:ec2:ap-southeast-2:736486260824:route-table/rtb-07dbff4b20ba62739"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedInternetgateway",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DetachInternetGateway",
+        "ec2:DeleteInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:internet-gateway/igw-04102ba63bce7f765"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedElasticip",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ReleaseAddress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:elastic-ip/eipalloc-01435757a70e8c46c"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedNatgateway",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteNatGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:natgateway/nat-013d0cfcce592ba33"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedVpcendpoint",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVpcEndpoints"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:vpc-endpoint/vpce-008d276acf0f6e0fb"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteCapturedSecuritygroup",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSecurityGroup",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:736486260824:security-group/sg-06d88c1de163490ee"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    }
+  ]
+}

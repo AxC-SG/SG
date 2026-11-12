@@ -1,0 +1,142 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "validation": {
+      "findings": []
+    },
+    "simulations": [
+      {
+        "case": "amplify:TagResource_reviewed_tags",
+        "decision": "allowed"
+      },
+      {
+        "case": "amplify:TagResource_no_tags",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "amplify:TagResource_wrong_region",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "amplify:TagResource_wrong_account",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "amplify:TagResource_extra_tag",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "cognito-idp:TagResource_reviewed_tags",
+        "decision": "allowed"
+      },
+      {
+        "case": "cognito-idp:TagResource_no_tags",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "cognito-idp:TagResource_wrong_region",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "cognito-idp:TagResource_wrong_account",
+        "decision": "implicitDeny"
+      },
+      {
+        "case": "cognito-idp:TagResource_extra_tag",
+        "decision": "implicitDeny"
+      }
+    ],
+    "attached": false
+  },
+  "api_calls": [
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    }
+  ]
+}

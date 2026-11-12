@@ -1,0 +1,14 @@
+python3 - <<'PY'
+from pathlib import Path
+p=Path('/private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py');s=p.read_text()
+s=s.replace("{**tagged('Request'),'kms:KeySpec'", "{**tagged('Request'),'aws:RequestTag/ManagedBy':['Terraform','ScoutGridReleaseOperator'],'kms:KeySpec'")
+s=s.replace("arn('kms','key/*'),tagged('Resource'))", "arn('kms','key/*'),{**tagged('Resource'),'aws:ResourceTag/ManagedBy':['Terraform','ScoutGridReleaseOperator']}))")
+s=s.replace("{**tagged('Request'),**tagged('Resource')}),", "{**tagged('Request'),**tagged('Resource'),'aws:RequestTag/ManagedBy':['Terraform','ScoutGridReleaseOperator'],'aws:ResourceTag/ManagedBy':['Terraform','ScoutGridReleaseOperator']}),")
+start=s.index('secret_custody=[');end=s.index('\npolicies=',start);part=s[start:end]
+part=part.replace("{**tagged('Request'),'secretsmanager:KmsKeyArn'", "{**tagged('Request'),'aws:RequestTag/ManagedBy':'ScoutGridReleaseOperator','secretsmanager:KmsKeyArn'")
+part=part.replace("],tagged('Request'))", "],{**tagged('Request'),'aws:RequestTag/ManagedBy':'ScoutGridReleaseOperator'}))")
+part=part.replace("],tagged('Resource'))", "],{**tagged('Resource'),'aws:ResourceTag/ManagedBy':'ScoutGridReleaseOperator'}))")
+s=s[:start]+part+s[end:];p.write_text(s)
+PY
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-execution-drafts.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/build-manifest.log
+python3 /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/render-synthetic-policy-fixtures.py > /private/tmp/scoutgrid-postmerge-artifacts/access-review-20261112/synthetic-policies.json

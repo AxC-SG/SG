@@ -1,0 +1,114 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:48:09.254898+00:00",
+    "db": {
+      "DBInstanceIdentifier": "scoutgrid-lab",
+      "DBInstanceArn": "arn:aws:rds:ap-southeast-2:736486260824:db:scoutgrid-lab",
+      "DBInstanceStatus": "available",
+      "PubliclyAccessible": false,
+      "StorageEncrypted": true,
+      "KmsKeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+      "EngineVersion": "16.15",
+      "DBInstanceClass": "db.t4g.medium",
+      "DeletionProtection": true,
+      "BackupRetentionPeriod": 7,
+      "MasterUserSecret": {
+        "SecretArn": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:rds!db-f5fb7dc4-a48d-4d0c-9adc-463c0fa1fa0b-BytOt6",
+        "SecretStatus": "active",
+        "KmsKeyId": "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27"
+      },
+      "Endpoint": {
+        "Address": "scoutgrid-lab.ct4us0gw0d3y.ap-southeast-2.rds.amazonaws.com",
+        "Port": 5432,
+        "HostedZoneId": "Z32T0VRHXEXS0V"
+      },
+      "DBSubnetGroup": {
+        "DBSubnetGroupName": "scoutgrid-lab",
+        "DBSubnetGroupDescription": "Managed by Terraform",
+        "VpcId": "vpc-0086ef85ee121f76c",
+        "SubnetGroupStatus": "Complete",
+        "Subnets": [
+          {
+            "SubnetIdentifier": "subnet-02e49121c453e2a45",
+            "SubnetAvailabilityZone": {
+              "Name": "ap-southeast-2b"
+            },
+            "SubnetOutpost": {},
+            "SubnetStatus": "Active"
+          },
+          {
+            "SubnetIdentifier": "subnet-00a0f5c664e073ddf",
+            "SubnetAvailabilityZone": {
+              "Name": "ap-southeast-2a"
+            },
+            "SubnetOutpost": {},
+            "SubnetStatus": "Active"
+          }
+        ]
+      },
+      "VpcSecurityGroups": [
+        {
+          "VpcSecurityGroupId": "sg-06d88c1de163490ee",
+          "Status": "active"
+        }
+      ]
+    },
+    "ecr": {
+      "repositoryArn": "arn:aws:ecr:ap-southeast-2:736486260824:repository/scoutgrid-lab-backend",
+      "registryId": "736486260824",
+      "repositoryName": "scoutgrid-lab-backend",
+      "repositoryUri": "736486260824.dkr.ecr.ap-southeast-2.amazonaws.com/scoutgrid-lab-backend",
+      "createdAt": "2026-11-12T10:34:44.692000+00:00",
+      "imageTagMutability": "IMMUTABLE",
+      "imageScanningConfiguration": {
+        "scanOnPush": true
+      },
+      "encryptionConfiguration": {
+        "encryptionType": "AES256"
+      }
+    },
+    "nat": {
+      "id": "nat-013d0cfcce592ba33",
+      "state": "available",
+      "addresses": [
+        {
+          "AllocationId": "eipalloc-01435757a70e8c46c",
+          "NetworkInterfaceId": "eni-0e30f7e35dd9ce62d",
+          "PrivateIp": "10.21.25.232",
+          "PublicIp": "3.105.208.125",
+          "AssociationId": "eipassoc-0e2394b6f39c496b3",
+          "IsPrimary": true,
+          "Status": "succeeded"
+        }
+      ]
+    }
+  },
+  "api_calls": [
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "success",
+      "n_items": {
+        "DBInstances": 1
+      }
+    },
+    {
+      "service": "ecr",
+      "operation": "DescribeRepositories",
+      "status": "success",
+      "n_items": {
+        "repositories": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeNatGateways",
+      "status": "success",
+      "n_items": {
+        "NatGateways": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "account": "736486260824",
+  "region": "ap-southeast-2",
+  "source_sha": "0ae3de9f4e4f7b1f784622d31656f30a89499043",
+  "max_session_duration_seconds": 3600,
+  "trusted_principal": "arn:aws:iam::736486260824:role/managed/AccountFullAccessRole",
+  "new_roles": {
+    "ScoutGridSydneyLabBootstrap": [
+      "common-read-state.part1.json",
+      "common-read-state.part2.json",
+      "trusted-foundation-bootstrap.part1.json",
+      "trusted-runtime-bootstrap.part1.json"
+    ],
+    "ScoutGridSydneyLabApply": [
+      "common-read-state.part1.json",
+      "common-read-state.part2.json",
+      "foundation-apply.template.part1.json",
+      "foundation-apply.template.part2.json",
+      "runtime-infra-apply.template.part1.json",
+      "runtime-infra-apply.template.part2.json",
+      "QUALIFIED_TERRAFORM_SERVICE_OPERATOR_OUTPUT"
+    ],
+    "ScoutGridSydneyLabTeardown": [
+      "common-read-state.part1.json",
+      "common-read-state.part2.json",
+      "inventory-cleanup.template.part1.json",
+      "inventory-cleanup.template.part2.json",
+      "retirement.template.part1.json"
+    ],
+    "ScoutGridSydneyLabMigration": [
+      "QUALIFIED_TERRAFORM_MIGRATION_OPERATOR_OUTPUT"
+    ],
+    "ScoutGridSydneyLabService": [
+      "QUALIFIED_TERRAFORM_SERVICE_OPERATOR_OUTPUT"
+    ],
+    "ScoutGridSydneyLabSecretCustody": [
+      "secret-custody.template.part1.json"
+    ],
+    "ScoutGridSydneyLabIdentity": [
+      "identity-operator.template.part1.json"
+    ],
+    "ScoutGridSydneyLabFrontend": [
+      "frontend-operator.template.part1.json"
+    ]
+  },
+  "expand_existing_plan_role": "ScoutGridSydneyLabPlan",
+  "plan_role_policy_file": "sydney-integrated-plan-policy.json",
+  "publisher_already_approved": true,
+  "final_ids_and_effective_checks_required": true,
+  "files": {
+    "foundation-apply.template.part2.json": "d26629d403de31514933e01c7da8036603cb7f093a3f921ca19b36c82e59b8ae",
+    "secret-custody.template.part1.json": "0d53fa27ab0e615eae9b3753ff48f7d0f68e802c6843ae1bd68211aec36da828",
+    "runtime-infra-apply.template.part2.json": "ddadf293c60e1530b2ecfafe5ef9e235ec580d55f62d349c6f65e658d7e75104",
+    "common-read-state.part1.json": "ac75aa6002a0dd99cab144b2fb325b9e0d3cd4050e3a85ddd1b629643cc47001",
+    "inventory-cleanup.template.part2.json": "8c963ef8343fcc47e0a4a95ba0db4c7c7d6a598c84fc1ea63ae6d6676fef07e7",
+    "common-read-state.part2.json": "4f00b54cebef2da3131b56afb19ab09779cf6c97fcf107b5b4a29df26569befd",
+    "inventory-cleanup.template.part1.json": "f5c88a9fc88aa7bd5707b2326b7973f3c61f7c0dd2bf11771a3177293974de05",
+    "frontend-operator.template.part1.json": "606540c628e87dbc658caf376a25fd9732b790fe7d4ef9449b911fcb89b61f28",
+    "identity-operator.template.part1.json": "a0eaa86d6a2a4f96c481faeef6c826361369051628051a4e883e3cb499312780",
+    "trusted-runtime-bootstrap.part1.json": "a2f297603f1e069074ea02f375203995353b54cbfee6c2cc3bbc6635cc65be46",
+    "trusted-foundation-bootstrap.part1.json": "32803a315c379cb32eda8d12e638e58fabc91c2c77c5e0575a6297fcd21b313e",
+    "runtime-infra-apply.template.part1.json": "a36105eb2b60c1ed5c4529754810d5241ed178551bec569d32d90fe7a7699c2b",
+    "foundation-apply.template.part1.json": "ca4e32f613db938a3426f3f24e5d27c23a161e0ffe2740d6e480eb7336a095fb",
+    "retirement.template.part1.json": "ab2ab384c44308770bf05a69d5bf6fb769463acbc75d088fddea7d916dbad5bb",
+    "operator-trust.json": "1b6032175c0cfe117052e33f92f4856f8d4073c91d6e4dd6051491d3c1b3f0ca",
+    "sydney-integrated-plan-policy.json": "a9acaf8c99b275db0691f8ab027ed49c038d4810f0e6dc62db7aa2d98769455c",
+    "ROLE_AND_CLEANUP_REVIEW.md": "53190b3ddca8235853f8324de31e18c69b9fc7db654546db65707ade00c58684"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "image_source_sha": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "local_git_head": "f9426447e18c6f3c4c836e3f1c14e0943fb93a22",
+  "local_branch": "codex/aws-part-1-implementation",
+  "infrastructure_commit_status": "uncommitted overlay; these checks do not confer CI results on it",
+  "infrastructure_archive_sha256": "fca562fd704b454055418c17d674a17ff8d0a3030cd42b44ae757159fba9346c",
+  "files": {
+    "modules/standard-network/main.tf": "4907079711e731eae63581f91dbd188984febca3c22f82b47253106f0728f30a",
+    "modules/standard-network/tests/egress.tftest.hcl": "5b5dc7466ba82a7eabbde8d20a58132257297c21b8a82ca82461e122bf0f2325",
+    "standard/.terraform.lock.hcl": "f240fccc6523d71877f13d23ffb4c0ed217df21ba9a753dce51d6f52e85c93bf",
+    "standard/budget.tf": "d6c6211a14393a106c31213dfceb3c6487b1d91e7829896bdc6a64ef579891a4",
+    "standard/data.tf": "c8609123dfc67aea505d6598561f43f7ed94c20c669023e9d4f22beffec55643",
+    "standard/hosting.tf": "2a99ca4a215c8fbf2b65ba8a46e791cb1c517cff1b8d262a69b9c8f975d460a9",
+    "standard/identity.tf": "d8c0f7fbf4a94106e326a458fba36750210876c653c9d1eb5cd833a5197420c5",
+    "standard/ingress.tf": "b57afe9f71a3c2d70b41686f19698fb6178c3b16b8c3299f241fb60b3b0e1f93",
+    "standard/main.tf": "474e2668fdd5b4ce77ba93c024e03cd2c3b95240180b4cf26404ce99d929fe20",
+    "standard/operations.tf": "40fcd3707a5d26ceb7d0a64c491e467d20c90d8baf64ed368c0b0fe9cfd301aa",
+    "standard/release-iam.tf": "49a94265773451f73e567188821251ee523a0c401f7dcf15c2e40ad1b49a8b98",
+    "standard/runtime-iam.tf": "9251ac9ea253c7d1670824041edd7bf93eef5a3683cada9f27175f4801dd6548",
+    "standard/runtime.tf": "99b7213da78d9954b2e74f09c5fb5b1442d5e7349814626ca8d26f54a02e1c38",
+    "standard/scripts/bootstrap-sydney-state.sh": "cb417ff38aeb5db857e1fd6269926e93968a4d3c54ee59a00556ebe45873fb54",
+    "standard/scripts/sydney-plan-role-permissions.json": "25dbabbc0031b6c9bf770e0eb60efc05f7c5e375e55929060b0385edce976dc7",
+    "standard/scripts/sydney-plan-role-trust.json": "1b6032175c0cfe117052e33f92f4856f8d4073c91d6e4dd6051491d3c1b3f0ca",
+    "standard/security-operations.tf": "8b50eb18adf7b638e6be1516b27514ab51aacb7e1c70fd1e00921a6d2a489610",
+    "standard/sydney-lab.foundation.tfvars": "4f81c32d3f11f3add8101777b1ac7a0c9507794be14a8c7912abaf0aa3768025",
+    "standard/sydney-lab.s3.tfbackend": "91086b5c7bedf9060e91a8a2572fe871d40270a3f6921e0eec20f92f9dfc2b16",
+    "standard/tests/integrated-lab.tftest.hcl": "2fce1d3bfe12a73f2138513843ce110342e0e105fb8c8fec4f7cfd9c55dc3c43",
+    "standard/tests/runtime.tftest.hcl": "069f18ce943752cfe0e84720f568871c81f7c9c67c6b623475409ba434cf1db2"
+  }
+}

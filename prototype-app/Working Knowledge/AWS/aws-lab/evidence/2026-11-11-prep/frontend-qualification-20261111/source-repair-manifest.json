@@ -1,0 +1,25 @@
+{
+  "base_source": "cd741250faf4a098d1519f073f7e38a0f503016e",
+  "git_head": "f9426447e18c6f3c4c836e3f1c14e0943fb93a22",
+  "source_patch_sha256": "900f4b4658f6016da6b47efde245552687721acf0332cb80aed4be861ed4cf7a",
+  "files": {
+    "src/features/public-site/PublicSiteShell.tsx": "08ca87cb958a0141a10594e9e4480bf574f79e73099edc39f2298f741eb20992",
+    "src/pages/DemoPublicPages.test.tsx": "c7f3c68f58fea44bdba7bba0d86bae057c5044afc58ceef70ba9a978b801a3b5",
+    "src/pages/VulnRepoOrgCvePage.tsx": "9d3f3e62d1854a73b7a8f85ee78169b779dc9a8146c7d2804485cba56bbc93bf",
+    "src/pages/VulnRepoVulnerabilitiesPage.tsx": "fc266a9f56e8d0f67eb14d2efcb35e90d9ce7143853886f24613ef90e135016c",
+    "src/styles/ui2/app-base.css": "c56c66a39bb3078bc8f47077b2ab3419f76bf6e52cdf13cc7b50f6bfac4e2be5",
+    "src/styles/ui2/cve-base.css": "0725c0e0447a74e6f95b75c1d4a3eeefbe7044e711b10bd9e93d06dbc5722844",
+    "e2e/visual.spec.ts": "d112a52ad0124d155b903e44705d244aacc71aefee40058bd6b4421cf231d17e",
+    "e2e/browser.mjs": "1e9487b8b8932b801485dd9e57eb0e5b1171b886dafaabca0f6d7c02f1fb9d9d",
+    "e2e/route-sweep.mjs": "9546a5c372f480e10131696519bd93f3cc44cd8cb3b87445cc4b25b5281b47e1",
+    "e2e/axe-audit.mjs": "de680bac597369ff265bc802db05788bedbdad95adf3a8946d41a61d8647b9ab",
+    "e2e/inventory-journey.mjs": "42a4580464755aeaed56f12c8a44f9c28b6a9d84f1d7c3e7ab3e95b6b7de22d9",
+    "e2e/connect-journey.mjs": "3abc49798c89624886a70edd0971e4b97cf8b8c4d8ee2fdf4ba447952d008780"
+  },
+  "react_review": {
+    "data_auth_hooks_unchanged": true,
+    "visible_label_in_accessible_name": true,
+    "canonical_theme_tokens_reused": true,
+    "new_shared_patterns": false
+  }
+}

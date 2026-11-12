@@ -1,0 +1,11 @@
+{
+  "conservative_clock_start_utc": "2026-11-12T10:07:33.532342+00:00",
+  "first_billable_key_creation_utc": "2026-11-12T10:07:42.209000+00:00",
+  "cleanup_start_no_later_utc": "2026-11-12T14:07:33.532342+00:00",
+  "cleanup_complete_by_utc": "2026-11-12T18:07:33.532342+00:00",
+  "partial_apply": true,
+  "database_key_id": "1706ce52-4d97-4738-b435-3d715a77cb27",
+  "object_key_id": "86e1efc7-4b96-4172-8e80-276c939f920d",
+  "pool": null,
+  "app": null
+}

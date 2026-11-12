@@ -1,0 +1,207 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "ecs:CreateService"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+     "ecs:task-definition": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:1"
+    },
+    "BoolIfExists": {
+     "ecs:auto-assign-public-ip": "false"
+    },
+    "ForAllValues:StringEquals": {
+     "ecs:subnet": [
+      "subnet-0158a2f6531242fc3",
+      "subnet-0563f758e167524f5"
+     ]
+    },
+    "Null": {
+     "ecs:subnet": "false"
+    },
+    "StringEquals": {
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestedRegion": "ap-southeast-2"
+    },
+    "StringEqualsIfExists": {
+     "ecs:enable-ebs-volumes": "false",
+     "ecs:enable-execute-command": "false"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+   "Sid": "CreateServiceApi"
+  },
+  {
+   "Action": [
+    "ecs:UpdateService"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+     "ecs:task-definition": [
+      "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:1",
+      "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:2"
+     ]
+    },
+    "BoolIfExists": {
+     "ecs:auto-assign-public-ip": "false"
+    },
+    "ForAllValues:StringEquals": {
+     "ecs:subnet": [
+      "subnet-0158a2f6531242fc3",
+      "subnet-0563f758e167524f5"
+     ]
+    },
+    "Null": {
+     "ecs:subnet": "false"
+    },
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:ResourceTag/Application": "ScoutGrid",
+     "aws:ResourceTag/Environment": "lab"
+    },
+    "StringEqualsIfExists": {
+     "ecs:enable-ebs-volumes": "false",
+     "ecs:enable-execute-command": "false"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+   "Sid": "UpdateServiceApi"
+  },
+  {
+   "Action": [
+    "ecs:CreateService"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+     "ecs:task-definition": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:1"
+    },
+    "BoolIfExists": {
+     "ecs:auto-assign-public-ip": "false"
+    },
+    "ForAllValues:StringEquals": {
+     "ecs:subnet": [
+      "subnet-0158a2f6531242fc3",
+      "subnet-0563f758e167524f5"
+     ]
+    },
+    "Null": {
+     "ecs:subnet": "false"
+    },
+    "StringEquals": {
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestedRegion": "ap-southeast-2"
+    },
+    "StringEqualsIfExists": {
+     "ecs:enable-ebs-volumes": "false",
+     "ecs:enable-execute-command": "false"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker",
+   "Sid": "CreateServiceWorker"
+  },
+  {
+   "Action": [
+    "ecs:UpdateService"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab",
+     "ecs:task-definition": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:1"
+    },
+    "BoolIfExists": {
+     "ecs:auto-assign-public-ip": "false"
+    },
+    "ForAllValues:StringEquals": {
+     "ecs:subnet": [
+      "subnet-0158a2f6531242fc3",
+      "subnet-0563f758e167524f5"
+     ]
+    },
+    "Null": {
+     "ecs:subnet": "false"
+    },
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:ResourceTag/Application": "ScoutGrid",
+     "aws:ResourceTag/Environment": "lab"
+    },
+    "StringEqualsIfExists": {
+     "ecs:enable-ebs-volumes": "false",
+     "ecs:enable-execute-command": "false"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker",
+   "Sid": "UpdateServiceWorker"
+  },
+  {
+   "Action": [
+    "iam:PassRole"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "iam:PassedToService": "ecs-tasks.amazonaws.com"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-api-execution",
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-execution",
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task"
+   ],
+   "Sid": "PassOnlyApiAndWorkerRoles"
+  },
+  {
+   "Action": [
+    "ecs:TagResource"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestTag/Application": "ScoutGrid",
+     "aws:RequestTag/Environment": "lab",
+     "aws:RequestedRegion": "ap-southeast-2",
+     "ecs:CreateAction": "CreateService"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker"
+   ],
+   "Sid": "TagOnlyNewLabServices"
+  },
+  {
+   "Action": [
+    "ecs:DescribeServices",
+    "ecs:DeleteService"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+    },
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2",
+     "aws:ResourceTag/Application": "ScoutGrid",
+     "aws:ResourceTag/Environment": "lab"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker"
+   ],
+   "Sid": "InspectAndDeleteOnlyTaggedLabServices"
+  }
+ ],
+ "Version": "2012-10-17"
+}

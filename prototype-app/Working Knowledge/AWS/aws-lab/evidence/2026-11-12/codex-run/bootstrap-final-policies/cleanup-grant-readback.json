@@ -1,0 +1,139 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:10:13.308225+00:00",
+    "validation": {
+      "findings": []
+    },
+    "simulations": [
+      {
+        "case": "delete_exact_buckets",
+        "decisions": [
+          "allowed",
+          "allowed"
+        ]
+      },
+      {
+        "case": "retire_exact_fresh_keys",
+        "decisions": [
+          "allowed",
+          "allowed"
+        ]
+      },
+      {
+        "case": "deny_old_key",
+        "decisions": [
+          "implicitDeny"
+        ]
+      },
+      {
+        "case": "deny_state_deletion",
+        "decisions": [
+          "implicitDeny"
+        ]
+      }
+    ],
+    "readback": {
+      "RoleName": "ScoutGridSydneyLabTeardown",
+      "PolicyName": "CapturedBootstrapCleanup",
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ListAndDeleteOnlyLabArtifactBuckets",
+            "Effect": "Allow",
+            "Action": [
+              "s3:ListBucket",
+              "s3:ListBucketVersions",
+              "s3:ListBucketMultipartUploads",
+              "s3:DeleteBucket",
+              "s3:DeleteBucketPolicy",
+              "s3:PutBucketPublicAccessBlock",
+              "s3:PutBucketOwnershipControls",
+              "s3:PutBucketVersioning",
+              "s3:PutEncryptionConfiguration",
+              "s3:PutBucketCORS"
+            ],
+            "Resource": [
+              "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+              "arn:aws:s3:::scoutgrid-lab-736486260824-exports"
+            ]
+          },
+          {
+            "Sid": "ScheduleOnlyCapturedFreshKeysAfterConsumersRemoved",
+            "Effect": "Allow",
+            "Action": [
+              "kms:ScheduleKeyDeletion"
+            ],
+            "Resource": [
+              "arn:aws:kms:ap-southeast-2:736486260824:key/1706ce52-4d97-4738-b435-3d715a77cb27",
+              "arn:aws:kms:ap-southeast-2:736486260824:key/86e1efc7-4b96-4172-8e80-276c939f920d"
+            ],
+            "Condition": {
+              "StringEquals": {
+                "aws:RequestedRegion": "ap-southeast-2"
+              },
+              "NumericEquals": {
+                "kms:ScheduleKeyDeletionPendingWindowInDays": 30
+              }
+            }
+          }
+        ]
+      }
+    },
+    "matches": true
+  },
+  "api_calls": [
+    {
+      "service": "accessanalyzer",
+      "operation": "ValidatePolicy",
+      "status": "success",
+      "n_items": {
+        "findings": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "SimulateCustomPolicy",
+      "status": "success",
+      "n_items": {
+        "EvaluationResults": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "PutRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    }
+  ]
+}

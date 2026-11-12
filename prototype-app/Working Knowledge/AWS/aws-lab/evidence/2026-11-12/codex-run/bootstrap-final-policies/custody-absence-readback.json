@@ -1,0 +1,36 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "checked_at": "2026-11-12T10:58:19.714464+00:00",
+    "target_secret_metadata": [],
+    "pool_clients": {
+      "UserPoolClients": [
+        {
+          "ClientId": "7egknl0kls1dkrkk3fmvcioev1",
+          "UserPoolId": "ap-southeast-2_fPdRmnVqM",
+          "ClientName": "scoutgrid-lab-browser"
+        }
+      ]
+    },
+    "no_secret_values_retrieved": true
+  },
+  "api_calls": [
+    {
+      "service": "secretsmanager",
+      "operation": "ListSecrets",
+      "status": "success",
+      "n_items": {
+        "SecretList": 0
+      }
+    },
+    {
+      "service": "cognito-idp",
+      "operation": "ListUserPoolClients",
+      "status": "success",
+      "n_items": {
+        "UserPoolClients": 1
+      }
+    }
+  ]
+}

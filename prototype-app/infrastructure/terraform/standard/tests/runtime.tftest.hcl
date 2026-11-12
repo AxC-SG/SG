@@ -223,6 +223,28 @@ run "separate_runtime_roles" {
 
   assert {
     condition = alltrue([
+      for service in values(aws_ecs_service.backend) : service.health_check_grace_period_seconds >= 300
+    ])
+    error_message = "API cold start takes about 155 s on 0.5 vCPU (Sydney lab, November 12); the health-check grace must cover it."
+  }
+
+  assert {
+    condition = alltrue([
+      for role, task in aws_ecs_task_definition.backend : (
+        toset(split(";", one([for entry in one(jsondecode(task.container_definitions)).environment :
+          entry.value if entry.name == "HTTP_OUTBOUND_ALLOWED_HOSTS"
+        ]))) ==
+        setunion(
+          toset(split(";", regex("HTTP_OUTBOUND_ALLOWED_HOSTS:([^}]+)}", file("${path.module}/../../../backend/src/main/resources/application.yml"))[0])),
+          toset(["cognito=scoutgrid-runtime-test.auth.us-east-1.amazoncognito.com,cognito-idp.us-east-1.amazonaws.com"])
+        )
+      ) if role != "migrator"
+    ])
+    error_message = "API and worker must allow the backend's default outbound hosts plus the Cognito login and signing-key hosts used by managed sign-in."
+  }
+
+  assert {
+    condition = alltrue([
       for role, task in aws_ecs_task_definition.backend :
       endswith(one(jsondecode(task.container_definitions)).image, "@${var.backend_candidate.image_digest}") &&
       anytrue([for entry in one(jsondecode(task.container_definitions)).environment :

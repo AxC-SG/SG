@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-11-12T10:04:11.387157+00:00",
+  "account": "736486260824",
+  "region": "ap-southeast-2",
+  "posted_before_credits_usd": "0.2671780590",
+  "additional_pending_api_allowance_usd": "0.03",
+  "conservative_prior_inclusive_usd": "4.664133008250136986301369863",
+  "monthly_ceiling_inclusive_usd": "50",
+  "application_allocation_inclusive_usd": "25",
+  "unallocated_monthly_headroom_usd": "20.33586699174986301369863014",
+  "application_scenarios": {
+    "4": {
+      "before_tax": "11.93369260273972602739726027",
+      "including_18_percent_tax_and_50_cent_variance": "14.58175727123287671232876712"
+    },
+    "4.5": {
+      "before_tax": "12.15729917808219178082191780",
+      "including_18_percent_tax_and_50_cent_variance": "14.84561303013698630136986300"
+    },
+    "8": {
+      "before_tax": "13.72254520547945205479452055",
+      "including_18_percent_tax_and_50_cent_variance": "16.69260334246575342465753425"
+    }
+  },
+  "clock_started": false,
+  "estimated_not_final_bill": true
+}
