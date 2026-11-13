@@ -1,10 +1,10 @@
 # VulnWatch Backend
 
-Last updated: 2026-10-28 (UI 2.0 documentation alignment)
+Last updated November 13, 2026 for the UI 2.0 connector contract changes.
 
 ## UI 2.0 integration boundary
 
-UI 2.0 migration is complete in the frontend; it preserves existing endpoint, DTO, authorization, tenant and capability contracts. `/fix-intelligence/*` in the browser redirects to `/findings`; the backend Fix Intelligence API remains unavailable. Runtime evidence, generic Azure, SCCM JDBC and other contained capabilities are not enabled by the redesign.
+UI 2.0 is the active frontend presentation. Tenant Fix Intelligence uses the [Fix Intelligence API](#fix-intelligence). The [UI 2.0 wiring fixes](<../Working Knowledge/New UI 2.0/ui2-backend-wiring-fixes-2026-10-30.md>) record the AWS Bedrock and GitHub SBOM contract changes and their verification.
 
 New API-driven screens follow [the UI development standard](ui-development-standard.md), including explicit loading/error/unavailable states and real persistence checks. Use shared frontend HTTP/auth handling and backend enforcement; changes to shared UI conventions need user approval with pros/cons and an app-wide consistency plan. [Current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) records qualification limits.
 
@@ -128,6 +128,8 @@ Supported SBOM formats (`SbomFormat` enum): CycloneDX, SPDX.
 | POST | `/{id}/run` | Trigger a specific source's sync |
 
 `GithubSbomSource` entity. Frequency: `GithubIngestionFrequency` enum (EVERY_5_MIN, HOURLY, DAILY).
+
+For saved-source and standalone repository runs, `assetsIngested` counts repositories that successfully ingested an SBOM. A partially successful run reports its repository failures separately.
 
 **BomController — `/api/bom`** *(undocumented until now)*
 
@@ -496,7 +498,7 @@ The independent CVE Workbench `FixRecordService` remains subject to normal autho
 | PUT | `/findings/{id}/review` | Set review disposition (CONFIRMED/FALSE_POSITIVE/NEEDS_INVESTIGATION) |
 | GET | `/runs`, `/runs/{id}/scopes` | Discovery run history + per-scope detail |
 
-**AiSecurityConnectorController — `/api/connectors/ai-security/aws`** — AWS Bedrock connector config; reads open, writes `PLATFORM_OWNER`/`TENANT_ADMIN`/`INVENTORY_ADMIN`. `GET`/`PUT` config, `GET /requirements`, `POST /test`, `POST /preflight`, `POST /run`.
+**AiSecurityConnectorController — `/api/connectors/ai-security/aws`** — AWS Bedrock connector config. Requests require the tenant's AI Security entitlement. Writes require `PLATFORM_OWNER`, `TENANT_ADMIN` or `INVENTORY_ADMIN`. `GET` returns HTTP 200 with `application/json` and either the saved configuration or the JSON literal `null` for an unconfigured connector. Other operations are `PUT` config, `GET /requirements`, `POST /test`, `POST /preflight` and `POST /run`.
 
 **AiSecurityAzureConnectorController — `/api/connectors/ai-security/azure`** — multi-step Azure connector (credential profiles + connector config): list/save connector, `/requirements`, `/{id}/test`, `/{id}/run`, `/targets/{id}/run`, plus `/credentials` CRUD + test/rotate/revoke.
 

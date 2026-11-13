@@ -26,6 +26,8 @@ The five stable required gates are Quality gate, Semgrep SAST gate, Trivy filesy
 
 Trivy owns cached, locally loaded Docker builds and scans those same images; nothing is published. The dedicated ci-postgres-it Maven profile runs only PostgreSQL Failsafe tests. The ordinary backend job retains Surefire, the unchanged unit coverage floor and SpotBugs, and proves both migration test classes ran. Report validation rejects missing classes and skipped integration tests.
 
+The scanned frontend runtime in `frontend/Dockerfile.ci` requires `brotli-libs>=1.2.1-r0` for the patched decoder.
+
 Performance Governance sets CERTIFICATION_STRICT=true. Enterprise certification defaults to strict, whereas standalone baseline, scorecard and correlation commands default to diagnostic mode. Strict certification rejects HTTP errors, auth skips, incomplete samples, malformed reports and missing required measurements; the public scorecard API remains diagnostic. Three serial samples are a regression smoke check, not a representative load certification. Missing Server-Timing headers remain visible diagnostics.
 
 The scheduled sweep audits layouts and accessibility at 390/768/1280/1440px in both themes and runs the visual screenshot comparison. PRs run fixture journeys only. Screenshot tolerances and existing assertions are unchanged. Baseline updates require inspected browser evidence.
