@@ -1,11 +1,11 @@
-# Lab cycle and cutover IAM matrix (proposed, November 13, 2026)
+# Lab cycle and cutover IAM matrix (attached November 13, 2026)
 
-Neither document is attached. The owner approves each before it is created and attached, and `lab.sh simulate` must pass after attachment. Both are generalized from grants proven on November 12. Exact IDs that change every cycle (ALB, target group, WAF, NAT, EIP) become name or tag scopes. IDs that persist (route tables, services, cluster, database, pool, buckets) stay exact.
+**Attached 2026-11-13 with owner approval.** `lab-cycle.json` is the inline policy `LabCycle` on role `ScoutGridSydneyLabCycle` (trust: the `AccountFullAccessRole` sign-in, as for the other lab roles; max session 2 hours), alongside the existing managed `ScoutGridSydneyLab-common-read-state-part1/part2` and `ScoutGridSydneyLab-waf-association-read`. `lab-cutover-once.json` is the managed policy `ScoutGridSydneyLab-cutover-once` attached to `ScoutGridSydneyLabApply` (the role's inline policies were already at the 10,240-byte limit). Access Analyzer reported no findings for either, and `lab.sh simulate` passed 37/37. Both are generalized from grants proven on November 12. Exact IDs that change every cycle (ALB, target group, WAF, NAT, EIP) become name or tag scopes. IDs that persist (route tables, services, cluster, database, pool, buckets) stay exact.
 
 | Document | Principal | Lifetime |
 |---|---|---|
-| `lab-cycle.PROPOSED.json` + existing `common-read-state` | new role `ScoutGridSydneyLabCycle`, profile `sglab-cycle` | Permanent while the lab is the only environment |
-| `lab-cutover-once.PROPOSED.json` | existing Apply role (attach), then detach | The one-time origin change, budget creation and Amplify retirement |
+| `lab-cycle.json` + existing `common-read-state` | new role `ScoutGridSydneyLabCycle`, profile `sglab-cycle` | Permanent while the lab is the only environment |
+| `lab-cutover-once.json` | managed policy on the existing Apply role, detached afterwards | The one-time origin change, budget creation and Amplify retirement |
 
 Task definitions are registered only by the existing Bootstrap role (`bootstrap-trusted-runtime.live.json`). The cycle role cannot register task definitions, so `lab.sh` stops any cycle plan that wants a new revision and sends it to the Bootstrap path.
 
@@ -38,7 +38,7 @@ The ALB security group and its two rules, task definitions, roles, log groups, t
 | New api/worker task-definition revisions (CORS, base URL, Turnstile host) | `ecs:RegisterTaskDefinition`, `iam:PassRole` | Bootstrap (existing `bootstrap-trusted-runtime.live.json`) |
 | Retire replaced revisions | `ecs:DeregisterTaskDefinition` | Bootstrap (existing `bootstrap-retire-migrator-revision.json`) |
 | Roll services to the new revisions | `ecs:UpdateService` on any revision of the two families | Apply + cutover grant (later the cycle role) |
-| Lab budget at $100 | `budgets:CreateBudget`, `ModifyBudget`, `TagResource`, reads | Apply + cutover grant |
+| Lab budget at $100 | `budgets:ModifyBudget` (also authorizes creation), `TagResource`, reads | Apply + cutover grant |
 | PR 2: retire Amplify | `amplify:DeleteDomainAssociation`, `DeleteBranch`, `DeleteApp` on app `d20ebk72hfk5ft` | Apply + cutover grant |
 
 Detach `lab-cutover-once` and `frontend-deploy-and-domain.json` once Amplify is gone.
@@ -46,5 +46,5 @@ Detach `lab-cutover-once` and `frontend-deploy-and-domain.json` once Amplify is 
 ## Proof before relying on lab-down
 
 1. IAM Access Analyzer `validate-policy` on both documents: no errors or security warnings.
-2. `lab.sh simulate` runs `iam simulate-principal-policy` against the attached cycle role for every row above, in both the up and down columns, using representative ARNs. Any denial fails the command.
+2. `lab.sh simulate` runs `iam simulate-principal-policy` against the attached cycle role for every row above, in both the up and down columns, using representative ARNs. Any denial fails the command. `elasticloadbalancing:SetWebAcl` is granted but excluded: the simulator does not recognize it and denies it even for the Apply role that used the same grant live on November 12.
 3. `lab.sh down` runs the up-set simulation first and refuses to continue if it fails. The lab is never parked by a role that cannot bring it back.

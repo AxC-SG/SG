@@ -25,6 +25,12 @@ resource "aws_budgets_budget" "standard" {
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
+  # Track gross usage: credits would otherwise net the actual spend to zero and the alerts never fire.
+  cost_types {
+    include_credit = false
+    include_refund = false
+  }
+
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 80

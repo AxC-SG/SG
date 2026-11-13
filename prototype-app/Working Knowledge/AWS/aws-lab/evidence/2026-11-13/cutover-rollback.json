@@ -1,0 +1,72 @@
+{
+  "recorded_at_utc": "2026-11-13T18:00:00Z",
+  "purpose": "B1 rollback state for the lab sole-environment cutover (LAB_SOLE_ENVIRONMENT_PLAN.md). Values of encrypted Vercel variables were not decrypted.",
+  "vercel": {
+    "team_id": "team_kaGUpiyT7rWaj2XZlCnsB7Mx",
+    "project_id": "prj_BTTCC6KBOQSkBaihL6MZd07ezJn2",
+    "production_deployment_before_cutover": {
+      "id": "dpl_FXiyiTkrLsbSr9c9n8zBsQvbCx1j",
+      "url": "scout-frontend-jcyzg9jed-scoutgrid.vercel.app",
+      "git_sha": "562fdbd82d8e38e7324bfecd820e875489b5a6b3",
+      "rollback": "Vercel Instant Rollback to this deployment restores the previous bundle, CSP and build-time variables together."
+    },
+    "production_env_before_cutover": [
+      {
+        "key": "VITE_API_BASE",
+        "id": "5Vfd9co5lpuZhKrW",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ],
+        "updated_at_ms": 1784036882013
+      },
+      {
+        "key": "VITE_ENABLE_TEST_PERSONAS",
+        "id": "spTWxKHibT7ABQgR",
+        "type": "encrypted",
+        "target": [
+          "production"
+        ]
+      }
+    ],
+    "preview_env_before_cutover": [
+      {
+        "key": "VITE_ENABLE_TEST_PERSONAS",
+        "id": "jNcTf7a3O9o272B8",
+        "type": "encrypted",
+        "target": [
+          "preview"
+        ]
+      }
+    ],
+    "production_env_changes_2026_11_13": {
+      "edited": [
+        {
+          "key": "VITE_API_BASE",
+          "id": "5Vfd9co5lpuZhKrW",
+          "new_value": "https://api-lab.scoutgrid.io/api"
+        }
+      ],
+      "created": [
+        {
+          "key": "VITE_MANAGED_BROWSER_AUTH_ENABLED",
+          "id": "no91tAkh0WmeYHbt",
+          "value": "true"
+        },
+        {
+          "key": "VITE_DURABLE_BOM_UPLOADS_ENABLED",
+          "id": "nIziNoAKzqrQdvr9",
+          "value": "true"
+        },
+        {
+          "key": "VITE_TURNSTILE_SITE_KEY",
+          "id": "gswt4QDjpk44AOuy",
+          "value": "lab public site key (aws-lab/README.md)"
+        }
+      ],
+      "takes_effect": "next production deployment (next merge to main); build-time variables",
+      "rollback": "Instant Rollback to the recorded deployment; delete the three created variables and restore VITE_API_BASE"
+    }
+  },
+  "pending_records": "Lab Terraform state version, task-definition revisions and their CORS/base-URL/Turnstile values, S3 CORS and Cognito logout/invite settings are recorded before B4, under the cycle or Plan role."
+}

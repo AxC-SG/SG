@@ -512,8 +512,12 @@ run "accept_lab_budget_at_owner_allowance" {
   }
 
   assert {
-    condition     = aws_budgets_budget.standard[0].limit_amount == "100"
-    error_message = "The lab must accept the owner's inclusive $100 monthly ceiling."
+    condition = (
+      aws_budgets_budget.standard[0].limit_amount == "100" &&
+      !one(aws_budgets_budget.standard[0].cost_types).include_credit &&
+      !one(aws_budgets_budget.standard[0].cost_types).include_refund
+    )
+    error_message = "The lab must accept the owner's inclusive $100 monthly ceiling, measured as gross usage without credits."
   }
 }
 

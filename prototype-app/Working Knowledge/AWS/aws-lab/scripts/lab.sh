@@ -256,11 +256,14 @@ cost_summary() {
   start="$(date -u +%Y-%m-01)"
   end="$(date -u -v+1d +%Y-%m-%d 2>/dev/null || date -u -d '+1 day' +%Y-%m-%d)"
   next="$(date -u -v+1m -v1d +%Y-%m-%d 2>/dev/null || date -u -d "$(date -u +%Y-%m-01) +1 month" +%Y-%m-%d)"
+  # Gross usage: credits are excluded so the rule tracks consumption, matching the budget alert.
   mtd="$(aws --profile "${PROFILE}" --region us-east-1 ce get-cost-and-usage \
     --time-period "Start=${start},End=${end}" --granularity MONTHLY --metrics UnblendedCost \
+    --filter '{"Not":{"Dimensions":{"Key":"RECORD_TYPE","Values":["Credit","Refund"]}}}' \
     --query 'ResultsByTime[0].Total.UnblendedCost.Amount' --output text 2>/dev/null || echo unknown)"
   forecast="$(aws --profile "${PROFILE}" --region us-east-1 ce get-cost-forecast \
     --time-period "Start=${end},End=${next}" --granularity MONTHLY --metric UNBLENDED_COST \
+    --filter '{"Not":{"Dimensions":{"Key":"RECORD_TYPE","Values":["Credit","Refund"]}}}' \
     --query 'Total.Amount' --output text 2>/dev/null || echo unknown)"
   # shellcheck disable=SC2016  # Python source, not shell expansion.
   python3 -I -c '
@@ -271,7 +274,11 @@ def num(v):
     except ValueError: return None
 m, f = num(mtd), num(forecast)
 shown = mtd if m is None else "$" + format(m, ",.2f")
-print(f"Cost month-to-date: {shown}  (Cost Explorer lags by hours)")
+print(f"Usage month-to-date (gross, before credits): {shown}  (Cost Explorer lags by hours)")
+if m is not None and f is None:
+    print("Projection unavailable (Cost Explorer needs more history); apply the rule to month-to-date only.")
+    if m >= float(trigger):
+        print(f"SHUTDOWN RULE TRIGGERED: month-to-date >= ${float(trigger):,.0f}. Run lab.sh down today.")
 if m is not None and f is not None:
     total = m + f
     print(f"Projected month-end: ${total:,.2f} against the ${float(budget):,.0f} ceiling")
@@ -327,6 +334,9 @@ ctx.update({f"aws:ResourceTag/{k}": v for k, v in tags.items()})
 print(json.dumps([{"ContextKeyName": k, "ContextKeyValues": [v], "ContextKeyType": "string"} for k, v in ctx.items()]))
 ' "${REGION}" "${ACCOUNT_ID}" >"${WORK}/context.json"
 
+  # elasticloadbalancing:SetWebAcl is granted but not simulated: the IAM simulator does not know the
+  # action (it returns implicitDeny with no matched statements even for the Apply role that used the
+  # same grant live on November 12, 2026).
   local -a checks=(
     "up ec2:AllocateAddress ${ec2}:elastic-ip/eipalloc-00000000000000000"
     "up ec2:CreateNatGateway ${ec2}:natgateway/nat-00000000000000000"
@@ -342,7 +352,6 @@ print(json.dumps([{"ContextKeyName": k, "ContextKeyValues": [v], "ContextKeyType
     "up elasticloadbalancing:ModifyLoadBalancerAttributes ${alb}"
     "up elasticloadbalancing:ModifyTargetGroupAttributes ${tg}"
     "up elasticloadbalancing:AddTags ${alb}"
-    "up elasticloadbalancing:SetWebAcl ${alb}"
     "up wafv2:CreateWebACL ${waf}"
     "up wafv2:TagResource ${waf}"
     "up wafv2:AssociateWebACL ${waf}"

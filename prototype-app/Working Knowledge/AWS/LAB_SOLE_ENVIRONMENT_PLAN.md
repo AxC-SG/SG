@@ -85,7 +85,7 @@ New `grants/LAB_CYCLE_MATRIX.md` lists every API action per Terraform resource t
 - the teardown proposal
 - the foundation and common read-state grants
 
-**`grants/lab-cycle.PROPOSED.json`** is for repeat cycles, as role `ScoutGridSydneyLabCycle` with profile `sglab-cycle`. It's scoped by name or tag (IDs change every cycle) and to Sydney only:
+**`grants/lab-cycle.json`** is for repeat cycles, as role `ScoutGridSydneyLabCycle` with profile `sglab-cycle`. It's scoped by name or tag (IDs change every cycle) and to Sydney only:
 
 | Phase | Actions |
 |---|---|
@@ -97,7 +97,7 @@ Explicitly excluded:
 - `ecs:RegisterTaskDefinition`. If a cycle plan wants a task-definition change, the script stops and sends it to the Bootstrap path.
 - Any delete or modify on RDS (other than start/stop), Cognito, S3, KMS, ECR or IAM.
 
-**`grants/lab-cutover-once.PROPOSED.json`** is for the one-time origin change and Amplify retirement. It's attached to the existing Apply and Bootstrap roles and detached afterwards:
+**`grants/lab-cutover-once.json`** is for the one-time origin change and Amplify retirement. It's attached to the existing Apply and Bootstrap roles and detached afterwards:
 - `s3:PutBucketCORS` on the imports bucket
 - `cognito-idp:UpdateUserPool` and `UpdateUserPoolClient` on the lab pool
 - `ecs:RegisterTaskDefinition` and `DeregisterTaskDefinition`, with `iam:PassRole` for the runtime roles (Bootstrap)

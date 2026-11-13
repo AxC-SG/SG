@@ -37,7 +37,7 @@ The owner chose to keep the low-cost layer between runs. Expect roughly USD 20 p
 
 ## Budget operating rule (owner decision, November 13, 2026)
 
-The lab ceiling is **USD 100 per month, inclusive**. `monthly_budget` in `config/sydney-lab.foundation.tfvars` creates an AWS Budgets alert at that amount (80% actual and 100% forecast, emailed to the owner). It is an alert, not a cap, and Cost Explorer data lags usage by hours.
+The lab ceiling is **USD 100 per month, inclusive**, measured as **gross usage before credits** (the budget alert and `lab.sh status` both exclude credits and refunds, so credits cannot mask consumption). `monthly_budget` in `config/sydney-lab.foundation.tfvars` creates an AWS Budgets alert at that amount (80% actual and 100% forecast, emailed to the owner). It is an alert, not a cap, and Cost Explorer data lags usage by hours.
 
 - **Before a week-long run:** month-to-date actual + days up × about USD 7 + remaining days down × about USD 0.70 + 20% contingency must be ≤ USD 100. Otherwise plan a shorter run.
 - **Responder:** the owner. Claude runs `lab.sh status` at the start of every working session on the lab.
@@ -51,7 +51,7 @@ The lab ceiling is **USD 100 per month, inclusive**. `monthly_budget` in `config
 4. **Down** (about 10–15 minutes): `scripts/lab.sh down`. It first simulates every lab-up permission (so the lab is never parked by a role that cannot bring it back), plans `runtime-down.tfvars`, asks for `yes`, applies, removes the `api-lab` CNAME and stops RDS.
 5. `scripts/lab.sh plan-up` and `plan-down` produce and check the plan without applying. `scripts/lab.sh simulate [up|down]` runs only the IAM simulation.
 
-Requirements: Terraform 1.13.5; profile `sglab-cycle` for role `ScoutGridSydneyLabCycle` ([matrix](grants/LAB_CYCLE_MATRIX.md), proposed, owner approval required); a Cloudflare token limited to DNS Edit on `scoutgrid.io` saved with `security add-generic-password -s scoutgrid-cloudflare-dns -a scoutgrid -w`. Without the token the script prints the DNS record to set by hand.
+Requirements: Terraform 1.13.5; profile `sglab-cycle` for role `ScoutGridSydneyLabCycle` ([matrix](grants/LAB_CYCLE_MATRIX.md), attached November 13); a Cloudflare token limited to DNS Edit on `scoutgrid.io` saved with `security add-generic-password -s scoutgrid-cloudflare-dns -a scoutgrid -w`. Without the token the script prints the DNS record to set by hand.
 
 The script never changes task definitions, data, identity or foundation resources. A plan that wants any of those stops with REFUSED and goes through the reviewed Bootstrap or Apply path instead.
 
@@ -95,7 +95,7 @@ In Vercel these are Production environment variables of `scout-frontend`. Previe
 | Path | Contents |
 |---|---|
 | `FINDINGS.md` | Defects and gaps found by the lab, with the production fix for each |
-| `grants/` | Every IAM grant used or corrected in the run. `LAB_CYCLE_MATRIX.md`, `lab-cycle.PROPOSED.json` and `lab-cutover-once.PROPOSED.json` are pending owner approval; they supersede `teardown-lab-down.PROPOSED-NOT-ATTACHED.json`. |
+| `grants/` | Every IAM grant used or corrected in the run. `LAB_CYCLE_MATRIX.md`, `lab-cycle.json` and `lab-cutover-once.json` were attached on November 13 with owner approval; they supersede `teardown-lab-down.PROPOSED-NOT-ATTACHED.json`. |
 | `config/` | Lab tfvars per stage (`runtime-running`, `runtime-down`, `runtime-noenroll`, `runtime-stopped`), service create requests, task-definition change, migrator request, saved MFA config |
 | `scripts/lab.sh` | Lab up, down, status, plan-only and IAM simulation |
 | `evidence/2026-11-12/recovery-status/` | Run log (`STATUS.md`, `OWNER_DECISION_20261112_1310Z.md`), cleanup sequence, access reviews |
