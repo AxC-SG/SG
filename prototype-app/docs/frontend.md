@@ -2,7 +2,7 @@
 
 This document describes the React/TypeScript frontend for VulnWatch (package name `vulnwatch-frontend`). It is derived entirely from reading the source code in `frontend/src/`.
 
-Last updated: 2026-10-28 (UI 2.0 documentation alignment)
+Last updated November 13, 2026 for the UI 2.0 improvements and browser CI changes.
 
 ---
 
@@ -29,11 +29,11 @@ Versions above describe declared package constraints; `package-lock.json` pins r
 
 The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.lazy`. The dev server runs strictly on port 5173 (`--strictPort`). Vite proxies `/api/**` to `http://localhost:8080` in dev so the frontend calls the backend without a separate CORS config.
 
-**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Browser CI also runs fixture journeys, visual and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
+**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Pull request browser CI builds and checks the UI 2 artifact and runs fixture journeys in the pinned Playwright image. The scheduled and on-demand workflow runs the full route and accessibility sweep and screenshot comparison. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
 
 **New development:** follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
-Expandable sidebar rows use sibling native buttons: the label navigates, while the chevron toggles the section and exposes `aria-expanded`. Keep these controls separate so keyboard and screen-reader users can expand a section without navigating. `App.test.tsx` covers this behavior; the browser accessibility sweep checks it across themes and widths.
+The sidebar uses route links with `aria-current` and separate disclosure buttons with `aria-expanded`. Subsections start collapsed and reset on workspace changes. `AppShell` renders the authenticated page’s single `h1` and `main`. Pages register a record-specific title or actions with `usePageHeader` when needed. See the [shell and heading contracts](<../Working Knowledge/New UI 2.0/ui-development-standard.md#reuse-what-exists>).
 
 ---
 
@@ -96,13 +96,13 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 | Path | Page Component | Purpose |
 |---|---|---|
-| `/` | `HomeRoute` (role-based redirect) | → `/exposure`, `/configurations`, or `/platform/tenants` depending on actor role |
+| `/` | `HomeRoute` | Redirects to `/platform/tenants` for platform-scope owners and `/exposure` for tenant users |
 | `/exposure` | `ExposureDashboardPage` | Risk-focused exec overview (Overview tab) |
 | `/findings` | `FindingsPage` | Active findings list with server+client-side filters |
 | `/findings/:displayId` | `FindingDetailPage` | Single finding detail, workflow, and AI remediation |
 | `/fix-intelligence/:view?`, `/fix-intelligence/details/:fixId` | `FixIntelligencePage`, `FixDetailPage` (`src/features/fix-intelligence/`) | Views: `all`, `patches`, `workarounds`, `compensating-controls` |
 
-| `/operations/:operationsView?` | `OperationalDashboardPage` | Default `pipeline`; also `platform-health` (the `quality` view now redirects to `/inventory` with quality-tab search params instead of rendering here — see note below) |
+| `/operations/:operationsView?` | `OperationsRoute` / `OperationalDashboardPage` | Tenant-scope platform owners can open `pipeline` (default) and `platform-health`. Other tenant users are redirected to `/exposure` for those views. The tenant `quality` view redirects to Inventory Quality. Platform-scope owners using this legacy route are redirected to `/platform/eol` |
 | `/vuln-repo` | `VulnRepoDashboardPage` | Vulnerability Repository dashboard |
 | `/vuln-repo/org-cves/:cveId?` | `VulnRepoWorkbenchRoute` (`VulnRepoOrgCvePage`) | Unified Vulnerability Records — CVE Assessment Workbench |
 | `/vuln-repo/vulnerabilities` | `VulnRepoVulnerabilitiesPage` | Vulnerability Intelligence — global CVE feed |
@@ -155,7 +155,7 @@ All routes are registered in `src/App.tsx` using React Router v7 nested routes. 
 
 **Legacy redirects:** `LegacyQueryRedirect` in `App.tsx` intercepts old `?tab=inventory&inventoryView=hosts` style URLs and converts them via `buildLegacyCompatiblePath()` in `src/app/routes.ts`. Separately, `/vulnerability-intelligence`, `/vulnerability-intelligence/vulnerabilities`, and `/vulnerability-intelligence/org-cves/:cveId?` redirect to their `/vuln-repo/*` equivalents.
 
-**AI Security routing:** all `/findings/ai*`, `/policies*`, and `/inventory/ai*` routes are wrapped in `AiSecurityRoute`, which redirects to `/exposure` unless `canUseEntitlement(actor, 'ai.security')` is true and the actor is not in platform scope. Unlike `/operations/:operationsView?` or `/inventory/:inventoryView?`, there is no shared `:aiView?` optional-param pattern — each AI Security sub-page is its own literal route. Nav entry points: the sidebar "Findings" button expands into "Vulnerability Findings" / "AI Findings" sub-items when the entitlement is enabled; a top-level "Policies" nav tab appears next to Vuln Repo/Campaigns; the Inventory pill list gains an "AI Inventory" entry; the Connect page gains two connector cards (`ai-security-aws`, `ai-security-azure`); and the Platform Console gains an `ai-policies` sidebar view.
+**AI Security routing.** Tenant AI Security routes under `/findings/ai`, `/policies` and `/inventory/ai` use explicit route definitions. `AiSecurityRoute` redirects to `/exposure` unless the tenant actor has the `ai.security` entitlement. The Remediation group shows separate Vulnerability Findings and AI Findings links. The sidebar includes Policies and AI Inventory, and Connect includes the `ai-security-aws` and `ai-security-azure` cards. Platform owners manage the global policy catalog under `/platform/ai-policies`.
 
 ---
 
@@ -311,6 +311,8 @@ Files: `types.ts`, `api-types.ts`, `queries.ts`, `helpers.ts`, `searchState.ts`,
 
 ### connect (`src/features/connect/`)
 
+The NVD full-sync key entered on the Sources page stays in memory while the page is open. Opening the page also clears the legacy sessionStorage entry. Enter the key again after leaving or reloading the page.
+
 Files: `types.ts`, `queries.ts`
 
 **Types:** `SyncRun`, `IngestionResult`, `SyncTriggerResponse`, `ServiceNowCmdbConfig/Request`, `SccmCmdbConfig/Request`, `AwsDiscoveryConfig/Request`, `AwsDiscoveryTarget/Request`, `GithubSbomSource`, `VulnerabilitySourceFilterConfig/Request`
@@ -460,17 +462,15 @@ Uses `@tanstack/react-table`. Full column resizing, reordering (drag-and-drop), 
 
 Props:
 - `storageKey: string` — localStorage namespace
-- `columns: DataTableColumn[]` — column definitions with `id`, `label`, `header`, `initialSize`
+- `columns: DataTableColumn[]` — column definitions with `id`, `label`, `header`, and optional `initialSize`, `minWidth`, `priority` and `defaultHidden`
 - `rows: DataTableRow[]`
 - `minColumnWidth?: number` (default 96)
 - `showColumnControls?: boolean` (default true)
+- `label?: string` — accessible name of the scroll region
 
-LocalStorage persistence:
-- `{storageKey}` — column widths
-- `{storageKey}:order` — column order
-- `{storageKey}:hidden` — hidden column IDs
+Essential columns always show. Optional columns default to hidden below 768px. The scroll region preserves readable minimum widths.
 
-Internal hook: `useContainerWidth()` — ResizeObserver-based container measurement for proportional width rebalancing when columns are shown/hidden.
+User changes persist in localStorage under `{storageKey}` for widths, `{storageKey}:order` for order and `{storageKey}:preferences:v2` for visibility overrides. Older `:hidden` snapshots are read for compatibility. Reset columns clears these keys, including the legacy snapshot, while preserving filters and unrelated settings.
 
 ### PageFreshnessStatus and RouteErrorBoundary
 
@@ -494,7 +494,7 @@ Each `FilterBuilderField` has: `key`, `label`, `categoryKey`, `description`, `ty
 
 ### ConfirmDialog (`src/components/ConfirmDialog.tsx`)
 
-Native `<dialog>` element with `showModal()` / `close()`. Closes on backdrop click or Escape via `onCancel` prop.
+Confirmation wrapper around the shared native `Dialog`. Escape and backdrop clicks call `onCancel`. See the [modal contract](<../Working Knowledge/New UI 2.0/ui-development-standard.md#reuse-what-exists>) for focus and pending-write behavior.
 
 Props: `isOpen`, `title`, `message`, `confirmLabel?` (default `'Confirm'`), `cancelLabel?` (default `'Cancel'`), `confirmDisabled?`, `onConfirm`, `onCancel`
 
@@ -510,9 +510,11 @@ Two-level group-by selector (primary + multi-select secondary). Closes on outsid
 
 Props: `options: MultiGroupByOption[]`, `value: string[]`, `onChange: (next: string[]) => void`, `label?`, `placeholder?`, `maxInlineSelections?`, `allowEmptyPrimary?`, `emptyPrimaryLabel?`, `showSelectorsByDefault?`
 
-### VulnRepoCveAssessmentWorkbench (`src/components/VulnRepoCveAssessmentWorkbench.tsx`)
+### CVE Assessment Workbench (`src/features/cve-workbench/components/WorkbenchMain.tsx`)
 
-The main CVE investigation panel rendered inside `VulnRepoOrgCvePage` when a CVE row is selected. 4-step workflow. Integrates `CveRiskScorePanel`, `CVEInvestigationSummary`, `ConfirmDialog`, `SegmentedControl`. Calls multiple `cveWorkbenchApi` methods and `api` methods. Derives `DerivedAssetRow` objects from matched software via `buildAssetRowsFromMatchedSoftware` from `src/features/cve-workbench/asset-report.ts`.
+A selected CVE opens six peer tabs at `/vuln-repo/org-cves/:cveId` with Overview, Investigation, Applicability, Impacted Assets, Fixes and Notify Groups. `workbenchLocation.ts` owns `tab` and Investigation's `task` query parameters. Overview omits both parameters. Missing or invalid Investigation tasks resolve to the first task. The adapter preserves unrelated query parameters.
+
+Inactive panels unmount. The CVE-keyed Workbench retains the drafts it owns and prompts before a dirty tab change or a guarded link leaves the record. **Save and continue** is available when all affected sections have a save operation. Notify Groups downloads local drafts for manual delivery. Full shell and browser-history exit guards are tracked under N07a. See the [Stage 4 implementation record](<../Working Knowledge/New UI 2.0/UI 2.0 improvements/UI_IMPLEMENTATION_PLAN.md#stage-4-implementation-record--october-29-2026>).
 
 ### CVEInvestigationSummary (`src/components/CVEInvestigationSummary.tsx`)
 

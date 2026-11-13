@@ -62,3 +62,30 @@ run "single_nat_keeps_two_az_boundaries" {
     error_message = "Single NAT must preserve two AZs, private task/database subnets and S3 endpoint routes, without adding DB internet routes."
   }
 }
+
+run "none_parks_egress_and_keeps_network_boundaries" {
+  command = apply
+
+  variables {
+    nat_gateway_mode = "none"
+  }
+
+  assert {
+    condition = (
+      length(aws_nat_gateway.zonal) == 0 && length(aws_eip.egress) == 0 &&
+      length(aws_route.task_egress) == 0 && length(output.boundaries.egress_ips_by_zone) == 0 &&
+      length(output.boundaries.task_egress_nat_zones) == 0
+    )
+    error_message = "A parked lab must hold no NAT gateway, Elastic IP or task egress route."
+  }
+
+  assert {
+    condition = (
+      length(aws_subnet.tier) == 6 && length(aws_route_table.tier) == 6 &&
+      length(aws_route.public) == 2 && length(aws_route_table_association.tier) == 6 &&
+      length(aws_vpc_endpoint.s3.route_table_ids) == 2 &&
+      length(output.boundaries.task_subnet_ids) == 2
+    )
+    error_message = "Parking egress must keep every subnet, route table, public route and the S3 endpoint."
+  }
+}

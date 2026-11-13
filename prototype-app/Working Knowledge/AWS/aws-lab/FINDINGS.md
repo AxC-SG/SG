@@ -46,6 +46,6 @@ Each of these failed on first use and was fixed during the run:
 ## Process
 
 - Run the lab from a local terminal or CI rather than browser CloudShell. CloudShell restarted mid-run and lost its temporary files.
-- Automate Cloudflare DNS (`api-lab`, `lab`, ACM validation CNAMEs). Use the Terraform Cloudflare provider or an API token scoped to DNS Edit for `scoutgrid.io`.
-- Script lab-up and lab-down from the sequence in [README.md](README.md) so each run is one command.
+- Automate Cloudflare DNS (`api-lab`, `lab`, ACM validation CNAMEs). Use the Terraform Cloudflare provider or an API token scoped to DNS Edit for `scoutgrid.io`. **November 13:** `scripts/lab.sh` updates `api-lab` with a Keychain token scoped to DNS Edit; `lab` and its validation record are deleted with Amplify.
+- Script lab-up and lab-down from the sequence in [README.md](README.md) so each run is one command. **November 13:** done in `scripts/lab.sh` with Terraform modes (`nat_gateway_mode = "none"`, `runtime_ingress_enabled = false`) and one proposed cycle role ([matrix](grants/LAB_CYCLE_MATRIX.md)).
 - Not yet qualified: BOM upload, demo-request onboarding, tenant isolation tests, scheduling under worker replacement, MFA end to end, the ten-customer 24-hour capacity run, recovery, and security operations (CloudTrail/GuardDuty/Config).

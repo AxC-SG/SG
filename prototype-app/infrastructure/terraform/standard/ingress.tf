@@ -1,3 +1,24 @@
+variable "runtime_ingress_enabled" {
+  description = "Set false only to park a non-production lab: removes the API load balancer tree and WAF while keeping security groups, task definitions and data."
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = var.runtime_ingress_enabled || var.environment != "production"
+    error_message = "Production keeps its API ingress."
+  }
+
+  validation {
+    condition     = var.runtime_ingress_enabled || try(!var.backend_candidate.start_services, true)
+    error_message = "Stop the API and worker services before removing API ingress."
+  }
+}
+
+locals {
+  # Security groups and their rules are free and stay; the billable ingress tree is parked.
+  ingress = var.runtime_ingress_enabled ? local.backend : {}
+}
+
 resource "aws_security_group" "alb" {
   for_each    = local.backend
   name        = "${local.name}-alb"
@@ -33,7 +54,7 @@ resource "aws_vpc_security_group_ingress_rule" "api_from_alb" {
 }
 
 resource "aws_lb" "api" {
-  for_each           = local.backend
+  for_each           = local.ingress
   name               = "${local.name}-api"
   load_balancer_type = "application"
   internal           = false
@@ -47,7 +68,7 @@ resource "aws_lb" "api" {
 }
 
 resource "aws_lb_target_group" "api" {
-  for_each             = local.backend
+  for_each             = local.ingress
   name                 = "${local.name}-api"
   port                 = local.app_port
   protocol             = "HTTP"
@@ -66,7 +87,7 @@ resource "aws_lb_target_group" "api" {
 }
 
 resource "aws_lb_listener" "https" {
-  for_each          = local.backend
+  for_each          = local.ingress
   load_balancer_arn = aws_lb.api[each.key].arn
   port              = 443
   protocol          = "HTTPS"
@@ -83,7 +104,7 @@ resource "aws_lb_listener" "https" {
 }
 
 resource "aws_lb_listener_rule" "api" {
-  for_each     = local.backend
+  for_each     = local.ingress
   listener_arn = aws_lb_listener.https[each.key].arn
   priority     = 100
 
@@ -106,7 +127,7 @@ resource "aws_lb_listener_rule" "api" {
 }
 
 resource "aws_wafv2_web_acl" "api" {
-  for_each = local.backend
+  for_each = local.ingress
   name     = "${local.name}-api"
   scope    = "REGIONAL"
 
@@ -150,7 +171,7 @@ resource "aws_wafv2_web_acl" "api" {
 }
 
 resource "aws_wafv2_web_acl_association" "api" {
-  for_each     = local.backend
+  for_each     = local.ingress
   resource_arn = aws_lb.api[each.key].arn
   web_acl_arn  = aws_wafv2_web_acl.api[each.key].arn
 }

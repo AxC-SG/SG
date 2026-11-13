@@ -9,10 +9,10 @@ variable "monthly_budget" {
   validation {
     condition = var.monthly_budget == null ? true : (
       var.monthly_budget.amount_usd > 0 &&
-      (var.environment != "lab" || var.monthly_budget.amount_usd <= 50) &&
+      (var.environment != "lab" || var.monthly_budget.amount_usd <= 100) &&
       can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.monthly_budget.operator_email))
     )
-    error_message = "Provide a positive USD amount, at most 50 for the disposable lab, and a valid billing operator email."
+    error_message = "Provide a positive USD amount, at most 100 for the disposable lab, and a valid billing operator email."
   }
 }
 
@@ -24,6 +24,12 @@ resource "aws_budgets_budget" "standard" {
   limit_amount = tostring(var.monthly_budget.amount_usd)
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
+
+  # Track gross usage: credits would otherwise net the actual spend to zero and the alerts never fire.
+  cost_types {
+    include_credit = false
+    include_refund = false
+  }
 
   notification {
     comparison_operator        = "GREATER_THAN"

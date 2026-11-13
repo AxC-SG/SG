@@ -1,6 +1,6 @@
 # VulnWatch Prototype
 
-Last updated: 2026-10-28 (UI 2.0 documentation alignment)
+Last updated November 13, 2026 for the UI 2.0 improvements and browser CI changes.
 
 VulnWatch is a Spring Boot + React prototype for SBOM ingestion, vulnerability intelligence ingestion, deterministic CPE-based correlation, and tenant-scoped finding projection and workflow.
 
@@ -148,4 +148,4 @@ Backend: `mvn -q verify` — Surefire units + JaCoCo coverage floor + SpotBugs. 
 
 Frontend: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage`.
 
-Browser CI additionally builds the UI 2 artifact, runs fixture journeys, visual tests and affected-route/axe checks in the pinned Playwright image. The scheduled workflow runs the full responsive sweep. Live-backend and release qualification remain separately evidenced; see the browser gate guide above.
+On pull requests, browser CI builds and checks the UI 2 artifact and runs the fixture journeys in the pinned Playwright image. The scheduled and on-demand workflow runs the full responsive route and accessibility sweep plus screenshot comparison. The [browser gate guide](docs/ui2-styles-and-rollback.md#browser-gates) lists local commands and live-backend qualification checks.

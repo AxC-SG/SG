@@ -79,18 +79,23 @@ variable "vpc_cidr" {
 }
 
 variable "nat_gateway_mode" {
-  description = "Use single only for a bounded disposable lab. Production requires independent zonal egress."
+  description = "Use single only for a bounded disposable lab and none only while a lab is parked. Production requires independent zonal egress."
   type        = string
   default     = "zonal"
 
   validation {
-    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
-    error_message = "Use zonal or single NAT gateway mode."
+    condition     = contains(["zonal", "single", "none"], var.nat_gateway_mode)
+    error_message = "Use zonal, single or none NAT gateway mode."
   }
 
   validation {
     condition     = var.environment != "production" || var.nat_gateway_mode == "zonal"
     error_message = "Production requires one NAT gateway per selected AZ."
+  }
+
+  validation {
+    condition     = var.nat_gateway_mode != "none" || try(!var.backend_candidate.start_services, true)
+    error_message = "Stop the API and worker services before removing NAT egress."
   }
 }
 

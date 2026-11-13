@@ -19,13 +19,13 @@ variable "availability_zone_ids" {
 }
 
 variable "nat_gateway_mode" {
-  description = "zonal creates a NAT in each AZ; single shares the first selected AZ's NAT for disposable labs."
+  description = "zonal creates a NAT in each AZ; single shares the first selected AZ's NAT for disposable labs; none removes NAT egress while a lab is parked."
   type        = string
   default     = "zonal"
 
   validation {
-    condition     = contains(["zonal", "single"], var.nat_gateway_mode)
-    error_message = "Use zonal or single NAT gateway mode."
+    condition     = contains(["zonal", "single", "none"], var.nat_gateway_mode)
+    error_message = "Use zonal, single or none NAT gateway mode."
   }
 }
 
@@ -33,12 +33,12 @@ locals {
   zones = { for index, id in var.availability_zone_ids : id => index }
   nat_zones = {
     for zone, index in local.zones : zone => index
-    if var.nat_gateway_mode == "zonal" || index == 0
+    if var.nat_gateway_mode == "zonal" || (var.nat_gateway_mode == "single" && index == 0)
   }
   task_egress_nat_zones = {
     for zone in var.availability_zone_ids : zone => (
       var.nat_gateway_mode == "single" ? var.availability_zone_ids[0] : zone
-    )
+    ) if var.nat_gateway_mode != "none"
   }
   subnets = merge([
     for tier, offset in { public = 0, task = 2, database = 4 } : {
@@ -107,11 +107,11 @@ resource "aws_route" "public" {
 }
 
 resource "aws_route" "task_egress" {
-  for_each = local.zones
+  for_each = local.task_egress_nat_zones
 
   route_table_id         = aws_route_table.tier["task-${each.key}"].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.zonal[local.task_egress_nat_zones[each.key]].id
+  nat_gateway_id         = aws_nat_gateway.zonal[each.value].id
 }
 
 resource "aws_route_table_association" "tier" {

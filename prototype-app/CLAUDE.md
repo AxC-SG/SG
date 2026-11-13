@@ -48,7 +48,7 @@ npm run test:coverage # vitest run --coverage (enforces line/branch thresholds)
 npx vitest run src/pages/FindingsPage.test.tsx  # run a single test file
 ```
 
-Frontend quality gates: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage` (Vitest with configured coverage floors). Quality also runs fixture journeys, visual checks and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](<Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
+Frontend quality gates: `npm run lint` → `npm run typecheck` → `npm run build` → `npm run test:coverage` (Vitest with configured coverage floors). Quality builds and checks the UI 2 artifact and runs fixture journeys in the pinned Playwright image. The scheduled and on-demand workflow runs the full route and accessibility sweep and screenshot comparison. See [browser gates](<Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
 
 Backend CI gates: default `mvn -q verify` runs Surefire + JaCoCo `check` + SpotBugs; `mvn -Ppostgres-it verify` additionally runs PostgreSQL Failsafe integration tests. Repo-wide, `gitleaks` (config: `.gitleaks.toml`, also wired as a `pre-commit` hook via `.pre-commit-config.yaml`) scans for committed secrets. Evidence/review and environment follow-ups are in the [review handoff](<Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>).
 

@@ -295,7 +295,7 @@ New screens follow [the UI development standard](<../Working Knowledge/New UI 2.
 
 ### API Layer
 
-API calls use `src/api/client.ts` and the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or production `https://api.scoutgrid.io/api`. Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
+API calls use `src/api/client.ts` and the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or the code fallback `https://api.scoutgrid.io/api` (reserved for production; the lab build sets `VITE_API_BASE=https://api-lab.scoutgrid.io/api` in Vercel). Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
 
 ---
 
@@ -303,7 +303,8 @@ API calls use `src/api/client.ts` and the established `src/features/cve-workbenc
 
 - **Backend container:** `eclipse-temurin:17-jre`, non-root user, port 8080, JVM flags: `-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=10.0 -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError`
 - **Frontend (production):** Vercel deploys `prototype-app/frontend` using `frontend/vercel.json`; `https://scoutgrid.io` is the sole public frontend origin. The Vercel configuration provides SPA rewrites and browser security headers. `frontend/Dockerfile.ci` builds the same static bundle only for CI image-security checks; it is not a deployment artifact.
-- **AWS Standard target:** ECS Fargate runs the API and worker in private subnets behind an ALB and uses private RDS PostgreSQL. Amplify hosts the frontend after cutover. Terraform defines the [Standard stack](../infrastructure/terraform/standard).
+- **AWS Standard target:** ECS Fargate runs the API and worker in private subnets behind an ALB and uses private RDS PostgreSQL. Vercel remains the frontend host for the lab and production (owner decision, November 13, 2026); the Amplify lab frontend is retired. Terraform defines the [Standard stack](../infrastructure/terraform/standard).
+- **Current environment (November 13, 2026):** the Sydney AWS lab is the only backend (`https://api-lab.scoutgrid.io/api`) behind the Vercel site `https://scoutgrid.io`. Render is retired. See the [plan](<../Working Knowledge/AWS/LAB_SOLE_ENVIRONMENT_PLAN.md>) and [lab README](<../Working Knowledge/AWS/aws-lab/README.md>).
 - **Database bootstrap:** An ECS task runs `ProductionBootstrapCli` with the migration role and exits. The API and worker use the restricted runtime role. See [bootstrap wrapper](../backend/scripts/run-schema-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
 For deployment-facing environment variables and operational endpoints, see [Backend](backend.md).

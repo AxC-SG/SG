@@ -28,7 +28,7 @@ npm run test:coverage # vitest run --coverage (enforces line/branch thresholds)
 npx vitest run src/pages/FindingsPage.test.tsx
 ```
 
-Quality gates in order: `lint` → `typecheck` → `build` → `test:coverage`. Browser CI additionally runs UI 2-only fixture journeys, visual tests and affected-route/axe checks; the scheduled sweep covers four widths in both themes. Run `npm run e2e:build` before browser commands. Visual/affected/update commands require the pinned Playwright container. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>); `e2e:live` requires approved disposable accounts/data and is separate from default CI.
+Quality gates in order: `lint` → `typecheck` → `build` → `test:coverage`. Browser CI builds and checks the UI 2 artifact and runs fixture journeys. The scheduled and on-demand workflow runs the route and accessibility sweep at four widths in both themes, plus screenshot comparison. Run `npm run e2e:build` before browser commands. Visual/affected/update commands require the pinned Playwright container. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>); `e2e:live` requires approved disposable accounts/data and is separate from default CI.
 
 ## Environment variables
 

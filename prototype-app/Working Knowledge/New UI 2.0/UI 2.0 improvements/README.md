@@ -1,6 +1,6 @@
 # UI 2.0 improvements
 
-Updated October 28, 2026. The feedback and delivery plan in this folder are restricted to visible UI elements and interactions. Architecture, APIs, data definitions, persistence, scalability and instrumentation are tracked separately.
+Updated November 13, 2026. This folder records the visible UI review, delivery decisions and implementation through Stage 6. Architecture, APIs, data definitions, persistence, scalability and instrumentation are tracked in the separate non-UI ledger.
 
 | Read in order | Purpose |
 |---|---|
@@ -14,8 +14,6 @@ Updated October 28, 2026. The feedback and delivery plan in this folder are rest
 
 The standing [UI development standard](../ui-development-standard.md) and [styles/rollback guide](../ui2-styles-and-rollback.md) are canonical in `prototype-app/docs/`. The two same-named files here are location pointers, not duplicate standards.
 
-Scope decision: the user requested an application review, document updates following feedback, and then explicitly restricted feedback to UI elements with a separate non-UI ledger. Those requests authorize this documentation revision. The user subsequently selected separate Intelligence navigation and six peer Workbench tabs; those selections are recorded in the plan/proposal. These requests do not record implementation or expand product capabilities. No application code is changed.
+The implementation plan records the selected Intelligence navigation and six peer Workbench tabs, the changes integrated at each stage and the remaining acceptance items. The full Workbench exit guard depends on the router work tracked as N07a.
 
-Source inspection and saved screenshots support the diagnosis. Fresh browser, visual, accessibility and live persistence evidence is pending; see the evidence gate in the UI plan. All completion boxes describe future verification unless explicitly marked as documentation verification.
-
-Latest plan revision incorporates early state primitives, named breakpoint consolidation, independent coarse-pointer targets, explicit draft/URL/exit contracts, table override/reset compatibility, in-place modal confirmation, single-header assertions, per-slice effort and bounded visual/accessibility verification. The supporting router migration is tracked separately as N07a; full UI exit protection cannot be marked complete before it. No application code or snapshots were changed by this revision.
+The October 30 [backend wiring checks](../ui2-backend-wiring-fixes-2026-10-30.md) and [screenshot comparison](../ui2-ci-visual-repair-2026-10-30.md) record results for their tested candidates. See the plan for remaining designer and QA acceptance and the [migration record](../CURRENT_STATE.md) for release qualification.
