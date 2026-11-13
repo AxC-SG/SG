@@ -4,7 +4,7 @@ One folder for everything about the Sydney application lab: how to run it, the c
 
 **Status at 16:30 UTC, November 12, 2026:** the lab is **running**. The owner signed in as platform owner and as the SG Internal administrator. There is no cleanup deadline. Billable runtime costs about USD 0.30 per hour until lab-down.
 
-**November 13, 2026 — the lab is the only ScoutGrid environment** ([plan](../LAB_SOLE_ENVIRONMENT_PLAN.md)). Render is being retired. The public Vercel site `https://scoutgrid.io` becomes the lab's single frontend origin, calling `https://api-lab.scoutgrid.io/api`. The Amplify frontend at `lab.scoutgrid.io` stays only until the cutover verification gate passes, then it is removed. The lab stays up for the week of November 13; `scripts/lab.sh` brings it up or parks it. While the lab is down, sign-in and the demo form on `scoutgrid.io` are offline. Do not onboard real customers onto the lab.
+**November 13, 2026 — the lab is the only ScoutGrid environment** ([plan](../LAB_SOLE_ENVIRONMENT_PLAN.md)). Render is being retired. The public Vercel site `https://scoutgrid.io` becomes the lab's single frontend origin, calling `https://api-lab.scoutgrid.io/api`. The cutover was applied on November 13 and the Amplify frontend at `lab.scoutgrid.io` was removed the same day (record: `evidence/2026-11-13/cutover-rollback.json`). The lab stays up for the week of November 13; `scripts/lab.sh` brings it up or parks it. While the lab is down, sign-in and the demo form on `scoutgrid.io` are offline. Do not onboard real customers onto the lab.
 
 ## Environment
 
@@ -13,7 +13,7 @@ One folder for everything about the Sydney application lab: how to run it, the c
 | Account / region | `736486260824` / `ap-southeast-2` (Sydney) |
 | Source candidate | `0ae3de9f4e4f7b1f784622d31656f30a89499043` (main after PR #70) |
 | Backend image | `736486260824.dkr.ecr.ap-southeast-2.amazonaws.com/scoutgrid-lab-backend@sha256:e0477a842367866505e469c7dc97aef77759fce5febf3a59d10d49acbe3a3ad5` |
-| Frontend | Vercel project `scout-frontend`, https://scoutgrid.io (`www` redirects to the apex) after the cutover. Until then: Amplify app `d20ebk72hfk5ft`, branch `lab`, https://lab.scoutgrid.io |
+| Frontend | Vercel project `scout-frontend`, https://scoutgrid.io (`www` redirects to the apex with a 308). The Amplify app `d20ebk72hfk5ft` and `lab.scoutgrid.io` were retired on November 13, 2026. |
 | API | https://api-lab.scoutgrid.io/api (ALB `scoutgrid-lab-api`, WAF with 2 AWS managed rule sets) |
 | Cognito | pool `ap-southeast-2_fPdRmnVqM` (Essentials tier), browser client `7egknl0kls1dkrkk3fmvcioev1`. **MFA OFF** for platform and tenant sign-in since 16:37:39 UTC, November 12, by owner decision. Set by `cognito_mfa_configuration = "OFF"` in `config/sydney-lab.foundation.tfvars`. The Terraform default is also `OFF`, so production gets MFA off too (owner decision). |
 | Database | RDS `scoutgrid-lab`, PostgreSQL 16.15, db.t4g.medium, 100 GB gp3, private, deletion protection on |
