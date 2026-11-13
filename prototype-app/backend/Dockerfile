@@ -14,7 +14,7 @@ RUN apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update \
     && adduser --system --ingroup vulnwatch vulnwatch
 COPY --from=build /workspace/target/vulnwatch-backend-*.jar /app/vulnwatch-backend.jar
 COPY scripts /app/scripts
-RUN chmod 500 /app/scripts/run-schema-migration.sh /app/scripts/run-render-migration.sh \
+RUN chmod 500 /app/scripts/run-schema-migration.sh \
     && chmod 400 /app/scripts/provision-runtime-role.sql \
     && chown -R vulnwatch:vulnwatch /app/scripts
 USER vulnwatch:vulnwatch
@@ -29,4 +29,3 @@ ADD --checksum=sha256:b1711d12bae51838581281e23b6cb97b1074016873b4dafc80ed140024
 ADD --checksum=sha256:d73890748b5a95551800df8a6f07c9c800e32ed34da7e6c9505918bf8ac2398b --chmod=0444 https://truststore.pki.rds.amazonaws.com/ap-southeast-2/ap-southeast-2-bundle.pem /app/rds-ca-ap-southeast-2.pem
 
 FROM runtime AS default-runtime
-CMD ["sh", "-c", "if [ \"${APP_RUNTIME_ROLE:-all}\" = \"schema-migrator\" ]; then exec /app/scripts/run-render-migration.sh; else exec java $JAVA_TOOL_OPTIONS $JAVA_OPTS -jar /app/vulnwatch-backend.jar; fi"]

@@ -1,24 +1,34 @@
 package com.prototype.vulnwatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.TenantQuotaUpdateRequest;
 import com.prototype.vulnwatch.repo.TenantRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,10 +40,40 @@ class TenantServiceTest {
     private TenantSchemaService tenantSchemaService;
 
     private TenantService tenantService;
+    private final RecordingTransactionManager transactions = new RecordingTransactionManager();
 
     @BeforeEach
     void setUp() {
-        tenantService = new TenantService(tenantRepository, tenantSchemaService);
+        TenantContext.clear();
+        tenantService = new TenantService(tenantRepository, tenantSchemaService, transactions);
+    }
+
+    @AfterEach
+    void clearContext() {
+        TenantContext.clear();
+    }
+
+    /** Records each transaction's definition and opens real synchronization so isActualTransactionActive() is true. */
+    private static final class RecordingTransactionManager extends AbstractPlatformTransactionManager {
+        private final List<TransactionDefinition> begun = new ArrayList<>();
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {
+            begun.add(definition);
+        }
+
+        @Override
+        protected void doCommit(DefaultTransactionStatus status) {
+        }
+
+        @Override
+        protected void doRollback(DefaultTransactionStatus status) {
+        }
     }
 
     @Test
@@ -239,6 +279,66 @@ class TenantServiceTest {
         List<Tenant> tenants = tenantService.listActiveTenants();
 
         assertEquals(List.of(active), tenants);
+    }
+
+    @Test
+    void listActiveTenantsOpensItsReadOnlyTransactionInsidePlatformScope() {
+        UUID callerTenant = UUID.randomUUID();
+        TenantContext.setCurrentTenantId(callerTenant);
+        TenantContext.setCurrentSchemaName("tenant_customer");
+        List<Boolean> platformAtRead = new ArrayList<>();
+        List<Boolean> transactionAtRead = new ArrayList<>();
+        when(tenantRepository.findAllByOrderByCreatedAtAsc()).thenAnswer(invocation -> {
+            platformAtRead.add(TenantContext.isPlatformContext());
+            transactionAtRead.add(TransactionSynchronizationManager.isActualTransactionActive());
+            return List.of();
+        });
+
+        tenantService.listActiveTenants();
+
+        assertEquals(List.of(true), platformAtRead);
+        assertEquals(List.of(true), transactionAtRead);
+        assertEquals(1, transactions.begun.size());
+        assertTrue(transactions.begun.get(0).isReadOnly());
+        assertFalse(TenantContext.isPlatformContext());
+        assertEquals(callerTenant, TenantContext.getCurrentTenantId());
+        assertEquals("tenant_customer", TenantContext.getCurrentSchemaName());
+    }
+
+    @Test
+    void listActiveTenantsRestoresCallerContextWhenTheReadFails() {
+        UUID callerTenant = UUID.randomUUID();
+        TenantContext.setCurrentTenantId(callerTenant);
+        when(tenantRepository.findAllByOrderByCreatedAtAsc()).thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThrows(IllegalStateException.class, () -> tenantService.listActiveTenants());
+
+        assertFalse(TenantContext.isPlatformContext());
+        assertEquals(callerTenant, TenantContext.getCurrentTenantId());
+    }
+
+    @Test
+    void listActiveTenantsJoinsACallerTransactionOpenedInPlatformScope() {
+        Tenant active = new Tenant();
+        active.setStatus("ACTIVE");
+        when(tenantRepository.findAllByOrderByCreatedAtAsc()).thenReturn(List.of(active));
+
+        List<Tenant> tenants = TenantContext.runAsPlatform(() ->
+                new TransactionTemplate(transactions).execute(status -> tenantService.listActiveTenants()));
+
+        assertEquals(List.of(active), tenants);
+        assertEquals(1, transactions.begun.size());
+    }
+
+    @Test
+    void listActiveTenantsRejectsACallerTransactionOutsidePlatformScope() {
+        TenantContext.setCurrentTenantId(UUID.randomUUID());
+
+        IllegalStateException rejected = assertThrows(IllegalStateException.class, () ->
+                new TransactionTemplate(transactions).execute(status -> tenantService.listActiveTenants()));
+
+        assertTrue(rejected.getMessage().contains("platform scope"));
+        verifyNoInteractions(tenantRepository);
     }
 
     @Test
