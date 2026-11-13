@@ -16,7 +16,7 @@ Last updated November 13, 2026 for the UI 2.0 improvements and browser CI change
 | Routing | React Router DOM ^7.18.4 |
 | Server state | @tanstack/react-query ^5.95.2 |
 | Table | @tanstack/react-table ^8.21.3 |
-| Error monitoring | @sentry/react ^10.51.0 |
+| Error monitoring | @sentry/react ^11.11.0 |
 | Report export | docx ^9.6.1 |
 | HTTP | Native `fetch` (no axios) |
 | Test runner | Vitest ^4.1.11 |

@@ -1,15 +1,5 @@
 {
   "mcpServers": {
-    "auth0": {
-      "command": "npx",
-      "args": ["-y", "@auth0/auth0-mcp-server", "run"],
-      "capabilities": ["tools"],
-      "env": {
-        "AUTH0_DOMAIN": "dev-ws03t5n4y61lrmi4.us.auth0.com",
-        "AUTH0_CLIENT_ID": "tqpCtolsokNVLg5cMr5ObKOoOhLjYxPo",
-        "DEBUG": "auth0-mcp"
-      }
-    },
     "vercel": {
       "type": "http",
       "url": "https://mcp.vercel.com"

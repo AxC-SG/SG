@@ -514,7 +514,6 @@ Runtime collection, adapter admission, evaluation, readiness, execution APIs, gr
 - All AI Grid/AI Security tables are accessed via `JdbcTemplate` directly — there are no JPA entities or Spring Data repositories for this module, unlike the rest of the backend.
 - Azure discovery is newer and less battle-tested than AWS; a config-driven kill switch (`AiSecurityAzureKillSwitchService`) exists specifically to disable it per tenant/connector/resource-family/policy if needed.
 - Macie and Purview integrations are strictly read-only against *existing* classification results — neither path ever triggers a new PII scan.
-- `com.prototype.vulnwatch.web.PlatformAdminRequestPaths` (a request-path classifier added alongside recent platform-admin hardening work) has no call site anywhere outside its own unit test as of this writing — likely wired up incompletely; verify before relying on it.
 - Runtime telemetry and detection are deferred. Historical policy packages and certification records remain for audit, but collectors, adapter admission, evaluation, and customer runtime surfaces are blocked. Reintroducing runtime requires a separately approved scope and fresh evidence qualification.
 
 ## Audit Trail

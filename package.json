@@ -1,12 +1,6 @@
 {
-  "dependencies": {
-    "@sentry/react": "^10.51.0",
-    "resend": "^6.34.1"
-  },
   "scripts": {
     "build:ai-grid-phase1": "node prototype-app/scripts/compile-ai-grid-phase1.mjs --write && node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs --write",
-    "validate:ai-grid-phase1": "node prototype-app/scripts/compile-ai-grid-phase1.mjs && node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs",
-    "validate:ai-grid-legacy-cleanup": "node scripts/validate-ai-grid-legacy-cleanup.mjs && node prototype-app/scripts/validate-ai-grid-legacy-parity.mjs",
-    "generate:ai-grid-catalog-repair": "node scripts/generate-ai-grid-catalog-repair.mjs"
+    "validate:ai-grid-phase1": "node prototype-app/scripts/compile-ai-grid-phase1.mjs && node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs"
   }
 }
