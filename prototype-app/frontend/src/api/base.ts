@@ -1,12 +1,7 @@
-const PRODUCTION_API_BASE = 'https://api.scoutgrid.io/api';
-
-export function resolveApiBase(
-  apiBase = import.meta.env.VITE_API_BASE,
-  production = import.meta.env.PROD,
-): string {
+// VITE_API_BASE names the backend. Unset, the app calls its own origin's /api: the Vite
+// proxy in development, and the same-origin artifact in browser fixture builds. Vercel
+// production builds must set it (scripts/production-api-policy.mjs enforces this).
+export function resolveApiBase(apiBase = import.meta.env.VITE_API_BASE): string {
   const configured = apiBase?.trim();
-  if (configured) {
-    return configured.replace(/\/+$/, '');
-  }
-  return production ? PRODUCTION_API_BASE : '/api';
+  return configured ? configured.replace(/\/+$/, '') : '/api';
 }

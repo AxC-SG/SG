@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { resolveApiBase } from './base';
 
 describe('resolveApiBase', () => {
-  it('uses the dev proxy when no local env override is present', () => {
-    expect(resolveApiBase('', false)).toBe('/api');
+  it('uses same-origin /api when no override is present', () => {
+    expect(resolveApiBase('')).toBe('/api');
+    expect(resolveApiBase(undefined)).toBe('/api');
   });
 
-  it('uses the deployed backend when no production env override is present', () => {
-    expect(resolveApiBase('', true)).toBe('https://api.scoutgrid.io/api');
+  it('never falls back to the retired api.scoutgrid.io host', () => {
+    expect(resolveApiBase('')).not.toContain('api.scoutgrid.io');
   });
 
   it('preserves an explicit env override and trims trailing slashes', () => {

@@ -182,7 +182,7 @@ Demo/public routes (outside auth boundary): `/demo`, `/demo/blog`, `/demo/blog/z
 Overview (`/exposure`) is reserved for risk metrics and risk-focused summaries only. Do not place operational, pipeline, quality, freshness, correlation-efficiency, or CSAF/VEX analytics panels on Overview; those belong under Operational Dashboard.
 Correlation Efficiency and CSAF/VEX Quality Analytics have moved off Operations → Pipeline and now live under Inventory (reached via `/operations/quality` redirecting to `/inventory` with quality-tab search params); `PipelinePayload` itself only carries ingestion/freshness data now.
 
-API calls use `src/api/client.ts`, with the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Without `VITE_API_BASE`, development uses `/api` through the Vite proxy to localhost:8080; production uses `https://api.scoutgrid.io/api`. Auth headers are injected on every request.
+API calls use `src/api/client.ts`, with the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Without `VITE_API_BASE` the app calls same-origin `/api` (the Vite proxy to localhost:8080 in development). Vercel production builds must set it (currently `https://api-lab.scoutgrid.io/api`); `scripts/production-api-policy.mjs` rejects a missing value or an origin outside the `vercel.json` CSP `connect-src`. Auth headers are injected on every request.
 
 ### TypeScript Types
 
