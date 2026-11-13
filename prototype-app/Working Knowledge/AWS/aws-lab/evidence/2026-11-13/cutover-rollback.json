@@ -109,5 +109,50 @@
       "Apply role lacks iam:PassRole for service updates: service rolls run under the cycle role instead"
     ],
     "rollback": "Set frontend_origin to https://lab.scoutgrid.io and apply the same steps; the previous revisions api:2 (live before cutover) and worker:1 remain usable as INACTIVE definitions for running tasks."
+  },
+  "turnstile_widget": {
+    "site_key": "0x4AAAAAAF9qZ1T6AfbbM6kS",
+    "name": "ScoutGrid Sydney lab 20261112",
+    "domains_before": [
+      "lab.scoutgrid.io"
+    ],
+    "domains_after": [
+      "lab.scoutgrid.io",
+      "scoutgrid.io"
+    ],
+    "changed_utc": "2026-11-13T18:18:52Z",
+    "other_settings": "unchanged (managed mode, world region)",
+    "follow_up": "Remove lab.scoutgrid.io when Amplify is retired (B7)."
+  },
+  "b6_verification_gate": {
+    "date_utc": "2026-11-13T19:00:00Z",
+    "automated_checks_passed": [
+      "scoutgrid.io serves the #77 build (718a7c24): CSP connect-src = api-lab.scoutgrid.io + lab imports bucket",
+      "bundle calls https://api-lab.scoutgrid.io/api; demo-form chunk carries the lab Turnstile site key",
+      "API CORS allows https://scoutgrid.io with credentials; lab.scoutgrid.io refused",
+      "GET /api/auth/managed/login -> 303 to Cognito hosted login with callback https://api-lab.scoutgrid.io/api/auth/callback and a Secure HttpOnly __Host-sg-login cookie",
+      "S3 imports bucket CORS allows PUT from https://scoutgrid.io",
+      "Turnstile widget allows scoutgrid.io",
+      "www.scoutgrid.io -> 308 https://scoutgrid.io/ preserving path and query (Vercel domain redirect)"
+    ],
+    "browser_checks": "WAIVED by the owner on 2026-11-13: operator sign-ins, demo-request persistence and BOM processing on scoutgrid.io were not run before retirement (B7)."
+  },
+  "b7_retirement": {
+    "date_utc": "2026-11-13T19:20:00Z",
+    "done": [
+      "Cloudflare: deleted api.scoutgrid.io CNAME -> scout-backend-vrtb.onrender.com",
+      "Amplify: deleted the lab.scoutgrid.io domain association, then Terraform destroyed aws_amplify_app.frontend (d20ebk72hfk5ft) and aws_amplify_branch.frontend (Apply role + cutover grant)",
+      "Cloudflare: deleted lab.scoutgrid.io CNAME -> d8s9bwnnazx0m.cloudfront.net and its ACM validation CNAME _7198af0c9bf39f42be834490c6c19321.lab.scoutgrid.io",
+      "Turnstile widget 0x4AAAAAAF9qZ1T6AfbbM6kS domains: [scoutgrid.io]",
+      "IAM: removed ScoutGridSydneyLabFrontend inline policies CapturedLabExecution and LabDeployAndDomain (Amplify-only); detached and deleted managed ScoutGridSydneyLab-cutover-once from ScoutGridSydneyLabApply; removed the sglab-frontend CLI profile"
+    ],
+    "dns_after": [
+      "api-lab CNAME -> lab ALB",
+      "_62ca8e28\u2026 ACM validation (api-lab certificate)",
+      "scoutgrid.io and www CNAME -> Vercel",
+      "Zoho MX/verify",
+      "Resend send. MX/SPF, DKIM, DMARC"
+    ],
+    "pending": "Render: final encrypted pg_dump of scoutdb-preprod-v1, then delete web service scout-backend and the database, revoke Render-only credentials, confirm billing. Then remove the render MCP entry from .mcp.json."
   }
 }
