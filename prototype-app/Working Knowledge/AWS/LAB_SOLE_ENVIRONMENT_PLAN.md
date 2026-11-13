@@ -224,3 +224,14 @@ Approved rev 2 with these deliberate adjustments, found while implementing:
 - `terraform test` passes for the root module (25/25, including whole-root lab-up and lab-down plans with operations enabled and the $100/$100.01 budget cases) and the network module (3/3, including `none`).
 - `shellcheck` is clean on `lab.sh`.
 - The plan allowlist rejects task-definition changes, replacements, RDS deletes and wrong-direction actions.
+
+## Execution status (November 13, 2026)
+
+- **Part A:** merged as PR #77 (`718a7c24`).
+- **B1 (rollback state):** recorded in `aws-lab/evidence/2026-11-13/cutover-rollback.json`.
+- **B2 (IAM):** the owner approved both grants. Applying the cutover exposed missing cycle-role reads; these were added (see the matrix).
+- **B3 (Turnstile):** the widget allows `scoutgrid.io`.
+- **B4 (backend):** applied. CORS, email links and Turnstile now use `https://scoutgrid.io`, with services on `api:3` and `worker:2`. `lab.sh plan-up` reports no changes.
+- **B5 (Vercel):** production variables set, `#77` deployed, and `www` redirects to the apex with a 308.
+- **B6 (verification):** all infrastructure checks passed. The owner **waived** the browser checks (sign-ins, demo request, BOM processing).
+- **B7 (retirement):** `api.scoutgrid.io`, `lab.scoutgrid.io` and its validation record were deleted. Amplify was destroyed (this PR removes it from Terraform). Turnstile lists only `scoutgrid.io`. The cutover and Amplify grants were removed. **Render is still pending:** a final dump, then deletion.
