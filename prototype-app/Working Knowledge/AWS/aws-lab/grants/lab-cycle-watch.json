@@ -1,0 +1,20 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "WatchLabServiceDeployments",
+   "Effect": "Allow",
+   "Action": [
+    "ecs:ListServiceDeployments",
+    "ecs:DescribeServiceDeployments",
+    "ecs:DescribeServiceRevisions"
+   ],
+   "Resource": [
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service-deployment/scoutgrid-lab/*",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service-revision/scoutgrid-lab/*"
+   ]
+  }
+ ]
+}

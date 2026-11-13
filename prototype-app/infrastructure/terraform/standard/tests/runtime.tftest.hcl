@@ -506,14 +506,18 @@ run "accept_lab_budget_at_owner_allowance" {
   variables {
     environment = "lab"
     monthly_budget = {
-      amount_usd     = 50
+      amount_usd     = 100
       operator_email = "billing@example.com"
     }
   }
 
   assert {
-    condition     = aws_budgets_budget.standard[0].limit_amount == "50"
-    error_message = "The lab must accept the owner's inclusive $50 monthly ceiling."
+    condition = (
+      aws_budgets_budget.standard[0].limit_amount == "100" &&
+      !one(aws_budgets_budget.standard[0].cost_types).include_credit &&
+      !one(aws_budgets_budget.standard[0].cost_types).include_refund
+    )
+    error_message = "The lab must accept the owner's inclusive $100 monthly ceiling, measured as gross usage without credits."
   }
 }
 
@@ -523,7 +527,7 @@ run "reject_lab_budget_above_owner_allowance" {
   variables {
     environment = "lab"
     monthly_budget = {
-      amount_usd     = 50.01
+      amount_usd     = 100.01
       operator_email = "billing@example.com"
     }
   }
@@ -669,7 +673,7 @@ run "reject_single_nat_in_production" {
   expect_failures = [var.nat_gateway_mode]
 }
 
-run "reject_unknown_nat_topology" {
+run "reject_parked_nat_in_production" {
   command = plan
 
   variables {
@@ -677,4 +681,25 @@ run "reject_unknown_nat_topology" {
   }
 
   expect_failures = [var.nat_gateway_mode]
+}
+
+run "reject_unknown_nat_topology" {
+  command = plan
+
+  variables {
+    environment      = "lab"
+    nat_gateway_mode = "shared"
+  }
+
+  expect_failures = [var.nat_gateway_mode]
+}
+
+run "reject_parked_ingress_in_production" {
+  command = plan
+
+  variables {
+    runtime_ingress_enabled = false
+  }
+
+  expect_failures = [var.runtime_ingress_enabled]
 }

@@ -2,6 +2,15 @@
 
 Use this record for G00 and P14. Candidate evidence belongs in `release-evidence/<release-id>/` or the protected release artifact store.
 
+**Latest update — November 13, 2026:** the owner made the Sydney lab the only ScoutGrid
+environment ([plan](LAB_SOLE_ENVIRONMENT_PLAN.md)). Render is retired after a verification
+gate; the Vercel site `https://scoutgrid.io` becomes the lab's single frontend origin and
+calls `https://api-lab.scoutgrid.io/api`; the Amplify lab frontend is removed. Vercel is also
+the production frontend. The lab ceiling rises to $100/month with an AWS Budgets alert and a
+shutdown rule. `aws-lab/scripts/lab.sh` brings the lab up or parks it (NAT `none`, ingress off,
+services stopped, RDS stopped). Do not onboard real customers onto the lab. All Part 1 gates
+remain open; production planning resumes after the week of November 13.
+
 **Latest execution update — November 12, 2026:** PR #69 was manually merged as
 `4678580ab0a84c6cd2dfd96a02cfedc168e0a9cf`. All four required main workflows and
 the full browser sweep on its identical PR source tree passed. Retain and verify

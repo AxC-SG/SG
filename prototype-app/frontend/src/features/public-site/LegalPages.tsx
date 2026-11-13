@@ -1,11 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { LEGAL_ENTITY, PublicDemoShell, SITE_NAME } from './PublicSiteShell';
+import { PublicDemoShell, SITE_NAME } from './PublicSiteShell';
 
 // Legal text for the public site. It describes how Scoutgrid actually behaves (essential
 // storage only, no analytics or advertising trackers) and still needs review by qualified
 // counsel before the site goes live.
-const COMPANY = LEGAL_ENTITY;
 const ADDRESS = 'Hyderabad, India';
 const CONTACT_EMAIL = 'support@scoutgrid.io';
 const GOVERNING_LAW = 'India';
@@ -37,11 +36,11 @@ export function PrivacyPolicyPage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Privacy Policy"
-      deck={`How ${COMPANY}, which operates ${SITE_NAME} (“we”, “us”), collects, uses and protects personal information when you visit this site, request a demo or sign in to the ${SITE_NAME} platform.`}
+      deck={`How ${SITE_NAME} (“we”, “us”) collects, uses and protects personal information when you visit this site, request a demo or sign in to the ${SITE_NAME} platform.`}
     >
       <section>
         <h2>1. Scope and our role</h2>
-        <p>This policy applies to scoutgrid.io, the {SITE_NAME} blog, demo requests, account sign-in and our direct communications with you. For this information, {COMPANY} decides why and how it is used (we act as the data controller or data fiduciary).</p>
+        <p>This policy applies to scoutgrid.io, the {SITE_NAME} blog, demo requests, account sign-in and our direct communications with you. For this information, {SITE_NAME} decides why and how it is used (we act as the data controller or data fiduciary).</p>
         <p>It does not cover the data your organization loads into its {SITE_NAME} workspace, such as software and AI bills of materials (SBOM, AI-BOM, CBOM), asset and CMDB inventories, cloud and AI discovery results, vulnerability findings and connector settings. We process that customer data only on your organization&rsquo;s instructions, under its agreement with us, and your organization remains responsible for it.</p>
       </section>
 
@@ -112,7 +111,7 @@ export function PrivacyPolicyPage() {
       <section>
         <h2>8. Your rights and how to contact us</h2>
         <p>Depending on where you live, you may have the right to access your personal information, correct or update it, ask us to erase it, restrict or object to its use, receive it in a portable format, withdraw consent, and nominate another person to exercise your rights. You also have the right to have a complaint handled by us and, if you are not satisfied, to complain to your data-protection authority.</p>
-        <p>To make a request or raise a grievance, email <EmailLink /> or write to {COMPANY}, {ADDRESS}. We may need to verify your identity before acting on a request. If your account belongs to an organization&rsquo;s workspace, we may refer your request to that organization.</p>
+        <p>To make a request or raise a grievance, email <EmailLink /> or write to {SITE_NAME}, {ADDRESS}. We may need to verify your identity before acting on a request. If your account belongs to an organization&rsquo;s workspace, we may refer your request to that organization.</p>
       </section>
 
       <section>
@@ -185,7 +184,7 @@ export function CookiePolicyPage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Cookie Policy"
-      deck={`The cookies and similar technologies ${COMPANY}, operating as ${SITE_NAME}, uses on scoutgrid.io and in the ${SITE_NAME} platform, and the choices you have.`}
+      deck={`The cookies and similar technologies ${SITE_NAME} uses on scoutgrid.io and in the ${SITE_NAME} platform, and the choices you have.`}
     >
       <section>
         <h2>1. What these technologies are</h2>
@@ -220,7 +219,7 @@ export function CookiePolicyPage() {
 
       <section>
         <h2>5. Changes and contact</h2>
-        <p>We will update this policy and the date below when the technologies we use change. Questions can be sent to <EmailLink /> or to {COMPANY}, {ADDRESS}. Our <Link to="/demo/privacy">Privacy Policy</Link> explains how we handle personal information more generally.</p>
+        <p>We will update this policy and the date below when the technologies we use change. Questions can be sent to <EmailLink /> or to {SITE_NAME}, {ADDRESS}. Our <Link to="/demo/privacy">Privacy Policy</Link> explains how we handle personal information more generally.</p>
         <p>Effective as of {LAST_UPDATED}.</p>
       </section>
     </LegalArticle>
@@ -232,7 +231,7 @@ export function TermsOfServicePage() {
     <LegalArticle
       kicker={`${SITE_NAME} · Legal`}
       title="Terms of Service"
-      deck={`The terms that apply when you use this site, request a demo or access the ${SITE_NAME} platform provided by ${COMPANY}, operating as ${SITE_NAME}, ${ADDRESS}.`}
+      deck={`The terms that apply when you use this site, request a demo or access the ${SITE_NAME} platform. ${SITE_NAME} (“we”, “us”) is based in ${ADDRESS}.`}
     >
       <section>
         <h2>1. Acceptance</h2>
@@ -263,7 +262,7 @@ export function TermsOfServicePage() {
 
       <section>
         <h2>5. Intellectual property</h2>
-        <p>The service, site, software, documentation and the {SITE_NAME} name and logo are owned by {COMPANY} or its licensors. Except for the limited right to use the service under these terms, no rights are granted to you. Feedback you choose to give may be used without obligation.</p>
+        <p>The service, site, software, documentation and the {SITE_NAME} name and logo are owned by us or our licensors. Except for the limited right to use the service under these terms, no rights are granted to you. Feedback you choose to give may be used without obligation.</p>
       </section>
 
       <section>
@@ -274,7 +273,7 @@ export function TermsOfServicePage() {
       <section>
         <h2>7. Disclaimers and limitation of liability</h2>
         <p>The site and demo access are provided “as is” and “as available”, without warranties of any kind, to the extent permitted by law. Risk scores, findings and remediation recommendations, including any that are AI-assisted, support but do not replace your own security judgment, and we do not guarantee that the service will find every vulnerability or exposure.</p>
-        <p>To the extent permitted by law, {COMPANY} will not be liable for indirect, incidental, special, consequential or punitive damages, or for lost profits, revenue or data. Our total liability arising from these terms will not exceed the amounts you paid for the service in the twelve months before the claim, or one hundred US dollars if you paid nothing.</p>
+        <p>To the extent permitted by law, {SITE_NAME} will not be liable for indirect, incidental, special, consequential or punitive damages, or for lost profits, revenue or data. Our total liability arising from these terms will not exceed the amounts you paid for the service in the twelve months before the claim, or one hundred US dollars if you paid nothing.</p>
       </section>
 
       <section>
@@ -294,7 +293,7 @@ export function TermsOfServicePage() {
 
       <section>
         <h2>11. Contact</h2>
-        <p>Questions about these terms can be sent to <EmailLink /> or to {COMPANY}, {ADDRESS}.</p>
+        <p>Questions about these terms can be sent to <EmailLink /> or to {SITE_NAME}, {ADDRESS}.</p>
         <p>Effective as of {LAST_UPDATED}.</p>
       </section>
     </LegalArticle>

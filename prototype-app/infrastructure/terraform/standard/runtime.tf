@@ -312,8 +312,8 @@ output "backend_runtime" {
     task_definition_arns       = { for role, task in aws_ecs_task_definition.backend : role => task.arn }
     task_subnet_ids            = module.network.boundaries.task_subnet_ids
     migrator_security_group_id = aws_security_group.backend["migrator"].id
-    api_load_balancer_dns_name = aws_lb.api["standard"].dns_name
-    api_load_balancer_zone_id  = aws_lb.api["standard"].zone_id
+    api_load_balancer_dns_name = try(aws_lb.api["standard"].dns_name, null)
+    api_load_balancer_zone_id  = try(aws_lb.api["standard"].zone_id, null)
     runtime_db_connection_budget = {
       steady      = local.runtime_db_steady_connections
       rollout     = local.runtime_db_rollout_connections
