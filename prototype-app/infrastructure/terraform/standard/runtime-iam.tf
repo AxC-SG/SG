@@ -18,6 +18,9 @@ locals {
     APP_CREDENTIAL_ENCRYPTION_KEY     = "${var.backend_candidate.application_secret}:credential_encryption_key::"
     APP_AI_SECURITY_IDENTITY_HMAC_KEY = "${var.backend_candidate.application_secret}:ai_identity_hmac_key::"
     APP_TURNSTILE_SECRET_KEY          = "${var.backend_candidate.application_secret}:turnstile_secret_key::"
+    # Without this key ResendEmailClient is unconfigured and the invitation and campaign
+    # outbox pollers skip delivery, leaving messages queued.
+    RESEND_API_KEY = "${var.backend_candidate.application_secret}:resend_api_key::"
   } : {}
 
   managed_installation_fields = {

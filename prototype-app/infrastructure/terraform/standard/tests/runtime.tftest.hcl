@@ -262,6 +262,19 @@ run "separate_runtime_roles" {
   }
 
   assert {
+    condition = alltrue([
+      for role, task in aws_ecs_task_definition.backend :
+      anytrue([for secret in one(jsondecode(task.container_definitions)).secrets :
+        secret.name == "RESEND_API_KEY" && secret.valueFrom == "${var.backend_candidate.application_secret}:resend_api_key::"
+      ]) == (role != "migrator") &&
+      anytrue([for entry in one(jsondecode(task.container_definitions)).environment :
+        entry.name == "RESEND_FROM_EMAIL" && entry.value == "Scoutgrid <noreply@scoutgrid.io>"
+      ]) == (role != "migrator")
+    ])
+    error_message = "API and worker must receive the Resend key from the application secret and the scoutgrid.io sender, so invitation and campaign email can be delivered; the migrator sends none."
+  }
+
+  assert {
     condition = output.backend_runtime.runtime_db_connection_budget == { steady = 20, rollout = 40, login_limit = 41 } && alltrue([
       for role, task in aws_ecs_task_definition.backend :
       anytrue([for entry in one(jsondecode(task.container_definitions)).environment :
