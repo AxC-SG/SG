@@ -12,7 +12,7 @@ Updated October 28, 2026. The feedback and delivery plan in this folder are rest
 | [Exposure UI review](exposure-shell-review-2026-10-28.md) | Specific feedback against the supplied dashboard reference |
 | [Non-UI improvement ledger](NON_UI_IMPROVEMENTS_LEDGER.md) | Separate candidate work for data/API/domain correctness, persistence and frontend architecture; dependencies only in the UI docs |
 
-The standing [UI development standard](../../../docs/ui-development-standard.md) and [styles/rollback guide](../../../docs/ui2-styles-and-rollback.md) are canonical in `prototype-app/docs/`. The two same-named files here are location pointers, not duplicate standards.
+The standing [UI development standard](../ui-development-standard.md) and [styles/rollback guide](../ui2-styles-and-rollback.md) are canonical in `prototype-app/docs/`. The two same-named files here are location pointers, not duplicate standards.
 
 Scope decision: the user requested an application review, document updates following feedback, and then explicitly restricted feedback to UI elements with a separate non-UI ledger. Those requests authorize this documentation revision. The user subsequently selected separate Intelligence navigation and six peer Workbench tabs; those selections are recorded in the plan/proposal. These requests do not record implementation or expand product capabilities. No application code is changed.
 

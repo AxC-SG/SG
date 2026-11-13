@@ -29,9 +29,9 @@ Versions above describe declared package constraints; `package-lock.json` pins r
 
 The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.lazy`. The dev server runs strictly on port 5173 (`--strictPort`). Vite proxies `/api/**` to `http://localhost:8080` in dev so the frontend calls the backend without a separate CORS config.
 
-**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Browser CI also runs fixture journeys, visual and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](ui2-styles-and-rollback.md#browser-gates).
+**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Browser CI also runs fixture journeys, visual and affected-route/axe checks in the pinned Playwright image; the scheduled workflow runs the full sweep. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
 
-**New development:** follow [the UI development standard](ui-development-standard.md) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
+**New development:** follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
 Expandable sidebar rows use sibling native buttons: the label navigates, while the chevron toggles the section and exposes `aria-expanded`. Keep these controls separate so keyboard and screen-reader users can expand a section without navigating. `App.test.tsx` covers this behavior; the browser accessibility sweep checks it across themes and widths.
 
@@ -840,7 +840,7 @@ Two themes: `light` and `dark`. `AppShell` defaults to dark when `scoutai-theme`
 
 ### Tokens, fonts and CSS file organization
 
-App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. `main.tsx` imports only `styles/index.css`, which loads public styles followed by `ui2/index.css`; all application styles are eager. The legacy `base.css`, `shared.css`, page stylesheet imports, compatibility bridge and version switch are retired. App token stacks are `--dp-font` (Inter/system fallbacks) and `--dp-mono` (JetBrains Mono/monospace fallbacks); declaring them does not bundle those fonts. The entry still contains the original public Google Fonts import, which is not a new dependency to copy into app screens. See [stylesheet ownership and browser gates](ui2-styles-and-rollback.md) and the required [UI development standard](ui-development-standard.md).
+App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. `main.tsx` imports only `styles/index.css`, which loads public styles followed by `ui2/index.css`; all application styles are eager. The legacy `base.css`, `shared.css`, page stylesheet imports, compatibility bridge and version switch are retired. App token stacks are `--dp-font` (Inter/system fallbacks) and `--dp-mono` (JetBrains Mono/monospace fallbacks); declaring them does not bundle those fonts. The entry still contains the original public Google Fonts import, which is not a new dependency to copy into app screens. See [stylesheet ownership and browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md>) and the required [UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>).
 
 ### CSS class naming patterns
 

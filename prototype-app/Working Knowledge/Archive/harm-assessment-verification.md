@@ -38,7 +38,7 @@ The archived standalone package validator was run with its package root adjusted
 
 ## Scope and rollout
 
-Platform migration V9 and tenant migration V15 were verified against disposable PostgreSQL databases, including an upgrade from existing V14 baseline records. No production migration was run. Tests and the [baseline UI screenshot](../../output/playwright/harm-baseline-section.png) use local fixtures; the screenshot shows the actual component with sanitized fixture evidence.
+Platform migration V9 and tenant migration V15 were verified against disposable PostgreSQL databases, including an upgrade from existing V14 baseline records. No production migration was run. Tests and the [baseline UI screenshot](../../../output/playwright/harm-baseline-section.png) use local fixtures; the screenshot shows the actual component with sanitized fixture evidence.
 
 H14 remains DRAFT/PAUSED with default DISABLED selection. Owner-facing findings require existing certification, approved distribution, release, canary visibility and tenant selection gates. Production tenant evidence and rollout readiness remain unverified. No tenant policies were bulk-enabled, and no provider API calls or raw-content collection were added.
 

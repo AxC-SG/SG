@@ -1,6 +1,6 @@
 # Week 2: Performance & Security Hardening
 
-> Historical archive: endpoint, role and migration descriptions below may be obsolete. See [current implementation closure](../../prototype-app/docs/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md). API-key examples require explicitly configured local development authentication; deployed environments use the current authentication contract.
+> Historical archive: endpoint, role and migration descriptions below may be obsolete. See [current implementation closure](../AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md). API-key examples require explicitly configured local development authentication; deployed environments use the current authentication contract.
 
 **Timeline:** Oct 7 - Oct 11, 2026  
 **Owner:** Backend Engineer + Security Engineer  

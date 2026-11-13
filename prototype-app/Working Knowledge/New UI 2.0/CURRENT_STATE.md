@@ -12,7 +12,7 @@ Updated October 28, 2026 against source commit `eedc8a0864cadf7c0cd0e55ec733f463
 - Active browser tooling lives in `frontend/e2e/`: deterministic fixtures, route map, family journeys, visual/axe/journey baselines, artifact boundary checks and live journeys. Quality and scheduled sweep workflows test UI 2 only. Frozen UI 1 baselines are historical.
 - Later commits `2f5abf42`, `6bb3376e`, `26c3bc26`, `1faab124` and `eedc8a08` corrected universal selectors/stored theme, public/auth dark contrast and canvas/header palettes, adjusted the scope expectation and refreshed inspected dark auth snapshots. Do not revert those fixes to match older family maps or counts.
 
-For exact current ownership and commands, see [styles and rollback](../../docs/ui2-styles-and-rollback.md). For all future screens use [the UI development standard](../../docs/ui-development-standard.md); shared-pattern departures require approval with pros/cons and an affected-screen consistency plan.
+For exact current ownership and commands, see [styles and rollback](ui2-styles-and-rollback.md). For all future screens use [the UI development standard](ui-development-standard.md); shared-pattern departures require approval with pros/cons and an affected-screen consistency plan.
 
 ## Historical evidence and remaining qualification
 

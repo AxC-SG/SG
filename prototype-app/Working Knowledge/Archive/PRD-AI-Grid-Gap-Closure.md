@@ -47,9 +47,9 @@ Macie/Purview inputs consume existing classification results; AI Grid does not p
 
 ### Relationship to existing requirements
 
-The [Discovery health PRD](../../Other%20Docs/Archive/Archived%20final%20plans/1.1_Req1_PRD_Discovery-health.md) remains the detailed specification for AWS, Azure and Copilot qualification. This umbrella PRD does not reduce its three-provider scope, change thresholds or declare completion. A first demo can use one explicitly named provider; a combined three-provider release still needs all contracted provider boundaries to pass. Do not duplicate its reference-comparison engine or gap queue.
+The [Discovery health PRD](1.1_Req1_PRD_Discovery-health.md) remains the detailed specification for AWS, Azure and Copilot qualification. This umbrella PRD does not reduce its three-provider scope, change thresholds or declare completion. A first demo can use one explicitly named provider; a combined three-provider release still needs all contracted provider boundaries to pass. Do not duplicate its reference-comparison engine or gap queue.
 
-The [prioritised roadmap](../../Other%20Docs/Archive/Archived%20final%20plans/1_ai-grid-prioritized-roadmap-2026-2029.md) supplies implementation and release boundaries. Recheck package/deployment state before committing a capability to a customer.
+The [prioritised roadmap](1_ai-grid-prioritized-roadmap-2026-2029.md) supplies implementation and release boundaries. Recheck package/deployment state before committing a capability to a customer.
 
 ## 4. Objective and success measures
 
@@ -238,11 +238,11 @@ Hold an affected claim/release if its source cannot support the conclusion, disc
 
 ### References
 
-- [AI Grid prioritised roadmap](../../Other%20Docs/Archive/Archived%20final%20plans/1_ai-grid-prioritized-roadmap-2026-2029.md): current retained baseline and qualification boundaries.
-- [Discovery health PRD](../../Other%20Docs/Archive/Archived%20final%20plans/1.1_Req1_PRD_Discovery-health.md): detailed three-provider discovery requirements.
-- [Business logic guide](business-logic-guide.md): AI-BOM, AI Grid, evidence, runtime and workflow foundations.
-- [Exposure evaluator](../backend/src/main/java/com/prototype/vulnwatch/aisecurity/service/AiGridExposureService.java): bounded correlations and evidence predicates.
-- [Runtime readiness](../backend/src/main/java/com/prototype/vulnwatch/aisecurity/service/AiGridRuntimeTelemetryReadinessService.java): existing provider readiness gate.
-- [AI-BOM declared-resource API](../backend/src/main/java/com/prototype/vulnwatch/controller/AiBomDeclaredResourceController.java): existing read/setup/finding paths.
+- [AI Grid prioritised roadmap](1_ai-grid-prioritized-roadmap-2026-2029.md): current retained baseline and qualification boundaries.
+- [Discovery health PRD](1.1_Req1_PRD_Discovery-health.md): detailed three-provider discovery requirements.
+- [Business logic guide](../../docs/business-logic-guide.md): AI-BOM, AI Grid, evidence, runtime and workflow foundations.
+- [Exposure evaluator](../../backend/src/main/java/com/prototype/vulnwatch/aisecurity/service/AiGridExposureService.java): bounded correlations and evidence predicates.
+- [Runtime readiness](../../backend/src/main/java/com/prototype/vulnwatch/aisecurity/service/AiGridRuntimeTelemetryReadinessService.java): existing provider readiness gate.
+- [AI-BOM declared-resource API](../../backend/src/main/java/com/prototype/vulnwatch/controller/AiBomDeclaredResourceController.java): existing read/setup/finding paths.
 - [Wiz AI Security](https://www.wiz.io/solutions/ai-spm) and [Wiz agent-security overview](https://www.wiz.io/blog/wiz-ai-spm-secures-ai-agents): vendor capability claims reviewed in the preceding comparison; not an independent effectiveness assessment.
 - User-supplied Wiz architecture image dated 3 October 2026: comparison input, not implementation instructions.

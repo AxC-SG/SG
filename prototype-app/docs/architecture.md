@@ -279,7 +279,7 @@ UI 2.0 is the only tenant/platform/auth presentation. `main.tsx` imports one eag
 
 `presentationBoundary.ts` applies `data-ui="2"` outside `/demo` on direct loads; `PresentationBoundary` reapplies it before paint on route navigation and browser history. Public/demo content intentionally retains separately scoped styles. UI 1 rebuild switching and the legacy bridge are removed. Rollback uses the retained frozen build, not a build-time flag.
 
-New screens follow [the UI development standard](ui-development-standard.md), with exact CSS ownership in [UI 2 styles and rollback](ui2-styles-and-rollback.md). Changes to shared presentation/interaction conventions need user approval during development, with alternatives, pros/cons and an affected-screen consistency plan.
+New screens follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>), with exact CSS ownership in [UI 2 styles and rollback](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md>). Changes to shared presentation/interaction conventions need user approval during development, with alternatives, pros/cons and an affected-screen consistency plan.
 
 ### Key Architectural Decisions
 

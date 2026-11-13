@@ -126,7 +126,7 @@ Fresh browser evidence remains **pending**. The UI implementation owner must:
 4. Reproduce each candidate UI defect and record route, role/entitlement, state, viewport/theme, expected/actual and evidence path. Reclassify already-fixed items, including recent public/auth fixes; do not create tickets from stale screenshots alone.
 5. Add keyboard, zoom and workbench transition checks missing from the representative sweep. Any live write/persistence verification belongs to separately identified disposable test data and the non-UI dependencies.
 
-Use the [canonical browser instructions](../../../docs/ui2-styles-and-rollback.md#browser-gates). Do not fake the Playwright image environment, loosen assertions/tolerances, or update baselines just to remove failures. A pass against known axe/journey baselines is a regression comparison, not zero defects. If an environment check cannot run, record the missing prerequisite and leave that evidence pending.
+Use the [canonical browser instructions](../ui2-styles-and-rollback.md#browser-gates). Do not fake the Playwright image environment, loosen assertions/tolerances, or update baselines just to remove failures. A pass against known axe/journey baselines is a regression comparison, not zero defects. If an environment check cannot run, record the missing prerequisite and leave that evidence pending.
 
 ### Stage 0 evidence record — October 29, 2026
 
@@ -423,7 +423,7 @@ Introduce header assertions on adopted routes immediately; retain baseline-only 
 
 ### Snapshot change and approval procedure
 
-October 30 CI follow-up: the pinned Linux visual comparison and targeted Stage 2b–6 snapshot refresh are recorded in [the visual CI repair report](../../../docs/ui2-ci-visual-repair-2026-10-30.md), with a route/diff manifest. The refresh does not claim human designer acceptance, update journey/axe baselines, or close the other qualification items above.
+October 30 CI follow-up: the pinned Linux visual comparison and targeted Stage 2b–6 snapshot refresh are recorded in [the visual CI repair report](../ui2-ci-visual-repair-2026-10-30.md), with a route/diff manifest. The refresh does not claim human designer acceptance, update journey/axe baselines, or close the other qualification items above.
 
 1. Build and compare the current slice against existing baselines in the required pinned environment; retain before/after/diff artifacts. Record the slice commit/diff and selected route list.
 2. The feature developer explains every changed layout/control/state. The designated UI reviewer checks the affected images; QA checks functional/keyboard expectations. Record actual reviewer identity/date/result at review time, not an invented approval now.

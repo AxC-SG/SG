@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The frontend migration is complete: app/auth routes share UI 2.0 and `/demo` content retains its public boundary. Backend APIs, DTOs, authorization, tenant scoping and schema were not redesigned by that migration. Preserve those contracts when adding screens; do not enable contained capabilities or add mock success responses to match a design.
 
-Use [the UI development standard](../docs/ui-development-standard.md) for new frontend work and API-driven states. Keep feature behavior server-authorized and report unavailable/permission/validation/error states explicitly. Shared UI architecture or interaction changes require the user's approval during development with alternatives, pros/cons and an app-wide consistency plan. See [current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) for the limits of historical qualification evidence.
+Use [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>) for new frontend work and API-driven states. Keep feature behavior server-authorized and report unavailable/permission/validation/error states explicitly. Shared UI architecture or interaction changes require the user's approval during development with alternatives, pros/cons and an app-wide consistency plan. See [current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) for the limits of historical qualification evidence.
 
 ## Commands
 

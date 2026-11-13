@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## UI 2.0: required reading for new screens
 
-Follow [the UI development standard](../docs/ui-development-standard.md) for every new or substantially changed screen. It defines the architecture, reusable React components and CSS primitives, required states, accessibility, responsive checks and the approval process for changing a shared pattern. [UI 2 styles and rollback](../docs/ui2-styles-and-rollback.md) defines the exact import order, route boundary and browser commands.
+Follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>) for every new or substantially changed screen. It defines the architecture, reusable React components and CSS primitives, required states, accessibility, responsive checks and the approval process for changing a shared pattern. [UI 2 styles and rollback](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md>) defines the exact import order, route boundary and browser commands.
 
 Use the existing `AppShell` inside `src/App.tsx`; compose route pages from feature modules and shared components. UI 2.0 is always active on app/auth routes; `/demo` routes have the intentional public presentation. No `VITE_UI_VERSION`, `uiVersion.ts`, legacy stylesheet imports or `legacy-bridge.css` remain. Styles load eagerly once from `main.tsx` through `styles/index.css`; do not add page-local CSS imports.
 
@@ -28,7 +28,7 @@ npm run test:coverage # vitest run --coverage (enforces line/branch thresholds)
 npx vitest run src/pages/FindingsPage.test.tsx
 ```
 
-Quality gates in order: `lint` → `typecheck` → `build` → `test:coverage`. Browser CI additionally runs UI 2-only fixture journeys, visual tests and affected-route/axe checks; the scheduled sweep covers four widths in both themes. Run `npm run e2e:build` before browser commands. Visual/affected/update commands require the pinned Playwright container. See [browser gates](../docs/ui2-styles-and-rollback.md#browser-gates); `e2e:live` requires approved disposable accounts/data and is separate from default CI.
+Quality gates in order: `lint` → `typecheck` → `build` → `test:coverage`. Browser CI additionally runs UI 2-only fixture journeys, visual tests and affected-route/axe checks; the scheduled sweep covers four widths in both themes. Run `npm run e2e:build` before browser commands. Visual/affected/update commands require the pinned Playwright container. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>); `e2e:live` requires approved disposable accounts/data and is separate from default CI.
 
 ## Environment variables
 
