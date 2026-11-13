@@ -4,10 +4,6 @@
       "type": "http",
       "url": "https://mcp.vercel.com"
     },
-    "render": {
-      "type": "http",
-      "url": "https://mcp.render.com/mcp"
-    },
     "azure-mcp": {
       "type": "local",
       "command": "npx",
