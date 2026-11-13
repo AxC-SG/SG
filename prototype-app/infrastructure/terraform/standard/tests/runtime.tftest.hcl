@@ -235,7 +235,7 @@ run "separate_runtime_roles" {
           entry.value if entry.name == "HTTP_OUTBOUND_ALLOWED_HOSTS"
         ]))) ==
         setunion(
-          toset(split(";", regex("HTTP_OUTBOUND_ALLOWED_HOSTS:([^}]+)}", file("${path.module}/../../../backend/src/main/resources/application.yml"))[0])),
+          toset(flatten(regexall("\"([a-z-]+=[^\"]+)\"", regex("(?s)DEFAULT_ALLOWLIST = String\\.join\\(\";\",(.*?)\\);", file("${path.module}/../../../backend/src/main/java/com/prototype/vulnwatch/client/http/OutboundHostPolicy.java"))[0]))),
           toset(["cognito=scoutgrid-runtime-test.auth.us-east-1.amazoncognito.com,cognito-idp.us-east-1.amazonaws.com"])
         )
       ) if role != "migrator"

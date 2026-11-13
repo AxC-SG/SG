@@ -202,7 +202,7 @@ public class JiraTicketingConfigService {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(BAD_REQUEST,
                     "Jira base URL is not an approved outbound endpoint. Add the host to the "
-                            + "'jira=' entry of HTTP_OUTBOUND_ALLOWED_HOSTS.", ex);
+                            + "'jira=' entry of HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS.", ex);
         }
         if (config.authType() == JiraAuthType.BASIC && !hasText(config.username())) {
             throw new ResponseStatusException(BAD_REQUEST,

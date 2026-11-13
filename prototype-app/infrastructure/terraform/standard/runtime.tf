@@ -81,10 +81,11 @@ locals {
   cognito_issuer = "https://${aws_cognito_user_pool.humans.endpoint}"
   cognito_login  = "${aws_cognito_user_pool_domain.login.domain}.auth.${var.aws_region}.amazoncognito.com"
 
-  # Setting HTTP_OUTBOUND_ALLOWED_HOSTS replaces the backend default, so this repeats the
-  # default from backend application.yml (app.http.outbound.allowed-hosts) and adds the
-  # Cognito hosts that managed sign-in calls for the token exchange and signing keys.
-  # Keep the two lists in step; tests/runtime.tftest.hcl checks the Cognito entry.
+  # Setting HTTP_OUTBOUND_ALLOWED_HOSTS replaces the backend default, so this repeats
+  # OutboundHostPolicy.DEFAULT_ALLOWLIST and adds the Cognito hosts that managed sign-in calls
+  # for the token exchange and signing keys. tests/runtime.tftest.hcl fails if the two drift.
+  # Once a backend image that reads HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS is deployed, set
+  # only the Cognito entry there instead and drop this copy.
   outbound_allowed_hosts = join(";", [
     "github=api.github.com",
     "nvd=services.nvd.nist.gov",

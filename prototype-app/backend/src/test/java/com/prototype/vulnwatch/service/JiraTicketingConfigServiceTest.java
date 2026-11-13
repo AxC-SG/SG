@@ -103,7 +103,7 @@ class JiraTicketingConfigServiceTest {
                 () -> service.save(tenant, request("https://not-allowlisted.example.org", "tok-secret")));
 
         assertEquals(400, error.getStatusCode().value());
-        assertTrue(error.getReason().contains("HTTP_OUTBOUND_ALLOWED_HOSTS"));
+        assertTrue(error.getReason().contains("HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS"));
         verify(repository, never()).save(any());
     }
 
