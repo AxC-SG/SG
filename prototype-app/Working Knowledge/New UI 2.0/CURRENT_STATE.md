@@ -1,6 +1,6 @@
 # Current UI 2.0 state
 
-Updated October 28, 2026 against source commit `eedc8a0864cadf7c0cd0e55ec733f4637ff6622a` plus this documentation cleanup. This records source completion separately from release qualification.
+Updated November 13, 2026 against `main` at `562fdbd8`. The October 28 cleanup and its verification below apply to source commit `eedc8a0864cadf7c0cd0e55ec733f4637ff6622a` and its documentation changes.
 
 ## Implemented state
 
@@ -8,8 +8,10 @@ Updated October 28, 2026 against source commit `eedc8a0864cadf7c0cd0e55ec733f463
 - `main.tsx` eagerly imports `styles/index.css`. Public defaults load first, then canonical app tokens, shared app/shell/primitives, family base/presentation, table controls and XYFlow vendor CSS in deterministic order. All active app families use this entry.
 - `presentationBoundary.ts` and router-aware `PresentationBoundary` own `data-ui="2"` outside `/demo`; login/setup/invites use UI 2.0. Direct load, links and Back/Forward preserve that boundary. `scoutai-theme` and the mounted app's dark default remain; public surfaces retain their intentional light local palette.
 - Supported workflows reuse existing feature queries, request helpers, types, calculations, roles/entitlements and mutation handlers. No API, auth, tenancy or database migration was introduced by presentation retirement.
-- Proven-unused mock/retired page code and unused direct dependencies were removed in S3. `/fix-intelligence/*` still redirects to `/findings`; typed compatibility route helpers remain. Runtime evidence, generic Azure, SCCM JDBC, Fix Intelligence and unsupported patch pipelines remain contained.
-- Active browser tooling lives in `frontend/e2e/`: deterministic fixtures, route map, family journeys, visual/axe/journey baselines, artifact boundary checks and live journeys. Quality and scheduled sweep workflows test UI 2 only. Frozen UI 1 baselines are historical.
+- S3 removed unused mock pages and dependencies. Fix Intelligence now has live tenant list and detail routes under `/fix-intelligence`, with the [backend roles and provider limits](../../docs/backend.md#fix-intelligence) documented separately.
+- The [UI improvement plan](<UI 2.0 improvements/UI_IMPLEMENTATION_PLAN.md>) records the shared shell, table, dialog and page changes integrated through Stage 6, including the six-tab CVE Workbench. Designer and QA acceptance remains open for the stages identified in the ledger. The Workbench's shell and browser-history exit guards still depend on N07a.
+- Active browser tooling in `frontend/e2e/` covers artifact boundary checks, fixture journeys, route sweeps, visual and axe comparisons, and live journeys. Pull requests run the artifact checks and fixture journeys. The scheduled and on-demand workflow runs the full route and accessibility sweep plus screenshot comparison.
+- The [October 30 backend wiring record](ui2-backend-wiring-fixes-2026-10-30.md) covers AWS setup, Operations routing and GitHub SBOM counts. The [October 30 screenshot record](ui2-ci-visual-repair-2026-10-30.md) records the reviewed baseline refresh and comparison for its candidate.
 - Later commits `2f5abf42`, `6bb3376e`, `26c3bc26`, `1faab124` and `eedc8a08` corrected universal selectors/stored theme, public/auth dark contrast and canvas/header palettes, adjusted the scope expectation and refreshed inspected dark auth snapshots. Do not revert those fixes to match older family maps or counts.
 
 For exact current ownership and commands, see [styles and rollback](../../docs/ui2-styles-and-rollback.md). For all future screens use [the UI development standard](../../docs/ui-development-standard.md); shared-pattern departures require approval with pros/cons and an affected-screen consistency plan.
