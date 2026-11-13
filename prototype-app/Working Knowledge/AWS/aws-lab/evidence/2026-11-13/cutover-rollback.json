@@ -68,5 +68,46 @@
       "rollback": "Instant Rollback to the recorded deployment; delete the three created variables and restore VITE_API_BASE"
     }
   },
-  "pending_records": "Lab Terraform state version, task-definition revisions and their CORS/base-URL/Turnstile values, S3 CORS and Cognito logout/invite settings are recorded before B4, under the cycle or Plan role."
+  "pending_records": "none",
+  "lab_before_cutover": {
+    "terraform_state_version_id": "HuneRKD0sGWmuFHHKOrsQPE8j_o7vWsh",
+    "live_service_task_definitions": {
+      "api": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:2",
+      "worker": "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:1"
+    },
+    "s3_imports_cors_allowed_origins": [
+      "https://lab.scoutgrid.io"
+    ],
+    "cognito_browser_client_logout_urls": [
+      "https://lab.scoutgrid.io/login"
+    ],
+    "cognito_invite_email_mentions_lab_login": true,
+    "api_env": {
+      "APP_CORS_ALLOWED_ORIGINS": "https://lab.scoutgrid.io",
+      "APP_DEMO_APP_BASE_URL": "https://lab.scoutgrid.io",
+      "APP_TURNSTILE_EXPECTED_HOSTNAME": "lab.scoutgrid.io"
+    },
+    "rollback": "Set frontend_origin back to https://lab.scoutgrid.io and apply; or point the services at the recorded task-definition revisions."
+  },
+  "b4_backend_cutover_applied": {
+    "completed_utc": "2026-11-13T18:12:24Z",
+    "steps": [
+      "Apply role (+ ScoutGridSydneyLab-cutover-once): budget scoutgrid-lab-monthly-account-cost created (gross usage, $100); Cognito invite link and browser-client logout URL -> https://scoutgrid.io/login; imports bucket CORS -> https://scoutgrid.io",
+      "Bootstrap role: new task definitions scoutgrid-lab-api:3 and scoutgrid-lab-worker:2 (frontend origin scoutgrid.io, Cognito outbound hosts in Terraform); old api:1 and worker:1 deregistered",
+      "Owner admin session: deregistered retired enrollment migrator scoutgrid-lab-migrator:1 (finding 4; Bootstrap lacks DeregisterTaskDefinition for it); Bootstrap then registered the new migrator revision without enrollment inputs",
+      "Cycle role: services api -> api:3 and worker -> worker:2 (worker health-check grace 300 s); both rollouts COMPLETED with one running task each"
+    ],
+    "verification": [
+      "lab.sh plan-up: no changes (live lab matches code)",
+      "lab.sh plan-down: exactly the 12 billable runtime resources, allowlist passed (plan only)",
+      "OPTIONS /api/auth/context: Origin https://scoutgrid.io allowed; Origin https://lab.scoutgrid.io 403",
+      "GET https://api-lab.scoutgrid.io/api/auth/csrf: 200"
+    ],
+    "grant_gaps_found_and_fixed": [
+      "Cycle role lacked s3:GetBucketWebsite (Terraform refresh of the lab buckets): added to lab-cycle.json",
+      "Cycle role lacked ECS service-deployment reads used while waiting for a rollout: added as managed ScoutGridSydneyLab-cycle-watch (inline policy at the 10,240-byte limit)",
+      "Apply role lacks iam:PassRole for service updates: service rolls run under the cycle role instead"
+    ],
+    "rollback": "Set frontend_origin to https://lab.scoutgrid.io and apply the same steps; the previous revisions api:2 (live before cutover) and worker:1 remain usable as INACTIVE definitions for running tasks."
+  }
 }

@@ -108,10 +108,11 @@ for rc in json.load(sys.stdin).get("resource_changes", []):
     if actions in {("no-op",), ("read",)}:
         continue
     address = rc["address"]
-    changes.append(f"{'+'.join(actions):>14}  {address}")
+    shown = "+".join(actions)
+    changes.append(f"{shown:>14}  {address}")
     in_set = any(re.match(p, address) for p in runtime)
     if not in_set or actions not in allowed_actions:
-        refused.append(f"{'+'.join(actions):>14}  {address}")
+        refused.append(f"{shown:>14}  {address}")
 print("\n".join(changes) if changes else "(no changes)", file=sys.stderr)
 if refused:
     print("\nREFUSED - outside the " + mode + " allowlist:", file=sys.stderr)
@@ -362,6 +363,7 @@ print(json.dumps([{"ContextKeyName": k, "ContextKeyValues": [v], "ContextKeyType
     "up iam:PassRole arn:aws:iam::${ACCOUNT_ID}:role/scoutgrid-lab-api-task"
     "up iam:PassRole arn:aws:iam::${ACCOUNT_ID}:role/scoutgrid-lab-worker-execution"
     "up rds:StartDBInstance ${db}"
+    "up s3:GetBucketWebsite arn:aws:s3:::scoutgrid-lab-${ACCOUNT_ID}-imports"
     "down ecs:UpdateService ${svc}/api"
     "down ecs:DeleteService ${svc}/worker"
     "down elasticloadbalancing:DeleteLoadBalancer ${alb}"
