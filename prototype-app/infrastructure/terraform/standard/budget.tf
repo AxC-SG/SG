@@ -9,10 +9,10 @@ variable "monthly_budget" {
   validation {
     condition = var.monthly_budget == null ? true : (
       var.monthly_budget.amount_usd > 0 &&
-      (var.environment != "lab" || var.monthly_budget.amount_usd <= 50) &&
+      (var.environment != "lab" || var.monthly_budget.amount_usd <= 100) &&
       can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.monthly_budget.operator_email))
     )
-    error_message = "Provide a positive USD amount, at most 50 for the disposable lab, and a valid billing operator email."
+    error_message = "Provide a positive USD amount, at most 100 for the disposable lab, and a valid billing operator email."
   }
 }
 

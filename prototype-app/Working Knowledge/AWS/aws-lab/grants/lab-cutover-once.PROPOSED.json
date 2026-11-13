@@ -1,0 +1,87 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "CutoverImportsBucketCorsOnly",
+   "Effect": "Allow",
+   "Action": [
+    "s3:PutBucketCORS"
+   ],
+   "Resource": "arn:aws:s3:::scoutgrid-lab-736486260824-imports",
+   "Condition": {
+    "StringEquals": {
+     "s3:ResourceAccount": "736486260824"
+    }
+   }
+  },
+  {
+   "Sid": "CutoverLabPoolLogoutAndInviteOnly",
+   "Effect": "Allow",
+   "Action": [
+    "cognito-idp:UpdateUserPool",
+    "cognito-idp:UpdateUserPoolClient"
+   ],
+   "Resource": "arn:aws:cognito-idp:ap-southeast-2:736486260824:userpool/ap-southeast-2_fPdRmnVqM",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "CutoverRollServicesToNewRevisions",
+   "Effect": "Allow",
+   "Action": [
+    "ecs:UpdateService"
+   ],
+   "Resource": [
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/api",
+    "arn:aws:ecs:ap-southeast-2:736486260824:service/scoutgrid-lab/worker"
+   ],
+   "Condition": {
+    "ArnEquals": {
+     "ecs:cluster": "arn:aws:ecs:ap-southeast-2:736486260824:cluster/scoutgrid-lab"
+    },
+    "ArnLike": {
+     "ecs:task-definition": [
+      "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-api:*",
+      "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-worker:*"
+     ]
+    },
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  },
+  {
+   "Sid": "CutoverCreateTaggedLabBudget",
+   "Effect": "Allow",
+   "Action": [
+    "budgets:CreateBudget",
+    "budgets:ModifyBudget",
+    "budgets:ViewBudget",
+    "budgets:TagResource",
+    "budgets:ListTagsForResource"
+   ],
+   "Resource": "arn:aws:budgets::736486260824:budget/scoutgrid-lab-*"
+  },
+  {
+   "Sid": "RetireLabAmplifyFrontend",
+   "Effect": "Allow",
+   "Action": [
+    "amplify:DeleteDomainAssociation",
+    "amplify:DeleteBranch",
+    "amplify:DeleteApp"
+   ],
+   "Resource": [
+    "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft",
+    "arn:aws:amplify:ap-southeast-2:736486260824:apps/d20ebk72hfk5ft/*"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestedRegion": "ap-southeast-2"
+    }
+   }
+  }
+ ]
+}

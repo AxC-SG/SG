@@ -1,137 +1,226 @@
-# Plan: retire Render, make the Sydney lab the only backend, Vercel as the only frontend
+# Plan: retire Render, make the Sydney lab the only backend, Vercel as the only frontend (rev 2)
 
 ## Context
-Render (`scout-backend`, free plan, Oregon) is the old pre-production backend. It has been in `update_failed` since Nov 8, so `api.scoutgrid.io` is already broken. The Sydney AWS lab is up and qualified for sign-in. The owner wants:
+Render (`scout-backend`, free plan, Oregon) has been in `update_failed` since Nov 8, so `api.scoutgrid.io` is already broken. The Sydney AWS lab is up and qualified for sign-in.
+
+The owner wants:
 - Render removed completely.
 - The public Vercel site (`scoutgrid.io`) pointed at the lab API.
-- The lab's Amplify frontend (`lab.scoutgrid.io`) torn down.
+- The lab Amplify frontend (`lab.scoutgrid.io`) torn down.
 - Cloudflare DNS reconciled.
 - The lab as the only environment until production is planned after this week's testing.
 
-The lab stays **up all week**. Lab-up and lab-down scripts must exist so it can be brought down at any time. Remind the owner on **2026-11-20** to decide next steps.
+The lab stays **up all week**. Lab-up and lab-down scripts must exist so it can come down at any time. Remind the owner on **2026-11-20**.
 
 **Owner decisions (2026-11-13):**
 - Frontend origin is `https://scoutgrid.io`.
-- Lab spend ceiling rises to **$100/month**.
+- Lab ceiling is **$100/month**.
 - Render database: take a final encrypted dump, then delete.
 - **Vercel is the production frontend too**, so Amplify is deleted from Terraform.
-- DNS is changed through a **scoped Cloudflare API token** stored in the macOS Keychain.
+- DNS is changed through a **scoped Cloudflare token** stored in the macOS Keychain.
+
+**Rev 2** takes in the external review of rev 1. Already done on `main`:
+- PR #75 removed `render.yaml`, both Render migration scripts and the Render `CMD` and `chmod` in the Dockerfile (`92c84b1e`).
+- PR #74 (finding 3) is merged.
+
+Work continues on branch `feat/lab-sole-environment`.
 
 ## Feedback on the approach (summary for the owner)
-- **Sound overall.** Render adds nothing (its deploy is failing), and one environment cuts operational overhead. Keeping Vercel removes the Amplify work in A08 and the IAM friction behind lab finding 5 and the frontend grants.
-- **The lab now carries the public site.** Whenever the lab is down, sign-in and the demo form on `scoutgrid.io` are offline. Marketing pages still load because they're static.
-- **Don't onboard real customers onto the lab.** It has MFA off, single-AZ RDS, Sydney data location, a disposable posture and down cycles. Demo requests that arrive this week should be treated as test data or re-entered in production.
-- **There can be only one origin.** While managed sign-in is on, the backend accepts exactly one frontend origin (`ManagedBrowserAuthController.java:38-46`). Vercel previews (`*.vercel.app`) can't sign in, and `www` must redirect to the apex.
-- **Production will reclaim `scoutgrid.io`.** The lab will then need its own Vercel domain, such as `lab.scoutgrid.io` on a branch with lab build settings. That gets planned with production.
-- **Lab-down can't be done with Terraform alone today.** NAT has no "none" mode, and the teardown grant is pinned to today's ALB and NAT IDs, which change at every lab-up. Both are fixed below.
-- **The per-step IAM roles make scripting brittle** (FINDINGS: one deploy role per environment). The scripts use one reviewed lab cycle role, and the owner approves it before it's attached.
-- **Timing:** lab-up takes about 20–30 minutes (RDS start 5–10, ALB 3–5, API cold start about 155 s). Lab-down takes about 10–15 minutes. RDS restarts by itself after 7 days stopped.
+- **Sound overall.** Render adds nothing, and one environment cuts overhead. Keeping Vercel removes the Amplify A08 work and its IAM friction.
+- **The lab now carries the public site.** When it's down, sign-in and the demo form on `scoutgrid.io` are offline. Static marketing pages still load.
+- **Don't onboard real customers onto the lab.** It has MFA off, single-AZ RDS, Sydney data location and a disposable posture.
+- **There can be only one origin.** With managed sign-in on, the backend accepts exactly one frontend origin (`ManagedBrowserAuthController.java:38-46`). Vercel previews can't sign in, and `www` must redirect to the apex.
+- **Production will reclaim `scoutgrid.io`.** The lab then moves to its own Vercel domain, planned together with production.
+- **Timing:** lab-up takes about 20–30 minutes and lab-down about 10–15 minutes. RDS restarts by itself after 7 days stopped.
 
-## Part A — repository changes (one PR, owner merges)
+## Part A — repository changes (PR 1, owner merges)
 
 ### A1. Terraform lab-down modes (`prototype-app/infrastructure/terraform/standard`)
-- `main.tf` `nat_gateway_mode`: add `"none"`, rejected when `environment == "production"`. In `modules/standard-network`, `nat_zones`, the EIPs and the `task_egress` routes become empty for `none`.
-- New variable `runtime_ingress_enabled` (default true; false rejected in production). It gates the ALB, listener, rule, target group, WAF and association in `ingress.tf` (`for_each = local.backend` becomes a filtered local). A validation requires `start_services = false` when ingress is off, because the API service references the target group.
-- Task definitions, runtime roles, log groups, the ECS cluster, RDS, Cognito, S3, KMS, secrets and ECR stay put. This matches the README's "kept" list.
-- `hosting.tf`: delete `aws_amplify_app.frontend`, `aws_amplify_branch.frontend` and `local.frontend_security_headers`. Keep the ECR repository. Drop `frontend_app_id` and `frontend_branch` from `output.release_targets`; the test at `tests/runtime.tftest.hcl:583-584` only checks region and registry.
-- `budget.tf`: raise the lab cap validation from 50 to 100.
-- Tests: new `tests/lab-cycle.tftest.hcl` (mocked):
-  - The down configuration plans zero NAT, EIP, ALB, WAF and service resources while keeping task definitions and the cluster.
-  - Production rejects `nat none` and ingress off.
-  - The budget accepts 100 and rejects 101.
-  - Update `integrated-lab.tftest.hcl:67` to `frontend_origin = https://scoutgrid.io`.
+- **NAT:** `main.tf` `nat_gateway_mode` gains `"none"`, rejected in production. In `modules/standard-network`, `nat_zones`, the EIPs and the `task_egress` routes are empty for `none`.
+- **Ingress switch:** new variable `runtime_ingress_enabled` (default true; false rejected in production).
+  - A filtered local gates every resource in `ingress.tf`: ALB, listener, rule, target group, WAF, association and the ALB security-group rules.
+  - Validation: ingress off requires `start_services = false`, because `runtime.tf:286` references the target group.
+- **Outputs and other references must be safe when ingress is off:**
+  - `runtime.tf:315-316`: `api_load_balancer_dns_name` and `api_load_balancer_zone_id` become `null` when ingress is off.
+  - `operations.tf:293-318`: the ALB and target-group alarms are gated on ingress as well as `operations`.
+- **Kept in every mode:** task definitions, runtime roles, log groups, the ECS cluster, RDS, Cognito, S3, KMS, secrets and ECR.
+- **Budget:** in `budget.tf`, the lab cap goes from 50 to 100.
+- **Tests:**
+  - Update the existing budget tests in `tests/runtime.tftest.hcl` (around lines 505-530). They accept 100 and reject **100.01**, replacing the current $50 and $50.01 cases.
+  - New `tests/lab-cycle.tftest.hcl` (mocked) plans **the whole root module** in down mode with services, ingress and NAT `none`, operations enabled, and every output evaluated. It asserts:
+    - zero NAT, EIP, egress-route, ALB, WAF and service resources
+    - task definitions and the cluster are kept
+    - `backend_runtime.api_load_balancer_dns_name == null`
+  - A matching up-mode test asserts all of those resources return.
+  - Production rejects `none` and ingress off.
+  - Update `integrated-lab.tftest.hcl:67` to `https://scoutgrid.io`.
+- **Amplify:** `hosting.tf` Amplify removal is **not** in PR 1. It's PR 2, after the verification gate (B6), so `lab.scoutgrid.io` stays available for rollback.
 
-### A2. Lab configuration (`Working Knowledge/AWS/aws-lab/config/`)
-- `sydney-lab.foundation.tfvars`: set `frontend_origin = "https://scoutgrid.io"` and `monthly_budget` to 100. The second is applied only if the budget is enabled in the lab.
-- New `runtime-down.auto.tfvars`: the running settings with `start_services = false`, `runtime_ingress_enabled = false` and `nat_gateway_mode = "none"`.
+### A2. Lab configuration and budget operating rule (`aws-lab/config/`)
+- **Foundation tfvars:**
+  - Set `frontend_origin = "https://scoutgrid.io"`.
+  - **Remove** `nat_gateway_mode` (line 6), so mode lives only in the runtime files.
+  - **Explicitly enable** `monthly_budget = { amount_usd = 100, operator_email = <owner billing email> }`. There's no budget in the lab today.
+- **Runtime files.** Each sets all three switches explicitly:
 
-### A3. Lab cycle role (proposed, not attached)
-- `grants/lab-cycle.PROPOSED.json` generalizes the policies proven on Nov 12 from exact IDs to name and tag scopes:
-  - `apply-runtime-ingress.json`, `service-operator-v2.json` and `teardown-lab-down.PROPOSED-NOT-ATTACHED.json`
-  - the security-group-rule, ELB, WAF and `GetWebACLForResource` corrections listed in FINDINGS
-- Scopes: `loadbalancer/app/scoutgrid-lab-api/*`, NAT and EIP by `Name=scoutgrid-lab-*` tag, RDS `db:scoutgrid-lab` start and stop, ECS `service/scoutgrid-lab/*`, the Terraform state bucket and lock, and Sydney only.
-- Also includes one-time `amplify:DeleteApp`, `amplify:DeleteBranch` and `amplify:DeleteDomainAssociation` on app `d20ebk72hfk5ft`.
-- New `sglab-cycle` profile in `~/.aws/config`.
-- Validate with IAM Access Analyzer and simulate before attaching.
+  | File | `start_services` | `runtime_ingress_enabled` | `nat_gateway_mode` |
+  |---|---|---|---|
+  | `runtime-running.tfvars` | true | true | `"single"` |
+  | `runtime-down.tfvars` | false | false | `"none"` |
+  | `runtime-noenroll.tfvars` and `runtime-stopped.tfvars` | (as now) | true | `"single"` |
 
-### A4. Scripts (`Working Knowledge/AWS/aws-lab/scripts/lab.sh`)
-- **Subcommands:** `status | plan-up | up | plan-down | down`.
+  The `.auto` suffix is dropped. Files are passed only with explicit `-var-file`.
+- **Budget operating rule** (written into `aws-lab/README.md`):
+  - **Before the week starts:** month-to-date actual (Cost Explorer) + 7 days up (about $50) + the rest of the month down (about $0.70/day) + retained storage + 20% contingency must be ≤ $100. Otherwise the lab doesn't stay up all week.
+  - **Alerts:** at 80% of actual and 100% of forecast, by email to the owner.
+  - **Responder:** the owner. Claude also runs `lab.sh status` at the start of every session.
+  - **Shutdown trigger:** month-to-date ≥ $80, or projected month-end > $100. Run `lab.sh down` the same day.
+  - **Caveat:** AWS Budgets is an alert, not a cap, and its data can lag usage by hours.
+
+### A3. IAM: action/resource matrix and two grants (proposed, not attached)
+New `grants/LAB_CYCLE_MATRIX.md` lists every API action per Terraform resource type, for both the **initial transition** and **repeat cycles**. It's built from the planned resource diffs and checked against the Nov 12 grants:
+- `apply-runtime-ingress`
+- `service-operator-v2`
+- `bootstrap-trusted-runtime.live`
+- the teardown proposal
+- the foundation and common read-state grants
+
+**`grants/lab-cycle.PROPOSED.json`** is for repeat cycles, as role `ScoutGridSydneyLabCycle` with profile `sglab-cycle`. It's scoped by name or tag (IDs change every cycle) and to Sydney only:
+
+| Phase | Actions |
+|---|---|
+| **Up** | `ec2:AllocateAddress`, `CreateNatGateway`, `CreateRoute`, `CreateTags`. The ELB create set and WAF create/associate/tag from `apply-runtime-ingress`, plus the security-group-rule tag fix. `ecs:CreateService`, `UpdateService`, `DescribeServices`, `TagResource`, and `iam:PassRole` limited to the two runtime task roles. `rds:StartDBInstance`. |
+| **Down** | The teardown set (ECS, ELB, WAF, NAT, EIP and route deletes) and `rds:StopDBInstance`. |
+| **Always** | Terraform state bucket and lock. The common read-state actions Terraform needs to refresh every resource in state, including `wafv2:GetWebACLForResource` and `s3:GetBucketWebsite`. |
+
+Explicitly excluded:
+- `ecs:RegisterTaskDefinition`. If a cycle plan wants a task-definition change, the script stops and sends it to the Bootstrap path.
+- Any delete or modify on RDS (other than start/stop), Cognito, S3, KMS, ECR or IAM.
+
+**`grants/lab-cutover-once.PROPOSED.json`** is for the one-time origin change and Amplify retirement. It's attached to the existing Apply and Bootstrap roles and detached afterwards:
+- `s3:PutBucketCORS` on the imports bucket
+- `cognito-idp:UpdateUserPool` and `UpdateUserPoolClient` on the lab pool
+- `ecs:RegisterTaskDefinition` and `DeregisterTaskDefinition`, with `iam:PassRole` for the runtime roles (Bootstrap)
+- `ecs:UpdateService` (Service)
+- `budgets:CreateBudget`, `ModifyBudget` and `TagResource` for the lab budget
+- later, for PR 2: `amplify:DeleteDomainAssociation`, `DeleteBranch` and `DeleteApp` on app `d20ebk72hfk5ft`
+
+**Proof before relying on down:**
+1. Access Analyzer validation.
+2. `iam simulate-principal-policy` for **every** action and resource pattern in the matrix, both up and down.
+3. `lab.sh down` refuses to run unless the up-set simulation passes in the same session. This keeps the lab from being taken down when it can't come back up.
+
+### A4. Scripts (`aws-lab/scripts/lab.sh`)
+- **Subcommands:** `status | plan-up | up | plan-down | down | simulate`.
 - **Guards:**
-  - STS account must be `736486260824` and the region `ap-southeast-2`; refuse otherwise.
-  - Terraform must be 1.13.5. Init with `sydney-lab.s3.tfbackend` and `-lockfile=readonly`.
-  - Every apply uses a saved plan. An allowlist check fails if the plan touches anything outside the expected addresses for the mode, which blocks deletes of RDS, Cognito, S3, KMS or ECR. The owner types `yes` before each apply.
+  - STS account must be `736486260824` and the region `ap-southeast-2`.
+  - Terraform must be 1.13.5. Init with `-backend-config=$CFG/sydney-lab.s3.tfbackend -lockfile=readonly`.
+  - Saved plans only.
+  - An address allowlist per mode refuses anything else, including any delete of RDS, Cognito, S3, KMS or ECR, and any task-definition change.
+  - The owner types `yes` before each apply.
+- **Exact arguments:**
+  - **up:**
+    ```
+    terraform plan -out=up.tfplan \
+      -var-file=$CFG/sydney-lab.foundation.tfvars \
+      -var-file=$CFG/runtime-running.tfvars
+    ```
+    `runtime-running.tfvars` explicitly restores `runtime_ingress_enabled = true` and `nat_gateway_mode = "single"`.
+  - **down:**
+    ```
+    terraform plan -out=down.tfplan \
+      -var-file=$CFG/sydney-lab.foundation.tfvars \
+      -var-file=$CFG/runtime-down.tfvars
+    ```
 - **`up`:**
-  1. Start RDS and wait for `available`.
-  2. Apply with `runtime-running` (NAT, ingress, services).
-  3. Wait for healthy targets with `aws elbv2 describe-target-health`.
-  4. Upsert the `api-lab` CNAME to the new ALB hostname through the Cloudflare API. The token comes from `security find-generic-password -s scoutgrid-cloudflare-dns -w` and is never echoed.
-  5. Smoke test `https://api-lab.scoutgrid.io/api/auth/csrf`.
+  1. `rds start-db-instance` and wait for `available`.
+  2. Plan and apply up.
+  3. Wait for healthy targets with `elbv2 describe-target-health`.
+  4. Upsert the `api-lab` CNAME through the Cloudflare API. The token comes from `security find-generic-password -s scoutgrid-cloudflare-dns -w` and is never echoed.
+  5. Smoke test `GET https://api-lab.scoutgrid.io/api/auth/csrf`.
 - **`down`:**
-  1. Apply `runtime-down`: services first, then ingress and NAT.
-  2. Point the `api-lab` CNAME away from the deleted ALB (delete the record).
-  3. `rds stop-db-instance`.
-  4. Print the date of the 7-day auto-restart.
-- **`status`:** RDS state, services and desired counts, ALB, NAT, the DNS target and month-to-date cost from Cost Explorer.
+  1. Run the simulate gate.
+  2. Plan and apply down.
+  3. Delete the `api-lab` CNAME.
+  4. `rds stop-db-instance`.
+  5. Print the date of the 7-day auto-restart.
+- **`status`:** RDS state, services, ALB, NAT, the DNS target, and month-to-date plus projected cost against the rule in A2.
 - Pass `shellcheck`. No secrets in output.
 
 ### A5. Frontend (`prototype-app/frontend/vercel.json`)
-- Set CSP `connect-src 'self' https://api-lab.scoutgrid.io https://<imports-bucket>.s3.ap-southeast-2.amazonaws.com https://challenges.cloudflare.com https://*.ingest.sentry.io`. Read the bucket host from `terraform output` and remove `api.scoutgrid.io`.
-- Leave the `src/api/base.ts` fallback alone; Vercel env vars override it.
+- Set CSP `connect-src 'self' https://api-lab.scoutgrid.io https://<imports-bucket>.s3.ap-southeast-2.amazonaws.com https://challenges.cloudflare.com https://*.ingest.sentry.io`. Read the bucket host from Terraform state.
 
-### A6. Remove Render from the repo
-- Delete `render.yaml` (it also contains a personal email address at line 85).
-- Delete `backend/scripts/run-render-migration.sh` and `test-run-render-migration-env.sh`.
-- `backend/Dockerfile`: drop the `default-runtime` stage so `aws-runtime` is the final default target. Before removing anything, search the workflows and scripts for builds that rely on the default target. The Dockerfile is deploy infrastructure, so the PR description calls this out.
-- Remove the `render` entries from `.mcp.json` and `.claude/settings.local.json`.
+### A6. Remaining Render references (most were removed by PR #75)
+- Remove the `render` entries in `.mcp.json:17-19` and `.claude/settings.local.json:4`.
+- Dockerfile: check that `aws-runtime` builds and that the leftover empty `default-runtime` stage (`backend/Dockerfile:31`, no Render references) is either unused or kept as the default. Require the CI `Trivy images gate` (`trivy.yml:169-171`), which builds `--target aws-runtime`, to pass.
 - Docs:
   - `docs/architecture.md:14,299-300`
-  - `Working Knowledge/AWS/AWS_MASTER_MIGRATION_PLAN.md`: line 48 (Vercel replaces Amplify), A08, R04 (Render retired early, with the date), and lab-as-sole-environment
-  - `STANDARD_IMPLEMENTATION_READINESS.md`, a new dated entry
-  - `aws-lab/README.md`: origins, scripts, Amplify removed, cost table
-  - `aws-lab/FINDINGS.md` process items
+  - Master plan: line 48 (Vercel), A08, R04 (Render retired early), and the lab as the sole environment
+  - `STANDARD_IMPLEMENTATION_READINESS.md`, a dated entry
+  - `aws-lab/README.md`
+  - `aws-lab/FINDINGS.md`
+  - `LAB_SOLE_ENVIRONMENT_PLAN.md`, replaced with rev 2
 
-## Part B — live changes, in order (after the PR merges; I confirm each outward step)
-1. **IAM:** the owner approves `lab-cycle.PROPOSED.json`. Create and attach the `ScoutGridSydneyLabCycle` role, then simulate and read it back.
-2. **Cloudflare token:** the owner creates a token limited to Zone DNS Edit on `scoutgrid.io` and adds it to the Keychain.
-3. **Turnstile:** add `scoutgrid.io` to the lab widget's hostnames, through the dashboard or a token with Turnstile scope. Keep the lab site key and secret pair.
-4. **Vercel** (dashboard, or the Vercel MCP after auth): set Production env vars:
+## Part B — live changes, gated (I confirm each outward step)
+1. **Record rollback state:**
+   - Vercel's current production deployment ID
+   - the lab Terraform state version
+   - the current task-definition revisions and their CORS, base-URL and Turnstile values
+   - the S3 CORS
+   - the Cognito logout URL and invite template
+
+   Save these to `aws-lab/evidence/<date>/cutover-rollback.json`.
+2. **IAM:** after owner approval, attach `lab-cutover-once`, then create and attach `ScoutGridSydneyLabCycle`. Run `lab.sh simulate`.
+3. **Additive prerequisites:**
+   - The owner creates the Cloudflare DNS token and adds it to the Keychain.
+   - Add `scoutgrid.io` to the lab Turnstile widget's hostnames.
+   - Run the budget calculation from A2; stop if it's over.
+4. **Backend first:** `lab.sh plan-up`. Expected changes are S3 CORS, the Cognito logout URL and invite link, new API and worker task-definition revisions with the new origin variables, the Nov 12 deviations reconciled (already in code), and the budget. Review it, then apply. From here `lab.scoutgrid.io` stops signing in. This is expected, and rollback is B1 plus reverting the origin. Keep the current image; the main image with #74 and the ownership-MVP migrations is a separate, later upgrade.
+5. **Vercel:** set Production env vars:
    - `VITE_API_BASE=https://api-lab.scoutgrid.io/api`
    - `VITE_MANAGED_BROWSER_AUTH_ENABLED=true`
    - `VITE_DURABLE_BOM_UPLOADS_ENABLED=true`
-   - `VITE_TURNSTILE_SITE_KEY=<lab site key>`
+   - `VITE_TURNSTILE_SITE_KEY=<lab key>`
 
-   Then redirect `www` to the apex with a 308, and redeploy `main`.
-5. **Lab Terraform:** run `lab.sh plan-up` with the new origin. Expected changes:
-   - S3 CORS, the Cognito logout URL and invite link
-   - the API and worker env (`APP_CORS_ALLOWED_ORIGINS`, `APP_DEMO_APP_BASE_URL`, `APP_TURNSTILE_EXPECTED_HOSTNAME`) as new task definition revisions
-   - reconciling the Nov 12 CLI deviations, already in code since #73
-   - removal of the Amplify app and branch
+   Redirect `www` to the apex with a 308. Deploy `main` once PR 1 merges, which brings in the CSP change.
+6. **Verification gate — must pass before anything is retired:**
+   - Managed sign-in at `https://scoutgrid.io` as the platform owner and as the SG Internal admin.
+   - A demo request submitted through Turnstile is **persisted** and visible in **Platform → Demo Requests**.
+   - A BOM upload through BOM Management → Ingest Now **completes processing** in Run History and appears in BOM Inventory.
+   - `www` redirects to the apex.
 
-   First delete the hand-made Amplify domain association for `lab.scoutgrid.io`. Then apply.
-
-   Optional: if PR #74 is merged, publish its exact image first. Use the CI candidate artifact pushed with `crane`, since local Docker doesn't work.
-6. **Cloudflare DNS:** delete `api.scoutgrid.io` (pointing to onrender), `lab.scoutgrid.io` (pointing to CloudFront) and `_7198af0c…lab.scoutgrid.io` (the ACM validation record for the Amplify certificate). Keep `api-lab` and its `_62ca8e28…` ACM validation record (needed for renewal), the Vercel apex and `www`, the Zoho MX and verify records, and the Resend `send.` MX, SPF, DKIM and DMARC records.
-7. **Render** (dashboard, or the Render MCP after auth):
-   1. Take an encrypted `pg_dump` of `scoutdb-preprod-v1`, stored outside the repo with its SHA-256 recorded.
-   2. Remove the `api.scoutgrid.io` custom domain.
-   3. Delete the `scout-backend` web service and the database.
-   4. Revoke any Render-only credentials, such as a Resend API key used only there.
-   5. Confirm the Render billing shows nothing remaining.
-8. **IAM cleanup:** detach `frontend-deploy-and-domain.json` and retire the `sglab-frontend` profile.
-9. **Reminder:** use the `schedule` skill to create a one-time routine for 2026-11-20 at 10:00 IST: "Lab week done — decide lab-down vs keep, kick off production planning (us-east-1, 560246495987, prod frontend origin, lab moves to its own Vercel domain)". Also save a project memory with the same date.
+   **On failure:** roll back with Vercel Instant Rollback to the recorded deployment, revert `frontend_origin` to `https://lab.scoutgrid.io`, and apply.
+7. **Retire, only after B6 passes:**
+   1. Delete the Cloudflare `api.scoutgrid.io` CNAME (pointing to Render).
+   2. Render: take an encrypted `pg_dump` of `scoutdb-preprod-v1`, stored outside the repo with its SHA-256 recorded. Then remove the custom domain, delete the service and the database, revoke Render-only credentials and confirm billing is clear.
+   3. Amplify: delete the domain association, merge **PR 2** (removes the Amplify resources from `hosting.tf`), then apply.
+   4. Delete the Cloudflare `lab.scoutgrid.io` and `_7198af0c…lab` ACM validation records.
+   5. Detach `frontend-deploy-and-domain.json` and `lab-cutover-once`.
+   6. Keep `api-lab`, its `_62ca8e28…` validation record, the Vercel apex and `www`, the Zoho records, and the Resend, DKIM and DMARC records.
+8. **Reminder for 2026-11-20 at 10:00 IST:** "Lab week done — decide lab-down vs keep, start production planning (us-east-1, 560246495987, prod origin, lab moves to its own Vercel domain), upgrade the lab image to current main." Create it with the scheduler of whichever agent runs this: in Claude Code, the `schedule` skill (available in this session); in Codex, its automation action. Also save a project memory.
 
 ## Verification
 - **Local:**
-  - `terraform fmt -check -recursive`, `terraform init -backend=false`, `terraform validate` and `terraform test` (the new lab-cycle tests plus the existing ones)
+  - `terraform fmt -check -recursive`, `init -backend=false`, `validate` and `terraform test` (all, including the updated budget tests and the down-mode whole-root test)
   - frontend `npm run build` and `node scripts/verify-production-bundle.mjs`
   - `shellcheck lab.sh`
-  - the CI contract scripts
-- **Before any live apply:** `lab.sh status`, `lab.sh plan-up` (only the expected origin and Amplify changes) and `lab.sh plan-down`, as a plan only that shows removal of just the services, ALB tree, WAF, NAT, EIP and routes. Lab-down itself isn't run this week.
-- **After cutover:**
-  - At `https://scoutgrid.io`, sign in as the platform owner and as the SG Internal admin (managed Cognito, `__Host-sg-session` cookie set).
-  - The demo request form passes Turnstile.
-  - A BOM upload through BOM Management → Ingest Now shows up in Run History, which checks S3 CORS and the CSP.
-  - `www` redirects.
-  - `api.scoutgrid.io` and `lab.scoutgrid.io` no longer resolve.
-  - Render shows no services.
-  - `lab.sh status` and Cost Explorer stay within $100 for the month.
+  - CI contract scripts
+  - CI must be green, including the AWS image build
+- **Live, before any apply:** `lab.sh status` and `lab.sh simulate` (up and down sets), plus `lab.sh plan-up` and `lab.sh plan-down` in plan-only mode. Each must show only allowlisted addresses. Lab-down isn't executed this week unless the A2 rule triggers.
+- **After cutover:** the B6 gate, then after B7: `api.scoutgrid.io` and `lab.scoutgrid.io` no longer resolve, Render shows no services, and `lab.sh status` is within the A2 rule.
+
+## Implementation notes (PR 1, November 13, 2026)
+
+Approved rev 2 with these deliberate adjustments, found while implementing:
+
+1. **Foundation keeps `nat_gateway_mode = "single"`** instead of dropping it. Without it, a foundation-only plan would default to `zonal` and create a second NAT. Every runtime file still sets the mode explicitly, and as the later `-var-file` it wins: `runtime-running` sets `single`, `runtime-down` sets `none`.
+2. **The ALB security group and its two rules stay in both modes.** They're free, and keeping them means the cycle role needs no security-group-rule permissions, which were the hardest grants on November 12.
+3. **Removing the Render MCP entries (`.mcp.json`, `.claude/settings.local.json`) moves to PR 2.** The Render MCP is one way to run step B7.
+4. **The cycle role also gets** `iam:SimulatePrincipalPolicy` on itself (for the `lab.sh down` gate) and Cost Explorer read (for `lab.sh status`).
+5. **Budget alerts** go to `scoutgrid.io@gmail.com`, the platform owner's address.
+
+**Verified locally:**
+- Terraform 1.13.5 `fmt -check -recursive` and `validate` pass.
+- `terraform test` passes for the root module (25/25, including whole-root lab-up and lab-down plans with operations enabled and the $100/$100.01 budget cases) and the network module (3/3, including `none`).
+- `shellcheck` is clean on `lab.sh`.
+- The plan allowlist rejects task-definition changes, replacements, RDS deletes and wrong-direction actions.

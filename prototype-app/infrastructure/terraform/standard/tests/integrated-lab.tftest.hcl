@@ -64,7 +64,7 @@ variables {
   nat_gateway_mode        = "single"
   vpc_cidr                = "10.21.0.0/16"
   postgres_engine_version = "16.15"
-  frontend_origin         = "https://lab.scoutgrid.io"
+  frontend_origin         = "https://scoutgrid.io"
   api_origin              = "https://api-lab.scoutgrid.io"
   cognito_domain_prefix   = "scoutgrid-lab-736486260824"
   github_publisher        = null
