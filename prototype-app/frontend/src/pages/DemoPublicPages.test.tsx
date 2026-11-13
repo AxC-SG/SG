@@ -127,7 +127,7 @@ describe('Demo public pages', () => {
     expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/demo/privacy');
     expect(footer.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/demo/terms');
     expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute('href', '/demo/cookies');
-    expect(footer.getByText('© 2026 Axoncyber Private Limited. All rights reserved. Scoutgrid is a product of Axoncyber Private Limited.')).toBeInTheDocument();
+    expect(footer.queryByText(/All rights reserved/i)).not.toBeInTheDocument();
     expect(footer.queryByRole('link', { name: /^AI security$/i })).not.toBeInTheDocument();
     expect(footer.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/demo/announcements');
     expect(footer.getByRole('link', { name: 'Partners' })).toHaveAttribute('href', '/demo/partners');
@@ -206,7 +206,8 @@ describe('Demo public pages', () => {
     expect(screen.getByText(/Demo-request details\./)).toBeInTheDocument();
     expect(screen.getByText(/Digital Personal Data Protection Act, 2023/)).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'support@scoutgrid.io' })[0]).toHaveAttribute('href', 'mailto:support@scoutgrid.io');
-    expect(screen.getAllByText(/Axoncyber Private Limited, Hyderabad, India/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Scoutgrid, Hyderabad, India/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Axoncyber/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/\[[^\]]*(legal name|address|email|governing)[^\]]*\]/i)).not.toBeInTheDocument();
     const main = within(screen.getByRole('main'));
     expect(main.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/demo/terms');
