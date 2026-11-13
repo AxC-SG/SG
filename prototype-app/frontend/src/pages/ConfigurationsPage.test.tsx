@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { pathForConfigurationsView } from '../app/routes';
 import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
+import { DEFAULT_FINDINGS_SCORE_CONFIG_JSON } from '../features/configurations/defaults';
 import type { OwnershipRuleResponse, RiskPolicy, SuppressionRule } from '../features/configurations/types';
 import { defaultRiskPolicy } from '../test/fixtures';
 import { renderWithProviders } from '../test/test-utils';
@@ -354,6 +355,24 @@ describe('ConfigurationsPage', () => {
     expect(await screen.findByText('Configuration saved')).toBeInTheDocument();
     expect(api.updateRiskPolicy).toHaveBeenCalledWith(expect.objectContaining({ criticalThreshold: 8.5 }));
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+  });
+
+  it('takes the findings score configuration from the API, never from browser storage', async () => {
+    mockBaseApis();
+    // A browser-wide key once overrode the server value and leaked between workspaces.
+    const staleBrowserConfig = '{"columns":[]}';
+    localStorage.setItem('findings-score-config', staleBrowserConfig);
+    const serverConfig = DEFAULT_FINDINGS_SCORE_CONFIG_JSON;
+    vi.spyOn(api, 'getRiskPolicy').mockResolvedValue({ ...defaultRiskPolicy(), findingsScoreConfig: serverConfig });
+    vi.spyOn(api, 'updateRiskPolicy').mockImplementation(async (policy) => policy as RiskPolicy);
+    renderConfigPageAsTenantAdmin({ route: pathForConfigurationsView('sla') });
+
+    const critical = await screen.findByRole('spinbutton', { name: 'Critical Risk minimum score (0–10)' });
+    fireEvent.change(critical, { target: { value: '8.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Configuration saved')).toBeInTheDocument();
+    expect(api.updateRiskPolicy).toHaveBeenCalledWith(expect.objectContaining({ findingsScoreConfig: serverConfig }));
+    expect(localStorage.getItem('findings-score-config')).toBe(staleBrowserConfig);
   });
 
   it('keeps the draft and names the failure when a policy save is rejected', async () => {

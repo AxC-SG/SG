@@ -661,21 +661,7 @@ export function ConfigurationsPage() {
 
   React.useEffect(() => {
     if (riskPolicyQuery.data && !policyDirtyRef.current) {
-      // Use functional update so we can preserve findingsScoreConfig from
-      // the previous local state if the server response doesn't include it
-      // (e.g. backend running pre-V1079 code or column not yet in response).
-      setPolicy((prev) => {
-        const data = riskPolicyQuery.data!;
-        const localFallback =
-          prev?.findingsScoreConfig ??
-          localStorage.getItem('findings-score-config') ??
-          DEFAULT_FINDINGS_SCORE_CONFIG_JSON;
-        const merged: RiskPolicy = {
-          ...data,
-          findingsScoreConfig: data.findingsScoreConfig ?? localFallback,
-        };
-        return applyTriageDefaults(merged);
-      });
+      setPolicy(applyTriageDefaults(riskPolicyQuery.data));
     }
   }, [riskPolicyQuery.data]);
 
@@ -724,12 +710,7 @@ export function ConfigurationsPage() {
   // Restores the last saved configuration (or the local defaults when the API never answered).
   const discardPolicyChanges = (): void => {
     const data = riskPolicyQuery.data;
-    setPolicy(data
-      ? applyTriageDefaults({
-        ...data,
-        findingsScoreConfig: data.findingsScoreConfig ?? localStorage.getItem('findings-score-config') ?? DEFAULT_FINDINGS_SCORE_CONFIG_JSON,
-      })
-      : DEFAULT_RISK_POLICY);
+    setPolicy(data ? applyTriageDefaults(data) : DEFAULT_RISK_POLICY);
     setPolicyDirty(false);
     setPolicyMessage('');
   };
@@ -744,17 +725,7 @@ export function ConfigurationsPage() {
     setPolicyMessage('');
     try {
       const raw = await api.updateRiskPolicy(policy);
-      // Preserve findingsScoreConfig from local state when the backend response
-      // omits it (backend not yet restarted with the new toResponse() code, or
-      // the field is stripped somewhere in the response path).
-      const merged: RiskPolicy = {
-        ...raw,
-        findingsScoreConfig: raw.findingsScoreConfig ?? policy.findingsScoreConfig ?? DEFAULT_FINDINGS_SCORE_CONFIG_JSON,
-      };
-      const updated = applyTriageDefaults(merged);
-      // Persist to localStorage so browser refresh survives even when the
-      // backend response omits findingsScoreConfig (pre-restart scenario).
-      localStorage.setItem('findings-score-config', updated.findingsScoreConfig ?? DEFAULT_FINDINGS_SCORE_CONFIG_JSON);
+      const updated = applyTriageDefaults(raw);
       queryClient.setQueryData(['risk-policy'], updated);
       setPolicy(updated);
       setPolicyDirty(false);
@@ -901,9 +872,9 @@ export function ConfigurationsPage() {
     <div className="config-section-body">
       <div className="config-section-intro">
         <p>
-          These weights control how the system ranks findings and CVEs{' '}
-          <strong>before any investigation starts</strong>. Signals with higher weight push
-          matching items to the top of the recommended work queue. Set a signal to{' '}
+          Try weights for ranking findings and CVEs{' '}
+          <strong>before any investigation starts</strong>. In the simulator, signals with higher
+          weight push matching items up the queue. Set a signal to{' '}
           <span className="mono">0</span> to ignore it entirely.
         </p>
       </div>
