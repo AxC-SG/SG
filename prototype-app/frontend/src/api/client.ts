@@ -35,6 +35,23 @@ import type {
 } from '../features/dashboard/types';
 import type { CreateServiceNowIncidentRequest, ServiceNowIncidentResponse } from '../features/cve-workbench/types';
 import type {
+  DirectoryGroup,
+  DirectoryImportKind,
+  DirectoryImportReport,
+  DirectoryMembership,
+  DirectoryPerson,
+  DirectoryPersonCreate,
+  DirectoryPersonUpdate,
+  OwnershipAuthorityState,
+  OwnershipCoverage,
+  OwnershipEncryptionStatus,
+  OwnershipQualification,
+  OwnershipReviewItem,
+  OwnershipTeam,
+  OwnershipTeamAlias,
+  OwnershipTeamRequest
+} from '../features/ownership/types';
+import type {
   ClusterImpactResult,
   ConnectorIssueGroup,
   CorrelationOverridePayload,
@@ -1198,6 +1215,8 @@ function buildFindingsSearchParams(params?: FindingsFilterModel): URLSearchParam
   params?.findingKind?.forEach((value) => searchParams.append('findingKind', value));
   params?.affectedAiResourceId?.forEach((value) => searchParams.append('affectedAiResourceId', value));
   if (params?.hasAffectedAiResource != null) searchParams.set('hasAffectedAiResource', String(params.hasAffectedAiResource));
+  if (params?.ownerTeamId) searchParams.set('ownerTeamId', params.ownerTeamId);
+  if (params?.ownershipStatus) searchParams.set('ownershipStatus', params.ownershipStatus);
   return searchParams;
 }
 
@@ -1709,6 +1728,97 @@ export const api = {
     method: 'POST'
   }),
   listOwnershipRules: () => request<OwnershipRuleResponse[]>('/ownership-rules'),
+  // ── Ownership & Directory (ownership MVP plan §8) ─────────────────────────
+  getOwnershipCoverage: (consumer: 'INVENTORY' | 'FINDINGS') =>
+    request<OwnershipCoverage>(`/ownership/coverage?consumer=${consumer}`),
+  listOwnershipTeams: (params: { q?: string; status?: 'ACTIVE' | 'ARCHIVED'; limit?: number; offset?: number } = {}) => {
+    const search = new URLSearchParams();
+    if (params.q) search.set('q', params.q);
+    if (params.status) search.set('status', params.status);
+    search.set('limit', String(params.limit ?? 50));
+    search.set('offset', String(params.offset ?? 0));
+    return request<OwnershipTeam[]>(`/ownership/teams?${search.toString()}`);
+  },
+  createOwnershipTeam: (payload: OwnershipTeamRequest) =>
+    request<OwnershipTeam>('/ownership/teams', { method: 'POST', body: JSON.stringify(payload) }),
+  updateOwnershipTeam: (teamId: string, payload: OwnershipTeamRequest) =>
+    request<OwnershipTeam>(`/ownership/teams/${encodeURIComponent(teamId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  listOwnershipTeamAliases: (teamId: string) =>
+    request<OwnershipTeamAlias[]>(`/ownership/teams/${encodeURIComponent(teamId)}/aliases`),
+  addOwnershipTeamAlias: (teamId: string, alias: string, sourceKind: string) =>
+    request<OwnershipTeamAlias>(`/ownership/teams/${encodeURIComponent(teamId)}/aliases`, {
+      method: 'POST',
+      body: JSON.stringify({ alias, sourceKind })
+    }),
+  removeOwnershipTeamAlias: (teamId: string, aliasId: string) =>
+    request<void>(`/ownership/teams/${encodeURIComponent(teamId)}/aliases/${encodeURIComponent(aliasId)}`, { method: 'DELETE' }),
+  searchDirectoryPeople: (q: string, limit = 25) =>
+    request<DirectoryPerson[]>(`/directory/users?q=${encodeURIComponent(q)}&limit=${limit}`),
+  getDirectoryPerson: (personId: string) => request<DirectoryPerson>(`/directory/users/${encodeURIComponent(personId)}`),
+  createDirectoryPerson: (payload: DirectoryPersonCreate) =>
+    request<DirectoryPerson>('/directory/users', { method: 'POST', body: JSON.stringify(payload) }),
+  updateDirectoryPerson: (personId: string, payload: DirectoryPersonUpdate) =>
+    request<DirectoryPerson>(`/directory/users/${encodeURIComponent(personId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  searchDirectoryGroups: (q: string, limit = 25) =>
+    request<DirectoryGroup[]>(`/directory/groups?q=${encodeURIComponent(q)}&limit=${limit}`),
+  createDirectoryGroup: (displayName: string) =>
+    request<DirectoryGroup>('/directory/groups', { method: 'POST', body: JSON.stringify({ displayName }) }),
+  updateDirectoryGroup: (groupId: string, payload: { displayName?: string; status?: 'ACTIVE' | 'INACTIVE'; version: number }) =>
+    request<DirectoryGroup>(`/directory/groups/${encodeURIComponent(groupId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  listDirectoryGroupMembers: (groupId: string) =>
+    request<DirectoryMembership[]>(`/directory/groups/${encodeURIComponent(groupId)}/members`),
+  addDirectoryGroupMember: (groupId: string, userId: string) =>
+    request<void>(`/directory/groups/${encodeURIComponent(groupId)}/members`, { method: 'POST', body: JSON.stringify({ userId }) }),
+  removeDirectoryGroupMember: (groupId: string, userId: string) =>
+    request<void>(`/directory/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+  downloadDirectoryImportTemplate: async (kind: DirectoryImportKind) => {
+    const headers = buildApiHeaders(undefined, false);
+    const response = await fetch(`${API_BASE}/directory/imports/templates/${encodeURIComponent(kind.toLowerCase())}`, {
+      headers,
+      credentials: 'include'
+    });
+    if (!response.ok) throw await parseApiError(response);
+    return { filename: `${kind.toLowerCase()}.csv`, blob: await response.blob() };
+  },
+  /** Dry run: validates the file and returns a report whose runId is the commit token. Changes nothing. */
+  previewDirectoryImport: async (kind: DirectoryImportKind, file: File): Promise<DirectoryImportReport> => {
+    const body = new FormData();
+    body.set('kind', kind);
+    body.set('file', file);
+    const response = await fetch(`${API_BASE}/directory/imports/preview`, {
+      method: 'POST',
+      body,
+      headers: buildApiHeaders(undefined, false),
+      credentials: 'include'
+    });
+    if (!response.ok) throw await parseApiError(response);
+    return response.json() as Promise<DirectoryImportReport>;
+  },
+  /** Commits a previewed file; the server rejects it unless the same file, tenant and importer previewed it recently. */
+  commitDirectoryImport: async (previewToken: string, file: File): Promise<DirectoryImportReport> => {
+    const body = new FormData();
+    body.set('file', file);
+    const response = await fetch(`${API_BASE}/directory/imports/${encodeURIComponent(previewToken)}/commit`, {
+      method: 'POST',
+      body,
+      headers: buildApiHeaders(undefined, false),
+      credentials: 'include'
+    });
+    if (!response.ok) throw await parseApiError(response);
+    return response.json() as Promise<DirectoryImportReport>;
+  },
+  listOwnershipReviewItems: (params: { state?: 'OPEN' | 'RESOLVED' | 'DISMISSED'; type?: string; limit?: number; offset?: number } = {}) => {
+    const search = new URLSearchParams({ state: params.state ?? 'OPEN', limit: String(params.limit ?? 50), offset: String(params.offset ?? 0) });
+    if (params.type) search.set('type', params.type);
+    return request<OwnershipReviewItem[]>(`/ownership/review-items?${search.toString()}`);
+  },
+  closeOwnershipReviewItem: (itemId: string, state: 'RESOLVED' | 'DISMISSED', note?: string) =>
+    request<void>(`/ownership/review-items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify({ state, note }) }),
+  getOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption'),
+  provisionOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption/provision', { method: 'POST' }),
+  getOwnershipQualification: (domain: 'CORE') => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),
+  transitionOwnershipAuthority: (domain: 'CORE', state: OwnershipAuthorityState, reportHash?: string) =>
+    request<OwnershipQualification>(`/ownership/authority/${domain}`, { method: 'POST', body: JSON.stringify({ state, reportHash }) }),
   listCampaigns: (status?: CampaignStatus) =>
     request<CampaignSummary[]>(status ? `/campaigns?status=${encodeURIComponent(status)}` : '/campaigns'),
   getCampaign: (campaignId: string) =>

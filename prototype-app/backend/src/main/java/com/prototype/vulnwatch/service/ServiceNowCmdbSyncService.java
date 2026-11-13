@@ -98,6 +98,17 @@ public class ServiceNowCmdbSyncService {
         this.jobs = jobs;
     }
 
+    private com.prototype.vulnwatch.service.ownership.ServiceNowOwnershipProducer ownershipProducer;
+    private boolean ownershipProducerEnabled;
+
+    /** Optional: emits ServiceNow ownership claims after each successful sync when enabled (ownership MVP §6.4). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipProducer(com.prototype.vulnwatch.service.ownership.ServiceNowOwnershipProducer ownershipProducer,
+            @org.springframework.beans.factory.annotation.Value("${app.ownership.servicenow.producer-enabled:false}") boolean enabled) {
+        this.ownershipProducer = ownershipProducer;
+        this.ownershipProducerEnabled = enabled;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public void setBackgroundTaskExecutionPolicy(BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy) {
         this.backgroundTaskExecutionPolicy = backgroundTaskExecutionPolicy == null
@@ -229,6 +240,7 @@ public class ServiceNowCmdbSyncService {
     public void executeQueuedRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
         tenantSchemaExecutionService.run(tenantId, () -> {
             markRunRunning(runId, triggerMode);
+            java.time.Instant runStartedAt = java.time.Instant.now();
             try {
                 ServiceNowCmdbConfig config = serviceNowCmdbConfigRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("ServiceNow CMDB config not found: " + configId));
@@ -275,6 +287,10 @@ public class ServiceNowCmdbSyncService {
                 );
 
                 completeRun(configId, runId, response, discoveryRows.size() + installRows.size(), triggerMode);
+                if (ownershipProducerEnabled && ownershipProducer != null) {
+                    // Every approved CI was read, so the scan is complete; the producer never throws.
+                    ownershipProducer.publishAfterSync(tenantId, runStartedAt);
+                }
             } catch (Exception e) {
                 failRun(runId, e.getMessage(), triggerMode);
             }

@@ -117,6 +117,9 @@ export type FindingsFilterModel = {
   affectedAiResourceId?: string[];
   /** true = affects any declared AI resource; false = affects none. Independent of the id filter. */
   hasAffectedAiResource?: boolean;
+  /** Canonical owner team (stable ID) and resolved status; server-side, cursor paging only (ownership plan §9.7). */
+  ownerTeamId?: string;
+  ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
 };
 
 export type FindingQueueKind = 'BUILT_IN' | 'PERSONAL';

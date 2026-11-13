@@ -279,7 +279,7 @@ Deterministic investigation/remediation/upgrade paths remain available with expl
 
 ## Ownership Rules
 
-`OwnershipRule` entities define conditions for auto-assigning findings to users or groups.
+`OwnershipRule` entities define conditions for auto-assigning findings to users or groups. This is the legacy model. It stays in force, and editable as "Legacy rules" in the Ownership & Directory hub, until a tenant's CORE domain cuts over to canonical ownership (below); it is then removed in the ownership cleanup. AI Grid's ownership step also reads these rules.
 
 **Evaluation:**
 1. Rules are ordered by `executionOrder` (then `createdAt`)
@@ -290,6 +290,32 @@ Deterministic investigation/remediation/upgrade paths remain available with expl
 **Operators** (from `FindingsScoreService`): `=`, `!=`, `>`, `<`, `>=`, `<=` (numeric), `contains`, `not contains`, `exact match`, `is`, `is not`.
 
 **Fields:** table + column attributes of the finding and its related asset/vulnerability/component, as in the Findings Score and Suppression editors.
+
+## Canonical Ownership (Release 1)
+
+Ownership MVP Release 1 (PR #71) resolves each asset, and through it each vulnerability finding, to one accountable **team**. It is built but off by default. The [plan](ownership-capability-mvp-plan.md) defines the product rules; [the Phase 0A design](ownership-phase-0a-design.md) §8.1 records what is built.
+
+**Teams and directory.** Teams have unique names and aliases in one namespace. People and groups come from manual entry or CSV import (preview, then commit of the same file within 30 minutes). Email is only a link hint: two people with the same email are never merged; the import raises an `AMBIGUOUS_IDENTITY` review item. Directory contact details are encrypted per tenant and masked in responses. Directory writes are refused until the tenant's data key is provisioned and ready.
+
+**Claims and resolution.**
+1. A source publishes a claim that a team owns a subject. Precedence, highest first: manual assignment, ServiceNow, cloud account/project, AI Grid, cloud tag/label, Entra/Okta.
+2. For each subject the highest-precedence eligible claim wins. A direct claim always beats an inherited one.
+3. A subject without a direct result inherits from its parent, up to 6 hops. Cycles, missing parents and longer chains produce `CONFLICT` and a review item.
+4. A claim is stale after twice its source's sync interval and stops counting after 7 days without being seen again. These thresholds differ from the plan (§12.1 and §12.3) and still need product sign-off.
+5. The effective status is `OWNED`, `UNOWNED` or `CONFLICT`. A subject's direct assignment can also be `NONE` (claims exist but none is eligible); it then inherits from its parent.
+
+**Manual assignment.** Tenant and inventory admins can assign any subject. Security analysts can assign only for an open finding assigned to them. A reason is required, expiry is at most 30 days, and the impact preview is capped at 100 descendants or 1,000 findings. Only admins can revoke. Manual assignment needs the subject's domain to be CANONICAL.
+
+**ServiceNow producer.** When enabled, each successful CMDB sync publishes claims from the CI `support_group`. Unchanged claims are re-observed without assignment writes. If more than 20% (minimum 50) of active claims would change or end, publishing pauses and a `PRODUCER_ANOMALY` review item is raised. Claims for missing CIs end only after a complete scan.
+
+**Cutover.** Each domain moves LEGACY → DARK → CANONICAL per tenant:
+- **DARK:** the per-minute maintenance job links assets and findings to subjects. Nothing user-facing changes.
+- **Qualification:** passes only with zero unlinked assets/findings, an empty re-resolution queue, swept expiries, the current resolver version, no inheritance errors, no open producer anomaly and, with the cache on, no cache backlog. It also reports a legacy-vs-canonical comparison.
+- **CANONICAL:** needs the passing report's hash and records who accepted it. The API cannot revert it.
+
+Release 1 covers CORE: APPLICATION and HOST assets and `VULNERABILITY` findings. `CRYPTO` findings and container/cloud assets belong to CLOUD_BOM (Release 2) and AI findings to AI_GRID (Release 3); they keep the legacy display even on a canonical asset.
+
+**What users see.** Asset and finding responses carry the canonical team only when the tenant's read wave is on and the domain is CANONICAL. Otherwise rows show `LEGACY_PENDING_MIGRATION` and today's owner label. Findings gain an Ownership Status column; owner-team and status filters appear once findings ownership is canonical.
 
 ---
 

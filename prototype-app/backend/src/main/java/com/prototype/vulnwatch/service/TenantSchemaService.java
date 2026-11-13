@@ -171,6 +171,8 @@ public class TenantSchemaService {
                     join pg_class cl on cl.relnamespace = n.oid and cl.relname = c.table_name
                     join pg_attribute a on a.attrelid = cl.oid and a.attname = c.column_name
                     where c.table_schema = ? and a.attnum > 0 and not a.attisdropped
+                      -- Tables only (as in tenantTableNames): a view's columns cannot be added with ALTER TABLE.
+                      and cl.relkind in ('r', 'p')
                 ) source
                 left join information_schema.columns target
                   on target.table_schema = ?

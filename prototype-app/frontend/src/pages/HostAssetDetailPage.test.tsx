@@ -93,6 +93,30 @@ describe('HostAssetDetailPage', () => {
     );
   });
 
+  it('shows resolved ownership separately from raw evidence once inventory ownership is canonical', async () => {
+    vi.spyOn(api, 'getHostAssetDetail').mockResolvedValue({
+      ...buildHostDetail({ ownerEmail: 'legacy-owner@example.test', supportGroup: 'SN-NET-OPS' }),
+      ownership: {
+        objectId: 'asset-1',
+        authorityDomain: 'CORE',
+        authorityState: 'CANONICAL',
+        ownerTeamId: 'team-1',
+        ownerTeamName: 'Payments',
+        ownershipStatus: 'OWNED',
+        sourceKind: 'SERVICENOW',
+        inheritanceDepth: 1,
+      },
+    });
+    renderWithProviders(<HostAssetDetailPage assetId="asset-1" />);
+    expect(await screen.findByText('Resolved ownership')).toBeInTheDocument();
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+    expect(screen.getByText('Inherited (1 level up)')).toBeInTheDocument();
+    // Raw CMDB values remain visible, but under the evidence heading rather than as the owner.
+    expect(screen.getByText('Observed ownership evidence')).toBeInTheDocument();
+    expect(screen.getByText('legacy-owner@example.test')).toBeInTheDocument();
+    expect(screen.queryByText('Ownership')).not.toBeInTheDocument();
+  });
+
   it('does not show loading when no assetId is provided', () => {
     renderWithProviders(<HostAssetDetailPage />);
     expect(screen.queryByText('Loading host detail...')).not.toBeInTheDocument();

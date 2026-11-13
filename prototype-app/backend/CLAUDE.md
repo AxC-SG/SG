@@ -121,7 +121,7 @@ There are **two independent Flyway migration lines**, each restarted at a fresh 
 
 - **Platform/public:** `src/main/resources/db/migration/postgres_reset/V1__platform_schema.sql` owns public/platform DDL, migration-owned reference seeds, and the empty `tenant_default` schema. Every file starts with `-- migration-guard: platform-only`. No AGCF-RT distributions are seeded; any catalog distributions with runtime evaluation modes are unavailable, DISABLED, PAUSED, and unpinned.
 - **Tenant:** `src/main/resources/db/migration/tenant/V1__tenant_schema.sql` owns the complete tenant DDL, RLS, constraints, and budget seed. Each tenant has its own `tenant_schema_history`, applied by the tenant control plane or `ProductionBootstrapCli`; application startup Flyway does not apply this line. The baseline uses `${tenantSchema}` and `${tenantId}` and starts without customer/runtime data.
-- Current packaged targets are platform **V10** and tenant **V19**, independently resolved by `PackagedMigrationCatalog`. The next platform migration is V11 and the next tenant migration is V20; each must update `MigrationCatalogTest`. This binary requires tenant V19 (`TenantSchemaCompatibility`), including the CBOM tables through V19 and including Fix Intelligence and patch management tables, GCP discovery tables, the ticketing framework (Jira connector, per-finding ticket provider and sync watermark), bounded retention progress and intelligence revision eligibility; a configured lower minimum cannot bypass that floor. The last observed deployed backend predates the development history reset; actual deployed histories remain unverified. Fresh reset-history V5→V6 tests do not prove deployed upgrade or rollback compatibility. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
+- Current packaged targets are platform **V16** and tenant **V23**, independently resolved by `PackagedMigrationCatalog`. The next platform migration is V17 and the next tenant migration is V24; each must update `MigrationCatalogTest`. This binary requires exactly tenant V23 (`TenantSchemaCompatibility` minimum and maximum), including the ownership tables (V21 identity and teams, V22 ownership core, V23 projection columns), durable BOM uploads (V20), the CBOM tables through V19 and Fix Intelligence and patch management tables, GCP discovery tables, the ticketing framework (Jira connector, per-finding ticket provider and sync watermark), bounded retention progress and intelligence revision eligibility; a configured lower minimum cannot bypass that floor. The last observed deployed backend predates the development history reset; actual deployed histories remain unverified. Fresh reset-history V5→V6 tests do not prove deployed upgrade or rollback compatibility. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 - This explicitly authorized development reset includes all changes from the former platform V1–V10 and tenant V1–V17 histories. Use a fresh database and `mvn clean` to remove stale packaged migration resources. Baselines are not idempotent repair scripts: do not replay them against existing tables or use `flyway:repair` to adopt the reset. `baseline-on-migrate` stays false.
 - Outside this one-time reset, never edit an already-applied migration; add the next version instead.
 
@@ -141,6 +141,9 @@ Copy `src/main/resources/application-local.example.yml` to the ignored `applicat
 | `APP_ALLOW_HEADER_TENANT_SELECTION` | Trust `X-Tenant-ID` header | `false` (explicit opt-in only) |
 | `APP_REQUIRE_TENANT_CONTEXT` | Enforce tenant context on every request | `true` |
 | `APP_ALLOW_API_KEY_AUTH` | Enable X-API-Key auth path | `true` |
+| `APP_TENANT_KEY_WRAPPER` | Per-tenant data-key wrapper for ownership PII and directory data: `disabled` or `local` | `disabled` (directory writes fail closed with 503); `local` is refused unless `APP_ENVIRONMENT` is local/test |
+| `APP_TENANT_KEY_LOCAL_MASTER_KEY` | Master key for the `local` wrapper | (empty) |
+| `APP_OWNERSHIP_EFFECTIVE_CACHE_ENABLED` | Cached ownership filter and coverage reads plus the per-minute cache refresh | `false` |
 | `OPENAI_API_KEY` | Optional credential for explicitly enabled local assistance | empty; key alone never enables it |
 | `NVD_API_KEY` | NVD rate-limited API key | (empty = unauthenticated) |
 | `GITHUB_API_TOKEN` | GitHub token for SBOM/GHSA | resolved from `backend/secrets/github-api-token` |
@@ -176,15 +179,17 @@ com.prototype.vulnwatch/
                # JwtDecoderConfig, TenantAwareDataSource, ProductionSafetyValidator,
                # TenantResolutionFilter, WebConfig, TenantSchemaReadinessHealthIndicator,
                # TenantSchemaMigratorRunner (21 files)
-  controller/  # 48 REST controllers under /api/**, incl. FixIntelligenceController
-  service/     # 280 business-logic services, incl. subpackages cbom/, cmdbingestion/,
+  controller/  # 75 REST controllers under /api/**, incl. FixIntelligenceController and the
+               # Directory/OwnershipAdmin/OwnershipRead/OwnershipSubject controllers
+  service/     # ~395 service files, incl. subpackages cbom/, cmdbingestion/, ownership/,
                # sbomingestion/, vulningestion/ (feed sync + the @Scheduled entry points)
   domain/      # 153 JPA entities
   dto/         # API request/response objects
   repo/        # 97 Spring Data JPA repositories
   client/      # 25 external API client files, incl. client/http/ (NVD, EUVD, JVN, GHSA, CSAF, EPSS, GitHub, ServiceNow, AWS, Azure…)
   security/    # SensitiveTenantAction annotation + interceptor, PasswordSetupCookieService,
-               # PublicEndpointRateLimiter (5 files)
+               # PublicEndpointRateLimiter, tenantkey/ (per-tenant DEKs, enc:t1: cipher, blind
+               # indexes, local wrapper, registry) (15 files)
   util/        # CPE handling, version comparison, SBOM parsing (6 files)
   migration/   # Standalone (non-Spring) production bootstrap: ProductionBootstrapCli,
                # PlatformOwnerSetupLinkIssuer, TenantSchemaMigrationCli, TenantSchemaFingerprint,
@@ -207,6 +212,16 @@ com.prototype.vulnwatch.aisecurity/   # separate top-level package, NOT under th
 `FixIntelligenceController` (`/api/fix-intelligence/**`) serves Fix Intelligence reads to all tenant roles and role-checked writes; queries live in `service/fix/FixIntelligenceQueryService` (tenant-filtered SQL) and writes in `FixManagementService`. Patch connectors live in `service/patch/` (`sccm/`, `intune/`, `bigfix/`, `tanium/`) behind the `PatchProvider` contract; providers never write to the database — `PatchIngestionService` does. `FixApplicabilityDecision` and `JiraIssueBacklog` still have no migration; do not wire them. See root `CLAUDE.md` → Fix Intelligence.
 
 Newer, less-obvious controllers worth knowing about: `CampaignController` (`/api/campaigns` — remediation campaigns), `CbomController` (`/api/bom/cbom` — cloud BOM posture), `BomController` (`/api/bom`), `AzureDiscoveryController` (`/api/connectors/azure-discovery`), `IngestionJobController` (`/api/ingestion-jobs`), `TenantSchemaStatusController` (`/api/platform/tenant-schema-status` — per-tenant schema migration status), `DemoDatasetController` (`POST /api/platform/tenants/{tenantId}/demo-data`, `PLATFORM_OWNER` — manual demo dataset provisioning), `TenantSupportAccessController` (`/api/tenants/{tenantId}/support-grants` + `/api/auth/support-grants/**` — tenant-initiated break-glass support access, distinct from the platform-owner-initiated `tenant_support_grants` flow).
+
+## Ownership and tenant data keys
+
+See root `CLAUDE.md` → Identity and Ownership for the model and [the Phase 0A design](../docs/ownership-phase-0a-design.md) §8.1 and §11 for what is built and open.
+
+- `service/ownership/` owns the ownership tables through single writers; do not insert or update `ownership_*`, `team*` or `directory_*` rows from other services. Controllers guard every method with `@PreAuthorize("@ownershipAuthorization.can('ACTION')")`; add a new action to the `OwnershipAuthorization` matrix and to `OwnershipAuthorizationPostgresIntegrationTest`.
+- Directory PII is encrypted per tenant through `TenantDataCipher` (`enc:t1:` prefix, AAD `tenantId|purpose|keyVersion`). Exact lookups use HMAC blind indexes and name search uses HMAC prefix tokens; never add a plaintext PII index. Writes call the tenant-key readiness check first and fail with 503 when it fails.
+- `OwnershipMaintenanceJob` iterates `tenantService.listActiveTenants()` under platform scope and runs each tenant's batches through `TenantWorkRunner`, following the context-before-transaction rule above.
+- The ServiceNow producer runs inside `ServiceNowCmdbSyncService.executeQueuedRun` after a successful sync, only with `app.ownership.servicenow.producer-enabled=true`. It reads the synced CMDB rows and never uses a second credential.
+- Ownership integration tests: `mvn -Ppostgres-it verify -Dtest=NoSuchTest -Dsurefire.failIfNoSpecifiedTests=false -Dit.test='Ownership*PostgresIntegrationTest,*OwnershipCompatibility*PostgresIntegrationTest,TeamNamespacePostgresIntegrationTest,Directory*PostgresIntegrationTest,ManualAssignment*PostgresIntegrationTest,ServiceNowOwnership*PostgresIntegrationTest,TenantKeyRegistryPostgresIntegrationTest'`. The effective-owner benchmark is `backend/scripts/perf/ownership/run_benchmark.sh` against a disposable database.
 
 ## Docker build
 

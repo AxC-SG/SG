@@ -58,7 +58,7 @@ The route summary above comes from `SecurityConfig`; controller roles, support r
 
 ## Durable work, scheduling and delivery
 
-`BackgroundTaskExecutionPolicy` requires an explicit `all`, `api`, `worker` or `schema-migrator` role. API and schema-migrator roles suppress background callbacks. All 27 cron annotations explicitly use UTC; the [schedule matrix](<../Working Knowledge/AWS/PHASE_3_SCHEDULE_MATRIX.md>) inventories all 48 callbacks and their flags/ownership/recovery. Manual triggers commit durable intent even on API nodes; an eligible worker performs the work. Role defaults are configuration, not evidence of actual service topology.
+`BackgroundTaskExecutionPolicy` requires an explicit `all`, `api`, `worker` or `schema-migrator` role. API and schema-migrator roles suppress background callbacks. All 36 cron annotations explicitly use UTC; the [schedule matrix](<../Working Knowledge/AWS/PHASE_3_SCHEDULE_MATRIX.md>) inventories the callbacks and their flags/ownership/recovery. Manual triggers commit durable intent even on API nodes; an eligible worker performs the work. Role defaults are configuration, not evidence of actual service topology.
 
 Source mutations and their queue/projection intents share a transaction. `TenantWorkRunner` selects the tenant before opening each transaction. Accepted jobs retain attempt/claim/lease identity, heartbeat and commit fencing; bounded recovery excludes healthy owners and stale owners cannot publish. Delta queue work uses its existing attempt identity and row locks. Rollout tasks preserve the exact accepted assessment request through WAITING_FOR_ASSESSMENT, bounded failed retries, explicit retry and revocation. Four task executors drain accepted work with a bounded default 20-second wait; actual host termination grace remains unqualified.
 
@@ -390,7 +390,52 @@ All write endpoints require `TENANT_ADMIN`. `SuppressionRule` entity. States: DR
 | POST | `/apply` | Apply all rules |
 | POST | `/{id}/apply` | Apply a specific rule |
 
-`OwnershipRule` entity. Conditions stored as JSONB. Evaluated by priority to auto-assign findings.
+`OwnershipRule` entity. Conditions stored as JSONB. Evaluated by priority to auto-assign findings. This is the legacy model; it stays until each tenant's CORE ownership cutover. The UI shows it as "Legacy rules" in the Ownership & Directory hub.
+
+**Ownership and directory controllers (ownership MVP Release 1)**
+
+Every method is guarded by `@PreAuthorize("@ownershipAuthorization.can('ACTION')")`. `OwnershipAuthorization` holds the role matrix; an unknown action is denied. Wrong-tenant IDs return 404. Directory writes return 503 when the tenant data key is not ready.
+
+| Action | Roles |
+|---|---|
+| `VIEW_OWNERSHIP` | `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST`, `READ_ONLY_AUDITOR` |
+| `VIEW_DIRECTORY` | `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST` |
+| `MANUAL_ASSIGN` | `TENANT_ADMIN`, `INVENTORY_ADMIN`, `SECURITY_ANALYST` (the service limits analysts to an open finding assigned to them) |
+| `WRITE_TEAMS`, `REVOKE_ASSIGNMENT`, `RESOLVE_REVIEW` | `TENANT_ADMIN`, `INVENTORY_ADMIN` |
+| `WRITE_DIRECTORY`, `IMPORT_DIRECTORY`, `MANAGE_ENCRYPTION`, `MANAGE_AUTHORITY` | `TENANT_ADMIN` |
+| `INGEST_CLAIMS` | `SERVICE_ACCOUNT` (no endpoint yet) |
+
+`DirectoryController` — `/api/directory`
+
+| Method | Path | Action | Description |
+|---|---|---|---|
+| GET | `/users`, `/users/{id}` | `VIEW_DIRECTORY` | Search people (name prefix from 2 letters) or read one; email and employee ID are masked |
+| POST, PATCH | `/users`, `/users/{id}` | `WRITE_DIRECTORY` | Add a person; update details, manager or status (PATCH requires the loaded `version`) |
+| GET | `/groups`, `/groups/{id}/members` | `VIEW_DIRECTORY` | List groups and members |
+| POST, PATCH | `/groups`, `/groups/{id}` | `WRITE_DIRECTORY` | Create a group; update or deactivate/reactivate |
+| POST, DELETE | `/groups/{id}/members`, `/groups/{id}/members/{userId}` | `WRITE_DIRECTORY` | Add or remove a member |
+| GET | `/imports/templates/{kind}` | `IMPORT_DIRECTORY` | CSV template |
+| POST | `/imports/preview` | `IMPORT_DIRECTORY` | Dry run (multipart); records a `VALIDATED` import run and returns a preview token |
+| POST | `/imports/{previewToken}/commit` | `IMPORT_DIRECTORY` | Commit the same file (same SHA-256, tenant and importer, within 30 minutes); one transaction per row |
+
+`OwnershipAdminController` — `/api/ownership`
+
+| Method | Path | Action | Description |
+|---|---|---|---|
+| GET | `/teams`, `/teams/{id}`, `/teams/{id}/aliases` | `VIEW_OWNERSHIP` | Teams (search, active/archived) and aliases |
+| POST, PATCH | `/teams`, `/teams/{id}` | `WRITE_TEAMS` | Create; rename, set parent team and ticket group, archive/restore. PATCH requires the loaded `version` and returns 409 if the team changed |
+| POST, DELETE | `/teams/{id}/aliases`, `/teams/{id}/aliases/{aliasId}` | `WRITE_TEAMS` | Add or remove an alias (shared namespace with team names) |
+| GET | `/review-items` | `VIEW_OWNERSHIP` | Review queue by status and type |
+| PATCH | `/review-items/{id}` | `RESOLVE_REVIEW` | Resolve or dismiss with a note |
+| GET, POST | `/encryption`, `/encryption/provision` | `MANAGE_ENCRYPTION` | Tenant data-key readiness; provision the tenant key |
+| GET | `/authority/{domain}/qualification` | `MANAGE_AUTHORITY` | Cutover qualification report and legacy-vs-canonical comparison |
+| POST | `/authority/{domain}` | `MANAGE_AUTHORITY` | Move LEGACY → DARK, or DARK → CANONICAL with the passing report hash; CANONICAL cannot be reverted |
+
+`OwnershipReadController` — `/api/ownership` (`VIEW_OWNERSHIP`): GET `/assets?ids=` and `/findings?ids=` return ownership envelopes for a batch of IDs; GET `/assets/filter` and `/findings/filter` (`ownerTeamId`, `status`, `after`, `limit` default 100) return matching IDs in keyset pages; GET `/coverage?consumer=INVENTORY|FINDINGS` returns coverage counts and the authority state. Filters and coverage use the effective cache when it is enabled.
+
+`OwnershipSubjectController` — `/api/ownership/subjects/{type}/{id}`: GET (explanation, `VIEW_OWNERSHIP`); POST `/manual-assignment/preview` and `/manual-assignment` (`MANUAL_ASSIGN`; reason required, expiry at most 30 days, impact preview capped at 100 descendants or 1,000 findings); POST `/manual-assignment/revoke` (`REVOKE_ASSIGNMENT`). Assignment and revocation return 409 unless the subject's domain is CANONICAL.
+
+`GET /api/findings` accepts `ownerTeamId` and `ownershipStatus` (`OWNED`, `UNOWNED`, `CONFLICT`) on the cursor/projection path for VULNERABILITY findings. They return 409 while findings ownership is not canonical, 400 for an unknown status, and 400 on the offset/JPA paging path.
 
 **VulnerabilitySourceFilterConfigController — `/api/connectors/vulnerability-sources`**
 
@@ -895,7 +940,18 @@ Four-stage weekly pipeline (Sunday):
 
 ### Ownership Rule Evaluation
 
-`OwnershipRuleService` (`applyOwnerGroupToFinding`, `applyToAll`, `applyRule`) evaluates `ownership_rules` by priority when findings are created or updated. First matching rule assigns ownership. Evaluated server-side, not stored as a trigger.
+`OwnershipRuleService` (`applyOwnerGroupToFinding`, `applyToAll`, `applyRule`) evaluates `ownership_rules` by priority when findings are created or updated. First matching rule assigns ownership. Evaluated server-side, not stored as a trigger. Legacy until the CORE ownership cutover.
+
+### Canonical Ownership (Release 1)
+
+`service/ownership/` implements the ownership MVP; see [the Phase 0A design](ownership-phase-0a-design.md) §8.1 for the full as-built contract.
+
+- **Single writers.** `OwnershipSubjectService` (subjects and edges; rejects cycles and chains over 6 hops under a tenant advisory lock), `OwnershipClaimService` (claims), `OwnershipResolutionService` (the only writer of `ownership_assignment`; unchanged inputs write nothing), `OwnershipReviewService`, `OwnershipEvents` (append-only) and `OwnershipEffectiveCacheService` (cache and invalidation queue). `TeamNamespaceService` owns team names and aliases. `DirectoryService` and `DirectoryImportService` own people, groups, memberships and CSV imports.
+- **Resolution.** `OwnershipResolver.resolve` is a pure function with a `RESOLVER_VERSION`. Priority, lower wins: manual, ServiceNow, cloud account/project, AI Grid, cloud tag/label, Entra/Okta. A direct claim beats any inherited result; inheritance is applied only by the `ownership_effective_assignment` view. A claim is stale after twice its source's sync interval and ineligible after 7 days without re-observation; these thresholds still need product sign-off.
+- **Authority and cutover.** `OwnershipAuthorityService.stateFor` is the only authority lookup. `OwnershipCutoverService` runs LEGACY → DARK → CANONICAL per domain. Release 1 handles CORE only: APPLICATION/HOST assets and VULNERABILITY findings. CRYPTO findings and container/cloud assets are `CLOUD_BOM` (Release 2); AI findings are `AI_GRID` (Release 3).
+- **Read adapter.** `OwnershipReadAdapter` returns the envelope (`authorityState`, `ownerTeamId`, `ownershipStatus`, `assignmentId`, `stale`, `inheritanceDepth`, `legacyOwnerLabel`). Read waves `app.ownership.read-waves.inventory` and `.findings` (`*` or tenant IDs, empty by default) decide whether reads run at all. `FindingQueryService`, `AssetQueryService` and `HostInventoryReadService` fill the existing response fields from it; nothing is written back.
+- **Producers.** `ServiceNowOwnershipProducer` publishes claims from synced CMDB `support_group` after a successful `ServiceNowCmdbSyncService` run, only with `app.ownership.servicenow.producer-enabled=true` and only when the domain is DARK or CANONICAL. It pauses with a `PRODUCER_ANOMALY` review item when more than 20% (minimum 50) of active claims would change, and ends absent CIs' claims only after a complete scan.
+- **Tenant data keys.** `security/tenantkey/`: `TenantDataCipher` (`AesGcmTenantDataCipher`, `enc:t1:` prefix, AAD `tenantId|purpose|keyVersion`, HMAC blind indexes), `TenantKeyRegistry` (cached DEKs, bounded TTL), `KeyWrapper` with `LocalKeyWrapper` for local/test only. There is no AWS KMS wrapper yet.
 
 ### Findings Score
 
@@ -945,7 +1001,7 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 
 - **`TenantSchemaMigrationService`** — drives the rollout: acquire a Postgres advisory lock (`scout-tenant-schema-migrator`) → migrate the `tenant_default` template and compute a SHA-256 structural fingerprint → migrate a canary tenant → migrate remaining tenants in batches of 10, comparing each tenant's fingerprint against the template and halting the batch on drift. Runs against `classpath:db/migration/tenant`, with its own `tenant_schema_history` table per schema, starting at V1. Also drives `provisionNewTenant(tenant)` for on-demand provisioning of a single new tenant.
 - **`TenantSchemaStatusService`** — reads/writes `platform.tenant_schema_versions` (list for the Platform Console, `readinessFailures(minVersion)` for the health indicator, `markMigrating`/`markCurrent`/`markFailure` called by the migration service).
-- **`PlatformSchemaStartupValidator` / `TenantSchemaReadinessHealthIndicator`** — when schema enforcement is enabled, startup/readiness share a read-only structural and SELECT-grant check for required platform work, the schedule-occurrence index and V6 waiting-state constraint. Missing shared dependencies fail startup or readiness. Readiness stays UP for compatible tenants while reporting `unreadyTenantCount`; an incompatible individual tenant is rejected at request entry. Required tenant floor and supported maximum are both V5, even if a lower minimum is configured. Platform head is V6. These checks do not establish actual deployed history or rollback compatibility.
+- **`PlatformSchemaStartupValidator` / `TenantSchemaReadinessHealthIndicator`** — when schema enforcement is enabled, startup/readiness share a read-only structural and SELECT-grant check for required platform work, the schedule-occurrence index and V6 waiting-state constraint. Missing shared dependencies fail startup or readiness. Readiness stays UP for compatible tenants while reporting `unreadyTenantCount`; an incompatible individual tenant is rejected at request entry. Required tenant floor and supported maximum are both V23, even if a lower minimum is configured. Platform head is V16. These checks do not establish actual deployed history or rollback compatibility.
 - **`TenantSchemaMigratorRunner`** — a legacy/test-only `ApplicationReadyEvent` listener, gated behind `app.schema-migration.legacy-test-runner-enabled=true` (off by default); superseded in production by `ProductionBootstrapCli` below but still used by some integration tests.
 - **`ProductionBootstrapCli`** (`com.prototype.vulnwatch.migration`) — standalone production bootstrap entry point; does **not** start Spring/JPA. Runs platform migrations, optionally reconciles the configured platform-owner identity (`APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED`), registers/migrates the default tenant, migrates every other tenant (canary + batches of 10, same drift-checking as above), provisions/rotates the least-privilege `scout_runtime` Postgres role, verifies the full control-plane invariants (RLS coverage on every active tenant table, no unsafe role attributes, runtime role actually denied DDL at runtime), and — when `PLATFORM_OWNER_SETUP_LINK_ENABLED=true` — emails a one-time password-setup link via `ResendEmailClient`. Prints a single-line `production_bootstrap_report=<json>` summary and exits non-zero on any phase failure. Invoked via `/app/scripts/run-schema-migration.sh --run-once` in a standalone ECS task; `backend/scripts/provision-runtime-role.sql` is the equivalent automated role-provisioning script. See [bootstrap wrapper](../backend/scripts/run-schema-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 - **`TenantLifecycleGuardService`** — centralizes tenant-accessibility checks (demo-tenant detection/expiry, `DELETED`/`PURGING`/`EXPIRED`/non-`ACTIVE` status → `ResponseStatusException` with the appropriate HTTP status) previously duplicated across tenant-status filtering call sites.
@@ -977,7 +1033,14 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 | `app.schema-migration.report-only` | `APP_SCHEMA_MIGRATION_REPORT_ONLY` | `false` | Runs the tenant schema rollout in read-only drift-report mode (read by `TenantSchemaMigratorRunner`) |
 | `app.schema-migration.legacy-test-runner-enabled` | — | `false` | Gates `TenantSchemaMigratorRunner` registration (legacy/test path; production uses `ProductionBootstrapCli`) |
 | `app.tenancy.enforce-schema-version` | `APP_ENFORCE_TENANT_SCHEMA_VERSION` | `false` (production: `true`) | Checks required platform work structures at startup/readiness and tenant compatibility at request entry |
-| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `5` | Required tenant floor V5; configured values cannot lower it. Supported tenant range is V5–V5; independent platform head is V6 |
+| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `5` | Required tenant floor V23 (`TenantSchemaCompatibility`); configured values cannot lower it. Supported tenant range is V23–V23; independent platform head is V16 |
+| `app.security.tenant-keys.wrapper` | `APP_TENANT_KEY_WRAPPER` | `disabled` | Per-tenant data-key wrapper. `disabled` makes every directory/PII write fail closed; `local` is refused unless `APP_ENVIRONMENT` is local/test |
+| `app.security.tenant-keys.local-master-key` | `APP_TENANT_KEY_LOCAL_MASTER_KEY` | — | Master key for the `local` wrapper |
+| `app.security.tenant-keys.cache-ttl` / `cache-max-keys` | `APP_TENANT_KEY_CACHE_TTL` / `APP_TENANT_KEY_CACHE_MAX_KEYS` | `PT10M` / `10000` | In-memory DEK cache bounds |
+| `app.ownership.effective-cache.enabled` | `APP_OWNERSHIP_EFFECTIVE_CACHE_ENABLED` | `false` | Cached ownership filter/coverage reads and the per-minute cache refresh; needed before read waves at expected size |
+| `app.ownership.read-waves.inventory` / `.findings` | — | empty (off) | `*` or tenant IDs whose asset/finding reads use canonical ownership |
+| `app.ownership.servicenow.producer-enabled` | — | `false` | Publish ServiceNow ownership claims after each successful CMDB sync (`department-claims` adds the department field, default `false`) |
+| `app.ownership.maintenance.cron` / `batch-size` / `max-batches-per-tenant` | — | `0 * * * * *` / `500` / `20` | Ownership maintenance schedule and bounds |
 | `spring.datasource.url` | `DB_URL` (or `DB_HOST`/`DB_PORT`/`DB_NAME`) | `jdbc:postgresql://localhost:5432/vulnwatch` | Database URL |
 | `app.openai.enabled` | `OPENAI_ENABLED` | `false` | Local opt-in only; deployed pilot hard off before key resolution |
 | `app.openai.api-key` | `OPENAI_API_KEY` | — | OpenAI API key |
@@ -1042,6 +1105,8 @@ All cron times below are UTC. The [schedule matrix](<../Working Knowledge/AWS/PH
 | Every 5 sec (default) | Process pending AI Grid policy rollout tasks (`AiGridPolicyRolloutService.processPendingTasks`) |
 | Every 5 sec (default) | Process pending AI Grid policy deprecation tasks (`AiGridPolicyDeprecationService.processPendingTasks`) |
 | Midnight | Re-run all approved suppression rules |
+| Every 1 min (default) | Ownership maintenance (`OwnershipMaintenanceJob.run`): claim expiry, re-resolution queue, CORE asset/finding linking once CORE leaves LEGACY, effective-cache refresh when enabled. Skipped on `api` and `schema-migrator` nodes |
+| Hourly at `:07` (default) | Ownership effective-cache reconciliation (`OwnershipMaintenanceJob.reconcileCache`); no-op while the cache is off |
 
 ---
 

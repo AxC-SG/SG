@@ -8,6 +8,8 @@ public record HostAssetDetailResponse(
         List<HostAliasResponse> aliases,
         List<HostSoftwareInstanceResponse> software,
         List<HostFindingResponse> findings,
-        List<HostApplicableCveResponse> applicableCves
+        List<HostApplicableCveResponse> applicableCves,
+        /** Resolved ownership envelope; null while inventory ownership is not canonical (see {@link AssetResponse#ownership}). */
+        com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary ownership
 ) {
 }

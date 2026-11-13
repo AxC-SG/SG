@@ -1,6 +1,6 @@
 # VulnWatch Database
 
-Last updated: 2026-10-28 (UI 2.0 documentation alignment; schema ownership retained)
+Last updated: 2026-11-12 (ownership MVP: platform V16, tenant V21–V23)
 
 > **Historical version labels:** ~70 section notes below cite pre-reset migration numbers (e.g. "Added in V44", "V40/V41"). Those histories were consolidated into the V1 baselines; the current post-reset heads are platform V8 and tenant V8. Read older labels as provenance, not as files that exist.
 
@@ -17,7 +17,7 @@ The frontend presentation migration introduced no schema migration or new persis
 - **Database name (local):** `vulnwatch`
 - **JDBC URL default:** `jdbc:postgresql://localhost:5432/vulnwatch`
 - **Migration directories:** `backend/src/main/resources/db/migration/postgres_reset/` (platform/`public` schema) and `backend/src/main/resources/db/migration/tenant/` (per-tenant schema, applied by the tenant schema control plane, not by the application's own startup Flyway run)
-- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; current heads are platform V9 (`V9__bom_ingest_api_keys.sql`) and tenant V8 (`V8__gcp_cloud_discovery.sql`); next platform change is V10, next tenant change is V9
+- **Flyway baselines:** `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql`; current heads are platform V16 (`V16__tenant_data_keys_and_ownership_authority.sql`) and tenant V23 (`V23__ownership_projection_columns.sql`); next platform change is V17, next tenant change is V24
 - **Replay rule:** V1 baselines bootstrap fresh databases only; all applied files are immutable and no baseline or later migration may be replayed manually against existing state
 - **`ddl-auto`:** `none` (Flyway owns all DDL; Hibernate never creates or alters tables)
 
@@ -882,7 +882,7 @@ One row per tenant. Controls finding generation mode, SLA, auto-close, triage we
 
 ### `ownership_rules`
 
-Rule-based finding ownership assignment.
+Rule-based finding ownership assignment. Legacy: kept until each tenant's CORE ownership cutover, then removed in the ownership cleanup. Canonical ownership lives in the [identity and ownership tables](#identity-and-ownership-tables-platform-v16-tenant-v21v23).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1210,13 +1210,44 @@ Investigation lifecycle for a CVE within a tenant. Activities are append-only ev
 
 ---
 
+## Identity and Ownership Tables (platform V16, tenant V21–V23)
+
+Ownership MVP Release 1 (PR #71). The [plan](ownership-capability-mvp-plan.md) §7 is the data-model specification and [the Phase 0A design](ownership-phase-0a-design.md) §1 and §7 record the as-built details. Every tenant table has `tenant_id` with `ENABLE` + `FORCE ROW LEVEL SECURITY` and a `tenant_isolation` policy, and cross-row references are tenant-inclusive `(tenant_id, id)` keys. Each table has one writer service in `service/ownership/`.
+
+**Platform V16** (`postgres_reset/V16__tenant_data_keys_and_ownership_authority.sql`):
+
+| Table | Purpose |
+|---|---|
+| `platform.tenant_data_keys` | Per-tenant data-encryption keys: key version, wrapper kind (`LOCAL`, `AWS_KMS`), wrapped DEK, state (`ACTIVE`, `DECRYPT_ONLY`, `DESTROYED`). Read through `TenantKeyRegistry`; plaintext DEKs are only cached in memory. |
+| `platform.ownership_domain_authority` | Primary key `(tenant_id, domain)`. Domain `CORE`, `CLOUD_BOM` or `AI_GRID`; state `LEGACY` (default), `DARK` or `CANONICAL`. `CANONICAL` requires `accepted_by` and `accepted_at`. |
+| `platform.ownership_kill_switches` | Per source kind (`MANUAL`, `CSV`, `SERVICENOW`, `ENTRA`, `OKTA`, `AWS`, `GCP`, `AI_GRID`), optionally per tenant: `ACTIVE` or `PAUSED`. |
+
+**Tenant V21 — identity and teams** (`tenant/V21__identity_and_teams.sql`): `team`, `team_alias` (one shared name/alias namespace, enforced by `TeamNamespaceService` under a tenant advisory lock with unique indexes as a backstop), `team_member`, `directory_user`, `directory_group`, `directory_group_member`, `external_identity`, `external_group`, `external_group_team_mapping`, `identity_source`, `identity_import_run` and `directory_search_token`. PII columns hold `enc:t1:` ciphertext (checked in SQL). External IDs are stored encrypted with a blind index, so uniqueness never needs plaintext. `directory_search_token` holds HMAC prefix tokens for name search.
+
+**Tenant V22 — ownership core** (`tenant/V22__ownership_core.sql`):
+
+| Object | Purpose |
+|---|---|
+| `ownership_subject`, `ownership_subject_edge` | Things that can be owned and their parent links. Cycles and chains longer than 6 hops are rejected at write time. |
+| `ownership_claim` | Source evidence for an owner. `priority` is generated from `priority_class`; claims are idempotent per observation and superseded per source reference. |
+| `ownership_assignment` | The direct result per subject. Status includes `NONE` (claims exist but none is eligible), so the row and ID survive for exception snapshots. |
+| `ownership_review_item` | Ambiguous identities, conflicts and producer anomalies for an admin to resolve or dismiss. |
+| `ownership_event` | Append-only audit; a trigger (`ownership_event_append_only`) rejects updates and deletes. |
+| `ownership_resolution_queue` | Subjects to re-resolve, for example after a team is archived or restored. |
+| `ownership_effective_cache`, `ownership_cache_invalidation` | Cached effective result per subject, with a GIN-indexed `inheritance_path`, and its change queue. Written only by `OwnershipEffectiveCacheService`; used only when `APP_OWNERSHIP_EFFECTIVE_CACHE_ENABLED=true`. |
+| `ownership_effective_for(subject)`, `ownership_effective_assignment` | Function and `security_invoker` view that walk up to 6 parents to apply inheritance (PostgreSQL 15+). Inheritance is applied only here. |
+
+**Tenant V23 — projection columns** (`tenant/V23__ownership_projection_columns.sql`): `(tenant_id, id)` unique keys on `assets` and `findings`; `assets.ownership_subject_id`; `findings.ownership_subject_id` and `findings.assignee_principal_id` (FK to `platform.app_users`; tenant membership is checked by the writer); `owner_team_id_at_request`, `ownership_assignment_id_at_request`, `owner_team_id_at_decision` and `ownership_assignment_id_at_decision` on `finding_suppression_requests`; `owner_team_id` and `ownership_assignment_id` on `finding_events`. Only `ownership_subject_id` is populated today, by the cutover linking step once CORE leaves LEGACY.
+
+Schema reset and baseline adoption clone tables but not functions, triggers or views, so a reset tenant lacks `ownership_effective_for`, `ownership_effective_assignment` and the append-only trigger. Normal provisioning through the tenant Flyway line is unaffected.
+
 ## AI Security / AI Grid Tables
 
 Backs the `com.prototype.vulnwatch.aisecurity` module (19 controllers, 71 services — see [business-logic-guide.md](business-logic-guide.md#ai-security--ai-grid-pipeline) and [architecture.md](architecture.md)) and the `/findings/ai`, `/policies`, `/inventory/ai` frontend routes. Two generations coexist: a legacy **AI Security** catalog (hardcoded ~14-policy checklist) and the newer, platform-governed **AI Grid** pipeline that has superseded it for policy evaluation (legacy findings and policy selections were migrated into the canonical/governed tables). Unlike every other table in this document, **none of these tables have a JPA `@Entity` or Spring Data repository** — all reads/writes go through `JdbcTemplate`/`NamedParameterJdbcTemplate` in the `aisecurity.service` classes directly.
 
 **A note on the version numbers below:** a one-time migration-history reset consolidated the prior numbered history into `postgres_reset/V1__platform_schema.sql` and `tenant/V1__tenant_schema.sql` (see "Tenant Schema Control Plane" further down). Historical `V<n>` citations describe pre-reset provenance; current post-reset V2 additions are called out explicitly.
 
-Historical module checkpoints used platform/tenant V3 and later V5/V11 before the development reset. Those are provenance, not current packaged targets or deployed-upgrade proof. `MigrationCatalogTest` now pins independent platform V8 / tenant V8; required tenant range is V8–V8, next platform V9 / tenant V9. Post-reset tenant V2 is AI-BOM correlation evidence, V3 invitation boundaries, V4 owned work/delivery, and V5 bounded retention progress.
+Historical module checkpoints used platform/tenant V3 and later V5/V11 before the development reset. Those are provenance, not current packaged targets or deployed-upgrade proof. `MigrationCatalogTest` now pins independent platform V16 / tenant V23; required tenant range is V23–V23, next platform V17 / tenant V24. Post-reset tenant V2 is AI-BOM correlation evidence, V3 invitation boundaries, V4 owned work/delivery, and V5 bounded retention progress.
 
 ### Tenant schema tables (pre-reset provenance: `V45`–`V64`)
 
@@ -1750,7 +1781,7 @@ There are **two independent Flyway migration lines**, never applied by the same 
 | Platform/reset | `postgres_reset/` | `public` and `platform`, plus an empty `tenant_default` schema | `public.flyway_schema_history` | Each file must open with a `-- migration-guard: platform-only` comment; `PostgresResetMigrationGuardTest` enforces this so tenant-schema DDL can't leak into the shared line by accident. |
 | Tenant | `tenant/` | Every tenant schema (`tenant_default` and each `tenant_<id>`), one Flyway run per schema | `<schema>.tenant_schema_history` | Tenant V1 is the reset baseline; this independent line owns tenant DDL and may use `${tenantId}` / `${tenantSchema}` placeholders. The platform-only guard must not be applied to tenant DDL. |
 
-Current latest: platform `V9__bom_ingest_api_keys.sql` and tenant `V8__gcp_cloud_discovery.sql`, each following its own immutable V1 baseline. The next platform migration is V10 and the next tenant migration is V9. Tenant request compatibility remains V8–V8. Startup/readiness also require the retained platform work structures, the V6 waiting-state constraint, the schedule-occurrence index and the reviewed-intelligence structures; this structural check does not certify deployed migration history or rollback compatibility.
+Current latest: platform `V16__tenant_data_keys_and_ownership_authority.sql` and tenant `V23__ownership_projection_columns.sql`, each following its own immutable V1 baseline. The next platform migration is V17 and the next tenant migration is V24. Tenant request compatibility is V23–V23. Startup/readiness also require the retained platform work structures, the V6 waiting-state constraint, the schedule-occurrence index and the reviewed-intelligence structures; this structural check does not certify deployed migration history or rollback compatibility.
 
 **Rollout mechanics** (`TenantSchemaMigrationService.migrateAll()`, mirrored by `ProductionBootstrapCli` for the standalone production bootstrap path):
 1. Hold a Postgres advisory lock (`scout-tenant-schema-migrator` / `scout-production-bootstrap`, 30s timeout) so only one migration run proceeds at a time.

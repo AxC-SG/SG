@@ -42,6 +42,9 @@ public class FindingsFilterRequest {
     private List<String> affectedAiResourceId;
     /** {@code true}/{@code false} restricts to findings affecting any/no declared AI resource. */
     private Boolean hasAffectedAiResource;
+    /** Canonical owner team ID and resolved status (OWNED, UNOWNED, CONFLICT); ownership plan §9.7. */
+    private java.util.UUID ownerTeamId;
+    private String ownershipStatus;
 
     public FindingsFilter toFilter() {
         return new FindingsFilter(
@@ -67,8 +70,25 @@ public class FindingsFilterRequest {
                 null,
                 null,
                 assetType, groupField, groupValue, findingKind,
-                affectedAiResourceId, hasAffectedAiResource
+                affectedAiResourceId, hasAffectedAiResource,
+                ownerTeamId, ownershipStatus
         );
+    }
+
+    public java.util.UUID getOwnerTeamId() {
+        return ownerTeamId;
+    }
+
+    public void setOwnerTeamId(java.util.UUID ownerTeamId) {
+        this.ownerTeamId = ownerTeamId;
+    }
+
+    public String getOwnershipStatus() {
+        return ownershipStatus;
+    }
+
+    public void setOwnershipStatus(String ownershipStatus) {
+        this.ownershipStatus = ownershipStatus;
     }
 
     public FindingsFilter resolve(FindingQueueResolutionService queueResolutionService) {

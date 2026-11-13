@@ -15,7 +15,8 @@ class PilotCapabilityPolicyTest {
         assertFalse(TenantSchemaCompatibility.supports(4,1,5));
         assertFalse(TenantSchemaCompatibility.supports(5,1,6));
         assertFalse(TenantSchemaCompatibility.supports(19, 1, 20));
-        assertTrue(TenantSchemaCompatibility.supports(20, 1, 20));
+        assertFalse(TenantSchemaCompatibility.supports(22, 1, 23));
+        assertTrue(TenantSchemaCompatibility.supports(23, 1, 23));
     }
     @Test void generativePilotContainmentPrecedesCredentialResolution() {
         var environment=new MockEnvironment().withProperty("app.environment","production").withProperty("app.openai.enabled","true").withProperty("OPENAI_API_KEY","test-only");

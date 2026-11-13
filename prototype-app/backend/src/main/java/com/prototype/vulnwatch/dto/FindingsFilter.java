@@ -1,6 +1,7 @@
 package com.prototype.vulnwatch.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Canonical findings filter contract shared by records, analytics, and future
@@ -49,8 +50,36 @@ public record FindingsFilter(
          * {@code false} restricts to findings affecting none. Null means no restriction.
          * Independent of {@link #affectedAiResourceId} -- both apply (ANDed) if both are set.
          */
-        Boolean hasAffectedAiResource
+        Boolean hasAffectedAiResource,
+        /**
+         * Canonical owner team (stable ID) and resolved ownership status (OWNED, UNOWNED, CONFLICT), ownership plan §9.7.
+         * Only CORE (VULNERABILITY) findings can match, and only once findings ownership is canonical. Supported on
+         * cursor (projection) paging; offset/JPA paging rejects them rather than returning a different result set.
+         */
+        UUID ownerTeamId,
+        String ownershipStatus
 ) {
+    /** Backward-compatible constructor for call sites predating the ownership filters. */
+    public FindingsFilter(
+            List<String> severity, List<String> status, List<String> decisionState, List<String> creationSource,
+            List<String> matchMethod, List<String> vexStatus, List<String> vexFreshness, List<String> vexProvider,
+            Double minConfidence, String vulnerabilityId, String packageName, String ecosystem, String ownerGroup,
+            String assignedTo, Boolean unassignedOnly, Boolean incidentLinked, String dueDateBand, String assetName,
+            String supportGroup, Boolean patchAvailable, String suppressedUntilBand, List<String> assetType,
+            String groupField, String groupValue, List<String> findingKind, List<String> affectedAiResourceId,
+            Boolean hasAffectedAiResource
+    ) {
+        this(severity, status, decisionState, creationSource, matchMethod, vexStatus, vexFreshness, vexProvider, minConfidence,
+                vulnerabilityId, packageName, ecosystem, ownerGroup, assignedTo, unassignedOnly, incidentLinked, dueDateBand,
+                assetName, supportGroup, patchAvailable, suppressedUntilBand, assetType, groupField, groupValue, findingKind,
+                affectedAiResourceId, hasAffectedAiResource, null, null);
+    }
+
+    /** True when the canonical ownership filters are set. */
+    public boolean hasOwnershipFilter() {
+        return ownerTeamId != null || (ownershipStatus != null && !ownershipStatus.isBlank());
+    }
+
     public FindingsFilter(
         List<String> severity,
         List<String> status,

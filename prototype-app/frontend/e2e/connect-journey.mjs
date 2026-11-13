@@ -214,8 +214,15 @@ for (const theme of themes) {
   check(tag('SLA save sends criticalThreshold 8.5'), policySave && body(policySave).criticalThreshold === 8.5, policySave?.body ?? requests.map((r) => `${r.method} ${apiPath(r.url)}`));
   await shot(page, tag('sla'));
   await page.goto(`${base}/configurations/ownership`, { waitUntil: 'networkidle' });
+  await page.getByRole('group', { name: 'Ownership & Directory views' }).waitFor();
+  check(tag('ownership hub shows canonical coverage'), await page.getByText('1,284').isVisible());
+  await shot(page, tag('ownership-overview'));
+  await page.getByRole('group', { name: 'Ownership & Directory views' }).getByRole('button', { name: 'Teams' }).click();
+  await page.getByText('SN-PAYMENTS').waitFor();
+  check(tag('ownership teams list 2 teams'), (await page.locator('.ownership-panel tbody tr').count()) === 2);
+  await page.goto(`${base}/configurations/ownership?view=legacy`, { waitUntil: 'networkidle' });
   await page.getByText('Payments services').waitFor();
-  check(tag('ownership lists 3 rules'), (await page.locator('.config-content tbody tr').count()) === 3);
+  check(tag('legacy view lists 3 rules'), (await page.locator('.config-content tbody tr').count()) === 3);
   await page.goto(`${base}/configurations/suppress`, { waitUntil: 'networkidle' });
   await page.getByText('Low severity on development assets').waitFor();
   check(tag('suppression lists 3 rules'), (await page.locator('.config-content tbody tr').count()) === 3);

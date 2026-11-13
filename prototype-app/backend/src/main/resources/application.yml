@@ -134,6 +134,13 @@ app:
     credential-encryption-key: ${APP_CREDENTIAL_ENCRYPTION_KEY:}
     credential-encryption-key-id: ${APP_CREDENTIAL_ENCRYPTION_KEY_ID:primary}
     credential-encryption-previous-keys: ${APP_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS:}
+    tenant-keys:
+      # Per-tenant PII/connector-secret keys (ownership MVP). disabled = every PII write fails closed.
+      # local = test/dev-only wrapper (refused unless APP_ENVIRONMENT is local/test). KMS follows the spike.
+      wrapper: ${APP_TENANT_KEY_WRAPPER:disabled}
+      local-master-key: ${APP_TENANT_KEY_LOCAL_MASTER_KEY:}
+      cache-ttl: ${APP_TENANT_KEY_CACHE_TTL:PT10M}
+      cache-max-keys: ${APP_TENANT_KEY_CACHE_MAX_KEYS:10000}
     default-user-id: ${APP_DEFAULT_USER_ID:local-analyst}
     require-production-secrets: ${APP_REQUIRE_PRODUCTION_SECRETS:false}
     managed-auth:
@@ -348,6 +355,12 @@ app:
       # Comma-separated exact BigFix server host names tenants may connect to. Empty approves
       # nothing. Private addresses are allowed; loopback, link-local and metadata are not.
       allowed-hosts: ${BIGFIX_ALLOWED_HOSTS:}
+  ownership:
+    effective-cache:
+      # Ownership list filters and coverage counts read a cached effective result (design §7: the live walk
+      # missed the filter/coverage budgets). Changes are always recorded; this switches on the per-minute
+      # refresh and the cached reads. Detail reads and correctness-sensitive writes always use the live walk.
+      enabled: ${APP_OWNERSHIP_EFFECTIVE_CACHE_ENABLED:false}
   cmdb:
     servicenow:
       base-url: ${CMDB_SERVICENOW_BASE_URL:}

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.Finding;
 import com.prototype.vulnwatch.domain.Asset;
 import com.prototype.vulnwatch.service.cbom.CbomFindingMirrorService;
+import com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter;
 import com.prototype.vulnwatch.domain.FindingDecisionState;
 import com.prototype.vulnwatch.domain.FindingStatus;
 import com.prototype.vulnwatch.domain.InventoryComponent;
@@ -66,11 +67,16 @@ public class FindingQueryService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.jdbc.core.JdbcTemplate intelligenceJdbc;
 
+    /** Compatibility adapter source (ownership plan §15.3 step 4); absent in narrow unit tests. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private OwnershipReadAdapter ownershipReads;
+
     @org.springframework.transaction.annotation.Transactional(readOnly=true)
     public java.util.Optional<FindingResponse> history(Tenant tenant,UUID id) {
         return tenantSchemaExecutionService.run(tenant,() -> {
             intelligenceJdbc.queryForObject("select set_config('app.include_ineligible_intelligence','true',true)",String.class);
-            return findingRepository.findById(id).filter(finding -> tenant.getId().equals(finding.getTenant().getId())).map(this::toResponse);
+            return findingRepository.findById(id).filter(finding -> tenant.getId().equals(finding.getTenant().getId()))
+                    .map(finding -> toResponse(finding, null, ownership(tenant, List.of(finding.getId())).get(finding.getId())));
         });
     }
 
@@ -88,11 +94,14 @@ public class FindingQueryService {
         Page<Finding> findings = tenantSchemaExecutionService.run(tenant, () -> findingRepository.findAll(specification, pageable));
         // Affected-resource summaries are loaded once for this already-paginated page, not
         // per finding and never via a join into the specification above.
+        List<UUID> pageIds = findings.getContent().stream().map(Finding::getId).toList();
         Map<UUID, List<AffectedAiResourceSummary>> affectedAiResourcesByFindingId =
-                affectedResourceSummaryService.summarize(findings.getContent().stream().map(Finding::getId).toList());
+                affectedResourceSummaryService.summarize(pageIds);
+        Map<UUID, OwnershipReadAdapter.Summary> ownershipById = ownership(tenant, pageIds);
         return new FindingPageResponse(
                 findings.getContent().stream()
-                        .map(finding -> toResponse(finding, affectedAiResourcesByFindingId.get(finding.getId())))
+                        .map(finding -> toResponse(finding, affectedAiResourcesByFindingId.get(finding.getId()),
+                                ownershipById.get(finding.getId())))
                         .toList(),
                 findings.getNumber(),
                 findings.getSize(),
@@ -117,10 +126,12 @@ public class FindingQueryService {
         // Loaded once for this already-paginated page's ids, same as the offset-page path.
         Map<UUID, List<AffectedAiResourceSummary>> affectedAiResourcesByFindingId =
                 affectedResourceSummaryService.summarize(projectionPage.findingIds());
+        Map<UUID, OwnershipReadAdapter.Summary> ownershipById = ownership(tenant, projectionPage.findingIds());
         List<FindingResponse> items = projectionPage.findingIds().stream()
                 .map(findingsById::get)
                 .filter(Objects::nonNull)
-                .map(finding -> toResponse(finding, affectedAiResourcesByFindingId.get(finding.getId())))
+                .map(finding -> toResponse(finding, affectedAiResourcesByFindingId.get(finding.getId()),
+                        ownershipById.get(finding.getId())))
                 .toList();
         int totalPages = projectionPage.totalItems() == 0
                 ? 0
@@ -153,10 +164,11 @@ public class FindingQueryService {
     }
 
     public List<FindingResponse> listByTenant(Tenant tenant) {
-        return tenantSchemaExecutionService.run(tenant, () -> findingRepository.findAllByOrderByUpdatedAtDesc()).stream()
+        List<Finding> findings = tenantSchemaExecutionService.run(tenant, () -> findingRepository.findAllByOrderByUpdatedAtDesc()).stream()
                 .filter(finding -> !"AI_RUNTIME".equals(finding.getFindingKind()))
-                .map(this::toResponse)
                 .toList();
+        Map<UUID, OwnershipReadAdapter.Summary> ownershipById = ownership(tenant, findings.stream().map(Finding::getId).toList());
+        return findings.stream().map(finding -> toResponse(finding, null, ownershipById.get(finding.getId()))).toList();
     }
 
     public FindingFilterValuesResponse listAvailableFilters(Tenant tenant) {
@@ -228,12 +240,12 @@ public class FindingQueryService {
 
     public List<FindingResponse> listLatestByTenant(Tenant tenant, int limit) {
         Pageable pageable = PageRequest.of(0, Math.max(1, Math.min(200, limit)), Sort.by(Sort.Direction.DESC, "updatedAt"));
-        return tenantSchemaExecutionService.run(
+        List<Finding> findings = tenantSchemaExecutionService.run(
                 tenant,
                 () -> findingRepository.findAllByOrderByUpdatedAtDesc(pageable)
-        ).getContent().stream()
-                .map(this::toResponse)
-                .toList();
+        ).getContent();
+        Map<UUID, OwnershipReadAdapter.Summary> ownershipById = ownership(tenant, findings.stream().map(Finding::getId).toList());
+        return findings.stream().map(finding -> toResponse(finding, null, ownershipById.get(finding.getId()))).toList();
     }
 
     public long countOpen(Tenant tenant) {
@@ -247,11 +259,39 @@ public class FindingQueryService {
         );
     }
 
+    /** Single-finding response; reads the finding's ownership through the compatibility adapter. */
     public FindingResponse toResponse(Finding finding) {
-        return toResponse(finding, null);
+        Tenant tenant = finding.getTenant();
+        OwnershipReadAdapter.Summary summary = tenant == null || finding.getId() == null ? null
+                : ownership(tenant, List.of(finding.getId())).get(finding.getId());
+        return toResponse(finding, null, summary);
     }
 
     public FindingResponse toResponse(Finding finding, List<AffectedAiResourceSummary> affectedAiResources) {
+        return toResponse(finding, affectedAiResources, null);
+    }
+
+    /**
+     * Ownership compatibility adapter (ownership plan §15.3 step 4, §15.4): batch-reads the domain-aware ownership
+     * envelope for already-paginated finding IDs. Empty when the adapter is absent; chunks at the adapter's bound.
+     */
+    private Map<UUID, OwnershipReadAdapter.Summary> ownership(Tenant tenant, List<UUID> findingIds) {
+        if (ownershipReads == null || findingIds.isEmpty()) return Map.of();
+        if (!tenantSchemaExecutionService.run(tenant, () -> ownershipReads.anyCanonical(OwnershipReadAdapter.Consumer.FINDINGS))) {
+            return Map.of(); // every row renders the legacy display
+        }
+        Map<UUID, OwnershipReadAdapter.Summary> byId = new LinkedHashMap<>();
+        for (int from = 0; from < findingIds.size(); from += OwnershipReadAdapter.MAX_IDS) {
+            List<UUID> chunk = findingIds.subList(from, Math.min(findingIds.size(), from + OwnershipReadAdapter.MAX_IDS));
+            tenantSchemaExecutionService.run(tenant, () -> ownershipReads.forFindings(chunk))
+                    .forEach(summary -> byId.put(summary.objectId(), summary));
+        }
+        return byId;
+    }
+
+    private FindingResponse toResponse(Finding finding, List<AffectedAiResourceSummary> affectedAiResources,
+                                       OwnershipReadAdapter.Summary ownership) {
+        boolean canonicalOwnership = ownership != null && "CANONICAL".equals(ownership.authorityState());
         Vulnerability vulnerability = finding.getVulnerability();
         InventoryComponent component = finding.getComponent();
         Asset asset = finding.getAsset() != null ? finding.getAsset() : component != null ? component.getAsset() : null;
@@ -310,17 +350,15 @@ public class FindingQueryService {
                 findingsScore,
                 finding.getSuppressedByRuleId(),
                 finding.getSuppressedByRuleName(),
-                finding.getOwnerGroup(),
+                // Canonical rows report the live team name and never persist it; legacy rows keep the free-text label.
+                canonicalOwnership ? ownership.ownerTeamName() : finding.getOwnerGroup(),
                 finding.getConsecutiveMisses(),
                 finding.getAutoCloseEligibleAt(),
                 finding.getClosedAt(),
                 finding.getClosedBy(),
                 finding.getClosedReason(),
                 finding.getClosedRuleId(),
-                asset == null ? Map.of("displayName", "Unassigned") : Map.of(
-                        "displayName", hasText(asset.getOwnerTeam()) ? asset.getOwnerTeam().trim()
-                                : hasText(asset.getOwnerEmail()) ? asset.getOwnerEmail().trim() : "Unassigned",
-                        "supportGroup", asset.getSupportGroup() == null ? "" : asset.getSupportGroup()),
+                canonicalOwnership ? canonicalOwnershipMap(ownership, asset) : legacyOwnershipMap(asset),
                 affectedAiResources == null ? List.of() : affectedAiResources,
                 finding.getIntelligenceEligibility(),finding.getIntelligenceReleaseId(),finding.getIntelligenceRevision(),finding.getIntelligenceMergedIntoId(),
                 finding.getFindingKind(),
@@ -332,6 +370,51 @@ public class FindingQueryService {
                 finding.getVerificationRequestedAt(),
                 finding.getVerificationCompletedAt(),
                 finding.getVerificationActor());
+    }
+
+    /**
+     * Same keys the UI already reads (displayName, ownerTeam, sourceSystem, supportGroup) filled from the canonical
+     * effective assignment, plus stable-ID keys. Raw support group stays as observed evidence, never as the owner.
+     */
+    static Map<String, String> canonicalOwnershipMap(OwnershipReadAdapter.Summary summary, Asset asset) {
+        Map<String, String> map = new LinkedHashMap<>();
+        String status = summary.ownershipStatus() == null ? "UNOWNED" : summary.ownershipStatus();
+        map.put("displayName", switch (status) {
+            case "OWNED" -> summary.ownerTeamName();
+            case "CONFLICT" -> "Ownership conflict";
+            default -> "Unowned";
+        });
+        if (summary.ownerTeamName() != null) map.put("ownerTeam", summary.ownerTeamName());
+        map.put("authority", "CANONICAL");
+        map.put("authorityState", "CANONICAL");
+        map.put("authorityDomain", summary.authorityDomain());
+        map.put("ownershipStatus", status);
+        putIfPresent(map, "ownerTeamId", summary.ownerTeamId());
+        putIfPresent(map, "subjectId", summary.subjectId());
+        putIfPresent(map, "originSubjectId", summary.originSubjectId());
+        putIfPresent(map, "assignmentId", summary.assignmentId());
+        putIfPresent(map, "sourceSystem", summary.sourceKind());
+        putIfPresent(map, "updatedAt", summary.resolvedAt());
+        putIfPresent(map, "stale", summary.stale());
+        putIfPresent(map, "inheritanceDepth", summary.inheritanceDepth());
+        if (asset != null && hasText(asset.getSupportGroup())) map.put("supportGroup", asset.getSupportGroup());
+        return map;
+    }
+
+    /** Pre-cutover display, unchanged except for the explicit transition marker (never reported as Unowned). */
+    static Map<String, String> legacyOwnershipMap(Asset asset) {
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("displayName", asset == null ? "Unassigned"
+                : hasText(asset.getOwnerTeam()) ? asset.getOwnerTeam().trim()
+                : hasText(asset.getOwnerEmail()) ? asset.getOwnerEmail().trim() : "Unassigned");
+        if (asset != null) map.put("supportGroup", asset.getSupportGroup() == null ? "" : asset.getSupportGroup());
+        map.put("authority", "LEGACY");
+        map.put("authorityState", "LEGACY_PENDING_MIGRATION");
+        return map;
+    }
+
+    private static void putIfPresent(Map<String, String> map, String key, Object value) {
+        if (value != null) map.put(key, value.toString());
     }
 
     private Double safeFindingsScore(String scoreConfig, Finding finding) {
@@ -368,7 +451,7 @@ public class FindingQueryService {
         return text.isEmpty() ? null : text;
     }
 
-    private boolean hasText(String value) {
+    private static boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 }

@@ -81,6 +81,8 @@ src/
     findings/          # Finding type, queries, filters
     cve-workbench/     # Largest feature — CVE Assessment Workbench types and helpers
     configurations/    # RiskPolicy (6 triage weight fields, frontend-only — not on the backend entity), OwnershipRule, SuppressionRule
+    ownership/         # Ownership & Directory hub (Configurations → Ownership, ?view=), its panels/dialogs,
+                       # queries, permissions (visibility only), resolvedOwnership helpers for inventory/findings
     inventory/         # Asset, HostAssetDetail, InventoryComponentPage
     connect/           # Connector configs, sync run types
     operations/        # OperationalDashboard, SLO, quality types
@@ -114,6 +116,12 @@ src/
 ```
 
 `src/types/index.ts` re-exports feature types but the **source of truth** is always the feature directory file. Edit the feature file, not the re-export.
+
+## Ownership feature
+
+`src/features/ownership/` renders the Ownership & Directory hub inside `ConfigurationsPage` (`ownership` section). The sub-view lives in the `view` search parameter (`overview` default, `teams`, `people`, `groups`, `imports`, `review`, `legacy`). `permissions.ts` mirrors the backend `OwnershipAuthorization` matrix for visibility only; the server still decides. People and Groups appear only for roles that can view the directory, and Imports only for `TENANT_ADMIN`. The legacy rule editor is passed in as `legacyRules` and shown as "Legacy rules" while inventory ownership still reports `LEGACY_PENDING_MIGRATION`.
+
+Use `resolvedOwnership.ts` to read the canonical ownership envelope on assets and findings. Show the resolved team only when `authorityState` is `CANONICAL`; otherwise keep today's owner display (findings show "Pending migration"). Findings owner-team and ownership-status filters are offered only when `useOwnershipCoverageQuery('FINDINGS')` reports `CANONICAL`, and they filter by stable team ID. Ownership API calls go through `api/client.ts`. Tests: `OwnershipDirectoryHub.test.tsx`, `resolvedOwnership.test.ts`, and the Findings, Inventory, HostAssetDetail and Configurations page tests.
 
 ## cve-workbench feature internals
 

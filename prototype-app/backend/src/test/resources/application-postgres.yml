@@ -15,6 +15,10 @@ app:
   security:
     # Deterministic test-only AES-256 key; never used by a deployed profile.
     credential-encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    tenant-keys:
+      # Deterministic test-only tenant key wrapper; never used by a deployed profile.
+      wrapper: local
+      local-master-key: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
 
 spring:
   datasource:

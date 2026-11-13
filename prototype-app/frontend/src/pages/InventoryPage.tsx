@@ -24,6 +24,7 @@ import {
   writeSearchValuesToSearch
 } from '../features/inventory/searchState';
 import type { InventoryViewKey } from '../features/inventory/types';
+import { isCanonicalOwnership, lacksResolvedOwner, resolvedOwnerLabel } from '../features/ownership/resolvedOwnership';
 
 const PAGE_SIZE = 50;
 
@@ -134,8 +135,20 @@ function hostEnvironment(record: HostInventoryRecord): string {
   return record.detail.host.environment ?? record.asset.environment ?? 'Unknown';
 }
 
+/** Resolved owner once inventory ownership is canonical; until then the pre-cutover raw-field fallback. */
 function hostOwner(record: HostInventoryRecord): string {
-  return record.detail.host.ownerEmail ?? record.asset.ownerTeam ?? record.asset.ownerEmail ?? 'Unassigned';
+  if (isCanonicalOwnership(record.asset.ownership)) return resolvedOwnerLabel(record.asset.ownership);
+  return legacyHostOwner(record) ?? 'Unassigned';
+}
+
+function legacyHostOwner(record: HostInventoryRecord): string | undefined {
+  return record.detail.host.ownerEmail ?? record.asset.ownerTeam ?? record.asset.ownerEmail;
+}
+
+function hostLacksOwner(record: HostInventoryRecord): boolean {
+  return isCanonicalOwnership(record.asset.ownership)
+    ? lacksResolvedOwner(record.asset.ownership)
+    : legacyHostOwner(record) === undefined;
 }
 
 function hostSourceSystems(record: HostInventoryRecord): string[] {
@@ -263,6 +276,7 @@ function matchesSearch(record: HostInventoryRecord, query: string): boolean {
     record.asset.name,
     record.asset.identifier,
     record.detail.host.environment ?? record.asset.environment,
+    record.asset.ownership?.ownerTeamName ?? '',
     record.asset.ownerTeam,
     record.detail.host.ownerEmail ?? record.asset.ownerEmail,
     record.detail.host.supportGroup,
@@ -299,7 +313,7 @@ function HostRow({
       <td>{record.detail.host.environment ?? record.asset.environment ?? '-'}</td>
       <td>{record.operatingSystem}</td>
       <td>
-        {record.detail.host.ownerEmail ?? record.asset.ownerTeam ?? record.asset.ownerEmail ?? '-'}
+        {isCanonicalOwnership(record.asset.ownership) ? resolvedOwnerLabel(record.asset.ownership) : legacyHostOwner(record) ?? '-'}
       </td>
       <td>{record.detail.host.supportGroup ?? '-'}</td>
       <td>{record.deployedSoftwareCount.toLocaleString()}</td>
@@ -555,7 +569,7 @@ export function InventoryPage(_: Props) {
   const inventoryHealth = React.useMemo(() => {
     const noSoftware = filteredRecords.filter((record) => record.deployedSoftwareCount === 0).length;
     const unknownOs = filteredRecords.filter((record) => record.operatingSystem === 'Unknown').length;
-    const missingOwner = filteredRecords.filter((record) => hostOwner(record) === 'Unassigned').length;
+    const missingOwner = filteredRecords.filter(hostLacksOwner).length;
     const highExposure = filteredRecords.filter((record) => record.applicableCveCount > 0 || record.openFindingCount > 0).length;
     return [
       { label: 'No software', count: noSoftware, tone: 'muted' },

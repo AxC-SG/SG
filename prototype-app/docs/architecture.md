@@ -131,6 +131,12 @@ Full mechanics: [business-logic-guide.md](business-logic-guide.md#ai-security--a
 
 ---
 
+### 8. Canonical Ownership (Release 1)
+
+Built but off by default (PR #71). Sources publish **claims** about who owns a **subject** (an asset, and in later releases occurrences and AI resources). `OwnershipResolver` picks one direct result per subject by fixed precedence (manual, ServiceNow, cloud account/project, AI Grid, cloud tag, Entra/Okta); the `ownership_effective_assignment` view applies inheritance up to 6 parent hops. Owners are always **teams**; people and groups come from a manual or CSV directory whose PII is encrypted with per-tenant data keys (`security/tenantkey/`, `enc:t1:`, HMAC blind indexes).
+
+Each tenant moves each domain (`CORE`, `CLOUD_BOM`, `AI_GRID`) from LEGACY to DARK (link and compare) to CANONICAL (reads switch, irreversible through the API). Until then, read paths return `LEGACY_PENDING_MIGRATION` with the legacy owner label and the old `ownership_rules` stay in force. Release 1 cuts over CORE only. Per-consumer read waves, the effective-owner cache and the ServiceNow producer are separate switches, all off by default. The plan is [ownership-capability-mvp-plan.md](ownership-capability-mvp-plan.md) and the as-built record is [ownership-phase-0a-design.md](ownership-phase-0a-design.md).
+
 ## Multi-Tenant Architecture
 
 ### Schema-Per-Tenant
@@ -168,7 +174,7 @@ Per-tenant DDL is no longer applied by the application's own startup Flyway run.
 
 `TenantSchemaMigrationService` drives the rollout: hold a Postgres advisory lock → migrate the `tenant_default` template and compute a SHA-256 **structural fingerprint** (normalized dump of every column/constraint/index/sequence/RLS policy) → migrate one canary tenant → migrate the rest in batches of 10, comparing each tenant's post-migration fingerprint against the template and failing (`DRIFTED`) rather than silently diverging. Every step is recorded in `platform.tenant_schema_versions`, surfaced by `TenantSchemaStatusService`/`TenantSchemaStatusController` (`GET /api/platform/tenant-schema-status`, shown in the Platform Console) and by `TenantSchemaReadinessHealthIndicator` (an actuator health contributor gated behind `app.tenancy.enforce-schema-version=true`).
 
-The required/supported tenant range is V8–V8; a lower configured floor cannot bypass it. With schema enforcement enabled, startup/readiness fail on missing required platform work structures/SELECT grants, V6 waiting-state constraint, schedule-occurrence index or reviewed-intelligence structures. Individual incompatible tenants are blocked at entry while compatible tenants remain usable; readiness reports their count. These are read-only checks, not startup migration ownership. The last observed deployed backend predates the development history reset; actual histories and upgrade/rollback compatibility remain unverified. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
+The required/supported tenant range is V23–V23 (platform head V16); a lower configured floor cannot bypass it. With schema enforcement enabled, startup/readiness fail on missing required platform work structures/SELECT grants, V6 waiting-state constraint, schedule-occurrence index or reviewed-intelligence structures. Individual incompatible tenants are blocked at entry while compatible tenants remain usable; readiness reports their count. These are read-only checks, not startup migration ownership. The last observed deployed backend predates the development history reset; actual histories and upgrade/rollback compatibility remain unverified. See [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 
 For production, the same rollout runs from `ProductionBootstrapCli` — a standalone `main()` that skips Spring/JPA entirely — invoked in a standalone ECS task with `/app/scripts/run-schema-migration.sh --run-once`. See [Deployment](#deployment) below; see [bootstrap wrapper](../backend/scripts/run-schema-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 

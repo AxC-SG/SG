@@ -19,6 +19,7 @@ import com.prototype.vulnwatch.repo.CiAliasRepository;
 import com.prototype.vulnwatch.repo.CiRepository;
 import com.prototype.vulnwatch.repo.FindingRepository;
 import com.prototype.vulnwatch.repo.SoftwareInstanceRepository;
+import com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class HostInventoryReadService {
     private final FindingRepository findingRepository;
     private final ComponentVulnerabilityStateRepository componentVulnerabilityStateRepository;
     private final BomEvidenceReadService bomEvidenceReadService;
+    private final OwnershipReadAdapter ownershipReads;
 
     public HostInventoryReadService(
             CiRepository ciRepository,
@@ -44,7 +46,8 @@ public class HostInventoryReadService {
             SoftwareInstanceRepository softwareInstanceRepository,
             FindingRepository findingRepository,
             ComponentVulnerabilityStateRepository componentVulnerabilityStateRepository,
-            BomEvidenceReadService bomEvidenceReadService
+            BomEvidenceReadService bomEvidenceReadService,
+            OwnershipReadAdapter ownershipReads
     ) {
         this.ciRepository = ciRepository;
         this.ciAliasRepository = ciAliasRepository;
@@ -52,6 +55,7 @@ public class HostInventoryReadService {
         this.findingRepository = findingRepository;
         this.componentVulnerabilityStateRepository = componentVulnerabilityStateRepository;
         this.bomEvidenceReadService = bomEvidenceReadService;
+        this.ownershipReads = ownershipReads;
     }
 
     @Transactional(readOnly = true)
@@ -98,14 +102,19 @@ public class HostInventoryReadService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Host asset not found: " + assetId);
         }
         var bomEvidence = bomEvidenceReadService.summarizeForHost(tenant, assetId);
+        OwnershipReadAdapter.Summary ownership = ownershipReads.anyCanonical(OwnershipReadAdapter.Consumer.INVENTORY)
+                ? ownershipReads.forAssets(List.of(assetId)).stream().findFirst().orElse(null)
+                : null;
+        Map<UUID, String> canonicalOwnerGroups = canonicalOwnerGroups(findings);
 
         return new HostAssetDetailResponse(
                 summary,
                 bomEvidence,
                 aliases.stream().map(this::toAliasResponse).toList(),
                 software.stream().map(this::toSoftwareResponse).toList(),
-                findings.stream().map(this::toFindingResponse).toList(),
-                applicableCves
+                findings.stream().map(finding -> toFindingResponse(finding, canonicalOwnerGroups)).toList(),
+                applicableCves,
+                ownership
         );
     }
 
@@ -241,7 +250,23 @@ public class HostInventoryReadService {
         );
     }
 
-    private HostFindingResponse toFindingResponse(Finding finding) {
+    /**
+     * Live canonical team names for the host's canonical findings (ownership compatibility adapter, plan §15.3 step 4).
+     * A canonical row with no owner maps to null; legacy rows are absent and keep their stored label.
+     */
+    private Map<UUID, String> canonicalOwnerGroups(List<Finding> findings) {
+        if (findings.isEmpty() || !ownershipReads.anyCanonical(OwnershipReadAdapter.Consumer.FINDINGS)) return Map.of();
+        Map<UUID, String> names = new java.util.HashMap<>();
+        List<UUID> ids = findings.stream().map(Finding::getId).toList();
+        for (int from = 0; from < ids.size(); from += OwnershipReadAdapter.MAX_IDS) {
+            ownershipReads.forFindings(ids.subList(from, Math.min(ids.size(), from + OwnershipReadAdapter.MAX_IDS))).stream()
+                    .filter(row -> "CANONICAL".equals(row.authorityState()))
+                    .forEach(row -> names.put(row.objectId(), row.ownerTeamName()));
+        }
+        return names;
+    }
+
+    private HostFindingResponse toFindingResponse(Finding finding, Map<UUID, String> canonicalOwnerGroups) {
         return new HostFindingResponse(
                 finding.getId(),
                 finding.getDisplayId(),
@@ -255,7 +280,7 @@ public class HostInventoryReadService {
                 finding.getConfidenceScore(),
                 finding.getMatchedBy(),
                 finding.getAssignedTo(),
-                finding.getOwnerGroup(),
+                canonicalOwnerGroups.containsKey(finding.getId()) ? canonicalOwnerGroups.get(finding.getId()) : finding.getOwnerGroup(),
                 finding.getCreationSource() == null ? null : finding.getCreationSource().name(),
                 finding.getDueAt(),
                 finding.getFirstObservedAt(),

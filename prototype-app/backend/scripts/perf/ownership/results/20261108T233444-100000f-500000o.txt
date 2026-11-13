@@ -1,0 +1,376 @@
+# ownership effective-owner benchmark  findings=100000 occurrences=500000 runs=10  2026-11-08T18:04:45Z
+PostgreSQL 16.15 (Homebrew) on aarch64-apple-darwin25.6.0, compiled by Apple clang version 21.0.0 (clang-2100.3.34.2), 64-bit
+seed:               set_config              
+seed: --------------------------------------
+seed:  00000000-0000-0000-0000-0000000000be
+seed: (1 row)
+seed: 
+seed: real 76.58
+seed: user 0.00
+seed: sys 0.00
+SET
+              set_config              
+--------------------------------------
+ 00000000-0000-0000-0000-0000000000be
+(1 row)
+
+== Q1 owner-team filter (first page of open findings owned by one team)
+                                                                               QUERY PLAN                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=28.441..520.607 rows=100 loops=1)
+   Buffers: shared hit=507203 read=9735 written=6002
+   ->  Nested Loop (actual time=28.440..520.600 rows=100 loops=1)
+         Buffers: shared hit=507203 read=9735 written=6002
+         ->  Nested Loop (actual time=0.315..79.503 rows=14614 loops=1)
+               Buffers: shared hit=65815 read=3129 written=1955
+               ->  Index Scan using findings_status_idx on findings f (actual time=0.304..16.092 rows=14614 loops=1)
+                     Index Cond: ((status)::text = 'OPEN'::text)
+                     Buffers: shared hit=13678 read=999 written=607
+               ->  Index Only Scan using ownership_subject_pkey on ownership_subject s (actual time=0.004..0.004 rows=1 loops=14614)
+                     Index Cond: (id = f.ownership_subject_id)
+                     Heap Fetches: 10424
+                     Buffers: shared hit=52137 read=2130 written=1348
+         ->  Nested Loop (actual time=0.030..0.030 rows=0 loops=14614)
+               Buffers: shared hit=441388 read=6606 written=4047
+               CTE walk
+                 ->  Recursive Union (actual time=0.000..0.027 rows=4 loops=14614)
+                       Buffers: shared hit=397543 read=6606 written=4047
+                       ->  Result (actual time=0.000..0.000 rows=1 loops=14614)
+                       ->  Nested Loop Left Join (actual time=0.007..0.007 rows=1 loops=54648)
+                             Buffers: shared hit=397543 read=6606 written=4047
+                             ->  Nested Loop (actual time=0.004..0.004 rows=1 loops=54648)
+                                   Buffers: shared hit=239403 read=4610 written=2832
+                                   ->  Nested Loop Left Join (actual time=0.001..0.001 rows=1 loops=54648)
+                                         Filter: (a_1.id IS NULL)
+                                         Rows Removed by Filter: 0
+                                         Buffers: shared hit=123875 read=35
+                                         ->  WorkTable Scan on walk w (actual time=0.000..0.000 rows=1 loops=54648)
+                                               Filter: ((NOT cycle) AND (NOT missing) AND (depth <= 6))
+                                         ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a_1 (actual time=0.001..0.001 rows=0 loops=54648)
+                                               Index Cond: (subject_id = w.current_id)
+                                               Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                               Buffers: shared hit=123875 read=35
+                                   ->  Index Only Scan using ownership_subject_edge_child_idx on ownership_subject_edge e (actual time=0.004..0.004 rows=1 loops=40034)
+                                         Index Cond: (child_subject_id = w.current_id)
+                                         Heap Fetches: 0
+                                         Buffers: shared hit=115528 read=4575 written=2832
+                             ->  Index Scan using ownership_subject_pkey on ownership_subject p (actual time=0.003..0.003 rows=1 loops=40034)
+                                   Index Cond: (id = e.parent_subject_id)
+                                   Filter: ((lifecycle_status)::text = 'ACTIVE'::text)
+                                   Buffers: shared hit=158140 read=1996 written=1215
+               ->  Subquery Scan on t (actual time=0.029..0.029 rows=1 loops=14614)
+                     Filter: ((NOT t.cycle) AND (NOT t.missing) AND (t.depth <= 6))
+                     Buffers: shared hit=397546 read=6606 written=4047
+                     ->  Limit (actual time=0.029..0.029 rows=1 loops=14614)
+                           Buffers: shared hit=397546 read=6606 written=4047
+                           ->  Sort (actual time=0.029..0.029 rows=1 loops=14614)
+                                 Sort Key: walk.depth DESC
+                                 Sort Method: top-N heapsort  Memory: 25kB
+                                 Buffers: shared hit=397546 read=6606 written=4047
+                                 ->  CTE Scan on walk (actual time=0.000..0.028 rows=4 loops=14614)
+                                       Buffers: shared hit=397543 read=6606 written=4047
+               ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a (actual time=0.001..0.001 rows=0 loops=14614)
+                     Index Cond: (subject_id = t.current_id)
+                     Filter: (((role)::text = 'TECHNICAL_OWNER'::text) AND (team_id = 'a7416129-3d64-4d8f-1ccc-a5be3f034df8'::uuid))
+                     Rows Removed by Filter: 1
+                     Buffers: shared hit=43842
+ Planning:
+   Buffers: shared hit=771 read=44
+ Planning Time: 8.914 ms
+ Execution Time: 520.685 ms
+(61 rows)
+
+== Q2 status filter (first page of open UNOWNED/CONFLICT findings)
+                                                                                                                      QUERY PLAN                                                                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=15.124..250.459 rows=100 loops=1)
+   Buffers: shared hit=424404 read=8
+   ->  Nested Loop (actual time=15.124..250.453 rows=100 loops=1)
+         Buffers: shared hit=424404 read=8
+         ->  Nested Loop (actual time=0.024..33.498 rows=12013 loops=1)
+               Buffers: shared hit=56631 read=7
+               ->  Index Scan using findings_status_idx on findings f (actual time=0.020..8.347 rows=12013 loops=1)
+                     Index Cond: ((status)::text = 'OPEN'::text)
+                     Buffers: shared hit=12061 read=7
+               ->  Index Only Scan using ownership_subject_pkey on ownership_subject s (actual time=0.002..0.002 rows=1 loops=12013)
+                     Index Cond: (id = f.ownership_subject_id)
+                     Heap Fetches: 8530
+                     Buffers: shared hit=44570
+         ->  Nested Loop Left Join (actual time=0.018..0.018 rows=0 loops=12013)
+               Join Filter: ((NOT walk.cycle) AND (NOT walk.missing) AND (walk.depth <= 6))
+               Filter: (((CASE WHEN (walk.cycle OR walk.missing OR (walk.depth > 6)) THEN 'CONFLICT'::character varying WHEN (a.id IS NOT NULL) THEN a.status ELSE 'UNOWNED'::character varying END)::character varying(16))::text = 'CONFLICT'::text)
+               Rows Removed by Filter: 1
+               Buffers: shared hit=367773 read=1
+               CTE walk
+                 ->  Recursive Union (actual time=0.000..0.015 rows=4 loops=12013)
+                       Buffers: shared hit=331734 read=1
+                       ->  Result (actual time=0.000..0.000 rows=1 loops=12013)
+                       ->  Nested Loop Left Join (actual time=0.004..0.004 rows=1 loops=44868)
+                             Buffers: shared hit=331734 read=1
+                             ->  Nested Loop (actual time=0.002..0.002 rows=1 loops=44868)
+                                   Buffers: shared hit=200314 read=1
+                                   ->  Nested Loop Left Join (actual time=0.001..0.001 rows=1 loops=44868)
+                                         Filter: (a_1.id IS NULL)
+                                         Rows Removed by Filter: 0
+                                         Buffers: shared hit=101749
+                                         ->  WorkTable Scan on walk w (actual time=0.000..0.000 rows=1 loops=44868)
+                                               Filter: ((NOT cycle) AND (NOT missing) AND (depth <= 6))
+                                         ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a_1 (actual time=0.001..0.001 rows=0 loops=44868)
+                                               Index Cond: (subject_id = w.current_id)
+                                               Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                               Buffers: shared hit=101749
+                                   ->  Index Only Scan using ownership_subject_edge_child_idx on ownership_subject_edge e (actual time=0.002..0.002 rows=1 loops=32855)
+                                         Index Cond: (child_subject_id = w.current_id)
+                                         Heap Fetches: 0
+                                         Buffers: shared hit=98565 read=1
+                             ->  Index Scan using ownership_subject_pkey on ownership_subject p (actual time=0.002..0.002 rows=1 loops=32855)
+                                   Index Cond: (id = e.parent_subject_id)
+                                   Filter: ((lifecycle_status)::text = 'ACTIVE'::text)
+                                   Buffers: shared hit=131420
+               ->  Limit (actual time=0.017..0.017 rows=1 loops=12013)
+                     Buffers: shared hit=331734 read=1
+                     ->  Sort (actual time=0.017..0.017 rows=1 loops=12013)
+                           Sort Key: walk.depth DESC
+                           Sort Method: top-N heapsort  Memory: 25kB
+                           Buffers: shared hit=331734 read=1
+                           ->  CTE Scan on walk (actual time=0.000..0.016 rows=4 loops=12013)
+                                 Buffers: shared hit=331734 read=1
+               ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a (actual time=0.000..0.001 rows=1 loops=12013)
+                     Index Cond: (subject_id = walk.current_id)
+                     Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                     Buffers: shared hit=36039
+ Planning:
+   Buffers: shared hit=49 read=8
+ Planning Time: 0.627 ms
+ Execution Time: 250.502 ms
+(60 rows)
+
+== Q3 ownership coverage count over all open findings
+                                                                                                                                       QUERY PLAN                                                                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate (actual time=1554.660..1558.883 rows=2 loops=1)
+   Group Key: (COALESCE((((CASE WHEN (walk.cycle OR walk.missing OR (walk.depth > 6)) THEN 'CONFLICT'::character varying WHEN (a.id IS NOT NULL) THEN a.status ELSE 'UNOWNED'::character varying END)::character varying(16))::character varying), 'UNLINKED'::character varying))
+   Buffers: shared hit=2574219 read=11
+   ->  Sort (actual time=1554.616..1556.203 rows=75000 loops=1)
+         Sort Key: (COALESCE((((CASE WHEN (walk.cycle OR walk.missing OR (walk.depth > 6)) THEN 'CONFLICT'::character varying WHEN (a.id IS NOT NULL) THEN a.status ELSE 'UNOWNED'::character varying END)::character varying(16))::character varying), 'UNLINKED'::character varying))
+         Sort Method: quicksort  Memory: 3631kB
+         Buffers: shared hit=2574219 read=11
+         ->  Nested Loop Left Join (actual time=0.037..1548.373 rows=75000 loops=1)
+               Buffers: shared hit=2574216 read=11
+               ->  Seq Scan on findings f (actual time=0.003..9.832 rows=75000 loops=1)
+                     Filter: ((status)::text = 'OPEN'::text)
+                     Rows Removed by Filter: 25000
+                     Buffers: shared hit=849
+               ->  Nested Loop (actual time=0.020..0.020 rows=1 loops=75000)
+                     Buffers: shared hit=2573367 read=11
+                     ->  Index Only Scan using ownership_subject_pkey on ownership_subject s (actual time=0.002..0.002 rows=1 loops=75000)
+                           Index Cond: (id = f.ownership_subject_id)
+                           Heap Fetches: 53376
+                           Buffers: shared hit=278377
+                     ->  Nested Loop Left Join (actual time=0.018..0.018 rows=1 loops=75000)
+                           Join Filter: ((NOT walk.cycle) AND (NOT walk.missing) AND (walk.depth <= 6))
+                           Buffers: shared hit=2294990 read=11
+                           CTE walk
+                             ->  Recursive Union (actual time=0.000..0.016 rows=4 loops=75000)
+                                   Buffers: shared hit=2069990 read=11
+                                   ->  Result (actual time=0.000..0.000 rows=1 loops=75000)
+                                   ->  Nested Loop Left Join (actual time=0.004..0.004 rows=1 loops=280000)
+                                         Buffers: shared hit=2069990 read=11
+                                         ->  Nested Loop (actual time=0.002..0.002 rows=1 loops=280000)
+                                               Buffers: shared hit=1249990 read=11
+                                               ->  Nested Loop Left Join (actual time=0.001..0.001 rows=1 loops=280000)
+                                                     Filter: (a_1.id IS NULL)
+                                                     Rows Removed by Filter: 0
+                                                     Buffers: shared hit=635000
+                                                     ->  WorkTable Scan on walk w (actual time=0.000..0.000 rows=1 loops=280000)
+                                                           Filter: ((NOT cycle) AND (NOT missing) AND (depth <= 6))
+                                                     ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a_1 (actual time=0.001..0.001 rows=0 loops=280000)
+                                                           Index Cond: (subject_id = w.current_id)
+                                                           Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                                           Buffers: shared hit=635000
+                                               ->  Index Only Scan using ownership_subject_edge_child_idx on ownership_subject_edge e (actual time=0.002..0.002 rows=1 loops=205000)
+                                                     Index Cond: (child_subject_id = w.current_id)
+                                                     Heap Fetches: 0
+                                                     Buffers: shared hit=614990 read=11
+                                         ->  Index Scan using ownership_subject_pkey on ownership_subject p (actual time=0.002..0.002 rows=1 loops=205000)
+                                               Index Cond: (id = e.parent_subject_id)
+                                               Filter: ((lifecycle_status)::text = 'ACTIVE'::text)
+                                               Buffers: shared hit=820000
+                           ->  Limit (actual time=0.017..0.017 rows=1 loops=75000)
+                                 Buffers: shared hit=2069990 read=11
+                                 ->  Sort (actual time=0.017..0.017 rows=1 loops=75000)
+                                       Sort Key: walk.depth DESC
+                                       Sort Method: quicksort  Memory: 25kB
+                                       Buffers: shared hit=2069990 read=11
+                                       ->  CTE Scan on walk (actual time=0.000..0.017 rows=4 loops=75000)
+                                             Buffers: shared hit=2069990 read=11
+                           ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a (actual time=0.000..0.001 rows=1 loops=75000)
+                                 Index Cond: (subject_id = walk.current_id)
+                                 Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                 Buffers: shared hit=225000
+ Planning:
+   Buffers: shared hit=35 read=2
+ Planning Time: 0.548 ms
+ Execution Time: 1559.032 ms
+(64 rows)
+
+== Q1c owner-team filter from the effective cache
+                                                             QUERY PLAN                                                             
+------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=19.498..19.508 rows=100 loops=1)
+   Buffers: shared hit=1051 read=2168
+   ->  Sort (actual time=19.498..19.503 rows=100 loops=1)
+         Sort Key: f.id
+         Sort Method: top-N heapsort  Memory: 29kB
+         Buffers: shared hit=1051 read=2168
+         ->  Hash Join (actual time=8.819..19.451 rows=450 loops=1)
+               Hash Cond: (f.ownership_subject_id = c.subject_id)
+               Buffers: shared hit=1048 read=2168
+               ->  Seq Scan on findings f (actual time=0.002..5.945 rows=75000 loops=1)
+                     Filter: ((status)::text = 'OPEN'::text)
+                     Rows Removed by Filter: 25000
+                     Buffers: shared hit=849
+               ->  Hash (actual time=8.791..8.791 rows=2349 loops=1)
+                     Buckets: 4096 (originally 2048)  Batches: 1 (originally 1)  Memory Usage: 143kB
+                     Buffers: shared hit=199 read=2168
+                     ->  Bitmap Heap Scan on ownership_effective_cache c (actual time=2.075..8.626 rows=2349 loops=1)
+                           Recheck Cond: (owner_team_id = 'a7416129-3d64-4d8f-1ccc-a5be3f034df8'::uuid)
+                           Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                           Heap Blocks: exact=2349
+                           Buffers: shared hit=199 read=2168
+                           ->  Bitmap Index Scan on ownership_effective_cache_team_idx (actual time=1.896..1.896 rows=2349 loops=1)
+                                 Index Cond: (owner_team_id = 'a7416129-3d64-4d8f-1ccc-a5be3f034df8'::uuid)
+                                 Buffers: shared read=18
+ Planning:
+   Buffers: shared hit=120 read=12
+ Planning Time: 2.893 ms
+ Execution Time: 19.527 ms
+(28 rows)
+
+== Q3c ownership coverage count from the effective cache
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate (actual time=63.578..64.768 rows=2 loops=1)
+   Group Key: (COALESCE(c.ownership_status, 'UNLINKED'::character varying))
+   Buffers: shared hit=3256 read=12878
+   ->  Gather Merge (actual time=63.574..64.764 rows=6 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=3256 read=12878
+         ->  Sort (actual time=54.664..54.666 rows=2 loops=3)
+               Sort Key: (COALESCE(c.ownership_status, 'UNLINKED'::character varying))
+               Sort Method: quicksort  Memory: 25kB
+               Buffers: shared hit=3256 read=12878
+               Worker 0:  Sort Method: quicksort  Memory: 25kB
+               Worker 1:  Sort Method: quicksort  Memory: 25kB
+               ->  Partial HashAggregate (actual time=54.637..54.640 rows=2 loops=3)
+                     Group Key: COALESCE(c.ownership_status, 'UNLINKED'::character varying)
+                     Batches: 1  Memory Usage: 24kB
+                     Buffers: shared hit=3240 read=12878
+                     Worker 0:  Batches: 1  Memory Usage: 24kB
+                     Worker 1:  Batches: 1  Memory Usage: 24kB
+                     ->  Parallel Hash Right Join (actual time=7.937..52.679 rows=25000 loops=3)
+                           Hash Cond: (c.subject_id = f.ownership_subject_id)
+                           Buffers: shared hit=3240 read=12878
+                           ->  Parallel Seq Scan on ownership_effective_cache c (actual time=0.220..25.719 rows=174000 loops=3)
+                                 Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                 Buffers: shared hit=3208 read=12382
+                           ->  Parallel Hash (actual time=5.527..5.527 rows=25000 loops=3)
+                                 Buckets: 131072  Batches: 1  Memory Usage: 4576kB
+                                 Buffers: shared hit=8 read=492
+                                 ->  Parallel Index Only Scan using findings_subject_idx on findings f (actual time=0.268..3.731 rows=25000 loops=3)
+                                       Index Cond: (status = 'OPEN'::text)
+                                       Heap Fetches: 0
+                                       Buffers: shared hit=8 read=492
+ Planning:
+   Buffers: shared hit=23 read=1
+ Planning Time: 0.164 ms
+ Execution Time: 64.790 ms
+(36 rows)
+
+== Q5 cache rows invalidated by a change at one application (path containment)
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Aggregate (actual time=1.679..1.680 rows=1 loops=1)
+   Buffers: shared hit=19 read=316 written=123
+   ->  Bitmap Heap Scan on ownership_effective_cache (actual time=0.508..1.671 rows=261 loops=1)
+         Recheck Cond: (inheritance_path @> '{26ece229-d6a3-e6a1-864d-1d1a0aa00144}'::uuid[])
+         Heap Blocks: exact=261
+         Buffers: shared hit=19 read=316 written=123
+         ->  Bitmap Index Scan on ownership_effective_cache_path_idx (actual time=0.484..0.484 rows=261 loops=1)
+               Index Cond: (inheritance_path @> '{26ece229-d6a3-e6a1-864d-1d1a0aa00144}'::uuid[])
+               Buffers: shared hit=1 read=73
+ Planning:
+   Buffers: shared hit=20 read=1
+ Planning Time: 0.121 ms
+ Execution Time: 1.689 ms
+(13 rows)
+
+== Q4 single-subject explanation
+                                                                          QUERY PLAN                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop (actual time=0.089..0.091 rows=1 loops=1)
+   Buffers: shared hit=37 read=4 written=1
+   ->  Index Scan using ownership_subject_pkey on ownership_subject s (actual time=0.009..0.009 rows=1 loops=1)
+         Index Cond: (id = '33c918aa-842f-bf89-ce08-6811123d94c0'::uuid)
+         Buffers: shared hit=3 read=1
+   ->  Nested Loop Left Join (actual time=0.079..0.080 rows=1 loops=1)
+         Join Filter: ((NOT walk.cycle) AND (NOT walk.missing) AND (walk.depth <= 6))
+         Buffers: shared hit=34 read=3 written=1
+         CTE walk
+           ->  Recursive Union (actual time=0.001..0.047 rows=4 loops=1)
+                 Buffers: shared hit=31
+                 ->  Result (actual time=0.001..0.001 rows=1 loops=1)
+                 ->  Nested Loop Left Join (actual time=0.011..0.011 rows=1 loops=4)
+                       Buffers: shared hit=31
+                       ->  Nested Loop (actual time=0.007..0.008 rows=1 loops=4)
+                             Buffers: shared hit=19
+                             ->  Nested Loop Left Join (actual time=0.003..0.003 rows=1 loops=4)
+                                   Filter: (a_1.id IS NULL)
+                                   Rows Removed by Filter: 0
+                                   Buffers: shared hit=9
+                                   ->  WorkTable Scan on walk w (actual time=0.000..0.000 rows=1 loops=4)
+                                         Filter: ((NOT cycle) AND (NOT missing) AND (depth <= 6))
+                                   ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a_1 (actual time=0.002..0.002 rows=0 loops=4)
+                                         Index Cond: (subject_id = w.current_id)
+                                         Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+                                         Buffers: shared hit=9
+                             ->  Index Only Scan using ownership_subject_edge_child_idx on ownership_subject_edge e (actual time=0.005..0.006 rows=1 loops=3)
+                                   Index Cond: (child_subject_id = w.current_id)
+                                   Heap Fetches: 0
+                                   Buffers: shared hit=10
+                       ->  Index Scan using ownership_subject_pkey on ownership_subject p (actual time=0.003..0.004 rows=1 loops=3)
+                             Index Cond: (id = e.parent_subject_id)
+                             Filter: ((lifecycle_status)::text = 'ACTIVE'::text)
+                             Buffers: shared hit=12
+         ->  Limit (actual time=0.051..0.051 rows=1 loops=1)
+               Buffers: shared hit=31
+               ->  Sort (actual time=0.051..0.051 rows=1 loops=1)
+                     Sort Key: walk.depth DESC
+                     Sort Method: top-N heapsort  Memory: 25kB
+                     Buffers: shared hit=31
+                     ->  CTE Scan on walk (actual time=0.002..0.048 rows=4 loops=1)
+                           Buffers: shared hit=31
+         ->  Index Scan using ownership_assignment_direct_idx on ownership_assignment a (actual time=0.004..0.004 rows=1 loops=1)
+               Index Cond: (subject_id = walk.current_id)
+               Filter: ((role)::text = 'TECHNICAL_OWNER'::text)
+               Buffers: shared hit=3
+         SubPlan 2
+           ->  Index Scan using ownership_claim_active_subject_idx on ownership_claim c (actual time=0.020..0.020 rows=1 loops=1)
+                 Index Cond: ((subject_id = a.subject_id) AND ((role)::text = 'TECHNICAL_OWNER'::text))
+                 Filter: ((priority = a.winning_priority) AND ((stale_after IS NULL) OR (stale_after > now())))
+                 Buffers: shared read=3 written=1
+ Planning:
+   Buffers: shared hit=162 read=7 written=2
+ Planning Time: 3.073 ms
+ Execution Time: 0.120 ms
+(55 rows)
+
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q1 owner-team filter : p50 325.7 ms, p95 1468.7 ms, budget 750 ms -> MISS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q2 status filter : p50 227.5 ms, p95 232.6 ms, budget 750 ms -> PASS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q3 coverage count : p50 1335.1 ms, p95 1389.6 ms, budget 1000 ms -> MISS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q1c owner-team filter (cache) : p50 17.2 ms, p95 20.3 ms, budget 750 ms -> PASS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q3c coverage count (cache) : p50 52.8 ms, p95 63.3 ms, budget 1000 ms -> PASS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q5 invalidation page (cache) : p50 0.4 ms, p95 0.9 ms, budget 1000 ms -> PASS
+psql:/Users/ravikumar.kanukollu/Documents/Noscan/SG-ownership-mvp/prototype-app/backend/scripts/perf/ownership/queries.sql:66: NOTICE:  Q4 single subject : p50 0.7 ms, p95 1.2 ms, budget 250 ms -> PASS
+DO
