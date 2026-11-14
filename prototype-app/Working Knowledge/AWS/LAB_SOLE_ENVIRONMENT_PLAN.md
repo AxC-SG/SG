@@ -56,7 +56,7 @@ Work continues on branch `feat/lab-sole-environment`.
   - Update `integrated-lab.tftest.hcl:67` to `https://scoutgrid.io`.
 - **Amplify:** `hosting.tf` Amplify removal is **not** in PR 1. It's PR 2, after the verification gate (B6), so `lab.scoutgrid.io` stays available for rollback.
 
-### A2. Lab configuration and budget operating rule (`aws-lab/config/`)
+### A2. Lab configuration and budget operating rule (`aws-lab/config/`, now `infrastructure/lab/config/`)
 - **Foundation tfvars:**
   - Set `frontend_origin = "https://scoutgrid.io"`.
   - **Remove** `nat_gateway_mode` (line 6), so mode lives only in the runtime files.
@@ -110,7 +110,7 @@ Explicitly excluded:
 2. `iam simulate-principal-policy` for **every** action and resource pattern in the matrix, both up and down.
 3. `lab.sh down` refuses to run unless the up-set simulation passes in the same session. This keeps the lab from being taken down when it can't come back up.
 
-### A4. Scripts (`aws-lab/scripts/lab.sh`)
+### A4. Scripts (`aws-lab/scripts/lab.sh`, now `infrastructure/lab/scripts/lab.sh`)
 - **Subcommands:** `status | plan-up | up | plan-down | down | simulate`.
 - **Guards:**
   - STS account must be `736486260824` and the region `ap-southeast-2`.

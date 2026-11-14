@@ -7,7 +7,7 @@ environment ([plan](LAB_SOLE_ENVIRONMENT_PLAN.md)). Render is retired after a ve
 gate; the Vercel site `https://scoutgrid.io` becomes the lab's single frontend origin and
 calls `https://api-lab.scoutgrid.io/api`; the Amplify lab frontend is removed. Vercel is also
 the production frontend. The lab ceiling rises to $100/month with an AWS Budgets alert and a
-shutdown rule. `aws-lab/scripts/lab.sh` brings the lab up or parks it (NAT `none`, ingress off,
+shutdown rule. `infrastructure/lab/scripts/lab.sh` brings the lab up or parks it (NAT `none`, ingress off,
 services stopped, RDS stopped). Do not onboard real customers onto the lab. All Part 1 gates
 remain open; production planning resumes after the week of November 13.
 

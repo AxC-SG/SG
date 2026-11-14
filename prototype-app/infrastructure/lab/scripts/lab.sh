@@ -14,7 +14,7 @@
 #
 # Never prints credentials. Cloudflare DNS uses a Keychain token (service scoutgrid-cloudflare-dns)
 # limited to DNS Edit on scoutgrid.io; without it the script prints the record to set by hand.
-# See ../README.md, ../grants/LAB_CYCLE_MATRIX.md and LAB_SOLE_ENVIRONMENT_PLAN.md.
+# See ../README.md, ../grants/LAB_CYCLE_MATRIX.md and the lab record in Working Knowledge/AWS/aws-lab/.
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly LAB_DIR="${SCRIPT_DIR%/scripts}"
 readonly CFG="${LAB_DIR}/config"
-TF_ROOT="$(cd "${LAB_DIR}/../../../infrastructure/terraform/standard" && pwd)"
+TF_ROOT="$(cd "${LAB_DIR}/../terraform/standard" && pwd)"
 readonly TF_ROOT
 readonly PROFILE="${LAB_PROFILE:-sglab-cycle}"
 readonly TF="${TERRAFORM:-terraform}"

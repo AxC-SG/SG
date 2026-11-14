@@ -4,7 +4,7 @@
 # Offline tests for lab.sh failure handling. No AWS, Terraform or Cloudflare access:
 # every cloud call is replaced by a stub that records the step it would take.
 #
-#   bash "Working Knowledge/AWS/aws-lab/scripts/tests/lab.test.sh"
+#   bash prototype-app/infrastructure/lab/scripts/tests/lab.test.sh
 
 set -uo pipefail
 

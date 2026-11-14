@@ -15,14 +15,14 @@ One folder for everything about the Sydney application lab: how to run it, the c
 | Backend image | `736486260824.dkr.ecr.ap-southeast-2.amazonaws.com/scoutgrid-lab-backend@sha256:e0477a842367866505e469c7dc97aef77759fce5febf3a59d10d49acbe3a3ad5` |
 | Frontend | Vercel project `scout-frontend`, https://scoutgrid.io (`www` redirects to the apex with a 308). The Amplify app `d20ebk72hfk5ft` and `lab.scoutgrid.io` were retired on November 13, 2026. |
 | API | https://api-lab.scoutgrid.io/api (ALB `scoutgrid-lab-api`, WAF with 2 AWS managed rule sets) |
-| Cognito | pool `ap-southeast-2_fPdRmnVqM` (Essentials tier), browser client `7egknl0kls1dkrkk3fmvcioev1`. **MFA OFF** for platform and tenant sign-in since 16:37:39 UTC, November 12, by owner decision. Set by `cognito_mfa_configuration = "OFF"` in `config/sydney-lab.foundation.tfvars`. The Terraform default is also `OFF`, so production gets MFA off too (owner decision). |
+| Cognito | pool `ap-southeast-2_fPdRmnVqM` (Essentials tier), browser client `7egknl0kls1dkrkk3fmvcioev1`. **MFA OFF** for platform and tenant sign-in since 16:37:39 UTC, November 12, by owner decision. Set by `cognito_mfa_configuration = "OFF"` in `infrastructure/lab/config/sydney-lab.foundation.tfvars`. The Terraform default is also `OFF`, so production gets MFA off too (owner decision). |
 | Database | RDS `scoutgrid-lab`, PostgreSQL 16.15, db.t4g.medium, 100 GB gp3, private, deletion protection on |
 | Terraform state | `s3://scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate` |
 | Operators | Platform owner `scoutgrid.io@gmail.com`; SG Internal admin `scoutgridtenant@gmail.com` |
 
 ## What stays between runs and what goes
 
-The owner chose to keep the low-cost layer between runs. Expect roughly USD 20 per month while the lab is down, mostly stopped-database storage (100 GB). Lab-down is `config/runtime-down.tfvars` (`start_services = false`, `runtime_ingress_enabled = false`, `nat_gateway_mode = "none"`).
+The owner chose to keep the low-cost layer between runs. Expect roughly USD 20 per month while the lab is down, mostly stopped-database storage (100 GB). Lab-down is `infrastructure/lab/config/runtime-down.tfvars` (`start_services = false`, `runtime_ingress_enabled = false`, `nat_gateway_mode = "none"`).
 
 | Kept | Removed at lab-down, recreated at lab-up |
 |---|---|
@@ -37,7 +37,7 @@ The owner chose to keep the low-cost layer between runs. Expect roughly USD 20 p
 
 ## Budget operating rule (owner decision, November 13, 2026)
 
-The lab ceiling is **USD 100 per month, inclusive**, measured as **gross usage before credits** (the budget alert and `lab.sh status` both exclude credits and refunds, so credits cannot mask consumption). `monthly_budget` in `config/sydney-lab.foundation.tfvars` creates an AWS Budgets alert at that amount (80% actual and 100% forecast, emailed to the owner). It is an alert, not a cap, and Cost Explorer data lags usage by hours.
+The lab ceiling is **USD 100 per month, inclusive**, measured as **gross usage before credits** (the budget alert and `lab.sh status` both exclude credits and refunds, so credits cannot mask consumption). `monthly_budget` in `infrastructure/lab/config/sydney-lab.foundation.tfvars` creates an AWS Budgets alert at that amount (80% actual and 100% forecast, emailed to the owner). It is an alert, not a cap, and Cost Explorer data lags usage by hours.
 
 - **Before a week-long run:** month-to-date actual + days up × about USD 7 + remaining days down × about USD 0.70 + 20% contingency must be ≤ USD 100. Otherwise plan a shorter run.
 - **Responder:** the owner. Claude runs `lab.sh status` at the start of every working session on the lab.
@@ -45,13 +45,15 @@ The lab ceiling is **USD 100 per month, inclusive**, measured as **gross usage b
 
 ## Lab up and lab down (`scripts/lab.sh`)
 
+The lab scripts, tfvars and IAM grants live in [`prototype-app/infrastructure/lab/`](../../../infrastructure/lab/README.md). Run the commands below from that directory.
+
 1. Sign in for the AWS CLI: `aws login --profile scoutgrid-lab --region ap-southeast-2`. Choose account `736486260824`, never production.
 2. Run `scripts/lab.sh status` to see RDS, services, ALB, NAT, DNS and cost against the budget rule.
-3. **Up** (about 20–30 minutes): `scripts/lab.sh up`. It starts RDS, plans `sydney-lab.foundation.tfvars` + `runtime-running.tfvars`, refuses anything outside the up allowlist, asks you to type `yes`, applies, waits for a healthy API target, points `api-lab` at the new ALB and smoke-tests `/api/auth/csrf`.
-4. **Down** (about 10–15 minutes): `scripts/lab.sh down`. It first simulates every lab-up permission (so the lab is never parked by a role that cannot bring it back), plans `runtime-down.tfvars`, asks for `yes`, applies, removes the `api-lab` CNAME and stops RDS.
+3. **Up** (about 20–30 minutes): `scripts/lab.sh up`. It plans `sydney-lab.foundation.tfvars` + `runtime-running.tfvars`, refuses anything outside the up allowlist, asks you to type `yes`, then starts RDS and applies, waits for a healthy API target, points `api-lab` at the new ALB and smoke-tests `/api/auth/csrf`.
+4. **Down** (about 10–15 minutes): `scripts/lab.sh down`. It first simulates every lab-up permission (so the lab is never parked by a role that cannot bring it back), plans `runtime-down.tfvars`, asks for `yes`, applies, then stops RDS and removes the `api-lab` CNAME. It attempts both even if one fails and exits 1 naming the step that failed. Offline tests: `scripts/tests/lab.test.sh` (run in CI).
 5. `scripts/lab.sh plan-up` and `plan-down` produce and check the plan without applying. `scripts/lab.sh simulate [up|down]` runs only the IAM simulation.
 
-Requirements: Terraform 1.13.5; profile `sglab-cycle` for role `ScoutGridSydneyLabCycle` ([matrix](grants/LAB_CYCLE_MATRIX.md), attached November 13); a Cloudflare token limited to DNS Edit on `scoutgrid.io` saved with `security add-generic-password -s scoutgrid-cloudflare-dns -a scoutgrid -w`. Without the token the script prints the DNS record to set by hand.
+Requirements: Terraform 1.13.5; profile `sglab-cycle` for role `ScoutGridSydneyLabCycle` ([matrix](../../../infrastructure/lab/grants/LAB_CYCLE_MATRIX.md), attached November 13); a Cloudflare token limited to DNS Edit on `scoutgrid.io` saved with `security add-generic-password -s scoutgrid-cloudflare-dns -a scoutgrid -w`. Without the token the script prints the DNS record to set by hand.
 
 The script never changes task definitions, data, identity or foundation resources. A plan that wants any of those stops with REFUSED and goes through the reviewed Bootstrap or Apply path instead.
 
@@ -70,7 +72,7 @@ The script never changes task definitions, data, identity or foundation resource
 11. DNS: `api-lab` → ALB, `lab` → Amplify CloudFront, plus the ACM validation CNAMEs. All DNS only.
 12. Sign in as platform owner, then as SG Internal.
 
-Steps 4–9 used `config/runtime-stopped.tfvars` (services stopped, enrollment pinned), then `runtime-noenroll.tfvars`, then `runtime-running.tfvars`. These were `*.auto.tfvars` until November 13; they are now passed only with explicit `-var-file`.
+Steps 4–9 used `infrastructure/lab/config/runtime-stopped.tfvars` (services stopped, enrollment pinned), then `runtime-noenroll.tfvars`, then `runtime-running.tfvars`. These were `*.auto.tfvars` until November 13; they are now passed only with explicit `-var-file`.
 
 ### Frontend build settings (Vercel production after the cutover; Amplify lab before it)
 
@@ -85,9 +87,9 @@ In Vercel these are Production environment variables of `scout-frontend`. Previe
 
 ## Lab deviations from the reviewed candidate (still live)
 
-- API runs `scoutgrid-lab-api:2`: revision 1 plus `HTTP_OUTBOUND_ALLOWED_HOSTS` with the Cognito login domain and `cognito-idp.ap-southeast-2.amazonaws.com`. See `config/api-td2-request.json`. Terraform now sets the same list (PR #73); the cutover apply reconciles it.
+- API runs `scoutgrid-lab-api:2`: revision 1 plus `HTTP_OUTBOUND_ALLOWED_HOSTS` with the Cognito login domain and `cognito-idp.ap-southeast-2.amazonaws.com`. See `infrastructure/lab/config/api-td2-request.json`. Terraform now sets the same list (PR #73); the cutover apply reconciles it.
 - API service health-check grace is 300 s. Terraform now also sets 300 s (PR #73).
-- `api` and `worker` were created by CLI from Terraform-planned parameters (`config/create-service-*.json`) and then imported into state.
+- `api` and `worker` were created by CLI from Terraform-planned parameters (`infrastructure/lab/config/create-service-*.json`) and then imported into state.
 - `scoutgrid-lab-migrator:1` is still registered, but its execution role can no longer read the enrollment secret.
 
 ## Folder map
@@ -95,9 +97,9 @@ In Vercel these are Production environment variables of `scout-frontend`. Previe
 | Path | Contents |
 |---|---|
 | `FINDINGS.md` | Defects and gaps found by the lab, with the production fix for each |
-| `grants/` | Every IAM grant used or corrected in the run. `LAB_CYCLE_MATRIX.md`, `lab-cycle.json` and `lab-cutover-once.json` were attached on November 13 with owner approval; they supersede `teardown-lab-down.PROPOSED-NOT-ATTACHED.json`. |
-| `config/` | Lab tfvars per stage (`runtime-running`, `runtime-down`, `runtime-noenroll`, `runtime-stopped`), service create requests, task-definition change, migrator request, saved MFA config |
-| `scripts/lab.sh` | Lab up, down, status, plan-only and IAM simulation |
+| [`infrastructure/lab/grants/`](../../../infrastructure/lab/grants/) | Every IAM grant used or corrected in the run. `LAB_CYCLE_MATRIX.md`, `lab-cycle.json` and `lab-cutover-once.json` were attached on November 13 with owner approval; they supersede `teardown-lab-down.PROPOSED-NOT-ATTACHED.json`. |
+| [`infrastructure/lab/config/`](../../../infrastructure/lab/config/) | Lab tfvars per stage (`runtime-running`, `runtime-down`, `runtime-noenroll`, `runtime-stopped`), service create requests, task-definition change, migrator request, saved MFA config |
+| [`infrastructure/lab/scripts/`](../../../infrastructure/lab/scripts/) | `lab.sh` (up, down, status, plan-only, IAM simulation), its offline tests, and `bootstrap-sydney-state.sh` |
 | `evidence/2026-11-12/recovery-status/` | Run log (`STATUS.md`, `OWNER_DECISION_20261112_1310Z.md`), cleanup sequence, access reviews |
 | `evidence/2026-11-12/codex-run/` | Codex's run artifacts: preflight tools, readbacks, policy templates, recovered commands |
 | `evidence/2026-11-12/claude-takeover/` | Frontend bundle, migrator run record |
@@ -109,7 +111,7 @@ Run all lab Terraform from `prototype-app/infrastructure/terraform/standard` in 
 
 ```
 cd prototype-app/infrastructure/terraform/standard
-CFG="../../../Working Knowledge/AWS/aws-lab/config"
+CFG="../../lab/config"
 eval "$(aws configure export-credentials --profile sglab-plan --format env)"   # or sglab-apply / sglab-bootstrap / sglab-service / sglab-teardown
 terraform init -backend-config="$CFG/sydney-lab.s3.tfbackend" -lockfile=readonly
 terraform plan -var-file="$CFG/sydney-lab.foundation.tfvars" -var-file="$CFG/runtime-running.tfvars"
