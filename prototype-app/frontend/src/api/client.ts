@@ -42,6 +42,15 @@ import type {
   DirectoryPerson,
   DirectoryPersonCreate,
   DirectoryPersonUpdate,
+  ExternalGroupRow,
+  GroupMappingChange,
+  GroupMappingImpact,
+  GroupTeamMapping,
+  IdentitySource,
+  IdentitySourceConnectionTest,
+  IdentitySourcePreview,
+  IdentitySourceRequest,
+  IdentitySourceSyncRequest,
   OwnershipAuthorityState,
   OwnershipCoverage,
   OwnershipEncryptionStatus,
@@ -1814,6 +1823,45 @@ export const api = {
   },
   closeOwnershipReviewItem: (itemId: string, state: 'RESOLVED' | 'DISMISSED', note?: string) =>
     request<void>(`/ownership/review-items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify({ state, note }) }),
+  listIdentitySources: () => request<IdentitySource[]>('/ownership/identity-sources'),
+  createIdentitySource: (payload: IdentitySourceRequest) =>
+    request<IdentitySource>('/ownership/identity-sources', { method: 'POST', body: JSON.stringify(payload) }),
+  updateIdentitySource: (sourceId: string, payload: IdentitySourceRequest) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  testIdentitySource: (sourceId: string) =>
+    request<IdentitySourceConnectionTest>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/test`, { method: 'POST' }),
+  /** Samples hold full names and emails; the response is no-store and must stay in component state only. */
+  previewIdentitySource: (sourceId: string) =>
+    request<IdentitySourcePreview>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/preview`, { method: 'POST' }),
+  enableIdentitySource: (sourceId: string, previewToken: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/enable`, {
+      method: 'POST',
+      body: JSON.stringify({ previewToken })
+    }),
+  syncIdentitySource: (sourceId: string, complete: boolean) =>
+    request<IdentitySourceSyncRequest>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ complete })
+    }),
+  pauseIdentitySource: (sourceId: string, reason?: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    }),
+  resumeIdentitySource: (sourceId: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/resume`, { method: 'POST' }),
+  disableIdentitySource: (sourceId: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/disable`, { method: 'POST' }),
+  listGroupMappingGroups: (q: string, limit = 50) =>
+    request<ExternalGroupRow[]>(`/ownership/group-mappings/groups?q=${encodeURIComponent(q)}&limit=${limit}`),
+  previewGroupMapping: (externalGroupId: string, teamId: string | null) =>
+    request<GroupMappingImpact>('/ownership/group-mappings/preview', { method: 'POST', body: JSON.stringify({ externalGroupId, teamId }) }),
+  activateGroupMapping: (payload: { externalGroupId: string; teamId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    request<GroupMappingChange>('/ownership/group-mappings', { method: 'POST', body: JSON.stringify(payload) }),
+  retireGroupMapping: (mappingId: string, payload: { reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    request<GroupMappingChange>(`/ownership/group-mappings/${encodeURIComponent(mappingId)}/retire`, { method: 'POST', body: JSON.stringify(payload) }),
+  dismissGroupMapping: (mappingId: string) =>
+    request<GroupTeamMapping>(`/ownership/group-mappings/${encodeURIComponent(mappingId)}/dismiss`, { method: 'POST' }),
   getOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption'),
   provisionOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption/provision', { method: 'POST' }),
   getOwnershipQualification: (domain: 'CORE') => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),

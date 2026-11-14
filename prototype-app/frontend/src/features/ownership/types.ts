@@ -122,3 +122,101 @@ export type OwnershipQualification = {
   comparison: { match: number; mismatch: number; legacyOnly: number; canonicalOnly: number; bothEmpty: number };
   reportHash: string;
 };
+
+// ── Identity sources (Phase 0B contract §1.1–§1.7) ───────────────────────────────────────────────────────────────
+
+export type IdentitySourceState = 'DISABLED' | 'ENABLED' | 'PAUSED' | 'ERROR';
+
+export type IdentitySourceTable = 'sys_user' | 'sys_user_group' | 'sys_user_grmember';
+
+/** Credentials are write-only: the server reports only whether they exist. */
+export type IdentitySource = {
+  id: string;
+  kind: 'MANUAL' | 'CSV' | 'SERVICENOW' | 'ENTRA' | 'OKTA';
+  displayName: string;
+  instanceUrl: string | null;
+  authType: 'BASIC' | 'BEARER' | null;
+  hasCredentials: boolean;
+  filters: Partial<Record<IdentitySourceTable, string>>;
+  schedule: string | null;
+  state: IdentitySourceState;
+  health: 'UNKNOWN' | 'HEALTHY' | 'DEGRADED' | 'FAILING';
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  version: number;
+};
+
+/** A null secret keeps the stored one; the server refuses that when the URL, auth type or username changes. */
+export type IdentitySourceRequest = {
+  displayName: string;
+  instanceUrl: string;
+  authType: 'BASIC' | 'BEARER';
+  username: string | null;
+  secret: string | null;
+  filters: Partial<Record<IdentitySourceTable, string>>;
+  schedule: string | null;
+  version?: number;
+};
+
+export type IdentitySourceTableCheck = { table: IdentitySourceTable; outcome: 'READABLE' | 'DENIED'; rowCount: number | null };
+
+export type IdentitySourceConnectionTest = {
+  succeeded: boolean;
+  failure: string | null;
+  message: string;
+  tables: IdentitySourceTableCheck[];
+};
+
+/** Samples carry full names and emails for tenant admins only (§1.6); they are shown, never stored. */
+export type IdentitySourcePreview = {
+  succeeded: boolean;
+  failure: string | null;
+  message: string;
+  tables: Array<{ table: IdentitySourceTable; outcome: 'READABLE' | 'DENIED'; rowCount: number | null; samples: Array<Record<string, string>> }>;
+  previewToken: string | null;
+  expiresAt: string | null;
+};
+
+export type IdentitySourceSyncRequest = { runId: string; complete: boolean };
+
+// ── Group-to-team mappings (Phase 0B contract §1.8) ──────────────────────────────────────────────────────────────
+
+export type GroupTeamMapping = {
+  id: string;
+  externalGroupId: string;
+  teamId: string;
+  teamName: string;
+  state: 'PROPOSED' | 'ACTIVE' | 'RETIRED';
+  provenance: 'MANUAL' | 'CSV' | 'SUGGESTED';
+  reason: string | null;
+  actor: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+};
+
+export type ExternalGroupRow = {
+  externalGroupId: string;
+  sourceId: string;
+  sourceName: string;
+  displayName: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
+  active: GroupTeamMapping | null;
+  suggestion: GroupTeamMapping | null;
+};
+
+export type GroupMappingImpact = {
+  externalGroupId: string;
+  currentTeamId: string | null;
+  targetTeamId: string | null;
+  sameInstance: boolean;
+  affectedCis: number;
+  affectedSubjects: number;
+  openFindings: number;
+  sampleSubjectIds: string[];
+  largeChange: boolean;
+  previewToken: string;
+  expiresAt: string;
+};
+
+/** republishSkipped names why the affected CIs wait for the next CMDB sync, or is null. */
+export type GroupMappingChange = { mapping: GroupTeamMapping; republishedCis: number; republishSkipped: string | null };

@@ -1,6 +1,15 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
-import type { DirectoryPersonCreate, OwnershipAuthorityState, OwnershipTeamRequest } from './types';
+import type {
+  DirectoryPersonCreate,
+  IdentitySource,
+  IdentitySourceConnectionTest,
+  IdentitySourcePreview,
+  IdentitySourceRequest,
+  IdentitySourceSyncRequest,
+  OwnershipAuthorityState,
+  OwnershipTeamRequest
+} from './types';
 
 // One key root so a write can refresh everything it may affect (teams feed review items and coverage).
 export const ownershipKeys = {
@@ -13,6 +22,8 @@ export const ownershipKeys = {
   members: (groupId: string) => ['ownership', 'members', groupId] as const,
   review: (state: string, type: string) => ['ownership', 'review', state, type] as const,
   encryption: ['ownership', 'encryption'] as const,
+  identitySources: ['ownership', 'identity-sources'] as const,
+  mappingGroups: (q: string) => ['ownership', 'group-mappings', q] as const,
   qualification: ['ownership', 'qualification', 'CORE'] as const
 };
 
@@ -147,4 +158,67 @@ export function useProvisionEncryptionMutation() {
 export function useAuthorityTransitionMutation() {
   return useOwnershipMutation(({ state, reportHash }: { state: OwnershipAuthorityState; reportHash?: string }) =>
     api.transitionOwnershipAuthority('CORE', state, reportHash));
+}
+
+export function useIdentitySourcesQuery() {
+  return useQuery({ queryKey: ownershipKeys.identitySources, queryFn: api.listIdentitySources });
+}
+
+export function useGroupMappingGroupsQuery(q: string) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: ownershipKeys.mappingGroups(trimmed),
+    queryFn: () => api.listGroupMappingGroups(trimmed, 100),
+    placeholderData: keepPreviousData
+  });
+}
+
+export function useSaveIdentitySourceMutation() {
+  return useOwnershipMutation(({ sourceId, payload }: { sourceId: string | null; payload: IdentitySourceRequest }) =>
+    sourceId ? api.updateIdentitySource(sourceId, payload) : api.createIdentitySource(payload));
+}
+
+export type IdentitySourceAction = 'pause' | 'resume' | 'disable' | 'sync' | 'fullScan';
+
+export function useIdentitySourceActionMutation() {
+  return useOwnershipMutation(({ sourceId, action }: { sourceId: string; action: IdentitySourceAction }): Promise<IdentitySource | IdentitySourceSyncRequest> => {
+    switch (action) {
+      case 'pause': return api.pauseIdentitySource(sourceId);
+      case 'resume': return api.resumeIdentitySource(sourceId);
+      case 'disable': return api.disableIdentitySource(sourceId);
+      case 'sync': return api.syncIdentitySource(sourceId, false);
+      case 'fullScan': return api.syncIdentitySource(sourceId, true);
+    }
+  });
+}
+
+export function useEnableIdentitySourceMutation() {
+  return useOwnershipMutation(({ sourceId, previewToken }: { sourceId: string; previewToken: string }) =>
+    api.enableIdentitySource(sourceId, previewToken));
+}
+
+export function useActivateGroupMappingMutation() {
+  return useOwnershipMutation((payload: { externalGroupId: string; teamId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    api.activateGroupMapping(payload));
+}
+
+export function useRetireGroupMappingMutation() {
+  return useOwnershipMutation(({ mappingId, ...payload }: { mappingId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    api.retireGroupMapping(mappingId, payload));
+}
+
+export function useDismissGroupMappingMutation() {
+  return useOwnershipMutation((mappingId: string) => api.dismissGroupMapping(mappingId));
+}
+
+export type SourceCheck = { source: IdentitySource; mode: 'test' | 'preview' };
+
+/**
+ * A connection test or preview. Not cached and not an ownership write: preview samples hold full names and emails, so
+ * they live only in this request's state; the panel starts it from the button click so it runs once per click.
+ */
+export function useSourceCheckMutation() {
+  return useMutation<IdentitySourceConnectionTest | IdentitySourcePreview, Error, SourceCheck>({
+    mutationFn: ({ source, mode }) => (mode === 'test' ? api.testIdentitySource(source.id) : api.previewIdentitySource(source.id))
+  });
 }
