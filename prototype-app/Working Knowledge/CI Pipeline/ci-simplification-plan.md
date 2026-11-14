@@ -12,7 +12,7 @@ Agreed November 14, 2026, after two independent reviews of the full pipeline and
 | PR A: Phase 1 repository files | [#84](https://github.com/AxC-SG/SG/pull/84), open |
 | PR B: Phase 2 | Open, stacked on #84 |
 | PR C1: Phase 3.1–3.3, 3.7 (Trivy once, retire images gate, drop docs-check) | Open, stacked on PR B |
-| PR C2: Phase 3.4–3.6 (static job, one migration checker, structural tests) | In progress |
+| PR C2: Phase 3.4–3.6 (static job, one migration checker, structural tests) | Open, stacked on C1 |
 | PR E: Phase 6.1–6.2 | [#83](https://github.com/AxC-SG/SG/pull/83), measuring |
 | PRs D, F | Waiting on A–C and E |
 

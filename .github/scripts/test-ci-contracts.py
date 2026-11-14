@@ -50,16 +50,24 @@ class ContractsTest(unittest.TestCase):
     def test_terraform_validation_is_required_and_offline(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/quality.yml').read_text()
-        job = workflow.split('  terraform:\n', 1)[1].split('\n  migration-validation:', 1)[0]
+        job = re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split('\n  terraform:\n', 1)[1], maxsplit=1)[0]
         required = workflow.split('  required:\n', 1)[1]
         self.assertEqual(gate.SELECTED_JOBS['terraform'], 'infrastructure')
         self.assertRegex(required, r'needs: \[[^\n]*\bterraform\b')
-        self.assertEqual(job.count('terraform init -backend=false -lockfile=readonly -input=false'), 2)
-        self.assertEqual(job.count('terraform test -no-color'), 2)
-        self.assertIn('cp ../../standard/.terraform.lock.hcl .terraform.lock.hcl', job)
-        self.assertNotIn('id-token:', job)
-        self.assertNotIn('configure-aws-credentials', job)
-        self.assertNotIn('terraform apply', job)
+        # Every Terraform root is initialised without a backend, validated and tested.
+        terraform = root / 'prototype-app/infrastructure/terraform'
+        roots = sorted({path.parent for path in terraform.rglob('*.tf') if '.terraform' not in path.parts})
+        self.assertTrue(roots)
+        steps = job.split('\n      - ')
+        for directory in roots:
+            relative = directory.relative_to(root).as_posix()
+            step = next((step for step in steps if f'working-directory: {relative}\n' in step), None)
+            self.assertIsNotNone(step, f'{relative} is not validated in CI')
+            for command in ('terraform init -backend=false', 'terraform validate', 'terraform test'):
+                self.assertIn(command, step, relative)
+        self.assertIn('terraform fmt -check -recursive prototype-app/infrastructure/terraform', job)
+        for forbidden in ('id-token:', 'configure-aws-credentials', 'terraform apply'):
+            self.assertNotIn(forbidden, job)
 
     def test_image_builds_use_explicit_dns_and_fail_closed_package_indexes(self):
         root = Path(__file__).resolve().parents[2]
@@ -173,9 +181,18 @@ class ContractsTest(unittest.TestCase):
         for output in gate.SELECTION_OUTPUTS:
             self.assertIn(f"{output}: ${{{{ steps.select.outputs.{output} }}}}", workflow)
         for job, output in gate.SELECTED_JOBS.items():
-            body = re.split(r'(?m)^  [a-z][a-z-]*:\n', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
+            body = re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
             self.assertIn("needs: changes", body, job)
             self.assertIn(f"if: needs.changes.outputs.{output} == 'true'", body, job)
+
+    def test_quality_gate_waits_for_exactly_the_accounted_jobs(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/quality.yml').read_text()
+        jobs = set(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', workflow.split('\njobs:\n', 1)[1])) - {'required'}
+        needs = re.search(r'(?m)^    needs: \[([^\]]*)\]', workflow.split('\n  required:\n', 1)[1]).group(1)
+        accounted = gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS)
+        self.assertEqual({name.strip() for name in needs.split(',')}, accounted)
+        self.assertEqual(jobs, accounted)
 
 if __name__ == "__main__":
     unittest.main()

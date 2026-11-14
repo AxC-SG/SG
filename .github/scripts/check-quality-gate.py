@@ -12,7 +12,7 @@ SELECTED_JOBS = {
     "backend-postgres": "backend",
     "terraform": "infrastructure",
 }
-ALWAYS_JOBS = {"changes", "migration-validation", "migration-boundaries", "policy-packages", "secrets", "ci-contracts"}
+ALWAYS_JOBS = {"changes", "static", "secrets"}
 SELECTION_OUTPUTS = sorted(set(SELECTED_JOBS.values()))
 
 

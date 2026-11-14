@@ -29,20 +29,45 @@ jobs:
         run: python3 .github/scripts/classify-changes.py
 
 
-  ci-contracts:
+  # Quick repository checks that need no build: CI tooling, migrations, the
+  # migrator boundary and governed policy content. Each check is its own step.
+  static:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - run: node --test prototype-app/frontend/e2e/runner.test.mjs
-      - run: python3 .github/scripts/test-ci-contracts.py
-      - run: python3 .github/scripts/test-maven-reports.py
-      - run: python3 .github/scripts/test-aws-backend-archive.py
-      - run: python3 -m unittest discover -s prototype-app/scripts/tests -v
+      - name: Lint workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Test the browser journey runner
+        run: node --test prototype-app/frontend/e2e/runner.test.mjs
+      - name: Test CI scripts
+        run: |
+          python3 .github/scripts/test-ci-contracts.py
+          python3 .github/scripts/test-maven-reports.py
+          python3 .github/scripts/test-aws-backend-archive.py
+          python3 .github/scripts/test-check-migrations.py
+          python3 -m unittest discover -s prototype-app/scripts/tests -v
+      - name: Check migration files and append-only history
+        env:
+          MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 .github/scripts/check-migrations.py
+      - name: Enforce tenant migration ownership
+        run: python3 .github/scripts/check-tenant-ddl.py
+      - name: Validate schema migrator environment boundary
+        run: sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
+      - name: Shellcheck schema migrator scripts
+        run: shellcheck prototype-app/backend/scripts/run-schema-migration.sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
+      - name: Validate legacy example policy packages
+        run: node prototype-app/scripts/validate-policy-packages.mjs
+      - name: Validate governed AI Grid Phase 1 catalog
+        run: node prototype-app/scripts/compile-ai-grid-phase1.mjs
+      - name: Validate AI Grid Phase 1 permission contracts
+        run: node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs
 
   terraform:
     name: Offline Terraform validation
@@ -76,50 +101,6 @@ jobs:
           terraform init -backend=false -lockfile=readonly -input=false
           terraform validate -no-color
           terraform test -no-color
-
-  migration-validation:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Validate migration filenames, ownership, and append-only changes
-        env:
-          MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: python3 .github/scripts/validate-migrations.py
-
-  migration-boundaries:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Prevent migration history rewrites and version collisions
-        if: github.event_name != 'push'
-        run: python3 .github/scripts/check-migration-integrity.py
-      - name: Enforce tenant migration ownership
-        run: python3 .github/scripts/check-tenant-ddl.py
-      - name: Validate schema migrator environment boundary
-        run: sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
-      - name: Shellcheck schema migrator scripts
-        run: shellcheck prototype-app/backend/scripts/run-schema-migration.sh prototype-app/backend/scripts/test-run-schema-migration-env.sh
-
-  policy-packages:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-      - name: Validate legacy example policy packages
-        run: node prototype-app/scripts/validate-policy-packages.mjs
-      - name: Validate governed AI Grid Phase 1 catalog
-        run: node prototype-app/scripts/compile-ai-grid-phase1.mjs
-      - name: Validate AI Grid Phase 1 permission contracts
-        run: node prototype-app/scripts/validate-ai-grid-phase1-permissions.mjs
 
   secrets:
     runs-on: ubuntu-latest
@@ -333,7 +314,7 @@ jobs:
   required:
     name: Quality gate
     if: always()
-    needs: [changes, ci-contracts, terraform, migration-validation, migration-boundaries, policy-packages, secrets, frontend, frontend-e2e, backend, backend-postgres]
+    needs: [changes, static, secrets, terraform, frontend, frontend-e2e, backend, backend-postgres]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
