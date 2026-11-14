@@ -112,7 +112,7 @@ Tenant/demo invitations use hashed records, fragment links with POST exchange, a
 
 | Component | Stack |
 |-----------|-------|
-| Frontend | React 18 + TypeScript + Vite |
+| Frontend | React 19 + TypeScript + Vite |
 | Backend | Java 17 + Spring Boot 3.5.16 + Spring Data JPA + Spring Security |
 | Database | PostgreSQL, schema-per-tenant |
 | Migrations | Independent platform/tenant Flyway lines; `ddl-auto=none` |

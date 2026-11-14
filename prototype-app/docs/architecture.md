@@ -10,7 +10,7 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Browser — React 18 + TypeScript + Vite (port 5173 local)           │
+│  Browser — React 19 + TypeScript + Vite (port 5173 local)           │
 │  Vercel static SPA (prod)                                           │
 └─────────────────────────────┬───────────────────────────────────────┘
                               │ REST API (http://localhost:8080/api)
@@ -267,7 +267,7 @@ All external HTTP calls use `OutboundHttpClient` (wraps Spring `RestTemplate`):
 
 ### Tech Stack
 
-React 18 + TypeScript + Vite + React Router v7 + TanStack Query (React Query).
+React 19 + TypeScript + Vite + React Router v7 + TanStack Query (React Query).
 
 ### Routing
 

@@ -12,7 +12,7 @@ type Props = {
   submitDisabled?: boolean;
   onSubmit: () => void;
   onClose: () => void;
-  initialFocusRef?: React.RefObject<HTMLElement>;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 };
 
