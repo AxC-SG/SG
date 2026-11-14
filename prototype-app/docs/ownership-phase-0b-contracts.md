@@ -15,6 +15,7 @@ code as disabled-by-default switches, as in Release 1.
 | 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Draft |
 | 4 | Campaign/ticket materialization, outcomes and routing | §4 | Draft |
 | 5 | Release 2 change ledger (plan §9.16) | §5 | Draft |
+| 6 | Release 2 kickoff: requests, estimate and named leads (plan §16.1, §16.5) | §6 | Draft |
 
 ## 1. ServiceNow directory contract
 
@@ -870,6 +871,13 @@ paths) and Release 3 areas are listed only where a Release 2 change touches them
 
 Re-run the search before Release 2 starts. A new hit in these areas is added here with an owner before it merges.
 
+**Re-run (November 14, 2026, kickoff prep).** Same terms and paths, tests excluded: 103 files. No code under
+`backend/src/main` or `frontend/src` changed since the first pass, so the new rows are hits that pass did not list.
+They are marked *(re-run)* in §5.1–§5.3. Hits outside the Release 2 areas were left out as before: Release 1
+inventory and findings read paths, the ownership services and their canonical `ownerTeamId` fields, AI Grid (Release 3
+ledger), and migration files. `service/LegacyGithubSyncRunBackfillService.java` is not ownership: its `ownerGroup` is
+the GitHub repository owner used to group sync runs.
+
 Kinds: **W** writes free text as ownership, **R** reads free text as ownership or routing, **E** evidence or metadata
 that must be proven not to be read as ownership, **B** behaviour change with no ownership field.
 
@@ -902,6 +910,9 @@ that must be proven not to be read as ownership, **B** behaviour change with no 
 | AWS client (new Organizations reader) | None | B | `ListTagsForResource` per observed account through `OutboundHttpClient` | §2.2.1 | Connector lead |
 | Tenant purge | Deletes findings; `campaign_findings` cascades today | B | Delete campaign tables before findings under `RESTRICT` | §4.12 | Ownership lead |
 | Directory preview (new) | None | B | Full sample values for tenant admins, audit event, `no-store` | §1.6 | Ownership lead |
+| `service/CiResolutionService.java`, `domain/Ci.java` *(re-run)* | Requests `support_group` (with `owned_by`, `managed_by`, `assigned_to`, `department`) when resolving CIs; copies the display value to `cis.support_group` and `assets.support_group` | E | Same as `ServiceNowCmdbConfigService`: name and reference `sys_id` kept separately; never read as ownership | §1.8 | Connector lead |
+| `service/cmdbingestion/CmdbInventoryIngestionRunner.java` *(re-run)* | Reads `installed_on.support_group` display value from CMDB rows | E | Same as above | §1.8 | Connector lead |
+| `domain/BomComponent.java`, `service/BomIngestionOrchestrator.java` *(re-run)* | `groupName` is the CycloneDX component `group`, else the supplier name; not ownership | E | None for ownership. Request R2 (§6.1) confirms whether it affects `package_name` in the occurrence key | §3.2 | Inventory lead |
 
 ### 5.2 Frontend
 
@@ -916,6 +927,9 @@ that must be proven not to be read as ownership, **B** behaviour change with no 
 | `features/cbom/CbomPortfolioPanel.tsx`, `features/cbom/types.ts` | "Owner team" grouping from `a.owner_team` | R | Group by current owner team ID | §3.7 | CBOM lead |
 | `pages/FindingDetailPage.tsx` | Ticket dialog defaults the group from `finding.ownerGroup` | R | Show owner team and external group separately; routing preview; override with reason | §4.9 | Workflow lead |
 | `pages/SoftwareIdentityDetailPage.tsx`, `features/software-identities/types.ts` | Editable `supportGroup` metadata | E | Label as reference metadata; add occurrence owner coverage | §3.7 | Inventory lead |
+| `api/client.ts` campaign-from-findings payload *(re-run)* | Sends `ownerGroup` to `/campaigns/from-findings` | W | Remove with the DTO field | §4.2 | Workflow lead |
+| `api/client.ts` `createCbomPqcCampaign` *(re-run)* | Sends `ownerGroup` to the PQC campaign endpoint | W | Remove with `PqcCampaignRequest.ownerGroup` | §4.12 | CBOM lead |
+| `features/connect/types.ts` `CreateFindingTicketRequest` *(re-run)* | Caller `assignmentGroup` | R | Override with reason, matching the backend DTO | §4.9 | Workflow lead |
 
 ### 5.3 Not in Release 2
 
@@ -927,6 +941,11 @@ legacy ticket path (§4.9) until then.
 | `features/cve-workbench/components/WorkbenchMain.tsx`, `FindingsTab.tsx`, `CveOverviewTab.tsx`, `InvestigationCanvas.tsx`, `NotifyGroupsPanel.tsx` | Free-text assignment group, CMDB support group per asset, notify groups | Release 3 (plan §6.15, §9.12) |
 | `pages/FindingDetailPage.tsx` owner-group edit (`updateWorkflow({ ownerGroup })`) and `pages/FindingsPage.tsx` Owner Group / Support Group columns | Legacy finding owner field | Findings consumer wave (Release 1), removed at cleanup (plan §15.5) |
 | `features/findings/types.ts` | `ownerGroup` type | Cleanup |
+| `pages/VulnRepoCveAssetsPage.tsx` *(re-run)* | "Assign by support group" sends a per-asset `assignmentGroup` on CVE tickets; support group and owner columns. The canonical ticket path ignores the per-asset group (§4.9) | Release 3 (plan §6.15) |
+| `controller/CveDetailController.java`, `service/CveDetailQueryFacade.java`, `features/cve-workbench/asset-report.ts`, `investigation-context.ts`, `source-helpers.ts`, `vendor-helpers.ts`, `types.ts` *(re-run)* | CMDB support group per asset in workbench reads and ticket assets | Release 3 (plan §6.15, §9.12) |
+| `service/FindingQueueResolutionService.java`, `service/PersonalFindingQueueService.java` *(re-run)* | `ownerGroup`/`supportGroup` queue filters beside `ownerTeamId` | Findings consumer wave (Release 1), removed at cleanup |
+| `dto/CmdbAssetRecordRequest.java`, `service/AssetLifecycleService.java`, `features/connect/types.ts` `CmdbAssetRecord` *(re-run)* | `POST /api/assets/cmdb-sync` writes caller `ownerTeam` to `assets.owner_team`. Its only Release 2 reader is the CBOM portfolio (§5.1, CBOM lead) | Cleanup (decided November 14, 2026) |
+| `service/CustomerDemoDatasetService.java` *(re-run)* | Seeds `owner_group`, `owner_team` and `support_group` in demo tenants | Cleanup |
 
 ### 5.4 Ledger rules
 
@@ -936,3 +955,81 @@ legacy ticket path (§4.9) until then.
   field.
 - Owners are roles (plan §16.1 workstreams). Release 2 staffing names a person for each role before work starts
   (plan §16.3).
+
+## 6. Release 2 kickoff preparation
+
+Scope: plan §16.1 (dependency-based estimate, named staffing, environments, provider access dates, critical path),
+§16.3 and §16.5. Release 1 is built but off by default and not release-qualified; its KMS spike, benchmarks and real
+CMDB sample stay open and are tracked in the Phase 0A design (§10), not here.
+
+**Decided:** tenant V24 is held until the 5M/15M occurrence benchmark (R1) and package-key normalization (R2) settle
+the §3.8 index design. Migrations are append-only, so V24 ships once, complete.
+
+Dates assume kickoff (**K**) on Monday, November 23, 2026. If kickoff moves, every date moves with it.
+
+### 6.1 Requests
+
+Each open item from §1.10, §2.11, §3.9 and §4.13 as a request. "Needed by" is the latest date that does not delay
+what it blocks.
+
+| # | Request | Owner | Provided by | Needed by | Blocks | Contract |
+|---|---|---|---|---|---|---|
+| R1 | Benchmark environment sized for 5M and 15M occurrences, then the effective-owner benchmark and query plan | Ownership lead | SRE (environment) | Environment: Mon Nov 30, 2026 (K+1 wk). Result: Fri Dec 11, 2026 | §3.8 index design, so V24; enabling occurrence registration outside test tenants; R6 | §3.8, §3.9 |
+| R2 | Package-key normalization: do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Samples from SBOM, BOM orchestrator and CMDB host inventory; include whether CycloneDX `group` reaches `package_name` (§5.1; in scope, decided November 14, 2026) | Inventory lead | Inventory writer owners; sample tenants | Fri Dec 4, 2026 | Occurrence key sign-off; §3.8 index design, so V24 | §3.2, §3.9 |
+| R3 | CBOM fingerprint stability: two re-exports of an unchanged crypto asset produce the same `component_fingerprint` | CBOM lead | CBOM sample sources | Fri Dec 11, 2026 | CBOM occurrence identity sign-off | §3.2, §3.9 |
+| R4 | Representative ServiceNow instance: `sys_user*` fields (including custom `u_` fields) and ACLs, read-only account | Connector lead | A customer ServiceNow admin | Fri Dec 11, 2026 | Mapping and contract tests on real field shapes; enabling outside test tenants | §1.2, §1.10 |
+| R5 | Representative cloud tag and label values for `owner` and `team`: share of emails versus team names, alias coverage after preview | Connector lead | A customer AWS and GCP tenant | Fri Dec 18, 2026 | Enabling cloud producers outside test tenants | §2.4, §2.11 |
+| R6 | Campaign batch sizes: confirm the 5,000 create bound and the 1,000 reconciler batch on the R1 environment | Ownership lead | — (needs R1) | Fri Jan 8, 2027 | Enabling CVE campaigns outside test tenants | §4.2, §4.3, §4.13 |
+| R7 | A customer AWS organization to test the Organizations role (management or delegated-admin account) | Connector lead | A customer AWS org | Fri Jan 15, 2027 | Enabling the AWS account input outside test tenants (resource tags are unaffected) | §2.2.1, §2.11 |
+| R8 | A customer Jira for component, label or team-field mapping | Connector lead | A customer Jira | Fri Jan 29, 2027 | Jira routing beyond text. **Not a Release 2 blocker**; Release 3 input | §4.9, §4.13 |
+
+Track each row with the date requested and the date received. A request not received by its date is raised at the
+next lead review with the re-estimate it causes (plan §16.1).
+
+### 6.2 Named leads
+
+Release 2 work does not start until every role has a person (§5.4, plan §16.3).
+
+| Role | Workstream (plan §16.1) | Person | §5 ledger rows | §6.1 requests | Confirmed on |
+|---|---|---|---:|---|---|
+| Ownership lead | Ownership/platform/backend | | 5 | R1, R6 | |
+| Connector lead | Connectors/data ingestion | | 8 | R4, R5, R7, R8 | |
+| Inventory lead | Connectors/data ingestion | | 4 | R2 | |
+| Workflow lead | Consumer APIs/frontend/workflows | | 17 | — | |
+| CBOM lead | Consumer APIs/frontend/workflows | | 6 | R3 | |
+
+### 6.3 Estimate template
+
+Leads fill in estimate, staff and dates. Estimates are in engineer-weeks as a low–high range. "Depends on" lists
+what must finish first; a request dependency (R*n*) only gates enablement outside test tenants unless the row says
+otherwise.
+
+| ID | Work item | Contract | Owner | Depends on | Estimate (eng-wk) | Staff | Start | Finish |
+|---|---|---|---|---|---|---|---|---|
+| E1 | Tenant V24: §1.8 `sys_id`, §2.9 settings, §3.8 occurrence columns and index, §4.11 campaign and ticket changes; `MigrationCatalogTest` and `TenantSchemaCompatibility` | §3.8, §4.11 | Ownership lead | R1 result, R2 (gating) | | | | |
+| E2 | ServiceNow directory: identity-source service, directory client, sync job, linking rules, Sources and Mappings views | §1.1–§1.9 | Connector lead | — (V21); R4 | | | | |
+| E3 | CMDB support-group `sys_id` kept with the name | §1.8 | Connector lead | E1 | | | | |
+| E4 | ServiceNow producer reads ServiceNow-originated CIs only | §2.10 | Ownership lead | — | | | | |
+| E5 | Cloud producer: `CloudOwnershipProducer`, scan completeness, GCP `projects.get`, per-tenant settings, interval validation | §2.1–§2.9 | Connector lead | E1; R5 | | | | |
+| E6 | AWS Organizations reader and connection test | §2.2.1 | Connector lead | E1; R7 | | | | |
+| E7 | Shared occurrence key across `inventory_components` writers; `registerOccurrences` | §3.2–§3.4 | Inventory lead | R2 (gating), E1 | | | | |
+| E8 | `FindingSubjectAdapterRegistry`, v2 dark report, switch batch, occurrence retirement | §3.5, §3.6 | Ownership lead | E7 | | | | |
+| E9 | CBOM occurrences and owner columns on BOM, CBOM and software identity screens | §3.2, §3.7 | CBOM lead | R3 (gating), E1, E8 | | | | |
+| E10 | Campaign ledger: materialization, reconciler, snapshots, classifier, recipients, exceptions, backfill | §4.2–§4.8, §4.10 | Workflow lead | E1; R6 | | | | |
+| E11 | Ticket routing: `TicketRoutingService`, attempts in `TicketingService`, override, preview hash | §4.9 | Workflow lead | E1 | | | | |
+| E12 | ServiceNow and Jira provider changes on the routed group | §4.9 | Connector lead | E11 | | | | |
+| E13 | CBOM campaigns, remediation queue and portfolio by owner team ID | §3.7, §4.12 | CBOM lead | E10 | | | | |
+| E14 | Campaign and ticket frontend (§5.2 Workflow rows) | §4.5, §4.6, §4.9 | Workflow lead | E10, E11 | | | | |
+| E15 | Read waves `CAMPAIGNS` and `TICKETS`; `CLOUD_BOM` eligibility | §2.6, §4.10 | Ownership lead | E5, E10, E11 | | | | |
+| E16 | Tenant purge order under `RESTRICT`; directory preview audit | §1.6, §4.12 | Ownership lead | E1 | | | | |
+| E17 | Release 2 qualification: provider failure, pagination, rate limit, anomaly, reconciliation, scorecards and rollback tests | plan §16.5 | Ownership lead | E2–E16; R4–R7 | | | | |
+
+**Critical path (skeleton).** Leads confirm or replace it once E1–E17 have estimates:
+
+1. R1 environment (Nov 30) and R2 (Dec 4) → R1 result (Dec 11) → **E1 V24**. Nothing that needs V24 merges before
+   this.
+2. E1 → E7 → E8 → E9 (occurrences and CBOM).
+3. E1 → E10 and E11 → E14 → E15 (campaigns and tickets).
+4. Both paths → E17. Requests R4–R7 must arrive before E17 to enable anything outside test tenants.
+
+E2 and E4 do not wait for V24 and can start at K.
