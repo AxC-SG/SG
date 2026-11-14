@@ -41,7 +41,7 @@ the testability gap as a follow-up issue if it exists. -->
 ## Documentation
 
 <!-- Check "No docs impact" if this PR changes no user-visible behavior, APIs, or architecture.
-Otherwise check every doc you updated. The CI docs-check job will warn if source changed without docs. -->
+Otherwise check every doc you updated. -->
 
 - [ ] No docs impact
 - [ ] `docs/architecture.md` — structural or cross-cutting changes

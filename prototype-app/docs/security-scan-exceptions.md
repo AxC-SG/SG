@@ -24,8 +24,8 @@ before use on or after that date.
 `check-spring-advisory-applicability.py` passes on the current production source
 and resources. Its negative controls still reject wildcard imports, reflective
 class names, view-controller registration and SSE/fragment-rendering forms.
-All three Trivy jobs now run those controls and the applicability guard before
-scanning, including the AWS backend candidate. A CI contract rejects any job
+Both Trivy jobs (filesystem and the AWS backend candidate image) run those
+controls and the applicability guard before scanning. A CI contract rejects any job
 that omits or runs the guard after its scan. Critical vulnerability enforcement,
 scan targets and all other findings remain enabled.
 

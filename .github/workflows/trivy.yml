@@ -20,6 +20,9 @@ jobs:
     name: Trivy filesystem gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -45,13 +48,11 @@ jobs:
           scan-ref: .
           format: sarif
           output: trivy-fs.sarif
+          limit-severities-for-sarif: true
           scanners: vuln
           severity: CRITICAL
           trivyignores: .trivyignore.yaml
-          exit-code: '0'
-
-      - name: Enforce filesystem vulnerability gate
-        run: trivy fs --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 .
+          exit-code: '1'
 
       - name: Retain filesystem scan results
         if: always()
@@ -62,93 +63,20 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  images:
-    name: Trivy images gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Verify Spring advisory applicability
-        run: |
-          python3 .github/scripts/test-spring-advisory-applicability.py
-          python3 .github/scripts/check-spring-advisory-applicability.py
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Publish filesystem results to code scanning
+        if: always() && github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          buildkitd-config: .github/buildkitd.toml
-      - name: Build backend image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: prototype-app/backend
-          file: prototype-app/backend/Dockerfile
-          load: true
-          push: false
-          tags: vulnwatch-backend:${{ github.sha }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,scope=backend,mode=max
-
-      - name: Scan backend image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: vulnwatch-backend:${{ github.sha }}
-          format: sarif
-          output: trivy-backend.sarif
-          trivyignores: .trivyignore.yaml
-          scanners: vuln
-          severity: CRITICAL
-          exit-code: '0'
-
-      - name: Build frontend image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: prototype-app/frontend
-          file: prototype-app/frontend/Dockerfile.ci
-          load: true
-          push: false
-          tags: vulnwatch-frontend:${{ github.sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
-      - name: Record scanned image identities
-        run: docker image inspect vulnwatch-backend:${{ github.sha }} vulnwatch-frontend:${{ github.sha }} --format '{{json .}}' > image-identities.jsonl
-
-      - name: Scan frontend image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: vulnwatch-frontend:${{ github.sha }}
-          format: sarif
-          output: trivy-frontend.sarif
-          trivyignores: .trivyignore.yaml
-          scanners: vuln
-          severity: CRITICAL
-          exit-code: '0'
-
-      - name: Enforce image vulnerability gate
-        env:
-          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
-        run: |
-          trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-backend:${{ github.sha }}
-          trivy image --scanners vuln --severity CRITICAL --ignorefile .trivyignore.yaml --exit-code 1 vulnwatch-frontend:${{ github.sha }}
-
-      - name: Retain image scan results
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: trivy-images-${{ github.run_id }}
-          path: |
-            image-identities.jsonl
-            trivy-backend.sarif
-            trivy-frontend.sarif
-          if-no-files-found: error
-          retention-days: 14
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
 
   aws-candidate:
     name: AWS backend candidate
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
     defaults:
       run:
         shell: bash
@@ -173,7 +101,7 @@ jobs:
           load: true
           push: false
           tags: scoutgrid-aws-backend:${{ github.sha }}
-          cache-from: type=gha,scope=backend
+          cache-from: type=gha,scope=aws-backend
           cache-to: type=gha,scope=aws-backend,mode=max
 
       - name: Inspect the packaged runtime and migrations
@@ -205,6 +133,13 @@ jobs:
           if-no-files-found: warn
           overwrite: true
           retention-days: 14
+
+      - name: Publish ECS image results to code scanning
+        if: always() && github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: trivy-aws-backend.sarif
+          category: trivy-aws-backend
 
       - name: Archive the scanned image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

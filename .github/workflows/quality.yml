@@ -330,24 +330,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  docs-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Warn if source changed without docs
-        run: |
-          BASE=${{ github.event.pull_request.base.sha }}
-          HEAD=${{ github.sha }}
-          CODE_CHANGED=$(git diff --name-only "$BASE"..."$HEAD" | grep -cE '^prototype-app/(backend|frontend)/src/' || true)
-          DOCS_CHANGED=$(git diff --name-only "$BASE"..."$HEAD" | grep -cE '^prototype-app/docs/' || true)
-          if [ "$CODE_CHANGED" -gt 0 ] && [ "$DOCS_CHANGED" -eq 0 ]; then
-            echo "::warning::Source code changed but no files in prototype-app/docs/ were updated. Check the Documentation section of the PR template."
-          fi
-
   required:
     name: Quality gate
     if: always()

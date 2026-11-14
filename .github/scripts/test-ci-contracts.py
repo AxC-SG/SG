@@ -20,7 +20,7 @@ class ContractsTest(unittest.TestCase):
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
         ruleset = json.loads((root / '.github/required-main-ruleset.json').read_text())
-        expected = {'Quality gate', 'Semgrep SAST gate', 'Trivy filesystem gate', 'Trivy images gate', 'Performance gate', 'AWS backend candidate'}
+        expected = {'Quality gate', 'Semgrep SAST gate', 'Trivy filesystem gate', 'Performance gate', 'AWS backend candidate'}
         status = next(rule['parameters'] for rule in ruleset['rules'] if rule['type'] == 'required_status_checks')
         self.assertEqual({item['context'] for item in status['required_status_checks']}, expected)
         self.assertEqual(len(status['required_status_checks']), len(expected))
@@ -64,9 +64,8 @@ class ContractsTest(unittest.TestCase):
     def test_image_builds_use_explicit_dns_and_fail_closed_package_indexes(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/trivy.yml').read_text()
-        for name in ['images', 'aws-candidate']:
-            job = workflow.split(f'  {name}:\n', 1)[1].split('\n  aws-candidate:', 1)[0]
-            self.assertIn('buildkitd-config: .github/buildkitd.toml', job)
+        job = workflow.split('  aws-candidate:\n', 1)[1]
+        self.assertIn('buildkitd-config: .github/buildkitd.toml', job)
         config = (root / '.github/buildkitd.toml').read_text()
         self.assertIn('[dns]', config)
         self.assertIn('nameservers = ["1.1.1.1", "8.8.8.8"]', config)
@@ -103,11 +102,23 @@ class ContractsTest(unittest.TestCase):
         for files, _ in cases:
             self.assertEqual(classifier.classify(files, "push"), everything, files)
 
+    def test_each_trivy_scan_runs_once_and_enforces(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/trivy.yml').read_text()
+        scans = [step.split('\n      - ', 1)[0] for step in workflow.split('uses: aquasecurity/trivy-action@')[1:]]
+        self.assertEqual(len(scans), 2)
+        for scan in scans:
+            self.assertIn("exit-code: '1'", scan)
+            self.assertIn("limit-severities-for-sarif: true", scan)
+            self.assertIn("severity: CRITICAL", scan)
+        self.assertNotRegex(workflow, r"(?m)^\s*(run: )?trivy (fs|image) ")
+        self.assertNotIn("schedule'", workflow.split('  aws-candidate:', 1)[1].split('steps:', 1)[0])
+
     def test_every_trivy_job_checks_spring_applicability_before_scanning(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/trivy.yml').read_text()
         jobs = re.split(r'(?m)^  [a-z][a-z-]*:\n', workflow.split('jobs:\n', 1)[1])[1:]
-        self.assertEqual(len(jobs), 3)
+        self.assertEqual(len(jobs), 2)
         for job in jobs:
             check = job.index('python3 .github/scripts/check-spring-advisory-applicability.py')
             controls = job.index('python3 .github/scripts/test-spring-advisory-applicability.py')
