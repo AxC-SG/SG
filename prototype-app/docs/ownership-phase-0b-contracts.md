@@ -1,6 +1,6 @@
 # Ownership Phase 0B: Release 2 contracts
 
-Status: draft for approval
+Status: §1–§4 approved November 14, 2026; §5 and §6 are working documents
 Plan: [ownership-capability-mvp-plan.md](ownership-capability-mvp-plan.md) §16.3 (rolling contracts) and §16.5 (Release 2)
 Built so far: [ownership-phase-0a-design.md](ownership-phase-0a-design.md) §8–§11
 
@@ -10,10 +10,10 @@ code as disabled-by-default switches, as in Release 1.
 
 | # | Contract | Section | Status |
 |---|---|---|---|
-| 1 | ServiceNow directory table/scope/identity-link | §1 | Draft |
-| 2 | AWS/GCP producer fields, TTL and authority | §2 | Draft |
-| 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Draft |
-| 4 | Campaign/ticket materialization, outcomes and routing | §4 | Draft |
+| 1 | ServiceNow directory table/scope/identity-link | §1 | Approved (November 14, 2026) |
+| 2 | AWS/GCP producer fields, TTL and authority | §2 | Approved (November 14, 2026) |
+| 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Approved (November 14, 2026) |
+| 4 | Campaign/ticket materialization, outcomes and routing | §4 | Approved (November 14, 2026) |
 | 5 | Release 2 change ledger (plan §9.16) | §5 | Draft |
 | 6 | Release 2 kickoff: requests, estimate and named leads (plan §16.1, §16.5) | §6 | Draft |
 
