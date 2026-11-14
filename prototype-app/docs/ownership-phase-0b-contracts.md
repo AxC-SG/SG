@@ -12,7 +12,7 @@ code as disabled-by-default switches, as in Release 1.
 |---|---|---|---|
 | 1 | ServiceNow directory table/scope/identity-link | §1 | Draft |
 | 2 | AWS/GCP producer fields, TTL and authority | §2 | Draft |
-| 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Not started |
+| 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Draft |
 | 4 | Campaign/ticket materialization, outcomes and routing | §4 | Not started |
 
 ## 1. ServiceNow directory contract
@@ -347,3 +347,154 @@ over its account's owner**, and the account owner applies only to resources with
 | AWS account owner: Organizations read role (management or delegated admin), `organizations:ListTagsForResource`, and a customer org to test against | Connector lead + a customer org | AWS `CLOUD_STRUCTURED` claims (off until closed; AWS resource tags are unaffected) |
 | Representative tag/label values: share of emails vs team names, and alias coverage after preview | Connector lead + a customer tenant | Enabling outside test tenants |
 | ServiceNow producer `cis` source filter (§2.10) | Ownership lead | None (fix with Phase B) |
+
+## 3. BOM/CBOM occurrence identity and finding-adapter registry
+
+Scope: plan §6.11 (finding adapters, vulnerability adapter v2), §6.12 (BOM component occurrences), §7.2 subject rules
+and §15.3 (occurrences switch with the `CLOUD_BOM` domain in Release 2). AI-BOM models, datasets and knowledge
+sources are AI artifacts in the `AI_GRID` domain and stay in Release 3.
+
+### 3.1 What an occurrence is
+
+An occurrence is one component inside one inventory context. It is never the tenant-wide software identity, PURL or
+CPE (plan §6.11 rule 1, §6.12).
+
+| Inventory row | Context | Occurrence key |
+|---|---|---|
+| `inventory_components` (SBOM upload, GitHub/GHCR SBOM, BOM orchestrator, CMDB/SCCM/SSM/VM Manager host inventory) | `assets.id` of the row's asset: `HOST`, `APPLICATION`, `CONTAINER_IMAGE` or `CLOUD_RESOURCE` | `ecosystem`, `package_name`, `version`, `purl` after the writers' existing normalization |
+| `cbom_components` | `assets.id` when `asset_id` is set; otherwise the `bom_sources.id` of the source BOM | `component_fingerprint` |
+
+Software identities, `bom_components` (document rows) and `software_instances` are never ownership subjects. They
+remain evidence and aggregation keys.
+
+### 3.2 Subject identity
+
+- `subject_type = 'COMPONENT_OCCURRENCE'` for both families.
+- `source_object_id`: `pkg:<sha256 hex of ecosystem|package_name|version|purl>` for software and
+  `crypto:<component_fingerprint>` for CBOM. `context_key`: `asset:<assetId>` or `bom-source:<sourceId>`. Together
+  with `generation`, this is the plan's "tenant, parent inventory context, immutable component identity and
+  generation" (§7.2).
+- **Why not row IDs.**
+  - `inventory_components` rows are reused across uploads today: `SbomContentIngestionService` matches on asset plus
+    this key, marks rows `RETIRED` and revives them. But no database constraint enforces the key, and
+    `BomIngestionOrchestrator` matches on name and version instead. A semantic key gives two rows with the same key on
+    one asset the same subject, instead of splitting ownership.
+  - `cbom_components` rows are unique per `(source_bom_id, component_fingerprint)`, so every CBOM revision creates new
+    rows. A row-ID subject would lose its direct claims on every upload.
+- **Containers.** An occurrence under a `CONTAINER_IMAGE` asset is registered only when `assets.image_digest` is set.
+  GHCR assets are already keyed `repository@digest`. A tag-only image asset gets no occurrence subject; its findings
+  stay on the asset subject (plan §6.12: a mutable tag is not a stable ownership key).
+- **Same object.** The same key on the same asset is treated as the same occurrence, including a component that is
+  retired and later reappears, so its direct claims apply again. A different version is a different key and a new
+  occurrence. That is intended: ownership of an upgraded package inherits from the asset unless reassigned.
+- **Retirement.** An occurrence subject is retired only when its component has been `RETIRED` (software) or absent
+  from its source's current BOM (CBOM) for 90 days, it has no active direct claim and no open finding references it.
+  A later reappearance registers generation 2. Retirement runs in the ownership maintenance job in bounded batches.
+
+### 3.3 Parent edges
+
+- Each occurrence gets one `OWNERSHIP_PARENT` edge to its context asset's subject (from
+  `InventorySubjectAdapter.subjectForAsset`), `created_by = 'bom-occurrence-adapter'`. A parent set by an admin is
+  never replaced.
+- A `bom-source:` CBOM occurrence has no parent edge. Without a direct claim it is `UNOWNED`, and the explanation says
+  the CBOM names no asset.
+- **Not in Release 2:** CBOM crypto → containing software component edges (no link between CBOM and SBOM rows
+  exists today), and image → host edges. Inheritance therefore goes occurrence → asset → (cloud account, §2.3) →
+  any admin-set parent. That is at most three hops from an occurrence to a cloud account, inside the six-hop limit.
+- **Bulk registration.** `OwnershipSubjectService.setParent` takes the tenant advisory lock on every call, which is
+  too slow for millions of occurrences. Phase B adds a set-based `registerOccurrences(limit)` to the same single
+  writer. It inserts subjects and edges for unregistered rows and skips any whose asset subject already has five
+  ancestors. Occurrences are leaves, so no cycle can form.
+
+### 3.4 Registration and links
+
+- Registration starts only once the tenant's `CLOUD_BOM` domain leaves `LEGACY`. Backfill runs in the ownership
+  maintenance job in batches of at most 10,000, then ingestion keeps it current: each writer of `inventory_components`
+  and `cbom_components` registers occurrences for the rows it touched, after commit, without failing the ingest.
+- Link columns: `inventory_components.ownership_subject_id` and `cbom_components.ownership_subject_id` (tenant V24,
+  §3.8), as V23 did for `assets` and `findings`. BOM lists join owner state through them, never through
+  `source_object_id`.
+- Direct claims on occurrences come only from manual assignment in Release 2, and only once `CLOUD_BOM` is
+  `CANONICAL` (`requireCanonicalWrites`). No producer targets occurrences.
+
+### 3.5 Finding-adapter registry
+
+One registry, in code, maps each finding kind to one adapter version and its domain. The adapter selects the finding's
+canonical subject and writes it to `findings.ownership_subject_id`. Nothing else writes that column.
+
+| Finding kind | Adapter | Domain | Selects | Release |
+|---|---|---|---|---|
+| `VULNERABILITY` | v1 | `CORE` | Affected asset subject | Release 1 (shipped) |
+| `VULNERABILITY` | v2 | `CORE` + `CLOUD_BOM` | Occurrence subject of `findings.component_id` when registered and active; otherwise v1 | Release 2 |
+| `CRYPTO` | v1 | `CLOUD_BOM` | Occurrence subject of the CBOM finding's component (`cbom_risk_findings.cbom_component_id`) | Release 2 |
+| `AI_POSTURE`, `AI_EXPOSURE` | — | `AI_GRID` | Not registered; legacy ownership | Release 3 |
+| `AI_RUNTIME` | — | — | No adapter (out of scope, `AiRuntimeScope`) | — |
+
+- **Result.** Each adapter returns `CANONICAL_SUBJECT(id)`, `OWNERSHIP_CONFLICT` or `UNOWNED`. In Release 2 every
+  registered finding has exactly one primary subject (one asset and at most one component), so adapters never return
+  `OWNERSHIP_CONFLICT`. Conflicts appear only from resolution of that subject. Plan §6.11 rules 3–4 (several primary
+  occurrences) apply first to AI findings in Release 3, which will need a storage decision then.
+- **Selection rules.**
+  - v2 selects the occurrence only when the component's asset equals `findings.asset_id`. A mismatch keeps v1 and is
+    counted in the dark report.
+  - A `CRYPTO` finding whose component has no occurrence subject (a tag-only image context, or registration pending)
+    is `UNOWNED` with reason `SUBJECT_PENDING`. It never falls back to a package or software identity.
+  - A retired subject gives `UNOWNED` with a subject-removed explanation until the adapter selects a valid
+    replacement (plan §6.11 rule 6).
+- **Never in LEGACY/DARK.** An adapter never writes an occurrence subject while `CLOUD_BOM` is not `CANONICAL` (plan
+  §6.11). In `DARK` it computes the selection for the comparison report only.
+- Adapter selection is deterministic, so re-running it is idempotent. No adapter-version column is stored.
+
+### 3.6 Vulnerability adapter v2 rollout
+
+1. **Dark.** With `CLOUD_BOM` in `DARK`, occurrences are registered and v2 runs in compare-only mode. The report
+   lists, per tenant: findings that would move to an occurrence, findings staying on the asset (with reason), and
+   findings whose **effective owner team would change**.
+2. **Expected result: no owner changes.** Before the switch no occurrence can have a direct claim (manual assignment
+   needs `CANONICAL`, and no producer targets occurrences), and every occurrence inherits from the same asset subject
+   v1 uses. A non-zero owner-change count means a registration or edge defect, and it blocks the switch.
+3. **Switch.** At the `CLOUD_BOM` go decision (plan §15.3 step 5), with `CORE` already `CANONICAL`, findings move to
+   v2 in bounded batches, keyed by finding ID, through an idempotent update guarded by the current value. One
+   `ownership_event` is recorded per batch, not per finding. No finding is created, closed or duplicated.
+4. **Rollback** before the go decision is a no-op, because nothing was written. After it, recovery is consumer rollback
+   through the compatibility adapter (plan §15.3). Re-running v1 selection is also safe, because it is deterministic.
+5. `CRYPTO` findings get their first canonical subject at the same switch. Before it they read
+   `LEGACY_PENDING_MIGRATION`.
+
+### 3.7 Aggregates and reads
+
+- Software identity and global package views show owner-team coverage across occurrences (`1 team`, `3 teams`,
+  `Unowned occurrences`), counted by stable team ID. An aggregate with several teams displays `MULTIPLE_TEAMS`, which
+  is presentation only and never stored (plan §6.12, §9.6).
+- Owner filters on BOM and CBOM lists use `ownerTeamId` on occurrences, through the link columns and the effective
+  view, under the same domain gate as Release 1 reads.
+- Assign owner on an occurrence previews its affected findings and never applies to every occurrence of a package.
+
+### 3.8 Schema and code impact
+
+- **Tenant V24 is needed.** It adds nullable `ownership_subject_id` columns, each with a tenant-inclusive foreign key
+  to `ownership_subject` and a partial index, on `inventory_components` and `cbom_components`. If the §2.9 per-tenant
+  producer settings are approved, they go in the same V24. `MigrationCatalogTest` and `TenantSchemaCompatibility`
+  move to V24.
+- Everything else already exists: `COMPONENT_OCCURRENCE` and `context_key` on `ownership_subject` (V22), the
+  `CLOUD_BOM` domain, `findings.ownership_subject_id` (V23) and the `CRYPTO` finding kind (V10).
+- New code (Phase B): an occurrence-key helper shared by every `inventory_components` writer;
+  `OwnershipSubjectService.registerOccurrences`; a `FindingSubjectAdapterRegistry` replacing the VULNERABILITY-only
+  branch in `InventorySubjectAdapter.subjectForFinding`; the dark v2 comparison report; the switch batch; occurrence
+  retirement in `OwnershipMaintenanceJob`; and owner columns on BOM, CBOM and software identity screens.
+- Tests (Phase B):
+  - unit tests for the occurrence key (normalization, digest gating) and for adapter selection;
+  - Postgres ITs for: the same key on one asset across two rows and across CBOM revisions; retire and revive;
+    90-day retirement; parent edges and the depth guard; `bom-source` occurrences unowned; v2 dark report with zero
+    owner changes; switch idempotency; asset mismatch keeps v1; CRYPTO subject selection; never writing in
+    `DARK`;
+  - a writer-control test that only the registry writes `findings.ownership_subject_id`.
+
+### 3.9 Open items
+
+| Item | Owner | Blocks |
+|---|---|---|
+| Full-size effective-owner benchmark with 5M/15M occurrences (Release 1 open item; occurrences now exist for real) | Ownership lead | Enabling occurrence registration outside test tenants |
+| Do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Confirm against SBOM, BOM orchestrator and CMDB host inventory samples | Inventory lead | Occurrence key sign-off |
+| Is `component_fingerprint` stable across CBOM re-exports of an unchanged crypto asset? | CBOM lead | CBOM occurrence identity sign-off |
+| CBOM crypto → containing software component edges | Product owner | Nothing in Release 2 (crypto inherits from the asset) |
