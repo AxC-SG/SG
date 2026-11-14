@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service.ownership;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -17,6 +18,7 @@ import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.FailureKind;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.ProbeOutcome;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.ServiceNowDirectoryException;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.TableProbe;
+import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.TableSample;
 import com.prototype.vulnwatch.client.http.OutboundHostPolicy;
 import com.prototype.vulnwatch.domain.ServiceNowAuthType;
 import com.prototype.vulnwatch.domain.Tenant;
@@ -25,11 +27,14 @@ import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TenantSchemaMigrationService;
 import com.prototype.vulnwatch.service.TenantService;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.ConnectionTest;
+import com.prototype.vulnwatch.service.ownership.IdentitySourceService.Preview;
+import com.prototype.vulnwatch.service.ownership.IdentitySourceService.TablePreview;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.ServiceNowSourceRequest;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.SourceView;
 import com.prototype.vulnwatch.support.LocalPostgresTestDatabase;
 import com.prototype.vulnwatch.support.PostgresITSupport;
 import com.prototype.vulnwatch.support.PostgresIntegrationTest;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -211,8 +216,11 @@ class OwnershipIdentitySourcePostgresIntegrationTest {
                 """, UUID.randomUUID(), tenant.getId());
 
         assertStatus(409, () -> sources.testConnection(created.id(), "admin"));
+        assertStatus(409, () -> sources.preview(created.id(), "admin"));
+        assertStatus(409, () -> sources.enable(created.id(), "x.y", "admin"));
         assertStatus(409, () -> sources.resume(created.id(), "admin"));
         verify(client, never()).probe(any(), any(), any());
+        verify(client, never()).sample(any(), any(), any(), anyInt());
         assertThat(sources.disable(created.id(), "admin").state()).isEqualTo("DISABLED");
     }
 
@@ -234,6 +242,86 @@ class OwnershipIdentitySourcePostgresIntegrationTest {
     }
 
     @Test
+    void aPreviewReturnsFullSampleValuesAuditsOnlyTheirNumberAndWritesNothing() throws Exception {
+        SourceView created = sources.create(request(URL, "BASIC", "svc", SECRET, Map.of("sys_user", "active=true"), null, null), "admin");
+        stubReadableSamples();
+        long importRuns = jdbc.queryForObject("SELECT count(*) FROM identity_import_run", Long.class);
+
+        Preview preview = sources.preview(created.id(), "admin");
+
+        assertThat(preview.succeeded()).isTrue();
+        assertThat(preview.previewToken()).isNotBlank();
+        assertThat(preview.expiresAt()).isAfter(java.time.Instant.now().plusSeconds(29 * 60));
+        assertThat(preview.tables()).extracting(TablePreview::rowCount).containsExactly(1200L, 80L, 3000L);
+        assertThat(preview.tables().get(0).samples()).hasSize(2);
+        assertThat(preview.tables().get(0).samples().get(0)).containsEntry("email", "ada.lovelace@acme.test")
+                .containsEntry("name", "Ada Lovelace");
+        verify(client).sample(any(), eq(DirectoryTable.USERS), eq("active=true"), eq(IdentitySourceService.SAMPLE_ROWS));
+
+        String details = jdbc.queryForObject("SELECT details_json::text FROM audit_events WHERE target_id = ? AND action = 'ownership.identity_source.previewed'",
+                String.class, created.id().toString());
+        assertThat(details).contains("\"sampleRows\": 4").doesNotContain("ada").doesNotContain("Lovelace");
+        assertThat(sources.get(created.id()).orElseThrow().version()).isEqualTo(created.version());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM external_identity", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM directory_user", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM identity_import_run", Long.class)).isEqualTo(importRuns);
+    }
+
+    @Test
+    void enablingNeedsAPreviewTokenForTheCurrentScopeFromTheSameAdminAndWorksOnce() {
+        SourceView created = sources.create(request(URL, "BASIC", "svc", SECRET, null, null, null), "admin");
+        stubReadableSamples();
+
+        assertStatus(409, () -> sources.enable(created.id(), null, "admin"));
+        assertStatus(409, () -> sources.enable(created.id(), "forged.token", "admin"));
+
+        String token = sources.preview(created.id(), "admin").previewToken();
+        assertStatus(409, () -> sources.enable(created.id(), token, "another-admin"));
+
+        SourceView enabled = sources.enable(created.id(), token, "admin");
+        assertThat(enabled.state()).isEqualTo("ENABLED");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE target_id = ? AND action = 'ownership.identity_source.enabled'",
+                Long.class, created.id().toString())).isEqualTo(1L);
+
+        sources.disable(created.id(), "admin");
+        assertStatus(409, () -> sources.enable(created.id(), token, "admin"));
+    }
+
+    @Test
+    void anUpdateAfterThePreviewInvalidatesItsToken() {
+        SourceView created = sources.create(request(URL, "BASIC", "svc", SECRET, null, null, null), "admin");
+        stubReadableSamples();
+        String token = sources.preview(created.id(), "admin").previewToken();
+
+        sources.update(created.id(), request(URL, "BASIC", "svc", null, Map.of("sys_user", "active=true"), null, created.version()), "admin");
+
+        assertStatus(409, () -> sources.enable(created.id(), token, "admin"));
+        assertThat(sources.get(created.id()).orElseThrow().state()).isEqualTo("DISABLED");
+    }
+
+    @Test
+    void aPreviewWithADeniedTableOrAFailureGivesNoToken() {
+        SourceView created = sources.create(request(URL, "BASIC", "svc", SECRET, null, null, null), "admin");
+        when(client.sample(any(), eq(DirectoryTable.USERS), any(), anyInt()))
+                .thenReturn(new TableSample(DirectoryTable.USERS, ProbeOutcome.READABLE, 1L, List.of(Map.of("sys_id", "a"))));
+        when(client.sample(any(), eq(DirectoryTable.GROUPS), any(), anyInt()))
+                .thenReturn(new TableSample(DirectoryTable.GROUPS, ProbeOutcome.DENIED, null, List.of()));
+        when(client.sample(any(), eq(DirectoryTable.MEMBERSHIPS), any(), anyInt()))
+                .thenReturn(new TableSample(DirectoryTable.MEMBERSHIPS, ProbeOutcome.READABLE, 0L, List.of()));
+
+        Preview denied = sources.preview(created.id(), "admin");
+        assertThat(denied.succeeded()).isFalse();
+        assertThat(denied.failure()).isEqualTo("PERMISSION_DENIED");
+        assertThat(denied.previewToken()).isNull();
+
+        when(client.sample(any(), eq(DirectoryTable.USERS), any(), anyInt())).thenThrow(new ServiceNowDirectoryException(
+                FailureKind.RATE_LIMITED, 429, "ServiceNow rate limit reached while reading sys_user"));
+        Preview limited = sources.preview(created.id(), "admin");
+        assertThat(limited.failure()).isEqualTo("RATE_LIMITED");
+        assertThat(limited.previewToken()).isNull();
+    }
+
+    @Test
     void manualSourcesAreListedButNotConfiguredHere() {
         UUID manual = directory.manualSource("admin");
 
@@ -242,6 +330,17 @@ class OwnershipIdentitySourcePostgresIntegrationTest {
         assertStatus(409, () -> sources.update(manual, request(URL, "BASIC", "svc", SECRET, null, null, 0L), "admin"));
         assertStatus(409, () -> sources.disable(manual, "admin"));
         assertStatus(404, () -> sources.testConnection(UUID.randomUUID(), "admin"));
+    }
+
+    private void stubReadableSamples() {
+        when(client.sample(any(), eq(DirectoryTable.USERS), any(), anyInt())).thenReturn(new TableSample(DirectoryTable.USERS,
+                ProbeOutcome.READABLE, 1200L, List.of(
+                        Map.of("sys_id", "1".repeat(32), "name", "Ada Lovelace", "email", "ada.lovelace@acme.test"),
+                        Map.of("sys_id", "2".repeat(32), "name", "Grace Hopper", "email", "grace.hopper@acme.test"))));
+        when(client.sample(any(), eq(DirectoryTable.GROUPS), any(), anyInt())).thenReturn(new TableSample(DirectoryTable.GROUPS,
+                ProbeOutcome.READABLE, 80L, List.of(Map.of("sys_id", "3".repeat(32), "name", "Database Team"))));
+        when(client.sample(any(), eq(DirectoryTable.MEMBERSHIPS), any(), anyInt())).thenReturn(new TableSample(DirectoryTable.MEMBERSHIPS,
+                ProbeOutcome.READABLE, 3000L, List.of(Map.of("sys_id", "4".repeat(32)))));
     }
 
     private static ServiceNowSourceRequest request(String url, String authType, String username, String secret,

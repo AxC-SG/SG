@@ -8,6 +8,7 @@ import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.Connection;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.DirectoryTable;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.ServiceNowDirectoryException;
 import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.TableProbe;
+import com.prototype.vulnwatch.client.ServiceNowDirectoryClient.TableSample;
 import com.prototype.vulnwatch.client.http.OutboundHostPolicy;
 import com.prototype.vulnwatch.domain.ServiceNowAuthType;
 import com.prototype.vulnwatch.security.tenantkey.TenantDataCipher;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -43,8 +45,8 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * <p>Credentials are encrypted with the tenant key and never returned. The instance URL is checked
  * against the outbound host policy at save and again by the client on every request. A new source
- * starts {@code DISABLED}; enabling it needs a preview and is not offered here. Configuring,
- * testing and resuming need {@code app.ownership.servicenow.directory-enabled}; pausing and
+ * starts {@code DISABLED} and is enabled only with a token from a preview of its current scope.
+ * Configuring, testing, previewing, enabling and resuming need {@code app.ownership.servicenow.directory-enabled}; pausing and
  * disabling always work, so a source can be stopped after the switch is turned off.
  */
 @Service
@@ -68,6 +70,19 @@ public class IdentitySourceService {
 
     /** {@code failure} is a {@link ServiceNowDirectoryClient.FailureKind} name when the test could not finish. */
     public record ConnectionTest(boolean succeeded, String failure, String message, List<TableCheck> tables) { }
+
+    /** One table in a preview: its row count and up to {@value #SAMPLE_ROWS} rows with full values. */
+    public record TablePreview(String table, String outcome, Long rowCount, List<Map<String, String>> samples) { }
+
+    /**
+     * A preview. Sample values are full names and emails (§1.6 decision) and exist only in this response; the token is
+     * null unless every table could be read.
+     */
+    public record Preview(boolean succeeded, String failure, String message, List<TablePreview> tables, String previewToken,
+                          Instant expiresAt) { }
+
+    static final int SAMPLE_ROWS = 10;
+    static final String P_PREVIEW_TOKEN = "identity_source.preview_token";
 
     private record Credentials(String username, String secret) { }
 
@@ -198,6 +213,73 @@ public class IdentitySourceService {
                 "succeeded", result.succeeded(), "failure", result.failure() == null ? "" : result.failure())),
                 result.succeeded() ? "SUCCESS" : "FAILURE");
         return result;
+    }
+
+    /**
+     * Fetches counts and up to {@value #SAMPLE_ROWS} rows per table and returns a token for {@link #enable}. Writes
+     * nothing; the audit event records the actor, the source and the number of sample rows, never their values. Not
+     * transactional, so no transaction is held across the HTTP calls.
+     */
+    public Preview preview(UUID id, String actor) {
+        requireEnabled();
+        requireNotKilled();
+        UUID tenant = requireReady();
+        Row source = requireServiceNow(id);
+        Connection connection = connection(tenant, source);
+        Map<String, String> filters = storedFilters(source.scope());
+        List<TablePreview> tables = new ArrayList<>();
+        Preview result;
+        try {
+            for (DirectoryTable table : DirectoryTable.values()) {
+                TableSample sample = client.sample(connection, table, filters.get(table.tableName()), SAMPLE_ROWS);
+                tables.add(new TablePreview(table.tableName(), sample.outcome().name(), sample.totalCount(), sample.rows()));
+            }
+            if (tables.stream().allMatch(t -> "READABLE".equals(t.outcome()))) {
+                Instant expiresAt = Instant.now().plus(IdentitySourcePreviewToken.TTL);
+                String token = IdentitySourcePreviewToken.issue(mac(tenant), id, source.version(), scopeHash(source), actor, expiresAt);
+                result = new Preview(true, null, "Preview complete", List.copyOf(tables), token, expiresAt);
+            } else {
+                result = new Preview(false, "PERMISSION_DENIED", "The integration account cannot read every directory table",
+                        List.copyOf(tables), null, null);
+            }
+        } catch (ServiceNowDirectoryException error) {
+            result = new Preview(false, error.kind().name(), error.getMessage(), List.copyOf(tables), null, null);
+        }
+        int sampleRows = result.tables().stream().mapToInt(t -> t.samples().size()).sum();
+        audit.record("ownership.identity_source.previewed", "identity_source", id.toString(), OwnershipEvents.json(Map.of(
+                "sampleRows", sampleRows, "succeeded", result.succeeded(), "failure", result.failure() == null ? "" : result.failure())),
+                result.succeeded() ? "SUCCESS" : "FAILURE");
+        return result;
+    }
+
+    /**
+     * Enables a disabled source. Needs a preview token issued to this actor for the source's current version and
+     * scope; any update since the preview, including a credential rotation, invalidates it, and enabling itself
+     * bumps the version, so a token enables at most once. The first complete run after this is the baseline load.
+     */
+    @Transactional
+    public SourceView enable(UUID id, String previewToken, String actor) {
+        requireEnabled();
+        requireNotKilled();
+        UUID tenant = requireReady();
+        Row source = requireServiceNow(id);
+        if (!"DISABLED".equals(source.state())) throw conflict("Only a disabled source can be enabled");
+        if (!IdentitySourcePreviewToken.valid(mac(tenant), previewToken, id, source.version(), scopeHash(source), actor, Instant.now())) {
+            throw conflict("Preview the source again before enabling it: the preview is missing, expired or out of date");
+        }
+        if (!directory.setProviderSourceState(id, KIND, List.of("DISABLED"), "ENABLED", source.version())) {
+            throw conflict("The source changed since it was previewed; preview it again");
+        }
+        audit.record("ownership.identity_source.enabled", "identity_source", id.toString(), OwnershipEvents.json(Map.of()));
+        return get(id).orElseThrow();
+    }
+
+    private Function<String, byte[]> mac(UUID tenant) {
+        return payload -> cipher.blindIndex(tenant, P_PREVIEW_TOKEN, payload);
+    }
+
+    private String scopeHash(Row source) {
+        return IdentitySourcePreviewToken.scopeHash(write(source.scope()));
     }
 
     // ----- lifecycle ------------------------------------------------------------------------------------------

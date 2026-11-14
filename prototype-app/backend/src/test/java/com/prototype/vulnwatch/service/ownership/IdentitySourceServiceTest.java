@@ -26,7 +26,7 @@ class IdentitySourceServiceTest {
             OutboundHostPolicy.forTests(), client, mock(OwnershipClaimService.class), new ObjectMapper(), false);
 
     @Test
-    void configuringTestingAndResumingAreRefusedWhileTheSwitchIsOff() {
+    void configuringTestingPreviewingEnablingAndResumingAreRefusedWhileTheSwitchIsOff() {
         ServiceNowSourceRequest req = new ServiceNowSourceRequest("Acme", "https://acme.service-now.com", "BASIC", "svc", "s", null, null, 0L);
         UUID id = UUID.randomUUID();
 
@@ -34,6 +34,8 @@ class IdentitySourceServiceTest {
         assertConflict(() -> off.update(id, req, "admin"));
         assertConflict(() -> off.testConnection(id, "admin"));
         assertConflict(() -> off.resume(id, "admin"));
+        assertConflict(() -> off.preview(id, "admin"));
+        assertConflict(() -> off.enable(id, "token", "admin"));
         verifyNoInteractions(jdbc, directory, client);
     }
 

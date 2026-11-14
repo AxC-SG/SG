@@ -332,7 +332,7 @@ class ServiceNowDirectoryClientTest {
         HttpHeaders count = new HttpHeaders();
         count.set("X-Total-Count", "1234");
         server.expect(once(), requestTo(startsWith(BASE + "/api/now/table/sys_user?")))
-                .andExpect(params(Map.of("sysparm_limit", "1", "sysparm_query", "active=true")))
+                .andExpect(params(Map.of("sysparm_limit", "1", "sysparm_query", "active=true^" + ORDER)))
                 .andRespond(withSuccess(body(rows(1, 1, "2026-11-14 10:00:00")), MediaType.APPLICATION_JSON).headers(count));
         server.expect(once(), requestTo(startsWith(BASE + "/api/now/table/sys_user_grmember?")))
                 .andRespond(withStatus(HttpStatus.FORBIDDEN));
@@ -344,6 +344,30 @@ class ServiceNowDirectoryClientTest {
         assertEquals(1234L, users.totalCount());
         assertEquals(ProbeOutcome.DENIED, memberships.outcome());
         assertNull(memberships.totalCount());
+        server.verify();
+    }
+
+    @Test
+    void sampleReturnsTheFirstRowsInKeysetOrderWithOnlyContractFields() {
+        ServiceNowDirectoryClient client = client(3);
+        HttpHeaders count = new HttpHeaders();
+        count.set("X-Total-Count", "42");
+        server.expect(once(), requestTo(startsWith(BASE + "/api/now/table/sys_user?")))
+                .andExpect(params(Map.of("sysparm_limit", "10", "sysparm_query", ORDER, "sysparm_fields", USER_FIELDS)))
+                .andRespond(withSuccess(body(rows(1, 12, "2026-11-14 10:00:00")), MediaType.APPLICATION_JSON).headers(count));
+        server.expect(once(), requestTo(startsWith(BASE + "/api/now/table/sys_user_group?")))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+        var users = client.sample(BASIC, DirectoryTable.USERS, null, 10);
+        var groups = client.sample(BASIC, DirectoryTable.GROUPS, null, 10);
+
+        assertEquals(ProbeOutcome.READABLE, users.outcome());
+        assertEquals(42L, users.totalCount());
+        assertEquals(10, users.rows().size());
+        assertEquals("user1@example.com", users.rows().get(0).get("email"));
+        assertEquals(ProbeOutcome.DENIED, groups.outcome());
+        assertTrue(groups.rows().isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> client.sample(BASIC, DirectoryTable.USERS, null, 101));
         server.verify();
     }
 

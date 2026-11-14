@@ -115,12 +115,23 @@ public class DirectoryService {
     /** Moves a provider source from one of {@code from} to {@code to}. Returns false when it was in none of them. */
     @Transactional
     public boolean setProviderSourceState(UUID id, String kind, List<String> from, String to) {
+        return setProviderSourceState(id, kind, from, to, null);
+    }
+
+    /** As {@link #setProviderSourceState(UUID, String, List, String)}, and only at {@code expectedVersion} when given. */
+    @Transactional
+    public boolean setProviderSourceState(UUID id, String kind, List<String> from, String to, Long expectedVersion) {
         requireProviderKind(kind);
         List<Object> args = new ArrayList<>(List.of(to, id, kind));
         args.addAll(from);
+        String versionClause = "";
+        if (expectedVersion != null) {
+            versionClause = " AND version = ?";
+            args.add(expectedVersion);
+        }
         return jdbc.update("UPDATE identity_source SET state = ?, updated_at = now(), version = version + 1"
-                + " WHERE id = ? AND kind = ? AND state IN (" + String.join(", ", java.util.Collections.nCopies(from.size(), "?")) + ")",
-                args.toArray()) == 1;
+                + " WHERE id = ? AND kind = ? AND state IN (" + String.join(", ", java.util.Collections.nCopies(from.size(), "?")) + ")"
+                + versionClause, args.toArray()) == 1;
     }
 
     private static void requireProviderKind(String kind) {

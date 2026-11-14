@@ -3,10 +3,13 @@ package com.prototype.vulnwatch.controller;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.ConnectionTest;
+import com.prototype.vulnwatch.service.ownership.IdentitySourceService.Preview;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.ServiceNowSourceRequest;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.SourceView;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Identity sources for directory sync (Phase 0B contract §1.1). Configure, test and resume need
+ * Identity sources for directory sync (Phase 0B contract §1.1, §1.6). Configure, test, preview, enable and resume need
  * CONFIGURE_IDENTITY_SOURCE (tenant admins); pause needs PAUSE_SOURCE. Credentials are write-only.
  */
 @RestController
@@ -28,6 +31,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class IdentitySourceController {
 
     public record PauseRequest(String reason) { }
+
+    public record EnableRequest(String previewToken) { }
 
     private final IdentitySourceService sources;
     private final RequestActorService actors;
@@ -65,6 +70,20 @@ public class IdentitySourceController {
     @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_IDENTITY_SOURCE')")
     public ConnectionTest test(@PathVariable UUID id) {
         return sources.testConnection(id, actor());
+    }
+
+    /** Sample rows carry full names and emails for tenant admins only (§1.6), so the response must never be cached. */
+    @PostMapping("/{id}/preview")
+    @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_IDENTITY_SOURCE')")
+    public ResponseEntity<Preview> preview(@PathVariable UUID id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header(HttpHeaders.PRAGMA, "no-cache")
+                .body(sources.preview(id, actor()));
+    }
+
+    @PostMapping("/{id}/enable")
+    @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_IDENTITY_SOURCE')")
+    public SourceView enable(@PathVariable UUID id, @RequestBody(required = false) EnableRequest req) {
+        return sources.enable(id, req == null ? null : req.previewToken(), actor());
     }
 
     @PostMapping("/{id}/pause")

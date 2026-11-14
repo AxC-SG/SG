@@ -127,6 +127,11 @@ public class ServiceNowDirectoryClient {
     /** The connection test's view of one table: whether it can be read and, if so, how many rows match. */
     public record TableProbe(DirectoryTable table, ProbeOutcome outcome, Long totalCount) {}
 
+    /** The preview's view of one table: the probe plus up to the requested number of contract-field rows. */
+    public record TableSample(DirectoryTable table, ProbeOutcome outcome, Long totalCount, List<Map<String, String>> rows) {}
+
+    static final int MAX_SAMPLE_ROWS = 100;
+
     public enum FailureKind {
         /** 401: the credentials were rejected. */
         AUTHENTICATION_FAILED,
@@ -228,14 +233,34 @@ public class ServiceNowDirectoryClient {
      * (including 401) is thrown, because it is not specific to this table.
      */
     public TableProbe probe(Connection connection, DirectoryTable table, String filter) {
-        String query = validateFilter(filter);
+        TableSample sample = read(connection, table, filter, 1, "ServiceNow directory probe");
+        return new TableProbe(table, sample.outcome(), sample.totalCount());
+    }
+
+    /**
+     * Reads the first {@code limit} rows of {@code table} in keyset order (contract fields only) and the matching
+     * row count, for the preview. A 403 is reported as {@link ProbeOutcome#DENIED}, as in {@link #probe}.
+     */
+    public TableSample sample(Connection connection, DirectoryTable table, String filter, int limit) {
+        if (limit < 1 || limit > MAX_SAMPLE_ROWS) {
+            throw new IllegalArgumentException("Sample size must be between 1 and " + MAX_SAMPLE_ROWS);
+        }
+        return read(connection, table, filter, limit, "ServiceNow directory sample");
+    }
+
+    private TableSample read(Connection connection, DirectoryTable table, String filter, int limit, String operation) {
+        String query = keysetQuery(filter, null);
         try {
-            ResponseEntity<String> response = get(connection, table, query, 1, "ServiceNow directory probe");
-            readResult(response, table);
-            return new TableProbe(table, ProbeOutcome.READABLE, totalCount(response));
+            ResponseEntity<String> response = get(connection, table, query, limit, operation);
+            List<Map<String, String>> rows = new ArrayList<>();
+            for (JsonNode node : readResult(response, table)) {
+                if (rows.size() == limit) break;
+                rows.add(keepContractFields(node, table));
+            }
+            return new TableSample(table, ProbeOutcome.READABLE, totalCount(response), List.copyOf(rows));
         } catch (ServiceNowDirectoryException error) {
             if (error.kind() == FailureKind.PERMISSION_DENIED) {
-                return new TableProbe(table, ProbeOutcome.DENIED, null);
+                return new TableSample(table, ProbeOutcome.DENIED, null, List.of());
             }
             throw error;
         }
