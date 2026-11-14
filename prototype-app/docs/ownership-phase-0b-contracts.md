@@ -294,7 +294,8 @@ Plan §6.8 says "account structured value above resource tag", and §6.9 ranks `
 on the account subject and tags sit on the resource, so the two never compete on one subject: **a resource tag wins
 over its account's owner**, and the account owner applies only to resources with no direct claim.
 
-- **DECISION (needs approval):** keep this reading. The alternative is to copy each account's value onto every
+- **DECISION (approved by the product owner, November 14, 2026):** keep this reading; a resource's own tag wins. The
+  alternative is to copy each account's value onto every
   resource in it as a direct `CLOUD_STRUCTURED` claim. That would honour §6.8 literally, but it would fan out one claim
   per resource on every account change. It would also make a manual assignment on the account lose to the copied
   claims on each resource, so an admin could not override a whole account.
@@ -344,6 +345,5 @@ over its account's owner**, and the account owner applies only to resources with
 | Item | Owner | Blocks |
 |---|---|---|
 | AWS account owner: Organizations read role (management or delegated admin), `organizations:ListTagsForResource`, and a customer org to test against | Connector lead + a customer org | AWS `CLOUD_STRUCTURED` claims (off until closed; AWS resource tags are unaffected) |
-| §2.7 precedence reading | Product owner | Phase B resolver tests |
 | Representative tag/label values: share of emails vs team names, and alias coverage after preview | Connector lead + a customer tenant | Enabling outside test tenants |
 | ServiceNow producer `cis` source filter (§2.10) | Ownership lead | None (fix with Phase B) |
