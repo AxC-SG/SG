@@ -20,7 +20,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -57,7 +57,7 @@ class MultiTenantIsolationPostgresIntegrationTest {
     @Qualifier("platformJdbcTemplate")
     private JdbcTemplate platformJdbcTemplate;
 
-    @MockBean
+    @MockitoBean
     private FindingDeltaQueueService findingDeltaQueueService;
 
     @Test

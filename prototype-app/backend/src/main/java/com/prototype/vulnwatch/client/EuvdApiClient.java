@@ -89,7 +89,7 @@ public class EuvdApiClient {
 
     public EuvdPage fetchPage(int pageNumber) {
         int safePage = Math.max(0, pageNumber);
-        String uri = UriComponentsBuilder.fromHttpUrl(apiUrl)
+        String uri = UriComponentsBuilder.fromUriString(apiUrl)
                 .queryParam("fromScore", 0)
                 .queryParam("toScore", 10)
                 .queryParam("page", safePage)

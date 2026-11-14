@@ -42,7 +42,7 @@ public class CheckedHttpTransport {
                 try (var response = CheckedOutboundRequestFactory.bounded(incoming, maxBytes, deadline)) {
                     byte[] body = response.getBody().readAllBytes();
                     return new Response<>(response.getStatusCode().value(),
-                            java.net.http.HttpHeaders.of(response.getHeaders(), (name, value) -> true), body);
+                            java.net.http.HttpHeaders.of(response.getHeaders().asMultiValueMap(), (name, value) -> true), body);
                 }
             });
         }

@@ -184,7 +184,7 @@ public class EpssRefreshService {
             return 0;
         }
 
-        String url = UriComponentsBuilder.fromHttpUrl(epssBaseUrl)
+        String url = UriComponentsBuilder.fromUriString(epssBaseUrl)
                 .queryParam("cve", String.join(",", cveIds))
                 .build()
                 .toUriString();

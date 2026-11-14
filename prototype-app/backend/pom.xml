@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
 
@@ -22,9 +22,6 @@
         <!-- PostgreSQL integration test execution. Local runs stay in one JVM; CI overrides it.forkCount. -->
         <it.forkCount>1</it.forkCount>
         <it.context.cache.maxSize>3</it.context.cache.maxSize>
-        <!-- Security fixes for transitive Spring Boot dependencies. -->
-        <tomcat.version>10.1.59</tomcat.version>
-        <netty.version>4.1.137.Final</netty.version>
     </properties>
 
     <dependencyManagement>
@@ -42,7 +39,18 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Keeps the Jackson 2 (com.fasterxml.jackson) ObjectMapper the application
+                 and its API contracts are built on. Deprecated in Boot 4; moving to
+                 Jackson 3 is a separate change. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
@@ -62,7 +70,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
@@ -180,8 +188,8 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -204,6 +212,26 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

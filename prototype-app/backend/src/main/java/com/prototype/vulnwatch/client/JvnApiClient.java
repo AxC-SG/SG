@@ -100,7 +100,7 @@ public class JvnApiClient {
      */
     public JvnPage fetchPage(int startItem) {
         int safeStart = Math.max(1, startItem);
-        String uri = UriComponentsBuilder.fromHttpUrl(apiUrl)
+        String uri = UriComponentsBuilder.fromUriString(apiUrl)
                 .queryParam("method", "getVulnOverviewList")
                 .queryParam("version", "3.3")
                 .queryParam("lang", "en")

@@ -243,7 +243,7 @@ public class ServiceNowCmdbConfigService {
     private ProbeResult probeTable(ServiceNowRuntimeConfig config, String tableName, String query, String fields) {
         try {
             int probePageSize = Math.max(1, Math.min(25, config.pageSize()));
-            String uri = UriComponentsBuilder.fromHttpUrl(config.baseUrl())
+            String uri = UriComponentsBuilder.fromUriString(config.baseUrl())
                     .path("/api/now/table/{tableName}")
                     .queryParam("sysparm_fields", fields)
                     .queryParam("sysparm_limit", probePageSize)

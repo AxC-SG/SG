@@ -68,7 +68,7 @@ class GithubTokenProviderTest {
         try (GithubTokenProvider.TokenScope ignored = provider.customerCredentials(null)) {
             HttpHeaders headers = new HttpHeaders();
             provider.applyBearerAuth(headers);
-            assertFalse(headers.containsKey(HttpHeaders.AUTHORIZATION));
+            assertFalse(headers.containsHeader(HttpHeaders.AUTHORIZATION));
             assertFalse(provider.hasToken());
         }
         assertEquals("", provider.currentToken());

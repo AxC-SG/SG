@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,10 +32,10 @@ class AiHarmBaselinePostgresIntegrationTest {
     @Autowired NamedParameterJdbcTemplate jdbc;
     @Autowired org.springframework.test.web.servlet.MockMvc mvc;
     @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
-    @MockBean org.springframework.security.oauth2.jwt.JwtDecoder decoder;
-    @MockBean JwtTenantAuthenticationService jwtAuthentication;
-    @MockBean IngestionJobWorkerService workers;
-    @MockBean FindingDeltaQueueService deltas;
+    @MockitoBean org.springframework.security.oauth2.jwt.JwtDecoder decoder;
+    @MockitoBean JwtTenantAuthenticationService jwtAuthentication;
+    @MockitoBean IngestionJobWorkerService workers;
+    @MockitoBean FindingDeltaQueueService deltas;
 
     @Test void approvalDriftReapprovalRevocationRotationAndLateObservations() throws Exception {
         Tenant tenant = tenants.createTenant("Harm Baselines", "harm-baselines", "pilot", null);

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -56,9 +56,9 @@ class IngestionJobTenantScopingPostgresIntegrationTest {
     private IngestionJobService ingestionJobService;
 
     // Silence the live scheduled poller/drain so they don't race this test's explicit claim.
-    @MockBean
+    @MockitoBean
     private IngestionJobWorkerService ingestionJobWorkerService;
-    @MockBean
+    @MockitoBean
     private FindingDeltaQueueService findingDeltaQueueService;
 
     @Test

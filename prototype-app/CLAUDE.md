@@ -59,7 +59,7 @@ Backend CI gates: default `mvn -q verify` runs Surefire + JaCoCo `check` + SpotB
 VulnWatch is a security operations prototype: SBOM ingestion → vulnerability intelligence ingestion → deterministic CPE-based correlation → finding projection and workflow.
 
 - `frontend/` — React 19 + TypeScript + Vite SPA
-- `backend/` — Java 17 + Spring Boot 3.5.16, Spring Data JPA, Spring Security
+- `backend/` — Java 17 + Spring Boot 4.1.2, Spring Data JPA, Spring Security
 - Database — PostgreSQL at `jdbc:postgresql://localhost:5432/vulnwatch`
 - Schema — Flyway-owned migrations in `backend/src/main/resources/db/migration/postgres_reset/` (`ddl-auto=none`)
 

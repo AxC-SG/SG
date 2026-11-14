@@ -32,9 +32,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,31 +53,31 @@ class IngestionControllerSecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private TenantService tenantService;
 
-    @MockBean
+    @MockitoBean
     private TenantRepository tenantRepository;
 
-    @MockBean
+    @MockitoBean
     private WorkspaceService workspaceService;
 
-    @MockBean
+    @MockitoBean
     private SbomIngestionService sbomIngestionService;
 
-    @MockBean
+    @MockitoBean
     private VulnerabilityIngestionService vulnerabilityIngestionService;
 
-    @MockBean
+    @MockitoBean
     private IngestionJobService ingestionJobService;
 
-    @MockBean
+    @MockitoBean
     private OperationalMetricsService operationalMetricsService;
 
-    @MockBean
+    @MockitoBean
     private AuditEventService auditEventService;
 
-    @MockBean
+    @MockitoBean
     private TenantSupportGrantService tenantSupportGrantService;
 
     private UUID defaultTenantId;

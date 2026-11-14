@@ -40,8 +40,17 @@ spring:
     caffeine:
       spec: maximumSize=100,expireAfterWrite=60s
     cache-names: dashboard
+  # The application and its API contracts use Jackson 2 (com.fasterxml.jackson).
+  # Spring Boot 4 prefers Jackson 3, so HTTP responses are pinned to the Jackson 2
+  # mapper and both mappers keep the Boot 3 behaviour.
+  http:
+    converters:
+      preferred-json-mapper: jackson2
+  jackson2:
+    default-property-inclusion: non_null
   jackson:
     default-property-inclusion: non_null
+    use-jackson2-defaults: true
   servlet:
     multipart:
       max-file-size: 50MB

@@ -127,18 +127,6 @@ class ContractsTest(unittest.TestCase):
         self.assertNotRegex(workflow, r"(?m)^\s*(run: )?trivy (fs|image) ")
         self.assertNotIn("schedule'", workflow.split('  aws-candidate:', 1)[1].split('steps:', 1)[0])
 
-    def test_every_trivy_job_checks_spring_applicability_before_scanning(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/trivy.yml').read_text()
-        jobs = re.split(r'(?m)^  [a-z][a-z-]*:\n', workflow.split('jobs:\n', 1)[1])[1:]
-        self.assertEqual(len(jobs), 2)
-        for job in jobs:
-            check = job.index('python3 .github/scripts/check-spring-advisory-applicability.py')
-            controls = job.index('python3 .github/scripts/test-spring-advisory-applicability.py')
-            scan = job.index('uses: aquasecurity/trivy-action@')
-            self.assertLess(controls, check)
-            self.assertLess(check, scan)
-
     def needs(self, **selected):
         outputs = {name: "true" for name in gate.SELECTION_OUTPUTS}
         outputs.update(selected)

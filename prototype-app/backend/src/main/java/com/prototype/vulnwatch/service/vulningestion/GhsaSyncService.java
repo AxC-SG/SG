@@ -166,7 +166,7 @@ public class GhsaSyncService {
             LocalDate modifiedFromDate = modifiedStart.atZone(ZoneOffset.UTC).toLocalDate();
             LocalDate modifiedToDate = now.atZone(ZoneOffset.UTC).toLocalDate();
             String modifiedWindow = modifiedFromDate + ".." + modifiedToDate;
-            String nextUrl = UriComponentsBuilder.fromHttpUrl(ghsaApiUrl)
+            String nextUrl = UriComponentsBuilder.fromUriString(ghsaApiUrl)
                     .queryParam("per_page", safePerPage)
                     .queryParam("sort", "updated")
                     .queryParam("direction", "asc")
@@ -174,7 +174,7 @@ public class GhsaSyncService {
                     .build()
                     .toUriString();
             if (support.hasText(filters.severity())) {
-                nextUrl = UriComponentsBuilder.fromHttpUrl(nextUrl)
+                nextUrl = UriComponentsBuilder.fromUriString(nextUrl)
                         .queryParam("severity", filters.severity().toLowerCase(Locale.ROOT))
                         .build()
                         .toUriString();

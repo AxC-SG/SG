@@ -31,9 +31,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -54,32 +54,32 @@ class TenantAdministrationControllerSecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private TenantAdministrationService tenantAdministrationService;
-    @MockBean
+    @MockitoBean
     private IdentityAdministrationService identityAdministrationService;
-    @MockBean
+    @MockitoBean
     private AuditEventService auditEventService;
-    @MockBean
+    @MockitoBean
     private WorkspaceService workspaceService;
-    @MockBean
+    @MockitoBean
     private TenantService tenantService;
-    @MockBean
+    @MockitoBean
     private TenantRepository tenantRepository;
-    @MockBean
+    @MockitoBean
     private PlatformInventoryConnectorHealthService platformInventoryConnectorHealthService;
-    @MockBean
+    @MockitoBean
     private TenantUserInviteService tenantUserInviteService;
-    @MockBean
+    @MockitoBean
     private TenantAccessControlService tenantAccessControlService;
-    @MockBean
+    @MockitoBean
     private TenantSupportGrantService tenantSupportGrantService;
-    @MockBean
+    @MockitoBean
     private JwtDecoder jwtDecoder;
-    @MockBean
+    @MockitoBean
     private JwtTenantAuthenticationService jwtTenantAuthenticationService;
 
-    @MockBean
+    @MockitoBean
     private OperationalMetricsService operationalMetricsService;
 
     private Tenant tenant;
