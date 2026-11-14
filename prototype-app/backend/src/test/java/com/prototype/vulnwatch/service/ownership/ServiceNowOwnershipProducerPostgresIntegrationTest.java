@@ -131,11 +131,12 @@ class ServiceNowOwnershipProducerPostgresIntegrationTest {
 
     @Test
     void aRunThatWouldChangeTooManyClaimsPausesWithAReviewItem() {
-        for (int i = 0; i < 60; i++) ci("sn-" + i, "Payments");
+        // Plan 12.3: at least 100 changes and at least 10 % of active claims. 120 of 400 is 30 %.
+        for (int i = 0; i < 400; i++) ci("sn-" + i, "Payments");
         producer.publish(tenant.getId(), Instant.now().minusSeconds(1), true, false);
         enter();
         Instant run = Instant.now().plusSeconds(1);
-        for (int i = 0; i < 60; i++) touch("sn-" + i, i < 20 ? "Identity" : "Payments", run.plusSeconds(1));
+        for (int i = 0; i < 400; i++) touch("sn-" + i, i < 120 ? "Identity" : "Payments", run.plusSeconds(1));
 
         Result paused = producer.publish(tenant.getId(), run, true, false);
         enter();
@@ -146,7 +147,22 @@ class ServiceNowOwnershipProducerPostgresIntegrationTest {
 
         Result approved = producer.publish(tenant.getId(), run, true, true);
         enter();
-        assertThat(approved.changed()).isEqualTo(20);
+        assertThat(approved.changed()).isEqualTo(120);
+    }
+
+    @Test
+    void aSmallChangeBelowTheHundredChangeMinimumDoesNotPause() {
+        for (int i = 0; i < 60; i++) ci("sn-" + i, "Payments");
+        producer.publish(tenant.getId(), Instant.now().minusSeconds(1), true, false);
+        enter();
+        Instant run = Instant.now().plusSeconds(1);
+        // 30 of 60 is 50 % but only 30 changes: under the 100-change minimum, so it must apply.
+        for (int i = 0; i < 60; i++) touch("sn-" + i, i < 30 ? "Identity" : "Payments", run.plusSeconds(1));
+
+        Result applied = producer.publish(tenant.getId(), run, true, false);
+        enter();
+        assertThat(applied.paused()).isFalse();
+        assertThat(applied.changed()).isEqualTo(30);
     }
 
     @Test

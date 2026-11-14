@@ -64,18 +64,12 @@ public class ServiceNowOwnershipProducer {
     private final Clock clock;
     private final boolean departmentClaims;
     private final Duration syncInterval;
-    private final Duration ineligibleAfter;
-    private final double anomalyFraction;
-    private final int anomalyMinimum;
 
     public ServiceNowOwnershipProducer(JdbcTemplate jdbc, TenantWorkRunner runner, TeamNamespaceService teams, OwnershipClaimService claims,
                                        OwnershipReviewService reviews, InventorySubjectAdapter subjects, DirectoryService directory,
                                        OwnershipAuthorityService authority, TenantDataCipher cipher, ObjectProvider<Clock> clock,
                                        @Value("${app.ownership.servicenow.department-claims:false}") boolean departmentClaims,
-                                       @Value("${app.ownership.servicenow.sync-interval:PT24H}") Duration syncInterval,
-                                       @Value("${app.ownership.claims.ineligible-after:P7D}") Duration ineligibleAfter,
-                                       @Value("${app.ownership.anomaly.fraction:0.2}") double anomalyFraction,
-                                       @Value("${app.ownership.anomaly.minimum:50}") int anomalyMinimum) {
+                                       @Value("${app.ownership.servicenow.sync-interval:PT24H}") Duration syncInterval) {
         this.jdbc = jdbc;
         this.runner = runner;
         this.teams = teams;
@@ -87,10 +81,7 @@ public class ServiceNowOwnershipProducer {
         this.cipher = cipher;
         this.clock = clock.getIfAvailable(Clock::systemUTC);
         this.departmentClaims = departmentClaims;
-        this.syncInterval = syncInterval;
-        this.ineligibleAfter = ineligibleAfter;
-        this.anomalyFraction = anomalyFraction;
-        this.anomalyMinimum = anomalyMinimum;
+        this.syncInterval = OwnershipSourcePolicy.requireValidInterval(syncInterval);
     }
 
     /** Called by the CMDB sync after ingestion succeeded. Never throws: a producer failure must not fail inventory sync. */
@@ -126,16 +117,19 @@ public class ServiceNowOwnershipProducer {
         int active = runner.runScoped(tenantId, () -> jdbc.queryForObject(
                 "SELECT count(*) FROM ownership_claim WHERE source_kind = ? AND status = 'ACTIVE'", Integer.class, SOURCE));
         long destructive = plan.stream().filter(p -> p.action() == Action.CHANGE || p.action() == Action.END).count() + absent.size();
-        if (!allowAnomaly && active >= anomalyMinimum && destructive > anomalyFraction * active) {
+        if (!allowAnomaly && OwnershipSourcePolicy.anomalous(destructive, active)) {
             runner.runScoped(tenantId, () -> reviews.raise("PRODUCER_ANOMALY", "PRODUCER_ANOMALY|" + SOURCE, null, SOURCE,
-                    Map.of("activeClaims", active, "wouldChangeOrEnd", destructive, "threshold", anomalyFraction)));
+                    Map.of("activeClaims", active, "wouldChangeOrEnd", destructive,
+                            "minChanges", OwnershipSourcePolicy.ANOMALY_MIN_CHANGES,
+                            "fraction", OwnershipSourcePolicy.ANOMALY_FRACTION,
+                            "absoluteChanges", OwnershipSourcePolicy.ANOMALY_ABSOLUTE_CHANGES)));
             return new Result(scanned[0], 0, 0, 0, 0, 0, true, "ANOMALY");
         }
 
         // Pass 2: apply in bounded batches, one transaction each.
         Instant now = clock.instant();
-        Instant staleAfter = now.plus(syncInterval.multipliedBy(2));
-        Instant expiresAt = now.plus(ineligibleAfter);
+        Instant staleAfter = OwnershipSourcePolicy.staleAfter(now, syncInterval);
+        Instant expiresAt = OwnershipSourcePolicy.expiresAt(now, syncInterval);
         int[] counts = new int[5];
         for (int from = 0; from < plan.size(); from += PAGE) {
             List<Planned> batch = plan.subList(from, Math.min(plan.size(), from + PAGE));
