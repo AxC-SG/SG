@@ -14,7 +14,7 @@ type Props = NameProps & {
   // A pending non-cancellable write blocks Escape and backdrop dismissal and says why.
   busy?: boolean;
   busyMessage?: string;
-  initialFocusRef?: React.RefObject<HTMLElement>;
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
   closeOnBackdrop?: boolean;
   className?: string;
 };

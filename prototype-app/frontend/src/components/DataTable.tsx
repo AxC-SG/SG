@@ -72,7 +72,7 @@ function mergeWidthStyle(size: number, style?: React.CSSProperties): React.CSSPr
   };
 }
 
-function useContainerWidth(ref: React.RefObject<HTMLDivElement>): number {
+function useContainerWidth(ref: React.RefObject<HTMLDivElement | null>): number {
   const [width, setWidth] = React.useState(0);
 
   React.useEffect(() => {
