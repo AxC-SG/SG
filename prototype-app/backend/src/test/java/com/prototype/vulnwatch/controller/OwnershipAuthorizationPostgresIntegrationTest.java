@@ -80,6 +80,8 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                 new Endpoint(Action.VIEW_DIRECTORY, "GET", "/api/directory/users?q=ab", null),
                 new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/users", Map.of("displayName", "Person " + UUID.randomUUID())),
                 new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/groups", Map.of("displayName", "Group " + UUID.randomUUID())),
+                new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/external-identities/" + missing + "/resolve",
+                        Map.of("newPersonDisplayName", "Person")),
                 new Endpoint(Action.IMPORT_DIRECTORY, "GET", "/api/directory/imports/templates/users", null),
                 new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/teams", null),
                 new Endpoint(Action.WRITE_TEAMS, "POST", "/api/ownership/teams", Map.of("name", "Team " + UUID.randomUUID())),

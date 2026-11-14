@@ -6,6 +6,8 @@ import com.prototype.vulnwatch.service.AuditEventService;
 import com.prototype.vulnwatch.service.TenantContext;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -50,11 +52,13 @@ public class DirectoryService {
     private final JdbcTemplate jdbc;
     private final TenantDataCipher cipher;
     private final AuditEventService audit;
+    private final OwnershipReviewService reviews;
 
-    public DirectoryService(JdbcTemplate jdbc, TenantDataCipher cipher, AuditEventService audit) {
+    public DirectoryService(JdbcTemplate jdbc, TenantDataCipher cipher, AuditEventService audit, OwnershipReviewService reviews) {
         this.jdbc = jdbc;
         this.cipher = cipher;
         this.audit = audit;
+        this.reviews = reviews;
     }
 
     // ----- sources --------------------------------------------------------------------------------------------
@@ -143,12 +147,18 @@ public class DirectoryService {
     @Transactional
     public DirectoryUser createUser(String displayName, String email, String employeeId, UUID managerUserId, UUID sourceId, String actor) {
         UUID tenant = requireReady();
-        String name = displayName(displayName);
         String normalizedEmail = normalizeEmail(email);
-        String normalizedEmployee = blankToNull(employeeId);
         if (normalizedEmail != null && userIdByEmail(normalizedEmail).isPresent()) {
             throw conflict("Another directory user already has this email; link or review instead of creating a duplicate");
         }
+        return insertUser(tenant, displayName, normalizedEmail, employeeId, managerUserId, sourceId, actor);
+    }
+
+    /** Inserts a person without the duplicate-email check; callers decide whether a shared email is acceptable. */
+    private DirectoryUser insertUser(UUID tenant, String displayName, String normalizedEmail, String employeeId, UUID managerUserId,
+                                     UUID sourceId, String actor) {
+        String name = displayName(displayName);
+        String normalizedEmployee = blankToNull(employeeId);
         if (managerUserId != null) requireUser(managerUserId);
         UUID id = UUID.randomUUID();
         jdbc.update("""
@@ -394,6 +404,196 @@ public class DirectoryService {
                 """, UUID.randomUUID(), sourceId, cipher.encrypt(tenant, P_EXTERNAL_ID, key), cipher.blindIndex(tenant, P_EXTERNAL_ID, key),
                 displayName(displayName), groupId, runId);
         if (changed == 0) throw conflict("This external group is already linked to another group");
+    }
+
+    // ----- provider identity linking (Phase 0B §1.4) ----------------------------------------------------------
+
+    /** One user record as a provider sync observed it. Values are plaintext only here; they are stored as tenant ciphertext. */
+    public record ObservedIdentity(UUID sourceId, String externalId, String displayName, String email, String username,
+                                   String employeeNumber, boolean active) { }
+
+    public enum LinkOutcome {
+        /** Rule 1: the identity was already linked and stays linked to the same person. */
+        KEPT_LINK,
+        /** Rule 2: the email matched exactly one person, who is active. */
+        LINKED_BY_EMAIL,
+        /** Rule 4: nobody matched, so a person was created for this source. */
+        CREATED_PERSON,
+        /** Rule 3: more than one person matched, or only inactive people did. Waits for an admin. */
+        AMBIGUOUS,
+        /** A new identity that is inactive or locked out: recorded as evidence, not linked and no person created. */
+        UNLINKED_INACTIVE
+    }
+
+    public record IdentityObservation(UUID identityId, LinkOutcome outcome, UUID userId) { }
+
+    public record IdentityResolution(UUID identityId, UUID userId, boolean createdPerson) { }
+
+    static final String P_USERNAME = "directory.external.username";
+    static final String REVIEW_AMBIGUOUS = "AMBIGUOUS_IDENTITY";
+    private static final int MAX_CANDIDATES = 100;
+    private static final int MAX_CANDIDATES_IN_REVIEW = 10;
+
+    private record IdentityRow(UUID id, UUID userId, String linkStatus) { }
+
+    private record Candidate(UUID id, String status) { }
+
+    /**
+     * Records a provider identity and applies linking rules 1–6. It never merges, deletes or relinks people.
+     * {@code user_name} and employee number are stored as evidence only and never drive a link (rule 6).
+     * An email that is not a valid address is treated as absent.
+     */
+    @Transactional
+    public IdentityObservation observeIdentity(ObservedIdentity observed, UUID runId, String actor) {
+        UUID tenant = requireReady();
+        UUID sourceId = java.util.Objects.requireNonNull(observed.sourceId(), "sourceId");
+        String key = externalKey(observed.externalId());
+        byte[] externalIndex = cipher.blindIndex(tenant, P_EXTERNAL_ID, key);
+        String email = sourceEmail(observed.email());
+        byte[] emailIndex = email == null ? null : cipher.blindIndex(tenant, P_EMAIL, email);
+        String username = blankToNull(observed.username());
+        // Identity first, then email: each call takes at most one of each, so the order cannot deadlock.
+        advisoryLock(tenant + "|ownership.external-identity|" + sourceId + "|" + HexFormat.of().formatHex(externalIndex));
+        if (emailIndex != null) advisoryLock(tenant + "|ownership.directory-email|" + HexFormat.of().formatHex(emailIndex));
+
+        String emailEnc = email == null ? null : cipher.encrypt(tenant, P_EMAIL, email);
+        String usernameEnc = username == null ? null : cipher.encrypt(tenant, P_USERNAME, username);
+        String status = observed.active() ? "ACTIVE" : "INACTIVE";
+        List<IdentityRow> existing = jdbc.query(
+                "SELECT id, user_id, link_status FROM external_identity WHERE source_id = ? AND external_id_index = ? FOR UPDATE",
+                (rs, n) -> new IdentityRow(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3)), sourceId, externalIndex);
+        IdentityRow row;
+        if (existing.isEmpty()) {
+            row = new IdentityRow(UUID.randomUUID(), null, "UNLINKED");
+            jdbc.update("""
+                    INSERT INTO external_identity (tenant_id, id, source_id, external_id_enc, external_id_index, email_enc, email_index,
+                                                   username_enc, status, last_seen_run_id)
+                    VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, row.id(), sourceId, cipher.encrypt(tenant, P_EXTERNAL_ID, key), externalIndex, emailEnc, emailIndex, usernameEnc,
+                    status, runId);
+        } else {
+            row = existing.get(0);
+            // Rule 1: evidence fields follow the provider; the link does not move.
+            jdbc.update("""
+                    UPDATE external_identity SET email_enc = ?, email_index = ?, username_enc = ?, status = ?, observed_at = now(),
+                           updated_at = now(), last_seen_run_id = COALESCE(?, last_seen_run_id)
+                     WHERE id = ?
+                    """, emailEnc, emailIndex, usernameEnc, status, runId, row.id());
+        }
+
+        List<Candidate> candidates = emailIndex == null ? List.of() : candidates(emailIndex);
+        if ("LINKED".equals(row.linkStatus())) {
+            // Rule 5: report drift to a different person; change nothing.
+            List<UUID> others = candidates.stream().map(Candidate::id).filter(id -> !id.equals(row.userId())).toList();
+            if (!others.isEmpty()) {
+                raiseAmbiguous(driftKey(row.id()), row.id(), sourceId, "EMAIL_MATCHES_OTHER_PERSON", others, row.userId());
+            }
+            return new IdentityObservation(row.id(), LinkOutcome.KEPT_LINK, row.userId());
+        }
+        if ("AMBIGUOUS".equals(row.linkStatus())) {
+            raiseAmbiguous(ambiguousKey(row.id()), row.id(), sourceId, ambiguityReason(candidates),
+                    candidates.stream().map(Candidate::id).toList(), null);
+            return new IdentityObservation(row.id(), LinkOutcome.AMBIGUOUS, null);
+        }
+        if (!observed.active()) return new IdentityObservation(row.id(), LinkOutcome.UNLINKED_INACTIVE, null);
+        if (candidates.isEmpty()) {
+            DirectoryUser created = insertUser(tenant, personName(observed, key), email, observed.employeeNumber(), null, sourceId, actor);
+            linkIdentity(row.id(), created.id());
+            return new IdentityObservation(row.id(), LinkOutcome.CREATED_PERSON, created.id());
+        }
+        if (candidates.size() == 1 && "ACTIVE".equals(candidates.get(0).status())) {
+            linkIdentity(row.id(), candidates.get(0).id());
+            return new IdentityObservation(row.id(), LinkOutcome.LINKED_BY_EMAIL, candidates.get(0).id());
+        }
+        jdbc.update("UPDATE external_identity SET link_status = 'AMBIGUOUS', updated_at = now() WHERE id = ?", row.id());
+        raiseAmbiguous(ambiguousKey(row.id()), row.id(), sourceId, ambiguityReason(candidates),
+                candidates.stream().map(Candidate::id).toList(), null);
+        return new IdentityObservation(row.id(), LinkOutcome.AMBIGUOUS, null);
+    }
+
+    /**
+     * An admin's answer to an AMBIGUOUS identity: link it to {@code userId}, or create a new person named
+     * {@code newPersonDisplayName} for it. The new person keeps the identity's email even though another person shares
+     * it; that shared email is why the identity was ambiguous. Closes the open review item.
+     */
+    @Transactional
+    public IdentityResolution resolveAmbiguousIdentity(UUID identityId, UUID userId, String newPersonDisplayName, String actor) {
+        UUID tenant = requireReady();
+        boolean createNew = newPersonDisplayName != null && !newPersonDisplayName.isBlank();
+        if ((userId == null) == !createNew) throw bad("Choose an existing person or name a new person, not both");
+        List<Object[]> rows = jdbc.query("SELECT source_id, link_status, email_enc FROM external_identity WHERE id = ? FOR UPDATE",
+                (rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3)}, identityId);
+        if (rows.isEmpty()) throw notFound("External identity not found");
+        UUID sourceId = (UUID) rows.get(0)[0];
+        if (!"AMBIGUOUS".equals(rows.get(0)[1])) throw conflict("Only an ambiguous identity can be resolved");
+        UUID target;
+        if (createNew) {
+            String email = decryptOrNull(tenant, P_EMAIL, (String) rows.get(0)[2]);
+            target = insertUser(tenant, newPersonDisplayName, email, null, null, sourceId, actor).id();
+        } else {
+            if ("DELETED".equals(requireUser(userId).status())) throw bad("A deleted person cannot be linked");
+            target = userId;
+        }
+        linkIdentity(identityId, target);
+        reviews.closeOpen(ambiguousKey(identityId), "RESOLVED", null, actor);
+        audit.record("ownership.external_identity.resolved", "external_identity", identityId.toString(),
+                OwnershipEvents.json(Map.of("userId", target, "sourceId", sourceId, "createdPerson", createNew)));
+        return new IdentityResolution(identityId, target, createNew);
+    }
+
+    private void linkIdentity(UUID identityId, UUID userId) {
+        jdbc.update("UPDATE external_identity SET user_id = ?, link_status = 'LINKED', updated_at = now() WHERE id = ?", userId, identityId);
+    }
+
+    private List<Candidate> candidates(byte[] emailIndex) {
+        return jdbc.query("SELECT id, status FROM directory_user WHERE email_index = ? AND status <> 'DELETED' ORDER BY created_at, id LIMIT ?",
+                (rs, n) -> new Candidate(rs.getObject(1, UUID.class), rs.getString(2)), emailIndex, MAX_CANDIDATES);
+    }
+
+    private static String ambiguityReason(List<Candidate> candidates) {
+        if (candidates.isEmpty()) return "NO_CURRENT_MATCH";
+        return candidates.stream().anyMatch(c -> "ACTIVE".equals(c.status())) ? "MULTIPLE_MATCHES" : "ONLY_INACTIVE_MATCH";
+    }
+
+    /** Review details carry IDs and codes only, never names or emails. */
+    private void raiseAmbiguous(String dedupeKey, UUID identityId, UUID sourceId, String reason, List<UUID> candidateIds, UUID linkedUserId) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("identityId", identityId.toString());
+        details.put("sourceId", sourceId.toString());
+        details.put("reason", reason);
+        details.put("candidateCount", candidateIds.size());
+        details.put("candidateUserIds", candidateIds.stream().limit(MAX_CANDIDATES_IN_REVIEW).map(UUID::toString).toList());
+        if (linkedUserId != null) details.put("linkedUserId", linkedUserId.toString());
+        String kind = jdbc.queryForList("SELECT kind FROM identity_source WHERE id = ?", String.class, sourceId).stream().findFirst().orElse(null);
+        reviews.raise(REVIEW_AMBIGUOUS, dedupeKey, null, kind, details);
+    }
+
+    static String ambiguousKey(UUID identityId) {
+        return "AMBIGUOUS_IDENTITY|identity|" + identityId;
+    }
+
+    static String driftKey(UUID identityId) {
+        return "AMBIGUOUS_IDENTITY|drift|" + identityId;
+    }
+
+    /** The name for a person created by rule 4: display name, then user name, then email, then the external id. */
+    private static String personName(ObservedIdentity observed, String externalKey) {
+        for (String candidate : new String[] {observed.displayName(), observed.username(), observed.email()}) {
+            if (candidate != null && !candidate.isBlank()) return candidate;
+        }
+        return externalKey;
+    }
+
+    private static String sourceEmail(String email) {
+        try {
+            return normalizeEmail(email);
+        } catch (ResponseStatusException ex) {
+            return null;
+        }
+    }
+
+    private void advisoryLock(String key) {
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null, key);
     }
 
     // ----- helpers --------------------------------------------------------------------------------------------

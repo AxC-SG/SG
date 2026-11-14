@@ -98,6 +98,20 @@ automatically (plan §6.5 step 8 and the duplicate-people risk in §20).
    `AMBIGUOUS_IDENTITY` review item reports the drift.
 6. `user_name` and employee number are evidence only; they never drive a link, because customers reuse and change them.
 
+**DECISIONS (approved by the product owner, November 14, 2026):**
+
+- A new identity whose email matches no ACTIVE person but at least one INACTIVE person is `AMBIGUOUS` with a review item
+  (reason `ONLY_INACTIVE_MATCH`), not a new person. Rule 2 links only when the single match is ACTIVE. Any other set of
+  matches, including one active and one inactive person, counts as rule 3.
+- A new identity that is inactive or locked out is recorded `UNLINKED`: no person is created or linked. Rules 2–4
+  apply when a later observation finds it active.
+- An admin resolves an `AMBIGUOUS` identity with `POST /api/directory/external-identities/{id}/resolve`, guarded by
+  `WRITE_DIRECTORY` (`TENANT_ADMIN` only), because linking decides who a person is. "Create a new person" keeps the
+  identity's email even though another person has it. Resolving closes the open review item.
+
+An email that is not a valid address is treated as absent. Review details carry the identity, source, reason and up to
+10 candidate person IDs, never names or emails.
+
 Directory people never gain Scoutgrid login, tenant membership or roles from a link (plan §3).
 
 ### 1.5 Paging, watermark and complete scans
