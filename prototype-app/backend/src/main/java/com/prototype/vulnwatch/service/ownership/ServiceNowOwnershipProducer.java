@@ -29,6 +29,11 @@ import org.springframework.stereotype.Component;
  * <p>Two passes: a read-only plan counts changes; if a run would end or change more than the anomaly threshold of
  * this source's active claims it is paused with a review item and writes nothing. Absent CIs end their claims only
  * after a complete scan. Unchanged claims are re-observed (timestamps only) so they cause no assignment writes.
+ *
+ * <p>Only ServiceNow CIs are read. {@code cis} has no source column, and the AWS, GCP, Azure, SCCM and patch syncs
+ * also write rows with {@code last_cmdb_sync_at}, so a scan by time alone would count their CIs during an overlapping
+ * window (contract 0B §2.10). Their {@code sys_id}s are ARNs, resource names, numeric IDs or prefixed keys; a
+ * ServiceNow {@code sys_id} is always 32 hex characters.
  */
 @Component
 public class ServiceNowOwnershipProducer {
@@ -235,7 +240,8 @@ public class ServiceNowOwnershipProducer {
             String cursor = after;
             List<Ci> page = runner.runScoped(tenantId, () -> jdbc.query("""
                     SELECT sys_id, asset_id, support_group, department, owner_email FROM cis
-                     WHERE last_cmdb_sync_at >= ? AND sys_id > ? ORDER BY sys_id LIMIT ?
+                     WHERE last_cmdb_sync_at >= ? AND sys_id > ? AND sys_id ~* '^[0-9a-f]{32}$'
+                     ORDER BY sys_id LIMIT ?
                     """, (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5)),
                     java.sql.Timestamp.from(runStartedAt), cursor, PAGE));
             if (page.isEmpty()) return;

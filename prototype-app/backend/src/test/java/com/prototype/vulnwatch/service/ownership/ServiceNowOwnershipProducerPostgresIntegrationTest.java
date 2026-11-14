@@ -166,6 +166,26 @@ class ServiceNowOwnershipProducerPostgresIntegrationTest {
     }
 
     @Test
+    void cloudSccmAndPatchCisSyncedInTheSameWindowAreNotScanned() {
+        // Contract 0B §2.10: other syncs write cis rows with last_cmdb_sync_at; only ServiceNow sys_ids are read.
+        UUID web = ci("sn-web", "Payments");
+        UUID ec2 = rawCi("arn:aws:ec2:us-east-1:123456789012:instance/i-0abc1234def567890", "Payments");
+        UUID gce = rawCi("//compute.googleapis.com/projects/p1/zones/us-central1-a/instances/vm-1", "Payments");
+        UUID sccm = rawCi("16777220", "Payments");
+        UUID patch = rawCi("patch-device:intune:device-1", "Payments");
+
+        Result result = producer.publish(tenant.getId(), Instant.now().minusSeconds(1), true, false);
+        enter();
+        assertThat(result.scanned()).isEqualTo(1);
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(ownerOf(web)).isEqualTo(payments);
+        assertThat(count("ownership_claim")).isEqualTo(1);
+        for (UUID other : java.util.List.of(ec2, gce, sccm, patch)) {
+            assertThat(subjectOf(other)).as("no claim, so no subject, for a non-ServiceNow CI").isNull();
+        }
+    }
+
+    @Test
     void aLegacyDomainPublishesNothing() {
         ci("sn-web", "Payments");
         TenantContext.runAsPlatform(() -> jdbc.update("DELETE FROM platform.ownership_domain_authority WHERE tenant_id = ?", tenant.getId()));
@@ -187,7 +207,16 @@ class ServiceNowOwnershipProducerPostgresIntegrationTest {
         assertThat(count("ownership_claim")).isZero();
     }
 
-    private UUID ci(String sysId, String supportGroup) {
+    /** A ServiceNow CI; {@code name} is turned into a real-format 32-hex {@code sys_id}. */
+    private UUID ci(String name, String supportGroup) {
+        return rawCi(sn(name), supportGroup);
+    }
+
+    private static String sn(String name) {
+        return UUID.nameUUIDFromBytes(name.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString().replace("-", "");
+    }
+
+    private UUID rawCi(String sysId, String supportGroup) {
         UUID asset = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO assets (id, business_criticality, created_at, identifier, name, state, type, support_group, last_cmdb_sync_at)
@@ -202,8 +231,8 @@ class ServiceNowOwnershipProducerPostgresIntegrationTest {
         touch(sysId, supportGroup, Instant.now());
     }
 
-    private void touch(String sysId, String supportGroup, Instant at) {
-        jdbc.update("UPDATE cis SET support_group = ?, last_cmdb_sync_at = ? WHERE sys_id = ?", supportGroup, Timestamp.from(at), sysId);
+    private void touch(String name, String supportGroup, Instant at) {
+        jdbc.update("UPDATE cis SET support_group = ?, last_cmdb_sync_at = ? WHERE sys_id = ?", supportGroup, Timestamp.from(at), sn(name));
     }
 
     private UUID subjectOf(UUID asset) {

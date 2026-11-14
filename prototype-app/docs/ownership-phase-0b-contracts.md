@@ -367,6 +367,13 @@ over its account's owner**, and the account owner applies only to resources with
   source filter, so a cloud sync that runs during a CMDB sync window adds cloud CIs to the ServiceNow scan. Those rows
   have no `support_group`, so no claim is written today, but the scan counts and the anomaly denominator are wrong.
   The ServiceNow producer should read ServiceNow-originated CIs only. Fix with Phase B, with a regression test.
+  **Fixed (E4, November 14, 2026, branch `fix/servicenow-producer-cis-source`, not merged):** `cis` has no source
+  column, so the scan reads only rows whose `sys_id` has ServiceNow's 32-hex format. AWS/GCP/Azure (ARNs, resource
+  names), SCCM (numeric `ResourceID`) and patch (`patch-device:…`) rows are excluded. Regression:
+  `ServiceNowOwnershipProducerPostgresIntegrationTest.cloudSccmAndPatchCisSyncedInTheSameWindowAreNotScanned`.
+- When a ServiceNow row arrives without a `sys_id`, `CiResolutionService` stores a fallback `servicenow:<host>`.
+  Before E4 such a CI produced a claim whose `source_ref` split at the wrong `:`, so the next complete scan ended it.
+  After E4 these CIs produce no claim. Rows without a `sys_id` are not expected from the Table API.
 
 ### 2.11 Open items
 
@@ -374,7 +381,7 @@ over its account's owner**, and the account owner applies only to resources with
 |---|---|---|
 | AWS account owner: built in Release 2 against mocks (§2.2.1, decided). Still needed: a customer org to test the Organizations role against | Connector lead + a customer org | Enabling the AWS account input outside test tenants (AWS resource tags are unaffected) |
 | Representative tag/label values: share of emails vs team names, and alias coverage after preview | Connector lead + a customer tenant | Enabling outside test tenants |
-| ServiceNow producer `cis` source filter (§2.10) | Ownership lead | None (fix with Phase B) |
+| ~~ServiceNow producer `cis` source filter (§2.10)~~ Fixed by E4, pending merge | Ownership lead | — |
 
 ## 3. BOM/CBOM occurrence identity and finding-adapter registry
 
@@ -901,7 +908,7 @@ that must be proven not to be read as ownership, **B** behaviour change with no 
 | `controller/FindingTicketController.java`, `dto/CreateFindingTicketRequest.java` | Request `assignmentGroup` (ignored by ServiceNow today) | R | Override with reason; preview | §4.9 | Workflow lead |
 | `service/FindingIncidentSyncService.java` | Status sync, no ownership | B | None; regression test that ownership changes do not move tickets | §4.9 | Workflow lead |
 | `service/ownership/OwnershipReadAdapter.java` | Read waves wired for `INVENTORY` and `FINDINGS` only | B | Wire `CAMPAIGNS` and `TICKETS`; CLOUD_BOM eligibility | §2.6, §4.10 | Ownership lead |
-| `service/ownership/ServiceNowOwnershipProducer.java` | Scans every `cis` row by sync time | B | ServiceNow-originated CIs only | §2.10 | Ownership lead |
+| `service/ownership/ServiceNowOwnershipProducer.java` | Scans every `cis` row by sync time | B | ServiceNow-originated CIs only (E4 done on branch, pending merge) | §2.10 | Ownership lead |
 | `service/ServiceNowCmdbConfigService.java` | Reads `installed_on.support_group` display value | E | Keep name and reference `sys_id` in separate columns | §1.8 | Connector lead |
 | `service/ownership/InventorySubjectAdapter.java` | VULNERABILITY-only finding subject | B | `FindingSubjectAdapterRegistry` | §3.5 | Ownership lead |
 | `service/SoftwareIdentityMetadataService.java`, `dto/SoftwareIdentityMetadata*.java` | Stores and returns `support_group` on software identity metadata; no other reader | E | Keep as reference metadata; never read as ownership; the identity's owner coverage comes from occurrences | §3.7 | Inventory lead |
