@@ -361,7 +361,7 @@
             <properties>
                 <run.postgres.it>true</run.postgres.it>
                 <jacoco.skip>true</jacoco.skip>
-                <it.forkCount>3</it.forkCount>
+                <it.forkCount>2</it.forkCount>
             </properties>
             <build>
                 <plugins>
