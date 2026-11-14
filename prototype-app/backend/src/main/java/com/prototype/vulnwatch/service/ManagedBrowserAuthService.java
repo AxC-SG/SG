@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -27,7 +28,13 @@ public class ManagedBrowserAuthService {
 
     private static final Set<String> WORKSPACE_OPTIONAL = Set.of(
             "/api/me", "/api/auth/context", "/api/auth/authorized-workspaces");
-    private static final Set<String> PLATFORM_SCOPE_ROUTES = Set.of("/api/tenants", "/api/auth/support-grants");
+    // Platform-owner routes the platform console calls before a workspace is selected. Their
+    // services serve platform-scope data when the actor has no tenant (global feeds, EOL catalog,
+    // platform-user audit, AI framework registry); tenant-bound routes stay workspace-only.
+    private static final Set<String> PLATFORM_SCOPE_ROUTES = Set.of(
+            "/api/tenants", "/api/auth/support-grants", "/api/audit-events/platform-users",
+            "/api/sync-runs", "/api/sync-runs/sources-summary", "/api/ai-frameworks");
+    private static final List<String> PLATFORM_SCOPE_PREFIXES = List.of("/api/eol/", "/api/ingestion/");
     private static final java.util.regex.Pattern ACCEPT_SUPPORT_GRANT = java.util.regex.Pattern.compile(
             "/api/auth/support-grants/[0-9a-fA-F-]{36}/accept");
     private final SecureRandom random = new SecureRandom();
@@ -114,7 +121,8 @@ public class ManagedBrowserAuthService {
             }
         } else {
             boolean platformPath = uri.startsWith("/api/platform/") || uri.startsWith("/api/operations/")
-                    || PLATFORM_SCOPE_ROUTES.contains(uri) || ACCEPT_SUPPORT_GRANT.matcher(uri).matches();
+                    || PLATFORM_SCOPE_ROUTES.contains(uri) || PLATFORM_SCOPE_PREFIXES.stream().anyMatch(uri::startsWith)
+                    || ACCEPT_SUPPORT_GRANT.matcher(uri).matches();
             if (!WORKSPACE_OPTIONAL.contains(uri) && !(platformPath && roles.contains("PLATFORM_OWNER"))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Select an authorized workspace for this request");
             }
