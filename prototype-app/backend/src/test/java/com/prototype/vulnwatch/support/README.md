@@ -10,6 +10,20 @@ should use. The goal is: a new IT class is ~50 lines, not ~250.
 - Run with `mvn -Ppostgres-it verify`. Locally, that profile sets
   `-Drun.postgres.it=true`, which the composed annotations gate on.
 
+## Parallel execution in CI
+
+CI (`-Pci-postgres-it`) runs integration classes in three JVMs at once against one
+PostgreSQL server (`it.forkCount`; local runs keep one JVM, override with
+`-Dit.forkCount=N`). Databases and roles are cluster-wide, so a new class must:
+
+- pass a key to `LocalPostgresTestDatabase.provision` that no other class uses, because
+  provisioning drops and recreates `vulnwatch_it_<key>`;
+- give any role it creates a name no other class uses (a class-specific constant or a
+  random suffix), never a shared name such as `scout_runtime`.
+
+The Spring context cache is capped at `it.context.cache.maxSize` (3). Each class has its
+own database URL, so contexts are rarely shared between classes.
+
 ## Pieces
 
 | Piece | When to use |
