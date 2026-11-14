@@ -18,6 +18,8 @@ import com.prototype.vulnwatch.repo.DemoRequestRepository;
 import com.prototype.vulnwatch.repo.SbomUploadRepository;
 import com.prototype.vulnwatch.repo.TenantRepository;
 import java.security.SecureRandom;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -27,6 +29,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -59,6 +63,7 @@ public class DemoLifecycleService {
     private final TransactionTemplate transactionTemplate;
     private BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy = BackgroundTaskExecutionPolicy.allowAll();
     private TenantSchemaMigrationService tenantSchemaMigrationService;
+    private JdbcTemplate jdbcTemplate;
     @Value("${app.demo.synchronous-tenant-provisioning-enabled:false}")
     private boolean synchronousTenantProvisioningEnabled;
     @Value("${app.security.managed-auth.enabled:false}")
@@ -101,6 +106,11 @@ public class DemoLifecycleService {
         this.backgroundTaskExecutionPolicy = backgroundTaskExecutionPolicy == null
                 ? BackgroundTaskExecutionPolicy.allowAll()
                 : backgroundTaskExecutionPolicy;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -358,6 +368,9 @@ public class DemoLifecycleService {
     public void deleteRequest(UUID requestId, String actor) {
         DemoRequest request = getRequestForUpdate(requestId);
         requireUncommittedRequest(request);
+        if (request.getTenantId() != null) {
+            deleteInvitesOwnedByProvisionedTenant(requestId, request.getTenantId());
+        }
         demoInviteRepository.deleteByRequest_Id(requestId);
         demoRequestRepository.delete(request);
         auditEventService.record(
@@ -365,6 +378,39 @@ public class DemoLifecycleService {
                 "demo_request",
                 requestId.toString(),
                 "{\"actor\":\"" + escapeJson(trimToNull(actor)) + "\"}");
+    }
+
+    // Shared demo invites carry the provisioned customer's tenant ID, so forced RLS hides
+    // them from the platform-scope queue connection and the request's FK delete fails.
+    // Bind the customer tenant on this transaction's connection only for this request's
+    // invites, then restore the previous context before the request row is removed.
+    private void deleteInvitesOwnedByProvisionedTenant(UUID requestId, UUID tenantId) {
+        jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
+            String previousTenantId;
+            try (PreparedStatement current = connection.prepareStatement(
+                    "select current_setting('app.current_tenant_id', true)");
+                 ResultSet result = current.executeQuery()) {
+                result.next();
+                previousTenantId = result.getString(1);
+            }
+            try (PreparedStatement context = connection.prepareStatement(
+                    "select set_config('app.current_tenant_id', ?, false)")) {
+                try {
+                    context.setString(1, tenantId.toString());
+                    context.execute();
+                    try (PreparedStatement invites = connection.prepareStatement(
+                            "delete from demo_invites where request_id = ? and tenant_id = ?")) {
+                        invites.setObject(1, requestId);
+                        invites.setObject(2, tenantId);
+                        invites.executeUpdate();
+                    }
+                } finally {
+                    context.setString(1, previousTenantId == null ? "" : previousTenantId);
+                    context.execute();
+                }
+            }
+            return null;
+        });
     }
 
     @Transactional(readOnly = true)

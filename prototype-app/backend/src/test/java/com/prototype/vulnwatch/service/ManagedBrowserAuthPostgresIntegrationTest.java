@@ -164,6 +164,44 @@ class ManagedBrowserAuthPostgresIntegrationTest {
     }
 
     @Test
+    void platformScopeOwnerCanUsePlatformConsoleRoutesAndDeleteQueuedDemoRequests() throws Exception {
+        AppUser owner = new AppUser();
+        owner.setExternalSubject("managed-platform-console-owner");
+        owner.setPlatformOwner(true);
+        users.saveAndFlush(owner);
+        String subject = UUID.randomUUID().toString();
+        jdbc.update("insert into platform.managed_identities (issuer, subject, user_id) values (?, ?, ?)",
+                ISSUER, subject, owner.getId());
+        mockIdentity("console-code", subject, null, Instant.now().plusSeconds(600));
+        Cookie session = callback(login(), "console-code").andExpect(status().isSeeOther())
+                .andReturn().getResponse().getCookie(ManagedBrowserAuthService.SESSION_COOKIE);
+        assertNotNull(session);
+
+        for (String path : new String[]{"/api/audit-events/platform-users", "/api/sync-runs/sources-summary",
+                "/api/sync-runs", "/api/eol/products", "/api/ingestion/vex-assertion-repair/summary",
+                "/api/ai-frameworks"}) {
+            mvc.perform(get(path).cookie(session)).andExpect(status().isOk());
+        }
+        mvc.perform(get("/api/findings").cookie(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/eolx/products").cookie(session)).andExpect(status().isForbidden());
+
+        var csrf = mvc.perform(get("/api/auth/csrf")).andExpect(status().isOk()).andReturn().getResponse();
+        Cookie csrfCookie = csrf.getCookie("__Host-sg-csrf");
+        var token = json.readTree(csrf.getContentAsString());
+        UUID demoRequest = UUID.randomUUID();
+        jdbc.update("""
+                insert into tenant_default.demo_requests(id, company, email, full_name, status, requested_at)
+                values (?, 'Delete Systems', 'delete-me@example.test', 'Delete Me', 'PENDING', now())
+                """, demoRequest);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/platform/demo-requests/{id}", demoRequest).cookie(session, csrfCookie)
+                        .header(token.get("headerName").asText(), token.get("token").asText()))
+                .andExpect(status().isOk());
+        assertEquals(0, jdbc.queryForObject("select count(*) from tenant_default.demo_requests where id=?",
+                Integer.class, demoRequest));
+    }
+
+    @Test
     void unlinkedSubjectAndLocalCredentialIssuanceAreDenied() throws Exception {
         when(provider.exchange(eq("unlinked-code"), anyString(), anyString())).thenReturn(
                 new CognitoBrowserIdentityClient.Identity(UUID.randomUUID().toString(), Instant.now().plusSeconds(600), null));
