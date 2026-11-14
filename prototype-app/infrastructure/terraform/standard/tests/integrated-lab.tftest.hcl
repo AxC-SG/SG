@@ -69,7 +69,7 @@ variables {
   cognito_domain_prefix   = "scoutgrid-lab-736486260824"
   github_publisher = {
     provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
-    subject      = "repo:AxC-SG/SG:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
+    subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
   }
 }
 
