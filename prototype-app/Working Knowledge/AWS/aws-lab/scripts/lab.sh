@@ -4,9 +4,9 @@
 #   lab.sh status       RDS, services, ALB, NAT, DNS and month-to-date cost against the $100 rule
 #   lab.sh simulate     IAM simulation of every up and down action for the cycle role
 #   lab.sh plan-up      saved plan for lab-up, checked against the up allowlist (no apply)
-#   lab.sh up           start RDS, apply lab-up, wait for healthy API, update api-lab DNS, smoke test
+#   lab.sh up           plan, confirm, start RDS, apply lab-up, wait for healthy API, update api-lab DNS, smoke test
 #   lab.sh plan-down    saved plan for lab-down, checked against the down allowlist (no apply)
-#   lab.sh down         simulate gate, apply lab-down, remove api-lab DNS, stop RDS
+#   lab.sh down         simulate gate, apply lab-down, stop RDS, remove api-lab DNS (both attempted; exits 1 if either fails)
 #
 # Environment:
 #   LAB_PROFILE   AWS CLI profile for the ScoutGridSydneyLabCycle role (default sglab-cycle)
@@ -157,12 +157,13 @@ start_database() {
   log "RDS available."
 }
 
+# Returns non-zero when RDS cannot be read or the stop request fails.
 stop_database() {
   local status
-  status="$(db_status)"
+  status="$(db_status)" || return 1
   if [[ "${status}" == "available" ]]; then
-    aws_lab rds stop-db-instance --db-instance-identifier "${DB_ID}" >/dev/null
-    log "RDS stopping (finishes on its own in 5-10 min)."
+    aws_lab rds stop-db-instance --db-instance-identifier "${DB_ID}" >/dev/null || return 1
+    log "RDS stopping (finishes on its own in 5-10 min; lab.sh status shows when it is stopped)."
     log "AWS restarts a stopped instance after 7 days: by $(date -u -v+7d +%Y-%m-%dT%H:%MZ 2>/dev/null || date -u -d '+7 days' +%Y-%m-%dT%H:%MZ). Run lab.sh down again before then."
   else
     log "RDS is ${status}; not stopping."
@@ -227,15 +228,19 @@ dns_point_api_at() {
   log "DNS ${API_HOST} -> ${target}"
 }
 
+# Returns non-zero when Cloudflare cannot be read or the delete fails, so callers can
+# report it without abandoning the rest of lab-down.
 dns_remove_api() {
-  local zone id current
+  local zone id current record
   if [[ -z "$(cloudflare_token)" ]]; then
     log "No Cloudflare token in the Keychain. In Cloudflare delete the CNAME ${API_HOST}."
     return 0
   fi
-  read -r zone id current < <(dns_record)
+  record="$(dns_record)" || return 1
+  read -r zone id current <<<"${record}"
+  [[ -n "${zone:-}" ]] || return 1
   if [[ -n "${id:-}" ]]; then
-    cf DELETE "/zones/${zone}/dns_records/${id}" >/dev/null
+    cf DELETE "/zones/${zone}/dns_records/${id}" >/dev/null || return 1
     log "DNS ${API_HOST} removed (was ${current})."
   fi
 }
@@ -400,14 +405,16 @@ cmd_plan() {
   log "Plan-only: nothing applied."
 }
 
+# RDS starts only after confirmation, so declining or a refused plan leaves it parked.
 cmd_up() {
   guard_identity
   guard_terraform
-  start_database
   local plan
   plan="$(plan_mode up)"
-  confirm "Lab-up creates NAT egress, the API load balancer, WAF and both services (about \$0.30/hour while up)."
-  tf apply -input=false -no-color -lock-timeout=60s "${plan}" >/dev/null
+  confirm "Lab-up starts RDS and creates NAT egress, the API load balancer, WAF and both services (about \$0.30/hour while up)."
+  start_database
+  tf apply -input=false -no-color -lock-timeout=60s "${plan}" >/dev/null ||
+    die "Lab-up apply failed. RDS is running and billing: fix the cause and rerun lab.sh up, or run lab.sh down to park it."
   log "Lab-up applied."
   wait_api_healthy
   dns_point_api_at "$(alb_dns)"
@@ -422,12 +429,23 @@ cmd_down() {
   local plan
   plan="$(plan_mode down)"
   confirm "Lab-down takes scoutgrid.io sign-in and the demo form offline until the next lab-up."
-  tf apply -input=false -no-color -lock-timeout=60s "${plan}" >/dev/null
+  tf apply -input=false -no-color -lock-timeout=60s "${plan}" >/dev/null ||
+    die "Lab-down apply failed. Terraform state is kept and RDS was not stopped; fix the cause and rerun lab.sh down."
   log "Lab-down applied."
-  dns_remove_api
-  stop_database
-  cmd_status
+  # Park RDS before touching DNS, and attempt both even if one fails: a Cloudflare
+  # failure must not leave the database billing.
+  local db_failed=0 dns_failed=0
+  stop_database || db_failed=1
+  dns_remove_api || dns_failed=1
+  cmd_status || log "Status unavailable; run lab.sh status."
+  (( db_failed )) && log "ERROR: stopping RDS ${DB_ID} failed; it may still be billing. Stop it in the console or rerun lab.sh down."
+  (( dns_failed )) && log "ERROR: removing the ${API_HOST} CNAME failed. Delete it in Cloudflare or rerun lab.sh down."
+  (( db_failed || dns_failed )) && exit 1
+  return 0
 }
+
+# Sourcing (tests/lab.test.sh) loads the functions without running a command.
+[[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0
 
 case "${1:-}" in
   status) cmd_status ;;

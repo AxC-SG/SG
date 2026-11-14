@@ -14,6 +14,11 @@ import java.util.function.Function;
 
 /** Central SSRF policy for all outbound provider requests. */
 public final class OutboundHostPolicy {
+    /**
+     * The one catalogue of default provider hosts. HTTP_OUTBOUND_ALLOWED_HOSTS replaces it;
+     * HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS adds hosts on top of whichever base applies.
+     * Terraform's runtime test parses this list, so keep one quoted entry per line.
+     */
     private static final String DEFAULT_ALLOWLIST = String.join(";",
             "github=api.github.com",
             "nvd=services.nvd.nist.gov",
@@ -39,7 +44,11 @@ public final class OutboundHostPolicy {
     private final Function<String, InetAddress[]> resolver;
 
     public OutboundHostPolicy(String configuredAllowlist) {
-        this(configuredAllowlist, host -> {
+        this(configuredAllowlist, "");
+    }
+
+    public OutboundHostPolicy(String configuredAllowlist, String additionalAllowlist) {
+        this(configuredAllowlist, additionalAllowlist, host -> {
             try {
                 return InetAddress.getAllByName(host);
             } catch (java.net.UnknownHostException ex) {
@@ -49,8 +58,14 @@ public final class OutboundHostPolicy {
     }
 
     OutboundHostPolicy(String configuredAllowlist, Function<String, InetAddress[]> resolver) {
-        this.allowedHosts = parseAllowlist(configuredAllowlist == null || configuredAllowlist.isBlank()
-                ? DEFAULT_ALLOWLIST : configuredAllowlist);
+        this(configuredAllowlist, "", resolver);
+    }
+
+    OutboundHostPolicy(String configuredAllowlist, String additionalAllowlist, Function<String, InetAddress[]> resolver) {
+        this.allowedHosts = mergeAllowlists(
+                parseAllowlist(configuredAllowlist == null || configuredAllowlist.isBlank()
+                        ? DEFAULT_ALLOWLIST : configuredAllowlist),
+                parseAllowlist(additionalAllowlist == null ? "" : additionalAllowlist));
         this.resolver = resolver;
     }
 
@@ -136,6 +151,17 @@ public final class OutboundHostPolicy {
             result.put(normalizeProvider(parts[0]), Set.copyOf(hosts));
         }
         return Map.copyOf(result);
+    }
+
+    /** Additional entries extend a provider's hosts; they never remove a base entry. */
+    private static Map<String, Set<String>> mergeAllowlists(Map<String, Set<String>> base, Map<String, Set<String>> additional) {
+        Map<String, Set<String>> merged = new HashMap<>(base);
+        additional.forEach((provider, hosts) -> merged.merge(provider, hosts, (existing, added) -> {
+            Set<String> union = new HashSet<>(existing);
+            union.addAll(added);
+            return Set.copyOf(union);
+        }));
+        return Map.copyOf(merged);
     }
 
     private static String normalizeProvider(String providerKey) {

@@ -80,9 +80,10 @@ public class HttpClientConfig {
 
     @Bean
     public OutboundHostPolicy outboundHostPolicy(
-            @Value("${app.http.outbound.allowed-hosts:}") String allowedHosts
+            @Value("${app.http.outbound.allowed-hosts:}") String allowedHosts,
+            @Value("${app.http.outbound.additional-allowed-hosts:}") String additionalAllowedHosts
     ) {
-        return new OutboundHostPolicy(allowedHosts);
+        return new OutboundHostPolicy(allowedHosts, additionalAllowedHosts);
     }
 
     @Bean

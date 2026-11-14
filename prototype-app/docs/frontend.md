@@ -16,7 +16,7 @@ Last updated November 13, 2026 for the UI 2.0 improvements and browser CI change
 | Routing | React Router DOM ^7.18.4 |
 | Server state | @tanstack/react-query ^5.95.2 |
 | Table | @tanstack/react-table ^8.21.3 |
-| Error monitoring | @sentry/react ^10.51.0 |
+| Error monitoring | @sentry/react ^11.11.0 |
 | Report export | docx ^9.6.1 |
 | HTTP | Native `fetch` (no axios) |
 | Test runner | Vitest ^4.1.11 |
@@ -565,7 +565,7 @@ applyAuthHeaders(headers):
 
 ### Base URL
 
-`VITE_API_BASE` overrides the backend URL. Without an override, development uses `/api` through the Vite proxy to `http://localhost:8080`; production uses `https://api.scoutgrid.io/api` so a missing deployment variable cannot send API requests into the SPA fallback.
+`VITE_API_BASE` sets the backend URL. Without it the app calls same-origin `/api`, which development proxies to `http://localhost:8080`. A Vercel production build (`VERCEL_ENV=production`) must set it, and any value must be `/api` or an HTTPS origin listed in the `vercel.json` CSP `connect-src`; `scripts/production-api-policy.mjs` fails the build otherwise, so a missing deployment variable cannot ship.
 
 ### Token helpers
 
@@ -879,7 +879,7 @@ Set public inputs in `.env.local` (no frontend `.env.example` is committed). Pro
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_BASE` | `/api` in development; `https://api.scoutgrid.io/api` in production | Backend API base URL |
+| `VITE_API_BASE` | same-origin `/api`; required for Vercel production builds | Backend API base URL |
 | `VITE_TURNSTILE_SITE_KEY` | Cloudflare test key in development | Public Turnstile site key used by the demo-request CAPTCHA |
 | `VITE_API_KEY` | `change-me-in-prod` | `X-API-Key` header (local dev fallback) |
 | `VITE_CREATOR_KEY` | `local-creator` | `X-Creator-Key` for PLATFORM_OWNER endpoints (local dev) |

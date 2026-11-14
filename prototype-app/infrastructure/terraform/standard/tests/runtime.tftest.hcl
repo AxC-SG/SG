@@ -235,7 +235,7 @@ run "separate_runtime_roles" {
           entry.value if entry.name == "HTTP_OUTBOUND_ALLOWED_HOSTS"
         ]))) ==
         setunion(
-          toset(split(";", regex("HTTP_OUTBOUND_ALLOWED_HOSTS:([^}]+)}", file("${path.module}/../../../backend/src/main/resources/application.yml"))[0])),
+          toset(flatten(regexall("\"([a-z-]+=[^\"]+)\"", regex("(?s)DEFAULT_ALLOWLIST = String\\.join\\(\";\",(.*?)\\);", file("${path.module}/../../../backend/src/main/java/com/prototype/vulnwatch/client/http/OutboundHostPolicy.java"))[0]))),
           toset(["cognito=scoutgrid-runtime-test.auth.us-east-1.amazoncognito.com,cognito-idp.us-east-1.amazonaws.com"])
         )
       ) if role != "migrator"
@@ -259,6 +259,19 @@ run "separate_runtime_roles" {
       strcontains(aws_iam_role_policy.execution[role].policy, local.db_owner_arn) == (role == "migrator")
     ])
     error_message = "Every task must use a digest and verified TLS. Only the migrator receives the owner secret and the enrollment limit."
+  }
+
+  assert {
+    condition = alltrue([
+      for role, task in aws_ecs_task_definition.backend :
+      anytrue([for secret in one(jsondecode(task.container_definitions)).secrets :
+        secret.name == "RESEND_API_KEY" && secret.valueFrom == "${var.backend_candidate.application_secret}:resend_api_key::"
+      ]) == (role != "migrator") &&
+      anytrue([for entry in one(jsondecode(task.container_definitions)).environment :
+        entry.name == "RESEND_FROM_EMAIL" && entry.value == "Scoutgrid <noreply@scoutgrid.io>"
+      ]) == (role != "migrator")
+    ])
+    error_message = "API and worker must receive the Resend key from the application secret and the scoutgrid.io sender, so invitation and campaign email can be delivered; the migrator sends none."
   }
 
   assert {
