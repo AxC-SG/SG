@@ -1,5 +1,14 @@
 # Security checks on the current GitHub plan
 
+## November 14, 2026: controls restored
+
+- CodeQL default setup had stopped analyzing after the repository moved from `AxG-SG` to `AxC-SG` on October 30 (`languages: []`, last analysis October 31). It was re-enabled for Actions, Java/Kotlin, JavaScript/TypeScript and Python with the default query suite. The unused `.github/codeql/codeql-config.yml` was deleted: default setup does not read it, and this personal-account repository has no custom properties to bind one.
+- Repository secret scanning and push protection were enabled. Gitleaks stays as the pre-commit hook and CI scan with the repository's own patterns and exceptions.
+- `AWS backend candidate` became a required check, so the image that ships to ECS must pass its scan before merge, not only before publication.
+- Dependabot version updates now cover Maven and Terraform, grouped by minor and patch.
+
+The wider simplification is tracked in the [CI simplification plan](ci-simplification-plan.md).
+
 As of October 28, 2026, CodeQL default setup analyzes Actions, Python, JavaScript/TypeScript and Java/Kotlin. Successful analyses were observed on the CI reliability PR, in addition to the initial setup run. Semgrep Community Edition remains a separate blocking check; its community rules complement CodeQL and are not assumed equivalent.
 
 | Check | Enforcement | Evidence |
@@ -22,7 +31,7 @@ CodeQL is managed through GitHub default setup. Qualify all four configured lang
 
 ## CI reliability and merge enforcement
 
-The five stable required gates are Quality gate, Semgrep SAST gate, Trivy filesystem gate, Trivy images gate and Performance gate. Quality evaluates every expected job and rejects unexpected skips or cancellations. All PRs report a Performance gate, including an explicit not-applicable result. Conservative selection skips expensive application checks only for root README.md and Markdown under prototype-app/docs; pushes run full verification. Lightweight guards and security scans still run.
+The six stable required gates are Quality gate, Semgrep SAST gate, Trivy filesystem gate, Trivy images gate, Performance gate and AWS backend candidate (the ECS image that is actually deployed, added November 14, 2026). Quality evaluates every expected job and rejects unexpected skips or cancellations. All PRs report a Performance gate, including an explicit not-applicable result. Conservative selection skips expensive application checks only for root README.md and Markdown under prototype-app/docs; pushes run full verification. Lightweight guards and security scans still run.
 
 Trivy owns cached, locally loaded Docker builds and scans those same images; nothing is published. The dedicated ci-postgres-it Maven profile runs only PostgreSQL Failsafe tests. The ordinary backend job retains Surefire, the unchanged unit coverage floor and SpotBugs, and proves both migration test classes ran. Report validation rejects missing classes and skipped integration tests.
 
@@ -34,7 +43,7 @@ The scheduled sweep audits layouts and accessibility at 390/768/1280/1440px in b
 
 See [rollout evidence and remaining administrator steps](ci-reliability-rollout.md). Repository settings must not be considered enforced merely because workflow gates exist.
 
-The main ruleset binds the five stable gates to the GitHub Actions app and requires CodeQL code-scanning results with error-level alerts and high/critical security alerts blocking merges. CodeQL default setup is managed in repository settings for Actions, Java/Kotlin, JavaScript/TypeScript and Python. Its native merge-protection limitations, including default-setup Dependabot PR exceptions, are documented by GitHub; Semgrep and both Trivy gates continue on those PRs. Gate renames must coordinate the workflow, ruleset and contract test in the same change before enforcement is updated.
+The main ruleset binds the six stable gates to the GitHub Actions app and requires CodeQL code-scanning results with error-level alerts and high/critical security alerts blocking merges. CodeQL default setup is managed in repository settings for Actions, Java/Kotlin, JavaScript/TypeScript and Python. Its native merge-protection limitations, including default-setup Dependabot PR exceptions, are documented by GitHub; Semgrep and both Trivy gates continue on those PRs. Gate renames must coordinate the workflow, ruleset and contract test in the same change before enforcement is updated.
 
 ## UI 2.0 regression gates (October 28, 2026)
 

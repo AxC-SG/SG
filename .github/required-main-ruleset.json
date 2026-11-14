@@ -58,6 +58,10 @@
           {
             "context": "Performance gate",
             "integration_id": 15368
+          },
+          {
+            "context": "AWS backend candidate",
+            "integration_id": 15368
           }
         ]
       }

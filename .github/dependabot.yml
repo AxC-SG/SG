@@ -13,3 +13,20 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: /prototype-app/backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: terraform
+    directories:
+      - /prototype-app/infrastructure/terraform/standard
+      - /prototype-app/infrastructure/terraform/modules/standard-network
+    schedule:
+      interval: weekly
+    groups:
+      terraform-providers:
+        update-types: [minor, patch]

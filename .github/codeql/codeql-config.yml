@@ -1,7 +1,0 @@
-name: Scout CodeQL Configuration
-disable-default-queries: false
-queries:
-  - uses: security-extended
-query-filters:
-  - exclude:
-      id: java/csrf-unprotected-request-type

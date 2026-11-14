@@ -20,7 +20,7 @@ class ContractsTest(unittest.TestCase):
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
         ruleset = json.loads((root / '.github/required-main-ruleset.json').read_text())
-        expected = {'Quality gate', 'Semgrep SAST gate', 'Trivy filesystem gate', 'Trivy images gate', 'Performance gate'}
+        expected = {'Quality gate', 'Semgrep SAST gate', 'Trivy filesystem gate', 'Trivy images gate', 'Performance gate', 'AWS backend candidate'}
         status = next(rule['parameters'] for rule in ruleset['rules'] if rule['type'] == 'required_status_checks')
         self.assertEqual({item['context'] for item in status['required_status_checks']}, expected)
         self.assertEqual(len(status['required_status_checks']), len(expected))
