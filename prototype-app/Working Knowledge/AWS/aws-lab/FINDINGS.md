@@ -9,7 +9,7 @@ Found while deploying candidate `0ae3de9` to the Sydney lab. Fix these in one PR
 | 1 | **Fixed** | `runtime.tf` sets `HTTP_OUTBOUND_ALLOWED_HOSTS` on api and worker: the backend default plus `cognito=<login domain>,cognito-idp.<region>.amazonaws.com`. A new `runtime.tftest.hcl` assertion compares the list with `application.yml` and requires the Cognito entry; the test fails when the entry is removed. |
 | 2 | **Fixed** | ECS service `health_check_grace_period_seconds` 120 → 300, with a test assertion that fails at 120. Startup time itself is not yet investigated. |
 | 3 | **Root cause found; fix awaits owner approval** | `TenantService.listActiveTenants()` reads the platform tenant registry without declaring platform scope. Pollers that call it outside `TenantContext.runAsPlatform` (for example `AiGridAssessmentWorker.recover`, `AiBomProjectionWorker`, every 5 s) check out an unscoped connection. Production marks it with the no-tenant sentinel, so RLS stays closed and no data leaks. Proposed fix: wrap the read in `TenantContext.runAsPlatform` inside `listActiveTenants()`, with a unit test. `TenantService` is on the never-touch list. |
-| 4 | **Fixed in the grant and run order** | `grants/bootstrap-retire-migrator-revision.json` allows `ecs:DeregisterTaskDefinition` on `*` (AWS accepts no narrower resource), limited to Sydney. Retire the enrollment migrator (step 8) before planning services (step 9), so no pending migrator replacement is pulled into the service plan. The ARN-scoped grant attached on November 12 was ineffective and is kept as `bootstrap-deregister-migrator.INEFFECTIVE-scoped-arn.json`. |
+| 4 | **Fixed in the grant and run order** | `infrastructure/lab/grants/bootstrap-retire-migrator-revision.json` allows `ecs:DeregisterTaskDefinition` on `*` (AWS accepts no narrower resource), limited to Sydney. Retire the enrollment migrator (step 8) before planning services (step 9), so no pending migrator replacement is pulled into the service plan. The ARN-scoped grant attached on November 12 was ineffective and is kept as `bootstrap-deregister-migrator.INEFFECTIVE-scoped-arn.json`. |
 | 5 | **Fixed** | `hosting.tf` sends `custom_headers` as the compact JSON array Amplify stores. Plan against the lab shows no Amplify change. |
 | 6 / 6a | **Superseded by decision; risk recorded** | MFA is off everywhere (`identity.tf`). Risk acceptance recorded as AR-01 in the [G08 decision record](../release-evidence/standard-g08/G08_RELEASE_DECISION.md). |
 | 7 | **Open (production decision)** | Needs a sender domain and SES identity before production onboarding. |
@@ -30,7 +30,7 @@ Found while deploying candidate `0ae3de9` to the Sydney lab. Fix these in one PR
 | 7 | Cognito uses `COGNITO_DEFAULT` email, which has a low daily send limit. | Pool email configuration. | Use Amazon SES for the production pool before onboarding customers. | Medium (production) |
 | 8 | App email and AI integrations are not configured in the lab: no Resend key, OpenAI key or Sentry DSN. | Task definition environment and secrets. | Decide the production values. Add them to `application-settings` and test demo-request notices and member invites in the lab. | Medium |
 
-## IAM grants (corrected copies in `grants/`)
+## IAM grants (corrected copies in [`infrastructure/lab/grants/`](../../../infrastructure/lab/grants/))
 
 Each of these failed on first use and was fixed during the run:
 
@@ -46,6 +46,6 @@ Each of these failed on first use and was fixed during the run:
 ## Process
 
 - Run the lab from a local terminal or CI rather than browser CloudShell. CloudShell restarted mid-run and lost its temporary files.
-- Automate Cloudflare DNS (`api-lab`, `lab`, ACM validation CNAMEs). Use the Terraform Cloudflare provider or an API token scoped to DNS Edit for `scoutgrid.io`. **November 13:** `scripts/lab.sh` updates `api-lab` with a Keychain token scoped to DNS Edit; `lab` and its validation record are deleted with Amplify.
-- Script lab-up and lab-down from the sequence in [README.md](README.md) so each run is one command. **November 13:** done in `scripts/lab.sh` with Terraform modes (`nat_gateway_mode = "none"`, `runtime_ingress_enabled = false`) and one proposed cycle role ([matrix](grants/LAB_CYCLE_MATRIX.md)).
+- Automate Cloudflare DNS (`api-lab`, `lab`, ACM validation CNAMEs). Use the Terraform Cloudflare provider or an API token scoped to DNS Edit for `scoutgrid.io`. **November 13:** `infrastructure/lab/scripts/lab.sh` updates `api-lab` with a Keychain token scoped to DNS Edit; `lab` and its validation record are deleted with Amplify.
+- Script lab-up and lab-down from the sequence in [README.md](README.md) so each run is one command. **November 13:** done in `infrastructure/lab/scripts/lab.sh` with Terraform modes (`nat_gateway_mode = "none"`, `runtime_ingress_enabled = false`) and one proposed cycle role ([matrix](../../../infrastructure/lab/grants/LAB_CYCLE_MATRIX.md)).
 - Not yet qualified: BOM upload, demo-request onboarding, tenant isolation tests, scheduling under worker replacement, MFA end to end, the ten-customer 24-hour capacity run, recovery, and security operations (CloudTrail/GuardDuty/Config).

@@ -65,6 +65,11 @@ class ContractsTest(unittest.TestCase):
             self.assertIsNotNone(step, f'{relative} is not validated in CI')
             for command in ('terraform init -backend=false', 'terraform validate', 'terraform test'):
                 self.assertIn(command, step, relative)
+        # The lab cycle scripts are linted and tested offline in the same job.
+        lab_step = next((step for step in steps if 'working-directory: prototype-app/infrastructure/lab\n' in step), None)
+        self.assertIsNotNone(lab_step, 'lab scripts are not tested in CI')
+        self.assertIn('shellcheck scripts/*.sh scripts/tests/*.sh', lab_step)
+        self.assertIn('bash scripts/tests/lab.test.sh', lab_step)
         self.assertIn('terraform fmt -check -recursive prototype-app/infrastructure/terraform', job)
         for forbidden in ('id-token:', 'configure-aws-credentials', 'terraform apply'):
             self.assertNotIn(forbidden, job)

@@ -101,6 +101,11 @@ jobs:
           terraform init -backend=false -lockfile=readonly -input=false
           terraform validate -no-color
           terraform test -no-color
+      - name: Check and test the lab cycle scripts offline
+        working-directory: prototype-app/infrastructure/lab
+        run: |
+          shellcheck scripts/*.sh scripts/tests/*.sh
+          bash scripts/tests/lab.test.sh
 
   secrets:
     runs-on: ubuntu-latest
