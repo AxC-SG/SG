@@ -46,7 +46,7 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Credentials are encrypted with the tenant key and never returned. The instance URL is checked
  * against the outbound host policy at save and again by the client on every request. A new source
  * starts {@code DISABLED} and is enabled only with a token from a preview of its current scope.
- * Configuring, testing, previewing, enabling and resuming need {@code app.ownership.servicenow.directory-enabled}; pausing and
+ * Configuring, testing, previewing, enabling, resuming and sync-now need {@code app.ownership.servicenow.directory-enabled}; pausing and
  * disabling always work, so a source can be stopped after the switch is turned off.
  */
 @Service
@@ -96,13 +96,15 @@ public class IdentitySourceService {
     private final OutboundHostPolicy hostPolicy;
     private final ServiceNowDirectoryClient client;
     private final OwnershipClaimService claims;
+    private final DirectoryImportService runs;
     private final ObjectMapper json;
     private final boolean enabled;
 
     public IdentitySourceService(JdbcTemplate jdbc, DirectoryService directory, TenantDataCipher cipher, AuditEventService audit, OutboundHostPolicy hostPolicy,
-                                 ServiceNowDirectoryClient client, OwnershipClaimService claims, ObjectMapper json,
+                                 ServiceNowDirectoryClient client, OwnershipClaimService claims, DirectoryImportService runs, ObjectMapper json,
                                  @Value("${app.ownership.servicenow.directory-enabled:false}") boolean enabled) {
         this.jdbc = jdbc;
+        this.runs = runs;
         this.directory = directory;
         this.cipher = cipher;
         this.audit = audit;
@@ -173,8 +175,11 @@ public class IdentitySourceService {
         boolean scopeChanged = !url.equals(current.scope().get("instanceUrl")) || !filters.equals(storedFilters(current.scope()));
         String state = scopeChanged && !"DISABLED".equals(current.state()) ? "DISABLED" : current.state();
 
+        // The cursor's timestamps describe the old instance, so a move to another instance starts over.
+        boolean instanceChanged = !url.equals(current.scope().get("instanceUrl"));
         boolean changed = directory.updateProviderSource(id, KIND, name,
-                secretGiven ? encrypt(tenant, credentials) : current.credentialsEnc(), write(scope), schedule, state, req.version());
+                secretGiven ? encrypt(tenant, credentials) : current.credentialsEnc(), write(scope), schedule, state, instanceChanged,
+                req.version());
         if (!changed) throw conflict("The source changed since it was loaded; reload and try again");
         audit.record("ownership.identity_source.updated", "identity_source", id.toString(), OwnershipEvents.json(Map.of(
                 "scopeChanged", scopeChanged, "credentialsChanged", secretGiven,
@@ -270,8 +275,45 @@ public class IdentitySourceService {
         if (!directory.setProviderSourceState(id, KIND, List.of("DISABLED"), "ENABLED", source.version())) {
             throw conflict("The source changed since it was previewed; preview it again");
         }
-        audit.record("ownership.identity_source.enabled", "identity_source", id.toString(), OwnershipEvents.json(Map.of()));
+        UUID runId = runs.queueProviderRun(id, true, actor);
+        audit.record("ownership.identity_source.enabled", "identity_source", id.toString(), OwnershipEvents.json(Map.of("runId", runId)));
         return get(id).orElseThrow();
+    }
+
+    /** A queued sync run; the worker schedule picks it up. */
+    public record SyncRequest(UUID runId, boolean complete) { }
+
+    /**
+     * Queues a sync of an enabled source (§1.1 sync-now): an incremental run, or a complete scan when {@code complete}.
+     * If a run is already queued it is reused, and upgraded to a complete scan when one is asked for.
+     */
+    @Transactional
+    public SyncRequest syncNow(UUID id, boolean complete, String actor) {
+        requireEnabled();
+        requireNotKilled();
+        requireReady();
+        Row source = requireServiceNow(id);
+        if (!"ENABLED".equals(source.state())) throw conflict("Only an enabled source can be synced");
+        UUID runId = runs.queueProviderRun(id, complete, actor);
+        audit.record("ownership.identity_source.sync_requested", "identity_source", id.toString(),
+                OwnershipEvents.json(Map.of("runId", runId, "complete", complete)));
+        return new SyncRequest(runId, complete);
+    }
+
+    /** What the sync job needs from a source: decrypted connection details, the stored filters and the schedule. */
+    record SyncSetup(Connection connection, Map<String, String> filters, Duration schedule) { }
+
+    /** For the sync job only, which runs with the tenant selected and never returns these values to an API. */
+    SyncSetup syncSetup(UUID id) {
+        UUID tenant = requireReady();
+        Row source = requireServiceNow(id);
+        Duration schedule;
+        try {
+            schedule = OwnershipSourcePolicy.requireValidInterval(Duration.parse(source.schedule() == null ? DEFAULT_SCHEDULE.toString() : source.schedule()));
+        } catch (DateTimeParseException | IllegalArgumentException invalid) {
+            schedule = DEFAULT_SCHEDULE;
+        }
+        return new SyncSetup(connection(tenant, source), storedFilters(source.scope()), schedule);
     }
 
     private Function<String, byte[]> mac(UUID tenant) {
@@ -295,14 +337,19 @@ public class IdentitySourceService {
         return get(id).orElseThrow();
     }
 
-    /** Resumes a paused source, which is also how an admin approves a run held by an anomaly pause. */
+    /**
+     * Resumes a paused source, which is also how an admin approves a run held by an anomaly pause (§1.7): the next run
+     * skips the anomaly check for the held tables only. A run is queued so the approved changes apply without waiting
+     * for the schedule.
+     */
     @Transactional
     public SourceView resume(UUID id, String actor) {
         requireEnabled();
         requireNotKilled();
         requireReady();
         transition(id, List.of("PAUSED"), "ENABLED", "Only a paused source can be resumed");
-        audit.record("ownership.identity_source.resumed", "identity_source", id.toString(), OwnershipEvents.json(Map.of()));
+        UUID runId = runs.queueProviderRun(id, false, actor);
+        audit.record("ownership.identity_source.resumed", "identity_source", id.toString(), OwnershipEvents.json(Map.of("runId", runId)));
         return get(id).orElseThrow();
     }
 

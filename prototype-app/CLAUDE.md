@@ -343,6 +343,7 @@ All source cron callbacks explicitly use UTC. Fixed-delay pollers have no wall-c
 | `04:00` Sunday | EOL denormalization (stage 4) |
 | Every 5 min | Run enabled GitHub SBOM sources |
 | Every 5 min | Run enabled ServiceNow / SCCM / AWS / GCP Discovery scheduled syncs; generic Azure remains disabled for the pilot |
+| Every 5 min | ServiceNow directory sync (`ServiceNowDirectorySync`): queued or due runs of enabled identity sources; does nothing while `app.ownership.servicenow.directory-enabled` is off. Skipped on `api` and `schema-migrator` nodes |
 | Every 15 min | Reopen expired suppressions |
 | Every 2 sec | Drain `finding_delta_queue` (batches of 100) |
 | Every 1 min (default) | Recover stale `PROCESSING` finding-delta-queue entries (sibling of the 2s drain, recovers from a worker dying mid-batch) |

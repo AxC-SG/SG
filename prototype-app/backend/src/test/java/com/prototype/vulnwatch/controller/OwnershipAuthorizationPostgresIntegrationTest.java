@@ -99,6 +99,8 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/preview", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/enable",
                         Map.of("previewToken", "x.y")),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/sync",
+                        Map.of("complete", true)),
                 new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/pause", Map.of("reason", "test")),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));

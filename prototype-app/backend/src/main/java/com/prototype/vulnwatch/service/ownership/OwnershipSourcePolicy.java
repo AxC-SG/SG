@@ -51,6 +51,16 @@ public final class OwnershipSourcePolicy {
         return proposedChanges >= ANOMALY_MIN_CHANGES && proposedChanges >= ANOMALY_FRACTION * activeClaims;
     }
 
+    /**
+     * The anomaly gate when a run's creates are counted apart from its other changes (plan §12.3). A source's first
+     * complete baseline load is exempt only from the percentage-based check for creates: they still count toward the
+     * absolute {@value #ANOMALY_ABSOLUTE_CHANGES}, and updates, deactivations and removals count as usual.
+     */
+    public static boolean anomalous(long changes, long creates, long active, boolean baselineLoad) {
+        if (changes + creates >= ANOMALY_ABSOLUTE_CHANGES) return true;
+        return anomalous(baselineLoad ? changes : changes + creates, active);
+    }
+
     private static Duration max(Duration a, Duration b) {
         return a.compareTo(b) >= 0 ? a : b;
     }

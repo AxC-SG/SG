@@ -6,6 +6,7 @@ import com.prototype.vulnwatch.service.ownership.IdentitySourceService.Connectio
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.Preview;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.ServiceNowSourceRequest;
 import com.prototype.vulnwatch.service.ownership.IdentitySourceService.SourceView;
+import com.prototype.vulnwatch.service.ownership.IdentitySourceService.SyncRequest;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Identity sources for directory sync (Phase 0B contract §1.1, §1.6). Configure, test, preview, enable and resume need
+ * Identity sources for directory sync (Phase 0B contract §1.1, §1.6). Configure, test, preview, enable, sync and resume need
  * CONFIGURE_IDENTITY_SOURCE (tenant admins); pause needs PAUSE_SOURCE. Credentials are write-only.
  */
 @RestController
@@ -33,6 +34,8 @@ public class IdentitySourceController {
     public record PauseRequest(String reason) { }
 
     public record EnableRequest(String previewToken) { }
+
+    public record SyncNowRequest(Boolean complete) { }
 
     private final IdentitySourceService sources;
     private final RequestActorService actors;
@@ -84,6 +87,13 @@ public class IdentitySourceController {
     @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_IDENTITY_SOURCE')")
     public SourceView enable(@PathVariable UUID id, @RequestBody(required = false) EnableRequest req) {
         return sources.enable(id, req == null ? null : req.previewToken(), actor());
+    }
+
+    /** Queues a sync of an enabled source; {@code complete} asks for a complete scan (§1.5). The worker runs it. */
+    @PostMapping("/{id}/sync")
+    @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_IDENTITY_SOURCE')")
+    public ResponseEntity<SyncRequest> sync(@PathVariable UUID id, @RequestBody(required = false) SyncNowRequest req) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(sources.syncNow(id, req != null && Boolean.TRUE.equals(req.complete()), actor()));
     }
 
     @PostMapping("/{id}/pause")

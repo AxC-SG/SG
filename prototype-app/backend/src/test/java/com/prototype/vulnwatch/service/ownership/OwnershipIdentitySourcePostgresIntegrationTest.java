@@ -280,6 +280,9 @@ class OwnershipIdentitySourcePostgresIntegrationTest {
 
         SourceView enabled = sources.enable(created.id(), token, "admin");
         assertThat(enabled.state()).isEqualTo("ENABLED");
+        assertThat(jdbc.queryForMap("SELECT state, kind, cursor_start::jsonb ->> 'complete' AS complete FROM identity_import_run WHERE source_id = ?",
+                created.id())).as("enabling queues the complete baseline scan")
+                .containsEntry("state", "QUEUED").containsEntry("kind", "PROVIDER_SYNC").containsEntry("complete", "true");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE target_id = ? AND action = 'ownership.identity_source.enabled'",
                 Long.class, created.id().toString())).isEqualTo(1L);
 

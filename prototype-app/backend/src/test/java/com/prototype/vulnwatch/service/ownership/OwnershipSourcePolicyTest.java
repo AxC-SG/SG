@@ -71,4 +71,14 @@ class OwnershipSourcePolicyTest {
     void aFirstLoadWithNothingActiveNeverPauses() {
         assertThat(OwnershipSourcePolicy.anomalous(0, 0)).isFalse();
     }
+
+    @Test
+    void aBaselineLoadIsExemptOnlyFromThePercentageCheckForCreates() {
+        assertThat(OwnershipSourcePolicy.anomalous(0, 5_000, 0, true)).as("baseline creates under the absolute limit").isFalse();
+        assertThat(OwnershipSourcePolicy.anomalous(0, 10_000, 0, true)).as("baseline creates still count toward 10,000").isTrue();
+        assertThat(OwnershipSourcePolicy.anomalous(9_000, 1_000, 1_000_000, true)).as("changes and creates add up").isTrue();
+        assertThat(OwnershipSourcePolicy.anomalous(150, 0, 1_000, true)).as("baseline updates still count").isTrue();
+        assertThat(OwnershipSourcePolicy.anomalous(0, 150, 1_000, false)).as("creates count after the baseline").isTrue();
+        assertThat(OwnershipSourcePolicy.anomalous(50, 50, 1_000, true)).isFalse();
+    }
 }

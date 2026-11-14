@@ -106,7 +106,8 @@ public class ServiceNowDirectoryClient {
             sysId = sysId.toLowerCase(Locale.ROOT);
         }
 
-        boolean isAfter(Cursor other) {
+        /** True when this cursor is strictly later than {@code other} in {@code (sys_updated_on, sys_id)} order; null is the start. */
+        public boolean isAfter(Cursor other) {
             if (other == null) {
                 return true;
             }

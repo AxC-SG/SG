@@ -23,7 +23,7 @@ class IdentitySourceServiceTest {
     private final ServiceNowDirectoryClient client = mock(ServiceNowDirectoryClient.class);
     private final DirectoryService directory = mock(DirectoryService.class);
     private final IdentitySourceService off = new IdentitySourceService(jdbc, directory, mock(TenantDataCipher.class), mock(AuditEventService.class),
-            OutboundHostPolicy.forTests(), client, mock(OwnershipClaimService.class), new ObjectMapper(), false);
+            OutboundHostPolicy.forTests(), client, mock(OwnershipClaimService.class), mock(DirectoryImportService.class), new ObjectMapper(), false);
 
     @Test
     void configuringTestingPreviewingEnablingAndResumingAreRefusedWhileTheSwitchIsOff() {
@@ -36,6 +36,7 @@ class IdentitySourceServiceTest {
         assertConflict(() -> off.resume(id, "admin"));
         assertConflict(() -> off.preview(id, "admin"));
         assertConflict(() -> off.enable(id, "token", "admin"));
+        assertConflict(() -> off.syncNow(id, true, "admin"));
         verifyNoInteractions(jdbc, directory, client);
     }
 

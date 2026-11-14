@@ -82,6 +82,17 @@ fails, as in Release 1.
   yet is retried on the next run and counted as `rows_rejected`, not dropped.
 - Every run is one `identity_import_run` with `kind = 'PROVIDER_SYNC'` and its counts; rows carry `last_seen_run_id`.
 
+**DECISIONS (approved by the product owner, November 14, 2026):**
+
+- Display name, email, employee number and manager are written only to people whose `created_source_id` is this
+  source. People created manually, by CSV or by another source keep their values; their link is still recorded. An
+  active identity reactivates an inactive person of this source.
+- "Retried on the next run" means the next run that reads the row. Within one run, people are synced before
+  memberships, and managers that appear later in `sys_user` are resolved at the end of that table. A reference that is
+  still unresolved, for example to an `AMBIGUOUS` identity an admin has not resolved yet, is retried when ServiceNow
+  changes the row or by the next complete scan (at least weekly, or on demand). No column holds pending references.
+- `parent` is not stored: no V21 column holds it, and nesting creates no inheritance in MVP.
+
 ### 1.4 Identity linking (non-destructive)
 
 Linking decides which `directory_user` an external identity belongs to. It never merges, deletes or relinks people
@@ -138,6 +149,17 @@ Directory people never gain Scoutgrid login, tenant membership or roles from a l
   exhausts its retries ends `FAILED`, keeps its cursor at the last committed page and sets `health = 'DEGRADED'`; three
   consecutive failures set `state = 'ERROR'`.
 
+**Implementation (November 14, 2026):** `ServiceNowDirectorySync` runs on the five-minute UTC connector schedule and
+needs `app.ownership.servicenow.directory-enabled`. The `identity_import_run` row is the durable job: enabling queues a
+complete scan, resuming queues a run, and `POST /api/ownership/identity-sources/{id}/sync` with `{complete}` (sync-now,
+`CONFIGURE_IDENTITY_SOURCE`, blocked by the switch and the kill switch) queues one or upgrades the queued one. Otherwise
+a run is due when the last one is older than the source's schedule. One run per source holds a per-source advisory
+lock; a `RUNNING` run older than the maximum run duration (default 4 hours) plus 30 minutes is ended `FAILED`. The run's
+`cursor_start` JSON records whether it is complete, whether it is the baseline and which tables it may skip the anomaly
+check for; `cursor_end` records the tables' cursors and any tables held by an anomaly. Rows apply one transaction each;
+a row the directory refuses counts as `rows_rejected`. A complete scan moves the stored cursor only forward, and
+changing the instance URL clears it. A run stops `CANCELLED` when the source leaves `ENABLED` or the kill switch is set.
+
 ### 1.6 Preview and first load
 
 - Preview fetches counts per table and up to 10 sample rows per table, writes nothing and returns a preview token
@@ -150,11 +172,18 @@ Directory people never gain Scoutgrid login, tenant membership or roles from a l
 
 ### 1.7 Anomaly pause
 
-`OwnershipSourcePolicy.anomalous(changes, active)` is applied per table to the changes a run proposes, counting
-updates, deactivations and membership removals; creates count only after the baseline. A run that trips it writes
-nothing for that table, raises a `PRODUCER_ANOMALY` review item and pauses the source until an admin approves. The
-first baseline load is exempt only from the percentage-based create check (plan §12.3), never from validation failures
-or tenant quotas.
+`OwnershipSourcePolicy.anomalous(changes, creates, active, baselineLoad)` is applied per table to the changes a run
+proposes, counting creates, updates, deactivations and membership removals against that table's active rows for this
+source. A run that trips it writes nothing for that table, raises a `PRODUCER_ANOMALY` review item and pauses the source
+until an admin approves. The first baseline load is exempt only from the percentage-based create check (plan §12.3):
+its creates still count toward the absolute 10,000, and it is never exempt from validation failures or tenant quotas.
+(Corrected November 14, 2026: this paragraph said creates count only after the baseline, which would have raised the
+plan's threshold.)
+
+**DECISIONS (approved by the product owner, November 14, 2026):** approval is the existing resume
+(`CONFIGURE_IDENTITY_SOURCE`). The next run skips the check for the held tables only, is a complete scan when the held
+run was one, and closes their review items once applied. A failed run carries the approval to the run after it. The
+count is a read-only pass before the writes. Manager changes are not counted.
 
 ### 1.8 Group-to-team mapping and CMDB resolution
 
