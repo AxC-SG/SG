@@ -83,6 +83,50 @@ public class DirectoryService {
         return id;
     }
 
+    // ----- provider sources (validated, encrypted and audited by IdentitySourceService) -----------------------
+
+    private static final Set<String> PROVIDER_KINDS = Set.of("SERVICENOW", "ENTRA", "OKTA");
+
+    /** Inserts a provider source in state DISABLED. {@code credentialsEnc} must already be tenant ciphertext. */
+    @Transactional
+    public UUID createProviderSource(String kind, String displayName, String credentialsEnc, String scopeJson, String schedule,
+                                     String actor) {
+        requireProviderKind(kind);
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO identity_source (tenant_id, id, kind, display_name, credentials_enc, scope_config, schedule, created_by)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, ?, ?, ?::jsonb, ?, ?)
+                """, id, kind, displayName, credentialsEnc, scopeJson, schedule, actor);
+        return id;
+    }
+
+    /** Replaces a provider source's configuration and state at {@code expectedVersion}. Returns false on a version conflict. */
+    @Transactional
+    public boolean updateProviderSource(UUID id, String kind, String displayName, String credentialsEnc, String scopeJson,
+                                        String schedule, String state, long expectedVersion) {
+        requireProviderKind(kind);
+        return jdbc.update("""
+                UPDATE identity_source SET display_name = ?, credentials_enc = ?, scope_config = ?::jsonb, schedule = ?, state = ?,
+                       updated_at = now(), version = version + 1
+                 WHERE id = ? AND kind = ? AND version = ?
+                """, displayName, credentialsEnc, scopeJson, schedule, state, id, kind, expectedVersion) == 1;
+    }
+
+    /** Moves a provider source from one of {@code from} to {@code to}. Returns false when it was in none of them. */
+    @Transactional
+    public boolean setProviderSourceState(UUID id, String kind, List<String> from, String to) {
+        requireProviderKind(kind);
+        List<Object> args = new ArrayList<>(List.of(to, id, kind));
+        args.addAll(from);
+        return jdbc.update("UPDATE identity_source SET state = ?, updated_at = now(), version = version + 1"
+                + " WHERE id = ? AND kind = ? AND state IN (" + String.join(", ", java.util.Collections.nCopies(from.size(), "?")) + ")",
+                args.toArray()) == 1;
+    }
+
+    private static void requireProviderKind(String kind) {
+        if (!PROVIDER_KINDS.contains(kind)) throw new IllegalArgumentException("Not a provider identity-source kind: " + kind);
+    }
+
     // ----- users ----------------------------------------------------------------------------------------------
 
     @Transactional

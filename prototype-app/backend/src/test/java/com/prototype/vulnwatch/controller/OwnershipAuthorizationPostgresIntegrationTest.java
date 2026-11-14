@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +57,7 @@ class OwnershipAuthorizationPostgresIntegrationTest {
         PostgresITSupport.registerDatabaseProperties(registry, DATABASE);
         registry.add("APP_JWT_HMAC_SECRET", () -> "ownership-authz-regression-secret-32-bytes");
         registry.add("app.security.jwt.keycloak-client-id", () -> "scout-ui");
+        registry.add("app.ownership.servicenow.directory-enabled", () -> "true");
     }
 
     @Autowired private MockMvc mvc;
@@ -83,7 +85,18 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                 new Endpoint(Action.WRITE_TEAMS, "POST", "/api/ownership/teams", Map.of("name", "Team " + UUID.randomUUID())),
                 new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/review-items", null),
                 new Endpoint(Action.RESOLVE_REVIEW, "PATCH", "/api/ownership/review-items/" + missing, Map.of("state", "DISMISSED")),
-                new Endpoint(Action.MANAGE_ENCRYPTION, "GET", "/api/ownership/encryption", null));
+                new Endpoint(Action.MANAGE_ENCRYPTION, "GET", "/api/ownership/encryption", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/identity-sources", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/identity-sources/" + missing, null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources",
+                        Map.of("displayName", "ServiceNow " + UUID.randomUUID(), "instanceUrl", "https://acme.service-now.com",
+                                "username", "svc", "secret", "s")),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "PUT", "/api/ownership/identity-sources/" + missing,
+                        Map.of("displayName", "ServiceNow", "instanceUrl", "https://acme.service-now.com", "version", 0)),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/test", null),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/pause", Map.of("reason", "test")),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));
         List<Arguments> cases = new ArrayList<>();
         for (String role : ROLES) for (Endpoint e : endpoints) cases.add(Arguments.of(role, e));
         return cases.stream();
@@ -141,6 +154,7 @@ class OwnershipAuthorizationPostgresIntegrationTest {
             case "GET" -> get(e.path());
             case "POST" -> post(e.path());
             case "PATCH" -> patch(e.path());
+            case "PUT" -> put(e.path());
             default -> throw new IllegalArgumentException(e.method());
         };
         if (e.body() != null) builder.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(e.body()));
