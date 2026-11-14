@@ -9,8 +9,8 @@ Agreed November 14, 2026, after two independent reviews of the full pipeline and
 | Secret scanning and push protection | Enabled November 14 |
 | CodeQL default setup (4 languages) | Re-enabled November 14; confirm fresh PR and `main` analyses |
 | Live ruleset requires `AWS backend candidate` | Applied November 14 |
-| PR A: Phase 1 repository files | Open |
-| PR B: Phase 2 | In progress |
+| PR A: Phase 1 repository files | [#84](https://github.com/AxC-SG/SG/pull/84), open |
+| PR B: Phase 2 | Open, stacked on #84 |
 | PR E: Phase 6.1–6.2 | [#83](https://github.com/AxC-SG/SG/pull/83), measuring |
 | PRs C, D, F | Waiting on A, B and E |
 
