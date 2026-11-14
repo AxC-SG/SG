@@ -51,3 +51,6 @@ coverage/
 
 # UI 2.0 checkpoint screenshots stay on disk, out of git
 prototype-app/Working Knowledge/New UI 2.0/checkpoints/**/*.png
+
+# Python bytecode from running CI scripts locally
+__pycache__/

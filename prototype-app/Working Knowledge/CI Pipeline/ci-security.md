@@ -1,5 +1,14 @@
 # Security checks on the current GitHub plan
 
+## November 14, 2026: controls restored
+
+- CodeQL default setup had stopped analyzing after the repository moved from `AxG-SG` to `AxC-SG` on October 30 (`languages: []`, last analysis October 31). It was re-enabled for Actions, Java/Kotlin, JavaScript/TypeScript and Python with the default query suite. The unused `.github/codeql/codeql-config.yml` was deleted: default setup does not read it, and this personal-account repository has no custom properties to bind one.
+- Repository secret scanning and push protection were enabled. Gitleaks stays as the pre-commit hook and CI scan with the repository's own patterns and exceptions.
+- `AWS backend candidate` became a required check, so the image that ships to ECS must pass its scan before merge, not only before publication.
+- Dependabot version updates now cover Maven and Terraform, grouped by minor and patch.
+
+The wider simplification is tracked in the [CI simplification plan](ci-simplification-plan.md).
+
 As of October 28, 2026, CodeQL default setup analyzes Actions, Python, JavaScript/TypeScript and Java/Kotlin. Successful analyses were observed on the CI reliability PR, in addition to the initial setup run. Semgrep Community Edition remains a separate blocking check; its community rules complement CodeQL and are not assumed equivalent.
 
 | Check | Enforcement | Evidence |
@@ -7,7 +16,7 @@ As of October 28, 2026, CodeQL default setup analyzes Actions, Python, JavaScrip
 | Gitleaks CLI 8.30.1 | Fails on detected secrets or scanner errors; PR scans compare the base/head commit range, pushes compare before/after, and events without a base scan all history | Redacted SARIF Actions artifact, 14 days |
 | Semgrep CE 1.182.0 | Community `p/ci` rules over backend Java and frontend source; `--error --strict` blocks findings and parser/configuration errors | JSON and SARIF Actions artifacts, 14 days |
 | SpotBugs | Existing Maven verify gate; existing thresholds unchanged | Maven/CI output |
-| Trivy filesystem and images | Existing CRITICAL vulnerability threshold and scoped ignore file unchanged; enforcement precedes report retention | Filesystem and backend/frontend image SARIF Actions artifacts, 14 days |
+| Trivy filesystem and ECS image | CRITICAL threshold and scoped ignore file unchanged; each scan writes SARIF and fails the job in one run | SARIF Actions artifacts, 14 days; also code scanning on `main` pushes and the weekly schedule |
 
 Gitleaks uses a pinned CLI binary with a checked-in SHA-256 verification, instead of the separately licensed organization action wrapper. Its existing `.gitleaks.toml` and `.gitleaksignore` remain in effect. The workflow needs no Gitleaks license or organization secret, including on Dependabot PRs. Reports are redacted; never publish raw credentials in logs or artifacts.
 
@@ -22,11 +31,10 @@ CodeQL is managed through GitHub default setup. Qualify all four configured lang
 
 ## CI reliability and merge enforcement
 
-The five stable required gates are Quality gate, Semgrep SAST gate, Trivy filesystem gate, Trivy images gate and Performance gate. Quality evaluates every expected job and rejects unexpected skips or cancellations. All PRs report a Performance gate, including an explicit not-applicable result. Conservative selection skips expensive application checks only for root README.md and Markdown under prototype-app/docs; pushes run full verification. Lightweight guards and security scans still run.
+The five stable required gates are Quality gate, Semgrep SAST gate, Trivy filesystem gate, Performance gate and AWS backend candidate (the ECS image that is actually deployed). Trivy images gate was retired on November 14, 2026: it scanned the backend `default-runtime` target and a CI-only nginx frontend image, neither of which is deployed. Quality evaluates every expected job and rejects unexpected skips or cancellations. All PRs report a Performance gate, including an explicit not-applicable result. Change selection (`.github/scripts/classify-changes.py`, November 14, 2026) emits `frontend`, `backend` and `infrastructure`. Frontend and browser journeys run for `prototype-app/frontend/`; backend unit and PostgreSQL tests (and Performance certification) for `prototype-app/backend/`, `scripts/`, `policy-packages/`, `certification/`, `test-fixtures/` and `sample-data/`; Terraform validation for `prototype-app/infrastructure/`. Working Knowledge, Markdown under `prototype-app/docs/`, root README and CLAUDE.md files select nothing. Pushes, an empty change list, any `.github/` change and any unrecognised path select everything; a job may skip only when its own component was not selected. Lightweight guards and security scans still run.
 
 Trivy owns cached, locally loaded Docker builds and scans those same images; nothing is published. The dedicated ci-postgres-it Maven profile runs only PostgreSQL Failsafe tests. The ordinary backend job retains Surefire, the unchanged unit coverage floor and SpotBugs, and proves both migration test classes ran. Report validation rejects missing classes and skipped integration tests.
 
-The scanned frontend runtime in `frontend/Dockerfile.ci` requires `brotli-libs>=1.2.1-r0` for the patched decoder.
 
 Performance Governance sets CERTIFICATION_STRICT=true. Enterprise certification defaults to strict, whereas standalone baseline, scorecard and correlation commands default to diagnostic mode. Strict certification rejects HTTP errors, auth skips, incomplete samples, malformed reports and missing required measurements; the public scorecard API remains diagnostic. Three serial samples are a regression smoke check, not a representative load certification. Missing Server-Timing headers remain visible diagnostics.
 

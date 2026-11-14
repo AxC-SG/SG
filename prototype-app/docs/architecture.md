@@ -11,7 +11,7 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Browser — React 18 + TypeScript + Vite (port 5173 local)           │
-│  Vercel static SPA (prod); nginx:8080 image is CI-scan only         │
+│  Vercel static SPA (prod)                                           │
 └─────────────────────────────┬───────────────────────────────────────┘
                               │ REST API (http://localhost:8080/api)
 ┌─────────────────────────────▼───────────────────────────────────────┐
@@ -302,7 +302,7 @@ API calls use `src/api/client.ts` and the established `src/features/cve-workbenc
 ## Deployment
 
 - **Backend container:** `eclipse-temurin:17-jre`, non-root user, port 8080, JVM flags: `-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=10.0 -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError`
-- **Frontend (production):** Vercel deploys `prototype-app/frontend` using `frontend/vercel.json`; `https://scoutgrid.io` is the sole public frontend origin. The Vercel configuration provides SPA rewrites and browser security headers. `frontend/Dockerfile.ci` builds the same static bundle only for CI image-security checks; it is not a deployment artifact.
+- **Frontend (production):** Vercel deploys `prototype-app/frontend` using `frontend/vercel.json`; `https://scoutgrid.io` is the sole public frontend origin. The Vercel configuration provides SPA rewrites and browser security headers. Frontend dependencies are covered by the Trivy filesystem scan; there is no frontend container image.
 - **AWS Standard target:** ECS Fargate runs the API and worker in private subnets behind an ALB and uses private RDS PostgreSQL. Vercel remains the frontend host for the lab and production (owner decision, November 13, 2026); the Amplify lab frontend is retired. Terraform defines the [Standard stack](../infrastructure/terraform/standard).
 - **Current environment (November 13, 2026):** the Sydney AWS lab is the only backend (`https://api-lab.scoutgrid.io/api`) behind the Vercel site `https://scoutgrid.io`. Render is retired. See the [plan](<../Working Knowledge/AWS/LAB_SOLE_ENVIRONMENT_PLAN.md>) and [lab README](<../Working Knowledge/AWS/aws-lab/README.md>).
 - **Database bootstrap:** An ECS task runs `ProductionBootstrapCli` with the migration role and exits. The API and worker use the restricted runtime role. See [bootstrap wrapper](../backend/scripts/run-schema-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).

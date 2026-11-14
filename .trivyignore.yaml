@@ -6,11 +6,11 @@ vulnerabilities:
     expired_at: 2026-11-19
     statement: >-
       Not affected: this JSON REST API has no XsltView or server-side view rendering.
-      Reviewed 2026-11-12; check-spring-advisory-applicability.py guards this prerequisite in all three scan jobs.
+      Reviewed 2026-11-12; check-spring-advisory-applicability.py guards this prerequisite in both scan jobs.
   - id: CVE-2026-47890
     purls:
       - pkg:maven/org.springframework/spring-webmvc@6.2.19
     expired_at: 2026-11-19
     statement: >-
       Not affected: this API does not stream view fragments over SSE.
-      Reviewed 2026-11-12; check-spring-advisory-applicability.py guards this prerequisite in all three scan jobs.
+      Reviewed 2026-11-12; check-spring-advisory-applicability.py guards this prerequisite in both scan jobs.

@@ -52,11 +52,11 @@
             "integration_id": 15368
           },
           {
-            "context": "Trivy images gate",
+            "context": "Performance gate",
             "integration_id": 15368
           },
           {
-            "context": "Performance gate",
+            "context": "AWS backend candidate",
             "integration_id": 15368
           }
         ]
