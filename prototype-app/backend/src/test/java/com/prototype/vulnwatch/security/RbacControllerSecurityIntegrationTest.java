@@ -36,9 +36,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -61,31 +61,31 @@ class RbacControllerSecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private TenantService tenantService;
-    @MockBean
+    @MockitoBean
     private TenantRepository tenantRepository;
-    @MockBean
+    @MockitoBean
     private WorkspaceService workspaceService;
-    @MockBean
+    @MockitoBean
     private RiskPolicyService riskPolicyService;
-    @MockBean
+    @MockitoBean
     private com.prototype.vulnwatch.service.FindingsScoreRecomputeService findingsScoreRecomputeService;
-    @MockBean
+    @MockitoBean
     private FindingWorkflowService findingWorkflowService;
-    @MockBean
+    @MockitoBean
     private ServiceNowCmdbConfigService serviceNowCmdbConfigService;
-    @MockBean
+    @MockitoBean
     private ServiceNowCmdbSyncService serviceNowCmdbSyncService;
-    @MockBean
+    @MockitoBean
     private AuditEventService auditEventService;
-    @MockBean
+    @MockitoBean
     private OperationalMetricsService operationalMetricsService;
-    @MockBean
+    @MockitoBean
     private JwtDecoder jwtDecoder;
-    @MockBean
+    @MockitoBean
     private JwtTenantAuthenticationService jwtTenantAuthenticationService;
-    @MockBean
+    @MockitoBean
     private TenantSupportGrantService tenantSupportGrantService;
 
     private UUID tenantId;

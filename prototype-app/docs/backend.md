@@ -13,7 +13,7 @@ New API-driven screens follow [the UI development standard](<../Working Knowledg
 | Component | Version / Detail |
 |-----------|-----------------|
 | Java | 17 |
-| Spring Boot | 3.5.16 |
+| Spring Boot | 4.1.2 (Spring Framework 7.0, Hibernate 7.4, Tomcat 11; Jackson 2 kept through `spring-boot-jackson2`) |
 | Spring Security | JWT Bearer + API key dual-auth |
 | Spring Data JPA | PostgreSQL via HikariCP |
 | Database | PostgreSQL (Flyway migrations in `postgres_reset/` for the platform schema; a second `tenant/` line, applied once per tenant schema by the tenant schema control plane, owns per-tenant DDL) |

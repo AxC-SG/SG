@@ -712,7 +712,7 @@ public class CiResolutionService {
             return null;
         }
         try {
-            String uri = UriComponentsBuilder.fromHttpUrl(runtimeConfig.baseUrl())
+            String uri = UriComponentsBuilder.fromUriString(runtimeConfig.baseUrl())
                     .path("/api/now/table/{tableName}")
                     .queryParam("sysparm_fields",
                         "sys_id,name,sys_class_name,owned_by,managed_by,assigned_to,department,support_group")
@@ -782,7 +782,7 @@ public class CiResolutionService {
             return null;
         }
         try {
-            String uri = UriComponentsBuilder.fromHttpUrl(runtimeConfig.baseUrl())
+            String uri = UriComponentsBuilder.fromUriString(runtimeConfig.baseUrl())
                     .path("/api/now/table/{tableName}/{sysId}")
                     .queryParam("sysparm_fields",
                         "sys_id,name,sys_class_name,owned_by,managed_by,assigned_to,department,support_group")

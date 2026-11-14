@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 import com.prototype.vulnwatch.migration.PackagedMigrationCatalog;
 import com.prototype.vulnwatch.service.TenantSchemaStatusService;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.actuate.health.Status;
+import org.springframework.boot.health.contributor.Status;
 
 class TenantSchemaReadinessHealthIndicatorTest {
 

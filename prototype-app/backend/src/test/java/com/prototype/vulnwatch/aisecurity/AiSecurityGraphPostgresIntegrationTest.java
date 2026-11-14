@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -57,8 +57,8 @@ class AiSecurityGraphPostgresIntegrationTest {
     @Autowired private AiSecurityApiService apiService;
     @Autowired private NamedParameterJdbcTemplate jdbc;
 
-    @MockBean private IngestionJobWorkerService ingestionJobWorkerService;
-    @MockBean private FindingDeltaQueueService findingDeltaQueueService;
+    @MockitoBean private IngestionJobWorkerService ingestionJobWorkerService;
+    @MockitoBean private FindingDeltaQueueService findingDeltaQueueService;
 
     @Test
     void depthParameterExpandsTraversalToMultiHopNeighbors() {

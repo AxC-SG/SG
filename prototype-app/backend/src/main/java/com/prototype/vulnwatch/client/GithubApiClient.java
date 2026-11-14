@@ -175,7 +175,7 @@ public class GithubApiClient {
         assertAllowed(normalizedOwner, normalizedRepo);
 
         String defaultBranch = fetchDefaultBranch(normalizedOwner, normalizedRepo);
-        String endpoint = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        String endpoint = UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("repos", normalizedOwner, normalizedRepo, "git", "trees", defaultBranch)
                 .queryParam("recursive", "1")
                 .build()
@@ -214,7 +214,7 @@ public class GithubApiClient {
         String normalizedRepo = normalize(repo);
         assertAllowed(normalizedOwner, normalizedRepo);
 
-        String endpoint = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        String endpoint = UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("repos", normalizedOwner, normalizedRepo, "contents", filePath)
                 .build()
                 .toUriString();
@@ -236,7 +236,7 @@ public class GithubApiClient {
     }
 
     private String fetchDefaultBranch(String owner, String repo) throws IOException {
-        String endpoint = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        String endpoint = UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("repos", owner, repo)
                 .build()
                 .toUriString();
@@ -465,14 +465,14 @@ public class GithubApiClient {
     }
 
     public String buildGeneratedSbomEndpoint(String owner, String repo) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("repos", normalize(owner), normalize(repo), "dependency-graph", "sbom")
                 .build()
                 .toUriString();
     }
 
     public String buildAttestationsEndpoint(String owner, String repo, String subjectDigest) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("repos", normalize(owner), normalize(repo), "attestations", subjectDigest)
                 .queryParam("predicate_type", "sbom")
                 .build()
@@ -480,7 +480,7 @@ public class GithubApiClient {
     }
 
     public String buildOrgOwnerAttestationsEndpoint(String owner, String subjectDigest) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("orgs", normalize(owner), "attestations", subjectDigest)
                 .queryParam("predicate_type", "sbom")
                 .build()
@@ -488,7 +488,7 @@ public class GithubApiClient {
     }
 
     public String buildUserOwnerAttestationsEndpoint(String owner, String subjectDigest) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("users", normalize(owner), "attestations", subjectDigest)
                 .queryParam("predicate_type", "sbom")
                 .build()
@@ -496,7 +496,7 @@ public class GithubApiClient {
     }
 
     public String buildOrgOwnerBulkAttestationsEndpoint(String owner) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("orgs", normalize(owner), "attestations", "bulk-list")
                 .queryParam("predicate_type", "sbom")
                 .build()
@@ -504,7 +504,7 @@ public class GithubApiClient {
     }
 
     public String buildUserOwnerBulkAttestationsEndpoint(String owner) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("users", normalize(owner), "attestations", "bulk-list")
                 .queryParam("predicate_type", "sbom")
                 .build()
@@ -568,42 +568,42 @@ public class GithubApiClient {
     }
 
     private String buildOrgReposEndpoint(String account) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("orgs", account, "repos")
                 .build()
                 .toUriString();
     }
 
     private String buildUserReposEndpoint(String account) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("users", account, "repos")
                 .build()
                 .toUriString();
     }
 
     private String buildOrgPackagesEndpoint(String account) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("orgs", account, "packages")
                 .build()
                 .toUriString();
     }
 
     private String buildUserPackagesEndpoint(String account) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("users", account, "packages")
                 .build()
                 .toUriString();
     }
 
     private String buildOrgPackageVersionsEndpoint(String owner, String packageName) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("orgs", owner, "packages", "container", packageName, "versions")
                 .build()
                 .toUriString();
     }
 
     private String buildUserPackageVersionsEndpoint(String owner, String packageName) {
-        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+        return UriComponentsBuilder.fromUriString(baseUrl)
                 .pathSegment("users", owner, "packages", "container", packageName, "versions")
                 .build()
                 .toUriString();
@@ -616,7 +616,7 @@ public class GithubApiClient {
     private List<GithubRepositoryRef> listRepositoriesByEndpoint(String endpointBase) throws IOException {
         List<GithubRepositoryRef> repositories = new ArrayList<>();
         for (int page = 1; page <= maxCollectionPages(); page++) {
-            String endpoint = UriComponentsBuilder.fromHttpUrl(endpointBase)
+            String endpoint = UriComponentsBuilder.fromUriString(endpointBase)
                     .queryParam("per_page", 100)
                     .queryParam("page", page)
                     .queryParam("type", "all")
@@ -656,7 +656,7 @@ public class GithubApiClient {
     ) throws IOException {
         List<GithubContainerPackageRef> packages = new ArrayList<>();
         for (int page = 1; page <= maxCollectionPages(); page++) {
-            String endpoint = UriComponentsBuilder.fromHttpUrl(endpointBase)
+            String endpoint = UriComponentsBuilder.fromUriString(endpointBase)
                     .queryParam("package_type", "container")
                     .queryParam("per_page", 100)
                     .queryParam("page", page)
@@ -692,7 +692,7 @@ public class GithubApiClient {
     ) throws IOException {
         List<GithubContainerImageVersionRef> versions = new ArrayList<>();
         for (int page = 1; page <= maxCollectionPages(); page++) {
-            String endpoint = UriComponentsBuilder.fromHttpUrl(endpointBase)
+            String endpoint = UriComponentsBuilder.fromUriString(endpointBase)
                     .queryParam("per_page", 100)
                     .queryParam("page", page)
                     .build()

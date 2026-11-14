@@ -60,7 +60,7 @@ public class EpssTrendService {
 
     private Double fetchScoreForDate(String cveId, LocalDate date) {
         String normalizedCveId = cveId.trim().toUpperCase(Locale.ROOT);
-        String url = UriComponentsBuilder.fromHttpUrl(epssBaseUrl)
+        String url = UriComponentsBuilder.fromUriString(epssBaseUrl)
                 .queryParam("cve", normalizedCveId)
                 .queryParam("date", date)
                 .build()

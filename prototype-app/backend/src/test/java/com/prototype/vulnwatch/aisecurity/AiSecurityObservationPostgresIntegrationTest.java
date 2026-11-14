@@ -45,8 +45,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -85,10 +85,10 @@ class AiSecurityObservationPostgresIntegrationTest {
     @Autowired private NamedParameterJdbcTemplate jdbc;
     @Autowired private com.prototype.vulnwatch.aisecurity.service.AiAgentDeploymentService deploymentService;
 
-    @SpyBean private AiGridReconciliationService reconciliationService;
+    @MockitoSpyBean private AiGridReconciliationService reconciliationService;
 
-    @MockBean private IngestionJobWorkerService ingestionJobWorkerService;
-    @MockBean private FindingDeltaQueueService findingDeltaQueueService;
+    @MockitoBean private IngestionJobWorkerService ingestionJobWorkerService;
+    @MockitoBean private FindingDeltaQueueService findingDeltaQueueService;
 
     @Test
     void verifiedRoutesAndDefinitionVersionsStaySeparateAcrossExpiryAndEmptyEnumeration() {

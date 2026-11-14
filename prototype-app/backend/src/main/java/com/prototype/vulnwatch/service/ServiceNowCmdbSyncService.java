@@ -425,7 +425,7 @@ public class ServiceNowCmdbSyncService {
         List<Map<String, String>> rows = new ArrayList<>();
         int offset = 0;
         while (true) {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(config.baseUrl())
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(config.baseUrl())
                     .path("/api/now/table/{tableName}")
                     .queryParam("sysparm_limit", pageSize)
                     .queryParam("sysparm_offset", offset)

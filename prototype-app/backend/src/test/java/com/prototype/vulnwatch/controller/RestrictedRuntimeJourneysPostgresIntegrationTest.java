@@ -182,19 +182,19 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         var readiness = new com.prototype.vulnwatch.config.TenantSchemaReadinessHealthIndicator(
                 schemaStatus, new com.prototype.vulnwatch.migration.PackagedMigrationCatalog());
         startup.validate();
-        assertEquals(org.springframework.boot.actuate.health.Status.UP, readiness.health().getStatus());
+        assertEquals(org.springframework.boot.health.contributor.Status.UP, readiness.health().getStatus());
         owner.execute("alter table platform.feed_sync_watermarks rename to closure_hidden_watermarks");
         try {
             assertThrows(org.springframework.dao.DataAccessException.class, startup::validate);
-            assertEquals(org.springframework.boot.actuate.health.Status.DOWN, readiness.health().getStatus());
+            assertEquals(org.springframework.boot.health.contributor.Status.DOWN, readiness.health().getStatus());
         } finally { owner.execute("alter table platform.closure_hidden_watermarks rename to feed_sync_watermarks"); }
         startup.validate();
-        assertEquals(org.springframework.boot.actuate.health.Status.UP, readiness.health().getStatus());
+        assertEquals(org.springframework.boot.health.contributor.Status.UP, readiness.health().getStatus());
         // The V6 constraint is also a runtime dependency, even with every table still present.
         owner.execute("alter table platform.ai_grid_policy_rollout_tasks drop constraint ai_grid_policy_rollout_tasks_status_check");
         try {
             assertThrows(IllegalStateException.class, startup::validate);
-            assertEquals(org.springframework.boot.actuate.health.Status.DOWN, readiness.health().getStatus());
+            assertEquals(org.springframework.boot.health.contributor.Status.DOWN, readiness.health().getStatus());
         } finally {
             owner.execute("""
                     alter table platform.ai_grid_policy_rollout_tasks add constraint ai_grid_policy_rollout_tasks_status_check

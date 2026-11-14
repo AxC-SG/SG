@@ -66,7 +66,7 @@ public final class FindingFilterSpecifications {
     }
 
     private static Specification<Finding> byGroup(String field, String value) {
-        if (!hasText(field) || value == null) return null;
+        if (!hasText(field) || value == null) return Specification.unrestricted();
         return (root, query, cb) -> {
             var component = root.join("component", JoinType.LEFT);
             var directAsset = root.join("asset", JoinType.LEFT);
@@ -157,7 +157,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> bySeverity(List<String> severities) {
         Set<String> normalized = normalizeFilterValues(severities);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<String> upper = normalized.stream().map(String::toUpperCase).collect(Collectors.toSet());
         return (root, query, cb) -> {
@@ -180,7 +180,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byFindingKind(List<String> kinds) {
         Set<String> normalized = normalizeFilterValues(kinds);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<String> upper = new HashSet<>();
         for (String value : normalized) {
@@ -198,7 +198,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byAffectedAiResourceId(List<String> resourceIds) {
         Set<String> normalized = normalizeFilterValues(resourceIds);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<UUID> ids = new HashSet<>();
         for (String value : normalized) {
@@ -208,7 +208,7 @@ public final class FindingFilterSpecifications {
             }
         }
         if (ids.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             var subquery = query.subquery(Long.class);
@@ -226,7 +226,7 @@ public final class FindingFilterSpecifications {
     /** Same existence-subquery shape as {@link #byAffectedAiResourceId}, with no id restriction. */
     private static Specification<Finding> byHasAffectedAiResource(Boolean hasAffectedAiResource) {
         if (hasAffectedAiResource == null) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             var subquery = query.subquery(Long.class);
@@ -240,7 +240,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byStatus(List<String> statuses) {
         Set<String> normalized = normalizeFilterValues(statuses);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<FindingStatus> findingStatuses = new HashSet<>();
         for (String value : normalized) {
@@ -250,7 +250,7 @@ public final class FindingFilterSpecifications {
             }
         }
         if (findingStatuses.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> root.get("status").in(findingStatuses);
     }
@@ -258,7 +258,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byDecisionState(List<String> decisionStates) {
         Set<String> normalized = normalizeFilterValues(decisionStates);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<FindingDecisionState> states = new HashSet<>();
         for (String value : normalized) {
@@ -268,7 +268,7 @@ public final class FindingFilterSpecifications {
             }
         }
         if (states.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> root.get("decisionState").in(states);
     }
@@ -276,7 +276,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byCreationSource(List<String> creationSources) {
         Set<String> normalized = normalizeFilterValues(creationSources);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<FindingCreationSource> sources = new HashSet<>();
         for (String value : normalized) {
@@ -286,7 +286,7 @@ public final class FindingFilterSpecifications {
             }
         }
         if (sources.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> root.get("creationSource").in(sources);
     }
@@ -294,7 +294,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byMatchMethod(List<String> matchMethods) {
         Set<String> normalized = normalizeFilterValues(matchMethods);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<String> lower = normalized.stream().map(value -> value.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
         return (root, query, cb) -> cb.lower(root.get("matchedBy")).in(lower);
@@ -303,7 +303,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byVexStatus(List<String> vexStatuses) {
         Set<String> normalized = normalizeUpperFilterValues(vexStatuses);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -318,7 +318,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byVexFreshness(List<String> vexFreshness) {
         Set<String> normalized = normalizeUpperFilterValues(vexFreshness);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -333,7 +333,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byVexProvider(List<String> vexProviders) {
         Set<String> normalized = normalizeLowerFilterValues(vexProviders);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -347,14 +347,14 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byMinConfidence(Double minConfidence) {
         if (minConfidence == null) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("confidenceScore"), minConfidence);
     }
 
     private static Specification<Finding> byVulnerabilityId(String vulnerabilityId) {
         if (!hasText(vulnerabilityId)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = vulnerabilityId.trim().toUpperCase(Locale.ROOT);
         return (root, query, cb) -> cb.equal(cb.upper(root.join("vulnerability").get("externalId")), expected);
@@ -362,7 +362,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byPackageName(String packageName) {
         if (!hasText(packageName)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = packageName.trim().toLowerCase(Locale.ROOT);
         return (root, query, cb) -> cb.equal(cb.lower(root.join("component").get("packageName")), expected);
@@ -370,7 +370,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byEcosystem(String ecosystem) {
         if (!hasText(ecosystem)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = ecosystem.trim().toLowerCase(Locale.ROOT);
         return (root, query, cb) -> cb.equal(cb.lower(root.join("component").get("ecosystem")), expected);
@@ -378,7 +378,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byOwnerGroup(String ownerGroup) {
         if (!hasText(ownerGroup)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = "%" + ownerGroup.trim().toLowerCase(Locale.ROOT) + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.get("ownerGroup")), expected);
@@ -386,7 +386,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byAssignedTo(String assignedTo) {
         if (!hasText(assignedTo)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = "%" + assignedTo.trim().toLowerCase(Locale.ROOT) + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.get("assignedTo")), expected);
@@ -394,7 +394,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byIncidentLinked(Boolean incidentLinked) {
         if (incidentLinked == null) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> incidentLinked
                 ? cb.and(cb.isNotNull(root.get("incidentId")), cb.notEqual(cb.trim(root.get("incidentId")), ""))
@@ -403,7 +403,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byUnassignedOnly(Boolean unassignedOnly) {
         if (unassignedOnly == null) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> unassignedOnly
                 ? cb.or(cb.isNull(root.get("assignedTo")), cb.equal(cb.trim(root.get("assignedTo")), ""))
@@ -412,7 +412,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byDueDateBand(String dueDateBand) {
         if (!hasText(dueDateBand)) {
-            return null;
+            return Specification.unrestricted();
         }
         String normalized = dueDateBand.trim().toLowerCase(Locale.ROOT);
         Instant now = Instant.now();
@@ -432,7 +432,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byAssetName(String assetName) {
         if (!hasText(assetName)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.join("asset").get("name")), expected);
@@ -445,7 +445,7 @@ public final class FindingFilterSpecifications {
     private static Specification<Finding> byAssetType(List<String> assetTypes) {
         Set<String> normalized = normalizeUpperFilterValues(assetTypes);
         if (normalized.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         Set<AssetType> types = new HashSet<>();
         for (String value : normalized) {
@@ -455,7 +455,7 @@ public final class FindingFilterSpecifications {
             }
         }
         if (types.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             var directAsset = root.join("asset", JoinType.LEFT);
@@ -466,7 +466,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> bySupportGroup(String supportGroup) {
         if (!hasText(supportGroup)) {
-            return null;
+            return Specification.unrestricted();
         }
         String expected = "%" + supportGroup.trim().toLowerCase(Locale.ROOT) + "%";
         return (root, query, cb) -> cb.like(cb.lower(root.join("asset").get("supportGroup")), expected);
@@ -474,7 +474,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> byPatchAvailable(Boolean patchAvailable) {
         if (patchAvailable == null) {
-            return null;
+            return Specification.unrestricted();
         }
         return (root, query, cb) -> {
             var subquery = query.subquery(Long.class);
@@ -490,7 +490,7 @@ public final class FindingFilterSpecifications {
 
     private static Specification<Finding> bySuppressedUntilBand(String suppressedUntilBand) {
         if (!hasText(suppressedUntilBand)) {
-            return null;
+            return Specification.unrestricted();
         }
         String normalized = suppressedUntilBand.trim().toLowerCase(Locale.ROOT);
         Instant now = Instant.now();

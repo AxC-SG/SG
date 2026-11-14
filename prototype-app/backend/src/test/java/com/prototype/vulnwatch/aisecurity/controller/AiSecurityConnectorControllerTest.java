@@ -23,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class AiSecurityConnectorControllerTest {
@@ -39,6 +40,10 @@ class AiSecurityConnectorControllerTest {
         mvc = MockMvcBuilders.standaloneSetup(new AiSecurityConnectorController(
                 workspace, mock(RequestActorService.class), access, connectors,
                 mock(AwsPermissionPreflightService.class), mock(AwsPolicyPermissionMatrix.class)))
+                // Match the application, whose HTTP responses use the Jackson 2 mapper
+                // (spring.http.converters.preferred-json-mapper=jackson2). Standalone MockMvc
+                // otherwise takes Spring Framework 7's default Jackson 3 converter.
+                .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
     }
 

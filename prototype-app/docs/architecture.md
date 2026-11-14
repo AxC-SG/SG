@@ -15,7 +15,7 @@ VulnWatch is a security operations prototype: SBOM ingestion → vulnerability i
 └─────────────────────────────┬───────────────────────────────────────┘
                               │ REST API (http://localhost:8080/api)
 ┌─────────────────────────────▼───────────────────────────────────────┐
-│  Spring Boot 3.5.16 — Java 17 (port 8080)                            │
+│  Spring Boot 4.1.2 — Java 17 (port 8080)                            │
 │  ┌──────────────┐  ┌────────────────┐  ┌──────────────────────────┐ │
 │  │ Controllers  │  │   Services     │  │  Scheduled Jobs          │ │
 │  │ (67 REST)    │  │   (351)        │  │  (daily + hourly + 2s)   │ │
