@@ -177,6 +177,29 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         }
     }
 
+    @Test
+    void platformOwnerDeletesDemoRequestWhoseInvitesBelongToTheProvisionedTenant() throws Exception {
+        String platformToken = login(ownerEmail);
+        UUID requestId = UUID.randomUUID();
+        UUID inviteId = UUID.randomUUID();
+        owner.update("""
+                insert into tenant_default.demo_requests(id, company, email, full_name, status, requested_at, tenant_id, bootstrap_status)
+                values (?, 'Queue Co', ?, 'Queue Owner', 'SENT', now(), ?, 'INVITE_SENT')
+                """, requestId, "queue-" + memberEmail, tenant.getId());
+        // Shared demo invites carry the provisioned customer tenant ID, so forced RLS hides
+        // them from the platform-scope connection that serves the demo request queue.
+        owner.update("""
+                insert into tenant_default.demo_invites(id, token_hash, email, status, created_at, expires_at, request_id, tenant_id)
+                values (?, ?, ?, 'SENT', now(), now() + interval '1 day', ?, ?)
+                """, inviteId, "a".repeat(64), "queue-" + memberEmail, requestId, tenant.getId());
+
+        mvc.perform(delete("/api/platform/demo-requests/{id}", requestId).header("Authorization", "Bearer " + platformToken))
+                .andExpect(status().isOk());
+
+        assertEquals(0, owner.queryForObject("select count(*) from tenant_default.demo_requests where id = ?", Integer.class, requestId));
+        assertEquals(0, owner.queryForObject("select count(*) from tenant_default.demo_invites where id = ?", Integer.class, inviteId));
+    }
+
     @Test void missingPlatformDependencyBlocksStartupAndReadinessThenRecovers() {
         var startup = new com.prototype.vulnwatch.config.PlatformSchemaStartupValidator(schemaStatus, true);
         var readiness = new com.prototype.vulnwatch.config.TenantSchemaReadinessHealthIndicator(

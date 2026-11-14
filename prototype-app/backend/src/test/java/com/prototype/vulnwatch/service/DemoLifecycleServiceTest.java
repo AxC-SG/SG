@@ -667,10 +667,13 @@ class DemoLifecycleServiceTest {
         request.setTenantId(UUID.randomUUID());
 
         when(demoRequestRepository.findById(request.getId())).thenReturn(Optional.of(request));
+        org.springframework.jdbc.core.JdbcTemplate jdbcTemplate = org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class);
 
         DemoLifecycleService service = service();
+        service.setJdbcTemplate(jdbcTemplate);
         service.deleteRequest(request.getId(), "platform-owner@example.com");
 
+        verify(jdbcTemplate).execute(org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.ConnectionCallback<Object>>any());
         verify(demoInviteRepository).deleteByRequest_Id(request.getId());
         verify(demoRequestRepository).delete(request);
     }
