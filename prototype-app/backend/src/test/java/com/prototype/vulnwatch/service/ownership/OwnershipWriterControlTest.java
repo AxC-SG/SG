@@ -28,6 +28,7 @@ class OwnershipWriterControlTest {
             Map.entry("external_identity", PKG.resolve("DirectoryService.java")),
             Map.entry("external_group", PKG.resolve("DirectoryService.java")),
             Map.entry("identity_import_run", PKG.resolve("DirectoryImportService.java")),
+            Map.entry("external_group_team_mapping", PKG.resolve("GroupTeamMappingService.java")),
             Map.entry("team", PKG.resolve("TeamNamespaceService.java")),
             Map.entry("team_alias", PKG.resolve("TeamNamespaceService.java")),
             Map.entry("ownership_subject", PKG.resolve("OwnershipSubjectService.java")),

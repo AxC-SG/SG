@@ -69,12 +69,15 @@ public class ServiceNowOwnershipProducer {
     private final Clock clock;
     private final boolean departmentClaims;
     private final Duration syncInterval;
+    private final GroupMappingResolver mappings;
 
     public ServiceNowOwnershipProducer(JdbcTemplate jdbc, TenantWorkRunner runner, TeamNamespaceService teams, OwnershipClaimService claims,
                                        OwnershipReviewService reviews, InventorySubjectAdapter subjects, DirectoryService directory,
                                        OwnershipAuthorityService authority, TenantDataCipher cipher, ObjectProvider<Clock> clock,
+                                       GroupMappingResolver mappings,
                                        @Value("${app.ownership.servicenow.department-claims:false}") boolean departmentClaims,
                                        @Value("${app.ownership.servicenow.sync-interval:PT24H}") Duration syncInterval) {
+        this.mappings = mappings;
         this.jdbc = jdbc;
         this.runner = runner;
         this.teams = teams;
@@ -111,11 +114,12 @@ public class ServiceNowOwnershipProducer {
         if (paused) return new Result(0, 0, 0, 0, 0, 0, true, "SOURCE_PAUSED");
 
         // Pass 1: read-only plan of every change, for the anomaly gate.
+        String instance = runner.runScoped(tenantId, mappings::cmdbInstance);
         List<Planned> plan = new ArrayList<>();
         int[] scanned = {0};
         forEachPage(tenantId, runStartedAt, page -> runner.runScoped(tenantId, () -> {
             scanned[0] += page.size();
-            for (Ci ci : page) plan.addAll(planCi(ci));
+            for (Ci ci : page) plan.addAll(planCi(ci, instance));
             return null;
         }));
         List<UUID> absent = completeScan ? runner.runScoped(tenantId, () -> absentClaims(runStartedAt)) : List.of();
@@ -132,6 +136,45 @@ public class ServiceNowOwnershipProducer {
         }
 
         // Pass 2: apply in bounded batches, one transaction each.
+        int[] counts = apply(tenantId, plan);
+        for (int from = 0; from < absent.size(); from += PAGE) {
+            List<UUID> batch = absent.subList(from, Math.min(absent.size(), from + PAGE));
+            runner.runScoped(tenantId, () -> claims.endAbsent(batch, "servicenow-producer"));
+        }
+        return new Result(scanned[0], counts[Action.CREATE.ordinal()], counts[Action.REOBSERVE.ordinal()], counts[Action.CHANGE.ordinal()],
+                counts[Action.UNMAPPED.ordinal()], counts[Action.END.ordinal()] + absent.size(), false, null);
+    }
+
+    /**
+     * Re-evaluates the named CIs after an admin confirmed a group-to-team mapping change (§1.8), so their claims follow
+     * the mapping without waiting for the next CMDB sync. The admin's impact confirmation stands in for the anomaly
+     * gate. Ends no claims: a CI whose group no longer maps keeps its claim until the value maps, expires or is cleared,
+     * as with any unmapped value.
+     */
+    public Result republish(UUID tenantId, List<String> sysIds) {
+        boolean legacy = runner.runScoped(tenantId, () -> !authority.producersMayPublish(OwnershipAuthorityService.Domain.CORE));
+        if (legacy) return new Result(0, 0, 0, 0, 0, 0, true, "DOMAIN_LEGACY");
+        boolean paused = runner.runScoped(tenantId, () -> claims.sourcePaused(SOURCE));
+        if (paused) return new Result(0, 0, 0, 0, 0, 0, true, "SOURCE_PAUSED");
+        String instance = runner.runScoped(tenantId, mappings::cmdbInstance);
+        List<Planned> plan = new ArrayList<>();
+        for (int from = 0; from < sysIds.size(); from += PAGE) {
+            List<String> batch = sysIds.subList(from, Math.min(sysIds.size(), from + PAGE));
+            runner.runScoped(tenantId, () -> {
+                for (String sysId : batch) {
+                    jdbc.query("SELECT sys_id, asset_id, support_group, department, owner_email FROM cis WHERE sys_id = ?",
+                            (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5)), sysId)
+                            .forEach(ci -> planCi(ci, instance).stream().filter(p -> p.action() != Action.END).forEach(plan::add));
+                }
+                return null;
+            });
+        }
+        int[] counts = apply(tenantId, plan);
+        return new Result(sysIds.size(), counts[Action.CREATE.ordinal()], counts[Action.REOBSERVE.ordinal()], counts[Action.CHANGE.ordinal()],
+                counts[Action.UNMAPPED.ordinal()], 0, false, null);
+    }
+
+    private int[] apply(UUID tenantId, List<Planned> plan) {
         Instant now = clock.instant();
         Instant staleAfter = OwnershipSourcePolicy.staleAfter(now, syncInterval);
         Instant expiresAt = OwnershipSourcePolicy.expiresAt(now, syncInterval);
@@ -155,22 +198,22 @@ public class ServiceNowOwnershipProducer {
                 return null;
             });
         }
-        for (int from = 0; from < absent.size(); from += PAGE) {
-            List<UUID> batch = absent.subList(from, Math.min(absent.size(), from + PAGE));
-            runner.runScoped(tenantId, () -> claims.endAbsent(batch, "servicenow-producer"));
-        }
-        return new Result(scanned[0], counts[Action.CREATE.ordinal()], counts[Action.REOBSERVE.ordinal()], counts[Action.CHANGE.ordinal()],
-                counts[Action.UNMAPPED.ordinal()], counts[Action.END.ordinal()] + absent.size(), false, null);
+        return counts;
     }
 
-    private List<Planned> planCi(Ci ci) {
+    private List<Planned> planCi(Ci ci, String instance) {
         List<Planned> out = new ArrayList<>();
-        out.add(planField(new Desired(ci, "support_group", ci.supportGroup())));
-        if (departmentClaims) out.add(planField(new Desired(ci, "department", ci.department())));
+        out.add(planField(new Desired(ci, "support_group", ci.supportGroup()), instance));
+        if (departmentClaims) out.add(planField(new Desired(ci, "department", ci.department()), null));
         return out.stream().filter(p -> p != null).toList();
     }
 
-    private Planned planField(Desired d) {
+    /**
+     * Contract §1.8 resolution order for {@code support_group}: (1) a {@code sys_user_group} {@code sys_id} through an
+     * active mapping of a ServiceNow source on the CMDB's instance, then (2) exact team name or alias. No fuzzy matching
+     * and no team creation. {@code department} resolves by (2) only.
+     */
+    private Planned planField(Desired d, String instance) {
         List<Map<String, Object>> existing = jdbc.queryForList("""
                 SELECT id, team_id FROM ownership_claim WHERE source_kind = ? AND source_ref = ? AND status = 'ACTIVE'
                 """, SOURCE, d.sourceRef());
@@ -179,7 +222,8 @@ public class ServiceNowOwnershipProducer {
         if (d.value() == null || d.value().isBlank()) {
             return existingId == null ? null : new Planned(Action.END, d, null, existingId);
         }
-        Optional<UUID> team = teams.resolve(d.value());
+        Optional<UUID> team = mappings.teamForGroup(d.value(), instance);
+        if (team.isEmpty()) team = teams.resolve(d.value());
         if (team.isEmpty()) return new Planned(Action.UNMAPPED, d, null, existingId);
         if (existingId == null) return new Planned(Action.CREATE, d, team.get(), null);
         if (existingTeam.equals(team.get())) return new Planned(Action.REOBSERVE, d, team.get(), existingId);

@@ -124,6 +124,7 @@ public class ServiceNowDirectorySync {
     private final AuditEventService audit;
     private final BackgroundTaskExecutionPolicy backgroundTasks;
     private final ObjectMapper json;
+    private final GroupTeamMappingService mappings;
     private final boolean enabled;
     private final Duration maxRunDuration;
 
@@ -131,8 +132,10 @@ public class ServiceNowDirectorySync {
                                    DirectoryImportService runs, IdentitySourceService sources, ServiceNowDirectoryClient client,
                                    OwnershipClaimService claims, OwnershipReviewService reviews, TenantDataCipher cipher,
                                    AuditEventService audit, BackgroundTaskExecutionPolicy backgroundTasks, ObjectMapper json,
+                                   GroupTeamMappingService mappings,
                                    @Value("${app.ownership.servicenow.directory-enabled:false}") boolean enabled,
                                    @Value("${app.ownership.servicenow.directory-sync.max-run-duration:PT4H}") Duration maxRunDuration) {
+        this.mappings = mappings;
         this.tenants = tenants;
         this.runner = runner;
         this.jdbc = jdbc;
@@ -306,7 +309,7 @@ public class ServiceNowDirectorySync {
         try {
             change = runner.runScoped(run.tenant, () -> switch (table) {
                 case USERS -> applyUser(run, row, pendingManagers);
-                case GROUPS -> directory.observeGroup(group(run.sourceId, row), run.start.runId(), run.start.actor()).change();
+                case GROUPS -> applyGroup(run, row);
                 case MEMBERSHIPS -> applyMembership(run, row);
             });
         } catch (ResponseStatusException invalid) {
@@ -332,6 +335,13 @@ public class ServiceNowDirectorySync {
         }
         boolean managerChanged = directory.setSourceManager(observed.userId(), manager.orElse(null), run.sourceId, run.start.actor());
         return managerChanged && change == RowChange.UNCHANGED ? RowChange.UPDATED : change;
+    }
+
+    /** §1.8: a group whose name exactly equals a team name or alias gets a SUGGESTED mapping, never an active one. */
+    private RowChange applyGroup(Run run, Map<String, String> row) {
+        DirectoryService.GroupObservation observed = directory.observeGroup(group(run.sourceId, row), run.start.runId(), run.start.actor());
+        if (row.get("name") != null) mappings.suggest(observed.externalGroupId(), row.get("name"), SYSTEM_ACTOR);
+        return observed.change();
     }
 
     /** A membership whose person or group is not linked yet is rejected and retried when the row is read again. */

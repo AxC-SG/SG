@@ -73,6 +73,7 @@ class DirectorySyncPostgresIntegrationTest {
     @Autowired private ServiceNowDirectorySync sync;
     @Autowired private IdentitySourceService sources;
     @Autowired private DirectoryService directory;
+    @Autowired private TeamNamespaceService teams;
     @Autowired private TenantKeyRegistry keys;
     @Autowired private TenantService tenantService;
     @Autowired private TenantSchemaMigrationService migrations;
@@ -115,6 +116,7 @@ class DirectorySyncPostgresIntegrationTest {
     @Test
     void aBaselineRunLinksPeopleGroupsMembershipsAndManagersAndRecordsOneRun() {
         DirectoryUser grace = directory.createUser("Grace Hopper", "grace@acme.test", null, null, manual, "admin");
+        UUID databaseTeam = teams.createTeam("Database Team", null, null, "admin").id();
         fake.user(1, "Ada Lovelace", "ada@acme.test", null);
         fake.user(2, "G. Hopper", "GRACE@acme.test", 4);
         fake.user(3, "Bob Byte", "bob@acme.test", 4);
@@ -144,6 +146,9 @@ class DirectorySyncPostgresIntegrationTest {
         UUID group = jdbc.queryForObject("SELECT group_id FROM external_group WHERE source_id = ?", UUID.class, source);
         assertThat(jdbc.queryForMap("SELECT display_name, created_source_id FROM directory_group WHERE id = ?", group))
                 .containsEntry("display_name", "Database Team").containsEntry("created_source_id", source);
+        assertThat(jdbc.queryForMap("SELECT team_id, state, provenance FROM external_group_team_mapping"))
+                .as("a group named like a team is suggested, never activated")
+                .containsEntry("team_id", databaseTeam).containsEntry("state", "PROPOSED").containsEntry("provenance", "SUGGESTED");
         assertThat(jdbc.queryForMap("SELECT user_id, status, last_seen_run_id FROM directory_group_member WHERE group_id = ?", group))
                 .containsEntry("user_id", ada).containsEntry("status", "ACTIVE").containsEntry("last_seen_run_id", run.runId());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM external_identity WHERE source_id = ? AND last_seen_run_id = ?", Integer.class,

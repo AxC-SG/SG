@@ -204,6 +204,27 @@ count is a read-only pass before the writes. Manager changes are not counted.
   instead. The fix: the CMDB sync stores the name and the reference `sys_id` in separate columns (tenant V24), with
   tests for both field shapes.
 
+**Implementation (November 14, 2026), before tenant V24 (E3):** `GroupTeamMappingService` is the single writer of
+`external_group_team_mapping`; `GroupMappingResolver` is its read side. Until V24, step (1) applies when the stored
+`support_group` value is itself a 32-hex `sys_id`, which happens only when an admin's field list leaves out the display
+value. Names still resolve by step (2). E3 only has to pass the new column's value to the same resolver.
+
+**DECISIONS (architect, November 14, 2026; review with the product owner):**
+
+- "Same instance" compares the identity source's stored `instanceUrl` with the CMDB connector's `base_url`, both as
+  `https://host` in lower case. If sources on the same instance map one group to different teams, step (1) yields
+  nothing and step (2) applies.
+- Confirming a suggestion inserts a new MANUAL row and retires the proposal, which keeps its history. A dismissed
+  suggestion is not proposed again for the same team.
+- Activating or retiring needs a preview token (30 minutes; bound to the group, the target team, the mapping it
+  replaces and the admin; the same signed format as the identity-source preview). The preview counts the CMDB CIs whose
+  `support_group` is the group's `sys_id`, their subjects (up to 20 IDs returned) and their open findings.
+- After a change the affected CIs are republished at once (when `app.ownership.servicenow.producer-enabled`); the
+  confirmed impact stands in for the anomaly gate. Above 10,000 CIs the change needs `confirmLarge` and is applied by
+  the next CMDB sync, which re-evaluates every CI. Retiring a mapping ends no claim: as with any unmapped value, the last
+  claim stays until the value maps, expires or is cleared.
+- Reads need `VIEW_OWNERSHIP`; preview, activate, retire and dismiss need `MAP_GROUPS`. CSV mapping import is not built.
+
 ### 1.9 Schema and code impact
 
 - **Directory: no migration is expected.** The CMDB support-group `sys_id` column (§1.8, decided) goes in tenant

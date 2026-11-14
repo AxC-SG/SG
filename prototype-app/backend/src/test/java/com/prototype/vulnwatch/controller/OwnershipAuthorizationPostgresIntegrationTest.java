@@ -102,6 +102,14 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/sync",
                         Map.of("complete", true)),
                 new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/pause", Map.of("reason", "test")),
+                new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/group-mappings", null),
+                new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/group-mappings/groups?q=a", null),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/preview",
+                        Map.of("externalGroupId", missing, "teamId", missing)),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings",
+                        Map.of("externalGroupId", missing, "teamId", missing, "previewToken", "x.y")),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/retire", Map.of("previewToken", "x.y")),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/dismiss", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));
         List<Arguments> cases = new ArrayList<>();
