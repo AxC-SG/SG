@@ -7,14 +7,12 @@ Agreed November 14, 2026, after two independent reviews of the full pipeline and
 | Item | State |
 |---|---|
 | Secret scanning and push protection | Enabled November 14 |
-| CodeQL default setup (4 languages) | Re-enabled November 14; confirm fresh PR and `main` analyses |
+| CodeQL default setup (4 languages) | Re-enabled November 14; `main` and PR analyses running again |
 | Live ruleset requires `AWS backend candidate` | Applied November 14 |
-| PR A: Phase 1 repository files | [#84](https://github.com/AxC-SG/SG/pull/84), open |
-| PR B: Phase 2 | Open, stacked on #84 |
-| PR C1: Phase 3.1–3.3, 3.7 (Trivy once, retire images gate, drop docs-check) | Open, stacked on PR B |
-| PR C2: Phase 3.4–3.6 (static job, one migration checker, structural tests) | Open, stacked on C1 |
-| PR E: Phase 6.1–6.2 | [#83](https://github.com/AxC-SG/SG/pull/83), measuring |
-| PRs D, F | Waiting on A–C and E |
+| Phases 1, 2, 3 and 6.1–6.2 | One combined PR (originally #83–#87). `backend-postgres` with 3 forks: 13m24s, down from 24–30 min |
+| Live ruleset: remove `Trivy images gate` | Do right before merging the combined PR |
+| Phase 4–5 (PR D) | After the combined PR merges |
+| Phase 6.3–6.5 (PR F) | Deferred: 3 forks already meet the 15-minute target; the template database saves about 2 more minutes at higher risk |
 
 ## Where we are
 
