@@ -35,7 +35,7 @@ Every `main` commit that passes its checks is published to the lab ECR automatic
 4. **Migrate.** Runs the candidate migrator once; it must exit 0.
 5. **Runtime.** Terraform moves `api` and `worker` to the candidate and nothing else. ECS's circuit breaker rolls back a rollout that never becomes healthy.
 6. **Verify.** Checks that services settled, targets are healthy, `GET /api/auth/csrf` returns 200 and `GET /api/me` returns 401, and counts startup `ERROR` lines.
-7. **Accept.** Asks the browser checks in `config/release-browser-checks.json`. All passing makes the release the accepted one; any failure rejects it.
+7. **Accept.** The release stays live and waits for `release.py accept`, which asks the browser checks in `config/release-browser-checks.json`. Use `--answers yyn… [--note TEXT]` to record answers the operator relayed; the record marks them as relayed. All passing makes the release the accepted one; any failure rejects it. A new deploy waits until the live release is accepted or rolled back.
 
 Each step is recorded in `release/records/<id>.json`. The bucket is versioned, so every state of a record is kept.
 

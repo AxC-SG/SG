@@ -5,6 +5,9 @@
   release.py init SHA PLATFORM TENANT    seed the release inputs from what the lab runs now (once)
   release.py deploy SHA                  release a published main commit to the lab
   release.py rollback                    return api and worker to the last accepted release, or the one before it
+  release.py accept [--answers yn… [--note TEXT]]
+                                         record the browser checks for the live release (interactive, or
+                                         answers the operator relayed, one y/n per check in order)
   release.py unlock                      remove a stale lock after showing its holder
 
 A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/records/<id>.json:
@@ -14,7 +17,8 @@ A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/reco
   4. migrate    run the candidate migrator once; it must exit 0
   5. runtime    Terraform moves api and worker to the candidate, and nothing else
   6. verify     services settled, healthy targets, public 200 and protected 401, startup errors
-  7. accept     guided browser checks; all passing makes it the accepted release
+  7. accept     later, `release.py accept` records the browser checks; all passing makes it the
+                accepted release, any failure rejects it (then roll back or deploy a fix)
 
 Terraform renders images only from the release inputs object, which lab.sh reads too, and
 lab.sh and this script share one lock, so a lab cycle never runs mid-release. A step that
@@ -227,6 +231,8 @@ class Release:
             print(f"accepted:  {accepted.get('release_id', '-')} ({short(accepted.get('runtime_image_digest'))})")
             print(f"last:      {json.dumps(inputs.get('last_release'))}")
             print(f"pending:   {json.dumps(inputs.get('pending'))}")
+            waiting = inputs.get("awaiting_acceptance")
+            print(f"awaiting:  {waiting['release_id'] + ' (run release.py accept)' if waiting else '-'}")
             for role, digest in live.items():
                 expected = inputs["migrator_image_digest" if role == "migrator" else "runtime_image_digest"]
                 print(f"live {role:<9}{short(digest)}{'' if digest in (None, expected) else '  DIFFERS FROM INPUTS'}")
@@ -248,7 +254,8 @@ class Release:
             accepted = {"release_id": "baseline-" + utc_now().strftime("%Y%m%d"), "runtime_image_digest": digest, **meta}
             inputs = {"schema": 1, "runtime_image_digest": digest, "migrator_image_digest": digest,
                       "runtime": meta, "migrator": meta, "database_heads": heads, "accepted": accepted,
-                      "previous_accepted": None, "pending": None, "last_release": None, "updated_at": stamp()}
+                      "previous_accepted": None, "pending": None, "awaiting_acceptance": None, "last_release": None,
+                      "updated_at": stamp()}
             if not self.lab.s3_put(INPUTS_KEY, inputs, create_only=True):
                 raise ReleaseError("release inputs appeared meanwhile; nothing changed")
             self.lab.log(f"Seeded release inputs: {short(digest)} from {sha[:7]}, platform V{platform}, tenant V{tenant}.")
@@ -261,6 +268,9 @@ class Release:
             if pending and (pending["kind"] != "deploy" or pending["source_sha"] != sha):
                 raise ReleaseError(f"{pending['kind']} {pending['release_id']} stopped after {pending['phase']}; "
                                    f"rerun it, or run release.py rollback")
+            if inputs.get("awaiting_acceptance"):
+                raise ReleaseError(f"{inputs['awaiting_acceptance']['release_id']} is waiting for its browser checks; "
+                                   "run release.py accept, or release.py rollback")
             publication = self.lab.publication(sha)
             check_publication(publication, sha)
             digest, heads = publication["image_digest"], publication["migration_heads"]
@@ -311,6 +321,7 @@ class Release:
                          f"{short(target['runtime_image_digest'])} ({target['release_id']}); the migrator and schema stay.")
             if not self.lab.confirm("Roll back api and worker?"):
                 raise ReleaseError("not confirmed; nothing changed")
+            self.reject_waiting(inputs, "rolled back before acceptance")
             meta = {"source_sha": target["source_sha"], "migration_heads": target["migration_heads"]}
             self.run(inputs, record, runtime=target["runtime_image_digest"], migrator=None, meta=meta,
                      stop=False, restores=target)
@@ -370,24 +381,60 @@ class Release:
             raise ReleaseError(f"{record['kind']} {record['release_id']} failed at {step}: {error}. "
                                f"The record is in s3://{STATE_BUCKET}/{RECORDS}/. lab.sh refuses until a deploy of the "
                                f"same commit resumes it or release.py rollback recovers.") from error
-        record["browser_checks"] = self.lab.browser_checks(json.loads(BROWSER_CHECKS.read_text())["checks"])
+        # Terraform and the inputs agree again, so lab cycles may run; acceptance is the operator's.
+        record["status"] = "verified"
+        inputs["pending"] = None
+        inputs["awaiting_acceptance"] = {"release_id": record["release_id"], "kind": record["kind"],
+                                         "runtime_image_digest": runtime, **meta, "restores": restores}
+        self.save(inputs, record)
+        self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} is live and passed the automated checks. "
+                     "Run the browser checks, then record them with release.py accept.")
+
+    def accept(self, answers=None, note=""):
+        with self.locked("accept"):
+            inputs = self.inputs()
+            waiting = inputs.get("awaiting_acceptance")
+            if not waiting:
+                raise ReleaseError("no release is waiting for its browser checks")
+            record = self.lab.s3_get(f"{RECORDS}/{waiting['release_id']}.json")
+            checks = json.loads(BROWSER_CHECKS.read_text())["checks"]
+            if answers is None:
+                record["browser_checks"] = self.lab.browser_checks(checks)
+            else:
+                if not re.fullmatch(r"[yn]+", answers) or len(answers) != len(checks):
+                    raise ReleaseError(f"give one y or n per check ({len(checks)}), in order")
+                record["browser_checks"] = [{"check": check, "passed": answer == "y", "note": note if answer == "n" else "",
+                                             "answered": "relayed by the operator"} for check, answer in zip(checks, answers)]
+            self.conclude(inputs, record, waiting)
+
+    def conclude(self, inputs, record, waiting):
         passed = all(check["passed"] for check in record["browser_checks"])
         record.update(status="accepted" if passed else "rejected", ended_at=stamp())
-        inputs["pending"] = None
-        if passed:
-            accepted = {"release_id": record["release_id"], "runtime_image_digest": runtime, **meta}
-            if restores:
-                same = inputs.get("accepted") and inputs["accepted"]["release_id"] == restores["release_id"]
-                inputs["previous_accepted"] = inputs["previous_accepted"] if same else None
-                inputs["accepted"] = restores
-            else:
-                inputs["previous_accepted"], inputs["accepted"] = inputs.get("accepted"), accepted
+        inputs["awaiting_acceptance"] = None
+        restores = waiting.get("restores")
+        if passed and restores:
+            same = inputs.get("accepted") and inputs["accepted"]["release_id"] == restores["release_id"]
+            inputs["previous_accepted"] = inputs["previous_accepted"] if same else None
+            inputs["accepted"] = restores
+        elif passed:
+            meta = {"source_sha": waiting["source_sha"], "migration_heads": waiting["migration_heads"]}
+            inputs["previous_accepted"] = inputs.get("accepted")
+            inputs["accepted"] = {"release_id": record["release_id"], "runtime_image_digest": waiting["runtime_image_digest"], **meta}
         self.save(inputs, record)
         if passed:
             self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} accepted.")
         else:
             self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} rejected by a browser check. The lab runs "
                          "it until you run release.py rollback (or deploy a fix).")
+
+    def reject_waiting(self, inputs, reason):
+        """A new deploy or rollback replaces a release nobody accepted: record it as rejected."""
+        waiting = inputs.get("awaiting_acceptance")
+        if not waiting:
+            return
+        record = self.lab.s3_get(f"{RECORDS}/{waiting['release_id']}.json")
+        record["browser_checks"] = [{"check": reason, "passed": False, "note": ""}]
+        self.conclude(inputs, record, waiting)
 
     def terraform(self, phase, images):
         plan, document = self.lab.plan(phase, images, TARGETS[phase])
@@ -661,6 +708,12 @@ def main(argv):
         elif command == "rollback" and not args:
             lab.guard()
             release.rollback()
+        elif command == "accept" and not args:
+            lab.guard()
+            release.accept()
+        elif command == "accept" and len(args) in (2, 4) and args[0] == "--answers" and (len(args) == 2 or args[2] == "--note"):
+            lab.guard()
+            release.accept(args[1], args[3] if len(args) == 4 else "")
         elif command == "unlock" and not args:
             lab.guard()
             release.unlock()

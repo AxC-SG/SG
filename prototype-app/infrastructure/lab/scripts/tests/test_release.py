@@ -209,19 +209,28 @@ class DeployTest(unittest.TestCase):
     def deploy(self, lab):
         release.Release(lab).deploy("main")
 
-    def test_neutral_release_moves_migrator_then_runtime_and_is_accepted(self):
+    def test_neutral_release_moves_migrator_then_runtime_and_waits_for_acceptance(self):
         lab = FakeLab(inputs())
         self.deploy(lab)
         self.assertEqual(lab.calls, [
             "confirm", ("plan", "migrator", OLD, NEW), ("apply", "migrator.tfplan"), "migrate",
-            ("plan", "runtime", NEW, NEW), ("apply", "runtime.tfplan"), "browser"])
+            ("plan", "runtime", NEW, NEW), ("apply", "runtime.tfplan")])
         state = lab.inputs
         self.assertEqual((state["runtime_image_digest"], state["migrator_image_digest"]), (NEW, NEW))
+        self.assertIsNone(state["pending"])
+        self.assertEqual(state["awaiting_acceptance"]["release_id"], lab.record()["release_id"])
+        self.assertEqual(state["accepted"]["release_id"], "baseline")
+        self.assertEqual(lab.record()["status"], "verified")
+        self.assertEqual([step["step"] for step in lab.record()["steps"]], ["migrator", "migrated", "runtime", "verified"])
+        self.assertNotIn(release.LOCK_KEY, lab.store)
+
+        release.Release(lab).accept()
+        state = lab.inputs
+        self.assertEqual(lab.calls[-1], "browser")
         self.assertEqual(state["accepted"]["runtime_image_digest"], NEW)
         self.assertEqual(state["previous_accepted"]["release_id"], "baseline")
-        self.assertIsNone(state["pending"])
+        self.assertIsNone(state["awaiting_acceptance"])
         self.assertEqual(lab.record()["status"], "accepted")
-        self.assertEqual([step["step"] for step in lab.record()["steps"]], ["migrator", "migrated", "runtime", "verified"])
         self.assertNotIn(release.LOCK_KEY, lab.store)
 
     def test_schema_change_stops_and_snapshots_before_migrating(self):
@@ -250,22 +259,48 @@ class DeployTest(unittest.TestCase):
         self.assertNotIn(("apply", "runtime.tfplan"), lab.calls)
         self.assertEqual(lab.inputs["runtime_image_digest"], OLD)
 
-    def test_failed_automated_check_stops_before_browser_checks(self):
+    def test_failed_automated_check_keeps_the_release_pending(self):
         lab = FakeLab(inputs())
         lab.http_status = lambda path: 503
         with self.assertRaisesRegex(release.ReleaseError, "automated checks failed"):
             self.deploy(lab)
-        self.assertNotIn("browser", lab.calls)
         self.assertEqual(lab.inputs["pending"]["phase"], "runtime")
+        self.assertIsNone(lab.inputs.get("awaiting_acceptance"))
 
     def test_rejected_browser_check_keeps_the_accepted_release(self):
         lab = FakeLab(inputs(), browser_ok=False)
         self.deploy(lab)
+        release.Release(lab).accept()
         state = lab.inputs
         self.assertEqual(lab.record()["status"], "rejected")
         self.assertEqual((state["runtime_image_digest"], state["accepted"]["release_id"]), (NEW, "baseline"))
-        self.assertIsNone(state["pending"])
+        self.assertIsNone(state["awaiting_acceptance"])
         self.assertEqual(release.rollback_target(state)["release_id"], "baseline")
+
+    def test_relayed_answers_are_recorded_as_relayed(self):
+        lab = FakeLab(inputs())
+        self.deploy(lab)
+        count = len(release.json.loads(release.BROWSER_CHECKS.read_text())["checks"])
+        with self.assertRaisesRegex(release.ReleaseError, f"one y or n per check \\({count}\\)"):
+            release.Release(lab).accept("y")
+        release.Release(lab).accept("y" * (count - 1) + "n", "invite email did not arrive")
+        checks = lab.record()["browser_checks"]
+        self.assertEqual(lab.record()["status"], "rejected")
+        self.assertTrue(all(check["answered"] == "relayed by the operator" for check in checks))
+        self.assertEqual(checks[-1]["note"], "invite email did not arrive")
+        self.assertNotIn("browser", lab.calls)
+
+    def test_accept_needs_a_waiting_release(self):
+        with self.assertRaisesRegex(release.ReleaseError, "no release is waiting"):
+            release.Release(FakeLab(inputs())).accept()
+
+    def test_an_unaccepted_release_blocks_the_next_deploy(self):
+        lab = FakeLab(inputs())
+        self.deploy(lab)
+        lab.calls = []
+        with self.assertRaisesRegex(release.ReleaseError, "waiting for its browser checks"):
+            self.deploy(lab)
+        self.assertEqual(lab.calls, [])
 
     def test_rerunning_the_same_commit_resumes_after_finished_steps(self):
         lab = FakeLab(inputs(heads=V20), migrator=stopped_task(exit_code=1))
@@ -275,7 +310,7 @@ class DeployTest(unittest.TestCase):
         self.deploy(lab)
         self.assertNotIn("stop", lab.calls)
         self.assertNotIn("snapshot", lab.calls)
-        self.assertEqual(lab.record()["status"], "accepted")
+        self.assertEqual(lab.record()["status"], "verified")
         self.assertEqual(lab.inputs["database_heads"], V23)
 
     def test_another_unfinished_release_blocks_a_new_commit(self):
@@ -310,16 +345,30 @@ class DeployTest(unittest.TestCase):
 
 
 class RollbackTest(unittest.TestCase):
+    def deploy_and_accept(self, lab):
+        release.Release(lab).deploy("main")
+        release.Release(lab).accept()
+        lab.calls = []
+
     def test_rollback_moves_only_api_and_worker_to_the_previous_release(self):
         lab = FakeLab(inputs())
-        release.Release(lab).deploy("main")
-        lab.calls = []
+        self.deploy_and_accept(lab)
         release.Release(lab).rollback()
-        self.assertEqual(lab.calls, ["confirm", ("plan", "runtime", OLD, NEW), ("apply", "runtime.tfplan"), "browser"])
+        self.assertEqual(lab.calls, ["confirm", ("plan", "runtime", OLD, NEW), ("apply", "runtime.tfplan")])
+        release.Release(lab).accept()
         state = lab.inputs
         self.assertEqual((state["runtime_image_digest"], state["migrator_image_digest"]), (OLD, NEW))
         self.assertEqual(state["accepted"]["release_id"], "baseline")
         self.assertIsNone(state["previous_accepted"])
+
+    def test_rollback_of_an_unaccepted_release_rejects_it(self):
+        lab = FakeLab(inputs())
+        release.Release(lab).deploy("main")
+        deployed = lab.inputs["awaiting_acceptance"]["release_id"]
+        release.Release(lab).rollback()
+        self.assertEqual(lab.store[f"{release.RECORDS}/{deployed}.json"]["status"], "rejected")
+        self.assertEqual(lab.inputs["runtime_image_digest"], OLD)
+        self.assertEqual(lab.inputs["awaiting_acceptance"]["kind"], "rollback")
 
     def test_rollback_after_a_failed_deploy_restores_the_accepted_release(self):
         lab = FakeLab(inputs(heads=V20), plans={"migrator": plan(("aws_lb.api[\"standard\"]", ("update",)))})
@@ -333,8 +382,7 @@ class RollbackTest(unittest.TestCase):
 
     def test_rollback_across_a_schema_change_is_refused_with_the_snapshot(self):
         lab = FakeLab(inputs(heads=V20))
-        release.Release(lab).deploy("main")
-        lab.calls = []
+        self.deploy_and_accept(lab)
         with self.assertRaisesRegex(release.ReleaseError, "cannot run here.*scoutgrid-lab-release-"):
             release.Release(lab).rollback()
         self.assertEqual(lab.calls, [])
