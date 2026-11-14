@@ -965,7 +965,8 @@ CMDB sample stay open and are tracked in the Phase 0A design (§10), not here.
 **Decided:** tenant V24 is held until the 5M/15M occurrence benchmark (R1) and package-key normalization (R2) settle
 the §3.8 index design. Migrations are append-only, so V24 ships once, complete.
 
-Dates assume kickoff (**K**) on Monday, November 23, 2026. If kickoff moves, every date moves with it.
+**Kickoff (K) was November 14, 2026 (decided).** Work starts Monday, November 16, 2026; the dates below count from
+there.
 
 ### 6.1 Requests
 
@@ -974,33 +975,35 @@ what it blocks.
 
 | # | Request | Owner | Provided by | Needed by | Blocks | Contract |
 |---|---|---|---|---|---|---|
-| R1 | Benchmark environment sized for 5M and 15M occurrences, then the effective-owner benchmark and query plan | Ownership lead | SRE (environment) | Environment: Mon Nov 30, 2026 (K+1 wk). Result: Fri Dec 11, 2026 | §3.8 index design, so V24; enabling occurrence registration outside test tenants; R6 | §3.8, §3.9 |
-| R2 | Package-key normalization: do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Samples from SBOM, BOM orchestrator and CMDB host inventory; include whether CycloneDX `group` reaches `package_name` (§5.1; in scope, decided November 14, 2026) | Inventory lead | Inventory writer owners; sample tenants | Fri Dec 4, 2026 | Occurrence key sign-off; §3.8 index design, so V24 | §3.2, §3.9 |
-| R3 | CBOM fingerprint stability: two re-exports of an unchanged crypto asset produce the same `component_fingerprint` | CBOM lead | CBOM sample sources | Fri Dec 11, 2026 | CBOM occurrence identity sign-off | §3.2, §3.9 |
-| R4 | Representative ServiceNow instance: `sys_user*` fields (including custom `u_` fields) and ACLs, read-only account | Connector lead | A customer ServiceNow admin | Fri Dec 11, 2026 | Mapping and contract tests on real field shapes; enabling outside test tenants | §1.2, §1.10 |
-| R5 | Representative cloud tag and label values for `owner` and `team`: share of emails versus team names, alias coverage after preview | Connector lead | A customer AWS and GCP tenant | Fri Dec 18, 2026 | Enabling cloud producers outside test tenants | §2.4, §2.11 |
-| R6 | Campaign batch sizes: confirm the 5,000 create bound and the 1,000 reconciler batch on the R1 environment | Ownership lead | — (needs R1) | Fri Jan 8, 2027 | Enabling CVE campaigns outside test tenants | §4.2, §4.3, §4.13 |
-| R7 | A customer AWS organization to test the Organizations role (management or delegated-admin account) | Connector lead | A customer AWS org | Fri Jan 15, 2027 | Enabling the AWS account input outside test tenants (resource tags are unaffected) | §2.2.1, §2.11 |
-| R8 | A customer Jira for component, label or team-field mapping | Connector lead | A customer Jira | Fri Jan 29, 2027 | Jira routing beyond text. **Not a Release 2 blocker**; Release 3 input | §4.9, §4.13 |
+| R1 | Benchmark environment sized for 5M and 15M occurrences, then the effective-owner benchmark and query plan | Ownership lead | SRE (environment) | Environment: Mon Nov 23, 2026 (K+1 wk). Result: Fri Dec 4, 2026 | §3.8 index design, so V24; enabling occurrence registration outside test tenants; R6 | §3.8, §3.9 |
+| R2 | Package-key normalization: do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Samples from SBOM, BOM orchestrator and CMDB host inventory; include whether CycloneDX `group` reaches `package_name` (§5.1; in scope, decided November 14, 2026) | Inventory lead | Inventory writer owners; sample tenants | Fri Nov 27, 2026 | Occurrence key sign-off; §3.8 index design, so V24 | §3.2, §3.9 |
+| R3 | CBOM fingerprint stability: two re-exports of an unchanged crypto asset produce the same `component_fingerprint` | CBOM lead | CBOM sample sources | Fri Dec 4, 2026 | CBOM occurrence identity sign-off | §3.2, §3.9 |
+| R4 | Representative ServiceNow instance: `sys_user*` fields (including custom `u_` fields) and ACLs, read-only account | Connector lead | A customer ServiceNow admin | Fri Dec 4, 2026 | Mapping and contract tests on real field shapes; enabling outside test tenants | §1.2, §1.10 |
+| R5 | Representative cloud tag and label values for `owner` and `team`: share of emails versus team names, alias coverage after preview | Connector lead | A customer AWS and GCP tenant | Fri Dec 11, 2026 | Enabling cloud producers outside test tenants | §2.4, §2.11 |
+| R6 | Campaign batch sizes: confirm the 5,000 create bound and the 1,000 reconciler batch on the R1 environment | Ownership lead | — (needs R1) | Mon Jan 4, 2027 | Enabling CVE campaigns outside test tenants | §4.2, §4.3, §4.13 |
+| R7 | A customer AWS organization to test the Organizations role (management or delegated-admin account) | Connector lead | A customer AWS org | Fri Jan 8, 2027 | Enabling the AWS account input outside test tenants (resource tags are unaffected) | §2.2.1, §2.11 |
+| R8 | A customer Jira for component, label or team-field mapping | Connector lead | A customer Jira | Fri Jan 22, 2027 | Jira routing beyond text. **Not a Release 2 blocker**; Release 3 input | §4.9, §4.13 |
 
 Track each row with the date requested and the date received. A request not received by its date is raised at the
 next lead review with the re-estimate it causes (plan §16.1).
 
 ### 6.2 Named leads
 
-Release 2 work does not start until every role has a person (§5.4, plan §16.3).
+Release 2 work does not start until every role has a person (§5.4, plan §16.3). **Decided (November 14, 2026):** Scout
+holds all five roles, so work runs one item at a time unless more people join.
 
 | Role | Workstream (plan §16.1) | Person | §5 ledger rows | §6.1 requests | Confirmed on |
 |---|---|---|---:|---|---|
-| Ownership lead | Ownership/platform/backend | | 5 | R1, R6 | |
-| Connector lead | Connectors/data ingestion | | 8 | R4, R5, R7, R8 | |
-| Inventory lead | Connectors/data ingestion | | 4 | R2 | |
-| Workflow lead | Consumer APIs/frontend/workflows | | 17 | — | |
-| CBOM lead | Consumer APIs/frontend/workflows | | 6 | R3 | |
+| Ownership lead | Ownership/platform/backend | Scout | 5 | R1, R6 | November 14, 2026 |
+| Connector lead | Connectors/data ingestion | Scout | 8 | R4, R5, R7, R8 | November 14, 2026 |
+| Inventory lead | Connectors/data ingestion | Scout | 4 | R2 | November 14, 2026 |
+| Workflow lead | Consumer APIs/frontend/workflows | Scout | 17 | — | November 14, 2026 |
+| CBOM lead | Consumer APIs/frontend/workflows | Scout | 6 | R3 | November 14, 2026 |
 
 ### 6.3 Estimate template
 
-Leads fill in estimate, staff and dates. Estimates are in engineer-weeks as a low–high range. "Depends on" lists
+**Decided (November 14, 2026):** Release 2 starts without the plan §16.1 estimate. The table below is kept as the
+work breakdown and dependency order; the estimate columns are optional. Leads fill in estimate, staff and dates. Estimates are in engineer-weeks as a low–high range. "Depends on" lists
 what must finish first; a request dependency (R*n*) only gates enablement outside test tenants unless the row says
 otherwise.
 
@@ -1026,7 +1029,7 @@ otherwise.
 
 **Critical path (skeleton).** Leads confirm or replace it once E1–E17 have estimates:
 
-1. R1 environment (Nov 30) and R2 (Dec 4) → R1 result (Dec 11) → **E1 V24**. Nothing that needs V24 merges before
+1. R1 environment (Nov 23) and R2 (Nov 27) → R1 result (Dec 4) → **E1 V24**. Nothing that needs V24 merges before
    this.
 2. E1 → E7 → E8 → E9 (occurrences and CBOM).
 3. E1 → E10 and E11 → E14 → E15 (campaigns and tickets).
