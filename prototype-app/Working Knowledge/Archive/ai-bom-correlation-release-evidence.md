@@ -71,7 +71,7 @@ The user story is a declared model resource whose software dependency already ha
 | API → database | Real PostgreSQL controller/reconciliation suites cover tenant authorization, path/gap persistence, active-only filtering, pagination, rollback, and lifecycle transitions; all 249 integration tests passed |
 | Response → UI | Browser DOM and images show the three ordered edges, VERSION_MISSING remediation, retained uncertainty, and explicit RETIRED reason/time only in history; the preview console had zero errors/warnings |
 
-[Before](../../output/playwright/ai-bom-before.png) · [Current support and uncertainty](../../output/playwright/ai-bom-after.png) · [Retired history](../../output/playwright/ai-bom-history.png)
+[Before](../../../output/playwright/ai-bom-before.png) · [Current support and uncertainty](../../../output/playwright/ai-bom-after.png) · [Retired history](../../../output/playwright/ai-bom-history.png)
 
 ## Rollout and rollback
 

@@ -2,7 +2,7 @@
 
 Status: revised implementation specification; user selected separate Intelligence and six peer Workbench tabs. Shared implementation and verification remain pending; no application changes are made by this document. Updated October 28, 2026.
 
-This is the proposal format required by the [standing standard](../../../docs/ui-development-standard.md#changing-the-standard-requires-approval). It covers visible UI elements and their interactions. Global route-registry architecture, data-router migration, metric definitions and backend changes belong in the [non-UI ledger](NON_UI_IMPROVEMENTS_LEDGER.md). The Workbench has a narrowly specified tab/task query adapter; a generic URL-state framework is not introduced.
+This is the proposal format required by the [standing standard](../ui-development-standard.md#changing-the-standard-requires-approval). It covers visible UI elements and their interactions. Global route-registry architecture, data-router migration, metric definitions and backend changes belong in the [non-UI ledger](NON_UI_IMPROVEMENTS_LEDGER.md). The Workbench has a narrowly specified tab/task query adapter; a generic URL-state framework is not introduced.
 
 ## Problem and proposed scope
 

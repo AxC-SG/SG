@@ -1,6 +1,6 @@
 # UI 2.0 migration record
 
-Updated October 28, 2026. The application migration is complete. This folder is a compact historical handoff and rollback record; new screen development belongs in the live app and follows [the UI development standard](../../docs/ui-development-standard.md).
+Updated October 28, 2026. The application migration is complete. This folder is a compact historical handoff and rollback record; new screen development belongs in the live app and follows [the UI development standard](ui-development-standard.md).
 
 The separate [UI 2.0 improvement package](<UI 2.0 improvements/README.md>) contains the current UI-elements review and proposed adoption plan. Its non-UI improvement ledger is independent of the migration history below; neither proposals nor documentation completion certify new implementation or release qualification.
 
@@ -10,7 +10,7 @@ The separate [UI 2.0 improvement package](<UI 2.0 improvements/README.md>) conta
 | What plan was implemented? | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the original phases; [UI2-Final-Implementation-Plan.md](UI2-Final-Implementation-Plan.md) for qualification, cleanup and legacy retirement |
 | What is the current state? | [CURRENT_STATE.md](CURRENT_STATE.md), including completed code work, later fixes, cleanup decisions and evidence still outstanding |
 | What evidence/decisions must remain? | `IMPLEMENTATION_PROGRESS.json` and `CLEANUP_PROGRESS.json` retain dated per-phase results, retirement decisions/waivers, measurements and limitations |
-| How is previous code/build integrity checked? | Two archives, each with its checksum and per-file manifest; commands in [styles and rollback](../../docs/ui2-styles-and-rollback.md#retained-archives) |
+| How is previous code/build integrity checked? | Two archives, each with its checksum and per-file manifest; commands in [styles and rollback](ui2-styles-and-rollback.md#retained-archives) |
 | What tools are still needed? | [tools/README.md](tools/README.md): final qualification, style/state comparison, keyboard/zoom aid, performance and frozen-artifact rehearsal |
 
 The plans and ledgers are **historical**, not instructions to restart migration. Their branch names, personal paths, deleted-file references, baseline counts and pending statuses describe their recorded time. `UI2-Final-Implementation-Plan.md` is retained byte-for-byte from the user's supplied plan; the duplicate `CLEANUP_PLAN.md` was removed. `CURRENT_STATE.md` and the live docs govern current development. Historical evidence does not certify a later branch tip.

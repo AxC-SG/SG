@@ -1,6 +1,6 @@
 # UI 2 styles, browser gates and rollback
 
-Updated October 28, 2026. UI 2.0 is the only application presentation. New development follows [the UI development standard](ui-development-standard.md), including approval for changes to shared patterns. The implementation and the limits of recorded qualification are in [CURRENT_STATE.md](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>).
+Updated October 28, 2026. UI 2.0 is the only application presentation. New development follows [the UI development standard](ui-development-standard.md), including approval for changes to shared patterns. The implementation and the limits of recorded qualification are in [CURRENT_STATE.md](<CURRENT_STATE.md>).
 
 ## Stylesheet ownership and order
 

@@ -29,11 +29,11 @@ Versions above describe declared package constraints; `package-lock.json` pins r
 
 The app is a pure SPA. There is no SSR. All pages are lazy-loaded via `React.lazy`. The dev server runs strictly on port 5173 (`--strictPort`). Vite proxies `/api/**` to `http://localhost:8080` in dev so the frontend calls the backend without a separate CORS config.
 
-**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Pull request browser CI builds and checks the UI 2 artifact and runs fixture journeys in the pinned Playwright image. The scheduled and on-demand workflow runs the full route and accessibility sweep and screenshot comparison. See [browser gates](ui2-styles-and-rollback.md#browser-gates).
+**Quality gate order:** `lint` → `typecheck` → `build` → `test:coverage`. Pull request browser CI builds and checks the UI 2 artifact and runs fixture journeys in the pinned Playwright image. The scheduled and on-demand workflow runs the full route and accessibility sweep and screenshot comparison. See [browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md#browser-gates>).
 
-**New development:** follow [the UI development standard](ui-development-standard.md) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
+**New development:** follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>) for architecture, component reuse, state/accessibility coverage and approval for departures. UI 2.0 is the only app/auth presentation; the public `/demo` boundary is intentional.
 
-The sidebar uses route links with `aria-current` and separate disclosure buttons with `aria-expanded`. Subsections start collapsed and reset on workspace changes. `AppShell` renders the authenticated page’s single `h1` and `main`. Pages register a record-specific title or actions with `usePageHeader` when needed. See the [shell and heading contracts](ui-development-standard.md#reuse-what-exists).
+The sidebar uses route links with `aria-current` and separate disclosure buttons with `aria-expanded`. Subsections start collapsed and reset on workspace changes. `AppShell` renders the authenticated page’s single `h1` and `main`. Pages register a record-specific title or actions with `usePageHeader` when needed. See the [shell and heading contracts](<../Working Knowledge/New UI 2.0/ui-development-standard.md#reuse-what-exists>).
 
 ---
 
@@ -494,7 +494,7 @@ Each `FilterBuilderField` has: `key`, `label`, `categoryKey`, `description`, `ty
 
 ### ConfirmDialog (`src/components/ConfirmDialog.tsx`)
 
-Confirmation wrapper around the shared native `Dialog`. Escape and backdrop clicks call `onCancel`. See the [modal contract](ui-development-standard.md#reuse-what-exists) for focus and pending-write behavior.
+Confirmation wrapper around the shared native `Dialog`. Escape and backdrop clicks call `onCancel`. See the [modal contract](<../Working Knowledge/New UI 2.0/ui-development-standard.md#reuse-what-exists>) for focus and pending-write behavior.
 
 Props: `isOpen`, `title`, `message`, `confirmLabel?` (default `'Confirm'`), `cancelLabel?` (default `'Cancel'`), `confirmDisabled?`, `onConfirm`, `onCancel`
 
@@ -842,7 +842,7 @@ Two themes: `light` and `dark`. `AppShell` defaults to dark when `scoutai-theme`
 
 ### Tokens, fonts and CSS file organization
 
-App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. `main.tsx` imports only `styles/index.css`, which loads public styles followed by `ui2/index.css`; all application styles are eager. The legacy `base.css`, `shared.css`, page stylesheet imports, compatibility bridge and version switch are retired. App token stacks are `--dp-font` (Inter/system fallbacks) and `--dp-mono` (JetBrains Mono/monospace fallbacks); declaring them does not bundle those fonts. The entry still contains the original public Google Fonts import, which is not a new dependency to copy into app screens. See [stylesheet ownership and browser gates](ui2-styles-and-rollback.md) and the required [UI development standard](ui-development-standard.md).
+App styles use `--dp-*` tokens from `src/styles/ui2/tokens.css`, scoped to `html[data-ui='2']`. `main.tsx` imports only `styles/index.css`, which loads public styles followed by `ui2/index.css`; all application styles are eager. The legacy `base.css`, `shared.css`, page stylesheet imports, compatibility bridge and version switch are retired. App token stacks are `--dp-font` (Inter/system fallbacks) and `--dp-mono` (JetBrains Mono/monospace fallbacks); declaring them does not bundle those fonts. The entry still contains the original public Google Fonts import, which is not a new dependency to copy into app screens. See [stylesheet ownership and browser gates](<../Working Knowledge/New UI 2.0/ui2-styles-and-rollback.md>) and the required [UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>).
 
 ### CSS class naming patterns
 

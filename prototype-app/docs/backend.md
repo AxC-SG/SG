@@ -6,7 +6,7 @@ Last updated November 13, 2026 for the UI 2.0 connector contract changes.
 
 UI 2.0 is the active frontend presentation. Tenant Fix Intelligence uses the [Fix Intelligence API](#fix-intelligence). The [UI 2.0 wiring fixes](<../Working Knowledge/New UI 2.0/ui2-backend-wiring-fixes-2026-10-30.md>) record the AWS Bedrock and GitHub SBOM contract changes and their verification.
 
-New API-driven screens follow [the UI development standard](ui-development-standard.md), including explicit loading/error/unavailable states and real persistence checks. Use shared frontend HTTP/auth handling and backend enforcement; changes to shared UI conventions need user approval with pros/cons and an app-wide consistency plan. [Current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) records qualification limits.
+New API-driven screens follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>), including explicit loading/error/unavailable states and real persistence checks. Use shared frontend HTTP/auth handling and backend enforcement; changes to shared UI conventions need user approval with pros/cons and an app-wide consistency plan. [Current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) records qualification limits.
 
 ## Tech Stack
 

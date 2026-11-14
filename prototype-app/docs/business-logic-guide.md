@@ -10,7 +10,7 @@ Last updated: 2026-10-28 (UI 2.0 documentation alignment)
 
 The migration is complete for tenant, platform and authentication screens. Presentation is shared through UI 2.0; business workflows still use the existing queries, DTOs, enums, mutations and authorization. The `/demo` public site intentionally has its own styling boundary.
 
-New screens follow [the UI development standard](ui-development-standard.md). Keep domain distinctions visible: queue totals versus narrowed/page-local results, selection versus detail navigation, CVE applicability versus analyst impact, persisted assessments versus local drafts, and roles versus tenant entitlements. Reuse shared presentation without merging these semantics or inventing unsupported actions. Retired Fix Intelligence pages redirect to Findings; contained runtime/provider/patch capabilities remain unavailable.
+New screens follow [the UI development standard](<../Working Knowledge/New UI 2.0/ui-development-standard.md>). Keep domain distinctions visible: queue totals versus narrowed/page-local results, selection versus detail navigation, CVE applicability versus analyst impact, persisted assessments versus local drafts, and roles versus tenant entitlements. Reuse shared presentation without merging these semantics or inventing unsupported actions. Retired Fix Intelligence pages redirect to Findings; contained runtime/provider/patch capabilities remain unavailable.
 
 Changes to shared interaction or presentation patterns require user approval during development after explaining alternatives, pros/cons and how affected screens will converge. See [current migration state](<../Working Knowledge/New UI 2.0/CURRENT_STATE.md>) for historical verification limits.
 

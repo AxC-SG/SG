@@ -14,7 +14,7 @@ Updated November 13, 2026 against `main` at `562fdbd8`. The October 28 cleanup a
 - The [October 30 backend wiring record](ui2-backend-wiring-fixes-2026-10-30.md) covers AWS setup, Operations routing and GitHub SBOM counts. The [October 30 screenshot record](ui2-ci-visual-repair-2026-10-30.md) records the reviewed baseline refresh and comparison for its candidate.
 - Later commits `2f5abf42`, `6bb3376e`, `26c3bc26`, `1faab124` and `eedc8a08` corrected universal selectors/stored theme, public/auth dark contrast and canvas/header palettes, adjusted the scope expectation and refreshed inspected dark auth snapshots. Do not revert those fixes to match older family maps or counts.
 
-For exact current ownership and commands, see [styles and rollback](../../docs/ui2-styles-and-rollback.md). For all future screens use [the UI development standard](../../docs/ui-development-standard.md); shared-pattern departures require approval with pros/cons and an affected-screen consistency plan.
+For exact current ownership and commands, see [styles and rollback](ui2-styles-and-rollback.md). For all future screens use [the UI development standard](ui-development-standard.md); shared-pattern departures require approval with pros/cons and an affected-screen consistency plan.
 
 ## Historical evidence and remaining qualification
 
