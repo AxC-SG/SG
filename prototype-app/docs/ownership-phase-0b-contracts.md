@@ -105,7 +105,11 @@ Directory people never gain Scoutgrid login, tenant membership or roles from a l
 - **Keyset paging, not offset.** The CMDB sync pages with `sysparm_offset`, which can skip or repeat rows when
   records change mid-run. The directory sync orders by `sys_updated_on` then `sys_id` and asks for rows after the last
   `(sys_updated_on, sys_id)` pair:
-  `sys_updated_on>T^ORsys_updated_on=T^sys_id>ID^ORDERBYsys_updated_on^ORDERBYsys_id`.
+  `sys_updated_on>=T^sys_updated_on>T^ORsys_id>ID^ORDERBYsys_updated_on^ORDERBYsys_id`, that is
+  `updated ≥ T AND (updated > T OR sys_id > ID)`. (Corrected November 14, 2026: ServiceNow applies `^OR` before `^`, so
+  the earlier text `sys_updated_on>T^ORsys_updated_on=T^sys_id>ID` meant `(updated > T OR updated = T) AND sys_id > ID`
+  and would have skipped later rows with a smaller `sys_id`. The intent is unchanged.) Admin filters are ANDed in
+  front with `^`.
   Page size is 500, with the CMDB sync's fallback ladder (250, 100, 25) on timeouts.
 - **Incremental runs** start from `identity_source.sync_cursor`, a JSON object with one `(updatedOn, sysId)` pair per
   table. The cursor for a table advances only after the page that produced it has committed. Incremental runs create
