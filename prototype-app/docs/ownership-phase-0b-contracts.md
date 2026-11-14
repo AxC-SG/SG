@@ -13,7 +13,8 @@ code as disabled-by-default switches, as in Release 1.
 | 1 | ServiceNow directory table/scope/identity-link | §1 | Draft |
 | 2 | AWS/GCP producer fields, TTL and authority | §2 | Draft |
 | 3 | BOM/CBOM occurrence identity and finding-adapter registry | §3 | Draft |
-| 4 | Campaign/ticket materialization, outcomes and routing | §4 | Not started |
+| 4 | Campaign/ticket materialization, outcomes and routing | §4 | Draft |
+| 5 | Release 2 change ledger (plan §9.16) | §5 | Draft |
 
 ## 1. ServiceNow directory contract
 
@@ -120,9 +121,12 @@ Directory people never gain Scoutgrid login, tenant membership or roles from a l
 
 ### 1.6 Preview and first load
 
-- Preview fetches counts per table and up to 10 sample rows per table with names and emails masked (first character
-  plus domain), writes nothing and returns a preview token bound to the source version, the actor and the scope hash,
-  valid for 30 minutes, like the CSV preview.
+- Preview fetches counts per table and up to 10 sample rows per table, writes nothing and returns a preview token
+  bound to the source version, the actor and the scope hash, valid for 30 minutes, like the CSV preview.
+- **DECISION (approved by the product owner, November 14, 2026): samples show full names and emails.** Preview needs
+  `CONFIGURE_IDENTITY_SOURCE` (`TENANT_ADMIN` only), so only tenant admins see them. Every preview records an audit
+  event with the actor, the source and the number of sample rows, but not the values. Sample values exist only in the
+  response: they are not stored, logged or cached, and the response carries `Cache-Control: no-store`.
 - Enabling a source requires a preview token from the current scope. The first complete run is the **baseline load**.
 
 ### 1.7 Anomaly pause
@@ -144,16 +148,18 @@ or tenant quotas.
 - CMDB resolution order for a `support_group` value, after this contract: (1) the referenced `sys_user_group` `sys_id`
   through an active mapping for a ServiceNow source on the same instance, then (2) exact team name or alias, as today.
   No fuzzy matching and no team creation.
-- **OPEN:** with the default connector fields, `support_group` comes only from the installed-software table's
+- **DECISION (approved by the product owner, November 14, 2026): the CMDB sync is fixed in Phase B**, as described
+  below, so (1) is available in Release 2. Background: with the default connector fields, `support_group` comes only from the installed-software table's
   dot-walked `installed_on.support_group`, read with `sysparm_display_value=all`, and `CmdbInventoryIngestionRunner`
   stores the display value (the group name). The reference `sys_id` is not kept. `CmdbInventoryIngestionRunner` falls
   back to the raw field when no display value is present, so an admin-customised field list could store a `sys_id`
-  instead. Using (1) needs the CMDB sync to store the name and the reference `sys_id` in separate columns; that is a
-  CMDB connector change, scheduled with Phase B, with tests for both shapes.
+  instead. The fix: the CMDB sync stores the name and the reference `sys_id` in separate columns (tenant V24), with
+  tests for both field shapes.
 
 ### 1.9 Schema and code impact
 
-- **No migration is expected.** Tenant V21 already has `identity_source` (`SERVICENOW` kind, encrypted credentials,
+- **Directory: no migration is expected.** The CMDB support-group `sys_id` column (§1.8, decided) goes in tenant
+  V24. Tenant V21 already has `identity_source` (`SERVICENOW` kind, encrypted credentials,
   `scope_config`, `mapping_config`, `sync_cursor`, `schedule`, state and health), `external_identity`,
   `external_group`, `directory_group_member` with `source_id`, `external_group_team_mapping` with `SUGGESTED`/`PROPOSED`
   and `identity_import_run` with `PROVIDER_SYNC`. Tenant V22 has the `AMBIGUOUS_IDENTITY` and `PRODUCER_ANOMALY` review
@@ -170,8 +176,8 @@ or tenant quotas.
 | Item | Owner | Blocks |
 |---|---|---|
 | Representative `sys_user*` fields and ACLs (custom `u_` fields) | Connector lead + a customer instance | Enabling outside test tenants |
-| CMDB `support_group` reference `sys_id` retained by the CMDB sync | Connector lead | Mapping-driven CMDB resolution (§1.8) |
-| Masking rule for preview samples | Security review | Preview UI sign-off |
+| ~~CMDB `support_group` reference `sys_id` retained by the CMDB sync~~ Decided: fixed in Phase B (§1.8) | Connector lead | — |
+| ~~Masking rule for preview samples~~ Decided: full values for tenant admins, audited, never stored (§1.6) | — | — |
 
 ## 2. AWS/GCP producer contract
 
@@ -203,7 +209,7 @@ Scope: plan §6.8 (AWS and GCP rows), §6.9 priorities 3 and 5, §12.1 TTL and �
 | Provider | Subject | Input | Priority class | How it is read |
 |---|---|---|---|---|
 | AWS | EC2 instance (`HOST` asset) | Resource tags `owner`, `team` | `CLOUD_TAG` (5) | `assets.cloud_tags_json`, already written by `AwsResourceIngestionService` from `DescribeInstances` |
-| AWS | Account (`CLOUD_ACCOUNT` subject) | Account tags `owner`, `team` | `CLOUD_STRUCTURED` (3) | **OPEN**: AWS Organizations `ListTagsForResource`, callable only from the management or a delegated-admin account (§2.11) |
+| AWS | Account (`CLOUD_ACCOUNT` subject) | Account tags `owner`, `team` | `CLOUD_STRUCTURED` (3) | AWS Organizations `ListTagsForResource`, callable only from the management or a delegated-admin account. Built in Release 2 (§2.2.1) |
 | GCP | Compute Engine VM (`HOST`) and other resources (`CLOUD_RESOURCE`) | Labels `owner`, `team` | `CLOUD_TAG` (5) | `assets.cloud_tags_json`, already written by `GcpResourceIngestionService` |
 | GCP | Project (`CLOUD_ACCOUNT` subject) | Project labels `owner`, `team` | `CLOUD_STRUCTURED` (3) | Resource Manager `projects.get` during the discovery run; `resourcemanager.projects.get` is in `roles/browser`, already required, and `cloudresourcemanager.googleapis.com` is already allow-listed for `gcp` |
 
@@ -211,10 +217,31 @@ Scope: plan §6.8 (AWS and GCP rows), §6.9 priorities 3 and 5, §12.1 TTL and �
   are lowercase by definition. Every other tag or label is ignored for ownership and stays inventory evidence only.
   If a resource carries both keys, each is its own claim. When they map to different teams, the resolver reports
   `CONFLICT`, as plan §6.9 requires.
-- Admin settings (`CONFIGURE_OWNERSHIP_PRODUCER`) can switch off a key or the account-level input per provider. A
-  per-tenant custom key list is **not** in MVP.
+- Admin settings (`CONFIGURE_OWNERSHIP_PRODUCER`) can switch off a key or the account-level input per provider.
+  **DECISION (approved by the product owner, November 14, 2026): they are stored per tenant** in tenant V24 columns
+  on `aws_discovery_configs` and `gcp_discovery_configs` (`ownership_owner_key_enabled`,
+  `ownership_team_key_enabled`, `ownership_account_input_enabled`, all default `true`). Changing them is audited and
+  re-resolves the affected subjects through the §2.6 enqueue. A per-tenant custom key list is **not** in MVP.
 - Reading project labels adds one `projects.get` per configured project per run, through `OutboundHttpClient`
   (provider `gcp`). A failed call leaves that project's account claims untouched for the run (§2.5).
+
+#### 2.2.1 AWS account tags (decided: built in Release 2)
+
+**DECISION (approved by the product owner, November 14, 2026):** AWS account-level claims are built in Release 2,
+not deferred.
+
+- **Role.** A separate, optional `organizations_role_arn` and external ID on `aws_discovery_configs` (tenant V24).
+  The role is in the management account or a delegated-admin account and grants only
+  `organizations:ListTagsForResource` (and `organizations:DescribeAccount` for the connection test). It is assumed
+  with the connector's existing STS path. It is never a target role, and it is never used for discovery.
+- **Reads.** Once per run, after discovery commits, one `ListTagsForResource` per observed account ID, through
+  `OutboundHttpClient` with the `aws` provider policy, bounded retries and `Retry-After`. A failed or denied read
+  changes nothing for that account (§2.5).
+- **Without the role** AWS resource tags still work, and account claims are not written. The Sources view says
+  account tags are not configured.
+- **Qualification.** Tests run against mocks (`MockRestServiceServer`: success, `AccessDenied`,
+  `AWSOrganizationsNotInUseException`, throttling, timeout). Enabling the account input outside test tenants still
+  needs a customer organization (§2.11).
 
 ### 2.3 Subjects and topology
 
@@ -316,12 +343,12 @@ over its account's owner**, and the account owner applies only to resources with
 
 ### 2.9 Schema and code impact
 
-- **No migration is expected.** Tenant V22 already allows `AWS`/`GCP` claims with `CLOUD_STRUCTURED`/`CLOUD_TAG`
+- **Claims and subjects: no migration is expected.** Tenant V22 already allows `AWS`/`GCP` claims with `CLOUD_STRUCTURED`/`CLOUD_TAG`
   priority classes, `CLOUD_ACCOUNT` subjects, `OWNERSHIP_PARENT` edges, and the `UNMAPPED_VALUE`,
   `INHERITANCE_ERROR` and `PRODUCER_ANOMALY` review types. Tenant V21 allows `AWS`/`GCP` alias provenance. Platform
-  V16 has `CLOUD_BOM` authority and `AWS`/`GCP` kill switches. The per-provider key and account toggles (§2.2) fit an
-  application setting. If they must be stored per tenant, that needs tenant V24 columns on
-  `aws_discovery_configs`/`gcp_discovery_configs`.
+  V16 has `CLOUD_BOM` authority and `AWS`/`GCP` kill switches.
+- **Tenant V24 additions (decided):** the per-tenant key and account toggles (§2.2) on `aws_discovery_configs` and
+  `gcp_discovery_configs`, and the AWS Organizations role ARN and external ID (§2.2.1) on `aws_discovery_configs`.
 - New code (Phase B): `CloudOwnershipProducer` (one class, provider strategy for AWS/GCP) called from
   `AwsDiscoverySyncService` and `GcpDiscoverySyncService` after commit, never failing the sync; scan-completeness
   output from both ingestion services; GCP `projects.get` label read; the `CLOUD_BOM` eligibility flag in
@@ -344,7 +371,7 @@ over its account's owner**, and the account owner applies only to resources with
 
 | Item | Owner | Blocks |
 |---|---|---|
-| AWS account owner: Organizations read role (management or delegated admin), `organizations:ListTagsForResource`, and a customer org to test against | Connector lead + a customer org | AWS `CLOUD_STRUCTURED` claims (off until closed; AWS resource tags are unaffected) |
+| AWS account owner: built in Release 2 against mocks (§2.2.1, decided). Still needed: a customer org to test the Organizations role against | Connector lead + a customer org | Enabling the AWS account input outside test tenants (AWS resource tags are unaffected) |
 | Representative tag/label values: share of emails vs team names, and alias coverage after preview | Connector lead + a customer tenant | Enabling outside test tenants |
 | ServiceNow producer `cis` source filter (§2.10) | Ownership lead | None (fix with Phase B) |
 
@@ -473,8 +500,8 @@ canonical subject and writes it to `findings.ownership_subject_id`. Nothing else
 ### 3.8 Schema and code impact
 
 - **Tenant V24 is needed.** It adds nullable `ownership_subject_id` columns, each with a tenant-inclusive foreign key
-  to `ownership_subject` and a partial index, on `inventory_components` and `cbom_components`. If the §2.9 per-tenant
-  producer settings are approved, they go in the same V24. `MigrationCatalogTest` and `TenantSchemaCompatibility`
+  to `ownership_subject` and a partial index, on `inventory_components` and `cbom_components`. The same V24 carries
+  the §1.8 CMDB support-group `sys_id` column, the §2.9 producer settings and the §4.11 campaign and ticket changes. `MigrationCatalogTest` and `TenantSchemaCompatibility`
   move to V24.
 - Everything else already exists: `COMPONENT_OCCURRENCE` and `context_key` on `ownership_subject` (V22), the
   `CLOUD_BOM` domain, `findings.ownership_subject_id` (V23) and the `CRYPTO` finding kind (V10).
@@ -497,4 +524,415 @@ canonical subject and writes it to `findings.ownership_subject_id`. Nothing else
 | Full-size effective-owner benchmark with 5M/15M occurrences (Release 1 open item; occurrences now exist for real) | Ownership lead | Enabling occurrence registration outside test tenants |
 | Do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Confirm against SBOM, BOM orchestrator and CMDB host inventory samples | Inventory lead | Occurrence key sign-off |
 | Is `component_fingerprint` stable across CBOM re-exports of an unchanged crypto asset? | CBOM lead | CBOM occurrence identity sign-off |
-| CBOM crypto → containing software component edges | Product owner | Nothing in Release 2 (crypto inherits from the asset) |
+| ~~CBOM crypto → containing software component edges~~ Decided November 14, 2026: not in Release 2; crypto inherits from the asset (§3.3) | — | — |
+
+## 4. Campaign/ticket materialization, outcomes and routing
+
+Scope: plan §6.13, §6.14 (campaign and ticket behaviour), §7.4, §8.7, §9.11, §9.13, the campaign rows of §12.4 and
+§16.5 (campaign materialization, outcome classifier, ticket mapping, preview and mixed-team routing, and the
+campaign/ticket read waves). The CVE investigation workbench (§6.15, §9.12: lead principal, coordinating team,
+ownership coverage card, notification export) stays in Release 3. This contract only fixes the backend routing and
+campaign launch that the workbench will call.
+
+### 4.1 What exists today
+
+| Area | Current behaviour | Gap against the plan |
+|---|---|---|
+| CVE campaigns (`POST /api/campaigns`) | `CampaignService.createInCurrentTenantSchema` stores `campaign_vulnerabilities` only. Every read (`toSummary`, `toFindingRows`, `toAssetRows`, `toEvidenceRows`) runs `loadFindingsForCampaign`, which loads **every** tenant finding for those CVEs at read time | Membership is a dynamic query, not a ledger (§6.13, §9.11) |
+| Finding campaigns (`POST /api/campaigns/from-findings` → `CryptoRemediationService.createCampaign` → `createFromFindings`) | Inserts into `campaign_findings` (tenant V17), capped at `MAX_CAMPAIGN_FINDINGS = 500`, `ON CONFLICT DO NOTHING` | No ownership snapshot; summary and detail ignore these rows (§4.12) |
+| `campaign_findings` | PK `(campaign_id, finding_id)`, `added_by`, `added_at`; `finding_id` references `findings(id)` with `ON DELETE CASCADE` | No owner-at-add columns, FK is not tenant-inclusive |
+| Progress | `isResolvedFinding` counts `RESOLVED`, `SUPPRESSED` and `AUTO_CLOSED` as resolved | Suppressed and accepted-risk findings count as remediated (§6.13) |
+| Owner display | Finding rows return `findings.owner_group`; asset rows return `assets.support_group` | Free text used as ownership (§9.11) |
+| Exceptions | `campaign_exceptions` keyed by free-text `finding_display_id`, `asset_name`, `package_name`; never mutates the finding | No stable `finding_id`, no owner snapshot |
+| Notify groups | `campaign_notify_groups.group_name`/`group_email` free text, plaintext email | No `team_id`, no recipient type (§7.4) |
+| Ticket routing | Single-finding ServiceNow tickets take `findings.owner_group` (`ServiceNowIncidentService.createFindingIncidentRemote`) and ignore the request's `assignmentGroup`. `TicketingService.createTicketsForCve` groups by the caller-supplied `TicketAsset.assignmentGroup` (the CMDB support group from the browser), then by package. Both fall back to the hard-coded `App-Sec Manager`. Jira renders the group as text in the summary and description | Raw CMDB group copied into tickets, implicit default, no conflict handling (§9.13) |
+| Ticket attempts | `finding_ticket_attempts` (V17) is written by `CryptoRemediationService.createTicket`, which `FindingTicketController` uses for single-finding tickets. CVE tickets and AI Grid tickets write no attempt | No routing audit |
+| Ticket sync | `FindingIncidentSyncService` pushes finding status to the ticket and resolves the finding when the ticket resolves. It never reads ownership | Already correct for "ownership changes do not close tickets" |
+| Read waves | `OwnershipReadAdapter.Consumer` has `CAMPAIGNS` and `TICKETS`, but only `read-waves.inventory` and `read-waves.findings` are wired | Campaign and ticket consumers cannot be switched on |
+
+### 4.2 Membership ledger
+
+`campaign_findings` becomes the only source of membership for every campaign. `campaign_vulnerabilities` stays as the
+CVE scope definition. No read path calls `loadFindingsForCampaign` after this contract.
+
+- **Scope kind.** `campaigns.scope_kind` is `CVE` (created from CVE IDs) or `FINDINGS` (created from finding IDs). A
+  `FINDINGS` campaign never gains members automatically.
+- **Create, CVE scope.** One set-based `INSERT … SELECT` in the create transaction adds every finding whose
+  vulnerability is in scope and whose status is `OPEN`. Suppressed, accepted-risk and false-positive findings are
+  added only when the request sets `includeExcepted = true` (§6.14). Findings already `RESOLVED` or `AUTO_CLOSED` are
+  not added: a new campaign does not start with remediation it did not drive.
+- **Create, finding scope.** As today, with stable `findingIds`. The 500-member cap stays for this path.
+- **Size bound (decided, §4.13).** The create transaction materializes at most 5,000 members. A larger CVE scope creates the
+  campaign with `membership_state = 'MATERIALIZING'`, and the reconciler (§4.3) adds the rest in batches. Detail shows
+  the partial count and the state; launch notifications wait until the state is `COMPLETE`.
+- **Idempotent key.** The existing primary key `(campaign_id, finding_id)` is the membership key. Every insert uses
+  `ON CONFLICT DO NOTHING`, so a retried create or reconcile never duplicates a member or overwrites its snapshot.
+- **Never delete history.** No API or job deletes a `campaign_findings` row. A member whose finding later closes,
+  is suppressed or changes owner stays a member. `add_source` records how it arrived: `CREATE`, `RECONCILER`,
+  `MANUAL` (add-findings action) or `BACKFILL` (§4.10).
+- **Request contract (plan §8.7).** `POST /api/campaigns` accepts `cveIds` or `findingIds` (one of the two), optional
+  `assigneePrincipalId`, optional `coordinatingTeamId`, `includeExcepted`, and the existing notes, notify and
+  watchlist fields. A body that names `ownerGroup` or `supportGroup` is rejected with 400. The same applies to
+  `POST /api/campaigns/from-findings` and the PQC campaign request, whose `ownerGroup` fields are removed (§4.12). The assignee must be an
+  active member of the tenant (the same check as `findings.assignee_principal_id`); the coordinating team must be
+  `ACTIVE`. Neither changes subject or finding ownership.
+- **Preview.** `POST /api/campaigns/preview` takes the same body and writes nothing. It returns the member count, the
+  distribution by current owner team ID, Unowned, Conflict and Pending Migration counts, excluded counts by exception
+  state, and the teams that have no notification channel (§4.6).
+
+### 4.3 Reconciler
+
+- `CampaignMembershipReconciler` runs every 15 minutes on worker nodes. It iterates
+  `tenantService.listActiveTenants()` and works inside `tenantSchemaExecutionService.run(tenant, …)` with the
+  transaction opened inside, following the context-before-transaction rule.
+- It processes `CVE` campaigns in `ACTIVE`, `PAUSED`, `BLOCKED` or `IN_REVIEW`, and every campaign in
+  `MATERIALIZING`. It never touches `CLOSED` or `CANCELLED` campaigns.
+- **Watermark.** Per campaign, a keyset over `(findings.updated_at, findings.id)` for findings in scope, stored in
+  `campaigns.reconcile_watermark`. A finding created after launch, or a non-member finding that reopens, matches and
+  is added with `add_source = 'RECONCILER'`. A reopened member is already present and is not touched.
+- **Bounds.** At most 1,000 members per campaign and 20 campaigns per tenant per run. The watermark advances only
+  after its batch commits.
+- **Observability (plan §8.7).** `GET /api/campaigns/{id}/reconciliation` returns `scopeKind`, `membershipState`,
+  `reconciledAt`, the watermark, the members added in the last run and the last error. Three consecutive failures
+  record a `RECONCILE_FAILED` campaign activity and raise the campaign-reconciliation metric. No ownership review item
+  is raised: membership is campaign workflow, not ownership.
+
+### 4.4 Owner-at-add snapshot
+
+Each member records `owner_team_id_at_add`, `ownership_assignment_id_at_add` and `ownership_status_at_add`.
+
+- **Resolved live.** The snapshot is read in the insert transaction from the `ownership_effective_assignment` view
+  through `findings.ownership_subject_id`, never from `ownership_effective_cache` (plan §7.5: campaign owner-at-add is
+  correctness-sensitive). The set-based insert joins the view directly.
+- **Gated by authority, not by read wave.** A member whose finding kind's domain (`OwnershipReadAdapter.domainForFindingKind`)
+  is `CANONICAL` gets the resolved status (`OWNED`, `UNOWNED` or `CONFLICT`); an unlinked finding in a canonical domain
+  is `UNOWNED`. A member whose domain is `LEGACY` or `DARK` gets `LEGACY_PENDING_MIGRATION` with no team or
+  assignment. It never receives a fabricated team (plan §9.11). The read wave only controls display, so switching it
+  on later shows snapshots that were already correct.
+- **Immutable.** Nothing updates these three columns after insert. A writer-control test enforces this. No trigger
+  is used, because schema reset does not clone triggers (Release 1 known limitation).
+- A stale effective row is recorded as resolved; staleness is not stored.
+
+### 4.5 Current ownership, buckets and reads
+
+- **Member reads.** `GET /api/campaigns/{id}/members` replaces the unpaged `GET /api/campaigns/{campaignId}/findings`
+  and is cursor-paged (page size ≤ 200, matching
+  `OwnershipReadAdapter.MAX_IDS`). Each row returns `ownerAtAdd` (team ID, team name joined at read time, status,
+  assignment ID), `currentOwnership` from `OwnershipReadAdapter.forFindings` under `Consumer.CAMPAIGNS`,
+  `ownershipChanged`, the finding status and exception state, and the campaign-exception state (plan §8.7).
+- `ownershipChanged` is true only when both values are canonical and the team ID or status differs. A member that was
+  `LEGACY_PENDING_MIGRATION` at add and is canonical now shows "owner assigned since launch", not a change.
+- **Buckets.** Grouping, filters, counts and exports use stable team ID with four other buckets: `UNOWNED`,
+  `CONFLICT`, `PENDING_MIGRATION` (domain still legacy) and, for owner-at-add grouping only, `NOT_RECORDED` (backfilled
+  members, §4.10). Grouping defaults to current owner; owner-at-add is a selectable alternative. A team rename changes
+  only the label.
+- **Mixed domains.** A campaign can hold `VULNERABILITY` (CORE) and `CRYPTO` (CLOUD_BOM) members. Each member is
+  canonical only when its own domain is, as `forFindings` already does. CRYPTO members read Pending Migration until the
+  `CLOUD_BOM` switch (§3.6).
+- **Read wave off.** With `app.ownership.read-waves.campaigns` empty, members render the legacy `owner_group` label
+  under `LEGACY_PENDING_MIGRATION` and no ownership query runs, as in Release 1.
+- **Counts.** Bucket counts are computed in SQL over `campaign_findings` joined to the view, not by loading members
+  into Java. The asset rows group by asset ID and no longer return `assets.support_group`.
+- **Exports** carry team ID, team name, status, source kind and resolved time for both current owner and owner at
+  add (plan §9.11).
+
+### 4.6 Notify groups and recipients
+
+- `campaign_notify_groups` gains `recipient_type` (`TEAM` or `CUSTOM`) and nullable tenant-inclusive `team_id`.
+- **TEAM.** The address is the team's notification channel: one email address per team (decided, §4.13), stored in a
+  new `team.notification_email_enc` (encrypted through `TenantDataCipher`, set with `WRITE_TEAMS`). Directory groups
+  are not a channel. The label is the team name, joined at read time. A team with no
+  channel produces a `SKIPPED` delivery attempt with "Team has no notification channel", and the create preview lists
+  it.
+- **CUSTOM.** Free-text label and an address stored as `group_email_enc`. Creating or editing one needs
+  `TENANT_ADMIN` or `SECURITY_ANALYST` (decided, §4.13), always records a `CUSTOM_RECIPIENT_ADDED` or
+  `CUSTOM_RECIPIENT_UPDATED` campaign activity with the actor, and is shown as "not an owner recipient". The separate
+  authorization the plan requires (§6.13) is this explicit check and audit, not a narrower role. A custom recipient is never ownership evidence.
+- A TEAM recipient's membership in the campaign's current owner buckets is shown but not required: a coordinating
+  team can be notified without owning any member.
+- Launch notifications are sent for both scope kinds once `membership_state` is `COMPLETE`. Today
+  `createFromFindings` sends none.
+- The watchlist (`campaign_watchlist_entries`) is unchanged. It names people who follow the campaign, not owners.
+
+### 4.7 Campaign exceptions
+
+- `campaign_exceptions` gains tenant-inclusive `finding_id`, `owner_team_id_at_request` and
+  `ownership_assignment_id_at_request`. The snapshot is taken live in the request transaction, as in §4.4.
+- New exceptions require `findingId`, and the finding must be a member (409 otherwise). `findingDisplayId` is still
+  accepted and resolved to the ID server-side. `asset_name` and `package_name` become display fields copied from the
+  finding.
+- Existing rows without `finding_id` are shown as unlinked legacy exceptions and count in no outcome bucket.
+- A campaign exception stays campaign-local: it never suppresses, closes or changes the finding (true today). The UI
+  labels it as campaign-only and links to the finding-exception action, which has its own authorization.
+
+### 4.8 Outcome classifier
+
+`CampaignOutcomeClassifier` replaces `isResolvedFinding`. It is a pure function of the finding's `status`,
+`closed_reason`, finding events after the member's `added_at`, and the member's approved campaign exception. Rules are
+applied in order; the first match wins.
+
+| # | Condition | Outcome |
+|---|---|---|
+| 1 | `status = SUPPRESSED`, or `closed_reason = AUTO_SUPPRESSED_BY_RULE` | `SUPPRESSED` |
+| 2 | `closed_reason = MANUAL_FALSE_POSITIVE` | `FALSE_POSITIVE` |
+| 3 | `closed_reason = MANUAL_ACCEPTED_RISK` (today the manual `AUTO_CLOSED` transition in `FindingWorkflowService`) | `ACCEPTED_RISK` |
+| 4 | `closed_reason` in `MANUAL_FIXED`, `VERIFIED_REMEDIATION`, `AUTO_NOT_OBSERVED`, `AUTO_COMPONENT_REMOVED`, `SUPERSEDED_BY_REPLACEMENT` | `REMEDIATED` |
+| 5 | Any other closed reason (`AUTO_ASSET_RETIRED`, `AUTO_DUPLICATE`, `AUTO_SOURCE_DISABLED`, the `AUTO_POLICY_*` reasons, `AUTO_RECLASSIFIED_NOT_SOFTWARE`), or closed with no reason | `CLOSED_OTHER` (decided, §4.13) |
+| 6 | Open, and an approved, unexpired campaign exception names this finding | `CAMPAIGN_EXCEPTED` |
+| 7 | Open, and the finding was closed or suppressed at any time after `added_at` (a `REOPEN*` event or a `STATUS_CHANGED` event to `OPEN` from a closed state) | `REOPENED` |
+| 8 | Otherwise | `OPEN` |
+
+- `CLOSED_OTHER` is never remediated and never active work. The campaign shows it as "closed, not fixed".
+- `FALSE_POSITIVE` reads 0 in Release 2, because no code writes `MANUAL_FALSE_POSITIVE` (§4.12). The finding-level
+  false-positive decision arrives with the Release 3 exception UI (decided, §4.13). The bucket and rule 2 ship now, so
+  nothing changes when it does.
+- A finding resolved through ticket sync (`FindingIncidentSyncService.resolveFromTicket` → `MANUAL_FIXED`) is
+  `REMEDIATED`, as today.
+- **Metrics.** `remediatedCount` counts `REMEDIATED` only, and `completionPercent` is `REMEDIATED / members`.
+  `activeRemainingCount` is `OPEN + REOPENED`. Every bucket is returned as `outcomes` on the summary and detail.
+  Overdue counts only `OPEN` and `REOPENED` members. The existing `resolvedFindings` field becomes `remediatedCount`
+  (plan §6.13 replaces the boolean test; there are no customers to keep the old meaning for).
+- Members in suppressed, false-positive and accepted-risk buckets are hidden from active-remediation views by default
+  and available through explicit filters with their exception type and expiry (plan §9.11).
+- Reopen detection reads `finding_events` by `(finding_id, created_at)` only for members, in the same SQL as the
+  counts.
+
+### 4.9 Ticket routing
+
+Routing is server-derived on the canonical path. The browser no longer supplies the assignment group.
+
+- **When canonical.** A finding routes canonically when its domain is `CANONICAL` and
+  `app.ownership.read-waves.tickets` includes the tenant. Otherwise today's behaviour is kept unchanged, including the
+  `App-Sec Manager` fallback, until the switch.
+- **Live owner.** Routing reads the current owner from `ownership_effective_assignment` in the ticket transaction,
+  never from the cache (plan §7.5).
+
+| Current ownership | Assignment group | `routing_source` |
+|---|---|---|
+| `OWNED`, team has `ticket_assignment_group` | The team's group | `TEAM_MAPPING` |
+| `OWNED`, team has no mapping | The tenant's configured default group, if set; otherwise the user must select one | `TENANT_DEFAULT` or `USER_SELECTED` |
+| `UNOWNED` | Same as the row above | `TENANT_DEFAULT` or `USER_SELECTED` |
+| `CONFLICT` | Never routed automatically. The user resolves ownership or selects a group with a reason | `OVERRIDE` |
+
+- **No implicit values.** The hard-coded `DEFAULT_ASSIGNMENT_GROUP` is not used on the canonical path. The tenant
+  default is an explicit setting on the ticketing connector configuration (§4.11). The team display name is never sent
+  as a group. `TicketAsset.assignmentGroup` from the request (the raw CMDB support group) is ignored on the canonical
+  path (plan §9.13).
+- **Override.** Any batch may set `assignmentGroupOverride` with a required `overrideReason` (≤ 500 characters). The
+  override and reason are recorded in the ticket attempt and as a `TICKET_ROUTING_OVERRIDE` finding event carrying the
+  V23 `owner_team_id`/`ownership_assignment_id` snapshot. It needs the same roles as creating a ticket.
+- **Mixed-team CVE tickets (plan §6.15 step 8).** `createTicketsForCve` partitions the selected findings into one
+  batch per current owner team, plus one batch each for Unowned and Conflict. Each batch becomes one ticket, also when
+  two teams map to the same assignment group (decided, §4.13), so every ticket has exactly one owner team. There is
+  no first-group fallback. A coordinator override sends every batch as one ticket to one chosen group, with a reason.
+  Package grouping remains only inside the legacy path.
+- **Preview.** `POST /api/tickets/preview` takes finding IDs, or a CVE plus component IDs, and returns the batches
+  (team ID and name, assignment group, `routing_source`, finding count), the unroutable findings (Conflict, unmapped
+  without a default), and the excluded ones (closed or already ticketed). It also returns a `routingHash` over the
+  batches and the assignment IDs used. Create must send the hash. If ownership or mappings changed since the preview,
+  create returns 409 with a fresh preview. The hash is valid for 10 minutes.
+- **Audit.** Every ticket path (single finding, CVE, AI Grid, crypto) writes one `finding_ticket_attempts` row per
+  linked finding through `TicketingService`, not only the crypto path. Each row records `owner_team_id`,
+  `ownership_assignment_id`, the `assignment_group` sent, `routing_source`, `override_reason` and a `batch_id`
+  shared by the findings of one ticket.
+- **Lifecycle.** Ownership changes never close, reopen or reassign a ticket, and never change `incident_provider`.
+  `FindingIncidentSyncService` is unchanged. Finding detail shows "owner changed since ticket" by comparing the
+  latest successful attempt's `owner_team_id` with the current owner. Suppression keeps the existing comment push.
+- **Jira.** Jira has no assignment-group field. In Release 2 the mapped group is written as text in the summary and
+  description, as today (decided, §4.13). Mapping it to a Jira component, label or team field waits for a customer
+  Jira to test against.
+- **CVE ticket authorization.** See §4.12.
+
+### 4.10 Rollout and rollback
+
+1. **Schema and backfill (dark).** V24 ships (§4.11). A one-time job materializes every existing CVE campaign's
+   current matches, all statuses, with `add_source = 'BACKFILL'`. Backfilled members get
+   `ownership_status_at_add = NULL` (shown as `NOT_RECORDED`) because their real add time and owner are unknown. The
+   job encrypts existing `group_email` values into `group_email_enc`, marks those notify groups `CUSTOM` and links
+   exceptions to `finding_id` where `finding_display_id` resolves.
+2. **Ledger reads.** Campaign reads switch to `campaign_findings` and the outcome classifier. These do not depend on
+   ownership and are not flagged; there are no customers whose numbers would change.
+3. **Snapshots.** Members added from now on carry snapshots under §4.4, whatever the read wave.
+4. **Read waves.** `app.ownership.read-waves.campaigns` and `app.ownership.read-waves.tickets` are wired in
+   `OwnershipReadAdapter`, empty by default, enabled per tenant after CORE is `CANONICAL`.
+5. **Rollback.** Emptying a read wave returns campaigns to legacy labels and tickets to the legacy routing path.
+   Snapshots, attempts and members are kept. They are history and are never rewritten.
+
+### 4.11 Schema and code impact
+
+- **Tenant V24 (shared with §3.8).**
+  - `campaigns`: `scope_kind` (`CVE`, `FINDINGS`), `membership_state` (`MATERIALIZING`, `COMPLETE`),
+    `assignee_principal_id` (FK `platform.app_users`), `coordinating_team_id` (tenant-inclusive FK `team`),
+    `reconcile_watermark` (jsonb), `reconciled_at`, `last_reconcile_added`, `last_reconcile_error`,
+    `reconcile_failures`.
+  - `campaign_findings`: `owner_team_id_at_add`, `ownership_assignment_id_at_add`, `ownership_status_at_add` (check
+    `OWNED`, `UNOWNED`, `CONFLICT`, `LEGACY_PENDING_MIGRATION`, nullable for backfill), `add_source`; tenant-inclusive
+    FKs to `team`, `ownership_assignment` and `findings (tenant_id, id)`, the last replacing the V17 `findings(id)` FK
+    with `ON DELETE RESTRICT` (decided, §4.13); index `(campaign_id, owner_team_id_at_add)`.
+  - `campaign_exceptions`: `finding_id` (tenant-inclusive FK), `owner_team_id_at_request`,
+    `ownership_assignment_id_at_request`.
+  - `campaign_notify_groups`: `recipient_type`, `team_id` (tenant-inclusive FK), `group_email_enc`; check that `TEAM`
+    rows have `team_id` and `CUSTOM` rows do not. `group_email` is dropped at contract cleanup.
+  - `team`: `notification_email_enc`.
+  - `finding_ticket_attempts`: `owner_team_id`, `ownership_assignment_id` (tenant-inclusive FKs), `assignment_group`,
+    `routing_source` (check `TEAM_MAPPING`, `TENANT_DEFAULT`, `USER_SELECTED`, `OVERRIDE`, `LEGACY`),
+    `override_reason`, `batch_id`.
+  - Ticketing connector configuration: a nullable default assignment group on the ServiceNow and Jira ticketing
+    configs.
+  - `MigrationCatalogTest` and `TenantSchemaCompatibility` move to V24, once for all of §3 and §4.
+- **Code (Phase B).** `CampaignService` reads only `campaign_findings`; set-based materialization with live snapshot;
+  `CampaignMembershipReconciler`; `CampaignOutcomeClassifier`; members, preview and reconciliation endpoints; notify
+  recipient types and team channel; exception `finding_id`; `TicketRoutingService` (live owner, mapping, default,
+  override, preview hash) called by `TicketingService`; attempt recording moved into `TicketingService`; read-wave
+  wiring for `CAMPAIGNS` and `TICKETS`; campaign list/detail/create UI with team buckets, `OwnerChangeIndicator`,
+  outcome buckets; ticket dialogs showing owner team and external group separately (plan §9.13).
+- **Tests (Phase B).**
+  - unit tests for the classifier (every `FindingCloseReason`, rule order, reopen detection) and for routing (every
+    row of the §4.9 table, override, no implicit default);
+  - Postgres ITs: CVE create materializes open members only; `includeExcepted`; 5,000-member bound and
+    `MATERIALIZING` completion; deleting a finding that has campaign membership fails; reconciler adds new and reopened non-member findings, never removes, is idempotent
+    under retry and skips closed campaigns; snapshot from the live view with the cache disabled and with a stale cache
+    row; `LEGACY_PENDING_MIGRATION` while CORE is `DARK`; snapshot unchanged after an owner change; team rename keeps
+    one bucket; mixed CORE/CLOUD_BOM members; exception requires a member; campaign exception leaves the finding
+    unchanged; mixed-team CVE tickets produce one ticket per team and none for Conflict without override; preview hash
+    409 after a mapping change; attempts written for every path; an ownership change does not alter ticket or finding
+    status through `FindingIncidentSyncService`;
+  - a writer-control test that nothing updates the at-add columns;
+  - authorization matrix rows for every new endpoint, CUSTOM recipients and the CVE ticket endpoints (§4.12);
+  - `MockRestServiceServer` tests that the ServiceNow payload carries the mapped group and never `App-Sec Manager` on
+    the canonical path;
+  - read-wave rollback: emptying each wave returns legacy rendering and legacy routing with no ownership query.
+
+### 4.12 Observations from the code
+
+- **Finding-scope campaigns show no progress.** `createFromFindings` writes `campaign_findings`, but `toSummary`,
+  `toFindingRows`, `toAssetRows` and `toEvidenceRows` read only `campaign_vulnerabilities`. A crypto campaign has no
+  CVEs, so its list and detail show 0 findings and 0% complete; only `GET /api/campaigns/{campaignId}/findings`
+  (`CryptoRemediationController` → `CampaignService.findings`) lists its members. §4.2 fixes this.
+- **CVE ticket endpoints have no role check.** `ServiceNowIncidentController` (`POST /api/cve-detail/{cveId}/ticket`
+  and `/servicenow-incident`) has no `@PreAuthorize`, and `SecurityConfig` admits every tenant role on `/api/**`.
+  `READ_ONLY_AUDITOR` and `INVENTORY_ADMIN` therefore appear able to create tickets, while the single-finding endpoint
+  is limited to `PLATFORM_OWNER`, `TENANT_ADMIN` and `SECURITY_ANALYST`. **Decided (November 14, 2026):** the CVE
+  ticket endpoints and the new ticket preview get the same three roles. Phase B adds the check and an authorization IT
+  that fails before the fix.
+- **No false-positive writer.** `FindingCloseReason.MANUAL_FALSE_POSITIVE` exists, but no code sets it. The manual
+  `AUTO_CLOSED` transition records `MANUAL_ACCEPTED_RISK`. The `FALSE_POSITIVE` bucket will therefore stay empty until
+  a false-positive decision path exists (§4.13).
+- **Campaign launch writes free-text owners onto findings.** `CryptoRemediationService.createCampaign` (used by
+  `POST /api/campaigns/from-findings` and `CbomEnterpriseService` PQC campaigns) bulk-updates every member's
+  `findings.owner_group` from the request's `ownerGroup` through `updateWorkflowBulkByIds`. `CryptoCampaignDialog`
+  offers it as "Owner group (optional)". Plan §6.13 forbids this: launch may set an assignee principal, not an owner.
+  The assignee part stays and moves to `assignee_principal_id`; the owner part is removed.
+- **PQC progress has its own "resolved" rule.** `CbomEnterpriseService` counts `RESOLVED` and `AUTO_CLOSED` as
+  resolved and lists owners as `coalesce(assigned_to, owner_group)`. It must use the §4.8 classifier and §4.5 buckets.
+  `CampaignDetailPage` also computes per-severity progress in the browser from `status === 'RESOLVED'`; it must read
+  the server's `outcomes`.
+- **Add assets is not saved.** `CampaignDetailPage`'s Add assets dialog searches raw `asset.ownerTeam`, then adds rows
+  to local state only (`setScopeEditedLocally`); no API call persists them. Release 2 replaces it with an add-findings
+  action that writes `campaign_findings` (`add_source = 'MANUAL'`) and searches by current owner team ID (plan §9.11).
+- **History can cascade away.** `campaign_findings.finding_id` uses `ON DELETE CASCADE`, so deleting a finding removes
+  its membership history. Findings are not deleted in normal workflow. V24 replaces the FK with `RESTRICT` (§4.13), so
+  any path that deletes findings must remove campaign rows first. **Decided (November 14, 2026):** tenant purge
+  deletes `campaign_findings` (and the campaign tables) before findings; nothing is archived.
+
+### 4.13 Decisions and open items
+
+**DECISIONS (approved by the product owner, November 14, 2026):**
+
+| Question | Decision | Where applied |
+|---|---|---|
+| How to count non-remediation closes (`AUTO_ASSET_RETIRED`, `AUTO_DUPLICATE`, `AUTO_SOURCE_DISABLED`, `AUTO_POLICY_*`, `AUTO_RECLASSIFIED_NOT_SOFTWARE`) | Separate `CLOSED_OTHER` bucket, never remediated | §4.8 rule 5 |
+| False-positive decision in Release 2 | Not added. The bucket ships and reads 0 until the Release 3 exception UI | §4.8 |
+| Jira mapping of the team ticket group | Text in summary and description, as today | §4.9 |
+| Team notification channel | One encrypted email address per team | §4.6 |
+| Who may add CUSTOM recipients | `TENANT_ADMIN` and `SECURITY_ANALYST`, always audited | §4.6 |
+| Two teams sharing one assignment group on a CVE ticket | One ticket per team | §4.9 |
+| `campaign_findings` FK on finding delete | `RESTRICT` | §4.11, §4.12 |
+| Members materialized at create | 5,000; the rest by the reconciler in batches of 1,000 | §4.2, §4.3 |
+| Tenant purge with `RESTRICT` | Delete campaign rows before findings; no archive | §4.12 |
+| Roles for CVE ticket endpoints and ticket preview | `PLATFORM_OWNER`, `TENANT_ADMIN`, `SECURITY_ANALYST` | §4.12 |
+
+**Still open:**
+
+| Item | Owner | Blocks |
+|---|---|---|
+| Confirm the 5,000 create bound and the 1,000 reconciler batch against the expected-size benchmark | Ownership lead | Enabling CVE campaigns outside test tenants |
+| Jira component, label or team-field mapping, tested against a customer Jira | Connector lead + a customer Jira | Jira routing beyond text (not Release 2) |
+
+## 5. Release 2 change ledger
+
+Plan §9.16 requires the initial change inventory to be replaced by a mechanical, owner-assigned ledger before each
+owning release. This is the Release 2 ledger. It was built on November 14, 2026 by searching `backend/src/main` and
+`frontend/src` (tests excluded) for `owner_group`, `ownerGroup`, `support_group`, `supportGroup`, `assignmentGroup`,
+`assignment_group`, `ownerTeam`, `owner_team`, `groupName` and `groupEmail`, then reading each hit in the Release 2
+areas: campaigns, tickets, BOM/CBOM, cloud and the ServiceNow connector. Release 1 areas (inventory and findings read
+paths) and Release 3 areas are listed only where a Release 2 change touches them.
+
+Re-run the search before Release 2 starts. A new hit in these areas is added here with an owner before it merges.
+
+Kinds: **W** writes free text as ownership, **R** reads free text as ownership or routing, **E** evidence or metadata
+that must be proven not to be read as ownership, **B** behaviour change with no ownership field.
+
+### 5.1 Backend
+
+| File | Use today | Kind | Release 2 change | Contract | Owner |
+|---|---|---|---|---|---|
+| `service/CampaignService.java` | `loadFindingsForCampaign` dynamic membership; `isResolvedFinding`; finding rows return `owner_group`, asset rows `support_group` | R, B | Ledger reads, snapshots, buckets, classifier | §4.2–§4.5, §4.8 | Workflow lead |
+| `dto/CampaignDtos.java` | `CampaignFromFindingsRequest.ownerGroup`; row DTOs carry `ownerGroup`/`supportGroup`; notify group `groupName`/`groupEmail` | W, R | Remove `ownerGroup`; add `ownerAtAdd`, `currentOwnership`, `outcomes`, `recipientType`, `teamId` | §4.2, §4.5, §4.6 | Workflow lead |
+| `domain/CampaignNotifyGroup.java` | Free-text `group_name`, plaintext `group_email` | R | `recipient_type`, `team_id`, `group_email_enc` | §4.6 | Workflow lead |
+| `domain/CampaignException.java` | Free-text `finding_display_id` | B | `finding_id` and owner snapshot | §4.7 | Workflow lead |
+| `service/CampaignAiService.java` | Groups findings by `ownerGroup`, "Unassigned" | R | Group by current owner team ID with Unowned/Conflict; names joined at read time | §4.5 | Workflow lead |
+| `service/cbom/CryptoRemediationService.java` | `createCampaign` bulk-writes `findings.owner_group`; queue and SLA use `owner_group`; ticket notes "ScoutGrid owner" from `owner_group`; records ticket attempts | W, R | Drop owner write; assignee principal only; owner from the effective view; attempt recording moves to `TicketingService` | §4.9, §4.12 | CBOM lead |
+| `service/cbom/CbomEnterpriseService.java` | `PqcCampaignRequest.ownerGroup`; PQC progress counts `AUTO_CLOSED` as resolved, owners from `coalesce(assigned_to, owner_group)`; portfolio groups by `a.owner_team` and `a.support_group` | W, R | Remove `ownerGroup`; classifier and team buckets; portfolio "owner team" groups by current owner team ID; `supportGroup` grouping stays, labelled as CMDB evidence | §3.7, §4.8, §4.12 | CBOM lead |
+| `ticketing/TicketingService.java` | Groups CVE tickets by caller `assignmentGroup`, then package | R | Canonical routing, mixed-team batches, preview hash, attempts | §4.9 | Workflow lead |
+| `ticketing/TicketRequest.java`, `CveTicketRequest.java`, `TicketAsset.java` | Caller-supplied `assignmentGroup` | R | Add `assignmentGroupOverride`/`overrideReason`; ignore `TicketAsset.assignmentGroup` on the canonical path | §4.9 | Workflow lead |
+| `ticketing/ServiceNowTicketingProvider.java` | Hard-coded `App-Sec Manager` fallback | R | Use the routed group only; no fallback on the canonical path | §4.9 | Connector lead |
+| `service/ServiceNowIncidentService.java` | Single-finding incident uses `finding.getOwnerGroup()` then `App-Sec Manager` | R | Take the routed group from `TicketRoutingService` | §4.9 | Connector lead |
+| `ticketing/JiraTicketingProvider.java` | Group as text in summary/description | E | Text from the routed group (decided) | §4.9 | Connector lead |
+| `controller/ServiceNowIncidentController.java`, `dto/CreateServiceNowIncidentRequest.java` | Per-asset `assignmentGroup` from the browser; no `@PreAuthorize` on ticket POSTs | R, B | Ignore per-asset group on the canonical path; add role check | §4.9, §4.12 | Workflow lead |
+| `controller/FindingTicketController.java`, `dto/CreateFindingTicketRequest.java` | Request `assignmentGroup` (ignored by ServiceNow today) | R | Override with reason; preview | §4.9 | Workflow lead |
+| `service/FindingIncidentSyncService.java` | Status sync, no ownership | B | None; regression test that ownership changes do not move tickets | §4.9 | Workflow lead |
+| `service/ownership/OwnershipReadAdapter.java` | Read waves wired for `INVENTORY` and `FINDINGS` only | B | Wire `CAMPAIGNS` and `TICKETS`; CLOUD_BOM eligibility | §2.6, §4.10 | Ownership lead |
+| `service/ownership/ServiceNowOwnershipProducer.java` | Scans every `cis` row by sync time | B | ServiceNow-originated CIs only | §2.10 | Ownership lead |
+| `service/ServiceNowCmdbConfigService.java` | Reads `installed_on.support_group` display value | E | Keep name and reference `sys_id` in separate columns | §1.8 | Connector lead |
+| `service/ownership/InventorySubjectAdapter.java` | VULNERABILITY-only finding subject | B | `FindingSubjectAdapterRegistry` | §3.5 | Ownership lead |
+| `service/SoftwareIdentityMetadataService.java`, `dto/SoftwareIdentityMetadata*.java` | Stores and returns `support_group` on software identity metadata; no other reader | E | Keep as reference metadata; never read as ownership; the identity's owner coverage comes from occurrences | §3.7 | Inventory lead |
+| `inventory_components` writers (SBOM, BOM orchestrator, CMDB/SCCM/SSM/VM Manager host inventory) | No ownership field | B | Shared occurrence key and post-commit registration | §3.2, §3.4 | Inventory lead |
+| `service/AwsDiscoveryConfigService.java`, `service/GcpDiscoveryConfigService.java` | AWS accepts 5-minute intervals; no upper bound | B | Interval validation while a producer is enabled; per-tenant producer toggles; AWS Organizations role and connection test | §2.1, §2.2, §2.2.1 | Connector lead |
+| AWS client (new Organizations reader) | None | B | `ListTagsForResource` per observed account through `OutboundHttpClient` | §2.2.1 | Connector lead |
+| Tenant purge | Deletes findings; `campaign_findings` cascades today | B | Delete campaign tables before findings under `RESTRICT` | §4.12 | Ownership lead |
+| Directory preview (new) | None | B | Full sample values for tenant admins, audit event, `no-store` | §1.6 | Ownership lead |
+
+### 5.2 Frontend
+
+| File | Use today | Kind | Release 2 change | Contract | Owner |
+|---|---|---|---|---|---|
+| `features/campaigns/CampaignDetailPage.tsx` | Groups findings by `ownerGroup`; Add assets searches `asset.ownerTeam`, maps it to `supportGroup` and never saves; notify owner by `groupName`; severity progress from `status === 'RESOLVED'` | R, B | Team ID buckets with Unowned/Conflict/Pending Migration; `OwnerChangeIndicator`; saved add-findings action; TEAM/CUSTOM recipients; server `outcomes` | §4.5, §4.6, §4.8, §4.12 | Workflow lead |
+| `features/campaigns/CampaignLinkedFindings.tsx` | Shows `assignedTo ?? ownerGroup` | R | Assignee and owner team in separate columns | §4.5 | Workflow lead |
+| `pages/CampaignsPage.tsx` | Launch wizard sends free-text notify `groupName` | R | Canonical team picker for TEAM recipients; CUSTOM visibly non-owner; launch preview | §4.2, §4.6 | Workflow lead |
+| `features/campaigns/types.ts` | `ownerGroup`, `supportGroup`, `groupName` types | R | Match §4 DTOs | §4 | Workflow lead |
+| `features/cbom/CryptoCampaignDialog.tsx` | "Owner group (optional)" free-text input | W | Remove; `ApplicationPrincipalPicker` for assignee | §4.12 | CBOM lead |
+| `features/cbom/CryptoRemediationPanel.tsx` | Shows `assignedTo ?? ownerGroup` | R | Assignee and owner team separately | §4.5 | CBOM lead |
+| `features/cbom/CbomPortfolioPanel.tsx`, `features/cbom/types.ts` | "Owner team" grouping from `a.owner_team` | R | Group by current owner team ID | §3.7 | CBOM lead |
+| `pages/FindingDetailPage.tsx` | Ticket dialog defaults the group from `finding.ownerGroup` | R | Show owner team and external group separately; routing preview; override with reason | §4.9 | Workflow lead |
+| `pages/SoftwareIdentityDetailPage.tsx`, `features/software-identities/types.ts` | Editable `supportGroup` metadata | E | Label as reference metadata; add occurrence owner coverage | §3.7 | Inventory lead |
+
+### 5.3 Not in Release 2
+
+These hits were found, but their owning release is not Release 2. They must keep working through the Release 2
+legacy ticket path (§4.9) until then.
+
+| File | Use today | Owning release |
+|---|---|---|
+| `features/cve-workbench/components/WorkbenchMain.tsx`, `FindingsTab.tsx`, `CveOverviewTab.tsx`, `InvestigationCanvas.tsx`, `NotifyGroupsPanel.tsx` | Free-text assignment group, CMDB support group per asset, notify groups | Release 3 (plan §6.15, §9.12) |
+| `pages/FindingDetailPage.tsx` owner-group edit (`updateWorkflow({ ownerGroup })`) and `pages/FindingsPage.tsx` Owner Group / Support Group columns | Legacy finding owner field | Findings consumer wave (Release 1), removed at cleanup (plan §15.5) |
+| `features/findings/types.ts` | `ownerGroup` type | Cleanup |
+
+### 5.4 Ledger rules
+
+- **Done.** An entry is done when its change merges with the test named in its contract and a re-run of the search
+  shows no remaining **W** or **R** use in that file outside the legacy path behind a read wave.
+- **E entries** close with a test or reader scan proving the field is not read as ownership, not by removing the
+  field.
+- Owners are roles (plan §16.1 workstreams). Release 2 staffing names a person for each role before work starts
+  (plan §16.3).
