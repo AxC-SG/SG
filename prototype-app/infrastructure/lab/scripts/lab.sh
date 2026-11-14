@@ -387,7 +387,9 @@ ctx = {"aws:RequestedRegion": region,
        "ecs:cluster": f"arn:aws:ecs:{region}:{account}:cluster/scoutgrid-lab",
        "ecs:task-definition": f"arn:aws:ecs:{region}:{account}:task-definition/scoutgrid-lab-api:9",
        "iam:PassedToService": "ecs-tasks.amazonaws.com",
-       "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"}
+       "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com",
+       # Every S3 request carries the bucket owner; the bucket-website grant is conditioned on it.
+       "s3:ResourceAccount": account}
 ctx.update({f"aws:RequestTag/{k}": v for k, v in tags.items()})
 ctx.update({f"aws:ResourceTag/{k}": v for k, v in tags.items()})
 print(json.dumps([{"ContextKeyName": k, "ContextKeyValues": [v], "ContextKeyType": "string"} for k, v in ctx.items()]))
