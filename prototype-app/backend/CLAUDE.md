@@ -194,8 +194,6 @@ com.prototype.vulnwatch/
   migration/   # Standalone (non-Spring) production bootstrap: ProductionBootstrapCli,
                # PlatformOwnerSetupLinkIssuer, TenantSchemaMigrationCli, TenantSchemaFingerprint,
                # PackagedMigrationCatalog, TenantSearchPathFlywayCallback (6 files)
-  web/         # PlatformAdminRequestPaths — request-path classifier; no call site found
-               # outside its own unit test as of this writing, verify before relying on it
   tools/       # LegacyGithubSyncRunBackfillTool — standalone main() CLI
 
 com.prototype.vulnwatch.aisecurity/   # separate top-level package, NOT under the tree above

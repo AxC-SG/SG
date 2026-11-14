@@ -295,7 +295,7 @@ New screens follow [the UI development standard](<../Working Knowledge/New UI 2.
 
 ### API Layer
 
-API calls use `src/api/client.ts` and the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Base URL: `VITE_API_BASE`, otherwise development `/api` via Vite proxy or the code fallback `https://api.scoutgrid.io/api` (reserved for production; the lab build sets `VITE_API_BASE=https://api-lab.scoutgrid.io/api` in Vercel). Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
+API calls use `src/api/client.ts` and the established `src/features/cve-workbench/api.ts` adapter for specialized CVE workflows. Base URL: `VITE_API_BASE`, otherwise same-origin `/api` (the Vite proxy in development). Vercel production builds must set it — currently `https://api-lab.scoutgrid.io/api` — and the build rejects a value whose origin is not in the CSP `connect-src`. Auth headers injected on every request. TanStack Query provides caching, deduplication, and background refresh.
 
 ---
 

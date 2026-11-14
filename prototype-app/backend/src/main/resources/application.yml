@@ -232,7 +232,11 @@ app:
       retry-on-network-errors: ${HTTP_OUTBOUND_RETRY_ON_NETWORK_ERRORS:true}
       # Semicolon-separated provider=exact.hostname mappings. Dynamic providers
       # (servicenow, jira and sbom-endpoint) must be explicitly configured per deployment.
-      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:github=api.github.com;nvd=services.nvd.nist.gov;epss=api.first.org;eol=endoflife.date;openai=api.openai.com;resend=api.resend.com;turnstile=challenges.cloudflare.com;kev=www.cisa.gov;jvn=jvndb.jvn.jp;euvd=euvdservices.enisa.europa.eu;csaf-microsoft=msrc.microsoft.com;csaf-redhat=security.access.redhat.com;csaf-cisa=www.cisa.gov;osv=api.osv.dev;msrc=api.msrc.microsoft.com;azure-management=management.azure.com;gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com;intune=graph.microsoft.com,login.microsoftonline.com}
+      # Empty uses OutboundHostPolicy.DEFAULT_ALLOWLIST, the one default catalogue. Setting
+      # HTTP_OUTBOUND_ALLOWED_HOSTS replaces it; use the additional list to add hosts (for
+      # example jira=yourcompany.atlassian.net) without dropping the defaults.
+      allowed-hosts: ${HTTP_OUTBOUND_ALLOWED_HOSTS:}
+      additional-allowed-hosts: ${HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS:}
   openai:
     api-key: ${OPENAI_API_KEY:}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}

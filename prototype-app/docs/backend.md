@@ -589,7 +589,7 @@ Collection (`GcpDiscoveryClient`, REST through `OutboundHttpClient` provider `gc
 | PUT | `/` | Save config (`TENANT_ADMIN`/`INVENTORY_ADMIN`; blocked for demo tenants; audited as `connector.jira_ticketing.saved`) |
 | POST | `/test` | Probe credentials (`/rest/api/3/myself`) then project reachability (`/rest/api/3/project/{key}`) |
 
-One Jira connector per tenant (`uk_jira_ticketing_configs_tenant`) and no environment-level fallback. The token is encrypted with `CredentialEncryptionService` and is covered by `ProviderCredentialMigrator`. Outbound calls use the `jira` provider key, which has **no default host**: add the Jira host to the `jira=` entry of `HTTP_OUTBOUND_ALLOWED_HOSTS` or saving is rejected with 400. A Jira connector counts against the tenant connector quota.
+One Jira connector per tenant (`uk_jira_ticketing_configs_tenant`) and no environment-level fallback. The token is encrypted with `CredentialEncryptionService` and is covered by `ProviderCredentialMigrator`. Outbound calls use the `jira` provider key, which has **no default host**: add the Jira host as a `jira=` entry in `HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS` (it extends the default catalogue in `OutboundHostPolicy.DEFAULT_ALLOWLIST`; `HTTP_OUTBOUND_ALLOWED_HOSTS` would replace it) or saving is rejected with 400. A Jira connector counts against the tenant connector quota.
 
 ### Connectors
 

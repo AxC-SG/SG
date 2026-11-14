@@ -36,7 +36,7 @@ Public browser configuration uses `VITE_` variables in an ignored `.env.local`; 
 
 | Variable | Purpose | Default / notes |
 |---|---|---|
-| `VITE_API_BASE` | Backend API base URL | development `/api` via Vite proxy to localhost:8080; production `https://api.scoutgrid.io/api` |
+| `VITE_API_BASE` | Backend API base URL | unset: same-origin `/api` (Vite proxy to localhost:8080 in development). Required for Vercel production builds and must be `/api` or an HTTPS origin in the `vercel.json` CSP `connect-src` (`scripts/production-api-policy.mjs`) |
 | `VITE_API_KEY` | `X-API-Key` header value | `change-me-in-prod` |
 | `VITE_CREATOR_KEY` | `X-Creator-Key` for PLATFORM_OWNER endpoints | `local-creator` |
 | `VITE_AUTH_TOKEN` | Development-only bearer fallback after stored token | (empty) |
