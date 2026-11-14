@@ -12,7 +12,7 @@ should use. The goal is: a new IT class is ~50 lines, not ~250.
 
 ## Parallel execution in CI
 
-CI (`-Pci-postgres-it`) runs integration classes in three JVMs at once against one
+CI (`-Pci-postgres-it`) runs integration classes in two JVMs at once against one
 PostgreSQL server (`it.forkCount`; local runs keep one JVM, override with
 `-Dit.forkCount=N`). Databases and roles are cluster-wide, so a new class must:
 

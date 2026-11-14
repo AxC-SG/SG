@@ -9,7 +9,7 @@ Agreed November 14, 2026, after two independent reviews of the full pipeline and
 | Secret scanning and push protection | Enabled November 14 |
 | CodeQL default setup (4 languages) | Re-enabled November 14; `main` and PR analyses running again |
 | Live ruleset requires `AWS backend candidate` | Applied November 14 |
-| Phases 1, 2, 3 and 6.1–6.2 | One combined PR (originally #83–#87). `backend-postgres` with 3 forks: 13m24s, down from 24–30 min |
+| Phases 1, 2, 3 and 6.1–6.2 | One combined PR (originally #83–#87). `backend-postgres`: 2 forks 13m26s; 3 forks 13m24s and 18m12s; previously 24–30 min. Chose 2 forks |
 | Live ruleset: remove `Trivy images gate` | Do right before merging the combined PR |
 | Phase 4–5 (PR D) | After the combined PR merges |
 | Phase 6.3–6.5 (PR F) | Deferred: 3 forks already meet the 15-minute target; the template database saves about 2 more minutes at higher risk |

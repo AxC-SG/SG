@@ -361,7 +361,7 @@
             <properties>
                 <run.postgres.it>true</run.postgres.it>
                 <jacoco.skip>true</jacoco.skip>
-                <it.forkCount>3</it.forkCount>
+                <it.forkCount>2</it.forkCount>
             </properties>
             <build>
                 <plugins>
@@ -376,7 +376,9 @@
                         <configuration>
                             <failIfNoTests>true</failIfNoTests>
                             <!-- Classes are safe to run in separate JVMs: each uses its own database
-                                 and its own PostgreSQL role names. -->
+                                 and its own PostgreSQL role names. Two forks measured the same
+                                 as three (about 13.5 min, down from 24-30) with fewer JVMs and
+                                 connections on the 4-vCPU runner. -->
                             <forkCount>${it.forkCount}</forkCount>
                             <reuseForks>true</reuseForks>
                         </configuration>
