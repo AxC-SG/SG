@@ -41,6 +41,7 @@ The ALB security group and its two rules, task definitions, roles, log groups, t
 | Retire replaced revisions | `ecs:DeregisterTaskDefinition` | Bootstrap (existing `bootstrap-retire-migrator-revision.json`) |
 | Roll services to the new revisions | `ecs:UpdateService` on any revision of the two families | Apply + cutover grant (later the cycle role) |
 | Lab budget at $100 | `budgets:ModifyBudget` (also authorizes creation), `TagResource`, reads | Apply + cutover grant |
+| GitHub ECR publisher role (PR #107; targeted apply of `aws_iam_role.github_publisher` and its policy only) | `iam:CreateRole`, `PutRolePolicy`, reads, tags and delete, on `scoutgrid-lab-github-ecr-publish` only | Bootstrap + inline `GithubPublisherRole` (`bootstrap-github-publisher-role.json`, proposed 2026-11-15; Access Analyzer: no findings) |
 | PR 2: retire Amplify | `amplify:DeleteDomainAssociation`, `DeleteBranch`, `DeleteApp` on app `d20ebk72hfk5ft` | Apply + cutover grant |
 
 Detach `lab-cutover-once` and `frontend-deploy-and-domain.json` once Amplify is gone.
