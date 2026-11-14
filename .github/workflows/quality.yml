@@ -18,7 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      application: ${{ steps.select.outputs.application }}
+      frontend: ${{ steps.select.outputs.frontend }}
+      backend: ${{ steps.select.outputs.backend }}
+      infrastructure: ${{ steps.select.outputs.infrastructure }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +46,8 @@ jobs:
 
   terraform:
     name: Offline Terraform validation
+    needs: changes
+    if: needs.changes.outputs.infrastructure == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -152,7 +156,7 @@ jobs:
 
   frontend:
     needs: changes
-    if: needs.changes.outputs.application == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -211,7 +215,7 @@ jobs:
   # @playwright/test version; check-playwright-image.mjs fails the job otherwise.
   frontend-e2e:
     needs: changes
-    if: needs.changes.outputs.application == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     container:
@@ -248,7 +252,7 @@ jobs:
 
   backend:
     needs: changes
-    if: needs.changes.outputs.application == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -279,7 +283,7 @@ jobs:
 
   backend-postgres:
     needs: changes
-    if: needs.changes.outputs.application == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:

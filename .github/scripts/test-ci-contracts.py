@@ -52,7 +52,7 @@ class ContractsTest(unittest.TestCase):
         workflow = (root / '.github/workflows/quality.yml').read_text()
         job = workflow.split('  terraform:\n', 1)[1].split('\n  migration-validation:', 1)[0]
         required = workflow.split('  required:\n', 1)[1]
-        self.assertIn('terraform', gate.ALWAYS_JOBS)
+        self.assertEqual(gate.SELECTED_JOBS['terraform'], 'infrastructure')
         self.assertRegex(required, r'needs: \[[^\n]*\bterraform\b')
         self.assertEqual(job.count('terraform init -backend=false -lockfile=readonly -input=false'), 2)
         self.assertEqual(job.count('terraform test -no-color'), 2)
@@ -75,12 +75,33 @@ class ContractsTest(unittest.TestCase):
         self.assertIn('Acquire::Retries=3', dockerfile)
 
     def test_selection(self):
-        for files in [["README.md"], ["prototype-app/docs/frontend.md"]]:
-            self.assertEqual(classifier.classify(files, "pull_request"), dict(application=False, performance=False))
-            self.assertTrue(classifier.classify(files, "push")["application"])
-        for files in [[], ["prototype-app/docs/data.json"], ["prototype-app/frontend/src/App.tsx"], [".github/workflows/quality.yml"], ["README.md", "package.json"]]:
-            self.assertTrue(classifier.classify(files, "pull_request")["application"])
-        self.assertTrue(classifier.classify([".github/scripts/check-quality-gate.py"], "pull_request")["performance"])
+        none = dict(frontend=False, backend=False, infrastructure=False, performance=False)
+        everything = dict(frontend=True, backend=True, infrastructure=True, performance=True)
+        cases = [
+            (["README.md"], none),
+            (["prototype-app/docs/frontend.md"], none),
+            (["prototype-app/Working Knowledge/CI Pipeline/plan.md", "prototype-app/Working Knowledge/AWS/cost.json"], none),
+            (["prototype-app/backend/CLAUDE.md", ".gitleaks.toml"], none),
+            (["prototype-app/frontend/src/App.tsx"], dict(none, frontend=True)),
+            ([".nvmrc"], dict(none, frontend=True)),
+            (["prototype-app/backend/src/main/java/A.java"], dict(none, backend=True, performance=True)),
+            (["prototype-app/scripts/run-performance-governance.sh"], dict(none, backend=True, performance=True)),
+            (["prototype-app/policy-packages/agcf/p.json"], dict(none, backend=True, performance=True)),
+            (["prototype-app/infrastructure/terraform/standard/main.tf"], dict(none, infrastructure=True)),
+            (["prototype-app/frontend/src/App.tsx", "prototype-app/backend/pom.xml"],
+             dict(none, frontend=True, backend=True, performance=True)),
+            # Conservative cases: no list, workflow or script changes, unknown paths.
+            ([], everything),
+            ([".github/workflows/quality.yml"], everything),
+            ([".github/scripts/check-quality-gate.py"], everything),
+            (["prototype-app/docs/data.json"], everything),
+            (["package.json"], everything),
+            (["README.md", "some/new/top-level/file.txt"], everything),
+        ]
+        for files, expected in cases:
+            self.assertEqual(classifier.classify(files, "pull_request"), expected, files)
+        for files, _ in cases:
+            self.assertEqual(classifier.classify(files, "push"), everything, files)
 
     def test_every_trivy_job_checks_spring_applicability_before_scanning(self):
         root = Path(__file__).resolve().parents[2]
@@ -94,29 +115,56 @@ class ContractsTest(unittest.TestCase):
             self.assertLess(controls, check)
             self.assertLess(check, scan)
 
-    def needs(self, application="true"):
-        result = {key: dict(result="success") for key in gate.APPLICATION_JOBS | gate.ALWAYS_JOBS}
-        result["changes"]["outputs"] = dict(application=application)
+    def needs(self, **selected):
+        outputs = {name: "true" for name in gate.SELECTION_OUTPUTS}
+        outputs.update(selected)
+        result = {key: dict(result="success") for key in set(gate.SELECTED_JOBS) | gate.ALWAYS_JOBS}
+        result["changes"]["outputs"] = outputs
         return result
 
     def test_required_results(self):
         self.assertEqual(gate.failures(self.needs()), [])
-        for job in gate.ALWAYS_JOBS | gate.APPLICATION_JOBS:
+        for job in gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS):
             for state in ["failure", "cancelled", "skipped", None]:
                 needs = self.needs()
                 needs[job]["result"] = state
                 self.assertTrue(gate.failures(needs), (job, state))
 
     def test_only_explicit_skips_are_allowed(self):
-        needs = self.needs("false")
-        for job in gate.APPLICATION_JOBS:
+        needs = self.needs(frontend="false", backend="false", infrastructure="false")
+        for job in gate.SELECTED_JOBS:
             needs[job]["result"] = "skipped"
         self.assertEqual(gate.failures(needs), [])
         needs["secrets"]["result"] = "skipped"
         self.assertTrue(gate.failures(needs))
-        needs = self.needs("invalid")
-        self.assertTrue(gate.failures(needs))
+        for output in gate.SELECTION_OUTPUTS:
+            for bad in ["invalid", None]:
+                needs = self.needs()
+                needs["changes"]["outputs"][output] = bad
+                self.assertTrue(gate.failures(needs), (output, bad))
 
+    def test_skips_follow_their_own_component(self):
+        for output in gate.SELECTION_OUTPUTS:
+            jobs = {job for job, selected_by in gate.SELECTED_JOBS.items() if selected_by == output}
+            others = set(gate.SELECTED_JOBS) - jobs
+            needs = self.needs(**{output: "false"})
+            for job in jobs:
+                needs[job]["result"] = "skipped"
+            self.assertEqual(gate.failures(needs), [], output)
+            for job in others:
+                needs = self.needs(**{output: "false"})
+                needs[job]["result"] = "skipped"
+                self.assertTrue(gate.failures(needs), (output, job))
+
+    def test_workflow_selects_jobs_by_the_gate_mapping(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/quality.yml').read_text()
+        for output in gate.SELECTION_OUTPUTS:
+            self.assertIn(f"{output}: ${{{{ steps.select.outputs.{output} }}}}", workflow)
+        for job, output in gate.SELECTED_JOBS.items():
+            body = re.split(r'(?m)^  [a-z][a-z-]*:\n', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
+            self.assertIn("needs: changes", body, job)
+            self.assertIn(f"if: needs.changes.outputs.{output} == 'true'", body, job)
 
 if __name__ == "__main__":
     unittest.main()
