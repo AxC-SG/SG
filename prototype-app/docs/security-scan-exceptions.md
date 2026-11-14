@@ -1,44 +1,39 @@
-# Spring MVC advisory applicability — November 12, 2026
+# Trivy scan exceptions
 
-PR #70's three Trivy jobs failed after the existing exceptions expired at
-00:00 UTC on November 12. They reported CVE-2026-47884 and CVE-2026-47890 in
-Spring MVC 6.2.19. Image builds succeeded; this was not the earlier Ubuntu DNS
-failure. The previous review is retained in
-[the October record](../Working%20Knowledge/Archive/security-scan-exceptions.md).
+There are no active Trivy exceptions. `.trivyignore.yaml` is empty, and both
+Trivy jobs (filesystem and the AWS backend candidate image) enforce every
+CRITICAL finding.
 
-The exceptions were reassessed against current production Java source and
-resources and the current vendor advisories on November 12. They remain limited
-to `pkg:maven/org.springframework/spring-webmvc@6.2.19` and these two CVE IDs.
-They now expire at **00:00 UTC on November 19, 2026**, requiring another review
-before use on or after that date.
+## Spring MVC CVE-2026-47884 and CVE-2026-47890 — resolved November 14, 2026
 
-- [CVE-2026-47884](https://spring.io/security/cve-2026-47884/) requires an
+These two advisories affected `spring-webmvc` 6.2.19, which Spring Boot 3.5.16
+brought in. The vendor fixed them in Spring Framework 6.2.20 (enterprise-only)
+and 7.0.9 (open source).
+
+- [CVE-2026-47884](https://spring.io/security/cve-2026-47884/) required an
   `XsltView`, a wildcard mapping that renders a view, and an implicit view name.
-  The API's source/resources contain no XSLT views, view resolvers or server-side
-  view controllers. Its controllers return REST responses.
-- [CVE-2026-47890](https://spring.io/security/cve-2026-47890/) requires SSE view
-  fragments and attacker-controlled streamed data. The API's source/resources
-  contain no SSE emitters, fragment rendering or event-stream endpoints. React
-  renders the frontend separately.
+- [CVE-2026-47890](https://spring.io/security/cve-2026-47890/) required SSE view
+  fragments and attacker-controlled streamed data.
 
-`check-spring-advisory-applicability.py` passes on the current production source
-and resources. Its negative controls still reject wildcard imports, reflective
-class names, view-controller registration and SSE/fragment-rendering forms.
-Both Trivy jobs (filesystem and the AWS backend candidate image) run those
-controls and the applicability guard before scanning. A CI contract rejects any job
-that omits or runs the guard after its scan. Critical vulnerability enforcement,
-scan targets and all other findings remain enabled.
+From November 12 to November 14 they were time-limited exceptions. The basis
+was that the API has no server-side view rendering or SSE endpoints, and
+`check-spring-advisory-applicability.py` checked that before every scan. The
+exceptions were due to expire at 00:00 UTC on November 19.
 
-The dependency itself is still affected by version. This record establishes the
-absence of the advisory prerequisites in this application; it does not claim a
-patched library. Reassess/remove the exceptions if view/SSE features, dynamically
-loaded code or external rendering configuration are introduced. Remove them when
-adopting an aligned patched Spring release. The vendor lists 6.2.20 as an
-enterprise-only fix and 7.0.9 as an OSS fix. A coordinated Boot/Framework major
-upgrade needs its own compatibility qualification; replacing only the MVC jar
-would mix framework major versions.
-
-The failed run is
+The Spring Boot 4.1.2 upgrade brings Spring Framework 7.0.10, which contains the
+fix. The exceptions, the applicability guard and its CI contract were removed
+in the same change. The earlier review is in
+[the October record](../Working%20Knowledge/Archive/security-scan-exceptions.md),
+and the November 12 failure in
 [Trivy 43131822238](https://github.com/AxC-SG/SG/actions/runs/43131822238).
-Fresh checks on the repaired PR head and, after manual merge, fresh main scans
-and exact-SHA backend/frontend artifacts are still required before publication.
+
+## Adding an exception
+
+An exception needs all of the following:
+- an exact package URL and CVE ID;
+- an `expired_at` date;
+- a statement explaining why the vulnerable code path cannot be reached;
+- an entry in this record.
+
+Prefer upgrading the dependency. Never lower the CRITICAL threshold or add broad
+suppressions to get a green result.
