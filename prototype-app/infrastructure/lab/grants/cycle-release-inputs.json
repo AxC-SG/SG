@@ -1,0 +1,27 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "ReadReleasedImages",
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/release/inputs.json"
+   ]
+  },
+  {
+   "Sid": "ShareTheLabLock",
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject",
+    "s3:PutObject",
+    "s3:DeleteObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/release/lock.json"
+   ]
+  }
+ ]
+}

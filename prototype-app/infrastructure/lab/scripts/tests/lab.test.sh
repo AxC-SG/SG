@@ -25,6 +25,8 @@ run_case() {
     guard_identity() { :; }
     guard_terraform() { :; }
     cmd_simulate() { :; }
+    acquire_lock() { step "lock $1"; }
+    release_lock() { :; }
     plan_mode() { printf '%s\n' "/tmp/$1.tfplan"; }
     confirm() { step confirm; }
     tf() { step "tf $1"; }
@@ -73,25 +75,65 @@ expect() {
 }
 
 code="$(run_case down-ok '' cmd_down)"
-expect "down stops RDS before removing DNS" "${code}:$(steps)" "0:confirm,tf apply,stop_db,dns_remove,status"
+expect "down stops RDS before removing DNS" "${code}:$(steps)" "0:lock down,confirm,tf apply,stop_db,dns_remove,status"
 
 code="$(run_case down-dns-fails 'dns_remove_api() { step dns_remove; return 1; }' cmd_down)"
-expect "down still stops RDS when DNS removal fails, and exits 1" "${code}:$(steps)" "1:confirm,tf apply,stop_db,dns_remove,status"
+expect "down still stops RDS when DNS removal fails, and exits 1" "${code}:$(steps)" "1:lock down,confirm,tf apply,stop_db,dns_remove,status"
 
 code="$(run_case down-db-fails 'stop_database() { step stop_db; return 1; }' cmd_down)"
-expect "down still removes DNS when stopping RDS fails, and exits 1" "${code}:$(steps)" "1:confirm,tf apply,stop_db,dns_remove,status"
+expect "down still removes DNS when stopping RDS fails, and exits 1" "${code}:$(steps)" "1:lock down,confirm,tf apply,stop_db,dns_remove,status"
 
 code="$(run_case down-apply-fails 'tf() { step "tf $1"; return 1; }' cmd_down)"
-expect "down keeps RDS and DNS when the apply fails" "${code}:$(steps)" "1:confirm,tf apply"
+expect "down keeps RDS and DNS when the apply fails" "${code}:$(steps)" "1:lock down,confirm,tf apply"
+
+code="$(run_case down-locked 'acquire_lock() { step "lock $1"; die locked; }' cmd_down)"
+expect "down changes nothing while another operation holds the lock" "${code}:$(steps)" "1:lock down"
 
 code="$(run_case up-ok '' cmd_up)"
-expect "up starts RDS only after confirmation" "${code}:$(steps)" "0:confirm,start_db,tf apply,dns_point,status"
+expect "up starts RDS only after confirmation" "${code}:$(steps)" "0:lock up,confirm,start_db,tf apply,dns_point,status"
 
 code="$(run_case up-declined 'confirm() { step confirm; die "Not confirmed"; }' cmd_up)"
-expect "up leaves RDS parked when not confirmed" "${code}:$(steps)" "1:confirm"
+expect "up leaves RDS parked when not confirmed" "${code}:$(steps)" "1:lock up,confirm"
 
 code="$(run_case up-apply-fails 'tf() { step "tf $1"; return 1; }' cmd_up)"
-expect "up stops at a failed apply" "${code}:$(steps)" "1:confirm,start_db,tf apply"
+expect "up stops at a failed apply" "${code}:$(steps)" "1:lock up,confirm,start_db,tf apply"
+
+code="$(run_case up-locked 'acquire_lock() { step "lock $1"; die locked; }' cmd_up)"
+expect "up leaves RDS parked while another operation holds the lock" "${code}:$(steps)" "1:lock up"
+
+# The lock is a conditional write; an existing object means another holder.
+code="$(run_helper lock-held '
+  aws_lab() { step "aws $2"; echo "An error occurred (PreconditionFailed) when calling the PutObject operation" >&2; return 254; }
+  take() { acquire_lock up; step "unreachable"; }' take)"
+expect "acquire_lock fails when another holder's lock exists" "${code}:$(steps)" "1:aws put-object"
+
+code="$(run_helper lock-released-once '
+  aws_lab() { step "aws $2"; }
+  both() { acquire_lock up && release_lock && release_lock; }' both)"
+expect "release_lock removes only a lock this run took" "${code}:$(steps)" "0:aws put-object,aws delete-object"
+
+code="$(run_helper lock-never-taken '
+  aws_lab() { step "aws $2"; }' release_lock)"
+expect "release_lock does nothing without a lock" "${code}:$(steps)" "0:"
+
+# Cycle plans render the released images, and refuse while a release is unfinished.
+DIGEST="sha256:$(printf 'a%.0s' {1..64})"
+code="$(run_helper images-ok "
+  aws_lab() { printf '{\"runtime_image_digest\":\"${DIGEST}\",\"migrator_image_digest\":\"${DIGEST}\"}' >\"\${@: -1}\"; }
+  check() { local file; file=\"\$(release_images_file)\" && step \"\$(cat \"\${file}\")\"; }" check)"
+expect "release_images_file renders both released images" "${code}:$(steps)" "0:{\"backend_images\": {\"runtime\": \"${DIGEST}\", \"migrator\": \"${DIGEST}\"}}"
+
+code="$(run_helper images-pending "
+  aws_lab() { printf '{\"runtime_image_digest\":\"${DIGEST}\",\"migrator_image_digest\":\"${DIGEST}\",\"pending\":{\"release_id\":\"r1\",\"phase\":\"migrated\"}}' >\"\${@: -1}\"; }" release_images_file)"
+expect "release_images_file refuses while a release is unfinished" "${code}:$(steps)" "1:"
+
+code="$(run_helper images-unpinned "
+  aws_lab() { printf '{\"runtime_image_digest\":\"latest\",\"migrator_image_digest\":\"${DIGEST}\"}' >\"\${@: -1}\"; }" release_images_file)"
+expect "release_images_file refuses images not pinned by digest" "${code}:$(steps)" "1:"
+
+code="$(run_helper images-missing '
+  aws_lab() { return 254; }' release_images_file)"
+expect "release_images_file refuses when no release inputs exist" "${code}:$(steps)" "1:"
 
 # The real helpers must report failure instead of logging success.
 code="$(run_helper dns-delete-fails '

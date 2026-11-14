@@ -12,6 +12,9 @@
 #   LAB_PROFILE   AWS CLI profile for the ScoutGridSydneyLabCycle role (default sglab-cycle)
 #   TERRAFORM     Terraform 1.13.5 binary (default terraform)
 #
+# Plans use the released images from the release inputs next to the state, and up/down take
+# the lab lock shared with release.py, so a cycle never runs during or after a broken release.
+#
 # Never prints credentials. Cloudflare DNS uses a Keychain token (service scoutgrid-cloudflare-dns)
 # limited to DNS Edit on scoutgrid.io; without it the script prints the record to set by hand.
 # See ../README.md, ../grants/LAB_CYCLE_MATRIX.md and the lab record in Working Knowledge/AWS/aws-lab/.
@@ -29,6 +32,11 @@ readonly API_HOST="api-lab.scoutgrid.io"
 readonly CYCLE_ROLE="ScoutGridSydneyLabCycle"
 readonly BUDGET_USD=100
 readonly SHUTDOWN_MTD_USD=80
+# Release inputs and the shared lock live next to the state; release.py writes the inputs.
+readonly STATE_BUCKET="scoutgrid-lab-tfstate-${ACCOUNT_ID}-${REGION}"
+readonly STATE_KMS_KEY="arn:aws:kms:${REGION}:${ACCOUNT_ID}:key/2731031f-d79e-4db9-afe6-94fb01cba15a"
+readonly RELEASE_PREFIX="standard/lab/release"
+readonly LOCK_KEY="${RELEASE_PREFIX}/lock.json"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
@@ -41,7 +49,8 @@ readonly TF="${TERRAFORM:-terraform}"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/scoutgrid-lab.XXXXXX")"
 chmod 700 "${WORK}"
-trap 'rm -rf "${WORK}"' EXIT
+LOCK_HELD=0
+trap 'release_lock; rm -rf "${WORK}"' EXIT
 
 log() { printf '%s %s\n' "$(date -u +%H:%M:%SZ)" "$*" >&2; }
 die() { log "ERROR: $*"; exit 1; }
@@ -70,6 +79,49 @@ with_credentials() {
 }
 
 tf() { with_credentials "${TF}" -chdir="${TF_ROOT}" "$@"; }
+
+# One lab-changing operation at a time: lab.sh up/down and release.py share this lock, a
+# conditional write that fails while another holder's object exists. Removed on exit.
+acquire_lock() {
+  local body="${WORK}/lock.json" err="${WORK}/lock.err"
+  printf '{"holder":"lab.sh","operation":"%s","started_at":"%s"}\n' "$1" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"${body}"
+  if ! aws_lab s3api put-object --bucket "${STATE_BUCKET}" --key "${LOCK_KEY}" \
+    --expected-bucket-owner "${ACCOUNT_ID}" --if-none-match '*' --body "${body}" \
+    --server-side-encryption aws:kms --ssekms-key-id "${STATE_KMS_KEY}" >/dev/null 2>"${err}"; then
+    grep -q PreconditionFailed "${err}" &&
+      die "The lab is locked by another operation. See release.py status; clear a stale lock with release.py unlock."
+    die "Could not take the lab lock: $(tr '\n' ' ' <"${err}")"
+  fi
+  LOCK_HELD=1
+}
+
+release_lock() {
+  (( LOCK_HELD )) || return 0
+  LOCK_HELD=0
+  aws_lab s3api delete-object --bucket "${STATE_BUCKET}" --key "${LOCK_KEY}" \
+    --expected-bucket-owner "${ACCOUNT_ID}" >/dev/null ||
+    log "WARNING: the lab lock was not removed; clear it with release.py unlock."
+}
+
+# The released image digests come from the release inputs, never from the tfvars, so a
+# cycle plans exactly the task definitions the last release registered. Prints a var file.
+release_images_file() {
+  local inputs="${WORK}/release-inputs.json" out="${WORK}/release-images.tfvars.json"
+  aws_lab s3api get-object --bucket "${STATE_BUCKET}" --key "${RELEASE_PREFIX}/inputs.json" \
+    --expected-bucket-owner "${ACCOUNT_ID}" "${inputs}" >/dev/null ||
+    die "No release inputs at s3://${STATE_BUCKET}/${RELEASE_PREFIX}/inputs.json; seed them with release.py init."
+  python3 -I -c '
+import json, re, sys
+inputs = json.load(open(sys.argv[1]))
+if inputs.get("pending"):
+    sys.exit("release %s stopped at %s; finish it with release.py first" % (inputs["pending"]["release_id"], inputs["pending"]["phase"]))
+images = {"runtime": inputs["runtime_image_digest"], "migrator": inputs["migrator_image_digest"]}
+if not all(re.fullmatch(r"sha256:[0-9a-f]{64}", value) for value in images.values()):
+    sys.exit("release inputs do not pin both images by digest")
+json.dump({"backend_images": images}, open(sys.argv[2], "w"))
+' "${inputs}" "${out}" || die "Release inputs cannot be used for a cycle plan."
+  printf '%s\n' "${out}"
+}
 
 tf_init() {
   tf init -input=false -no-color -lockfile=readonly \
@@ -123,12 +175,13 @@ if refused:
 }
 
 plan_mode() {
-  local mode="$1" plan="${WORK}/$1.tfplan" runtime
+  local mode="$1" plan="${WORK}/$1.tfplan" runtime images
   runtime="$(runtime_file "${mode}")"
+  images="$(release_images_file)"
   tf_init
-  log "Planning lab-${mode}: sydney-lab.foundation.tfvars + ${runtime##*/}"
+  log "Planning lab-${mode}: sydney-lab.foundation.tfvars + ${runtime##*/} + released images"
   tf plan -input=false -no-color -lock-timeout=60s -out="${plan}" \
-    -var-file="${CFG}/sydney-lab.foundation.tfvars" -var-file="${runtime}" >/dev/null
+    -var-file="${CFG}/sydney-lab.foundation.tfvars" -var-file="${runtime}" -var-file="${images}" >/dev/null
   check_plan "${mode}" "${plan}"
   printf '%s\n' "${plan}"
 }
@@ -369,6 +422,9 @@ print(json.dumps([{"ContextKeyName": k, "ContextKeyValues": [v], "ContextKeyType
     "up iam:PassRole arn:aws:iam::${ACCOUNT_ID}:role/scoutgrid-lab-worker-execution"
     "up rds:StartDBInstance ${db}"
     "up s3:GetBucketWebsite arn:aws:s3:::scoutgrid-lab-${ACCOUNT_ID}-imports"
+    "up s3:GetObject arn:aws:s3:::${STATE_BUCKET}/${RELEASE_PREFIX}/inputs.json"
+    "up s3:PutObject arn:aws:s3:::${STATE_BUCKET}/${LOCK_KEY}"
+    "up s3:DeleteObject arn:aws:s3:::${STATE_BUCKET}/${LOCK_KEY}"
     "down ecs:UpdateService ${svc}/api"
     "down ecs:DeleteService ${svc}/worker"
     "down elasticloadbalancing:DeleteLoadBalancer ${alb}"
@@ -409,6 +465,7 @@ cmd_plan() {
 cmd_up() {
   guard_identity
   guard_terraform
+  acquire_lock up
   local plan
   plan="$(plan_mode up)"
   confirm "Lab-up starts RDS and creates NAT egress, the API load balancer, WAF and both services (about \$0.30/hour while up)."
@@ -425,6 +482,7 @@ cmd_up() {
 cmd_down() {
   guard_identity
   guard_terraform
+  acquire_lock down
   cmd_simulate up
   local plan
   plan="$(plan_mode down)"

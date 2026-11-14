@@ -86,6 +86,7 @@ class ContractsTest(unittest.TestCase):
         self.assertIsNotNone(lab_step, 'lab scripts are not tested in CI')
         self.assertIn('shellcheck scripts/*.sh scripts/tests/*.sh', lab_step)
         self.assertIn('bash scripts/tests/lab.test.sh', lab_step)
+        self.assertIn('python3 -I scripts/tests/test_release.py', lab_step)
         self.assertIn('terraform fmt -check -recursive prototype-app/infrastructure/terraform', job)
         for forbidden in ('id-token:', 'configure-aws-credentials', 'terraform apply'):
             self.assertNotIn(forbidden, job)

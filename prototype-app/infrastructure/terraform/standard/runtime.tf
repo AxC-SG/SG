@@ -1,7 +1,6 @@
 variable "backend_candidate" {
-  description = "Reviewed AWS image and credential references. Leave null for a foundation-only plan."
+  description = "Reviewed AWS credential references and runtime switches. Leave null for a foundation-only plan."
   type = object({
-    image_digest        = string
     certificate_arn     = string
     runtime_db_secret   = string
     application_secret  = string
@@ -20,11 +19,6 @@ variable "backend_candidate" {
   validation {
     condition     = var.backend_candidate == null ? true : contains([3, 10], var.backend_candidate.customer_limit)
     error_message = "Select the approved Standard enrollment limit of 3 or 10 customers."
-  }
-
-  validation {
-    condition     = var.backend_candidate == null ? true : can(regex("^sha256:[0-9a-f]{64}$", var.backend_candidate.image_digest))
-    error_message = "Pin the backend candidate by ECR image digest."
   }
 
   validation {
@@ -47,6 +41,30 @@ variable "backend_candidate" {
       !var.backend_candidate.start_services
     )
     error_message = "Pin a separate account-local enrollment secret version while the API and worker services are stopped."
+  }
+}
+
+# Released images, separate from the candidate so a release can move the migrator first,
+# run it, and only then move the API and worker. Lab releases keep these in the release
+# inputs object next to the state (see infrastructure/lab/scripts/release.py).
+variable "backend_images" {
+  description = "ECR image digests: runtime for the API and worker, migrator for the schema migrator. Required with backend_candidate."
+  type = object({
+    runtime  = string
+    migrator = string
+  })
+  default = null
+
+  validation {
+    condition = var.backend_images == null ? true : alltrue([
+      for digest in [var.backend_images.runtime, var.backend_images.migrator] : can(regex("^sha256:[0-9a-f]{64}$", digest))
+    ])
+    error_message = "Pin both backend images by ECR image digest."
+  }
+
+  validation {
+    condition     = var.backend_candidate == null || var.backend_images != null
+    error_message = "A backend candidate needs released image digests in backend_images."
   }
 }
 
@@ -215,7 +233,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([merge({
     name        = each.key
-    image       = "${aws_ecr_repository.backend.repository_url}@${var.backend_candidate.image_digest}"
+    image       = "${aws_ecr_repository.backend.repository_url}@${each.key == "migrator" ? var.backend_images.migrator : var.backend_images.runtime}"
     essential   = true
     stopTimeout = 120
     environment = [for name, value in merge(
