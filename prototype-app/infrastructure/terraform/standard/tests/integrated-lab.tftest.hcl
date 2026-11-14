@@ -67,7 +67,10 @@ variables {
   frontend_origin         = "https://scoutgrid.io"
   api_origin              = "https://api-lab.scoutgrid.io"
   cognito_domain_prefix   = "scoutgrid-lab-736486260824"
-  github_publisher        = null
+  github_publisher = {
+    provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+    subject      = "repo:AxC-SG/SG:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
+  }
 }
 
 # Distinct identities are necessary to test that service operators cannot select
@@ -152,7 +155,8 @@ run "prepare_integrated_lab_before_bootstrap" {
       length(output.network.egress_ips_by_zone) == 1 &&
       output.network.task_egress_nat_zones == { "apse2-az1" = "apse2-az1", "apse2-az3" = "apse2-az1" } &&
       output.backend_runtime.runtime_db_connection_budget == { steady = 12, rollout = 24, login_limit = 25 } &&
-      length(aws_iam_role.github_publisher) == 0 &&
+      length(aws_iam_role.github_publisher) == 1 &&
+      aws_iam_role.github_publisher[0].name == "scoutgrid-lab-github-ecr-publish" &&
       !strcontains(aws_iam_role_policy.execution["api"].policy, var.backend_candidate.managed_installation.secret_arn) &&
       !strcontains(aws_iam_role_policy.execution["worker"].policy, var.backend_candidate.managed_installation.secret_arn)
     )

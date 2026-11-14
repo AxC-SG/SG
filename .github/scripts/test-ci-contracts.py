@@ -47,6 +47,22 @@ class ContractsTest(unittest.TestCase):
             self.assertNotIn('master', events)
             self.assertIn('main', events)
 
+    def test_publisher_follows_the_checks_it_qualifies(self):
+        root = Path(__file__).resolve().parents[2]
+        workflows = root / '.github/workflows'
+        publisher = (workflows / 'aws-publish-candidate.yml').read_text()
+        events = publisher.split('  workflow_run:\n', 1)[1].split('\npermissions:', 1)[0]
+        trigger = re.search(r'(?m)^    workflows: \[([^\]]*)\]', events).group(1)
+        selector = module('select-aws-candidate')
+        files = selector.CHECKS + (selector.TRIVY,)
+        names = {re.search(r'(?m)^name: (.+)$', (workflows / name).read_text()).group(1) for name in files}
+        # Renaming a required workflow without updating the trigger would silently stop publication.
+        self.assertEqual({name.strip() for name in trigger.split(',')}, names)
+        self.assertIn('branches: [main]', events)
+        publish = publisher.split('\n  publish:\n', 1)[1]
+        self.assertIn("if: needs.qualify.outputs.publish == 'true'", publish)
+        self.assertNotIn('inputs.', publish)
+
     def test_terraform_validation_is_required_and_offline(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/quality.yml').read_text()

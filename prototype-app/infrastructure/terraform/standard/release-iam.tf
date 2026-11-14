@@ -1,5 +1,9 @@
+# GitHub Free cannot require reviewers or restrict branches on private-repository
+# environments, so the subject itself carries the restriction: the repository's
+# OIDC subject template includes job_workflow_ref, and the role trusts only the
+# publisher workflow as it exists on main. Main changes only through reviewed PRs.
 variable "github_publisher" {
-  description = "Existing account-local GitHub OIDC provider and the exact subject for this protected environment."
+  description = "Existing account-local GitHub OIDC provider and the exact subject: this environment plus the publisher workflow on main."
   type = object({
     provider_arn = string
     subject      = string
@@ -9,9 +13,9 @@ variable "github_publisher" {
   validation {
     condition = var.github_publisher == null ? true : (
       var.github_publisher.provider_arn == "arn:aws:iam::${var.account_id}:oidc-provider/token.actions.githubusercontent.com" &&
-      can(regex("^repo:(AxC-SG/SG|AxC-SG@[0-9]+/SG@[0-9]+):environment:aws-standard-${var.environment}$", var.github_publisher.subject))
+      can(regex("^repo:(AxC-SG/SG|AxC-SG@[0-9]+/SG@[0-9]+):environment:aws-standard-${var.environment}:job_workflow_ref:AxC-SG/SG/\\.github/workflows/aws-publish-candidate\\.yml@refs/heads/main$", var.github_publisher.subject))
     )
-    error_message = "Use the selected account's GitHub OIDC provider and the exact AxC-SG/SG subject for this Standard environment."
+    error_message = "Use the selected account's GitHub OIDC provider and the exact AxC-SG/SG subject for this Standard environment and the publisher workflow on main."
   }
 }
 

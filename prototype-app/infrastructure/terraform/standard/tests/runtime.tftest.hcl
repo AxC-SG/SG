@@ -352,7 +352,7 @@ run "publisher_can_only_push_to_standard_repository" {
   variables {
     github_publisher = {
       provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
-      subject      = "repo:AxC-SG/SG:environment:aws-standard-production"
+      subject      = "repo:AxC-SG/SG:environment:aws-standard-production:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
     }
   }
 
@@ -366,6 +366,47 @@ run "publisher_can_only_push_to_standard_repository" {
     )
     error_message = "The publisher must trust only the selected GitHub environment and have only ECR permissions."
   }
+}
+
+# Without reviewers on the environment, a bare environment subject would let any
+# branch's workflow publish; only the publisher workflow on main is accepted.
+run "publisher_rejects_subjects_not_pinned_to_the_main_publisher" {
+  command = plan
+
+  variables {
+    github_publisher = {
+      provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG/SG:environment:aws-standard-production"
+    }
+  }
+
+  expect_failures = [var.github_publisher]
+}
+
+run "publisher_rejects_branch_workflows" {
+  command = plan
+
+  variables {
+    github_publisher = {
+      provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG/SG:environment:aws-standard-production:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/feature"
+    }
+  }
+
+  expect_failures = [var.github_publisher]
+}
+
+run "publisher_rejects_other_workflows" {
+  command = plan
+
+  variables {
+    github_publisher = {
+      provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG/SG:environment:aws-standard-production:job_workflow_ref:AxC-SG/SG/.github/workflows/quality.yml@refs/heads/main"
+    }
+  }
+
+  expect_failures = [var.github_publisher]
 }
 
 run "prepare_managed_operator_enrollment" {

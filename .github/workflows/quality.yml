@@ -50,6 +50,7 @@ jobs:
           python3 .github/scripts/test-ci-contracts.py
           python3 .github/scripts/test-maven-reports.py
           python3 .github/scripts/test-aws-backend-archive.py
+          python3 .github/scripts/test-select-aws-candidate.py
           python3 .github/scripts/test-check-migrations.py
           python3 -m unittest discover -s prototype-app/scripts/tests -v
       - name: Check migration files and append-only history

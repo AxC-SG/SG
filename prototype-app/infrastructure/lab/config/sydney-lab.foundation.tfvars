@@ -12,7 +12,13 @@ frontend_origin         = "https://scoutgrid.io"
 api_origin              = "https://api-lab.scoutgrid.io"
 cognito_domain_prefix   = "scoutgrid-lab-736486260824"
 backend_candidate       = null
-github_publisher        = null
+
+# Owner decision 2026-11-15: GitHub publishes qualified main commits to the lab ECR.
+# The repository's OIDC subject template must include job_workflow_ref (see A03).
+github_publisher = {
+  provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+  subject      = "repo:AxC-SG/SG:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
+}
 
 # Owner decision 2026-11-12: MFA off for platform and tenant sign-in.
 cognito_mfa_configuration = "OFF"
