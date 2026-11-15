@@ -79,8 +79,9 @@ public class AuditEventService {
                     UUID.randomUUID(),actor.userId(),action,targetType,targetId,outcome,detailsJson==null ? "{}" : detailsJson)));
             return;
         }
+        UUID tenantId = resolveTenantId(actor, action);
         Runnable persist = () -> persistEvent(
-                resolveTenantId(actor, action),
+                tenantId,
                 actor.userId(),
                 actor.roles().stream().findFirst().orElse(null),
                 action,
@@ -88,7 +89,7 @@ public class AuditEventService {
                 targetId,
                 detailsJson,
                 outcome);
-        if (PLATFORM_USER_AUDIT_ACTIONS.contains(action)) {
+        if (PLATFORM_USER_AUDIT_ACTIONS.contains(action) || isPlatformOwnerWithoutWorkspace(actor, tenantId)) {
             TenantContext.runAsPreAuthentication(() -> executePlatformAudit(persist));
         } else {
             persist.run();
@@ -144,6 +145,18 @@ public class AuditEventService {
         event.setOutcome(outcome);
         event.setRequestId(MDC.get("requestId"));
         auditEventRepository.save(event);
+    }
+
+    // A platform owner outside any workspace has neither tenant nor platform context, so a
+    // required-tenant runtime binds the no-tenant sentinel and RLS rejects a tenant-less row.
+    // Write those rows like platform-user audits. Any other context-free write still fails closed.
+    private static boolean isPlatformOwnerWithoutWorkspace(RequestActor actor, UUID tenantId) {
+        return tenantId == null
+                && actor != null
+                && actor.platformScope()
+                && TenantContext.getCurrentTenantId() == null
+                && !TenantContext.isPlatformContext()
+                && !TenantContext.isPreAuthenticationContext();
     }
 
     private UUID resolveTenantId(RequestActor actor, String action) {
