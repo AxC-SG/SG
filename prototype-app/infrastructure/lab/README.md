@@ -40,7 +40,7 @@ Every `main` commit that passes its checks is published to the lab ECR automatic
    - worker schema state: no `tenant_schema_state` line, an unready tenant, or a supported range that excludes the database's tenant head (the 2026-11-15 `V23..V20` failure).
 
    An image built before these lines existed (before PRs R3 and R5) never logs them. For a deploy or rollback to such an image, pass `--no-progress-signal`; the record notes that the check was waived.
-7. **Accept.** The release stays live and waits for `release.py accept`, which asks the browser checks in `config/release-browser-checks.json`. Use `--answers yyn… [--note TEXT]` to record answers the operator relayed; the record marks them as relayed. All passing makes the release the accepted one; any failure rejects it. A new deploy waits until the live release is accepted or rolled back.
+7. **Accept.** The release stays live and waits for `release.py accept`, which asks the browser checks in `config/release-browser-checks.json`. Use `--answers yyn… [--note TEXT]` to record answers the operator relayed; the record marks them as relayed. All passing makes the release the accepted one; any failure rejects it. A new deploy waits until the live release is accepted or rolled back. When the owner decides to skip the checks, `release.py accept --waive --note TEXT` accepts the release and records every check as waived, never as passed, with the note; `status` shows the accepted release as waived.
 
 Each step is recorded in `release/records/<id>.json`. The bucket is versioned, so every state of a record is kept.
 

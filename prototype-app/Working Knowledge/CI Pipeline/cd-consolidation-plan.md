@@ -270,15 +270,25 @@ Phases 1 and 2 can be prepared in parallel once phase 0 is under way. Do not cla
 
 ### 6.1 Next pull requests
 
-| PR | Contents | Size | Status (2026-11-15) |
+| PR | Contents | Size | Status (2026-11-16) |
 |---|---|---|---|
-| R1 | Fix `audit_events` RLS for platform-scope writes. Extend `RestrictedRuntimeJourneysPostgresIntegrationTest` with a managed-session, no-workspace platform owner under the `prod` tenancy settings, asserting each write's mutation, audit row and delivery intent. Tenancy and security config are on the never-touch list: the owner approves the change first | Small–medium | #111, merged. Fails before and passes after the fix under the exact lab actor. Release and browser acceptance are still to do |
+| R1 | Fix `audit_events` RLS for platform-scope writes. Extend `RestrictedRuntimeJourneysPostgresIntegrationTest` with a managed-session, no-workspace platform owner under the `prod` tenancy settings, asserting each write's mutation, audit row and delivery intent. Tenancy and security config are on the never-touch list: the owner approves the change first | Small–medium | #111, merged. Fails before and passes after the fix under the exact lab actor. Released in `2c382df`; demo-request delete passes in the lab |
 | R2 | Email delivery: trace the stages (§4.6) after R1. Fix only a separate defect if one remains, with a test | Small, possibly none | Traced in the [lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md): no separate defect, so no PR. An invitation reaching an inbox stays a phase 0 exit check |
-| R3 | Detection, part 1: worker success-line metric filter and fatal-error metric; lab release alarms (SNS email) outside `operations`; `release.py` verify fails on the defined fatal patterns and waits one scheduler cycle | Medium | #112. Alarms are opt-in; their read grant must be attached before they are enabled |
-| R4 | Detection, part 2: a Playwright signed-in smoke suite with seeded fixtures, run by `release.py` after rollout; the contract test against public traces | Medium | #114, stacked on #113. Run only against a local stub so far. A second managed platform owner has no operator binding path yet |
-| R5 | Migration-catalog fingerprint in the publication manifest and release inputs; the live schema-state check; the migrator-drift plan (§4.3) | Small–medium | #113, stacked on #112. Adds read-only `release.py check` |
+| R3 | Detection, part 1: worker success-line metric filter and fatal-error metric; lab release alarms (SNS email) outside `operations`; `release.py` verify fails on the defined fatal patterns and waits one scheduler cycle | Medium | Merged via #115 (combining #112–#114) and released in `2c382df`: the release's bake saw six healthy progress lines. Alarms are opt-in; their read grant must be attached before they are enabled |
+| R4 | Detection, part 2: a Playwright signed-in smoke suite with seeded fixtures, run by `release.py` after rollout; the contract test against public traces | Medium | Merged via #115 and released in `2c382df`, but not yet configured for the lab (`LAB_SMOKE_CONFIG` unset), so it has run only against a local stub. A second managed platform owner has no operator binding path yet |
+| R5 | Migration-catalog fingerprint in the publication manifest and release inputs; the live schema-state check; the migrator-drift plan (§4.3) | Small–medium | Merged via #115 and released in `2c382df`: the schema-state check reported V23..V23 ready. Adds read-only `release.py check` |
 
 PR D of the CI plan follows these.
+
+**Phase 0 status (2026-11-16):** release `20261115t171747z-2c382df` is live and passed every automated check. Since the rollout the logs show no ERROR lines and no `row-level security` lines, and the worker reports `tenant_work_progress outcome=healthy` and `tenant_schema_state unready_tenants=0` at V23. `c013bd7` is recorded as rejected. Browser acceptance is **not recorded**: check 6 passed, and the owner deferred the other checks, including the invitation (check 7), to a separate full-app test plan after the CI work. Phase 0 is therefore not closed. `release.py deploy` refuses while a release awaits acceptance, so 2c382df needs its nine answers before PR D's release, and it becomes the healthy baseline for phase 3 only if all of them pass.
+
+**Phase 2 status (2026-11-16):** PR D merged as #117 and its exit criteria are met; see the [PR D record](ci-simplification-plan.md#pr-d-record).
+- One `Quality gate` covers image, security and `main` performance for the same SHA.
+- A failed security result blocked test PR #118.
+- The lab publication came from the consolidated run `43755583811`.
+- Critical path: 14m48s–21m42s before and 21m11s after, set by `backend-postgres` both times.
+
+PR D changed only CI files and docs, so the image published for `90cb7e2` is byte-identical to the one 2c382df runs (`sha256:fc1b533f…`). Releasing it would change nothing that runs, so it cannot serve as the second healthy release for the phase 3 drill. That needs the next merge that changes the backend image.
 
 ## 7. Required failure and resume tests
 
