@@ -150,6 +150,40 @@ public class OwnershipSubjectService {
         return linked;
     }
 
+    /**
+     * Retires up to {@code limit} software occurrence subjects (Phase 0B §3.2): every linked component has been
+     * RETIRED for 90 days (or none is linked any more), the subject has no active direct claim and no open finding
+     * references it. Its edges retire, its rows are unlinked, and a later reappearance registers generation 2.
+     */
+    @Transactional
+    public int retireOccurrences(int limit) {
+        lock();
+        List<UUID> retired = jdbc.queryForList("""
+                UPDATE ownership_subject s SET lifecycle_status = 'RETIRED', retired_at = now(), updated_at = now()
+                 WHERE s.id IN (
+                    SELECT c.id FROM ownership_subject c
+                     WHERE c.subject_type = 'COMPONENT_OCCURRENCE' AND c.lifecycle_status = 'ACTIVE' AND c.source_object_id LIKE 'pkg:%'
+                       AND NOT EXISTS (SELECT 1 FROM inventory_components ic WHERE ic.ownership_subject_id = c.id
+                                          AND (ic.component_status <> 'RETIRED' OR ic.retired_at IS NULL
+                                               OR ic.retired_at > now() - interval '90 days'))
+                       AND NOT EXISTS (SELECT 1 FROM ownership_claim cl WHERE cl.subject_id = c.id AND cl.status = 'ACTIVE')
+                       AND NOT EXISTS (SELECT 1 FROM findings f WHERE f.ownership_subject_id = c.id AND f.status = 'OPEN')
+                       AND c.created_at < now() - interval '90 days'
+                     ORDER BY c.id LIMIT ?)
+                RETURNING s.id
+                """, UUID.class, limit);
+        if (retired.isEmpty()) return 0;
+        String ids = array(retired.stream().map(UUID::toString).toList());
+        jdbc.update("""
+                UPDATE ownership_subject_edge SET status = 'RETIRED', retired_at = now()
+                 WHERE child_subject_id = ANY (?::uuid[]) AND status = 'ACTIVE'
+                """, ids);
+        jdbc.update("UPDATE inventory_components SET ownership_subject_id = NULL WHERE ownership_subject_id = ANY (?::uuid[])", ids);
+        cache.enqueueAll(retired, "TOPOLOGY_CHANGED");   // retiring removes the subject and its edge
+        events.record("OCCURRENCES_RETIRED", null, null, null, "bom-occurrence-adapter", "subjects", retired.size());
+        return retired.size();
+    }
+
     private static String array(List<String> values) {
         StringBuilder out = new StringBuilder("{");
         for (int i = 0; i < values.size(); i++) {

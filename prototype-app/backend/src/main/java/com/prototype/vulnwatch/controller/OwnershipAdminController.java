@@ -4,6 +4,7 @@ import com.prototype.vulnwatch.security.tenantkey.TenantKeyRegistry;
 import com.prototype.vulnwatch.service.AuditEventService;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.TenantContext;
+import com.prototype.vulnwatch.service.ownership.FindingSubjectAdapterRegistry;
 import com.prototype.vulnwatch.service.ownership.OwnershipAuthorityService;
 import com.prototype.vulnwatch.service.ownership.OwnershipCutoverService;
 import com.prototype.vulnwatch.service.ownership.OwnershipCutoverService.Qualification;
@@ -50,15 +51,18 @@ public class OwnershipAdminController {
     private final RequestActorService actors;
     private final AuditEventService audit;
     private final OwnershipCutoverService cutover;
+    private final FindingSubjectAdapterRegistry findingAdapters;
 
     public OwnershipAdminController(TeamNamespaceService teams, OwnershipReviewService reviews, TenantKeyRegistry keys,
-                                    RequestActorService actors, AuditEventService audit, OwnershipCutoverService cutover) {
+                                    RequestActorService actors, AuditEventService audit, OwnershipCutoverService cutover,
+                                    FindingSubjectAdapterRegistry findingAdapters) {
         this.teams = teams;
         this.reviews = reviews;
         this.keys = keys;
         this.actors = actors;
         this.audit = audit;
         this.cutover = cutover;
+        this.findingAdapters = findingAdapters;
     }
 
     @GetMapping("/teams")
@@ -159,6 +163,13 @@ public class OwnershipAdminController {
     @PreAuthorize("@ownershipAuthorization.can('MANAGE_AUTHORITY')")
     public Qualification qualification(@PathVariable String domain) {
         return cutover.qualify(domain(domain));
+    }
+
+    /** §3.6 dark comparison of the finding adapters: v2 must change no effective owner before the CLOUD_BOM switch. */
+    @GetMapping("/finding-adapters/report")
+    @PreAuthorize("@ownershipAuthorization.can('MANAGE_AUTHORITY')")
+    public FindingSubjectAdapterRegistry.DarkReport findingAdapterReport() {
+        return findingAdapters.darkReport();
     }
 
     /** LEGACY→DARK, DARK→LEGACY (no-go) or DARK→CANONICAL (go; requires the reviewed {@code reportHash}). */

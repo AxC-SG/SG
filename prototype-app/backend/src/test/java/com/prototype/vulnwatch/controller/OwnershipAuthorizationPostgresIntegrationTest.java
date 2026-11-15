@@ -110,6 +110,7 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                         Map.of("externalGroupId", missing, "teamId", missing, "previewToken", "x.y")),
                 new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/retire", Map.of("previewToken", "x.y")),
                 new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/dismiss", null),
+                new Endpoint(Action.MANAGE_AUTHORITY, "GET", "/api/ownership/finding-adapters/report", null),
                 new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources", null),
                 new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources/azure", null),
                 new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "PUT", "/api/ownership/cloud-sources/azure/settings",

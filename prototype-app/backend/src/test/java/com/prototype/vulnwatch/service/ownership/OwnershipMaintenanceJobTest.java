@@ -21,7 +21,7 @@ class OwnershipMaintenanceJobTest {
 
     private OwnershipMaintenanceJob job(String role) {
         return new OwnershipMaintenanceJob(tenants, mock(TenantWorkRunner.class), mock(OwnershipClaimService.class),
-                mock(OwnershipResolutionService.class), mock(InventorySubjectAdapter.class), mock(OwnershipSubjectService.class),
+                mock(OwnershipResolutionService.class), mock(InventorySubjectAdapter.class), mock(OwnershipSubjectService.class), mock(FindingSubjectAdapterRegistry.class),
                 mock(OwnershipAuthorityService.class), cache, BackgroundTaskExecutionPolicy.forRole(role), 500, 20);
     }
 

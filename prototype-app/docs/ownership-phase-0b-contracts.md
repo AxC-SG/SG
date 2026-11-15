@@ -625,6 +625,21 @@ canonical subject and writes it to `findings.ownership_subject_id`. Nothing else
 5. `CRYPTO` findings get their first canonical subject at the same switch. Before it they read
    `LEGACY_PENDING_MIGRATION`.
 
+**Implementation (E8, November 16, 2026, branch `feat/e8-finding-adapter-registry`, not merged).**
+`FindingSubjectAdapterRegistry` is the only writer of `findings.ownership_subject_id` (`OwnershipWriterControlTest`
+checks SQL updates and JPA setters); `InventorySubjectAdapter` now links assets only. `select` is read-only,
+`subjectForFinding` links on first use (VULNERABILITY v1 in DARK, v2 once `CLOUD_BOM` is CANONICAL; CRYPTO only once
+CANONICAL), `linkBatch` is the CORE populate step, and `switchBatch` moves findings to their v2/CRYPTO target guarded
+by the current value, with one `FINDING_SUBJECTS_SWITCHED` event per batch. The maintenance job runs `switchBatch`
+every cycle, so it is the §3.6 switch at the go decision and afterwards keeps findings current when an occurrence is
+registered or retires. A CRYPTO finding finds its CBOM component through `evidence ->> 'cbomComponentId'`, which
+`CbomFindingMirrorService` writes. The dark report is `GET /api/ownership/finding-adapters/report`
+(`MANAGE_AUTHORITY`); `passed` is false when any effective owner would change, and E15 adds it to the `CLOUD_BOM`
+qualification gates. `OwnershipSubjectService.retireOccurrences` applies the §3.2 rule to software occurrences (90
+days `RETIRED`, no active claim, no open finding, subject older than 90 days), retires the edge and unlinks the rows,
+so a reappearance registers generation 2. `switchBatch` and the dark report scan `findings`; their plans belong in the
+R1 benchmark.
+
 ### 3.7 Aggregates and reads
 
 - Software identity and global package views show owner-team coverage across occurrences (`1 team`, `3 teams`,
