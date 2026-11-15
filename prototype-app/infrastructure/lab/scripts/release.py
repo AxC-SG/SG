@@ -162,6 +162,16 @@ def service_settled(service, task_definition):
             service["desiredCount"] >= 1 and service["runningCount"] == service["desiredCount"])
 
 
+def task_definition_arns(state):
+    """Current task-definition ARNs from `terraform show -json` state. Root outputs are not
+    recomputed by a targeted apply, so they still name the revision a replacement retired."""
+    arns = {}
+    for resource in state.get("values", {}).get("root_module", {}).get("resources", []):
+        if resource.get("type") == "aws_ecs_task_definition" and resource.get("name") == "backend":
+            arns[resource["index"]] = resource["values"]["arn"]
+    return arns
+
+
 def rollback_target(inputs):
     """The release to return to: the accepted one while a release is unfinished or the lab has
     left it (failed or rejected), otherwise the accepted release before it."""
@@ -611,7 +621,9 @@ class AwsLab:
         self.tf("apply", "-input=false", "-no-color", "-lock-timeout=60s", str(plan))
 
     def outputs(self):
-        return json.loads(self.tf("output", "-json", "backend_runtime"))
+        outputs = json.loads(self.tf("output", "-json", "backend_runtime"))
+        outputs["task_definition_arns"] = task_definition_arns(json.loads(self.tf("show", "-json")))
+        return outputs
 
     def run_migrator(self, outputs):
         network = {"awsvpcConfiguration": {"subnets": outputs["task_subnet_ids"], "assignPublicIp": "DISABLED",
