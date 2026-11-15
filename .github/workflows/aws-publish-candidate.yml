@@ -149,35 +149,3 @@ jobs:
           path: aws-publication.json
           if-no-files-found: error
           retention-days: 90
-
-  # TEMPORARY claim probe for PR D; reverted before merge. On a pull request it
-  # shows the OIDC claims a called publisher job receives and checks that such
-  # a token cannot assume the publisher role. It prints claims, never the token.
-  oidc-probe:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: aws-standard-lab
-    permissions:
-      id-token: write
-    steps:
-      - name: Show the claims and expect the publisher role to refuse them
-        env:
-          ROLE_ARN: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        run: |
-          umask 077
-          curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value > "$RUNNER_TEMP/token"
-          python3 -c 'import base64,json,sys
-          part=open(sys.argv[1]).read().split(".")[1]; part+="="*(-len(part)%4)
-          claims=json.loads(base64.urlsafe_b64decode(part))
-          print(json.dumps({k: claims.get(k) for k in ("sub","aud","job_workflow_ref","workflow_ref","ref","environment","event_name")}, indent=1))' "$RUNNER_TEMP/token"
-          if aws sts assume-role-with-web-identity --region "$AWS_REGION" --role-arn "$ROLE_ARN" \
-              --role-session-name pr-d-claim-probe --web-identity-token "file://$RUNNER_TEMP/token" \
-              --duration-seconds 900 > /dev/null 2> "$RUNNER_TEMP/denied"; then
-            echo "::error::a pull-request token assumed the publisher role"
-            exit 1
-          fi
-          grep AccessDenied "$RUNNER_TEMP/denied"
-          rm -f "$RUNNER_TEMP/token"

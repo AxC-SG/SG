@@ -90,7 +90,10 @@ Run-time numbers come from runs 43577894006 and 43556944542. Fork and template n
 - **Called path:** the current run, lab only. It skips a superseded or already-published commit.
 - **Manual path:** dispatch with a Quality run ID. It checks the gate job rather than the run's conclusion, so a run whose automatic publication failed can still be published by hand.
 
-The image archive is `aws-backend-candidate-<Quality run>`. The tag, the `aws-publication-<target>-<sha>` record and the scoped role are unchanged, so `release.py` is unaffected. The publish job's OIDC `job_workflow_ref` is still the publisher file on `main`, because GitHub reports the called workflow for reusable jobs. No trust change is needed. A temporary claim probe on the PR checks this before merge (results in the PR).
+The image archive is `aws-backend-candidate-<Quality run>`. The tag, the `aws-publication-<target>-<sha>` record and the scoped role are unchanged, so `release.py` is unaffected. The publish job's OIDC `job_workflow_ref` is still the publisher file on `main`, because GitHub reports the called workflow for reusable jobs. No trust change is needed. A temporary claim probe on PR #117 (run 43752288544, reverted before merge) showed the following:
+- A publisher job called from Quality gets `sub` `repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@<ref>`, with `workflow_ref` naming `quality.yml`.
+- A pull-request token was refused (`AccessDenied` on `AssumeRoleWithWebIdentity`).
+- The role's trust is `StringEquals` on that subject with `@refs/heads/main`, so the called job on `main` matches it.
 
 **Ruleset (4.3).** Jobs in a called workflow report as `<caller> / <job>`, and Performance no longer runs on PRs, so the four separate contexts cannot keep their names. At merge, the owner sets the required checks to `Quality gate` only. That check is required before and after, so nothing goes unenforced. Strict up-to-date then forces every open PR onto the new graph. Verify afterwards with a throwaway PR that fails one security result (blocked) and a docs-only PR (mergeable).
 
