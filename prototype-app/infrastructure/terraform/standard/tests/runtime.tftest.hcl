@@ -775,3 +775,19 @@ run "reject_parked_ingress_in_production" {
 
   expect_failures = [var.runtime_ingress_enabled]
 }
+
+run "reject_smoke_fixtures_in_production" {
+  command = plan
+
+  variables {
+    backend_candidate = {
+      certificate_arn       = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+      runtime_db_secret     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
+      application_secret    = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
+      secrets_kms_key_arn   = "arn:aws:kms:us-east-1:123456789012:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+      enable_smoke_fixtures = true
+    }
+  }
+
+  expect_failures = [var.backend_candidate]
+}

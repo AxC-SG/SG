@@ -11,5 +11,7 @@ backend_candidate = {
   start_services      = false
   enable_bom_uploads  = true
   enable_managed_auth = true
-  customer_limit      = 10
+  # Release smoke fixtures (infrastructure/lab/README.md#signed-in-smoke); lab only.
+  enable_smoke_fixtures = true
+  customer_limit        = 10
 }

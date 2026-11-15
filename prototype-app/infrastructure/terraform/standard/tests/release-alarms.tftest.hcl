@@ -177,6 +177,32 @@ run "release_alarms_unchanged_while_parked" {
   }
 }
 
+run "lab_smoke_fixtures_only_on_the_api" {
+  command = plan
+
+  variables {
+    nat_gateway_mode        = "single"
+    runtime_ingress_enabled = true
+    backend_candidate = {
+      certificate_arn       = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+      runtime_db_secret     = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
+      application_secret    = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
+      secrets_kms_key_arn   = "arn:aws:kms:ap-southeast-2:736486260824:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+      start_services        = true
+      enable_smoke_fixtures = true
+    }
+  }
+
+  assert {
+    condition = alltrue([
+      for role in ["api", "worker"] :
+      one([for entry in one(jsondecode(aws_ecs_task_definition.backend[role].container_definitions)).environment :
+      entry.value if entry.name == "APP_DEMO_SMOKE_FIXTURES_ENABLED"]) == (role == "api" ? "true" : "false")
+    ])
+    error_message = "Smoke fixtures are enabled on the lab api only."
+  }
+}
+
 run "release_alarms_are_opt_in" {
   command = plan
 

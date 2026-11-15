@@ -8,13 +8,20 @@ variable "backend_candidate" {
     start_services      = optional(bool, false)
     enable_bom_uploads  = optional(bool, false)
     enable_managed_auth = optional(bool, false)
-    customer_limit      = optional(number, 10)
+    # Lab release smoke: disposable demo-request fixtures on the api. Never in production.
+    enable_smoke_fixtures = optional(bool, false)
+    customer_limit        = optional(number, 10)
     managed_installation = optional(object({
       secret_arn = string
       version_id = string
     }))
   })
   default = null
+
+  validation {
+    condition     = var.backend_candidate == null ? true : !(var.backend_candidate.enable_smoke_fixtures && var.environment == "production")
+    error_message = "Release smoke fixtures are for the lab only; never enable them in production."
+  }
 
   validation {
     condition     = var.backend_candidate == null ? true : contains([3, 10], var.backend_candidate.customer_limit)
@@ -239,13 +246,14 @@ resource "aws_ecs_task_definition" "backend" {
     environment = [for name, value in merge(
       { DB_URL = local.db_url },
       each.key == "migrator" ? local.migrator_environment : merge(local.runtime_environment, {
-        APP_RUNTIME_ROLE              = each.key
-        APP_BOM_UPLOADS_ENABLED       = tostring(each.key == "api" && var.backend_candidate.enable_bom_uploads)
-        APP_MANAGED_AUTH_ENABLED      = tostring(each.key == "api" && var.backend_candidate.enable_managed_auth)
-        APP_MANAGED_AUTH_LOGIN_ORIGIN = "https://${local.cognito_login}"
-        APP_MANAGED_AUTH_CLIENT_ID    = aws_cognito_user_pool_client.browser.id
-        DB_MAX_POOL_SIZE              = tostring(each.value.db_pool_size)
-        SERVER_ADDRESS                = each.key == "worker" ? "127.0.0.1" : "0.0.0.0"
+        APP_RUNTIME_ROLE                = each.key
+        APP_BOM_UPLOADS_ENABLED         = tostring(each.key == "api" && var.backend_candidate.enable_bom_uploads)
+        APP_MANAGED_AUTH_ENABLED        = tostring(each.key == "api" && var.backend_candidate.enable_managed_auth)
+        APP_DEMO_SMOKE_FIXTURES_ENABLED = tostring(each.key == "api" && var.backend_candidate.enable_smoke_fixtures)
+        APP_MANAGED_AUTH_LOGIN_ORIGIN   = "https://${local.cognito_login}"
+        APP_MANAGED_AUTH_CLIENT_ID      = aws_cognito_user_pool_client.browser.id
+        DB_MAX_POOL_SIZE                = tostring(each.value.db_pool_size)
+        SERVER_ADDRESS                  = each.key == "worker" ? "127.0.0.1" : "0.0.0.0"
       })
     ) : { name = name, value = value }]
     secrets = [for name, reference in local.task_secrets[each.key] : {
