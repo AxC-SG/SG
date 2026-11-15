@@ -270,13 +270,13 @@ Phases 1 and 2 can be prepared in parallel once phase 0 is under way. Do not cla
 
 ### 6.1 Next pull requests
 
-| PR | Contents | Size |
-|---|---|---|
-| R1 | Fix `audit_events` RLS for platform-scope writes. Extend `RestrictedRuntimeJourneysPostgresIntegrationTest` with a managed-session, no-workspace platform owner under the `prod` tenancy settings, asserting each write's mutation, audit row and delivery intent. Tenancy and security config are on the never-touch list: the owner approves the change first | Small–medium |
-| R2 | Email delivery: trace the stages (§4.6) after R1. Fix only a separate defect if one remains, with a test | Small, possibly none |
-| R3 | Detection, part 1: worker success-line metric filter and fatal-error metric; lab release alarms (SNS email) outside `operations`; `release.py` verify fails on the defined fatal patterns and waits one scheduler cycle | Medium |
-| R4 | Detection, part 2: a Playwright signed-in smoke suite with seeded fixtures, run by `release.py` after rollout; the contract test against public traces | Medium |
-| R5 | Migration-catalog fingerprint in the publication manifest and release inputs; the live schema-state check; the migrator-drift plan (§4.3) | Small–medium |
+| PR | Contents | Size | Status (2026-11-15) |
+|---|---|---|---|
+| R1 | Fix `audit_events` RLS for platform-scope writes. Extend `RestrictedRuntimeJourneysPostgresIntegrationTest` with a managed-session, no-workspace platform owner under the `prod` tenancy settings, asserting each write's mutation, audit row and delivery intent. Tenancy and security config are on the never-touch list: the owner approves the change first | Small–medium | #111, merged. Fails before and passes after the fix under the exact lab actor. Release and browser acceptance are still to do |
+| R2 | Email delivery: trace the stages (§4.6) after R1. Fix only a separate defect if one remains, with a test | Small, possibly none | Traced in the [lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md): no separate defect, so no PR. An invitation reaching an inbox stays a phase 0 exit check |
+| R3 | Detection, part 1: worker success-line metric filter and fatal-error metric; lab release alarms (SNS email) outside `operations`; `release.py` verify fails on the defined fatal patterns and waits one scheduler cycle | Medium | #112. Alarms are opt-in; their read grant must be attached before they are enabled |
+| R4 | Detection, part 2: a Playwright signed-in smoke suite with seeded fixtures, run by `release.py` after rollout; the contract test against public traces | Medium | #114, stacked on #113. Run only against a local stub so far. A second managed platform owner has no operator binding path yet |
+| R5 | Migration-catalog fingerprint in the publication manifest and release inputs; the live schema-state check; the migrator-drift plan (§4.3) | Small–medium | #113, stacked on #112. Adds read-only `release.py check` |
 
 PR D of the CI plan follows these.
 
