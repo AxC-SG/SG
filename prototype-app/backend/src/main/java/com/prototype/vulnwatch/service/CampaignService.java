@@ -9,6 +9,7 @@ import com.prototype.vulnwatch.domain.CampaignException;
 import com.prototype.vulnwatch.domain.CampaignExceptionStatus;
 import com.prototype.vulnwatch.domain.CampaignNote;
 import com.prototype.vulnwatch.domain.CampaignNotifyGroup;
+import com.prototype.vulnwatch.domain.CampaignScopeKind;
 import com.prototype.vulnwatch.domain.CampaignStatus;
 import com.prototype.vulnwatch.domain.CampaignVulnerability;
 import com.prototype.vulnwatch.domain.CampaignWatchlistEntry;
@@ -347,6 +348,7 @@ public class CampaignService {
             UUID campaignId = executeWrite(() -> {
                 Campaign campaign = new Campaign();
                 campaign.setTenant(tenant);
+                campaign.setScopeKind(CampaignScopeKind.FINDINGS);
                 campaign.setName(request.name().trim());
                 campaign.setSummary(trimToNull(request.summary()));
                 campaign.setStatus(CampaignStatus.ACTIVE);
@@ -359,8 +361,8 @@ public class CampaignService {
                 int linked = 0;
                 for (UUID findingId : ids) {
                     linked += jdbc.update("""
-                            INSERT INTO campaign_findings (campaign_id, finding_id, added_by)
-                            SELECT ?, f.id, ? FROM findings f WHERE f.id = ?
+                            INSERT INTO campaign_findings (campaign_id, finding_id, added_by, add_source)
+                            SELECT ?, f.id, ?, 'CREATE' FROM findings f WHERE f.id = ?
                             ON CONFLICT DO NOTHING
                             """, saved.getId(), actor, findingId);
                 }
@@ -402,6 +404,7 @@ public class CampaignService {
     private UUID createInCurrentTenantSchema(Tenant tenant, CampaignCreateRequest request, String actor) {
         Campaign campaign = new Campaign();
         campaign.setTenant(tenant);
+        campaign.setScopeKind(CampaignScopeKind.CVE);
         campaign.setName(request.name().trim());
         campaign.setSummary(trimToNull(request.summary()));
         campaign.setStatus(CampaignStatus.ACTIVE);

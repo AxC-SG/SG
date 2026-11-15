@@ -597,8 +597,8 @@ canonical subject and writes it to `findings.ownership_subject_id`. Nothing else
 
 | Item | Owner | Blocks |
 |---|---|---|
-| Full-size effective-owner benchmark with 5M/15M occurrences (Release 1 open item; occurrences now exist for real) | Ownership lead | Enabling occurrence registration outside test tenants |
-| Do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Confirm against SBOM, BOM orchestrator and CMDB host inventory samples | Inventory lead | Occurrence key sign-off |
+| Full-size effective-owner benchmark with 5M/15M occurrences (Release 1 open item; occurrences now exist for real). V24 assumes the §3.8 index design; a wrong design is fixed by an index-only V25 (§6, November 15, 2026) | Ownership lead | Enabling occurrence registration outside test tenants |
+| Do all `inventory_components` writers normalize `ecosystem`, `package_name`, `version` and `purl` the same way? Confirm against SBOM, BOM orchestrator and CMDB host inventory samples. V24 assumes yes; E7 checks it (§6, November 15, 2026) | Inventory lead | Occurrence key sign-off; enabling occurrence registration outside test tenants |
 | Is `component_fingerprint` stable across CBOM re-exports of an unchanged crypto asset? | CBOM lead | CBOM occurrence identity sign-off |
 | ~~CBOM crypto → containing software component edges~~ Decided November 14, 2026: not in Release 2; crypto inherits from the asset (§3.3) | — | — |
 
@@ -1037,8 +1037,16 @@ Scope: plan §16.1 (dependency-based estimate, named staffing, environments, pro
 §16.3 and §16.5. Release 1 is built but off by default and not release-qualified; its KMS spike, benchmarks and real
 CMDB sample stay open and are tracked in the Phase 0A design (§10), not here.
 
-**Decided:** tenant V24 is held until the 5M/15M occurrence benchmark (R1) and package-key normalization (R2) settle
-the §3.8 index design. Migrations are append-only, so V24 ships once, complete.
+**DECISION (product owner, November 15, 2026): the V24 hold is lifted.** Tenant V24 (E1) is built now and does not
+wait for R1 (due December 4) or R2 (due November 27). In place of their results:
+
+- **R2 assumption.** Every `inventory_components` writer normalizes `ecosystem`, `package_name`, `version` and `purl`
+  the same way. E7 must confirm this before occurrence registration is enabled outside test tenants.
+- **R1 assumption.** V24 uses the §3.8 index design as written. If R1 shows it is wrong, the fix is an additive,
+  index-only migration (V25). No V24 column or constraint depends on R1.
+
+There are no customer tenants, so V24 takes the final column shape (NOT NULL and checks) without a separate backfill
+phase; existing development rows are filled by the migration itself.
 
 **Kickoff (K) was November 14, 2026 (decided).** Work starts Monday, November 16, 2026; the dates below count from
 there.
@@ -1084,7 +1092,7 @@ otherwise.
 
 | ID | Work item | Contract | Owner | Depends on | Estimate (eng-wk) | Staff | Start | Finish |
 |---|---|---|---|---|---|---|---|---|
-| E1 | Tenant V24: §1.8 `sys_id`, §2.9 settings, §3.8 occurrence columns and index, §4.11 campaign and ticket changes; `MigrationCatalogTest` and `TenantSchemaCompatibility` | §3.8, §4.11 | Ownership lead | R1 result, R2 (gating) | | | | |
+| E1 | Tenant V24: §1.8 `sys_id`, §2.9 settings, §3.8 occurrence columns and index, §4.11 campaign and ticket changes; `MigrationCatalogTest` and `TenantSchemaCompatibility` | §3.8, §4.11 | Ownership lead | — (hold lifted November 15, 2026; R1, R2 assumed, §6) | | | | |
 | E2 | ServiceNow directory: identity-source service, directory client, sync job, linking rules, Sources and Mappings views | §1.1–§1.9 | Connector lead | — (V21); R4 | | | | |
 | E3 | CMDB support-group `sys_id` kept with the name | §1.8 | Connector lead | E1 | | | | |
 | E4 | ServiceNow producer reads ServiceNow-originated CIs only | §2.10 | Ownership lead | — | | | | |
@@ -1104,8 +1112,8 @@ otherwise.
 
 **Critical path (skeleton).** Leads confirm or replace it once E1–E17 have estimates:
 
-1. R1 environment (Nov 23) and R2 (Nov 27) → R1 result (Dec 4) → **E1 V24**. Nothing that needs V24 merges before
-   this.
+1. **E1 V24** starts November 15, 2026 (hold lifted, §6). R1 (Dec 4) can only add an index-only V25; R2 (Nov 27)
+   is checked by E7.
 2. E1 → E7 → E8 → E9 (occurrences and CBOM).
 3. E1 → E10 and E11 → E14 → E15 (campaigns and tickets).
 4. Both paths → E17. Requests R4–R7 must arrive before E17 to enable anything outside test tenants.

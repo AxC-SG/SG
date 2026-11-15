@@ -63,6 +63,14 @@ public class Campaign {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_kind", nullable = false, length = 16)
+    private CampaignScopeKind scopeKind;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "membership_state", nullable = false, length = 16)
+    private CampaignMembershipState membershipState = CampaignMembershipState.COMPLETE;
+
     public UUID getId() {
         return id;
     }
@@ -159,5 +167,21 @@ public class Campaign {
 
     public void touch() {
         updatedAt = Instant.now();
+    }
+
+    public CampaignScopeKind getScopeKind() {
+        return scopeKind;
+    }
+
+    public void setScopeKind(CampaignScopeKind scopeKind) {
+        this.scopeKind = scopeKind;
+    }
+
+    public CampaignMembershipState getMembershipState() {
+        return membershipState;
+    }
+
+    public void setMembershipState(CampaignMembershipState membershipState) {
+        this.membershipState = membershipState;
     }
 }

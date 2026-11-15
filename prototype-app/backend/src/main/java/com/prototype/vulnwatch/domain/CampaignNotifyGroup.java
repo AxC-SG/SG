@@ -2,6 +2,8 @@ package com.prototype.vulnwatch.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -40,6 +42,11 @@ public class CampaignNotifyGroup {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    // Only CUSTOM recipients exist until the E10 TEAM recipient path; the check constraint keeps TEAM rows linked.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recipient_type", nullable = false, length = 16)
+    private CampaignRecipientType recipientType = CampaignRecipientType.CUSTOM;
 
     public UUID getId() {
         return id;
@@ -95,5 +102,9 @@ public class CampaignNotifyGroup {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public CampaignRecipientType getRecipientType() {
+        return recipientType;
     }
 }

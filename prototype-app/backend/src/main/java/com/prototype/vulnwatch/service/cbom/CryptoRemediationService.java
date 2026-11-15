@@ -172,8 +172,8 @@ public class CryptoRemediationService {
     /** Recorded in its own transaction so a failed ticket push still leaves a visible attempt. */
     private void record(UUID findingId, String provider, String template, String outcome, String key, String error, String actor) {
         independent.executeWithoutResult(tx -> jdbc.update("""
-                INSERT INTO finding_ticket_attempts (id, finding_id, provider, template, outcome, ticket_key, error_message, attempted_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO finding_ticket_attempts (id, finding_id, provider, template, outcome, ticket_key, error_message, attempted_by, routing_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'LEGACY')
                 """, UUID.randomUUID(), findingId, provider, template, outcome, key, truncate(error, 500), actor == null ? "api" : actor));
     }
 
