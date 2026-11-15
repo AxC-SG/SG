@@ -1,6 +1,10 @@
 package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.service.RequestActorService;
+import com.prototype.vulnwatch.service.ownership.AwsOrganizationsRoleService;
+import com.prototype.vulnwatch.service.ownership.AwsOrganizationsRoleService.RoleRequest;
+import com.prototype.vulnwatch.service.ownership.AwsOrganizationsRoleService.RoleView;
+import com.prototype.vulnwatch.service.ownership.AwsOrganizationsRoleService.TestResult;
 import com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Provider;
 import com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService;
 import com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService.SettingsRequest;
@@ -29,12 +33,36 @@ public class CloudOwnershipSourceController {
 
     public record PauseRequest(String reason) { }
 
+    public record OrganizationsTestRequest(String accountId) { }
+
     private final CloudOwnershipSourceService sources;
+    private final AwsOrganizationsRoleService organizations;
     private final RequestActorService actors;
 
-    public CloudOwnershipSourceController(CloudOwnershipSourceService sources, RequestActorService actors) {
+    public CloudOwnershipSourceController(CloudOwnershipSourceService sources, AwsOrganizationsRoleService organizations,
+                                          RequestActorService actors) {
         this.sources = sources;
+        this.organizations = organizations;
         this.actors = actors;
+    }
+
+    /** The AWS Organizations role for account tags (§2.2.1). The external ID is write-only and never returned. */
+    @GetMapping("/aws/organizations-role")
+    @PreAuthorize("@ownershipAuthorization.can('VIEW_IDENTITY_SOURCE')")
+    public RoleView organizationsRole() {
+        return organizations.view();
+    }
+
+    @PutMapping("/aws/organizations-role")
+    @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_OWNERSHIP_PRODUCER')")
+    public RoleView configureOrganizationsRole(@RequestBody RoleRequest request) {
+        return organizations.configure(request, actor());
+    }
+
+    @PostMapping("/aws/organizations-role/test")
+    @PreAuthorize("@ownershipAuthorization.can('CONFIGURE_OWNERSHIP_PRODUCER')")
+    public TestResult testOrganizationsRole(@RequestBody(required = false) OrganizationsTestRequest request) {
+        return organizations.test(request == null ? null : request.accountId(), actor());
     }
 
     @GetMapping

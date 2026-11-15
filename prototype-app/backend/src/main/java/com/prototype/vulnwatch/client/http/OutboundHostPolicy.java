@@ -34,6 +34,7 @@ public final class OutboundHostPolicy {
             "msrc=api.msrc.microsoft.com",
             "azure-management=management.azure.com",
             "gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com",
+            "aws=organizations.us-east-1.amazonaws.com",
             "intune=graph.microsoft.com,login.microsoftonline.com",
             "csaf-microsoft=msrc.microsoft.com",
             "csaf-redhat=security.access.redhat.com",
@@ -74,6 +75,7 @@ public final class OutboundHostPolicy {
                 "test=example.test;github=example.test,api.github.com;nvd=example.test,services.nvd.nist.gov;epss=example.test;eol=example.test,endoflife.date;"
                         + "openai=example.test;resend=example.test;kev=example.test;jvn=example.test;"
                         + "euvd=example.test;servicenow=example.test;jira=example.test;sbom-endpoint=example.test;gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com;"
+                        + "aws=organizations.us-east-1.amazonaws.com;"
                         + "intune=graph.microsoft.com,login.microsoftonline.com;"
                         + "csaf-test=example.test;paced=example.test;euvd=example.test,euvdservices.enisa.europa.eu");
     }

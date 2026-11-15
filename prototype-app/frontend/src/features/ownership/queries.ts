@@ -26,6 +26,7 @@ export const ownershipKeys = {
   encryption: ['ownership', 'encryption'] as const,
   identitySources: ['ownership', 'identity-sources'] as const,
   cloudSources: ['ownership', 'cloud-sources'] as const,
+  awsOrganizationsRole: ['ownership', 'cloud-sources', 'aws-organizations-role'] as const,
   mappingGroups: (q: string) => ['ownership', 'group-mappings', q] as const,
   qualification: ['ownership', 'qualification', 'CORE'] as const
 };
@@ -243,4 +244,17 @@ export function useCloudSourceActionMutation() {
       case 'settings': return api.updateCloudOwnershipSettings(action.provider, action.settings);
     }
   });
+}
+
+export function useAwsOrganizationsRoleQuery(enabled: boolean) {
+  return useQuery({ queryKey: ownershipKeys.awsOrganizationsRole, queryFn: api.getAwsOrganizationsRole, enabled });
+}
+
+export function useSaveAwsOrganizationsRoleMutation() {
+  return useOwnershipMutation((payload: { roleArn: string; externalId?: string | null }) => api.saveAwsOrganizationsRole(payload));
+}
+
+/** The role's connection test. Not an ownership write, so nothing is invalidated. */
+export function useTestAwsOrganizationsRoleMutation() {
+  return useMutation({ mutationFn: (accountId: string | undefined) => api.testAwsOrganizationsRole(accountId) });
 }

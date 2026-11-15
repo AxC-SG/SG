@@ -42,6 +42,7 @@ class CloudOwnershipProducerPostgresIntegrationTest {
 
     @Autowired private CloudOwnershipProducer producer;
     @Autowired private CloudOwnershipSourceService sources;
+    @Autowired private AwsOrganizationsRoleService organizationsRole;
     @Autowired private TeamNamespaceService teams;
     @Autowired private OwnershipResolutionService resolution;
     @Autowired private OwnershipSubjectService subjects;
@@ -232,6 +233,41 @@ class CloudOwnershipProducerPostgresIntegrationTest {
         assertThat(count("ownership_resolution_queue")).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE action = 'ownership.cloud_producer.settings_updated'",
                 Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void awsAccountTagsClaimTheAccountSubjectAndResourcesWithoutTagsInheritIt() {
+        authority("CLOUD_BOM", "CANONICAL");
+        UUID web = ec2("i-web", "us-east-1", "{}");
+        Run run = new Run(Provider.AWS, Instant.now().minusSeconds(5), List.of(scope("us-east-1")),
+                List.of(new AccountRead(ACCOUNT, Map.of("Team", "Payments"))));
+        assertThat(producer.publish(tenant.getId(), run).created()).isEqualTo(1);
+        enter();
+        assertThat(jdbc.queryForObject("SELECT priority_class || '|' || source_ref FROM ownership_claim", String.class))
+                .isEqualTo("CLOUD_STRUCTURED|aws:account:" + ACCOUNT + ":tag:team");
+        assertThat(ownerOf(web)).isEqualTo(payments);
+    }
+
+    @Test
+    void theOrganizationsExternalIdIsStoredAsTenantCiphertextAndNeverReturned() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> organizationsRole.configure(
+                new AwsOrganizationsRoleService.RoleRequest("arn:aws:iam::bad", "ext-1"), "admin"))
+                .hasMessageContaining("IAM role ARN");
+        AwsOrganizationsRoleService.RoleView view = organizationsRole.configure(
+                new AwsOrganizationsRoleService.RoleRequest("arn:aws:iam::999988887777:role/OwnershipTags", "ext-secret-1"), "admin");
+        assertThat(view.configured()).isTrue();
+        assertThat(view.externalIdSet()).isTrue();
+        assertThat(view.toString()).doesNotContain("ext-secret-1");
+        assertThat(jdbc.queryForObject("SELECT organizations_external_id FROM aws_discovery_configs", String.class))
+                .startsWith("enc:t1:").doesNotContain("ext-secret-1");
+        assertThat(sources.status(Provider.AWS).accountTagsConfigured()).isTrue();
+
+        // A different role must come with its own external ID.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> organizationsRole.configure(
+                new AwsOrganizationsRoleService.RoleRequest("arn:aws:iam::999988887777:role/Other", null), "admin"))
+                .hasMessageContaining("external ID");
+        assertThat(organizationsRole.configure(new AwsOrganizationsRoleService.RoleRequest("", null), "admin").configured()).isFalse();
+        assertThat(jdbc.queryForObject("SELECT organizations_external_id IS NULL FROM aws_discovery_configs", Boolean.class)).isTrue();
     }
 
     // ----- helpers ------------------------------------------------------------------------------------------

@@ -52,6 +52,16 @@ public final class AwsCredentialProvider {
         );
     }
 
+    /**
+     * Credentials of the separate AWS Organizations role (Phase 0B §2.2.1), assumed with the connector's base identity
+     * through the same STS path. It is never a discovery target role. {@code config} must carry the decrypted secret.
+     */
+    public static AwsCredentialsProvider forOrganizations(AwsDiscoveryConfig config, String roleArn, String externalId) {
+        if (!hasText(roleArn)) throw new IllegalStateException("No AWS Organizations role is configured");
+        return buildAssumeRoleProvider(roleArn, externalId, config.getAccessKeyId(), config.getCredentialSecret(),
+                "vulnwatch-aws-organizations");
+    }
+
     private static AwsCredentialsProvider buildAccessKeyProvider(AwsDiscoveryConfig config) {
         String keyId = config.getAccessKeyId();
         String secret = config.getCredentialSecret();
@@ -88,7 +98,7 @@ public final class AwsCredentialProvider {
         AssumeRoleRequest.Builder requestBuilder = AssumeRoleRequest.builder()
                 .roleArn(roleArn.trim())
                 .roleSessionName(roleSessionName);
-        requestBuilder.externalId(externalId.trim());
+        if (hasText(externalId)) requestBuilder.externalId(externalId.trim());
         // If access key credentials are provided, use them as the base identity for STS.
         // This supports the pattern: long-lived IAM user keys → AssumeRole → short-lived tokens.
         // Without explicit credentials, the STS client falls back to the default chain

@@ -249,3 +249,14 @@ export type CloudOwnershipSettingsRequest = {
   teamKeyEnabled?: boolean;
   accountInputEnabled?: boolean;
 };
+
+/** The AWS Organizations role for account tags (Phase 0B §2.2.1). The external ID is write-only. */
+export type AwsOrganizationsRole = { configured: boolean; roleArn: string | null; externalIdSet: boolean };
+
+export type AwsOrganizationsRoleTest = {
+  succeeded: boolean;
+  code: string | null;
+  message: string;
+  accountId: string | null;
+  accountName: string | null;
+};

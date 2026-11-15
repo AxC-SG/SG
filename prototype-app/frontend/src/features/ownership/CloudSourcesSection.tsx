@@ -3,6 +3,7 @@ import { AsyncSection } from '../../components/AsyncSection';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { ownershipErrorText } from './errors';
+import { OrganizationsRoleDialog } from './OrganizationsRoleDialog';
 import { type CloudSourceAction, useCloudOwnershipSourcesQuery, useCloudSourceActionMutation } from './queries';
 import type { CloudOwnershipSettingsRequest, CloudOwnershipSource } from './types';
 
@@ -49,6 +50,7 @@ export function CloudSourcesSection({ canConfigure, canPause }: Props) {
   const action = useCloudSourceActionMutation();
   const [pending, setPending] = React.useState<CloudSourceAction | null>(null);
   const [message, setMessage] = React.useState('');
+  const [rolesOpen, setRolesOpen] = React.useState(false);
 
   const ask = (next: CloudSourceAction) => {
     action.reset();
@@ -98,10 +100,14 @@ export function CloudSourcesSection({ canConfigure, canPause }: Props) {
   });
 
   function actions(source: CloudOwnershipSource) {
-    if (!canPause || !source.configured) return <span>—</span>;
+    const configureRole = canConfigure && source.provider === 'AWS' && source.configured;
+    if ((!canPause || !source.configured) && !configureRole) return <span>—</span>;
     return (
       <div className="button-row">
-        {source.paused
+        {configureRole && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRolesOpen(true)}>Account tags role</button>
+        )}
+        {!canPause ? null : source.paused
           ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => ask({ kind: 'resume', provider: source.provider })}>Resume</button>
           : <button type="button" className="btn btn-ghost btn-sm" onClick={() => ask({ kind: 'pause', provider: source.provider })}>Pause</button>}
       </div>
@@ -131,6 +137,9 @@ export function CloudSourcesSection({ canConfigure, canPause }: Props) {
       >
         <DataTable storageKey="ownership-cloud-sources" columns={COLUMNS} rows={rows} label="Cloud ownership producers" />
       </AsyncSection>
+
+      <OrganizationsRoleDialog isOpen={rolesOpen} onClose={() => setRolesOpen(false)}
+        onSaved={(text) => { setRolesOpen(false); setMessage(text); }} />
 
       <ConfirmDialog
         isOpen={pending !== null}

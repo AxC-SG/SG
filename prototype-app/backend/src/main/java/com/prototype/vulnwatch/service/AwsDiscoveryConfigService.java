@@ -395,7 +395,7 @@ public class AwsDiscoveryConfigService {
         }
     }
 
-    AwsDiscoveryConfig configWithDecryptedCredential(AwsDiscoveryConfig config) {
+    public AwsDiscoveryConfig configWithDecryptedCredential(AwsDiscoveryConfig config) {
         if (config == null || !hasText(config.getCredentialSecret())) {
             return config;
         }

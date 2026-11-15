@@ -116,6 +116,10 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                         Map.of("ownerKeyEnabled", false)),
                 new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/pause", Map.of("reason", "test")),
                 new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/resume", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources/aws/organizations-role", null),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "PUT", "/api/ownership/cloud-sources/aws/organizations-role",
+                        Map.of("roleArn", "not-an-arn")),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "POST", "/api/ownership/cloud-sources/aws/organizations-role/test", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));
         List<Arguments> cases = new ArrayList<>();

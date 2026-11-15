@@ -320,6 +320,20 @@ not deferred.
   `AWSOrganizationsNotInUseException`, throttling, timeout). Enabling the account input outside test tenants still
   needs a customer organization (§2.11).
 
+- **Implementation (E6, November 15, 2026, branch `feat/e6-aws-organizations`, not merged).** `AwsOrganizationsClient`
+  sends AWS JSON 1.1 requests signed with SigV4 (`AwsV4HttpSigner`) through `OutboundHttpClient` under a new `aws`
+  provider entry in the outbound allowlist (`organizations.us-east-1.amazonaws.com`), so the calls get the provider's
+  bounded retries and `Retry-After`. AWS returns throttling as HTTP 400, so the error type decides retries:
+  throttling and service errors retry; `AccessDeniedException`, `AWSOrganizationsNotInUseException` and
+  `AccountNotFoundException` are final. `AwsCredentialProvider.forOrganizations` assumes the role with the
+  connector's base identity through the existing STS path. The role ARN and external ID are set at
+  `/api/ownership/cloud-sources/aws/organizations-role` (`CONFIGURE_OWNERSHIP_PRODUCER`); the external ID is tenant
+  ciphertext (`TenantDataCipher`, 503 when tenant encryption is not ready), never returned, and a new ARN needs it
+  again. The test endpoint describes the connector's account (or a named one) with no transaction open. After each
+  AWS run, `AwsAccountTagReader` reads the tags of every account a successful target observed, only while the
+  producer is enabled, the account input is on and a role is set; a failed read passes no values. The Sources view
+  sets and tests the role.
+
 ### 2.3 Subjects and topology
 
 - **Resource subjects** come from `InventorySubjectAdapter.subjectForAsset`, unchanged: EC2 and GCE VMs are `HOST`,

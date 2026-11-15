@@ -132,6 +132,25 @@ describe('Ownership Sources and Mappings views', () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith('AWS', { ownerKeyEnabled: false }));
   });
 
+  it('sets the AWS Organizations role with a write-only external ID', async () => {
+    vi.spyOn(api, 'listIdentitySources').mockResolvedValue([]);
+    vi.spyOn(api, 'listCloudOwnershipSources').mockResolvedValue([cloud()]);
+    vi.spyOn(api, 'getAwsOrganizationsRole').mockResolvedValue({ configured: false, roleArn: null, externalIdSet: false });
+    const save = vi.spyOn(api, 'saveAwsOrganizationsRole').mockResolvedValue({
+      configured: true, roleArn: 'arn:aws:iam::999988887777:role/OwnershipTags', externalIdSet: true
+    });
+    renderHub('TENANT_ADMIN', 'sources');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Account tags role' }));
+    const dialog = await screen.findByRole('dialog', { name: 'AWS account tags' });
+    fireEvent.change(within(dialog).getByLabelText('Role ARN'), { target: { value: 'arn:aws:iam::999988887777:role/OwnershipTags' } });
+    expect(within(dialog).getByRole('button', { name: 'Save role' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/External ID/), { target: { value: 'ext-1' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save role' }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ roleArn: 'arn:aws:iam::999988887777:role/OwnershipTags', externalId: 'ext-1' }));
+    expect(await screen.findByText('Organizations role saved.')).toBeInTheDocument();
+  });
+
   it('offers no enable button when a table is denied', async () => {
     vi.spyOn(api, 'listIdentitySources').mockResolvedValue([source()]);
     vi.spyOn(api, 'previewIdentitySource').mockResolvedValue({

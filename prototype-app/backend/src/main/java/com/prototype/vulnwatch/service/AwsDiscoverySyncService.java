@@ -98,6 +98,12 @@ public class AwsDiscoverySyncService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer cloudOwnershipProducer;
+    private com.prototype.vulnwatch.service.ownership.AwsAccountTagReader awsAccountTagReader;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAwsAccountTagReader(com.prototype.vulnwatch.service.ownership.AwsAccountTagReader awsAccountTagReader) {
+        this.awsAccountTagReader = awsAccountTagReader;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setCloudOwnershipProducer(com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer cloudOwnershipProducer) {
@@ -284,10 +290,15 @@ public class AwsDiscoverySyncService {
                 List<String> visibleMessages = new ArrayList<>();
                 List<Map<String, Object>> targetResults = new ArrayList<>();
                 List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope> completeScopes = new ArrayList<>();
+                java.util.Set<String> observedAccounts = new java.util.LinkedHashSet<>();
 
                 for (AwsDiscoveryTarget target : targets) {
                     TargetRunResult targetResult = executeTarget(config, target, runId, triggerMode, runStartTime);
                     completeScopes.addAll(targetResult.completeScopes());
+                    Object observedAccount = targetResult.metadata().get("accountId");
+                    if (!targetResult.failed() && observedAccount instanceof String id && id.matches("\\d{12}")) {
+                        observedAccounts.add(id);
+                    }
                     totalFetched += targetResult.recordsFetched();
                     recordsFailed += targetResult.failed() ? 1 : 0;
                     warningTargets += targetResult.warning() ? 1 : 0;
@@ -329,8 +340,11 @@ public class AwsDiscoverySyncService {
                 );
                 if (cloudOwnershipProducer != null) {
                     // After the run committed; the producer never throws (Phase 0B §2.1).
+                    // Account tags through the optional Organizations role (§2.2.1); a failed read passes no values.
+                    List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.AccountRead> accountReads =
+                            awsAccountTagReader == null ? List.of() : awsAccountTagReader.read(tenantId, observedAccounts);
                     cloudOwnershipProducer.publishAfterSync(tenantId, new com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Run(
-                            com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Provider.AWS, runStartTime, completeScopes, List.of()));
+                            com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Provider.AWS, runStartTime, completeScopes, accountReads));
                 }
             } catch (Exception e) {
                 LOG.error("AWS Discovery sync run {} failed: {}", runId, e.getMessage(), e);

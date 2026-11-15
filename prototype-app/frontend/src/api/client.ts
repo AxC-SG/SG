@@ -46,6 +46,8 @@ import type {
   GroupMappingChange,
   GroupMappingImpact,
   GroupTeamMapping,
+  AwsOrganizationsRole,
+  AwsOrganizationsRoleTest,
   CloudOwnershipSettingsRequest,
   CloudOwnershipSource,
   IdentitySource,
@@ -1854,6 +1856,12 @@ export const api = {
     request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/resume`, { method: 'POST' }),
   disableIdentitySource: (sourceId: string) =>
     request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/disable`, { method: 'POST' }),
+  getAwsOrganizationsRole: () => request<AwsOrganizationsRole>('/ownership/cloud-sources/aws/organizations-role'),
+  /** The external ID is write-only: send it to set or replace it; it is never returned. */
+  saveAwsOrganizationsRole: (payload: { roleArn: string; externalId?: string | null }) =>
+    request<AwsOrganizationsRole>('/ownership/cloud-sources/aws/organizations-role', { method: 'PUT', body: JSON.stringify(payload) }),
+  testAwsOrganizationsRole: (accountId?: string) =>
+    request<AwsOrganizationsRoleTest>('/ownership/cloud-sources/aws/organizations-role/test', { method: 'POST', body: JSON.stringify({ accountId }) }),
   listCloudOwnershipSources: () => request<CloudOwnershipSource[]>('/ownership/cloud-sources'),
   updateCloudOwnershipSettings: (provider: CloudOwnershipSource['provider'], payload: CloudOwnershipSettingsRequest) =>
     request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/settings`, { method: 'PUT', body: JSON.stringify(payload) }),
