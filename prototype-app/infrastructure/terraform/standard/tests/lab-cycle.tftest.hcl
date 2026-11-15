@@ -67,6 +67,10 @@ variables {
   api_origin              = "https://api-lab.scoutgrid.io"
   cognito_domain_prefix   = "scoutgrid-lab-736486260824"
   github_publisher        = null
+  backend_images = {
+    runtime  = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    migrator = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
   operations = {
     audit_recovery_role_arn = "arn:aws:iam::736486260824:role/audit-recovery"
     alert_topic_arn         = "arn:aws:sns:ap-southeast-2:736486260824:operations"
@@ -84,7 +88,6 @@ run "lab_up_runs_api_behind_ingress_with_single_nat" {
     nat_gateway_mode        = "single"
     runtime_ingress_enabled = true
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
@@ -122,7 +125,6 @@ run "lab_down_parks_billable_runtime_and_keeps_state" {
     nat_gateway_mode        = "none"
     runtime_ingress_enabled = false
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
@@ -165,7 +167,6 @@ run "reject_parked_ingress_with_services_running" {
     nat_gateway_mode        = "single"
     runtime_ingress_enabled = false
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"
@@ -184,7 +185,6 @@ run "reject_parked_nat_with_services_running" {
     nat_gateway_mode        = "none"
     runtime_ingress_enabled = true
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:ap-southeast-2:736486260824:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:app-settings-a1b2c3"

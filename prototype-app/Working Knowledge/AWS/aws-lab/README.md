@@ -114,8 +114,14 @@ cd prototype-app/infrastructure/terraform/standard
 CFG="../../lab/config"
 eval "$(aws configure export-credentials --profile sglab-plan --format env)"   # or sglab-apply / sglab-bootstrap / sglab-service / sglab-teardown
 terraform init -backend-config="$CFG/sydney-lab.s3.tfbackend" -lockfile=readonly
-terraform plan -var-file="$CFG/sydney-lab.foundation.tfvars" -var-file="$CFG/runtime-running.tfvars"
+# Released images come from the release inputs, not the tfvars (see infrastructure/lab/README.md).
+aws s3 cp s3://scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/release/inputs.json - --profile sglab-release |
+  python3 -I -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"backend_images": {"runtime": d["runtime_image_digest"], "migrator": d["migrator_image_digest"]}}))' \
+  > "$TMPDIR/released-images.tfvars.json"
+terraform plan -var-file="$CFG/sydney-lab.foundation.tfvars" -var-file="$CFG/runtime-running.tfvars" -var-file="$TMPDIR/released-images.tfvars.json"
 ```
+
+Backend images change only through `infrastructure/lab/scripts/release.py`. A reviewed manual apply must not move them.
 
 Expected first plan after November 13 (the cutover): S3 imports CORS, the Cognito logout URL and invite link, new `api` and `worker` task-definition revisions (frontend origin, outbound hosts), the services rolling to them, the migrator revision, and the new budget. Anything else is unexpected and must be investigated before applying. Routine cycles use `scripts/lab.sh`. The `sglab-*` profiles in `~/.aws/config` assume the scoped `ScoutGridSydneyLab*` roles from the `scoutgrid-lab` sign-in profile.
 

@@ -77,6 +77,11 @@ variables {
   frontend_origin         = "https://app.example.com"
   api_origin              = "https://api.example.com"
   cognito_domain_prefix   = "scoutgrid-runtime-test"
+  # Distinct digests prove the migrator moves independently of the API and worker.
+  backend_images = {
+    runtime  = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    migrator = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
 }
 
 run "foundation_without_candidate" {
@@ -170,7 +175,6 @@ run "prepare_candidate_before_bootstrap" {
   variables {
     environment = "lab"
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
@@ -194,7 +198,6 @@ run "separate_runtime_roles" {
 
   variables {
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
@@ -246,7 +249,7 @@ run "separate_runtime_roles" {
   assert {
     condition = alltrue([
       for role, task in aws_ecs_task_definition.backend :
-      endswith(one(jsondecode(task.container_definitions)).image, "@${var.backend_candidate.image_digest}") &&
+      endswith(one(jsondecode(task.container_definitions)).image, "@${role == "migrator" ? var.backend_images.migrator : var.backend_images.runtime}") &&
       anytrue([for entry in one(jsondecode(task.container_definitions)).environment :
         entry.name == "DB_URL" && strcontains(entry.value, "sslmode=verify-full&sslrootcert=/app/rds-ca.pem")
       ]) &&
@@ -335,15 +338,34 @@ run "reject_mutable_image" {
 
   variables {
     backend_candidate = {
-      image_digest        = "latest"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
       secrets_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     }
+    backend_images = {
+      runtime  = "latest"
+      migrator = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
   }
 
-  expect_failures = [var.backend_candidate]
+  expect_failures = [var.backend_images]
+}
+
+run "reject_candidate_without_released_images" {
+  command = plan
+
+  variables {
+    backend_candidate = {
+      certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+      runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
+      application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
+      secrets_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    }
+    backend_images = null
+  }
+
+  expect_failures = [var.backend_images]
 }
 
 run "publisher_can_only_push_to_standard_repository" {
@@ -414,7 +436,6 @@ run "prepare_managed_operator_enrollment" {
 
   variables {
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
@@ -452,7 +473,6 @@ run "reject_managed_enrollment_with_services_running" {
 
   variables {
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"
@@ -597,7 +617,6 @@ run "sydney_lab_uses_regional_runtime_and_release_targets" {
     aws_region            = "ap-southeast-2"
     availability_zone_ids = ["apse2-az1", "apse2-az3"]
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:ap-southeast-2:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:app-settings-a1b2c3"
@@ -679,7 +698,6 @@ run "sydney_lab_rejects_other_region_credentials" {
     aws_region            = "ap-southeast-2"
     availability_zone_ids = ["apse2-az1", "apse2-az3"]
     backend_candidate = {
-      image_digest        = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       certificate_arn     = "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
       runtime_db_secret   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:runtime-db-a1b2c3"
       application_secret  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:app-settings-a1b2c3"

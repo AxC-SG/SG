@@ -1,0 +1,14 @@
+{
+  "note": "release.py asks each check after the automated checks pass and stores every answer in the release record. Keep the list to what a release can break; edit it as features change.",
+  "checks": [
+    "Sign in at https://scoutgrid.io as a platform owner (Cognito) without selecting a workspace.",
+    "Tenant Management > Platform Audit loads without an error.",
+    "End-of-Life loads without an error.",
+    "Vulnerability Repository > Dashboard (integration run status) loads without an error.",
+    "Tenant Management > Vulnerability Intelligence > Feeds loads without an error.",
+    "Demo Requests: deleting a disposable test request that has an invite succeeds.",
+    "An invitation to a test address arrives by email (Resend).",
+    "Enter a workspace and open Findings: the page loads.",
+    "Sign out returns to the sign-in page."
+  ]
+}

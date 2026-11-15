@@ -107,6 +107,7 @@ jobs:
         run: |
           shellcheck scripts/*.sh scripts/tests/*.sh
           bash scripts/tests/lab.test.sh
+          python3 -I scripts/tests/test_release.py
 
   secrets:
     runs-on: ubuntu-latest
