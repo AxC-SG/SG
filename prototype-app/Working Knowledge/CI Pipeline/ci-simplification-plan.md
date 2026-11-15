@@ -11,7 +11,7 @@ Agreed November 14, 2026, after two independent reviews of the full pipeline and
 | Live ruleset requires `AWS backend candidate` | Applied November 14 |
 | Phases 1, 2, 3 and 6.1–6.2 | One combined PR (originally #83–#87). `backend-postgres`: 2 forks 13m26s; 3 forks 13m24s and 18m12s; previously 24–30 min. Chose 2 forks |
 | Live ruleset: remove `Trivy images gate` | Do right before merging the combined PR |
-| Phase 4–5 (PR D) | After the combined PR merges |
+| Phase 4–5 (PR D) | Implemented in `feat/ci-single-pipeline`; the owner switches the live ruleset to `Quality gate` only when merging it (4.3). Record below |
 | Phase 6.3–6.5 (PR F) | Deferred: 3 forks already meet the 15-minute target; the template database saves about 2 more minutes at higher risk |
 
 ## Where we are
@@ -70,17 +70,45 @@ Run-time numbers come from runs 43577894006 and 43556944542. Fork and template n
 
 ## Phase 4: one workflow and one gate (PR D, coordinated)
 
-- [ ] **4.1** Make `quality.yml` the single workflow for PRs and `main`. Keeping that filename limits changes to the publisher. Jobs: `changes`, `static`, `frontend`, `frontend-e2e`, `backend`, `backend-postgres`, `security` (gitleaks, Trivy filesystem, ECS image build, inspection, scan, and the archive on `main`), `semgrep` until D1 is settled, and `Quality gate`.
-- [ ] **4.2** Update `aws-publish-candidate.yml`, which has the `trivy.yml` and `semgrep.yml` workflow names hard-coded. Check `quality.yml` and `performance-governance.yml` for the source SHA, and take the image archive from the `quality.yml` run. Keep the archive and manifest checks and the scoped publishing role. Since the automatic lab publication PR, the workflow names also appear in the publisher's `workflow_run` trigger and as file names in `.github/scripts/select-aws-candidate.py`; update both, or `test_publisher_follows_the_checks_it_qualifies` fails.
-- [ ] **4.3** Change the live ruleset in two steps so nothing goes unenforced: make `Quality gate` cover the security jobs and merge; then remove `Trivy filesystem gate`, `Semgrep SAST gate`, `AWS backend candidate` and `Performance gate` from the required list.
-- [ ] **4.4** Delete `trivy.yml`. Move its weekly schedule to a scheduled run of the security job against `main`. Delete `semgrep.yml` only if D1 retires Semgrep.
+- [x] **4.1** Make `quality.yml` the single workflow for PRs and `main`. Keeping that filename limits changes to the publisher. Jobs: `changes`, `static`, `frontend`, `frontend-e2e`, `backend`, `backend-postgres`, `security` (gitleaks, Trivy filesystem, ECS image build, inspection, scan, and the archive on `main`), `semgrep` until D1 is settled, and `Quality gate`.
+- [x] **4.2** Update `aws-publish-candidate.yml`, which has the `trivy.yml` and `semgrep.yml` workflow names hard-coded. Check `quality.yml` and `performance-governance.yml` for the source SHA, and take the image archive from the `quality.yml` run. Keep the archive and manifest checks and the scoped publishing role. Since the automatic lab publication PR, the workflow names also appear in the publisher's `workflow_run` trigger and as file names in `.github/scripts/select-aws-candidate.py`; update both, or `test_publisher_follows_the_checks_it_qualifies` fails.
+- [ ] **4.3** (owner, at merge) Change the live ruleset in two steps so nothing goes unenforced: make `Quality gate` cover the security jobs and merge; then remove `Trivy filesystem gate`, `Semgrep SAST gate`, `AWS backend candidate` and `Performance gate` from the required list.
+- [x] **4.4** (changed) Keep `trivy.yml` as the reusable security workflow instead of deleting it: Quality calls it, and its weekly schedule stays. Originally: delete `trivy.yml`. Move its weekly schedule to a scheduled run of the security job against `main`. Delete `semgrep.yml` only if D1 retires Semgrep.
 
 **Done when:** a temporary PR with a deliberately failing job is blocked; a PR where a job is correctly skipped can merge; a lab publish from a `main` run passes the publisher's qualification.
 
 ## Phase 5: performance cadence (part of PR D)
 
-- [ ] **5.1** Remove the `pull_request` trigger from `performance-governance.yml`. Keep `main`, nightly and on-demand runs. The publisher still requires it for the exact SHA.
+- [x] **5.1** Remove the `pull_request` trigger from `performance-governance.yml`. Keep `main`, nightly and on-demand runs. The publisher still requires it for the exact SHA.
 - [ ] **5.2** Keep the million-component Postgres test and the SIGTERM tests in the suite for now. Phase 6 may move them to their own parallel job.
+
+### PR D record
+
+**Shape.** `quality.yml` is the only workflow that runs on pull requests and `main` pushes. It calls `trivy.yml` (job `security`: filesystem scan, plus the ECS image build, inspection, scan and, on `main`, the archive), `semgrep.yml` and, on `main` pushes only, `performance-governance.yml`. These keep their weekly/nightly schedules and manual runs but no longer have PR or push triggers or workflow-level concurrency. A called workflow sees the caller's `github.workflow`, so its own concurrency group would collide with Quality's. `Quality gate` requires every result. `performance` must succeed on a push and may skip only on a pull request. The `publish` job runs after the gate, on `main` pushes only, and calls `aws-publish-candidate.yml`.
+
+**Publisher.** The `workflow_run` trigger on four workflows is gone; each `main` merge used to start four publisher runs, three of them no-ops. `select-aws-candidate.py` requires a Quality push run on `main` whose `Quality gate` job succeeded:
+- **Called path:** the current run, lab only. It skips a superseded or already-published commit.
+- **Manual path:** dispatch with a Quality run ID. It checks the gate job rather than the run's conclusion, so a run whose automatic publication failed can still be published by hand.
+
+The image archive is `aws-backend-candidate-<Quality run>`. The tag, the `aws-publication-<target>-<sha>` record and the scoped role are unchanged, so `release.py` is unaffected. The publish job's OIDC `job_workflow_ref` is still the publisher file on `main`, because GitHub reports the called workflow for reusable jobs. No trust change is needed. A temporary claim probe on the PR checks this before merge (results in the PR).
+
+**Ruleset (4.3).** Jobs in a called workflow report as `<caller> / <job>`, and Performance no longer runs on PRs, so the four separate contexts cannot keep their names. At merge, the owner sets the required checks to `Quality gate` only. That check is required before and after, so nothing goes unenforced. Strict up-to-date then forces every open PR onto the new graph. Verify afterwards with a throwaway PR that fails one security result (blocked) and a docs-only PR (mergeable).
+
+**Dependabot.** Minor and patch updates are grouped for npm, GitHub Actions and Docker; majors stay separate. Before grouping, 56 of 116 PRs in the 30 days to 2026-11-16 came from Dependabot, 42 of them ungrouped npm updates. Compare PR runs two weeks after merge. npm, Maven and BuildKit caching were already enabled.
+
+**Critical path (main push → lab ECR publication), before:**
+
+| SHA | Total | `backend-postgres` | `frontend-e2e` | Image | Performance |
+|---|---|---|---|---|---|
+| `2c382df` | 14m48s | 13.3m | 9.3m | 3.4m | 2.5m |
+| `6a124de` | 17m00s | 15.4m | 9.2m | 3.0m | 2.3m |
+| `c013bd7` | 21m42s | 19.8m | 9.1m | 4.0m | 2.1m |
+
+`backend-postgres` is always the long pole, so PR D is not expected to shorten the critical path; only PR F would. What it saves is job-minutes (no PR performance run, no duplicate `changes` jobs, no no-op publisher runs) and runs to follow (one per SHA). Record the after numbers from the first `main` run.
+
+**Not in PR D:**
+- Performance certification of the archived image, rather than a source build. Its harness uses the local profile with API-key auth.
+- Skipping image publication for non-runtime commits (CD plan phase 5).
 
 ## Phase 6: make `backend-postgres` faster (PRs E and F; independent of Phases 1–5)
 

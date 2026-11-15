@@ -8,7 +8,7 @@ Recorded on 28 October 2026 (IST).
 - Final PR candidate `5245e7ae799c7db530ee823241c31e51fc142271` passed all 24 checks, including the four configured CodeQL languages.
 - [Main CI gates ruleset](https://github.com/AxG-SG/SG/rules/25546722) is active and explicitly targets `refs/heads/main`. The actual settings match the reviewed `.github/required-main-ruleset.json` payload.
 - PRs and up-to-date branches are required, with zero human approvals and an empty bypass list. Deletion and force pushes are blocked; no merge queue is configured.
-- Required checks, all bound to GitHub Actions (15368): **Quality gate**, **Semgrep SAST gate**, **Trivy filesystem gate**, **Trivy images gate**, **Performance gate**.
+- Required checks, all bound to GitHub Actions (15368): **Quality gate** only since PR D (it contains the Semgrep, Trivy, ECS image and `main` performance results). Earlier: **Quality gate**, **Semgrep SAST gate**, **Trivy filesystem gate**, **Trivy images gate**, **Performance gate**.
 - Native CodeQL results are required, blocking error-level findings and high/critical security findings.
 - [Temporary acceptance PR #29](https://github.com/AxG-SG/SG/pull/29) showed all five missing required gates as Expected, a disabled merge button, and REST `mergeable_state=blocked` while current with main. CodeQL had passed. The PR was closed without merging.
 - Documentation-only selection was separately verified in [temporary PR #28](https://github.com/AxG-SG/SG/pull/28), also closed without merging.

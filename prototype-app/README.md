@@ -94,7 +94,7 @@ sh ./scripts/run-performance-governance.sh
 
 ## Performance Governance
 
-[Performance Governance](../.github/workflows/performance-governance.yml) is committed and runs on relevant PRs, a UTC schedule and manual dispatch. Quality, CodeQL and Trivy workflows also exist. Their presence is not a successful result for the dirty candidate; exact committed/merge-queue checks and image builds remain pending. The certification helpers above target a disposable local/test environment; do not point seed/write operations at a shared service without explicit authorization.
+[Performance Governance](../.github/workflows/performance-governance.yml) runs inside the Quality workflow on `main` pushes, plus a UTC schedule and manual dispatch; pull requests do not run it. Quality also runs the Trivy and Semgrep workflows; CodeQL runs separately. Their presence is not a successful result for the dirty candidate; exact committed/merge-queue checks and image builds remain pending. The certification helpers above target a disposable local/test environment; do not point seed/write operations at a shared service without explicit authorization.
 
 ### Local and deployed authentication
 

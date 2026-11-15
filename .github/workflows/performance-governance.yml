@@ -1,9 +1,11 @@
 name: Performance Governance
 
+# quality.yml calls this on main pushes only, so a regression blocks that
+# commit's publication; pull requests do not run it. The nightly schedule and
+# manual dispatch use the same job. No workflow-level concurrency (see
+# trivy.yml).
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
     inputs:
       seed_demo_data:
@@ -20,26 +22,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      performance: ${{ steps.select.outputs.performance }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - id: select
-        run: python3 .github/scripts/classify-changes.py
-
   certify:
-    needs: changes
-    if: needs.changes.outputs.performance == 'true'
+    name: Performance certification
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -104,27 +89,3 @@ jobs:
           name: performance-governance-${{ github.run_id }}
           path: ${{ runner.temp }}/performance-governance
           retention-days: 14
-
-  required:
-    name: Performance gate
-    if: always()
-    needs: [changes, certify]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Enforce expected certification result
-        env:
-          SELECTION_RESULT: ${{ needs.changes.result }}
-          APPLICABLE: ${{ needs.changes.outputs.performance }}
-          CERTIFICATION_RESULT: ${{ needs.certify.result }}
-        run: |
-          test "$SELECTION_RESULT" = success
-          if [ "$APPLICABLE" = true ]; then
-            test "$CERTIFICATION_RESULT" = success
-          elif [ "$APPLICABLE" = false ]; then
-            test "$CERTIFICATION_RESULT" = skipped
-            echo 'Performance certification is not applicable to these changes.'
-          else
-            echo 'Missing performance selection' >&2
-            exit 1
-          fi

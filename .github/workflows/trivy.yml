@@ -1,19 +1,17 @@
 name: Trivy Security Scan
 
+# quality.yml calls this for every PR and main push, so both scans count toward
+# the Quality gate and the main run publishes the image archived here. The
+# weekly schedule rescans main for newly disclosed vulnerabilities. No
+# workflow-level concurrency: a called workflow sees the caller's
+# github.workflow, so a group here would collide with Quality's own.
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_call:
   schedule:
     - cron: '0 6 * * 1'  # Weekly on Monday at 06:00 UTC
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   filesystem:
