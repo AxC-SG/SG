@@ -97,6 +97,13 @@ public class AwsDiscoverySyncService {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
+    private com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer cloudOwnershipProducer;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCloudOwnershipProducer(com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer cloudOwnershipProducer) {
+        this.cloudOwnershipProducer = cloudOwnershipProducer;
+    }
+
     public void setBackgroundTaskExecutionPolicy(BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy) {
         this.backgroundTaskExecutionPolicy = backgroundTaskExecutionPolicy == null
                 ? BackgroundTaskExecutionPolicy.allowAll()
@@ -276,9 +283,11 @@ public class AwsDiscoverySyncService {
                 int assetsMarkedInactive = 0;
                 List<String> visibleMessages = new ArrayList<>();
                 List<Map<String, Object>> targetResults = new ArrayList<>();
+                List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope> completeScopes = new ArrayList<>();
 
                 for (AwsDiscoveryTarget target : targets) {
                     TargetRunResult targetResult = executeTarget(config, target, runId, triggerMode, runStartTime);
+                    completeScopes.addAll(targetResult.completeScopes());
                     totalFetched += targetResult.recordsFetched();
                     recordsFailed += targetResult.failed() ? 1 : 0;
                     warningTargets += targetResult.warning() ? 1 : 0;
@@ -318,6 +327,11 @@ public class AwsDiscoverySyncService {
                         config,
                         targetResults
                 );
+                if (cloudOwnershipProducer != null) {
+                    // After the run committed; the producer never throws (Phase 0B §2.1).
+                    cloudOwnershipProducer.publishAfterSync(tenantId, new com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Run(
+                            com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Provider.AWS, runStartTime, completeScopes, List.of()));
+                }
             } catch (Exception e) {
                 LOG.error("AWS Discovery sync run {} failed: {}", runId, e.getMessage(), e);
                 failRun(runId, e.getMessage(), triggerMode);
@@ -369,7 +383,8 @@ public class AwsDiscoverySyncService {
                         new IngestionResult(0, 0, 0, 0),
                         new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0),
                         metadata,
-                        errorMessage
+                        errorMessage,
+                        List.of()
                 );
             }
 
@@ -414,7 +429,11 @@ public class AwsDiscoverySyncService {
                     });
                 });
             }
-            return new TargetRunResult(allRecords.size(), false, warning, result, ssmSummary, metadata, warning ? regionErrorSummary : null);
+            // Scopes listed completely, by the rule markStaleAssetsInactive uses: a region that returned EC2 records.
+            List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope> scopes = ec2Records.stream()
+                    .map(r -> new com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope(accountId, r.resourceType(), r.region()))
+                    .distinct().toList();
+            return new TargetRunResult(allRecords.size(), false, warning, result, ssmSummary, metadata, warning ? regionErrorSummary : null, scopes);
         } catch (Exception e) {
             LOG.warn("AWS Discovery run {} target {} failed: {}", runId, accountId, e.getMessage(), e);
             metadata.put("status", "failed");
@@ -426,7 +445,8 @@ public class AwsDiscoverySyncService {
                     new IngestionResult(0, 0, 0, 0),
                     new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0),
                     metadata,
-                    e.getMessage()
+                    e.getMessage(),
+                    List.of()
             );
         }
     }
@@ -711,6 +731,7 @@ public class AwsDiscoverySyncService {
             IngestionResult ingestionResult,
             SsmInventoryIngestionSummary ssmSummary,
             Map<String, Object> metadata,
-            String visibleMessage
+            String visibleMessage,
+            List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope> completeScopes
     ) {}
 }

@@ -46,6 +46,8 @@ import type {
   GroupMappingChange,
   GroupMappingImpact,
   GroupTeamMapping,
+  CloudOwnershipSettingsRequest,
+  CloudOwnershipSource,
   IdentitySource,
   IdentitySourceConnectionTest,
   IdentitySourcePreview,
@@ -1852,6 +1854,13 @@ export const api = {
     request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/resume`, { method: 'POST' }),
   disableIdentitySource: (sourceId: string) =>
     request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/disable`, { method: 'POST' }),
+  listCloudOwnershipSources: () => request<CloudOwnershipSource[]>('/ownership/cloud-sources'),
+  updateCloudOwnershipSettings: (provider: CloudOwnershipSource['provider'], payload: CloudOwnershipSettingsRequest) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/settings`, { method: 'PUT', body: JSON.stringify(payload) }),
+  pauseCloudOwnershipSource: (provider: CloudOwnershipSource['provider'], reason?: string) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/pause`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  resumeCloudOwnershipSource: (provider: CloudOwnershipSource['provider']) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/resume`, { method: 'POST' }),
   listGroupMappingGroups: (q: string, limit = 50) =>
     request<ExternalGroupRow[]>(`/ownership/group-mappings/groups?q=${encodeURIComponent(q)}&limit=${limit}`),
   previewGroupMapping: (externalGroupId: string, teamId: string | null) =>

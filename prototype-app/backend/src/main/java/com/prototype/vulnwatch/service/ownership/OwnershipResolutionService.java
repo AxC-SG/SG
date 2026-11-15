@@ -57,9 +57,14 @@ public class OwnershipResolutionService {
         List<ClaimInput> claims = jdbc.query("""
                 SELECT c.id, c.priority, c.team_id, c.source_kind, c.observed_at, c.stale_after, c.expires_at,
                        t.status = 'ACTIVE' AS team_active,
-                       EXISTS (SELECT 1 FROM platform.ownership_kill_switches k
-                                WHERE k.source_kind = c.source_kind AND k.state = 'PAUSED'
-                                  AND (k.tenant_id IS NULL OR k.tenant_id = c.tenant_id)) AS source_paused
+                       (EXISTS (SELECT 1 FROM platform.ownership_kill_switches k
+                                 WHERE k.source_kind = c.source_kind AND k.state = 'PAUSED'
+                                   AND (k.tenant_id IS NULL OR k.tenant_id = c.tenant_id))
+                        -- Phase 0B §2.6: cloud claims belong to CLOUD_BOM whatever the subject, and count only once
+                        -- that domain is CANONICAL. Until then they are evidence, like claims from a paused source.
+                        OR (c.source_kind IN ('AWS','GCP') AND NOT EXISTS (
+                                SELECT 1 FROM platform.ownership_domain_authority d
+                                 WHERE d.tenant_id = c.tenant_id AND d.domain = 'CLOUD_BOM' AND d.state = 'CANONICAL'))) AS source_paused
                   FROM ownership_claim c JOIN team t ON t.id = c.team_id
                  WHERE c.subject_id = ? AND c.role = ? AND c.status = 'ACTIVE'
                 """, (rs, row) -> new ClaimInput(rs.getObject(1, UUID.class), rs.getInt(2), rs.getObject(3, UUID.class),
@@ -122,6 +127,31 @@ public class OwnershipResolutionService {
                 SELECT DISTINCT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, subject_id, 'TEAM_STATUS_CHANGED' FROM ownership_claim WHERE team_id = ? AND status = 'ACTIVE'
                 ON CONFLICT (tenant_id, subject_id) DO NOTHING
                 """, teamId);
+    }
+
+    /**
+     * Queues every subject with an active claim from {@code sourceKind}, after a pause or resume changed whether those
+     * claims are eligible (Phase 0B §2.6).
+     */
+    @Transactional
+    public int enqueueSubjectsOfSource(String sourceKind) {
+        return jdbc.update("""
+                INSERT INTO ownership_resolution_queue (tenant_id, subject_id, reason)
+                SELECT DISTINCT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, subject_id, 'SOURCE_STATE_CHANGED'
+                  FROM ownership_claim WHERE source_kind = ? AND status = 'ACTIVE'
+                ON CONFLICT (tenant_id, subject_id) DO NOTHING
+                """, sourceKind);
+    }
+
+    /** Queues the given subjects after a source input changed (Phase 0B §2.2). */
+    @Transactional
+    public int enqueueSubjects(List<UUID> subjectIds) {
+        if (subjectIds.isEmpty()) return 0;
+        return jdbc.update("""
+                INSERT INTO ownership_resolution_queue (tenant_id, subject_id, reason)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, s, 'SOURCE_STATE_CHANGED' FROM unnest(?::uuid[]) s
+                ON CONFLICT (tenant_id, subject_id) DO NOTHING
+                """, "{" + String.join(",", subjectIds.stream().map(UUID::toString).toList()) + "}");
     }
 
     /** Re-resolves up to {@code limit} queued subjects, oldest first. Returns how many were drained. */

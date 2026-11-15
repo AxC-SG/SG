@@ -10,6 +10,7 @@ import {
   useIdentitySourcesQuery,
   useSourceCheckMutation
 } from './queries';
+import { CloudSourcesSection } from './CloudSourcesSection';
 import { SourceCheckDialog } from './SourceCheckDialog';
 import { SourceFormDialog } from './SourceFormDialog';
 import type { IdentitySource } from './types';
@@ -58,14 +59,14 @@ function formatTime(value: string | null): string {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 }
 
-type Props = { canConfigure: boolean; canPause: boolean };
+type Props = { canConfigure: boolean; canPause: boolean; canConfigureProducer?: boolean };
 
 /**
  * Identity sources (Phase 0B contract §1.1–§1.7): ServiceNow directory sources with their lifecycle, plus the
  * tenant's manual and CSV sources, which are listed but not configured here. Every action is enforced by the server;
  * the buttons shown follow the role matrix and the source's state.
  */
-export function SourcesPanel({ canConfigure, canPause }: Props) {
+export function SourcesPanel({ canConfigure, canPause, canConfigureProducer = false }: Props) {
   const sources = useIdentitySourcesQuery();
   const action = useIdentitySourceActionMutation();
   const runCheck = useSourceCheckMutation();
@@ -158,6 +159,8 @@ export function SourcesPanel({ canConfigure, canPause }: Props) {
       >
         <DataTable storageKey="ownership-identity-sources" columns={COLUMNS} rows={rows} label="Identity sources" />
       </AsyncSection>
+
+      <CloudSourcesSection canConfigure={canConfigureProducer} canPause={canPause} />
 
       {editing !== null && (
         <SourceFormDialog

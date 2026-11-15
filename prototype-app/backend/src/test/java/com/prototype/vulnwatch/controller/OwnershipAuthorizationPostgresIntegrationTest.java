@@ -110,6 +110,12 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                         Map.of("externalGroupId", missing, "teamId", missing, "previewToken", "x.y")),
                 new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/retire", Map.of("previewToken", "x.y")),
                 new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/dismiss", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources/azure", null),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "PUT", "/api/ownership/cloud-sources/azure/settings",
+                        Map.of("ownerKeyEnabled", false)),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/pause", Map.of("reason", "test")),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/resume", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
                 new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));
         List<Arguments> cases = new ArrayList<>();

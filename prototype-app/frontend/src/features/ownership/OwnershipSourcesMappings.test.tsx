@@ -5,7 +5,7 @@ import { renderWithProviders } from '../../test/test-utils';
 import { ActorContextState } from '../auth/context';
 import type { ActorContext } from '../auth/types';
 import { OwnershipDirectoryHub } from './OwnershipDirectoryHub';
-import type { ExternalGroupRow, GroupMappingImpact, GroupTeamMapping, IdentitySource, OwnershipCoverage } from './types';
+import type { CloudOwnershipSource, ExternalGroupRow, GroupMappingImpact, GroupTeamMapping, IdentitySource, OwnershipCoverage } from './types';
 
 function actor(role: string): ActorContext {
   return { creator: false, principal: `${role.toLowerCase()}@example.test`, userId: 'u-1', tenantId: 't-1', tenantName: 'Acme', roles: [`ROLE_${role}`] };
@@ -17,6 +17,12 @@ const source = (overrides: Partial<IdentitySource> = {}): IdentitySource => ({
   id: 'src-1', kind: 'SERVICENOW', displayName: 'Acme ServiceNow', instanceUrl: 'https://acme.service-now.com', authType: 'BASIC',
   hasCredentials: true, filters: {}, schedule: 'PT24H', state: 'DISABLED', health: 'UNKNOWN', lastSuccessAt: null, lastError: null,
   version: 2, ...overrides
+});
+
+const cloud = (overrides: Partial<CloudOwnershipSource> = {}): CloudOwnershipSource => ({
+  provider: 'AWS', deploymentEnabled: true, configured: true, domainState: 'DARK', paused: false, pauseReason: null, intervalValid: true,
+  intervalMinutes: 60, settings: { ownerKey: true, teamKey: true, accountInput: true, intervalMinutes: 60 }, accountTagsConfigured: false,
+  activeClaims: 12, openAnomalies: 0, ...overrides
 });
 
 const mapping = (overrides: Partial<GroupTeamMapping> = {}): GroupTeamMapping => ({
@@ -48,6 +54,7 @@ describe('Ownership Sources and Mappings views', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getOwnershipCoverage').mockResolvedValue(coverage);
     vi.spyOn(api, 'getOwnershipEncryption').mockResolvedValue({ ready: true, reason: null });
+    vi.spyOn(api, 'listCloudOwnershipSources').mockResolvedValue([]);
     vi.spyOn(api, 'getOwnershipQualification').mockResolvedValue({
       domain: 'CORE', state: 'LEGACY', passed: false, blockers: [], checks: {},
       comparison: { match: 0, mismatch: 0, legacyOnly: 0, canonicalOnly: 0, bothEmpty: 0 }, reportHash: ''
@@ -89,6 +96,40 @@ describe('Ownership Sources and Mappings views', () => {
     await waitFor(() => expect(enable).toHaveBeenCalledWith('src-1', 'preview-token'));
     expect(await screen.findByText('Source Acme ServiceNow enabled. The baseline load is queued.')).toBeInTheDocument();
     expect(screen.queryByText(/ada@acme.test/)).not.toBeInTheDocument();
+  });
+
+  it('shows the cloud producers and resumes one paused by an anomaly after confirmation', async () => {
+    vi.spyOn(api, 'listIdentitySources').mockResolvedValue([]);
+    vi.spyOn(api, 'listCloudOwnershipSources').mockResolvedValue([
+      cloud({ paused: true, pauseReason: 'ANOMALY CLOUD_TAG', openAnomalies: 1 }),
+      cloud({ provider: 'GCP', configured: false, settings: null, intervalMinutes: null, activeClaims: 0 })
+    ]);
+    const resume = vi.spyOn(api, 'resumeCloudOwnershipSource').mockResolvedValue(cloud());
+    renderHub('TENANT_ADMIN', 'sources');
+
+    expect(await screen.findByText('AWS resource and account tags')).toBeInTheDocument();
+    expect(screen.getByText('Paused: anomaly')).toBeInTheDocument();
+    expect(screen.getByText('Not configured')).toBeInTheDocument();
+    expect(screen.getByText(/not configured on the connector/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Resume AWS resource and account tags?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Resume' }));
+    await waitFor(() => expect(resume).toHaveBeenCalledWith('AWS'));
+    expect(await screen.findByText('Producer resumed.')).toBeInTheDocument();
+  });
+
+  it('switches a cloud input off only after confirming that its claims end', async () => {
+    vi.spyOn(api, 'listIdentitySources').mockResolvedValue([]);
+    vi.spyOn(api, 'listCloudOwnershipSources').mockResolvedValue([cloud()]);
+    const update = vi.spyOn(api, 'updateCloudOwnershipSettings').mockResolvedValue(cloud());
+    renderHub('INVENTORY_ADMIN', 'sources');
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /owner tag/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Change AWS resource and account tags inputs?' });
+    expect(within(dialog).getByText(/ends its active claims now/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith('AWS', { ownerKeyEnabled: false }));
   });
 
   it('offers no enable button when a table is denied', async () => {

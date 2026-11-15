@@ -12,6 +12,7 @@ import { SourcesPanel } from './SourcesPanel';
 import { TeamsPanel } from './TeamsPanel';
 import {
   canConfigureIdentitySource,
+  canConfigureOwnershipProducer,
   canImportDirectory,
   canManageOwnershipAuthority,
   canManageOwnershipEncryption,
@@ -79,7 +80,8 @@ export function OwnershipDirectoryHub({ legacyRules }: { legacyRules: React.Reac
         {view === 'people' && <PeoplePanel canWrite={canWriteDirectory(actor)} />}
         {view === 'groups' && <GroupsPanel canWrite={canWriteDirectory(actor)} />}
         {view === 'sources' && (
-          <SourcesPanel canConfigure={canConfigureIdentitySource(actor)} canPause={canPauseIdentitySource(actor)} />
+          <SourcesPanel canConfigure={canConfigureIdentitySource(actor)} canPause={canPauseIdentitySource(actor)}
+            canConfigureProducer={canConfigureOwnershipProducer(actor)} />
         )}
         {view === 'mappings' && <MappingsPanel canMap={canMapGroups(actor)} />}
         {view === 'imports' && <ImportsPanel />}

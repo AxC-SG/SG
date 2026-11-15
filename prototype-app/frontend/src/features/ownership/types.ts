@@ -220,3 +220,32 @@ export type GroupMappingImpact = {
 
 /** republishSkipped names why the affected CIs wait for the next CMDB sync, or is null. */
 export type GroupMappingChange = { mapping: GroupTeamMapping; republishedCis: number; republishSkipped: string | null };
+
+/** An AWS or GCP ownership producer as the Sources view shows it (Phase 0B §2.1, §2.2). */
+export type CloudOwnershipSettings = {
+  ownerKey: boolean;
+  teamKey: boolean;
+  accountInput: boolean;
+  intervalMinutes: number | null;
+};
+
+export type CloudOwnershipSource = {
+  provider: 'AWS' | 'GCP';
+  deploymentEnabled: boolean;
+  configured: boolean;
+  domainState: OwnershipAuthorityState;
+  paused: boolean;
+  pauseReason: string | null;
+  intervalValid: boolean;
+  intervalMinutes: number | null;
+  settings: CloudOwnershipSettings | null;
+  accountTagsConfigured: boolean;
+  activeClaims: number;
+  openAnomalies: number;
+};
+
+export type CloudOwnershipSettingsRequest = {
+  ownerKeyEnabled?: boolean;
+  teamKeyEnabled?: boolean;
+  accountInputEnabled?: boolean;
+};

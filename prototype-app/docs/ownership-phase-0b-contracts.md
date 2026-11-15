@@ -431,6 +431,20 @@ over its account's owner**, and the account owner applies only to resources with
   output from both ingestion services; GCP `projects.get` label read; the `CLOUD_BOM` eligibility flag in
   `OwnershipResolutionService`; the switch-time re-resolution enqueue; connector interval validation; and the hub's
   Sources view rows for AWS/GCP.
+- **Implementation (E5, November 15, 2026, branch `feat/e5-cloud-ownership-producer`, not merged).**
+  `CloudOwnershipProducer` (one class, `Provider` AWS/GCP) is called by `AwsDiscoverySyncService` and
+  `GcpDiscoverySyncService` after the run completes and never fails the sync. Each sync passes the scopes it listed
+  completely, by the same rule it uses to mark assets inactive (AWS: account, `EC2`, a region that returned records;
+  GCP: project and a type listed completely and non-empty). The GCP sync reads `projects.get` labels only while the
+  producer is enabled; a failed read passes no values. AWS account tags are passed by E6. `CloudOwnershipSourceService`
+  owns the settings, the tenant kill switch (`platform.ownership_kill_switches`, pause/resume with re-resolution
+  enqueue), anomaly approval (resuming after an anomaly pause lets the next run skip the gate once) and the Sources
+  status; `/api/ownership/cloud-sources` exposes them. Switching a key or the account input off ends that input's
+  active claims through `OwnershipClaimService.endBySourceRef`, which queues the subjects. `OwnershipResolutionService`
+  treats `AWS`/`GCP` claims as paused until `CLOUD_BOM` is `CANONICAL`. A tripped anomaly gate in either class writes
+  nothing for the run, because the kill switch it sets stops both classes. The `CLOUD_BOM` switch, its re-resolution
+  enqueue and the dark comparison report are E15. **Tenant V25** widens `assets.cloud_tags_json` from 255 characters to
+  `text`: the V1 baseline size made an instance with a few tags fail to save. An R1 index-only fix therefore becomes V26.
 - Tests (Phase B): unit tests for key matching and `source_ref`; Postgres ITs for create/re-observe/change/end,
   unmapped values, partial-scope no-op, the account edge rules, `DARK` ineligibility on a `CANONICAL` CORE host,
   switch re-resolution, anomaly pause per class, and the §2.7 precedence; a `MockRestServiceServer` contract test for
@@ -1051,7 +1065,7 @@ wait for R1 (due December 4) or R2 (due November 27). In place of their results:
 - **R2 assumption.** Every `inventory_components` writer normalizes `ecosystem`, `package_name`, `version` and `purl`
   the same way. E7 must confirm this before occurrence registration is enabled outside test tenants.
 - **R1 assumption.** V24 uses the §3.8 index design as written. If R1 shows it is wrong, the fix is an additive,
-  index-only migration (V25). No V24 column or constraint depends on R1.
+  index-only migration (now V26, since E5 used V25). No V24 column or constraint depends on R1.
 
 There are no customer tenants, so V24 takes the final column shape (NOT NULL and checks) without a separate backfill
 phase; existing development rows are filled by the migration itself.

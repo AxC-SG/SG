@@ -41,6 +41,14 @@ public class AwsDiscoveryConfigService {
     private final TenantQuotaService tenantQuotaService;
     private final CredentialEncryptionService credentialEncryptionService;
 
+    private com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService cloudOwnershipSources;
+
+    /** Phase 0B §2.1: while the cloud ownership producer is enabled, connector intervals must suit its TTLs. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCloudOwnershipSources(com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService cloudOwnershipSources) {
+        this.cloudOwnershipSources = cloudOwnershipSources;
+    }
+
     public AwsDiscoveryConfigService(
             AwsDiscoveryConfigRepository repo,
             AwsDiscoveryTargetRepository targetRepository,
@@ -129,6 +137,7 @@ public class AwsDiscoveryConfigService {
         config.setResourceTypesJson(DEFAULT_RESOURCE_TYPES);
         config.setEnabled(request.enabled() == null || request.enabled());
         config.setAutoSyncEnabled(request.autoSyncEnabled() != null && request.autoSyncEnabled());
+        if (cloudOwnershipSources != null) cloudOwnershipSources.requireValidConnectorInterval(request.intervalMinutes());
         config.setIntervalMinutes(request.intervalMinutes() == null ? 1440
                 : Math.max(5, request.intervalMinutes()));
     }

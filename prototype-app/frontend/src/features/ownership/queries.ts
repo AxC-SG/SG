@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import type {
+  CloudOwnershipSettingsRequest,
+  CloudOwnershipSource,
   DirectoryPersonCreate,
   IdentitySource,
   IdentitySourceConnectionTest,
@@ -23,6 +25,7 @@ export const ownershipKeys = {
   review: (state: string, type: string) => ['ownership', 'review', state, type] as const,
   encryption: ['ownership', 'encryption'] as const,
   identitySources: ['ownership', 'identity-sources'] as const,
+  cloudSources: ['ownership', 'cloud-sources'] as const,
   mappingGroups: (q: string) => ['ownership', 'group-mappings', q] as const,
   qualification: ['ownership', 'qualification', 'CORE'] as const
 };
@@ -220,5 +223,24 @@ export type SourceCheck = { source: IdentitySource; mode: 'test' | 'preview' };
 export function useSourceCheckMutation() {
   return useMutation<IdentitySourceConnectionTest | IdentitySourcePreview, Error, SourceCheck>({
     mutationFn: ({ source, mode }) => (mode === 'test' ? api.testIdentitySource(source.id) : api.previewIdentitySource(source.id))
+  });
+}
+
+export function useCloudOwnershipSourcesQuery() {
+  return useQuery({ queryKey: ownershipKeys.cloudSources, queryFn: api.listCloudOwnershipSources });
+}
+
+export type CloudSourceAction =
+  | { kind: 'pause' | 'resume'; provider: CloudOwnershipSource['provider'] }
+  | { kind: 'settings'; provider: CloudOwnershipSource['provider']; settings: CloudOwnershipSettingsRequest };
+
+/** Pause, resume and the key/account-input switches of an AWS or GCP ownership producer (Phase 0B §2.1, §2.2). */
+export function useCloudSourceActionMutation() {
+  return useOwnershipMutation((action: CloudSourceAction): Promise<CloudOwnershipSource> => {
+    switch (action.kind) {
+      case 'pause': return api.pauseCloudOwnershipSource(action.provider);
+      case 'resume': return api.resumeCloudOwnershipSource(action.provider);
+      case 'settings': return api.updateCloudOwnershipSettings(action.provider, action.settings);
+    }
   });
 }

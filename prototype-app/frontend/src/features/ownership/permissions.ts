@@ -53,3 +53,8 @@ export function canPauseIdentitySource(actor: ActorContext | null): boolean {
 export function canMapGroups(actor: ActorContext | null): boolean {
   return hasAnyRole(actor, ADMINS);
 }
+
+/** CONFIGURE_OWNERSHIP_PRODUCER: the AWS/GCP producer's key and account-input switches. */
+export function canConfigureOwnershipProducer(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ADMINS);
+}

@@ -1,5 +1,6 @@
 package com.prototype.vulnwatch.service;
 
+import com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.GcpDiscoveryClient;
@@ -97,6 +98,13 @@ public class GcpDiscoverySyncService {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
+    private CloudOwnershipProducer cloudOwnershipProducer;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCloudOwnershipProducer(CloudOwnershipProducer cloudOwnershipProducer) {
+        this.cloudOwnershipProducer = cloudOwnershipProducer;
+    }
+
     public void setBackgroundTaskExecutionPolicy(BackgroundTaskExecutionPolicy backgroundTaskExecutionPolicy) {
         this.backgroundTaskExecutionPolicy = backgroundTaskExecutionPolicy == null
                 ? BackgroundTaskExecutionPolicy.allowAll()
@@ -252,12 +260,21 @@ public class GcpDiscoverySyncService {
 
                 RunTotals totals = new RunTotals();
                 List<Map<String, Object>> targetResults = new ArrayList<>();
+                List<CloudOwnershipProducer.Scope> completeScopes = new ArrayList<>();
+                List<CloudOwnershipProducer.AccountRead> projectLabels = new ArrayList<>();
                 for (GcpDiscoveryTarget target : targets) {
                     TargetOutcome outcome = executeTarget(config, credentialJson, target, runStart);
+                    completeScopes.addAll(outcome.completeScopes());
+                    if (outcome.projectLabels() != null) projectLabels.add(outcome.projectLabels());
                     totals.add(outcome);
                     targetResults.add(outcome.metadata());
                 }
                 finishRun(configId, runId, triggerMode, totals, targetResults, targets.size());
+                if (cloudOwnershipProducer != null) {
+                    // After the run committed; the producer never throws (Phase 0B §2.1).
+                    cloudOwnershipProducer.publishAfterSync(tenantId, new CloudOwnershipProducer.Run(
+                            CloudOwnershipProducer.Provider.GCP, runStart, completeScopes, projectLabels));
+                }
             } catch (Exception failure) {
                 LOG.error("GCP Discovery run {} failed: {}", runId, failure.getMessage(), failure);
                 markRun(runId, "failed", failure.getMessage(), Map.of("triggerMode", triggerMode, "state", "failed", "sourceSystem", "gcp"));
@@ -325,12 +342,40 @@ public class GcpDiscoverySyncService {
                 targetRepository.save(existing);
             }));
             return new TargetOutcome(instances.size() + resources.size(), false, warning, result, metadata,
-                    warning ? projectId + ": " + String.join("; ", errors.values()) : null);
+                    warning ? projectId + ": " + String.join("; ", errors.values()) : null,
+                    completeScopes(projectId, completeTypes, instances, resources), projectLabels(token, projectId));
         } catch (Exception failure) {
             LOG.warn("GCP Discovery target {} failed: {}", projectId, failure.getMessage());
             metadata.put("status", "failed");
             metadata.put("error", failure.getMessage());
             return TargetOutcome.failed(metadata, projectId + ": " + failure.getMessage());
+        }
+    }
+
+    /**
+     * Types listed completely and non-empty in this run, the rule {@link GcpResourceIngestionService} uses to mark
+     * assets inactive; only inside these do absent resources end their ownership claims (Phase 0B §2.5).
+     */
+    private static List<CloudOwnershipProducer.Scope> completeScopes(String projectId, Set<String> completeTypes,
+            List<GcpInstanceRecord> instances, List<GcpResourceRecord> resources) {
+        Set<String> seen = new HashSet<>();
+        if (!instances.isEmpty()) seen.add(GcpResourceTypes.COMPUTE_INSTANCE);
+        resources.forEach(resource -> seen.add(resource.resourceType()));
+        return completeTypes.stream().filter(seen::contains)
+                .map(type -> new CloudOwnershipProducer.Scope(projectId, type, null)).toList();
+    }
+
+    /**
+     * Project labels for the project's CLOUD_ACCOUNT claims (Phase 0B §2.2), read only while the cloud ownership
+     * producer is enabled. A failed read yields no values, which leaves that project's account claims untouched.
+     */
+    private CloudOwnershipProducer.AccountRead projectLabels(String token, String projectId) {
+        if (cloudOwnershipProducer == null || !cloudOwnershipProducer.enabled()) return null;
+        try {
+            return new CloudOwnershipProducer.AccountRead(projectId, client.projectLabels(token, projectId));
+        } catch (RuntimeException failure) {
+            LOG.warn("GCP project labels for {} could not be read: {}", projectId, failure.getMessage());
+            return new CloudOwnershipProducer.AccountRead(projectId, null);
         }
     }
 
@@ -421,10 +466,12 @@ public class GcpDiscoverySyncService {
             boolean warning,
             GcpResourceIngestionService.IngestionResult result,
             Map<String, Object> metadata,
-            String message
+            String message,
+            List<CloudOwnershipProducer.Scope> completeScopes,
+            CloudOwnershipProducer.AccountRead projectLabels
     ) {
         static TargetOutcome failed(Map<String, Object> metadata, String message) {
-            return new TargetOutcome(0, true, false, GcpResourceIngestionService.IngestionResult.empty(), metadata, message);
+            return new TargetOutcome(0, true, false, GcpResourceIngestionService.IngestionResult.empty(), metadata, message, List.of(), null);
         }
     }
 
