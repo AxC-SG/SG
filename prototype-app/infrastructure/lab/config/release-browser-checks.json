@@ -7,7 +7,7 @@
     "Vulnerability Repository > Dashboard (integration run status) loads without an error.",
     "Tenant Management > Vulnerability Intelligence > Feeds loads without an error.",
     "Demo Requests: deleting a disposable test request that has an invite succeeds.",
-    "An invitation to a test address arrives by email (Resend).",
+    "Enter a workspace > User Management > Invite user: an invitation to delivered+smoke@resend.dev (or a real inbox) reaches SENT through Resend. Then cancel it. Approving a demo request sends no email under managed sign-in.",
     "Enter a workspace and open Findings: the page loads.",
     "Sign out returns to the sign-in page."
   ]
