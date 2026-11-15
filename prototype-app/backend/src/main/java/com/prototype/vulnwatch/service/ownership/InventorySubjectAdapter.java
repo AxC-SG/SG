@@ -47,13 +47,7 @@ public class InventorySubjectAdapter {
      */
     @Transactional
     public int linkBatch(int limit) {
-        subjects.registerUnlinkedAssets(limit);
-        int assets = jdbc.update("""
-                UPDATE assets a SET ownership_subject_id = s.id FROM ownership_subject s
-                 WHERE a.id IN (SELECT id FROM assets WHERE ownership_subject_id IS NULL
-                                   AND type IN ('APPLICATION','HOST','CONTAINER_IMAGE','CLOUD_RESOURCE') ORDER BY id LIMIT ?)
-                   AND s.subject_type = a.type AND s.source_object_id = a.id::text AND s.context_key = '' AND s.lifecycle_status = 'ACTIVE'
-                """, limit);
+        int assets = linkAssets(limit);
         int findings = jdbc.update("""
                 UPDATE findings f SET ownership_subject_id = a.ownership_subject_id FROM assets a
                  WHERE f.id IN (SELECT f2.id FROM findings f2 JOIN assets a2 ON a2.id = f2.asset_id
@@ -62,6 +56,21 @@ public class InventorySubjectAdapter {
                    AND a.id = f.asset_id
                 """, limit);
         return assets + findings;
+    }
+
+    /**
+     * Registers and links subjects for up to {@code limit} unlinked assets. Software occurrences hang under their asset's
+     * subject, so the CLOUD_BOM populate step runs this too (Phase 0B §3.3), even while CORE is still LEGACY.
+     */
+    @Transactional
+    public int linkAssets(int limit) {
+        subjects.registerUnlinkedAssets(limit);
+        return jdbc.update("""
+                UPDATE assets a SET ownership_subject_id = s.id FROM ownership_subject s
+                 WHERE a.id IN (SELECT id FROM assets WHERE ownership_subject_id IS NULL
+                                   AND type IN ('APPLICATION','HOST','CONTAINER_IMAGE','CLOUD_RESOURCE') ORDER BY id LIMIT ?)
+                   AND s.subject_type = a.type AND s.source_object_id = a.id::text AND s.context_key = '' AND s.lifecycle_status = 'ACTIVE'
+                """, limit);
     }
 
     /**

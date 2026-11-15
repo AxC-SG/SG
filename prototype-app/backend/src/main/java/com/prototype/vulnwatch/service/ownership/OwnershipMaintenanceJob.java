@@ -30,6 +30,7 @@ public class OwnershipMaintenanceJob {
     private final OwnershipClaimService claims;
     private final OwnershipResolutionService resolution;
     private final InventorySubjectAdapter inventory;
+    private final OwnershipSubjectService subjects;
     private final OwnershipAuthorityService authority;
     private final OwnershipEffectiveCacheService cache;
     private final BackgroundTaskExecutionPolicy backgroundTasks;
@@ -37,7 +38,7 @@ public class OwnershipMaintenanceJob {
     private final int maxBatchesPerTenant;
 
     public OwnershipMaintenanceJob(TenantService tenants, TenantWorkRunner runner, OwnershipClaimService claims,
-                                   OwnershipResolutionService resolution, InventorySubjectAdapter inventory,
+                                   OwnershipResolutionService resolution, InventorySubjectAdapter inventory, OwnershipSubjectService subjects,
                                    OwnershipAuthorityService authority, OwnershipEffectiveCacheService cache,
                                    BackgroundTaskExecutionPolicy backgroundTasks,
                                    @Value("${app.ownership.maintenance.batch-size:500}") int batchSize,
@@ -47,6 +48,7 @@ public class OwnershipMaintenanceJob {
         this.claims = claims;
         this.resolution = resolution;
         this.inventory = inventory;
+        this.subjects = subjects;
         this.authority = authority;
         this.cache = cache;
         this.backgroundTasks = backgroundTasks;
@@ -78,6 +80,13 @@ public class OwnershipMaintenanceJob {
         boolean populating = runner.runScoped(tenant,
                 () -> authority.stateFor(OwnershipAuthorityService.Domain.CORE) != OwnershipAuthorityService.State.LEGACY);
         if (populating) drain(tenant, () -> inventory.linkBatch(batchSize));
+        // Phase 0B §3.4: software occurrences register once CLOUD_BOM has left LEGACY, in batches of at most 10,000.
+        boolean occurrences = runner.runScoped(tenant,
+                () -> authority.stateFor(OwnershipAuthorityService.Domain.CLOUD_BOM) != OwnershipAuthorityService.State.LEGACY);
+        if (occurrences) {
+            drain(tenant, () -> inventory.linkAssets(batchSize));
+            drain(tenant, () -> subjects.registerOccurrences(cacheBatchSize()), cacheBatchSize());
+        }
         if (cache.enabled()) {
             drain(tenant, () -> cache.expandBatch(cacheBatchSize()), cacheBatchSize());
             drain(tenant, () -> cache.refreshBatch(cacheBatchSize()), cacheBatchSize());

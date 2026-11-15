@@ -75,6 +75,90 @@ public class OwnershipSubjectService {
         return created.size();
     }
 
+    /**
+     * Registers software occurrence subjects for up to {@code limit} unlinked ACTIVE {@code inventory_components} rows
+     * (Phase 0B §3.2–§3.4), links the rows, and gives each new occurrence an OWNERSHIP_PARENT edge to its asset's
+     * subject. Set-based, because {@link #setParent} takes the topology lock per call. Rows with the same key on one
+     * asset share one subject. Skipped: assets without a subject yet (the asset step links them first), image assets
+     * without a digest, and parent edges where the asset subject already has five ancestors. Occurrences are leaves, so
+     * no cycle can form. An occurrence whose parent was set by an admin keeps it.
+     */
+    @Transactional
+    public int registerOccurrences(int limit) {
+        lock();
+        List<Object[]> candidates = jdbc.query("SELECT ic.id, a.ownership_subject_id, " + OccurrenceKey.SQL + ", 'asset:' || a.id"
+                + """
+                   FROM inventory_components ic JOIN assets a ON a.id = ic.asset_id
+                  WHERE ic.ownership_subject_id IS NULL AND ic.component_status = 'ACTIVE'
+                    AND a.ownership_subject_id IS NOT NULL
+                    AND a.type IN ('HOST','APPLICATION','CONTAINER_IMAGE','CLOUD_RESOURCE')
+                    AND (a.type <> 'CONTAINER_IMAGE' OR NULLIF(btrim(a.image_digest), '') IS NOT NULL)
+                    AND NULLIF(btrim(ic.package_name), '') IS NOT NULL
+                  ORDER BY ic.id LIMIT ?
+                """, (rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4)}, limit);
+        if (candidates.isEmpty()) return 0;
+        String keys = array(candidates.stream().map(c -> (String) c[2]).toList());
+        String contexts = array(candidates.stream().map(c -> (String) c[3]).toList());
+
+        List<UUID> created = jdbc.queryForList("""
+                INSERT INTO ownership_subject (tenant_id, id, subject_type, source_object_id, context_key, generation)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, gen_random_uuid(), 'COMPONENT_OCCURRENCE', k.key, k.ctx,
+                       COALESCE((SELECT max(s.generation) + 1 FROM ownership_subject s WHERE s.subject_type = 'COMPONENT_OCCURRENCE'
+                                  AND s.source_object_id = k.key AND s.context_key = k.ctx), 1)
+                  FROM (SELECT DISTINCT key, ctx FROM unnest(?::text[], ?::text[]) AS u(key, ctx)) k
+                ON CONFLICT (tenant_id, subject_type, source_object_id, context_key) WHERE lifecycle_status = 'ACTIVE' DO NOTHING
+                RETURNING id
+                """, UUID.class, keys, contexts);
+        cache.enqueueAll(created, "SUBJECT_REGISTERED");
+
+        int linked = jdbc.update("""
+                UPDATE inventory_components ic SET ownership_subject_id = s.id
+                  FROM unnest(?::uuid[], ?::text[], ?::text[]) AS u(component_id, key, ctx)
+                  JOIN ownership_subject s ON s.subject_type = 'COMPONENT_OCCURRENCE' AND s.lifecycle_status = 'ACTIVE'
+                                          AND s.source_object_id = u.key AND s.context_key = u.ctx
+                 WHERE ic.id = u.component_id AND ic.ownership_subject_id IS NULL
+                """, array(candidates.stream().map(c -> c[0].toString()).toList()), keys, contexts);
+
+        // Parent edges for occurrences that have none, under asset subjects with at most four ancestors (≤ 6 hops).
+        int edges = jdbc.update("""
+                WITH pairs AS (
+                    SELECT DISTINCT ic.ownership_subject_id AS child, a.ownership_subject_id AS parent
+                      FROM inventory_components ic JOIN assets a ON a.id = ic.asset_id
+                     WHERE ic.id = ANY (?::uuid[]) AND ic.ownership_subject_id IS NOT NULL
+                ), RECURSIVE_GUARD AS (
+                    SELECT p.child, p.parent, (
+                        WITH RECURSIVE up(node, depth) AS (
+                            SELECT p.parent, 0
+                            UNION ALL
+                            SELECT e.parent_subject_id, up.depth + 1 FROM up JOIN ownership_subject_edge e
+                              ON e.child_subject_id = up.node AND e.edge_type = 'OWNERSHIP_PARENT' AND e.status = 'ACTIVE'
+                             WHERE up.depth < 6)
+                        SELECT max(depth) FROM up) AS ancestors
+                      FROM pairs p
+                )
+                INSERT INTO ownership_subject_edge (tenant_id, id, child_subject_id, parent_subject_id, created_by)
+                SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, gen_random_uuid(), g.child, g.parent, 'bom-occurrence-adapter'
+                  FROM RECURSIVE_GUARD g
+                 WHERE g.ancestors < 5
+                   AND NOT EXISTS (SELECT 1 FROM ownership_subject_edge e WHERE e.child_subject_id = g.child
+                                      AND e.edge_type = 'OWNERSHIP_PARENT' AND e.status = 'ACTIVE')
+                """, array(candidates.stream().map(c -> c[0].toString()).toList()));
+        if (linked > 0) {
+            events.record("OCCURRENCES_REGISTERED", null, null, null, "bom-occurrence-adapter",
+                    "components", linked, "subjectsCreated", created.size(), "parentEdges", edges);
+        }
+        return linked;
+    }
+
+    private static String array(List<String> values) {
+        StringBuilder out = new StringBuilder("{");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) out.append(',');
+            out.append('"').append(values.get(i).replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+        }
+        return out.append('}').toString();
+    }
+
     /** The live subject for a contextual identity, without creating one. */
     @Transactional(readOnly = true)
     public Optional<Subject> find(String subjectType, String sourceObjectId, String contextKey) {

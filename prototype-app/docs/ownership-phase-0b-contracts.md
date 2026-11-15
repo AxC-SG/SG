@@ -556,6 +556,31 @@ remain evidence and aggregation keys.
 - Direct claims on occurrences come only from manual assignment in Release 2, and only once `CLOUD_BOM` is
   `CANONICAL` (`requireCanonicalWrites`). No producer targets occurrences.
 
+**Implementation (E7, November 16, 2026, branch `feat/e7-occurrence-key`, not merged).**
+
+- **R2 check (code review of every `inventory_components` writer; the sample confirmation stays with R2).** The writers
+  do **not** normalize the key fields the same way. `SbomContentIngestionService` (direct uploads, GitHub/GHCR SBOMs
+  and `BomIngestionOrchestrator`, which delegates to it) lower-cases `ecosystem` and `package_name` and stores
+  `version` and `purl` as parsed. `CmdbHostInventorySupportService` (ServiceNow CMDB, SCCM, AWS SSM and GCP VM Manager
+  host inventory) stores the normalized publisher in `ecosystem` and the normalized product in `package_name`.
+  `CustomerDemoDatasetService` inserts seed values as given. So the R2 assumption does not hold as stated.
+- **Consequence handled in E7.** `OccurrenceKey` normalizes for itself (ecosystem, package name and PURL trimmed and
+  lower-cased; version trimmed; missing values empty), in Java and in an identical SQL expression, so case and spacing
+  differences between writers do not split an occurrence. **Residual:** an SBOM row (`ecosystem = npm`) and a host
+  inventory row (`ecosystem = <publisher>`) for the same software on the same host remain two occurrences, because the
+  writers mean different things by `ecosystem`. Both inherit the host's owner, so ownership is unchanged unless an admin
+  assigns one of them directly. Occurrence registration stays limited to test tenants until R2's samples confirm this
+  is acceptable or the host writers adopt the SBOM ecosystem.
+- `OwnershipSubjectService.registerOccurrences(limit)` is the set-based registration: it inserts subjects, links
+  `inventory_components.ownership_subject_id`, adds parent edges (`created_by = 'bom-occurrence-adapter'`) where the
+  occurrence has none and the asset subject has at most four ancestors, and records one `OCCURRENCES_REGISTERED`
+  event per batch. Only `ACTIVE` rows register; a revived row links to its live subject again.
+- **Registration runs in the ownership maintenance job only** (batches of at most 10,000, once `CLOUD_BOM` leaves
+  `LEGACY`; asset subjects are linked first by `InventorySubjectAdapter.linkAssets`). Writers do not register after
+  commit: an after-commit hook inside the ingest transactions would need a nested transaction, which the
+  context-before-transaction rule forbids. New rows therefore get their subject within one maintenance cycle (one
+  minute by default).
+
 ### 3.5 Finding-adapter registry
 
 One registry, in code, maps each finding kind to one adapter version and its domain. The adapter selects the finding's
@@ -1077,7 +1102,8 @@ CMDB sample stay open and are tracked in the Phase 0A design (§10), not here.
 wait for R1 (due December 4) or R2 (due November 27). In place of their results:
 
 - **R2 assumption.** Every `inventory_components` writer normalizes `ecosystem`, `package_name`, `version` and `purl`
-  the same way. E7 must confirm this before occurrence registration is enabled outside test tenants.
+  the same way. E7 must confirm this before occurrence registration is enabled outside test tenants. **E7 result
+  (November 16, 2026):** they do not; the occurrence key now normalizes for itself, with one residual recorded in §3.4.
 - **R1 assumption.** V24 uses the §3.8 index design as written. If R1 shows it is wrong, the fix is an additive,
   index-only migration (now V26, since E5 used V25). No V24 column or constraint depends on R1.
 
