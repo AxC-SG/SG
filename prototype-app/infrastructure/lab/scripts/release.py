@@ -618,7 +618,7 @@ class AwsLab:
                                            "securityGroups": [outputs["migrator_security_group_id"]]}}
         started = self.aws("ecs", "run-task", "--cluster", CLUSTER, "--launch-type", "FARGATE", "--platform-version", "1.4.0",
                            "--count", "1", "--task-definition", outputs["task_definition_arns"]["migrator"],
-                           "--network-configuration", json.dumps(network), "--no-enable-execute-command",
+                           "--network-configuration", json.dumps(network), "--disable-execute-command",
                            "--tags", "key=Application,value=ScoutGrid", "key=Environment,value=lab",
                            "key=ReleasePurpose,value=Migration")
         if started.get("failures") or not started.get("tasks"):
