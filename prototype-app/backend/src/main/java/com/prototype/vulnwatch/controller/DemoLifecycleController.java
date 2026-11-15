@@ -14,6 +14,7 @@ import com.prototype.vulnwatch.dto.DemoRequestReceiptResponse;
 import com.prototype.vulnwatch.service.DuplicateDemoRequestException;
 import com.prototype.vulnwatch.dto.DemoStatusResponse;
 import com.prototype.vulnwatch.service.DemoLifecycleService;
+import com.prototype.vulnwatch.service.DemoRequestSmokeFixtureService;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TurnstileVerificationService;
@@ -45,6 +46,12 @@ public class DemoLifecycleController {
     private final WorkspaceService workspaceService;
     private final PasswordSetupCookieService passwordSetupCookieService;
     private final PublicEndpointRateLimiter publicEndpointRateLimiter;
+    private DemoRequestSmokeFixtureService smokeFixtures;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSmokeFixtures(DemoRequestSmokeFixtureService smokeFixtures) {
+        this.smokeFixtures = smokeFixtures;
+    }
 
     public DemoLifecycleController(
             DemoLifecycleService demoLifecycleService,
@@ -81,6 +88,14 @@ public class DemoLifecycleController {
     @PreAuthorize("hasRole('PLATFORM_OWNER')")
     public List<DemoRequestResponse> listRequests() {
         return demoLifecycleService.listRequests();
+    }
+
+    /** Lab release smoke only: a disposable pending request; 404 unless enabled. */
+    @PostMapping("/platform/demo-requests/smoke-fixtures")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
+    public java.util.Map<String, Object> createSmokeFixture() {
+        var fixture = smokeFixtures.create();
+        return java.util.Map.of("id", fixture.getId(), "status", fixture.getStatus());
     }
 
     @PostMapping("/platform/demo-requests/{requestId}/approve")
