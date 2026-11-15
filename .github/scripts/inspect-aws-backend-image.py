@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check the packaged AWS runtime without starting the app or reaching a database."""
 
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -15,6 +16,40 @@ CA_BUNDLES = {
     "us-east-1": "/app/rds-ca.pem",
     "ap-southeast-2": "/app/rds-ca-ap-southeast-2.pem",
 }
+
+
+def catalog_fingerprint(files):
+    """SHA-256 over every packaged migration: line, version order, name and content digest.
+
+    Equal heads with a different fingerprint mean the migration catalog changed without a new
+    version, so a release cannot be proven schema-neutral from heads alone.
+    """
+    order = {"platform": 0, "tenant": 1}
+    lines = [
+        f"{label}/{name} {sha}\n"
+        for (label, name), sha in sorted(
+            files.items(), key=lambda item: (order[item[0][0]], int(re.match(MIGRATION, item[0][1])[1]), item[0][1]))
+    ]
+    return hashlib.sha256("".join(lines).encode()).hexdigest()
+
+
+def packaged_digests(image_id, paths):
+    """Content digests of the migration files inside the image's application jar."""
+    output = subprocess.check_output(
+        [
+            "docker", "run", "--rm", "--platform=linux/amd64", "--network=none", "--read-only",
+            "--cap-drop=ALL", "--security-opt=no-new-privileges", "--entrypoint=/bin/sh", image_id, "-ec",
+            """
+            for path in "$@"; do
+              sum=$(busybox unzip -p /app/vulnwatch-backend.jar "$path" | sha256sum)
+              printf '%s %s\\n' "${sum%% *}" "$path"
+            done
+            """,
+            "digests", *paths,
+        ],
+        text=True,
+    )
+    return {path: sha for sha, path in (line.split() for line in output.splitlines())}
 
 
 def inspect(image):
@@ -54,6 +89,7 @@ def inspect(image):
         ca_sha_by_region[region] = pin[1]
 
     heads = {}
+    catalog = {}
     for label, directory in (("platform", "postgres_reset"), ("tenant", "tenant")):
         base = f"db/migration/{directory}"
         source = {
@@ -65,10 +101,20 @@ def inspect(image):
         if not source or packaged != source or len(names) != len(source):
             raise ValueError(f"Packaged {label} migrations differ from source.")
         heads[label] = max(int(version) for _, version in names)
+        catalog.update({(label, name): f"BOOT-INF/classes/{base}/{name}" for name, _ in names})
+
+    digests = packaged_digests(config["Id"], sorted(catalog.values()))
+    files = {}
+    for (label, name), path in catalog.items():
+        source = BACKEND / "src/main/resources" / path.removeprefix("BOOT-INF/classes/")
+        if digests.get(path) != hashlib.sha256(source.read_bytes()).hexdigest():
+            raise ValueError(f"Packaged {label} migration {name} differs from source.")
+        files[(label, name)] = digests[path]
 
     return {
         "image_id": config["Id"], "platform": "linux/amd64",
         "rds_ca_sha256_by_region": ca_sha_by_region, "migration_heads": heads,
+        "migration_catalog_sha256": catalog_fingerprint(files),
     }
 
 
