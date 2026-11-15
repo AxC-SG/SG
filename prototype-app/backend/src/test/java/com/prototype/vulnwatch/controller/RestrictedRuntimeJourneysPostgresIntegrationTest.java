@@ -35,6 +35,9 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         PostgresITSupport.registerDatabaseProperties(registry,DB);registry.add("APP_JWT_HMAC_SECRET",()->SIGNING_MATERIAL);
         registry.add("app.entitlements.mode", () -> "ENFORCE");
         registry.add("app.entitlements.enforce-tenant-allowlist", () -> "slug:closure-entitlement");
+        // Match deployed runtimes: a connection without tenant or platform context gets the
+        // no-tenant sentinel, not an empty setting.
+        registry.add("app.tenancy.require-tenant-context", () -> "true");
     }
     @Autowired TenantService tenants;
     @Autowired TenantSchemaMigrationService migrations;
@@ -198,6 +201,31 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
 
         assertEquals(0, owner.queryForObject("select count(*) from tenant_default.demo_requests where id = ?", Integer.class, requestId));
         assertEquals(0, owner.queryForObject("select count(*) from tenant_default.demo_invites where id = ?", Integer.class, inviteId));
+        assertEquals(1, platformScopeAuditCount("demo.request.deleted", requestId));
+    }
+
+    @Test
+    void platformOwnerRejectsDemoRequestAndTheDecisionIsAudited() throws Exception {
+        String platformToken = login(ownerEmail);
+        UUID requestId = UUID.randomUUID();
+        owner.update("""
+                insert into tenant_default.demo_requests(id, company, email, full_name, status, requested_at)
+                values (?, 'Queue Co', ?, 'Queue Owner', 'PENDING', now())
+                """, requestId, "reject-" + memberEmail);
+
+        mvc.perform(post("/api/platform/demo-requests/{id}/reject", requestId).header("Authorization", "Bearer " + platformToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(Map.of("reason", "Not a fit"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REJECTED"));
+
+        assertEquals("REJECTED", owner.queryForObject("select status from tenant_default.demo_requests where id = ?", String.class, requestId));
+        assertEquals(1, platformScopeAuditCount("demo.request.rejected", requestId));
+    }
+
+    private int platformScopeAuditCount(String action, UUID requestId) {
+        return owner.queryForObject("""
+                select count(*) from tenant_default.audit_events
+                where action = ? and target_id = ? and tenant_id is null
+                """, Integer.class, action, requestId.toString());
     }
 
     @Test void schemaStateEvidenceIsReadableByTheRuntimeRole() {
