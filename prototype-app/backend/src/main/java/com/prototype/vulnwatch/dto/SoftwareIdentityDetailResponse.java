@@ -30,6 +30,8 @@ public record SoftwareIdentityDetailResponse(
         Instant lastObservedAt,
         BomEvidenceSummaryResponse bomEvidence,
         List<SoftwareIdentityVersionResponse> versions,
-        List<SoftwareIdentityAssetResponse> assets
+        List<SoftwareIdentityAssetResponse> assets,
+        /** Owner-team coverage of this identity's occurrences (Phase 0B §3.7); null unless CLOUD_BOM inventory reads are canonical. */
+        com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.IdentityCoverage ownershipCoverage
 ) {
 }

@@ -888,6 +888,9 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
 
           <Panel title="Ownership and Publisher">
             <div className="fd3-kv-table">
+              {detail.ownershipCoverage && (
+                <KVRow label="Owner teams">{ownershipCoverageLabel(detail.ownershipCoverage)}</KVRow>
+              )}
               <KVRow label="Vendor / Publisher">
                 <input className="sdi-table-input" value={draftVendor} onChange={(e) => setDraftVendor(e.target.value)} placeholder="Vendor or publisher name" />
               </KVRow>
@@ -1062,6 +1065,18 @@ export function SoftwareIdentityDetailPage({ softwareIdentityId }: Props) {
   );
 }
 
+
+/**
+ * Owner-team coverage across this software's occurrences (Phase 0B §3.7), by stable team ID. Several teams read as
+ * "N teams" (MULTIPLE_TEAMS is presentation only); unowned and conflicting occurrences are counted beside it.
+ */
+function ownershipCoverageLabel(coverage: NonNullable<SoftwareIdentityDetail['ownershipCoverage']>): string {
+  const teams = coverage.teamIds.length;
+  const parts = [teams === 0 ? 'No owning team' : teams === 1 ? '1 team' : `${teams} teams`];
+  if (coverage.unownedOccurrences > 0) parts.push(`${coverage.unownedOccurrences.toLocaleString()} unowned occurrence${coverage.unownedOccurrences === 1 ? '' : 's'}`);
+  if (coverage.conflictOccurrences > 0) parts.push(`${coverage.conflictOccurrences.toLocaleString()} in conflict`);
+  return parts.join(' · ');
+}
 
 function KVRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (

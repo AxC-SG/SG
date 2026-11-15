@@ -96,6 +96,35 @@ public class OwnershipSubjectService {
                     AND NULLIF(btrim(ic.package_name), '') IS NOT NULL
                   ORDER BY ic.id LIMIT ?
                 """, (rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4)}, limit);
+        return link("inventory_components", candidates);
+    }
+
+    /**
+     * CBOM occurrences (Phase 0B §3.1–§3.3): {@code crypto:<component_fingerprint>} in the context of the component's
+     * asset, or of its BOM source when the CBOM names no asset. Only rows of a source's current revision register;
+     * later revisions with the same fingerprint link to the same subject. A {@code bom-source:} occurrence gets no
+     * parent edge, so without a direct claim it is unowned.
+     */
+    @Transactional
+    public int registerCbomOccurrences(int limit) {
+        lock();
+        List<Object[]> candidates = jdbc.query("""
+                SELECT ic.id, a.ownership_subject_id, 'crypto:' || ic.component_fingerprint,
+                       CASE WHEN ic.asset_id IS NOT NULL THEN 'asset:' || ic.asset_id ELSE 'bom-source:' || r.source_id END
+                  FROM cbom_components ic JOIN bom_ingestion_records r ON r.id = ic.source_bom_id
+                  LEFT JOIN assets a ON a.id = ic.asset_id
+                 WHERE ic.ownership_subject_id IS NULL AND r.status = 'ACTIVE' AND r.superseded_by IS NULL
+                   AND NULLIF(btrim(ic.component_fingerprint), '') IS NOT NULL
+                   AND ((ic.asset_id IS NULL AND r.source_id IS NOT NULL)
+                        OR (a.ownership_subject_id IS NOT NULL
+                            AND (a.type <> 'CONTAINER_IMAGE' OR NULLIF(btrim(a.image_digest), '') IS NOT NULL)))
+                 ORDER BY ic.id LIMIT ?
+                """, (rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4)}, limit);
+        return link("cbom_components", candidates);
+    }
+
+    /** Registers the candidates' subjects, links their rows in {@code table} and adds parent edges to their assets. */
+    private int link(String table, List<Object[]> candidates) {
         if (candidates.isEmpty()) return 0;
         String keys = array(candidates.stream().map(c -> (String) c[2]).toList());
         String contexts = array(candidates.stream().map(c -> (String) c[3]).toList());
@@ -111,8 +140,8 @@ public class OwnershipSubjectService {
                 """, UUID.class, keys, contexts);
         cache.enqueueAll(created, "SUBJECT_REGISTERED");
 
-        int linked = jdbc.update("""
-                UPDATE inventory_components ic SET ownership_subject_id = s.id
+        int linked = jdbc.update("UPDATE " + table + """
+                 ic SET ownership_subject_id = s.id
                   FROM unnest(?::uuid[], ?::text[], ?::text[]) AS u(component_id, key, ctx)
                   JOIN ownership_subject s ON s.subject_type = 'COMPONENT_OCCURRENCE' AND s.lifecycle_status = 'ACTIVE'
                                           AND s.source_object_id = u.key AND s.context_key = u.ctx
@@ -123,7 +152,8 @@ public class OwnershipSubjectService {
         int edges = jdbc.update("""
                 WITH pairs AS (
                     SELECT DISTINCT ic.ownership_subject_id AS child, a.ownership_subject_id AS parent
-                      FROM inventory_components ic JOIN assets a ON a.id = ic.asset_id
+                      FROM """ + " " + table + """
+                 ic JOIN assets a ON a.id = ic.asset_id
                      WHERE ic.id = ANY (?::uuid[]) AND ic.ownership_subject_id IS NOT NULL
                 ), RECURSIVE_GUARD AS (
                     SELECT p.child, p.parent, (
@@ -145,14 +175,16 @@ public class OwnershipSubjectService {
                 """, array(candidates.stream().map(c -> c[0].toString()).toList()));
         if (linked > 0) {
             events.record("OCCURRENCES_REGISTERED", null, null, null, "bom-occurrence-adapter",
-                    "components", linked, "subjectsCreated", created.size(), "parentEdges", edges);
+                    "table", table, "components", linked, "subjectsCreated", created.size(), "parentEdges", edges);
         }
         return linked;
     }
 
+
     /**
-     * Retires up to {@code limit} software occurrence subjects (Phase 0B §3.2): every linked component has been
-     * RETIRED for 90 days (or none is linked any more), the subject has no active direct claim and no open finding
+     * Retires up to {@code limit} occurrence subjects (Phase 0B §3.2): for software, every linked component has been
+     * RETIRED for 90 days (or none is linked any more); for CBOM, the component is absent from its source's current
+     * revision and was last seen over 90 days ago. In both cases the subject has no active direct claim and no open finding
      * references it. Its edges retire, its rows are unlinked, and a later reappearance registers generation 2.
      */
     @Transactional
@@ -162,10 +194,17 @@ public class OwnershipSubjectService {
                 UPDATE ownership_subject s SET lifecycle_status = 'RETIRED', retired_at = now(), updated_at = now()
                  WHERE s.id IN (
                     SELECT c.id FROM ownership_subject c
-                     WHERE c.subject_type = 'COMPONENT_OCCURRENCE' AND c.lifecycle_status = 'ACTIVE' AND c.source_object_id LIKE 'pkg:%'
-                       AND NOT EXISTS (SELECT 1 FROM inventory_components ic WHERE ic.ownership_subject_id = c.id
-                                          AND (ic.component_status <> 'RETIRED' OR ic.retired_at IS NULL
-                                               OR ic.retired_at > now() - interval '90 days'))
+                     WHERE c.subject_type = 'COMPONENT_OCCURRENCE' AND c.lifecycle_status = 'ACTIVE'
+                       AND ((c.source_object_id LIKE 'pkg:%'
+                             AND NOT EXISTS (SELECT 1 FROM inventory_components ic WHERE ic.ownership_subject_id = c.id
+                                                AND (ic.component_status <> 'RETIRED' OR ic.retired_at IS NULL
+                                                     OR ic.retired_at > now() - interval '90 days')))
+                            -- CBOM: absent from the source's current revision, last seen in a revision over 90 days old.
+                            OR (c.source_object_id LIKE 'crypto:%'
+                                AND NOT EXISTS (SELECT 1 FROM cbom_components cc JOIN bom_ingestion_records r ON r.id = cc.source_bom_id
+                                                 WHERE cc.ownership_subject_id = c.id AND r.status = 'ACTIVE' AND r.superseded_by IS NULL)
+                                AND COALESCE((SELECT max(r.ingested_at) FROM cbom_components cc JOIN bom_ingestion_records r ON r.id = cc.source_bom_id
+                                               WHERE cc.ownership_subject_id = c.id), '-infinity') < now() - interval '90 days'))
                        AND NOT EXISTS (SELECT 1 FROM ownership_claim cl WHERE cl.subject_id = c.id AND cl.status = 'ACTIVE')
                        AND NOT EXISTS (SELECT 1 FROM findings f WHERE f.ownership_subject_id = c.id AND f.status = 'OPEN')
                        AND c.created_at < now() - interval '90 days'
@@ -179,6 +218,7 @@ public class OwnershipSubjectService {
                  WHERE child_subject_id = ANY (?::uuid[]) AND status = 'ACTIVE'
                 """, ids);
         jdbc.update("UPDATE inventory_components SET ownership_subject_id = NULL WHERE ownership_subject_id = ANY (?::uuid[])", ids);
+        jdbc.update("UPDATE cbom_components SET ownership_subject_id = NULL WHERE ownership_subject_id = ANY (?::uuid[])", ids);
         cache.enqueueAll(retired, "TOPOLOGY_CHANGED");   // retiring removes the subject and its edge
         events.record("OCCURRENCES_RETIRED", null, null, null, "bom-occurrence-adapter", "subjects", retired.size());
         return retired.size();

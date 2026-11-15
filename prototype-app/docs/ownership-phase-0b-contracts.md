@@ -649,6 +649,21 @@ R1 benchmark.
   view, under the same domain gate as Release 1 reads.
 - Assign owner on an occurrence previews its affected findings and never applies to every occurrence of a package.
 
+**Implementation (E9, November 16, 2026, branch `feat/e9-cbom-occurrences`, not merged).**
+`OwnershipSubjectService.registerCbomOccurrences` registers `crypto:<component_fingerprint>` occurrences for rows of
+each source's current revision (`status = 'ACTIVE'`, `superseded_by IS NULL`), in `asset:` context when the CBOM
+names an asset (parent edge to it) and `bom-source:` context otherwise (no parent edge). It shares the linking code
+with software occurrences, and later revisions with the same fingerprint link to the same subject. A tag-only image
+asset gets none. Retirement covers CBOM occurrences that are absent from the current revision and were last seen in
+a revision ingested more than 90 days ago. Reads: `OwnershipReadAdapter.forOccurrences` gives BOM (`/api/inventory/
+components`) and CBOM component rows an `ownership` envelope, and `identityCoverage` gives the software identity
+detail an `ownershipCoverage` (distinct owning team IDs, owned/unowned/conflict occurrences, never stored). Both are
+null, with no ownership query, unless `app.ownership.read-waves.inventory` includes the tenant and `CLOUD_BOM` is
+CANONICAL. The BOM components table, the CBOM component tables and the software identity page show an Owner column
+or "Owner teams" row only then. Owner filters on BOM/CBOM lists and the assign-owner action with finding preview on an
+occurrence (§3.7) are not built yet; they follow with the E15 read-wave work. R3 (CBOM fingerprint stability) still
+gates CBOM occurrences outside test tenants.
+
 ### 3.8 Schema and code impact
 
 - **Tenant V24 is needed.** It adds nullable `ownership_subject_id` columns, each with a tenant-inclusive foreign key

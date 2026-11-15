@@ -28,5 +28,7 @@ public record CbomComponentResponse(
         BigDecimal riskScore,
         int openFindingCount,
         int highFindingCount,
-        int criticalFindingCount
+        int criticalFindingCount,
+        /** Resolved owner of the component's occurrence (Phase 0B §3.7); null unless CLOUD_BOM inventory reads are canonical. */
+        com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary ownership
 ) {}

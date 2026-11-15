@@ -92,6 +92,7 @@ public class OwnershipMaintenanceJob {
         if (occurrences) {
             drain(tenant, () -> inventory.linkAssets(batchSize));
             drain(tenant, () -> subjects.registerOccurrences(cacheBatchSize()), cacheBatchSize());
+            drain(tenant, () -> subjects.registerCbomOccurrences(cacheBatchSize()), cacheBatchSize());
             // §3.6: once CLOUD_BOM is CANONICAL the registry moves findings to v2 and keeps them current; a no-op before.
             drain(tenant, () -> findings.switchBatch(cacheBatchSize()), cacheBatchSize());
             drain(tenant, () -> subjects.retireOccurrences(batchSize));

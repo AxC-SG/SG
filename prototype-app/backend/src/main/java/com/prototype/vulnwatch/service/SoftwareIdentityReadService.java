@@ -284,9 +284,18 @@ public class SoftwareIdentityReadService {
                     summary.lastObservedAt(),
                     bomEvidence,
                     versions,
-                    assets
+                    assets,
+                    ownershipReads == null ? null : ownershipReads.identityCoverage(softwareIdentityId).orElse(null)
             );
         });
+    }
+
+    private com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads;
+
+    /** Phase 0B §3.7: occurrence owner coverage once CLOUD_BOM inventory reads are canonical. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipReads(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads) {
+        this.ownershipReads = ownershipReads;
     }
 
     private void requireTenant(Tenant tenant) {

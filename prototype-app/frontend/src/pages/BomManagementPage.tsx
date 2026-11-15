@@ -12,6 +12,7 @@ import { CbomSuppressionSettingsPanel } from '../features/findings/CbomSuppressi
 import { CbomRulesPanel } from '../features/cbom/CbomRulesPanel';
 import { CbomGatePoliciesPanel } from '../features/cbom/CbomGatePoliciesPanel';
 import { RUN_QUEUE_REFRESH_INTERVAL_MS } from '../lib/polling';
+import { isCanonicalOwnership, resolvedOwnerLabel } from '../features/ownership/resolvedOwnership';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -288,6 +289,8 @@ export function BomManagementPage({
     queryFn: () => api.listCbomComponents(activeCbomAssetId!, 0, 100),
     enabled: bomType === 'CBOM' && activeCbomAssetId != null,
   });
+  // Phase 0B §3.7: an owner column once CBOM ownership is canonical.
+  const cbomOwners = (cbomComponentsQuery.data ?? []).some((component) => isCanonicalOwnership(component.ownership));
   const cbomFindingsQuery = useQuery({
     queryKey: ['cbom-findings', activeCbomAssetId, cbomSeverityFilter],
     queryFn: () => api.listCbomFindings(activeCbomAssetId!, cbomSeverityFilter || undefined),
@@ -909,6 +912,7 @@ export function BomManagementPage({
                       <thead>
                         <tr>
                           <th>Component</th>
+                          {cbomOwners && <th>Owner</th>}
                           <th>Asset Type</th>
                           <th>Primitive / Protocol</th>
                           <th>Key Size</th>
@@ -922,6 +926,7 @@ export function BomManagementPage({
                         {(cbomComponentsQuery.data ?? []).map((component: CbomComponent) => (
                           <tr key={component.id}>
                             <td>{component.name}</td>
+                            {cbomOwners && <td>{isCanonicalOwnership(component.ownership) ? resolvedOwnerLabel(component.ownership) : '—'}</td>}
                             <td>{component.assetType}</td>
                             <td>{displayValue(component.primitive ?? component.protocolVersion)}</td>
                             <td>{displayValue(component.keySize)}</td>

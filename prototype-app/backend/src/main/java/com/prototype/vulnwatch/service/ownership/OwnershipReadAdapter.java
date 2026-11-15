@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -120,6 +121,58 @@ public class OwnershipReadAdapter {
             byId.put(summary.objectId(), summary);
         });
         return byId;
+    }
+
+    /** Which component rows an occurrence read covers (Phase 0B §3.7). */
+    public enum OccurrenceTable { INVENTORY_COMPONENTS("inventory_components"), CBOM_COMPONENTS("cbom_components");
+        private final String table;
+        OccurrenceTable(String table) { this.table = table; }
+    }
+
+    /**
+     * Owner envelopes for BOM or CBOM component rows, through their occurrence link (Phase 0B §3.7). Empty, with no
+     * ownership query, unless inventory reads are canonical for CLOUD_BOM; callers then show no owner column value.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Summary> forOccurrences(OccurrenceTable table, List<UUID> rowIds) {
+        if (rowIds.isEmpty() || !canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) return Map.of();
+        Map<UUID, Summary> byId = new LinkedHashMap<>();
+        for (int from = 0; from < rowIds.size(); from += MAX_IDS) {
+            List<UUID> batch = rowIds.subList(from, Math.min(rowIds.size(), from + MAX_IDS));
+            jdbc.query("SELECT r.id, NULL, r.ownership_subject_id, e.owner_team_id, t.name, e.ownership_status, e.ownership_origin_subject_id,"
+                    + " e.ownership_assignment_id, e.ownership_source_kind, e.ownership_resolved_at, e.ownership_stale, e.inheritance_depth, NULL"
+                    + " FROM " + table.table + " r"
+                    + " LEFT JOIN ownership_effective_assignment e ON e.subject_id = r.ownership_subject_id"
+                    + " LEFT JOIN team t ON t.id = e.owner_team_id WHERE r.id = ANY (?::uuid[])",
+                    rs -> { Summary summary = summary(rs, true, Domain.CLOUD_BOM.name()); byId.put(summary.objectId(), summary); },
+                    array(batch));
+        }
+        return byId;
+    }
+
+    /** Owner-team coverage of a software identity's occurrences, by stable team ID (§3.7); never stored. */
+    public record IdentityCoverage(long occurrences, long ownedOccurrences, long unownedOccurrences, long conflictOccurrences, List<UUID> teamIds) { }
+
+    @Transactional(readOnly = true)
+    public Optional<IdentityCoverage> identityCoverage(UUID softwareIdentityId) {
+        if (!canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) return Optional.empty();
+        Map<String, Object> counts = jdbc.queryForMap("""
+                SELECT count(DISTINCT ic.ownership_subject_id) AS occurrences,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status = 'OWNED') AS owned,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status IS NULL OR e.ownership_status = 'UNOWNED') AS unowned,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status = 'CONFLICT') AS conflict
+                  FROM inventory_components ic
+                  LEFT JOIN ownership_effective_assignment e ON e.subject_id = ic.ownership_subject_id
+                 WHERE ic.software_identity_id = ? AND ic.ownership_subject_id IS NOT NULL AND ic.component_status = 'ACTIVE'
+                """, softwareIdentityId);
+        List<UUID> teams = jdbc.queryForList("""
+                SELECT DISTINCT e.owner_team_id FROM inventory_components ic
+                  JOIN ownership_effective_assignment e ON e.subject_id = ic.ownership_subject_id
+                 WHERE ic.software_identity_id = ? AND ic.component_status = 'ACTIVE' AND e.owner_team_id IS NOT NULL
+                 ORDER BY 1
+                """, UUID.class, softwareIdentityId);
+        return Optional.of(new IdentityCoverage(num(counts.get("occurrences")), num(counts.get("owned")), num(counts.get("unowned")),
+                num(counts.get("conflict")), teams));
     }
 
     private Map<Domain, Boolean> canonicalByDomain(Consumer consumer) {

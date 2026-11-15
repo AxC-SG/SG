@@ -64,6 +64,7 @@ import type {
   OwnershipTeamAlias,
   OwnershipTeamRequest
 } from '../features/ownership/types';
+import type { ResolvedOwnership } from '../features/ownership/resolvedOwnership';
 import type {
   ClusterImpactResult,
   ConnectorIssueGroup,
@@ -272,6 +273,8 @@ export type CbomComponent = {
   openFindingCount: number;
   highFindingCount: number;
   criticalFindingCount: number;
+  /** Resolved owner of the component's occurrence (Phase 0B §3.7); absent until CLOUD_BOM inventory reads are canonical. */
+  ownership?: ResolvedOwnership | null;
 };
 
 export type CbomRiskFinding = {
