@@ -32,6 +32,34 @@ class MigrationCatalogTest {
         assertEquals(23, targets.tenantTarget());
     }
 
+    // The configured range is intersected with the binary's own, so a stale configured bound
+    // leaves no supported version and every tenant-scoped job refuses to run (lab, 2026-11-15:
+    // "supported range V23..V20" after the V21-V23 migrations). Move these with the tenant head.
+    @Test
+    void configuredTenantSchemaRangeMatchesTheBinary() throws IOException {
+        int target = PackagedMigrationCatalog.resolve().tenantTarget();
+        assertEquals(target, com.prototype.vulnwatch.service.TenantSchemaCompatibility.REQUIRED_MINIMUM);
+        assertEquals(target, com.prototype.vulnwatch.service.TenantSchemaCompatibility.SUPPORTED_MAXIMUM);
+
+        String base = Files.readString(Path.of("src/main/resources/application.yml"));
+        assertEquals(List.of(String.valueOf(target)), configured(base, "minimum-compatible-schema-version: \\$\\{APP_MINIMUM_TENANT_SCHEMA_VERSION:(\\d+)}"));
+        assertEquals(List.of(String.valueOf(target)), configured(base, "maximum-compatible-schema-version: \\$\\{APP_MAXIMUM_TENANT_SCHEMA_VERSION:(\\d+)}"));
+
+        String prod = Files.readString(Path.of("src/main/resources/application-prod.yml"));
+        for (String bound : configured(prod, "(?:minimum|maximum)-compatible-schema-version: (\\d+)")) {
+            assertEquals(String.valueOf(target), bound, "application-prod.yml tenant schema bound");
+        }
+    }
+
+    private static List<String> configured(String yaml, String regex) {
+        List<String> values = new ArrayList<>();
+        Matcher matcher = Pattern.compile(regex).matcher(yaml);
+        while (matcher.find()) {
+            values.add(matcher.group(1));
+        }
+        return values;
+    }
+
     @Test
     void migrationsHaveUniqueVersionsMeaningfulSqlAndNoUnexpectedDuplicateBodies() throws IOException {
         List<MigrationFile> migrations = Files.list(MIGRATION_DIR)

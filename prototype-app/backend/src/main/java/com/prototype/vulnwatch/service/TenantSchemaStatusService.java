@@ -69,9 +69,9 @@ public class TenantSchemaStatusService {
         return new TenantSchemaStatusResponse(items, page, size, total == null ? 0 : total);
     }
 
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:20}")
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.minimum-compatible-schema-version:#{T(com.prototype.vulnwatch.service.TenantSchemaCompatibility).REQUIRED_MINIMUM}}")
     private int compatibleMinimum = TenantSchemaCompatibility.REQUIRED_MINIMUM;
-    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:20}")
+    @org.springframework.beans.factory.annotation.Value("${app.tenancy.maximum-compatible-schema-version:#{T(com.prototype.vulnwatch.service.TenantSchemaCompatibility).SUPPORTED_MAXIMUM}}")
     private int compatibleMaximum = TenantSchemaCompatibility.SUPPORTED_MAXIMUM;
 
     public String supportedTenantVersions() {
