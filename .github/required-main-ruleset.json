@@ -42,22 +42,6 @@
           {
             "context": "Quality gate",
             "integration_id": 15368
-          },
-          {
-            "context": "Semgrep SAST gate",
-            "integration_id": 15368
-          },
-          {
-            "context": "Trivy filesystem gate",
-            "integration_id": 15368
-          },
-          {
-            "context": "Performance gate",
-            "integration_id": 15368
-          },
-          {
-            "context": "AWS backend candidate",
-            "integration_id": 15368
           }
         ]
       }

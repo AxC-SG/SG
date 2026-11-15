@@ -164,9 +164,9 @@ Use Terraform 1.11 or later. Run `terraform test` from the initialized Standard 
 
 ## A03 — Backend candidate build and ECR publication
 
-The Trivy workflow builds the Linux/amd64 ECS target, checks the pinned RDS bundle and migration catalog inside the non-root image, and scans the image. Successful main pushes retain the scanned archive and a manifest containing the source commit, workflow run ID, archive checksum, image ID, RDS bundle checksum, and packaged migration heads for 14 days.
+The Trivy workflow (called by Quality as its `security` job) builds the Linux/amd64 ECS target, checks the pinned RDS bundle and migration catalog inside the non-root image, and scans the image. Successful main pushes retain the scanned archive and a manifest containing the source commit, workflow run ID, archive checksum, image ID, RDS bundle checksum, and packaged migration heads for 14 days.
 
-Use the **Publish AWS backend candidate** workflow on `main` with the reviewed Trivy run ID and the target environment. The workflow checks the successful main-push runs for Trivy, Quality, Semgrep, and Performance Governance on the candidate commit. It verifies the archived bytes and loaded image ID, publishes the retained image to the target account's immutable ECR repository, and records the registry digest. Use the same candidate run for lab and production. The 90-day publication artifact contains `image_digest` for `backend_candidate`. Copy it to the protected release evidence store with the approval and lab results. ECS updates remain a separate Terraform operation.
+Use the **Publish AWS backend candidate** workflow on `main` with the reviewed Quality run ID and the target environment. The workflow checks that the run is a `main` push whose `Quality gate` job succeeded; that gate covers Trivy, Semgrep and Performance Governance for the same commit. The lab is also published automatically from each `main` Quality run. It verifies the archived bytes and loaded image ID, publishes the retained image to the target account's immutable ECR repository, and records the registry digest. Use the same candidate run for lab and production. The 90-day publication artifact contains `image_digest` for `backend_candidate`. Copy it to the protected release evidence store with the approval and lab results. ECS updates remain a separate Terraform operation.
 
 Before enabling publishing, configure the following in each designated account and the GitHub repository.
 
@@ -182,8 +182,8 @@ The November 8 AWS preflight found no GitHub OIDC provider or regional ECR repos
 
 Use the existing CI build and scan to produce the candidate archive. Keep the publication step with a scoped AWS release operator and record the approval separately from the publishing action.
 
-1. Verify successful Trivy, Quality, Semgrep and Performance Governance runs on the same exact `main` commit. Identify the retained Trivy archive by run ID and check its manifest, archive SHA-256, loaded image ID and target-region RDS CA bundle. Prepare the lab release record with those identifiers and the exact AWS account, region and ECR repository.
-2. Have a reviewer independent of the publisher approve that release record. Store the approval in the protected evidence location with the candidate SHA, Trivy run ID and target. A change to those inputs requires fresh review.
+1. Verify a successful `Quality gate` in the `main` Quality run for the exact commit. Identify the retained archive by that Quality run ID and check its manifest, archive SHA-256, loaded image ID and target-region RDS CA bundle. Prepare the lab release record with those identifiers and the exact AWS account, region and ECR repository.
+2. Have a reviewer independent of the publisher approve that release record. Store the approval in the protected evidence location with the candidate SHA, Quality run ID and target. A change to those inputs requires fresh review.
 3. Use a short-lived AWS operator session scoped to the designated ECR repository. Verify caller account and region, confirm the repository uses immutable tags, and push the exact scanned image. Record the ECR digest, approval reference and publisher identity. ECS deployment follows its own gate and uses the recorded digest. [ECR push permissions](https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-push-iam.html)
 
 Qualify this operator path in Sydney before production use. The state backend, scoped roles, ECR foundation and a reviewed CI artifact are still required before the integrated lab run.

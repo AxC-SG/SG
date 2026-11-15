@@ -71,10 +71,7 @@ def classify(files, event):
         selected = set(COMPONENTS)
     else:
         selected = set().union(*(components_for(path) for path in files))
-    result = {name: name in selected for name in COMPONENTS}
-    # Performance certification starts the backend, so it follows backend selection.
-    result["performance"] = result["backend"]
-    return result
+    return {name: name in selected for name in COMPONENTS}
 
 
 def main():
