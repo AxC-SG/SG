@@ -1,6 +1,7 @@
 package com.prototype.vulnwatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -163,6 +164,38 @@ class AuditEventServiceTest {
 
         AuditEventService service = new AuditEventService(auditEventRepository, tenantRepository, requestActorService);
         service.record("tenant.owner.credential_recovered", "tenant", "tenant-1", "{\"credentialUpdated\":true}");
+
+        verify(auditEventRepository).save(any(AuditEvent.class));
+    }
+
+    @Test
+    void platformOwnerWithoutWorkspaceAuditsThroughPreAuthenticationPath() {
+        when(requestActorService.currentActor()).thenReturn(new RequestActor(
+                "owner@example.com", true, null, null, Set.of("PLATFORM_OWNER")));
+        when(auditEventRepository.save(any(AuditEvent.class))).thenAnswer(invocation -> {
+            assertTrue(TenantContext.isPreAuthenticationContext());
+            return invocation.getArgument(0);
+        });
+
+        AuditEventService service = new AuditEventService(auditEventRepository, tenantRepository, requestActorService);
+        service.record("demo.request.rejected", "demo_request", "request-1", null);
+
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditEventRepository).save(eventCaptor.capture());
+        assertNull(eventCaptor.getValue().getTenant());
+    }
+
+    @Test
+    void contextFreeAuditForOtherActorsKeepsTheCurrentContext() {
+        when(requestActorService.currentActor()).thenReturn(new RequestActor(
+                "analyst@example.com", false, null, null, Set.of("SECURITY_ANALYST")));
+        when(auditEventRepository.save(any(AuditEvent.class))).thenAnswer(invocation -> {
+            assertFalse(TenantContext.isPreAuthenticationContext());
+            return invocation.getArgument(0);
+        });
+
+        AuditEventService service = new AuditEventService(auditEventRepository, tenantRepository, requestActorService);
+        service.record("demo.request.rejected", "demo_request", "request-1", null);
 
         verify(auditEventRepository).save(any(AuditEvent.class));
     }
