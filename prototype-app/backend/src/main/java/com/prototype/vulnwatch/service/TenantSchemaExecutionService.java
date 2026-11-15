@@ -14,16 +14,28 @@ public class TenantSchemaExecutionService {
 
     private final TenantService tenantService;
     private final TenantSchemaService tenantSchemaService;
+    private final TenantWorkProgress progress;
 
     @Autowired
     public TenantSchemaExecutionService(
             TenantService tenantService,
             TenantSchemaService tenantSchemaService,
+            TenantWorkProgress progress,
             @Value("${app.tenancy.tenant-switch-guard-mode:FAIL}") String tenantSwitchGuardMode
     ) {
         this.tenantService = tenantService;
         this.tenantSchemaService = tenantSchemaService;
+        this.progress = Objects.requireNonNull(progress, "progress");
         TenantSwitchGuardMode.from(tenantSwitchGuardMode);
+    }
+
+    public TenantSchemaExecutionService(
+            TenantService tenantService,
+            TenantSchemaService tenantSchemaService,
+            String tenantSwitchGuardMode
+    ) {
+        this(tenantService, tenantSchemaService,
+                new TenantWorkProgress(BackgroundTaskExecutionPolicy.allowAll()), tenantSwitchGuardMode);
     }
 
     TenantSchemaExecutionService(TenantService tenantService, TenantSchemaService tenantSchemaService) {
@@ -42,6 +54,10 @@ public class TenantSchemaExecutionService {
         if (tenant == null || tenant.getId() == null) {
             return supplier.get();
         }
+        return progress.track(() -> runResolved(tenant, supplier));
+    }
+
+    private <T> T runResolved(Tenant tenant, Supplier<T> supplier) {
         Tenant resolved = tenant;
         if (tenant.getSchemaName() == null || tenant.getSchemaName().isBlank()) {
             resolved = tenantService.resolveTenantUuid(tenant.getId());
@@ -56,10 +72,12 @@ public class TenantSchemaExecutionService {
         if (tenantId == null) {
             return supplier.get();
         }
-        Tenant tenant = tenantService.resolveTenantUuid(tenantId);
-        String schemaName = tenantSchemaService.schemaNameForTenant(tenant);
-        tenantSchemaService.assertSchemaReady(schemaName);
-        return run(tenantId, schemaName, supplier);
+        return progress.track(() -> {
+            Tenant tenant = tenantService.resolveTenantUuid(tenantId);
+            String schemaName = tenantSchemaService.schemaNameForTenant(tenant);
+            tenantSchemaService.assertSchemaReady(schemaName);
+            return run(tenantId, schemaName, supplier);
+        });
     }
 
     private <T> T run(UUID tenantId, String schemaName, Supplier<T> supplier) {

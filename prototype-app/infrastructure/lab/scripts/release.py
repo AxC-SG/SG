@@ -3,20 +3,31 @@
 
   release.py status                      release inputs, lock, running images and the last release
   release.py init SHA PLATFORM TENANT    seed the release inputs from what the lab runs now (once)
-  release.py deploy SHA                  release a published main commit to the lab
-  release.py rollback                    return api and worker to the last accepted release, or the one before it
+  release.py deploy SHA [--no-progress-signal]
+                                         release a published main commit to the lab
+  release.py rollback [--no-progress-signal]
+                                         return api and worker to the last accepted release, or the one before it
+                                         (--no-progress-signal: the image predates the worker progress line, so its
+                                         absence is recorded instead of failing the release)
+  release.py check SHA                   read-only: would SHA be a proven schema-neutral, runtime-only release?
+                                         (catalog fingerprint, live schema state, migrator drift; changes nothing)
   release.py accept [--answers yn… [--note TEXT]]
                                          record the browser checks for the live release (interactive, or
                                          answers the operator relayed, one y/n per check in order)
   release.py unlock                      remove a stale lock after showing its holder
 
 A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/records/<id>.json:
-  1. qualify    the lab publication record for SHA, its ECR image, and its schema against the database
+  1. qualify    the lab publication record for SHA, its ECR image, its schema heads and migration catalog
+                fingerprint against the database, and the worker's live schema state
   2. stop       schema-changing releases only: stop api and worker, then snapshot RDS
   3. migrator   Terraform registers the candidate migrator task definition, and nothing else
   4. migrate    run the candidate migrator once; it must exit 0
   5. runtime    Terraform moves api and worker to the candidate, and nothing else
-  6. verify     services settled, healthy targets, public 200 and protected 401, startup errors
+  6. verify     services settled, healthy targets, public 200 and protected 401, then a bake of one
+                scheduler cycle: no defined failure in the api or worker log, and worker progress
+                reported with no cycle where every tenant job failed, and the worker's schema state shows no
+                unready tenant and a supported range that contains the database's tenant head; then the
+                signed-in smoke (frontend/e2e/lab-smoke.mjs) when LAB_SMOKE_CONFIG names its config
   7. accept     later, `release.py accept` records the browser checks; all passing makes it the
                 accepted release, any failure rejects it (then roll back or deploy a fix)
 
@@ -25,7 +36,8 @@ lab.sh and this script share one lock, so a lab cycle never runs mid-release. A 
 fails leaves `pending` set: lab.sh then refuses, rerunning `deploy` for the same commit
 resumes (every step is idempotent), and `rollback` recovers where the schema allows.
 
-Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5).
+Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5), LAB_SMOKE_CONFIG
+(the signed-in smoke's config, outside the repo; unset records the smoke as not configured), CHROMIUM_PATH.
 Credentials go only to child processes and are never printed.
 """
 import datetime
@@ -59,11 +71,29 @@ RECORDS = f"{PREFIX}/records"
 TF_REQUIRED = "1.13.5"
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
+# One five-minute scheduler cycle plus a minute of jitter, counted from when the services settle.
+BAKE_SECONDS = 360
+# The defined failures; keep in step with release_fatal_pattern in terraform/standard/release-alarms.tf.
+FATAL_PATTERNS = (
+    "outside this release's supported range",
+    "violates row-level security policy",
+    "Tenant-scoped background work failed",
+    "Unhandled API error",
+)
+FATAL_FILTER = " ".join(f'?"{pattern}"' for pattern in FATAL_PATTERNS)
+PROGRESS_FILTER = '"tenant_work_progress"'
+PROGRESS_LINE = re.compile(r"tenant_work_progress outcome=(\w+) succeeded=(\d+) failed=(\d+)")
+SCHEMA_FILTER = '"tenant_schema_state"'
+SCHEMA_LINE = re.compile(r"tenant_schema_state unready_tenants=(\d+) supported=(\d+)\.\.(\d+) active_versions=(\S+)")
+SCHEMA_LOOKBACK = datetime.timedelta(minutes=10)
+FINGERPRINT = re.compile(r"[0-9a-f]{64}")
 
 LAB_DIR = Path(__file__).resolve().parents[1]
 CFG = LAB_DIR / "config"
 TF_ROOT = (LAB_DIR / ".." / "terraform" / "standard").resolve()
 BROWSER_CHECKS = CFG / "release-browser-checks.json"
+SMOKE_SCRIPT = LAB_DIR.parents[1] / "frontend" / "e2e" / "lab-smoke.mjs"
+SMOKE_TIMEOUT_SECONDS = 600
 
 TASK = 'aws_ecs_task_definition.backend["{}"]'
 SERVICE = 'aws_ecs_service.backend["{}"]'
@@ -172,6 +202,67 @@ def task_definition_arns(state):
     return arns
 
 
+def progress_check(messages, required=True):
+    """Worker progress over the bake: at least one cycle with succeeding tenant work, none where all failed."""
+    outcomes = [match.group(1) for match in map(PROGRESS_LINE.search, messages) if match]
+    counts = {outcome: outcomes.count(outcome) for outcome in sorted(set(outcomes))}
+    if not outcomes:
+        if required:
+            return False, "no tenant_work_progress line from the worker"
+        return True, "no tenant_work_progress line; the operator recorded that this image predates the signal"
+    if "failing" in counts:
+        return False, f"a cycle had tenant work failing and none succeeding: {json.dumps(counts)}"
+    if not counts.get("healthy") and not counts.get("degraded"):
+        return False, f"no cycle with succeeding tenant work: {json.dumps(counts)}"
+    return True, json.dumps(counts)
+
+
+def catalog_check(database, candidate):
+    """same / changed / unverified: the packaged migration catalog against the one the database ran."""
+    if not (isinstance(database, str) and FINGERPRINT.fullmatch(database)) or \
+            not (isinstance(candidate, str) and FINGERPRINT.fullmatch(candidate)):
+        return "unverified"
+    return "same" if database == candidate else "changed"
+
+
+def schema_state_check(messages, tenant_head, required=True):
+    """The latest worker schema-state line: no unready tenant, and the supported range holds the head.
+
+    Readiness stays UP while tenants are unready, so this is the evidence; the 2026-11-15 V23..V20
+    range would fail here before a person found it.
+    """
+    states = [match for match in map(SCHEMA_LINE.search, messages) if match]
+    if not states:
+        if any("tenant_schema_state unavailable" in message for message in messages):
+            return False, "the worker could not read the tenant schema control plane"
+        if required:
+            return False, "no tenant_schema_state line from the worker"
+        return True, "no tenant_schema_state line; the operator recorded that this image predates the signal"
+    unready, low, high, active = states[-1].groups()
+    detail = f"unready_tenants={unready} supported=V{low}..V{high} active_versions={active} database tenant head=V{tenant_head}"
+    if int(unready) != 0:
+        return False, detail
+    if not int(low) <= tenant_head <= int(high):
+        return False, detail + " (outside the supported range)"
+    return True, detail
+
+
+def smoke_check(result):
+    """The signed-in smoke's verdict. Unconfigured does not block a release; its detail records the detection gap."""
+    if result is None:
+        return True, "not configured (LAB_SMOKE_CONFIG unset): signed-in writes unverified, a recorded detection gap"
+    failed = [f"{item.get('name')}: {item.get('detail')}" for item in result.get("checks", []) if not item.get("ok")]
+    if result.get("passed") is True and result.get("checks") and not failed:
+        return True, f"{len(result['checks'])} checks passed"
+    return False, "; ".join(failed)[:600] or "the smoke reported no checks"
+
+
+def fatal_check(messages):
+    if not messages:
+        return True, "none"
+    return False, f"{len(messages)} line(s), first: {messages[0].strip()[:300]}"
+
+
 def rollback_target(inputs):
     """The release to return to: the accepted one while a release is unfinished or the lab has
     left it (failed or rejected), otherwise the accepted release before it."""
@@ -270,7 +361,7 @@ class Release:
                 raise ReleaseError("release inputs appeared meanwhile; nothing changed")
             self.lab.log(f"Seeded release inputs: {short(digest)} from {sha[:7]}, platform V{platform}, tenant V{tenant}.")
 
-    def deploy(self, ref):
+    def deploy(self, ref, progress_required=True):
         sha = self.lab.resolve_sha(ref)
         with self.locked("deploy " + sha[:7]):
             inputs = self.inputs()
@@ -284,6 +375,7 @@ class Release:
             publication = self.lab.publication(sha)
             check_publication(publication, sha)
             digest, heads = publication["image_digest"], publication["migration_heads"]
+            fingerprint = publication.get("migration_catalog_sha256")
             if not self.lab.ecr_has(digest):
                 raise ReleaseError(f"{digest} is not in the lab ECR repository")
             if not self.lab.services_present():
@@ -295,9 +387,12 @@ class Release:
                 mode = schema_mode(inputs["database_heads"], heads)
                 record = {"release_id": release_id(sha, utc_now()), "kind": "deploy", "status": "started", "mode": mode,
                           "candidate": {"source_sha": sha, "image_digest": digest, "migration_heads": heads,
+                                        "migration_catalog_sha256": fingerprint,
                                         "publication_run": publication.get("candidate_run")},
                           "from": {key: inputs[key] for key in ("runtime_image_digest", "migrator_image_digest", "database_heads")},
                           "steps": [], "checks": {}, "browser_checks": [], "started_at": stamp()}
+            if not pending:
+                self.qualify_schema(inputs, record, fingerprint)
             self.lab.log(f"Release {record['release_id']}: {short(inputs['runtime_image_digest'])} -> {short(digest)} "
                          f"({sha[:7]}), schema {mode}: {inputs['database_heads']} -> {heads}"
                          f"{' (resuming)' if pending else ''}.")
@@ -307,10 +402,64 @@ class Release:
                              "The previous image cannot run on the new schema; recovery is the snapshot.")
             if not self.lab.confirm(f"Release {sha[:7]} to the lab?"):
                 raise ReleaseError("not confirmed; nothing changed")
-            meta = {"source_sha": sha, "migration_heads": heads}
-            self.run(inputs, record, runtime=digest, migrator=digest, meta=meta, stop=(mode == "forward"))
+            meta = {"source_sha": sha, "migration_heads": heads, "migration_catalog_sha256": fingerprint}
+            self.run(inputs, record, runtime=digest, migrator=digest, meta=meta, stop=(mode == "forward"),
+                     progress_required=progress_required)
 
-    def rollback(self):
+    def qualify_schema(self, inputs, record, fingerprint):
+        """Refuse before any change when the catalog or the live schema state contradicts the heads."""
+        catalog = catalog_check(inputs.get("database_catalog_sha256"), fingerprint)
+        record["catalog"] = catalog
+        if record["mode"] == "neutral" and catalog == "changed":
+            raise ReleaseError("the migration heads are equal but the migration catalog differs from the one the "
+                               "database ran (an applied migration was changed); nothing changed")
+        if catalog == "unverified":
+            self.lab.log("The migration catalog cannot be compared (the inputs or the publication predate the "
+                         "fingerprint); this release is recorded as schema-unverified.")
+        messages = self.lab.log_messages("worker", utc_now() - SCHEMA_LOOKBACK, SCHEMA_FILTER)
+        passed, detail = schema_state_check(messages, inputs["database_heads"]["tenant"], required=False)
+        record["schema_state_before"] = {"passed": passed, "detail": detail}
+        if not passed and record["mode"] == "neutral":
+            raise ReleaseError(f"the live tenant schema state is not ready ({detail}); nothing changed")
+
+    def check(self, ref):
+        """Read-only eligibility for a runtime-only release (CD plan section 4.3). Changes nothing."""
+        sha = self.lab.resolve_sha(ref)
+        inputs = self.inputs()
+        publication = self.lab.publication(sha)
+        check_publication(publication, sha)
+        reasons = []
+        if inputs.get("pending"):
+            reasons.append(f"needs_operator: {inputs['pending']['kind']} {inputs['pending']['release_id']} stopped "
+                           f"after {inputs['pending']['phase']}")
+        if inputs.get("awaiting_acceptance"):
+            reasons.append(f"awaiting_acceptance: {inputs['awaiting_acceptance']['release_id']}")
+        if not self.lab.services_present():
+            reasons.append("parked: the lab services are not running")
+        if publication["migration_heads"] != inputs["database_heads"]:
+            reasons.append(f"schema_changed: heads {publication['migration_heads']} against the database "
+                           f"{inputs['database_heads']}")
+        catalog = catalog_check(inputs.get("database_catalog_sha256"), publication.get("migration_catalog_sha256"))
+        if catalog != "same":
+            reasons.append(f"schema_{catalog}: migration catalog fingerprint is {catalog}")
+        passed, detail = schema_state_check(
+            self.lab.log_messages("worker", utc_now() - SCHEMA_LOOKBACK, SCHEMA_FILTER), inputs["database_heads"]["tenant"])
+        if not passed:
+            reasons.append(f"schema_unverified: {detail}")
+        # The runtime-only path keeps the retained migrator. Rendering it from this checkout with that
+        # digest must change nothing; any change means its configuration moved, which needs review.
+        _, document = self.lab.plan("migrator-drift", {"runtime": inputs["runtime_image_digest"],
+                                                        "migrator": inputs["migrator_image_digest"]}, TARGETS["migrator"])
+        drift, _ = check_plan(document, "migrator")
+        if drift:
+            reasons.append("migrator_drift: " + "; ".join(line.strip() for line in drift))
+        outcome = "eligible" if not reasons else (
+            "needs_operator" if any(reason.startswith("needs_operator") for reason in reasons) else "blocked")
+        result = {"source_sha": sha, "outcome": outcome, "reasons": reasons, "schema_state": detail, "catalog": catalog}
+        print(json.dumps(result, indent=2))
+        return result
+
+    def rollback(self, progress_required=True):
         with self.locked("rollback"):
             inputs = self.inputs()
             target = rollback_target(inputs)
@@ -334,7 +483,7 @@ class Release:
             self.reject_waiting(inputs, "rolled back before acceptance")
             meta = {"source_sha": target["source_sha"], "migration_heads": target["migration_heads"]}
             self.run(inputs, record, runtime=target["runtime_image_digest"], migrator=None, meta=meta,
-                     stop=False, restores=target)
+                     stop=False, restores=target, progress_required=progress_required)
 
     def unlock(self):
         lock = self.lab.s3_get(LOCK_KEY)
@@ -352,7 +501,7 @@ class Release:
         return record["steps"] if record else []
 
     # ---- the release itself -----------------------------------------------------------
-    def run(self, inputs, record, runtime, migrator, meta, stop, restores=None):
+    def run(self, inputs, record, runtime, migrator, meta, stop, restores=None, progress_required=True):
         step = "start"
         try:
             if stop and not self.done(record, "stopped"):
@@ -374,13 +523,14 @@ class Release:
                 if not succeeded:
                     raise ReleaseError(f"the migrator failed ({detail}); api and worker were not changed")
                 inputs["database_heads"] = meta["migration_heads"]
+                inputs["database_catalog_sha256"] = meta.get("migration_catalog_sha256")
                 self.mark(inputs, record, "migrated", task=task, detail=detail)
             step = "runtime"
             self.terraform("runtime", {"runtime": runtime, "migrator": inputs["migrator_image_digest"]})
             inputs["runtime_image_digest"], inputs["runtime"] = runtime, meta
             self.mark(inputs, record, "runtime")
             step = "verify"
-            record["checks"] = self.verify(record)
+            record["checks"] = self.verify(record, progress_required)
             failed = [name for name, check in record["checks"].items() if not check["passed"]]
             if failed:
                 raise ReleaseError(f"automated checks failed: {', '.join(failed)}")
@@ -427,7 +577,8 @@ class Release:
             inputs["previous_accepted"] = inputs["previous_accepted"] if same else None
             inputs["accepted"] = restores
         elif passed:
-            meta = {"source_sha": waiting["source_sha"], "migration_heads": waiting["migration_heads"]}
+            meta = {"source_sha": waiting["source_sha"], "migration_heads": waiting["migration_heads"],
+                    "migration_catalog_sha256": waiting.get("migration_catalog_sha256")}
             inputs["previous_accepted"] = inputs.get("accepted")
             inputs["accepted"] = {"release_id": record["release_id"], "runtime_image_digest": waiting["runtime_image_digest"], **meta}
         self.save(inputs, record)
@@ -455,9 +606,10 @@ class Release:
         if changes:
             self.lab.apply(plan)
 
-    def verify(self, record):
+    def verify(self, record, progress_required=True):
         arns = self.lab.outputs()["task_definition_arns"]
         services = self.lab.settled_services({role: arns[role] for role in SERVICES})
+        settled_at = utc_now()
         checks = {f"{role} settled": {"passed": service_settled(services[role], arns[role]),
                                       "detail": f"{services[role]['runningCount']}/{services[role]['desiredCount']} on "
                                                 f"{arns[role].rsplit('/', 1)[-1]}"} for role in SERVICES}
@@ -467,8 +619,22 @@ class Release:
             status = self.lab.http_status(path)
             checks[f"GET {path} {expected}"] = {"passed": status == expected, "detail": str(status)}
         errors = self.lab.startup_errors(record["started_at"])
-        # Informational: the browser checks decide, with the count in front of the operator.
+        # Informational: generic ERROR lines include expected ones; the defined failures below gate.
         checks["startup ERROR lines"] = {"passed": True, "detail": json.dumps(errors)}
+        bake_end = settled_at + datetime.timedelta(seconds=BAKE_SECONDS)
+        self.lab.log(f"Baking until {stamp(bake_end)}: one scheduler cycle on the new tasks.")
+        self.lab.wait_until(bake_end)
+        record["bake"] = {"from": stamp(settled_at), "to": stamp(utc_now())}
+        for role in SERVICES:
+            passed, detail = fatal_check(self.lab.log_messages(role, settled_at, FATAL_FILTER))
+            checks[f"{role} defined failures"] = {"passed": passed, "detail": detail}
+        passed, detail = progress_check(self.lab.log_messages("worker", settled_at, PROGRESS_FILTER), progress_required)
+        checks["worker progress"] = {"passed": passed, "detail": detail}
+        passed, detail = schema_state_check(self.lab.log_messages("worker", settled_at, SCHEMA_FILTER),
+                                            record["candidate"]["migration_heads"]["tenant"], progress_required)
+        checks["worker schema state"] = {"passed": passed, "detail": detail}
+        passed, detail = smoke_check(self.lab.signed_in_smoke())
+        checks["signed-in smoke"] = {"passed": passed, "detail": detail}
         for name, check in checks.items():
             self.lab.log(f"  {'ok  ' if check['passed'] else 'FAIL'} {name}: {check['detail']}")
         return checks
@@ -677,6 +843,30 @@ class AwsLab:
         except (urllib.error.URLError, TimeoutError) as error:
             return f"unreachable: {error}"
 
+    def wait_until(self, moment):
+        remaining = (moment - utc_now()).total_seconds()
+        if remaining > 0:
+            time.sleep(remaining)
+
+    def log_messages(self, role, since, pattern):
+        found = self.aws("logs", "filter-log-events", "--log-group-name", f"/ecs/{CLUSTER}/{role}",
+                         "--start-time", str(int(since.timestamp() * 1000)), "--filter-pattern", pattern,
+                         "--max-items", "200")
+        return [event["message"] for event in (found or {}).get("events", [])]
+
+    def signed_in_smoke(self):
+        """Run the signed-in smoke without AWS credentials; None when it is not configured."""
+        config = os.environ.get("LAB_SMOKE_CONFIG")
+        if not config:
+            return None
+        env = {key: value for key, value in os.environ.items() if not key.startswith("AWS_")}
+        try:
+            result = subprocess.run(["node", str(SMOKE_SCRIPT), "--config", config], env=env, text=True,
+                                    capture_output=True, timeout=SMOKE_TIMEOUT_SECONDS, cwd=SMOKE_SCRIPT.parents[1])
+            return json.loads(result.stdout)
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
+            return {"passed": False, "checks": [{"name": "smoke run", "ok": False, "detail": type(error).__name__}]}
+
     def startup_errors(self, since):
         start = int(datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ")
                     .replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
@@ -714,12 +904,15 @@ def main(argv):
         elif command == "init" and len(args) == 3:
             lab.guard()
             release.init(args[0], int(args[1]), int(args[2]))
-        elif command == "deploy" and len(args) == 1:
+        elif command == "deploy" and len(args) in (1, 2) and args[1:] in ([], ["--no-progress-signal"]):
             lab.guard()
-            release.deploy(args[0])
-        elif command == "rollback" and not args:
+            release.deploy(args[0], progress_required=len(args) == 1)
+        elif command == "check" and len(args) == 1:
             lab.guard()
-            release.rollback()
+            release.check(args[0])
+        elif command == "rollback" and args in ([], ["--no-progress-signal"]):
+            lab.guard()
+            release.rollback(progress_required=not args)
         elif command == "accept" and not args:
             lab.guard()
             release.accept()

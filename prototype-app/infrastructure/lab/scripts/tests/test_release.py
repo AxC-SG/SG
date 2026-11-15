@@ -16,18 +16,20 @@ spec.loader.exec_module(release)
 OLD_SHA, NEW_SHA = "0" * 40, "e" * 40
 OLD, NEW = "sha256:" + "0" * 64, "sha256:" + "e" * 64
 V20, V23 = {"platform": 15, "tenant": 20}, {"platform": 16, "tenant": 23}
+CATALOG, OTHER_CATALOG = "c" * 64, "d" * 64
 ARNS = {role: f"arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-{role}:9" for role in ("api", "worker", "migrator")}
 
 
-def inputs(heads=V23, digest=OLD, sha=OLD_SHA, previous=None, pending=None):
+def inputs(heads=V23, digest=OLD, sha=OLD_SHA, previous=None, pending=None, catalog=CATALOG):
     meta = {"source_sha": sha, "migration_heads": heads}
     return {"schema": 1, "runtime_image_digest": digest, "migrator_image_digest": digest, "runtime": meta, "migrator": meta,
-            "database_heads": heads, "accepted": {"release_id": "baseline", "runtime_image_digest": digest, **meta},
+            "database_heads": heads, "database_catalog_sha256": catalog, "accepted": {"release_id": "baseline", "runtime_image_digest": digest, **meta},
             "previous_accepted": previous, "pending": pending, "last_release": None}
 
 
-def publication(heads=V23, digest=NEW, sha=NEW_SHA):
+def publication(heads=V23, digest=NEW, sha=NEW_SHA, catalog=CATALOG):
     return {"source_sha": sha, "target": "lab", "aws_region": "ap-southeast-2", "image_digest": digest,
+            "migration_catalog_sha256": catalog,
             "ecr_image": f"{release.REGISTRY}/{release.ECR_REPOSITORY}@{digest}", "migration_heads": heads,
             "candidate_run": "43633506061"}
 
@@ -40,7 +42,12 @@ DEFAULT_PLANS = {
     "migrator": plan((release.TASK.format("migrator"), ("delete", "create"))),
     "runtime": plan(*[(release.TASK.format(role), ("delete", "create")) for role in release.SERVICES],
                     *[(release.SERVICE.format(role), ("update",)) for role in release.SERVICES]),
+    "migrator-drift": plan(),
 }
+
+
+READY_SCHEMA = ["message=tenant_schema_state unready_tenants=0 supported=23..23 active_versions=23..23 packaged_target=23"]
+HEALTHY_PROGRESS = ["2026-11-15T07:01:30.000Z level=INFO message=tenant_work_progress outcome=healthy succeeded=42 failed=0"]
 
 
 def stopped_task(exit_code=0, stop_code="EssentialContainerExited"):
@@ -57,6 +64,12 @@ class FakeLab:
         self.browser_ok, self.confirmed, self.present = browser_ok, confirmed, present
         self.live = live or {"api": OLD, "worker": OLD, "migrator": OLD}
         self.calls = []
+        self.baked = []
+        self.queried = []
+        self.smoke = {"passed": True, "checks": [{"name": "platform write: reject a demo request", "ok": True, "detail": ""}]}
+        self.logs = {("api", release.FATAL_FILTER): [], ("worker", release.FATAL_FILTER): [],
+                     ("worker", release.PROGRESS_FILTER): list(HEALTHY_PROGRESS),
+                     ("worker", release.SCHEMA_FILTER): list(READY_SCHEMA)}
 
     def log(self, message):
         pass
@@ -101,7 +114,7 @@ class FakeLab:
 
     def plan(self, phase, images, targets):
         self.calls.append(("plan", phase, images["runtime"], images["migrator"]))
-        assert targets == release.TARGETS[phase]
+        assert targets == release.TARGETS["migrator" if phase == "migrator-drift" else phase]
         return f"{phase}.tfplan", self.plans[phase]
 
     def apply(self, plan_file):
@@ -130,6 +143,16 @@ class FakeLab:
     def startup_errors(self, since):
         return {"api": 0, "worker": 0}
 
+    def wait_until(self, moment):
+        self.baked.append(moment)
+
+    def signed_in_smoke(self):
+        return self.smoke
+
+    def log_messages(self, role, since, pattern):
+        self.queried.append((role, since, pattern))
+        return list(self.logs[(role, pattern)])
+
     def browser_checks(self, checks):
         self.calls.append("browser")
         return [{"check": check, "passed": self.browser_ok, "note": ""} for check in checks]
@@ -143,6 +166,24 @@ class FakeLab:
 
 
 class PureTest(unittest.TestCase):
+    def test_smoke_check_needs_reported_passing_checks(self):
+        self.assertFalse(release.smoke_check({"passed": True, "checks": []})[0])
+        self.assertFalse(release.smoke_check({"passed": True, "checks": [{"name": "x", "ok": False, "detail": "d"}]})[0])
+        self.assertTrue(release.smoke_check({"passed": True, "checks": [{"name": "x", "ok": True}]})[0])
+
+    def test_progress_check(self):
+        line = "message=tenant_work_progress outcome={} succeeded=1 failed=0".format
+        self.assertTrue(release.progress_check([line("healthy"), line("degraded")])[0])
+        self.assertFalse(release.progress_check([line("idle"), line("idle")])[0])
+        self.assertFalse(release.progress_check([line("healthy"), line("failing")])[0])
+        self.assertFalse(release.progress_check(["unrelated"])[0])
+        self.assertTrue(release.progress_check([], required=False)[0])
+
+    def test_fatal_patterns_match_the_release_alarm_filter(self):
+        terraform = (release.TF_ROOT / "release-alarms.tf").read_text()
+        block = terraform[terraform.index("release_fatal_pattern = join"):terraform.index("release_log_metrics")]
+        self.assertEqual(re.findall(r'\?\\"([^\\]+)\\"', block), list(release.FATAL_PATTERNS))
+
     def test_schema_mode(self):
         self.assertEqual(release.schema_mode(V23, V23), "neutral")
         self.assertEqual(release.schema_mode(V20, V23), "forward")
@@ -275,6 +316,132 @@ class DeployTest(unittest.TestCase):
         self.assertEqual(lab.inputs["pending"]["phase"], "runtime")
         self.assertIsNone(lab.inputs.get("awaiting_acceptance"))
 
+    def test_verify_bakes_one_scheduler_cycle_after_the_services_settle(self):
+        lab = FakeLab(inputs())
+        self.deploy(lab)
+        [bake_end] = lab.baked
+        settled = min(since for _, since, pattern in lab.queried if pattern == release.FATAL_FILTER)
+        self.assertGreaterEqual((bake_end - settled).total_seconds(), 5 * 60 + 60)
+        checks = lab.record()["checks"]
+        self.assertTrue(all(checks[name]["passed"] for name in ("api defined failures", "worker defined failures", "worker progress")))
+        self.assertIn("bake", lab.record())
+
+    def test_a_defined_failure_during_the_bake_fails_the_release(self):
+        for role, line in (("worker", "WARN message=Tenant-scoped background work failed for tenant t: Tenant schema is "
+                                      "outside this release's supported range V23..V20: tenant_x (current=V23)"),
+                           ("api", "ERROR message=Unhandled API error org.springframework.orm.jpa.JpaSystemException: "
+                                   "new row violates row-level security policy for table \"audit_events\"")):
+            with self.subTest(role=role):
+                lab = FakeLab(inputs())
+                lab.logs[(role, release.FATAL_FILTER)] = [line]
+                with self.assertRaisesRegex(release.ReleaseError, f"{role} defined failures"):
+                    self.deploy(lab)
+                self.assertEqual(lab.inputs["pending"]["phase"], "runtime")
+                self.assertIsNone(lab.inputs.get("awaiting_acceptance"))
+
+    def test_a_running_worker_whose_tenant_work_fails_fails_the_release(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = [
+            "message=tenant_work_progress outcome=failing succeeded=0 failed=12"]
+        with self.assertRaisesRegex(release.ReleaseError, "worker progress"):
+            self.deploy(lab)
+
+    def test_missing_progress_fails_unless_the_operator_records_an_older_image(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = []
+        with self.assertRaisesRegex(release.ReleaseError, "worker progress"):
+            self.deploy(lab)
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = []
+        release.Release(lab).deploy("main", progress_required=False)
+        self.assertIn("predates the signal", lab.record()["checks"]["worker progress"]["detail"])
+        self.assertEqual(lab.record()["status"], "verified")
+
+    def test_equal_heads_with_a_changed_catalog_change_nothing(self):
+        lab = FakeLab(inputs(), pub=publication(catalog=OTHER_CATALOG))
+        with self.assertRaisesRegex(release.ReleaseError, "migration catalog differs"):
+            self.deploy(lab)
+        self.assertEqual(lab.calls, [])
+        self.assertIsNone(lab.inputs["pending"])
+
+    def test_an_unknown_catalog_is_recorded_as_unverified(self):
+        lab = FakeLab(inputs(catalog=None))
+        self.deploy(lab)
+        self.assertEqual(lab.record()["catalog"], "unverified")
+
+    def test_migrating_records_the_catalog_the_database_ran(self):
+        lab = FakeLab(inputs(heads=V20, catalog=None), pub=publication(heads=V23, catalog=OTHER_CATALOG))
+        lab.logs[("worker", release.SCHEMA_FILTER)] = [
+            "message=tenant_schema_state unready_tenants=0 supported=20..20 active_versions=20..20 packaged_target=20"]
+        lab.logs[("worker", release.SCHEMA_FILTER)].append(READY_SCHEMA[0])
+        self.deploy(lab)
+        self.assertEqual(lab.inputs["database_catalog_sha256"], OTHER_CATALOG)
+        release.Release(lab).accept()
+        self.assertEqual(lab.inputs["accepted"]["migration_catalog_sha256"], OTHER_CATALOG)
+
+    def test_unready_tenants_block_a_neutral_release_before_any_change(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.SCHEMA_FILTER)] = [
+            "message=tenant_schema_state unready_tenants=1 supported=23..23 active_versions=22..23 packaged_target=23"]
+        with self.assertRaisesRegex(release.ReleaseError, "schema state is not ready"):
+            self.deploy(lab)
+        self.assertEqual(lab.calls, [])
+
+    def test_a_supported_range_without_the_database_head_fails_the_bake(self):
+        # The 2026-11-15 failure: the binary ran with a configured maximum below the database head.
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.SCHEMA_FILTER)] = []
+        lab.log_messages = lambda role, since, pattern, original=lab.log_messages: (
+            ["message=tenant_schema_state unready_tenants=0 supported=23..20 active_versions=23..23 packaged_target=23"]
+            if pattern == release.SCHEMA_FILTER and since > release.utc_now() - datetime.timedelta(minutes=1)
+            else original(role, since, pattern))
+        with self.assertRaisesRegex(release.ReleaseError, "worker schema state"):
+            self.deploy(lab)
+        self.assertIn("V23..V20", lab.record()["checks"]["worker schema state"]["detail"])
+
+    def test_check_reports_an_eligible_runtime_only_release(self):
+        lab = FakeLab(inputs(), pub=publication())
+        result = release.Release(lab).check("main")
+        self.assertEqual((result["outcome"], result["reasons"]), ("eligible", []))
+        self.assertEqual(lab.calls, [("plan", "migrator-drift", OLD, OLD)])
+        self.assertEqual(lab.inputs, inputs())
+
+    def test_check_blocks_with_each_reason(self):
+        cases = {
+            "schema_changed": dict(pub=publication(heads={"platform": 16, "tenant": 24})),
+            "schema_unverified": dict(pub=publication(catalog=None)),
+            "migrator_drift": dict(plans={"migrator-drift": plan((release.TASK.format("migrator"), ("delete", "create")))}),
+            "parked": dict(present=False),
+            "awaiting_acceptance": dict(store_inputs={**inputs(), "awaiting_acceptance": {"release_id": "r1"}}),
+        }
+        for reason, options in cases.items():
+            with self.subTest(reason=reason):
+                lab = FakeLab(options.pop("store_inputs", inputs()), **options)
+                result = release.Release(lab).check("main")
+                self.assertEqual(result["outcome"], "blocked")
+                self.assertTrue(any(item.startswith(reason) for item in result["reasons"]), result["reasons"])
+                self.assertNotIn(("apply", "migrator-drift.tfplan"), lab.calls)
+
+    def test_check_needs_live_schema_evidence(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.SCHEMA_FILTER)] = []
+        result = release.Release(lab).check("main")
+        self.assertTrue(any(item.startswith("schema_unverified") for item in result["reasons"]))
+
+    def test_a_failed_signed_in_write_fails_the_release(self):
+        lab = FakeLab(inputs())
+        lab.smoke = {"passed": False, "checks": [
+            {"name": "platform write: reject a demo request", "ok": False, "detail": "status 500"}]}
+        with self.assertRaisesRegex(release.ReleaseError, "signed-in smoke"):
+            self.deploy(lab)
+        self.assertIn("status 500", lab.record()["checks"]["signed-in smoke"]["detail"])
+
+    def test_an_unconfigured_smoke_is_recorded_as_a_detection_gap(self):
+        lab = FakeLab(inputs())
+        lab.smoke = None
+        self.deploy(lab)
+        self.assertIn("detection gap", lab.record()["checks"]["signed-in smoke"]["detail"])
+
     def test_rejected_browser_check_keeps_the_accepted_release(self):
         lab = FakeLab(inputs(), browser_ok=False)
         self.deploy(lab)
@@ -380,6 +547,8 @@ class RollbackTest(unittest.TestCase):
 
     def test_rollback_after_a_failed_deploy_restores_the_accepted_release(self):
         lab = FakeLab(inputs(heads=V20), plans={"migrator": plan(("aws_lb.api[\"standard\"]", ("update",)))})
+        lab.logs[("worker", release.SCHEMA_FILTER)] = [
+            "message=tenant_schema_state unready_tenants=0 supported=20..20 active_versions=20..20 packaged_target=20"]
         with self.assertRaises(release.ReleaseError):
             release.Release(lab).deploy("main")
         self.assertEqual(lab.calls[:3], ["confirm", "stop", "snapshot"])

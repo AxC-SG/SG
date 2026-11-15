@@ -1,0 +1,47 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageReleaseAlarmTopic",
+      "Effect": "Allow",
+      "Action": [
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:GetTopicAttributes",
+        "sns:SetTopicAttributes",
+        "sns:ListTagsForResource",
+        "sns:TagResource",
+        "sns:UntagResource"
+      ],
+      "Resource": "arn:aws:sns:ap-southeast-2:736486260824:scoutgrid-lab-release"
+    },
+    {
+      "Sid": "ManageReleaseMetricFilters",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutMetricFilter",
+        "logs:DeleteMetricFilter",
+        "logs:DescribeMetricFilters"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker"
+      ]
+    },
+    {
+      "Sid": "ManageReleaseAlarms",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource"
+      ],
+      "Resource": "arn:aws:cloudwatch:ap-southeast-2:736486260824:alarm:scoutgrid-lab-release-*"
+    }
+  ]
+}

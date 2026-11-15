@@ -761,6 +761,7 @@ Distinct from — and layers on top of — the existing `tenant_support_grants` 
 |--------|------|-------------|
 | POST | `/demo-requests` | Submit a demo request (public) |
 | GET | `/platform/demo-requests` | List demo requests (`PLATFORM_OWNER`) |
+| POST | `/platform/demo-requests/smoke-fixtures` | Lab release smoke only: a disposable pending request at a `.invalid` address, at most five pending; 404 unless `app.demo.smoke-fixtures-enabled` (Terraform refuses it in production) |
 | POST | `/platform/demo-requests/{requestId}/approve` | Approve |
 | POST | `/platform/demo-requests/{requestId}/reject` | Reject |
 | POST | `/platform/demo-requests/{requestId}/resend-invite` | Resend invite |

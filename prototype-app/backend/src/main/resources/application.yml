@@ -63,6 +63,8 @@ app:
   demo:
     app-base-url: ${APP_DEMO_APP_BASE_URL:http://127.0.0.1:5173}
     synchronous-tenant-provisioning-enabled: ${APP_DEMO_SYNCHRONOUS_TENANT_PROVISIONING_ENABLED:false}
+    # Lab release smoke only (POST /api/platform/demo-requests/smoke-fixtures); Terraform refuses it for production.
+    smoke-fixtures-enabled: ${APP_DEMO_SMOKE_FIXTURES_ENABLED:false}
   schema-migration:
     enabled: ${APP_SCHEMA_MIGRATION_ENABLED:false}
     report-only: ${APP_SCHEMA_MIGRATION_REPORT_ONLY:false}
