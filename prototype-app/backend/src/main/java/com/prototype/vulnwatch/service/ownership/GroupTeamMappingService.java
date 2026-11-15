@@ -272,17 +272,17 @@ public class GroupTeamMappingService {
         if (teamId.equals(group.currentTeamId())) throw conflict("The group already maps to this team");
     }
 
-    /** CMDB CIs whose support_group is this group's sys_id, on the CMDB's instance only. */
+    /** CMDB CIs whose support group references this group's sys_id, on the CMDB's instance only. */
     private Affected affected(GroupFacts group) {
         if (!sameInstance(group)) return new Affected(List.of(), List.of(), 0);
         String sysId = group.sysId().toLowerCase(Locale.ROOT);
         List<Object[]> rows = jdbc.query("""
                 SELECT ci.sys_id, a.ownership_subject_id FROM cis ci LEFT JOIN assets a ON a.id = ci.asset_id
-                 WHERE lower(ci.support_group) = ? AND ci.sys_id ~* '^[0-9a-f]{32}$' ORDER BY ci.sys_id
+                 WHERE ci.support_group_sys_id = ? AND ci.sys_id ~* '^[0-9a-f]{32}$' ORDER BY ci.sys_id
                 """, (rs, n) -> new Object[] {rs.getString(1), rs.getObject(2, UUID.class)}, sysId);
         long findings = jdbc.queryForObject("""
                 SELECT count(*) FROM findings f WHERE f.status = 'OPEN' AND f.asset_id IN (
-                    SELECT ci.asset_id FROM cis ci WHERE lower(ci.support_group) = ? AND ci.sys_id ~* '^[0-9a-f]{32}$')
+                    SELECT ci.asset_id FROM cis ci WHERE ci.support_group_sys_id = ? AND ci.sys_id ~* '^[0-9a-f]{32}$')
                 """, Long.class, sysId);
         return new Affected(rows.stream().map(r -> (String) r[0]).toList(),
                 rows.stream().map(r -> (UUID) r[1]).filter(Objects::nonNull).distinct().toList(), findings);

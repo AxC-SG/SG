@@ -45,7 +45,7 @@ public class ServiceNowOwnershipProducer {
     private static final Logger LOG = LoggerFactory.getLogger(ServiceNowOwnershipProducer.class);
     private static final int PAGE = 500;
 
-    private record Ci(String sysId, UUID assetId, String supportGroup, String department, String ownerEmail) { }
+    private record Ci(String sysId, UUID assetId, String supportGroup, String supportGroupSysId, String department, String ownerEmail) { }
 
     private record Desired(Ci ci, String field, String value) {
         String sourceRef() {
@@ -162,8 +162,8 @@ public class ServiceNowOwnershipProducer {
             List<String> batch = sysIds.subList(from, Math.min(sysIds.size(), from + PAGE));
             runner.runScoped(tenantId, () -> {
                 for (String sysId : batch) {
-                    jdbc.query("SELECT sys_id, asset_id, support_group, department, owner_email FROM cis WHERE sys_id = ?",
-                            (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5)), sysId)
+                    jdbc.query("SELECT sys_id, asset_id, support_group, support_group_sys_id, department, owner_email FROM cis WHERE sys_id = ?",
+                            (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6)), sysId)
                             .forEach(ci -> planCi(ci, instance).stream().filter(p -> p.action() != Action.END).forEach(plan::add));
                 }
                 return null;
@@ -203,17 +203,20 @@ public class ServiceNowOwnershipProducer {
 
     private List<Planned> planCi(Ci ci, String instance) {
         List<Planned> out = new ArrayList<>();
-        out.add(planField(new Desired(ci, "support_group", ci.supportGroup()), instance));
-        if (departmentClaims) out.add(planField(new Desired(ci, "department", ci.department()), null));
+        // A CI read without display values has only the reference; it still maps through step (1).
+        String group = ci.supportGroup() != null && !ci.supportGroup().isBlank() ? ci.supportGroup() : ci.supportGroupSysId();
+        out.add(planField(new Desired(ci, "support_group", group), ci.supportGroupSysId(), instance));
+        if (departmentClaims) out.add(planField(new Desired(ci, "department", ci.department()), null, null));
         return out.stream().filter(p -> p != null).toList();
     }
 
     /**
-     * Contract §1.8 resolution order for {@code support_group}: (1) a {@code sys_user_group} {@code sys_id} through an
-     * active mapping of a ServiceNow source on the CMDB's instance, then (2) exact team name or alias. No fuzzy matching
-     * and no team creation. {@code department} resolves by (2) only.
+     * Contract §1.8 resolution order for {@code support_group}: (1) the stored {@code sys_user_group} {@code sys_id}
+     * ({@code cis.support_group_sys_id}) through an active mapping of a ServiceNow source on the CMDB's instance, then
+     * (2) exact team name or alias of the display name. No fuzzy matching and no team creation. {@code department}
+     * resolves by (2) only.
      */
-    private Planned planField(Desired d, String instance) {
+    private Planned planField(Desired d, String groupSysId, String instance) {
         List<Map<String, Object>> existing = jdbc.queryForList("""
                 SELECT id, team_id FROM ownership_claim WHERE source_kind = ? AND source_ref = ? AND status = 'ACTIVE'
                 """, SOURCE, d.sourceRef());
@@ -222,8 +225,8 @@ public class ServiceNowOwnershipProducer {
         if (d.value() == null || d.value().isBlank()) {
             return existingId == null ? null : new Planned(Action.END, d, null, existingId);
         }
-        Optional<UUID> team = mappings.teamForGroup(d.value(), instance);
-        if (team.isEmpty()) team = teams.resolve(d.value());
+        Optional<UUID> team = mappings.teamForGroup(groupSysId, instance);
+        if (team.isEmpty() && !d.value().equals(groupSysId)) team = teams.resolve(d.value());
         if (team.isEmpty()) return new Planned(Action.UNMAPPED, d, null, existingId);
         if (existingId == null) return new Planned(Action.CREATE, d, team.get(), null);
         if (existingTeam.equals(team.get())) return new Planned(Action.REOBSERVE, d, team.get(), existingId);
@@ -283,10 +286,10 @@ public class ServiceNowOwnershipProducer {
         while (true) {
             String cursor = after;
             List<Ci> page = runner.runScoped(tenantId, () -> jdbc.query("""
-                    SELECT sys_id, asset_id, support_group, department, owner_email FROM cis
+                    SELECT sys_id, asset_id, support_group, support_group_sys_id, department, owner_email FROM cis
                      WHERE last_cmdb_sync_at >= ? AND sys_id > ? AND sys_id ~* '^[0-9a-f]{32}$'
                      ORDER BY sys_id LIMIT ?
-                    """, (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5)),
+                    """, (rs, row) -> new Ci(rs.getString(1), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6)),
                     java.sql.Timestamp.from(runStartedAt), cursor, PAGE));
             if (page.isEmpty()) return;
             consumer.accept(page);

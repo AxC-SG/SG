@@ -209,6 +209,14 @@ count is a read-only pass before the writes. Manager changes are not counted.
 `support_group` value is itself a 32-hex `sys_id`, which happens only when an admin's field list leaves out the display
 value. Names still resolve by step (2). E3 only has to pass the new column's value to the same resolver.
 
+**Implementation (E3, November 15, 2026):** the CMDB sync stores the display name in `cis.support_group` and the
+reference `sys_id`, lower case, in `cis.support_group_sys_id` (tenant V24). With `sysparm_display_value=all` the
+`sys_id` comes from the field's `value`; with raw values it is the field itself when that is a `sys_id`; a display name
+is never taken for one. The CI-table lookups in `CiResolutionService` keep it the same way. Step (1) passes
+`support_group_sys_id` to `GroupMappingResolver`; step (2) uses the name only. A CI with a reference and no display name
+still maps through step (1). The mapping preview counts CIs by `support_group_sys_id`. The 32-hex-name workaround is
+removed. No index is added on `support_group_sys_id`; the preview scans `cis` until a query plan shows it needs one.
+
 **DECISIONS (architect, November 14, 2026; review with the product owner):**
 
 - "Same instance" compares the identity source's stored `instanceUrl` with the CMDB connector's `base_url`, both as

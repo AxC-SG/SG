@@ -67,6 +67,10 @@ public class Ci {
     @Column(name = "support_group", length = 255)
     private String supportGroup;
 
+    /** The referenced sys_user_group sys_id (lower case), kept beside the display name (Phase 0B §1.8, tenant V24). */
+    @Column(name = "support_group_sys_id", length = 32)
+    private String supportGroupSysId;
+
     @Column(name = "assigned_to", length = 255)
     private String assignedTo;
 
@@ -164,6 +168,14 @@ public class Ci {
 
     public void setSupportGroup(String supportGroup) {
         this.supportGroup = supportGroup;
+    }
+
+    public String getSupportGroupSysId() {
+        return supportGroupSysId;
+    }
+
+    public void setSupportGroupSysId(String supportGroupSysId) {
+        this.supportGroupSysId = supportGroupSysId;
     }
 
     public String getAssignedTo() {

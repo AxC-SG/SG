@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.security.tenantkey.TenantKeyRegistry;
+import com.prototype.vulnwatch.service.CiResolutionService;
 import com.prototype.vulnwatch.service.TenantContext;
 import com.prototype.vulnwatch.service.TenantSchemaMigrationService;
 import com.prototype.vulnwatch.service.TenantService;
@@ -191,14 +192,21 @@ class OwnershipGroupMappingPostgresIntegrationTest {
         return directory.observeGroup(new ObservedGroup(source, sysId, name, true), null, "sync").externalGroupId();
     }
 
+    /**
+     * A CMDB CI as the sync stores it (tenant V24): a {@code sys_id} support group is kept, lower case, in
+     * {@code support_group_sys_id} beside a display name that matches no team, so only the mapping can resolve it.
+     */
     private UUID ci(String sysId, String supportGroup) {
+        String reference = CiResolutionService.sysIdOrNull(supportGroup);
+        String name = reference == null ? supportGroup : "ServiceNow group " + reference.substring(0, 6);
         UUID asset = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO assets (id, business_criticality, created_at, identifier, name, state, type, support_group, last_cmdb_sync_at)
-                VALUES (?, 'HIGH', now(), ?, ?, 'ACTIVE', 'HOST', ?, now())""", asset, sysId, sysId, supportGroup);
+                VALUES (?, 'HIGH', now(), ?, ?, 'ACTIVE', 'HOST', ?, now())""", asset, sysId, sysId, name);
         jdbc.update("""
-                INSERT INTO cis (id, business_criticality, created_at, display_name, sys_id, updated_at, asset_id, support_group, last_cmdb_sync_at)
-                VALUES (?, 'HIGH', now(), ?, ?, now(), ?, ?, now())""", UUID.randomUUID(), sysId, sysId, asset, supportGroup);
+                INSERT INTO cis (id, business_criticality, created_at, display_name, sys_id, updated_at, asset_id, support_group,
+                                 support_group_sys_id, last_cmdb_sync_at)
+                VALUES (?, 'HIGH', now(), ?, ?, now(), ?, ?, ?, now())""", UUID.randomUUID(), sysId, sysId, asset, name, reference);
         return asset;
     }
 

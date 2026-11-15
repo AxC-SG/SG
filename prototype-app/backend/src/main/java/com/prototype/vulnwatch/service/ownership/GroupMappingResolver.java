@@ -16,8 +16,8 @@ import org.springframework.stereotype.Component;
  * {@code sys_user_group} {@code sys_id} through an active, explicit mapping of a ServiceNow identity source on the same
  * instance as the tenant's CMDB connector. Writes nothing; {@link GroupTeamMappingService} is the writer.
  *
- * <p>Until tenant V24 keeps the reference {@code sys_id} beside the display name, the CMDB sync stores a {@code sys_id}
- * only when an admin's field list leaves out the display value; a name still resolves by exact team name or alias.
+ * <p>The CMDB sync keeps the reference {@code sys_id} in {@code cis.support_group_sys_id} (tenant V24) beside the display
+ * name; callers pass that column. A name resolves by exact team name or alias, never here.
  */
 @Component
 public class GroupMappingResolver {
