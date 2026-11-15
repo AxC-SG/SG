@@ -465,6 +465,41 @@ class DeployTest(unittest.TestCase):
         self.assertEqual(checks[-1]["note"], "invite email did not arrive")
         self.assertNotIn("browser", lab.calls)
 
+    def test_an_owner_waiver_accepts_without_claiming_the_checks_passed(self):
+        lab = FakeLab(inputs(), browser_ok=False)
+        self.deploy(lab)
+        release.Release(lab).accept(note="owner deferred browser checks to a full-app test plan", waive=True)
+        record, state = lab.record(), lab.inputs
+        self.assertEqual(record["status"], "accepted")
+        self.assertEqual(record["acceptance"], "browser checks waived by the owner")
+        count = len(release.json.loads(release.BROWSER_CHECKS.read_text())["checks"])
+        self.assertEqual(len(record["browser_checks"]), count)
+        for check in record["browser_checks"]:
+            self.assertIs(check["passed"], None)
+            self.assertTrue(check["waived"])
+            self.assertEqual(check["note"], "owner deferred browser checks to a full-app test plan")
+        self.assertNotIn("browser", lab.calls)
+        self.assertEqual((state["accepted"]["runtime_image_digest"], state["accepted"]["browser_checks"]), (NEW, "waived"))
+        self.assertEqual(state["previous_accepted"]["release_id"], "baseline")
+        self.assertIsNone(state["awaiting_acceptance"])
+        # The waived release is accepted, so the next deploy may proceed and recovery can return to it.
+        self.assertEqual(release.rollback_target(state)["release_id"], "baseline")
+
+    def test_a_waiver_needs_a_note(self):
+        lab = FakeLab(inputs())
+        self.deploy(lab)
+        for note in ("", "   "):
+            with self.assertRaisesRegex(release.ReleaseError, "needs --note"):
+                release.Release(lab).accept(note=note, waive=True)
+        self.assertIsNotNone(lab.inputs["awaiting_acceptance"])
+
+    def test_a_rejection_is_not_a_waiver(self):
+        lab = FakeLab(inputs(), browser_ok=False)
+        self.deploy(lab)
+        release.Release(lab).accept()
+        self.assertNotIn("acceptance", lab.record())
+        self.assertNotIn("browser_checks", lab.inputs["accepted"])
+
     def test_accept_needs_a_waiting_release(self):
         with self.assertRaisesRegex(release.ReleaseError, "no release is waiting"):
             release.Release(FakeLab(inputs())).accept()
