@@ -141,10 +141,25 @@ The `-target` was needed because the full lab plan also shows a change that was 
 
 No separate email defect was found, so R2 needs no code change. The phase 0 exit check still requires an invitation to reach a test inbox after the #111 release.
 
+## Third release and phase 0 status
+
+**Release `20261115t171747z-2c382df`** (17:31 UTC) rolled out #115, which contains the #111 RLS fix and the R3–R5 detection signals. Image `fc1b533f…` (publisher run 43739404235), api `scoutgrid-lab-api:6`, worker `scoutgrid-lab-worker:5`. It was schema-neutral (V16 / V23). Before the deploy, `c013bd7` was recorded as rejected (`yyyyynnyy`, relayed).
+
+**Automated checks passed.** Six healthy `tenant_work_progress` lines, schema state ready at V23..V23, no defined failure patterns. The signed-in smoke was not configured (`LAB_SMOKE_CONFIG` unset), and the catalog fingerprint was not verified.
+
+**After the deploy (to 18:55 UTC):** the worker log shows no ERROR lines, no `row-level security` lines and no Resend warnings. The worker reports `outcome=healthy` (e.g. 416 succeeded, 0 failed in one cycle) and `tenant_schema_state unready_tenants=0`.
+
+**Browser checks:**
+- Check 6, demo-request delete, passes. The `audit_events` failure is fixed in the lab.
+- Approving a demo request stays `QUEUED` / "Approved. Awaiting workspace setup." This is correct: managed approval sends no email. So check 7 was reworded to the workspace invite (User Management > Invite user, reaching `SENT` through Resend). A successful send logs nothing; only a rejected or unknown Resend outcome logs a warning.
+- The owner deferred the remaining checks, including the invitation, to a separate full-app test plan after the CI work.
+
+**Phase 0 is not closed.** Acceptance has not been recorded, so 2c382df is not yet the accepted baseline. `release.py deploy` refuses while it awaits acceptance, so the next release (PR D) first needs its nine answers.
+
 ## Open
 
-1. **Record `c013bd7` as rejected** with `release.py accept` (answers and note).
-2. **Merge #111**, let it auto-publish, then `release.py deploy <sha>` (schema-neutral). Recheck the API log for `row-level security` lines across two scheduler cycles, and repeat the nine browser checks, including an invitation to a test inbox.
-3. **Rollback exercise** between that healthy release and the next healthy release (CD plan phase 3); `abd8c038…` and `eae5dafa…` are not healthy recovery targets.
-4. **Later:** keep or delete the pre-migration snapshot; delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
+1. **Accept or reject 2c382df** with `release.py accept --answers <9 letters> --note …` after the owner's full-app checks. Every check must pass for it to become the healthy baseline.
+2. **Configure the signed-in smoke** (`LAB_SMOKE_CONFIG`, the account steps from R4) so later releases check platform writes and the invitation themselves.
+3. **Rollback exercise** between the accepted 2c382df and the next healthy release (CD plan phase 3). `abd8c038…` and `eae5dafa…` are not healthy recovery targets.
+4. **Later:** keep or delete the pre-migration snapshot. Delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
 5. **Later:** PR D must update the publisher trigger and selector if it renames workflows. Write a production severity and exceptions policy for Trivy.

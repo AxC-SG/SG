@@ -14,6 +14,8 @@
   release.py accept [--answers yn… [--note TEXT]]
                                          record the browser checks for the live release (interactive, or
                                          answers the operator relayed, one y/n per check in order)
+  release.py accept --waive --note TEXT  accept the live release without its browser checks, on the owner's
+                                         decision: every check is recorded as waived (not passed), with TEXT
   release.py unlock                      remove a stale lock after showing its holder
 
 A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/records/<id>.json:
@@ -29,7 +31,8 @@ A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/reco
                 unready tenant and a supported range that contains the database's tenant head; then the
                 signed-in smoke (frontend/e2e/lab-smoke.mjs) when LAB_SMOKE_CONFIG names its config
   7. accept     later, `release.py accept` records the browser checks; all passing makes it the
-                accepted release, any failure rejects it (then roll back or deploy a fix)
+                accepted release, any failure rejects it (then roll back or deploy a fix). The owner
+                may waive them instead (`--waive`); the record and the accepted entry say so
 
 Terraform renders images only from the release inputs object, which lab.sh reads too, and
 lab.sh and this script share one lock, so a lab cycle never runs mid-release. A step that
@@ -329,7 +332,8 @@ class Release:
             print(f"runtime:   {short(inputs['runtime_image_digest'])} from {inputs['runtime']['source_sha'][:7]}")
             print(f"migrator:  {short(inputs['migrator_image_digest'])} from {inputs['migrator']['source_sha'][:7]}")
             print(f"database:  platform V{inputs['database_heads']['platform']}, tenant V{inputs['database_heads']['tenant']}")
-            print(f"accepted:  {accepted.get('release_id', '-')} ({short(accepted.get('runtime_image_digest'))})")
+            waiver = ", browser checks waived" if accepted.get("browser_checks") == "waived" else ""
+            print(f"accepted:  {accepted.get('release_id', '-')} ({short(accepted.get('runtime_image_digest'))}{waiver})")
             print(f"last:      {json.dumps(inputs.get('last_release'))}")
             print(f"pending:   {json.dumps(inputs.get('pending'))}")
             waiting = inputs.get("awaiting_acceptance")
@@ -550,7 +554,9 @@ class Release:
         self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} is live and passed the automated checks. "
                      "Run the browser checks, then record them with release.py accept.")
 
-    def accept(self, answers=None, note=""):
+    def accept(self, answers=None, note="", waive=False):
+        if waive and not note.strip():
+            raise ReleaseError("a waiver needs --note saying who waived the browser checks and why")
         with self.locked("accept"):
             inputs = self.inputs()
             waiting = inputs.get("awaiting_acceptance")
@@ -558,7 +564,11 @@ class Release:
                 raise ReleaseError("no release is waiting for its browser checks")
             record = self.lab.s3_get(f"{RECORDS}/{waiting['release_id']}.json")
             checks = json.loads(BROWSER_CHECKS.read_text())["checks"]
-            if answers is None:
+            if waive:
+                # Nobody ran these checks: record them as waived, never as passed.
+                record["browser_checks"] = [{"check": check, "passed": None, "waived": True, "note": note}
+                                            for check in checks]
+            elif answers is None:
                 record["browser_checks"] = self.lab.browser_checks(checks)
             else:
                 if not re.fullmatch(r"[yn]+", answers) or len(answers) != len(checks):
@@ -568,8 +578,11 @@ class Release:
             self.conclude(inputs, record, waiting)
 
     def conclude(self, inputs, record, waiting):
-        passed = all(check["passed"] for check in record["browser_checks"])
+        waived = bool(record["browser_checks"]) and all(check.get("waived") for check in record["browser_checks"])
+        passed = waived or all(check["passed"] for check in record["browser_checks"])
         record.update(status="accepted" if passed else "rejected", ended_at=stamp())
+        if waived:
+            record["acceptance"] = "browser checks waived by the owner"
         inputs["awaiting_acceptance"] = None
         restores = waiting.get("restores")
         if passed and restores:
@@ -579,11 +592,14 @@ class Release:
         elif passed:
             meta = {"source_sha": waiting["source_sha"], "migration_heads": waiting["migration_heads"],
                     "migration_catalog_sha256": waiting.get("migration_catalog_sha256")}
+            if waived:
+                meta["browser_checks"] = "waived"
             inputs["previous_accepted"] = inputs.get("accepted")
             inputs["accepted"] = {"release_id": record["release_id"], "runtime_image_digest": waiting["runtime_image_digest"], **meta}
         self.save(inputs, record)
         if passed:
-            self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} accepted.")
+            how = " with its browser checks waived" if waived else ""
+            self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} accepted{how}.")
         else:
             self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} rejected by a browser check. The lab runs "
                          "it until you run release.py rollback (or deploy a fix).")
@@ -919,6 +935,9 @@ def main(argv):
         elif command == "accept" and len(args) in (2, 4) and args[0] == "--answers" and (len(args) == 2 or args[2] == "--note"):
             lab.guard()
             release.accept(args[1], args[3] if len(args) == 4 else "")
+        elif command == "accept" and len(args) == 3 and args[0] == "--waive" and args[1] == "--note":
+            lab.guard()
+            release.accept(note=args[2], waive=True)
         elif command == "unlock" and not args:
             lab.guard()
             release.unlock()

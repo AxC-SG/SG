@@ -107,7 +107,17 @@ The image archive is `aws-backend-candidate-<Quality run>`. The tag, the `aws-pu
 | `6a124de` | 17m00s | 15.4m | 9.2m | 3.0m | 2.3m |
 | `c013bd7` | 21m42s | 19.8m | 9.1m | 4.0m | 2.1m |
 
-`backend-postgres` is always the long pole, so PR D is not expected to shorten the critical path; only PR F would. What it saves is job-minutes (no PR performance run, no duplicate `changes` jobs, no no-op publisher runs) and runs to follow (one per SHA). Record the after numbers from the first `main` run.
+`backend-postgres` is always the long pole, so PR D is not expected to shorten the critical path; only PR F would. What it saves is job-minutes (no PR performance run, no duplicate `changes` jobs, no no-op publisher runs) and runs to follow (one per SHA). After (merged as #117, `90cb7e2`, run 43755583811): **21m11s** from push to lab ECR publication.
+- `backend-postgres` took 19.9m (13.3–19.8m before), so the total again follows its variance.
+- Every check started within 3 seconds of the push. Performance took 1.9m and the image 1.6m, both off the critical path.
+- The gate passed at 20m18s and publication finished 53s later, inside the same run. No `workflow_run` publisher runs started.
+- The OIDC role was assumed on `main` without any trust change.
+
+Verification:
+- The ruleset requires only `Quality gate` (strict), set by the owner at merge.
+- Throwaway PR #118 failed a step in the called Semgrep job; `Quality gate` failed and the merge was blocked (closed unmerged).
+- #116, mostly docs, reran on the new graph with its frontend and backend jobs skipped and was mergeable (`CLEAN`).
+- Dependabot ran with the grouped configuration right after the merge.
 
 **Not in PR D:**
 - Performance certification of the archived image, rather than a source build. Its harness uses the local profile with API-key auth.
