@@ -28,10 +28,10 @@ public class TenantSchemaService {
     @Value("${app.tenancy.enforce-schema-version:false}")
     private boolean enforceSchemaVersion;
 
-    @Value("${app.tenancy.minimum-compatible-schema-version:20}")
+    @Value("${app.tenancy.minimum-compatible-schema-version:#{T(com.prototype.vulnwatch.service.TenantSchemaCompatibility).REQUIRED_MINIMUM}}")
     private int minimumCompatibleSchemaVersion = TenantSchemaCompatibility.REQUIRED_MINIMUM;
 
-    @Value("${app.tenancy.maximum-compatible-schema-version:20}")
+    @Value("${app.tenancy.maximum-compatible-schema-version:#{T(com.prototype.vulnwatch.service.TenantSchemaCompatibility).SUPPORTED_MAXIMUM}}")
     private int maximumCompatibleSchemaVersion = TenantSchemaCompatibility.SUPPORTED_MAXIMUM;
 
     public TenantSchemaService(
