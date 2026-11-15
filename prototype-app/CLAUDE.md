@@ -355,6 +355,7 @@ All source cron callbacks explicitly use UTC. Fixed-delay pollers have no wall-c
 | Every 60 sec (default) | AI-BOM projection reconcile; Copilot Studio schedule poll (`CopilotStudioScheduleService`) |
 | Every 5 min (default) | BOM contribution backfill (`BomContributionBackfillService`) |
 | Every 1 min (default) | Ownership maintenance (`OwnershipMaintenanceJob.run`): claim expiry, re-resolution queue, CORE asset/finding linking once CORE leaves LEGACY, and effective-cache refresh when enabled. Skipped on `api` and `schema-migrator` nodes |
+| Every minute at `:30` (default) | Worker progress line (`TenantWorkProgress.report`): `tenant_work_progress outcome=healthy|degraded|failing|idle succeeded=N failed=M` for the outermost tenant-scoped background calls since the last report. Lab release alarms and `release.py verify` read it. Skipped on `api` and `schema-migrator` nodes |
 | Hourly at `:07` (default) | Ownership effective-cache reconciliation (`OwnershipMaintenanceJob.reconcileCache`); does nothing while the cache is off |
 | Every 15 min (default) | Bounded `CRYPTO` mirror repair (`CbomFindingMirrorSweep`, ≤500 drifted findings per tenant); routine mirroring is `CBOM_DELTA` on `finding_delta_queue` |
 | Every 60 sec (default) | CBOM rule-package rollout (`CbomRuleRolloutReconciler`): OBSERVE/CANARY/BATCHED/GENERAL stages, ≤20 tenants and ≤200 reassessment jobs per minute, durable `platform.cbom_rule_rollout_leases` lease |
