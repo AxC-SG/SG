@@ -282,6 +282,14 @@ PR D of the CI plan follows these.
 
 **Phase 0 status (2026-11-16):** release `20261115t171747z-2c382df` is live and passed every automated check. Since the rollout the logs show no ERROR lines and no `row-level security` lines, and the worker reports `tenant_work_progress outcome=healthy` and `tenant_schema_state unready_tenants=0` at V23. `c013bd7` is recorded as rejected. Browser acceptance is **not recorded**: check 6 passed, and the owner deferred the other checks, including the invitation (check 7), to a separate full-app test plan after the CI work. Phase 0 is therefore not closed. `release.py deploy` refuses while a release awaits acceptance, so 2c382df needs its nine answers before PR D's release, and it becomes the healthy baseline for phase 3 only if all of them pass.
 
+**Phase 2 status (2026-11-16):** PR D merged as #117 and its exit criteria are met; see the [PR D record](ci-simplification-plan.md#pr-d-record).
+- One `Quality gate` covers image, security and `main` performance for the same SHA.
+- A failed security result blocked test PR #118.
+- The lab publication came from the consolidated run `43755583811`.
+- Critical path: 14m48s–21m42s before and 21m11s after, set by `backend-postgres` both times.
+
+PR D changed only CI files and docs, so the image published for `90cb7e2` is byte-identical to the one 2c382df runs (`sha256:fc1b533f…`). Releasing it would change nothing that runs, so it cannot serve as the second healthy release for the phase 3 drill. That needs the next merge that changes the backend image.
+
 ## 7. Required failure and resume tests
 
 Offline tests cover missing/security/performance results, allowed skips, schema fingerprints across skipped commits, outcomes, lock conflicts, partial Terraform effects, failed state writes, interrupted waits, frontend failure/retry and deferred catch-up. Add live supervised evidence for authenticated/worker failures, alarm delivery, exact frontend promotion and healthy recovery.
