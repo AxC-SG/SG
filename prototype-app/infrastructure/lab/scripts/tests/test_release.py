@@ -197,6 +197,14 @@ class PureTest(unittest.TestCase):
         self.assertEqual(rid, "20261115t030405z-eeeeeee")
         self.assertRegex(f"scoutgrid-lab-release-{rid}", r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
+    def test_task_definition_arns_come_from_state_not_stale_outputs(self):
+        state = {"values": {"outputs": {"backend_runtime": {"value": {"task_definition_arns": {"migrator": "old:2"}}}},
+                            "root_module": {"resources": [
+                                {"type": "aws_ecs_task_definition", "name": "backend", "index": role, "values": {"arn": arn}}
+                                for role, arn in ARNS.items()] + [
+                                {"type": "aws_ecs_service", "name": "backend", "index": "api", "values": {"arn": "svc"}}]}}}
+        self.assertEqual(release.task_definition_arns(state), ARNS)
+
     def test_rollback_target(self):
         state = inputs(previous={"release_id": "older", "runtime_image_digest": NEW})
         self.assertEqual(release.rollback_target(state)["release_id"], "older")
