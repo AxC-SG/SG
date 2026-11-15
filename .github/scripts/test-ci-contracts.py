@@ -17,6 +17,19 @@ gate = module("check-quality-gate")
 
 
 class ContractsTest(unittest.TestCase):
+    def test_signed_in_smoke_never_leaves_auth_state_in_public_artifacts(self):
+        # The repository is public: the lab smoke signs in with real lab accounts, so it must not
+        # record traces, screenshots, videos, HARs or storage state, and no workflow may run it.
+        root = Path(__file__).resolve().parents[2]
+        source = (root / 'prototype-app/frontend/e2e/lab-smoke.mjs').read_text()
+        code = '\n'.join(line.split('//')[0] if line.lstrip().startswith('//') else line for line in source.splitlines())
+        for forbidden in ('tracing', 'screenshot', 'recordVideo', 'recordHar', 'storageState', 'writeFile', 'video'):
+            self.assertFalse(forbidden in code, f'lab-smoke.mjs must not use {forbidden}')
+        for workflow in (root / '.github/workflows').glob('*.yml'):
+            text = workflow.read_text()
+            self.assertNotIn('lab-smoke', text, f'{workflow.name} must not run the credentialed lab smoke')
+            self.assertNotIn('LAB_SMOKE_CONFIG', text, workflow.name)
+
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
         ruleset = json.loads((root / '.github/required-main-ruleset.json').read_text())

@@ -48,6 +48,25 @@ Each step is recorded in `release/records/<id>.json`. The bucket is versioned, s
 
 **Rollback.** It moves only `api` and `worker`, to the accepted release (after a failed or rejected one) or to the accepted release before it, and only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image.
 
+### Signed-in smoke
+
+`frontend/e2e/lab-smoke.mjs` signs in through the real Cognito managed login (lab MFA is off) and checks **writes**, not just page loads. The `c013bd7` pages loaded while every platform-scope write failed. `release.py verify` runs it after the bake when `LAB_SMOKE_CONFIG` names its config file. Without that variable, the release records the smoke as not configured, a detection gap, and does not block.
+
+What it checks:
+- **Platform owner, no workspace:** sign-in; Platform Audit, End-of-Life, the Vulnerability Repository dashboard and the feeds pages load with no API 5xx or managed-session 403; reject one and delete one disposable demo request (the 2026-11-15 `audit_events` failure); sign-out.
+- **Tenant admin:** enters the workspace; Findings loads; an invite to `delivered+smoke@resend.dev` reaches `SENT` (Resend accepted it), then is cancelled; sign-out.
+
+The demo requests come from `POST /api/platform/demo-requests/smoke-fixtures`: platform-owner only, at most five pending, `.invalid` addresses, audited. The route answers 404 unless `enable_smoke_fixtures` is set, and Terraform refuses that flag in production. The runtime tfvars set it for the lab api; the next `release.py deploy` registers it. Until then `lab.sh` plans show the api and worker task-definition change and refuse, as for any env change.
+
+Privacy (public repository): it records no trace, screenshot, video, HAR or storage state, prints only check names and statuses, and runs without AWS credentials. No workflow runs it. `.github/scripts/test-ci-contracts.py` enforces all of this.
+
+Setup, once:
+1. **Tenant admin.** Onboard a dedicated smoke workspace with the Standard flow (`Working Knowledge/AWS/STANDARD_IMPLEMENTATION_READINESS.md`, steps 3–5), using an address you control. Create a disposable request with the smoke-fixture route, approve it, and link the admin. Sign in once by hand to replace the temporary password. Note the workspace UUID.
+2. **Platform owner.** Today there is no operator path to bind a *second* managed platform owner: managed operator enrollment only runs on a fresh installation. Until one exists, either use your own platform-owner account in the local config, or leave `platform` out and accept the gap for platform writes (the restricted-role ITs still cover them before merge). Adding a binding command is a separate, reviewed migrator change.
+3. Copy `config/lab-smoke.example.json` to a file **outside the repository**, fill it in, and `chmod 600` it.
+4. In `prototype-app/frontend`, run `npm ci` and `npx playwright install chromium`.
+5. Run it once without a release: `node prototype-app/frontend/e2e/lab-smoke.mjs --config <file>`. Then export `LAB_SMOKE_CONFIG=<file>` before `release.py deploy`.
+
 **Release alarms (off until enabled).** `release_alarms_enabled` in Terraform adds, independently of `operations` and its audit stack: SNS topic `scoutgrid-lab-release`, log metric filters for worker progress and the defined failures above, and five alarms: API or worker defined failures, tenant work failing for ten minutes, API without a running task for three minutes, and a running worker without succeeding tenant work for fifteen minutes. They read fixed names only, so `lab.sh` cycles plan no change to them, and they stay OK while the lab is parked. To enable, in order:
 
 1. Attach managed `ScoutGridSydneyLab-release-alarms-read` (`grants/release-alarms-read.json`) to the Cycle, Release and Apply roles. Without it, every `lab.sh` plan fails once the alarms exist.

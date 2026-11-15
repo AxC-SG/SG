@@ -26,7 +26,8 @@ A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/reco
   6. verify     services settled, healthy targets, public 200 and protected 401, then a bake of one
                 scheduler cycle: no defined failure in the api or worker log, and worker progress
                 reported with no cycle where every tenant job failed, and the worker's schema state shows no
-                unready tenant and a supported range that contains the database's tenant head
+                unready tenant and a supported range that contains the database's tenant head; then the
+                signed-in smoke (frontend/e2e/lab-smoke.mjs) when LAB_SMOKE_CONFIG names its config
   7. accept     later, `release.py accept` records the browser checks; all passing makes it the
                 accepted release, any failure rejects it (then roll back or deploy a fix)
 
@@ -35,7 +36,8 @@ lab.sh and this script share one lock, so a lab cycle never runs mid-release. A 
 fails leaves `pending` set: lab.sh then refuses, rerunning `deploy` for the same commit
 resumes (every step is idempotent), and `rollback` recovers where the schema allows.
 
-Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5).
+Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5), LAB_SMOKE_CONFIG
+(the signed-in smoke's config, outside the repo; unset records the smoke as not configured), CHROMIUM_PATH.
 Credentials go only to child processes and are never printed.
 """
 import datetime
@@ -90,6 +92,8 @@ LAB_DIR = Path(__file__).resolve().parents[1]
 CFG = LAB_DIR / "config"
 TF_ROOT = (LAB_DIR / ".." / "terraform" / "standard").resolve()
 BROWSER_CHECKS = CFG / "release-browser-checks.json"
+SMOKE_SCRIPT = LAB_DIR.parents[1] / "frontend" / "e2e" / "lab-smoke.mjs"
+SMOKE_TIMEOUT_SECONDS = 600
 
 TASK = 'aws_ecs_task_definition.backend["{}"]'
 SERVICE = 'aws_ecs_service.backend["{}"]'
@@ -241,6 +245,16 @@ def schema_state_check(messages, tenant_head, required=True):
     if not int(low) <= tenant_head <= int(high):
         return False, detail + " (outside the supported range)"
     return True, detail
+
+
+def smoke_check(result):
+    """The signed-in smoke's verdict. Unconfigured does not block a release; its detail records the detection gap."""
+    if result is None:
+        return True, "not configured (LAB_SMOKE_CONFIG unset): signed-in writes unverified, a recorded detection gap"
+    failed = [f"{item.get('name')}: {item.get('detail')}" for item in result.get("checks", []) if not item.get("ok")]
+    if result.get("passed") is True and result.get("checks") and not failed:
+        return True, f"{len(result['checks'])} checks passed"
+    return False, "; ".join(failed)[:600] or "the smoke reported no checks"
 
 
 def fatal_check(messages):
@@ -619,6 +633,8 @@ class Release:
         passed, detail = schema_state_check(self.lab.log_messages("worker", settled_at, SCHEMA_FILTER),
                                             record["candidate"]["migration_heads"]["tenant"], progress_required)
         checks["worker schema state"] = {"passed": passed, "detail": detail}
+        passed, detail = smoke_check(self.lab.signed_in_smoke())
+        checks["signed-in smoke"] = {"passed": passed, "detail": detail}
         for name, check in checks.items():
             self.lab.log(f"  {'ok  ' if check['passed'] else 'FAIL'} {name}: {check['detail']}")
         return checks
@@ -837,6 +853,19 @@ class AwsLab:
                          "--start-time", str(int(since.timestamp() * 1000)), "--filter-pattern", pattern,
                          "--max-items", "200")
         return [event["message"] for event in (found or {}).get("events", [])]
+
+    def signed_in_smoke(self):
+        """Run the signed-in smoke without AWS credentials; None when it is not configured."""
+        config = os.environ.get("LAB_SMOKE_CONFIG")
+        if not config:
+            return None
+        env = {key: value for key, value in os.environ.items() if not key.startswith("AWS_")}
+        try:
+            result = subprocess.run(["node", str(SMOKE_SCRIPT), "--config", config], env=env, text=True,
+                                    capture_output=True, timeout=SMOKE_TIMEOUT_SECONDS, cwd=SMOKE_SCRIPT.parents[1])
+            return json.loads(result.stdout)
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
+            return {"passed": False, "checks": [{"name": "smoke run", "ok": False, "detail": type(error).__name__}]}
 
     def startup_errors(self, since):
         start = int(datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ")

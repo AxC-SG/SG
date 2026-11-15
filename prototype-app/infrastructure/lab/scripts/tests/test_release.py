@@ -66,6 +66,7 @@ class FakeLab:
         self.calls = []
         self.baked = []
         self.queried = []
+        self.smoke = {"passed": True, "checks": [{"name": "platform write: reject a demo request", "ok": True, "detail": ""}]}
         self.logs = {("api", release.FATAL_FILTER): [], ("worker", release.FATAL_FILTER): [],
                      ("worker", release.PROGRESS_FILTER): list(HEALTHY_PROGRESS),
                      ("worker", release.SCHEMA_FILTER): list(READY_SCHEMA)}
@@ -145,6 +146,9 @@ class FakeLab:
     def wait_until(self, moment):
         self.baked.append(moment)
 
+    def signed_in_smoke(self):
+        return self.smoke
+
     def log_messages(self, role, since, pattern):
         self.queried.append((role, since, pattern))
         return list(self.logs[(role, pattern)])
@@ -162,6 +166,11 @@ class FakeLab:
 
 
 class PureTest(unittest.TestCase):
+    def test_smoke_check_needs_reported_passing_checks(self):
+        self.assertFalse(release.smoke_check({"passed": True, "checks": []})[0])
+        self.assertFalse(release.smoke_check({"passed": True, "checks": [{"name": "x", "ok": False, "detail": "d"}]})[0])
+        self.assertTrue(release.smoke_check({"passed": True, "checks": [{"name": "x", "ok": True}]})[0])
+
     def test_progress_check(self):
         line = "message=tenant_work_progress outcome={} succeeded=1 failed=0".format
         self.assertTrue(release.progress_check([line("healthy"), line("degraded")])[0])
@@ -418,6 +427,20 @@ class DeployTest(unittest.TestCase):
         lab.logs[("worker", release.SCHEMA_FILTER)] = []
         result = release.Release(lab).check("main")
         self.assertTrue(any(item.startswith("schema_unverified") for item in result["reasons"]))
+
+    def test_a_failed_signed_in_write_fails_the_release(self):
+        lab = FakeLab(inputs())
+        lab.smoke = {"passed": False, "checks": [
+            {"name": "platform write: reject a demo request", "ok": False, "detail": "status 500"}]}
+        with self.assertRaisesRegex(release.ReleaseError, "signed-in smoke"):
+            self.deploy(lab)
+        self.assertIn("status 500", lab.record()["checks"]["signed-in smoke"]["detail"])
+
+    def test_an_unconfigured_smoke_is_recorded_as_a_detection_gap(self):
+        lab = FakeLab(inputs())
+        lab.smoke = None
+        self.deploy(lab)
+        self.assertIn("detection gap", lab.record()["checks"]["signed-in smoke"]["detail"])
 
     def test_rejected_browser_check_keeps_the_accepted_release(self):
         lab = FakeLab(inputs(), browser_ok=False)

@@ -1,0 +1,7 @@
+{
+  "appOrigin": "https://scoutgrid.io",
+  "apiOrigin": "https://api-lab.scoutgrid.io",
+  "platform": { "email": "<smoke platform owner email>", "password": "<password>" },
+  "tenant": { "email": "<smoke tenant admin email>", "password": "<password>", "tenantId": "<smoke workspace UUID>" },
+  "inviteAddress": "delivered+smoke@resend.dev"
+}
