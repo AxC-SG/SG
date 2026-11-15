@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadReleaseAlarmTopic",
+      "Effect": "Allow",
+      "Action": [
+        "sns:GetTopicAttributes",
+        "sns:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:sns:ap-southeast-2:736486260824:scoutgrid-lab-release"
+    },
+    {
+      "Sid": "ReadReleaseMetricFilters",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeMetricFilters"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker:*",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/api",
+        "arn:aws:logs:ap-southeast-2:736486260824:log-group:/ecs/scoutgrid-lab/worker"
+      ]
+    },
+    {
+      "Sid": "ReadReleaseAlarms",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:cloudwatch:ap-southeast-2:736486260824:alarm:scoutgrid-lab-release-*"
+    }
+  ]
+}

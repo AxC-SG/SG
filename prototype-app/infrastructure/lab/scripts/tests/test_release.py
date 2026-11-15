@@ -43,6 +43,9 @@ DEFAULT_PLANS = {
 }
 
 
+HEALTHY_PROGRESS = ["2026-11-15T07:01:30.000Z level=INFO message=tenant_work_progress outcome=healthy succeeded=42 failed=0"]
+
+
 def stopped_task(exit_code=0, stop_code="EssentialContainerExited"):
     return {"lastStatus": "STOPPED", "stopCode": stop_code, "stoppedReason": "done", "containers": [{"exitCode": exit_code}]}
 
@@ -57,6 +60,9 @@ class FakeLab:
         self.browser_ok, self.confirmed, self.present = browser_ok, confirmed, present
         self.live = live or {"api": OLD, "worker": OLD, "migrator": OLD}
         self.calls = []
+        self.baked = []
+        self.logs = {("api", release.FATAL_FILTER): [], ("worker", release.FATAL_FILTER): [],
+                     ("worker", release.PROGRESS_FILTER): list(HEALTHY_PROGRESS)}
 
     def log(self, message):
         pass
@@ -130,6 +136,13 @@ class FakeLab:
     def startup_errors(self, since):
         return {"api": 0, "worker": 0}
 
+    def wait_until(self, moment):
+        self.baked.append(moment)
+
+    def log_messages(self, role, since, pattern):
+        self.baked.append(since)
+        return list(self.logs[(role, pattern)])
+
     def browser_checks(self, checks):
         self.calls.append("browser")
         return [{"check": check, "passed": self.browser_ok, "note": ""} for check in checks]
@@ -143,6 +156,19 @@ class FakeLab:
 
 
 class PureTest(unittest.TestCase):
+    def test_progress_check(self):
+        line = "message=tenant_work_progress outcome={} succeeded=1 failed=0".format
+        self.assertTrue(release.progress_check([line("healthy"), line("degraded")])[0])
+        self.assertFalse(release.progress_check([line("idle"), line("idle")])[0])
+        self.assertFalse(release.progress_check([line("healthy"), line("failing")])[0])
+        self.assertFalse(release.progress_check(["unrelated"])[0])
+        self.assertTrue(release.progress_check([], required=False)[0])
+
+    def test_fatal_patterns_match_the_release_alarm_filter(self):
+        terraform = (release.TF_ROOT / "release-alarms.tf").read_text()
+        block = terraform[terraform.index("release_fatal_pattern = join"):terraform.index("release_log_metrics")]
+        self.assertEqual(re.findall(r'\?\\"([^\\]+)\\"', block), list(release.FATAL_PATTERNS))
+
     def test_schema_mode(self):
         self.assertEqual(release.schema_mode(V23, V23), "neutral")
         self.assertEqual(release.schema_mode(V20, V23), "forward")
@@ -274,6 +300,46 @@ class DeployTest(unittest.TestCase):
             self.deploy(lab)
         self.assertEqual(lab.inputs["pending"]["phase"], "runtime")
         self.assertIsNone(lab.inputs.get("awaiting_acceptance"))
+
+    def test_verify_bakes_one_scheduler_cycle_after_the_services_settle(self):
+        lab = FakeLab(inputs())
+        self.deploy(lab)
+        bake_end, settled = lab.baked[0], lab.baked[1]
+        self.assertGreaterEqual((bake_end - settled).total_seconds(), 5 * 60 + 60)
+        checks = lab.record()["checks"]
+        self.assertTrue(all(checks[name]["passed"] for name in ("api defined failures", "worker defined failures", "worker progress")))
+        self.assertIn("bake", lab.record())
+
+    def test_a_defined_failure_during_the_bake_fails_the_release(self):
+        for role, line in (("worker", "WARN message=Tenant-scoped background work failed for tenant t: Tenant schema is "
+                                      "outside this release's supported range V23..V20: tenant_x (current=V23)"),
+                           ("api", "ERROR message=Unhandled API error org.springframework.orm.jpa.JpaSystemException: "
+                                   "new row violates row-level security policy for table \"audit_events\"")):
+            with self.subTest(role=role):
+                lab = FakeLab(inputs())
+                lab.logs[(role, release.FATAL_FILTER)] = [line]
+                with self.assertRaisesRegex(release.ReleaseError, f"{role} defined failures"):
+                    self.deploy(lab)
+                self.assertEqual(lab.inputs["pending"]["phase"], "runtime")
+                self.assertIsNone(lab.inputs.get("awaiting_acceptance"))
+
+    def test_a_running_worker_whose_tenant_work_fails_fails_the_release(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = [
+            "message=tenant_work_progress outcome=failing succeeded=0 failed=12"]
+        with self.assertRaisesRegex(release.ReleaseError, "worker progress"):
+            self.deploy(lab)
+
+    def test_missing_progress_fails_unless_the_operator_records_an_older_image(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = []
+        with self.assertRaisesRegex(release.ReleaseError, "worker progress"):
+            self.deploy(lab)
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.PROGRESS_FILTER)] = []
+        release.Release(lab).deploy("main", progress_required=False)
+        self.assertIn("predates the signal", lab.record()["checks"]["worker progress"]["detail"])
+        self.assertEqual(lab.record()["status"], "verified")
 
     def test_rejected_browser_check_keeps_the_accepted_release(self):
         lab = FakeLab(inputs(), browser_ok=False)

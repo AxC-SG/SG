@@ -34,7 +34,11 @@ Every `main` commit that passes its checks is published to the lab ECR automatic
 3. **Migrator.** Terraform registers the candidate migrator task definition and nothing else.
 4. **Migrate.** Runs the candidate migrator once; it must exit 0.
 5. **Runtime.** Terraform moves `api` and `worker` to the candidate and nothing else. ECS's circuit breaker rolls back a rollout that never becomes healthy.
-6. **Verify.** Checks that services settled, targets are healthy, `GET /api/auth/csrf` returns 200 and `GET /api/me` returns 401, and counts startup `ERROR` lines.
+6. **Verify.** Checks that services settled, targets are healthy, `GET /api/auth/csrf` returns 200 and `GET /api/me` returns 401, and counts startup `ERROR` lines (informational). It then bakes for one scheduler cycle (six minutes from settling) and fails on:
+   - any defined failure in the api or worker log: `outside this release's supported range`, `violates row-level security policy`, `Tenant-scoped background work failed`, or `Unhandled API error` (every HTTP 500);
+   - worker progress: no `tenant_work_progress` line, or a minute where tenant work ran and none of it succeeded (`outcome=failing`).
+
+   An image built before the progress line existed (before PR R3) never logs it. For a deploy or rollback to such an image, pass `--no-progress-signal`; the record notes that the check was waived.
 7. **Accept.** The release stays live and waits for `release.py accept`, which asks the browser checks in `config/release-browser-checks.json`. Use `--answers yyn… [--note TEXT]` to record answers the operator relayed; the record marks them as relayed. All passing makes the release the accepted one; any failure rejects it. A new deploy waits until the live release is accepted or rolled back.
 
 Each step is recorded in `release/records/<id>.json`. The bucket is versioned, so every state of a record is kept.
@@ -42,6 +46,15 @@ Each step is recorded in `release/records/<id>.json`. The bucket is versioned, s
 **When a step fails.** The inputs keep `pending`, so `lab.sh` refuses to run. Rerunning `deploy` for the same commit resumes it, because every step is idempotent. `release.py rollback` recovers.
 
 **Rollback.** It moves only `api` and `worker`, to the accepted release (after a failed or rejected one) or to the accepted release before it, and only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image.
+
+**Release alarms (off until enabled).** `release_alarms_enabled` in Terraform adds, independently of `operations` and its audit stack: SNS topic `scoutgrid-lab-release`, log metric filters for worker progress and the defined failures above, and five alarms: API or worker defined failures, tenant work failing for ten minutes, API without a running task for three minutes, and a running worker without succeeding tenant work for fifteen minutes. They read fixed names only, so `lab.sh` cycles plan no change to them, and they stay OK while the lab is parked. To enable, in order:
+
+1. Attach managed `ScoutGridSydneyLab-release-alarms-read` (`grants/release-alarms-read.json`) to the Cycle, Release and Apply roles. Without it, every `lab.sh` plan fails once the alarms exist.
+2. Set `release_alarms_enabled = true` in `config/sydney-lab.foundation.tfvars`, and run one targeted Bootstrap apply (with `grants/bootstrap-release-alarms.json` attached) of `aws_sns_topic.release_alarms`, `aws_sns_topic_policy.release_alarms`, `aws_cloudwatch_log_metric_filter.release`, `aws_cloudwatch_metric_alarm.release`, `aws_cloudwatch_metric_alarm.release_api_unavailable` and `aws_cloudwatch_metric_alarm.release_worker_progress_stale`. Then `lab.sh plan-up` must report no changes.
+3. Subscribe the owner's address out of band, so it is not in this public repository: `aws sns subscribe --topic-arn <output release_alarms.topic_arn> --protocol email --notification-endpoint <address>`, then confirm the email.
+4. Prove delivery: `aws cloudwatch set-alarm-state --alarm-name scoutgrid-lab-release-worker-fatal-errors --state-value ALARM --state-reason "delivery test"` must reach the inbox. Record the time.
+
+Undo: set it back to `false` and apply the same targets (the topic, filters and alarms are deleted; no data depends on them).
 
 Seed the inputs once from what the lab runs: `release.py init <full commit> <platform head> <tenant head>`.
 
