@@ -360,3 +360,12 @@ jobs:
       actions: read
       contents: read
       id-token: write
+
+  # TEMPORARY claim probe for PR D; reverted before merge.
+  oidc-probe:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/aws-publish-candidate.yml
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
