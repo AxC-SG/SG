@@ -1,18 +1,30 @@
 version: 2
 updates:
+# Minor and patch updates are grouped per ecosystem: each separate PR runs the
+# whole Quality graph (an Actions bump touches .github/, which selects every
+# job), and ungrouped npm updates were most Dependabot PRs. Majors stay separate.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions-minor-and-patch:
+        update-types: [minor, patch]
   - package-ecosystem: docker
     directory: /prototype-app/backend
     schedule:
       interval: weekly
+    groups:
+      docker-minor-and-patch:
+        update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /prototype-app/frontend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
     ignore:
       # typescript-eslint supports TypeScript below 6.1, and TypeScript 7 ships
       # only the native compiler without the JavaScript API it needs. Remove

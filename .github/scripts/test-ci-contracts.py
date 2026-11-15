@@ -33,7 +33,8 @@ class ContractsTest(unittest.TestCase):
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
         ruleset = json.loads((root / '.github/required-main-ruleset.json').read_text())
-        expected = {'Quality gate', 'Semgrep SAST gate', 'Trivy filesystem gate', 'Performance gate', 'AWS backend candidate'}
+        # One stable gate: the security, image and main performance results are inside it.
+        expected = {'Quality gate'}
         status = next(rule['parameters'] for rule in ruleset['rules'] if rule['type'] == 'required_status_checks')
         self.assertEqual({item['context'] for item in status['required_status_checks']}, expected)
         self.assertEqual(len(status['required_status_checks']), len(expected))
@@ -49,32 +50,57 @@ class ContractsTest(unittest.TestCase):
         tools = next(rule['parameters']['code_scanning_tools'] for rule in ruleset['rules'] if rule['type'] == 'code_scanning')
         self.assertEqual(tools, [{'tool': 'CodeQL', 'alerts_threshold': 'errors', 'security_alerts_threshold': 'high_or_higher'}])
 
-    def test_main_only_event_contract(self):
-        root = Path(__file__).resolve().parents[2]
-        for name in ['quality.yml', 'semgrep.yml', 'trivy.yml', 'performance-governance.yml']:
-            workflow = (root / '.github/workflows' / name).read_text()
-            events = workflow.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
-            self.assertRegex(events, r'(?m)^  pull_request:')
-            self.assertRegex(events, r'(?m)^  push:')
-            self.assertNotIn('merge_group', events)
-            self.assertNotIn('master', events)
-            self.assertIn('main', events)
-
-    def test_publisher_follows_the_checks_it_qualifies(self):
+    def test_quality_is_the_only_pull_request_and_main_workflow(self):
         root = Path(__file__).resolve().parents[2]
         workflows = root / '.github/workflows'
-        publisher = (workflows / 'aws-publish-candidate.yml').read_text()
-        events = publisher.split('  workflow_run:\n', 1)[1].split('\npermissions:', 1)[0]
-        trigger = re.search(r'(?m)^    workflows: \[([^\]]*)\]', events).group(1)
+        quality = (workflows / 'quality.yml').read_text()
+        events = quality.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
+        self.assertRegex(events, r'(?m)^  pull_request:')
+        self.assertRegex(events, r'(?m)^  push:\n    branches:\n      - main\n')
+        self.assertNotIn('merge_group', events)
+        for workflow in workflows.glob('*.yml'):
+            if workflow.name == 'quality.yml':
+                continue
+            other = workflow.read_text().split('on:\n', 1)[1].split('\npermissions:', 1)[0]
+            # A second PR or push trigger would run checks outside the gate.
+            self.assertNotRegex(other, r'(?m)^  (pull_request|pull_request_target|push|workflow_run):', workflow.name)
+        for job, name in (('security', 'trivy.yml'), ('semgrep', 'semgrep.yml'),
+                          ('performance', 'performance-governance.yml'), ('publish', 'aws-publish-candidate.yml')):
+            called = (workflows / name).read_text()
+            self.assertRegex(called.split('\npermissions:', 1)[0], r'(?m)^  workflow_call:', name)
+            # A called workflow sees the caller's github.workflow, so its own
+            # workflow-level concurrency group would collide with Quality's.
+            self.assertIsNone(re.search(r'(?m)^concurrency:', called), name)
+            self.assertIn(f'uses: ./.github/workflows/{name}\n', self.job(quality, job), job)
+
+    def test_publication_comes_from_the_gated_main_run(self):
+        root = Path(__file__).resolve().parents[2]
+        workflows = root / '.github/workflows'
+        quality = (workflows / 'quality.yml').read_text()
+        publish = self.job(quality, 'publish')
+        self.assertIn('needs: required\n', publish)
+        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/main'\n", publish)
+        self.assertNotIn('always()', publish)
+        self.assertIn('id-token: write', publish)
+        # The OIDC grant belongs to the publish call only.
+        self.assertEqual(quality.count('id-token: write'), 1)
         selector = module('select-aws-candidate')
-        files = selector.CHECKS + (selector.TRIVY,)
-        names = {re.search(r'(?m)^name: (.+)$', (workflows / name).read_text()).group(1) for name in files}
-        # Renaming a required workflow without updating the trigger would silently stop publication.
-        self.assertEqual({name.strip() for name in trigger.split(',')}, names)
-        self.assertIn('branches: [main]', events)
-        publish = publisher.split('\n  publish:\n', 1)[1]
-        self.assertIn("if: needs.qualify.outputs.publish == 'true'", publish)
-        self.assertNotIn('inputs.', publish)
+        self.assertEqual(selector.QUALITY, 'quality.yml')
+        self.assertIn(f'    name: {selector.GATE_JOB}\n', self.job(quality, 'required'))
+        # The image archive the publisher downloads is the one this run's security job made.
+        trivy = (workflows / 'trivy.yml').read_text()
+        self.assertIn('name: aws-backend-candidate-${{ github.run_id }}', trivy)
+        publisher = (workflows / 'aws-publish-candidate.yml').read_text()
+        self.assertIn('name: aws-backend-candidate-${{ needs.qualify.outputs.candidate_run }}', publisher)
+        job = publisher.split('\n  publish:\n', 1)[1]
+        self.assertIn("if: needs.qualify.outputs.publish == 'true'", job)
+        self.assertNotIn('inputs.', job)
+        self.assertIn('group: aws-publish-${{ needs.qualify.outputs.target }}', job)
+        self.assertIn('cancel-in-progress: false', job)
+
+    @staticmethod
+    def job(workflow, name):
+        return re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split(f'\n  {name}:\n', 1)[1], maxsplit=1)[0]
 
     def test_terraform_validation_is_required_and_offline(self):
         root = Path(__file__).resolve().parents[2]
@@ -117,8 +143,8 @@ class ContractsTest(unittest.TestCase):
         self.assertIn('Acquire::Retries=3', dockerfile)
 
     def test_selection(self):
-        none = dict(frontend=False, backend=False, infrastructure=False, performance=False)
-        everything = dict(frontend=True, backend=True, infrastructure=True, performance=True)
+        none = dict(frontend=False, backend=False, infrastructure=False)
+        everything = dict(frontend=True, backend=True, infrastructure=True)
         cases = [
             (["README.md"], none),
             (["prototype-app/docs/frontend.md"], none),
@@ -126,12 +152,12 @@ class ContractsTest(unittest.TestCase):
             (["prototype-app/backend/CLAUDE.md", ".gitleaks.toml"], none),
             (["prototype-app/frontend/src/App.tsx"], dict(none, frontend=True)),
             ([".nvmrc"], dict(none, frontend=True)),
-            (["prototype-app/backend/src/main/java/A.java"], dict(none, backend=True, performance=True)),
-            (["prototype-app/scripts/run-performance-governance.sh"], dict(none, backend=True, performance=True)),
-            (["prototype-app/policy-packages/agcf/p.json"], dict(none, backend=True, performance=True)),
+            (["prototype-app/backend/src/main/java/A.java"], dict(none, backend=True)),
+            (["prototype-app/scripts/run-performance-governance.sh"], dict(none, backend=True)),
+            (["prototype-app/policy-packages/agcf/p.json"], dict(none, backend=True)),
             (["prototype-app/infrastructure/terraform/standard/main.tf"], dict(none, infrastructure=True)),
             (["prototype-app/frontend/src/App.tsx", "prototype-app/backend/pom.xml"],
-             dict(none, frontend=True, backend=True, performance=True)),
+             dict(none, frontend=True, backend=True)),
             # Conservative cases: no list, workflow or script changes, unknown paths.
             ([], everything),
             ([".github/workflows/quality.yml"], everything),
@@ -157,33 +183,64 @@ class ContractsTest(unittest.TestCase):
         self.assertNotRegex(workflow, r"(?m)^\s*(run: )?trivy (fs|image) ")
         self.assertNotIn("schedule'", workflow.split('  aws-candidate:', 1)[1].split('steps:', 1)[0])
 
-    def needs(self, **selected):
+    def needs(self, event="push", **selected):
         outputs = {name: "true" for name in gate.SELECTION_OUTPUTS}
         outputs.update(selected)
-        result = {key: dict(result="success") for key in set(gate.SELECTED_JOBS) | gate.ALWAYS_JOBS}
+        result = {key: dict(result="success") for key in set(gate.SELECTED_JOBS) | gate.ALWAYS_JOBS | gate.MAIN_ONLY_JOBS}
+        if event == "pull_request":
+            for job in gate.MAIN_ONLY_JOBS:
+                result[job]["result"] = "skipped"
         result["changes"]["outputs"] = outputs
         return result
 
     def test_required_results(self):
-        self.assertEqual(gate.failures(self.needs()), [])
-        for job in gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS):
-            for state in ["failure", "cancelled", "skipped", None]:
-                needs = self.needs()
-                needs[job]["result"] = state
-                self.assertTrue(gate.failures(needs), (job, state))
+        self.assertEqual(gate.failures(self.needs(), "push"), [])
+        self.assertEqual(gate.failures(self.needs("pull_request"), "pull_request"), [])
+        for event in gate.EVENTS:
+            for job in gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS) | gate.MAIN_ONLY_JOBS:
+                for state in ["failure", "cancelled", "skipped", None]:
+                    needs = self.needs(event)
+                    if needs[job]["result"] == "skipped" and state == "skipped":
+                        continue
+                    needs[job]["result"] = state
+                    self.assertTrue(gate.failures(needs, event), (event, job, state))
+
+    def test_security_and_semgrep_never_skip(self):
+        self.assertLessEqual({"security", "semgrep"}, gate.ALWAYS_JOBS)
+        for event in gate.EVENTS:
+            for job in ("security", "semgrep"):
+                needs = self.needs(event)
+                needs[job]["result"] = "skipped"
+                self.assertTrue(gate.failures(needs, event), (event, job))
+
+    def test_main_performance_is_required_on_push_and_skipped_on_pull_requests(self):
+        for job in gate.MAIN_ONLY_JOBS:
+            needs = self.needs()
+            needs[job]["result"] = "skipped"
+            self.assertTrue(gate.failures(needs, "push"), job)
+            needs = self.needs("pull_request")
+            needs[job]["result"] = "success"
+            self.assertTrue(gate.failures(needs, "pull_request"), job)
+            needs = self.needs()
+            del needs[job]
+            self.assertTrue(gate.failures(needs, "push"), job)
+
+    def test_unknown_events_fail(self):
+        for event in ("schedule", "workflow_dispatch", None):
+            self.assertTrue(gate.failures(self.needs(), event), event)
 
     def test_only_explicit_skips_are_allowed(self):
         needs = self.needs(frontend="false", backend="false", infrastructure="false")
         for job in gate.SELECTED_JOBS:
             needs[job]["result"] = "skipped"
-        self.assertEqual(gate.failures(needs), [])
+        self.assertEqual(gate.failures(needs, "push"), [])
         needs["secrets"]["result"] = "skipped"
-        self.assertTrue(gate.failures(needs))
+        self.assertTrue(gate.failures(needs, "push"))
         for output in gate.SELECTION_OUTPUTS:
             for bad in ["invalid", None]:
                 needs = self.needs()
                 needs["changes"]["outputs"][output] = bad
-                self.assertTrue(gate.failures(needs), (output, bad))
+                self.assertTrue(gate.failures(needs, "push"), (output, bad))
 
     def test_skips_follow_their_own_component(self):
         for output in gate.SELECTION_OUTPUTS:
@@ -192,11 +249,11 @@ class ContractsTest(unittest.TestCase):
             needs = self.needs(**{output: "false"})
             for job in jobs:
                 needs[job]["result"] = "skipped"
-            self.assertEqual(gate.failures(needs), [], output)
+            self.assertEqual(gate.failures(needs, "push"), [], output)
             for job in others:
                 needs = self.needs(**{output: "false"})
                 needs[job]["result"] = "skipped"
-                self.assertTrue(gate.failures(needs), (output, job))
+                self.assertTrue(gate.failures(needs, "push"), (output, job))
 
     def test_workflow_selects_jobs_by_the_gate_mapping(self):
         root = Path(__file__).resolve().parents[2]
@@ -211,9 +268,10 @@ class ContractsTest(unittest.TestCase):
     def test_quality_gate_waits_for_exactly_the_accounted_jobs(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/quality.yml').read_text()
-        jobs = set(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', workflow.split('\njobs:\n', 1)[1])) - {'required'}
+        # publish runs after the gate, so the gate does not wait for it.
+        jobs = set(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', workflow.split('\njobs:\n', 1)[1])) - {'required', 'publish'}
         needs = re.search(r'(?m)^    needs: \[([^\]]*)\]', workflow.split('\n  required:\n', 1)[1]).group(1)
-        accounted = gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS)
+        accounted = gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS) | gate.MAIN_ONLY_JOBS
         self.assertEqual({name.strip() for name in needs.split(',')}, accounted)
         self.assertEqual(jobs, accounted)
 

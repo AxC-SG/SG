@@ -1,10 +1,15 @@
 name: Publish AWS backend candidate
 
 on:
+  # The main Quality run calls this once its gate passes, publishing that exact
+  # commit's image to the lab ECR before its 14-day archive expires. Publication
+  # only: nothing here changes what ECS runs.
+  workflow_call:
+  # Manual publication of an earlier main commit, or to production.
   workflow_dispatch:
     inputs:
       candidate_run:
-        description: Successful Trivy workflow run ID for the reviewed main commit
+        description: Quality run ID on main whose Quality gate passed
         required: true
         type: string
       target:
@@ -14,21 +19,8 @@ on:
         options:
           - lab
           - production
-  # Publishes each qualified main commit to the lab ECR before its 14-day image
-  # archive expires. Publication only: nothing here changes what ECS runs.
-  # PR D must keep these names in step with the workflows it renames.
-  workflow_run:
-    workflows: [Quality, Semgrep SAST, Trivy Security Scan, Performance Governance]
-    types: [completed]
-    branches: [main]
 
 permissions: {}
-
-# One publication per target at a time. A newer trigger replaces a queued one,
-# and the selector skips commits that are superseded or already published.
-concurrency:
-  group: aws-publish-${{ inputs.target || 'lab' }}
-  cancel-in-progress: false
 
 defaults:
   run:
@@ -39,7 +31,7 @@ jobs:
     name: Verify candidate run and source checks
     if: >-
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push')
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -54,7 +46,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Select a candidate whose exact commit passed every required check
+      - name: Select a Quality run whose gate passed for its exact commit
         id: select
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,6 +60,12 @@ jobs:
     if: needs.qualify.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # One publication per target at a time; the selector skips commits that are
+    # superseded or already published. Job level, because a called workflow's
+    # own concurrency would share the caller's github.workflow.
+    concurrency:
+      group: aws-publish-${{ needs.qualify.outputs.target }}
+      cancel-in-progress: false
     environment: aws-standard-${{ needs.qualify.outputs.target }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}

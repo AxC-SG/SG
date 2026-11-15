@@ -1,19 +1,16 @@
 name: Semgrep SAST
 
+# quality.yml calls this for every PR and main push; the weekly schedule picks
+# up rule changes on an unchanged main. No workflow-level concurrency (see
+# trivy.yml).
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
   schedule:
     - cron: '0 7 * * 1'
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:

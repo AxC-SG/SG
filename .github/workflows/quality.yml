@@ -319,10 +319,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Trivy filesystem scan and the ECS image: build, inspect, scan and, on main,
+  # the archive that the publish job releases.
+  security:
+    uses: ./.github/workflows/trivy.yml
+    permissions:
+      contents: read
+      security-events: write
+
+  semgrep:
+    uses: ./.github/workflows/semgrep.yml
+
+  # Main only. The gate accepts its skip on pull requests and nowhere else.
+  performance:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/performance-governance.yml
+
   required:
     name: Quality gate
     if: always()
-    needs: [changes, static, secrets, terraform, frontend, frontend-e2e, backend, backend-postgres]
+    needs: [changes, static, secrets, terraform, frontend, frontend-e2e, backend, backend-postgres, security, semgrep, performance]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -330,4 +346,17 @@ jobs:
       - name: Enforce all expected results
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
         run: python3 .github/scripts/check-quality-gate.py
+
+  # Publication from this run: the gate passed for this exact commit, so the image
+  # the security job archived goes to the lab ECR. Nothing here changes what ECS
+  # runs; a release is a separate, operator-run step (release.py).
+  publish:
+    needs: required
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/aws-publish-candidate.yml
+    permissions:
+      actions: read
+      contents: read
+      id-token: write

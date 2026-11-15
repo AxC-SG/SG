@@ -9,20 +9,23 @@ spec.loader.exec_module(selector)
 REPO = "AxC-SG/SG"
 SHA = "a" * 40
 NEWER = "b" * 40
-WORKFLOWS = selector.CHECKS + (selector.TRIVY,)
+QUALITY_ID = 7
+RUN = "103"
 
 
-def run(workflow, sha=SHA, status="completed", conclusion="success", run_id=None, event="push",
-        branch="main", repo=REPO):
-    return {"id": run_id or 100 + WORKFLOWS.index(workflow), "workflow_id": WORKFLOWS.index(workflow),
-            "head_sha": sha, "status": status, "conclusion": conclusion, "event": event,
+def run(sha=SHA, workflow_id=QUALITY_ID, event="push", branch="main", repo=REPO):
+    return {"id": int(RUN), "workflow_id": workflow_id, "head_sha": sha, "event": event,
             "head_branch": branch, "head_repository": {"full_name": repo}}
 
 
+def gate(conclusion="success", name=selector.GATE_JOB):
+    return {"name": name, "conclusion": conclusion}
+
+
 class FakeApi:
-    def __init__(self, runs=None, head=SHA, published=()):
-        self.runs = {workflow: run(workflow) for workflow in WORKFLOWS}
-        self.runs.update(runs or {})
+    def __init__(self, quality_run=None, jobs=None, head=SHA, published=()):
+        self.run = quality_run or run()
+        self.jobs = [gate(), {"name": "security / AWS backend candidate", "conclusion": "success"}] if jobs is None else jobs
         self.head = head
         self.published = published
 
@@ -30,16 +33,13 @@ class FakeApi:
         prefix = f"repos/{REPO}/"
         assert path.startswith(prefix), path
         path = path[len(prefix):]
-        for workflow in WORKFLOWS:
-            if path == f"actions/workflows/{workflow}":
-                return {"id": WORKFLOWS.index(workflow)}
-            if path == f"actions/workflows/{workflow}/runs":
-                assert params["event"] == "push" and params["branch"] == "main", params
-                found = self.runs.get(workflow)
-                return {"workflow_runs": [found] if found and found["head_sha"] == params["head_sha"] else []}
-        if path.startswith("actions/runs/"):
-            wanted = int(path.rsplit("/", 1)[1])
-            return next(item for item in self.runs.values() if item and item["id"] == wanted)
+        if path == f"actions/workflows/{selector.QUALITY}":
+            return {"id": QUALITY_ID}
+        if path == f"actions/runs/{RUN}":
+            return self.run
+        if path == f"actions/runs/{RUN}/jobs":
+            assert params["filter"] == "latest", params
+            return {"jobs": self.jobs}
         if path == "commits/main":
             return {"sha": self.head}
         if path == "actions/artifacts":
@@ -47,37 +47,32 @@ class FakeApi:
         raise AssertionError(path)
 
 
-TRIGGER = run(selector.TRIVY)
+NOT_QUALITY_PUSHES = (run(workflow_id=QUALITY_ID + 1), run(event="pull_request"), run(event="schedule"),
+                      run(branch="feature"), run(repo="fork/SG"))
+GATE_NOT_PASSED = ([], [gate("failure")], [gate("cancelled")], [gate("skipped")], [gate(None)],
+                   [gate(), gate()], [gate(name="Performance gate")])
 
 
-class AutomaticTest(unittest.TestCase):
-    def select(self, api, trigger=TRIGGER, target="lab"):
-        return selector.select(api, REPO, "workflow_run", target, trigger=trigger)
+class CalledTest(unittest.TestCase):
+    def select(self, api, target="lab", run_id=RUN, sha=SHA):
+        return selector.select(api, REPO, "push", target, run_id, sha)
 
-    def test_publishes_when_every_check_passed_on_the_main_head(self):
-        self.assertEqual(self.select(FakeApi()), {"target": "lab", "source_sha": SHA, "candidate_run": "103"})
+    def test_publishes_its_own_run_when_the_gate_passed_on_the_main_head(self):
+        self.assertEqual(self.select(FakeApi()), {"target": "lab", "source_sha": SHA, "candidate_run": RUN})
 
-    def test_waits_until_every_check_completed(self):
-        for workflow in WORKFLOWS:
-            for missing in (None, run(workflow, status="in_progress", conclusion=None)):
-                with self.assertRaisesRegex(selector.Skip, "waiting for " + workflow):
-                    self.select(FakeApi({workflow: missing}))
+    def test_rejects_a_gate_that_did_not_pass(self):
+        for jobs in GATE_NOT_PASSED:
+            with self.assertRaisesRegex(selector.Rejected, "has not passed"):
+                self.select(FakeApi(jobs=jobs))
 
-    def test_skips_when_a_check_did_not_pass(self):
-        for workflow in WORKFLOWS:
-            for conclusion in ("failure", "cancelled", "skipped"):
-                with self.assertRaisesRegex(selector.Skip, conclusion):
-                    self.select(FakeApi({workflow: run(workflow, conclusion=conclusion)}))
+    def test_rejects_runs_that_are_not_quality_pushes_on_main(self):
+        for replacement in NOT_QUALITY_PUSHES:
+            with self.assertRaisesRegex(selector.Rejected, "not a Quality push run on main"):
+                self.select(FakeApi(replacement))
 
-    def test_ignores_runs_from_other_repositories(self):
-        with self.assertRaisesRegex(selector.Skip, "waiting for quality.yml"):
-            self.select(FakeApi({"quality.yml": run("quality.yml", repo="fork/SG")}))
-
-    def test_skips_triggers_that_are_not_pushes_to_main(self):
-        for trigger in (run(selector.TRIVY, event="pull_request"), run(selector.TRIVY, event="schedule"),
-                        run(selector.TRIVY, branch="feature"), run(selector.TRIVY, repo="fork/SG")):
-            with self.assertRaisesRegex(selector.Skip, "not a push to main"):
-                self.select(FakeApi(), trigger)
+    def test_rejects_a_run_for_another_commit(self):
+        with self.assertRaisesRegex(selector.Rejected, "not " + SHA):
+            self.select(FakeApi(run(sha=NEWER)))
 
     def test_skips_superseded_commits(self):
         with self.assertRaisesRegex(selector.Skip, "superseded"):
@@ -98,30 +93,26 @@ class AutomaticTest(unittest.TestCase):
 
 
 class ManualTest(unittest.TestCase):
-    def select(self, api, candidate_run="103", target="lab"):
-        return selector.select(api, REPO, "workflow_dispatch", target, candidate_run=candidate_run)
+    def select(self, api, candidate_run=RUN, target="lab"):
+        return selector.select(api, REPO, "workflow_dispatch", target, candidate_run)
 
-    def test_publishes_a_qualified_trivy_run_to_either_target(self):
+    def test_publishes_a_qualified_quality_run_to_either_target(self):
         for target in ("lab", "production"):
             self.assertEqual(self.select(FakeApi(), target=target),
-                             {"target": target, "source_sha": SHA, "candidate_run": "103"})
+                             {"target": target, "source_sha": SHA, "candidate_run": RUN})
 
     def test_publishes_an_older_commit_on_request(self):
         self.assertEqual(self.select(FakeApi(head=NEWER))["source_sha"], SHA)
 
-    def test_rejects_a_check_that_did_not_pass(self):
-        for workflow in selector.CHECKS:
-            for replacement in (None, run(workflow, conclusion="failure"), run(workflow, status="in_progress", conclusion=None)):
-                with self.assertRaisesRegex(selector.Rejected, workflow):
-                    self.select(FakeApi({workflow: replacement}))
+    def test_rejects_a_gate_that_did_not_pass(self):
+        for jobs in GATE_NOT_PASSED:
+            with self.assertRaisesRegex(selector.Rejected, "has not passed"):
+                self.select(FakeApi(jobs=jobs))
 
-    def test_rejects_runs_that_are_not_successful_trivy_pushes_on_main(self):
-        for replacement in (run(selector.TRIVY, conclusion="failure"), run(selector.TRIVY, event="pull_request"),
-                            run(selector.TRIVY, branch="feature"), run(selector.TRIVY, repo="fork/SG")):
-            with self.assertRaisesRegex(selector.Rejected, "not a successful Trivy push"):
-                self.select(FakeApi({selector.TRIVY: replacement}))
-        with self.assertRaisesRegex(selector.Rejected, "not a successful Trivy push"):
-            self.select(FakeApi(), candidate_run="100")
+    def test_rejects_runs_that_are_not_quality_pushes_on_main(self):
+        for replacement in NOT_QUALITY_PUSHES:
+            with self.assertRaisesRegex(selector.Rejected, "not a Quality push run on main"):
+                self.select(FakeApi(replacement))
 
     def test_rejects_malformed_run_ids(self):
         for candidate in ("", None, "12a", "1;2"):
@@ -131,8 +122,9 @@ class ManualTest(unittest.TestCase):
 
 class EventTest(unittest.TestCase):
     def test_rejects_other_events(self):
-        with self.assertRaises(selector.Rejected):
-            selector.select(FakeApi(), REPO, "push", "lab")
+        for event in ("workflow_run", "pull_request", "schedule"):
+            with self.assertRaises(selector.Rejected):
+                selector.select(FakeApi(), REPO, event, "lab", RUN, SHA)
 
 
 if __name__ == "__main__":
