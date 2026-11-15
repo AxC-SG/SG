@@ -86,6 +86,15 @@ public class TenantSchemaStatusService {
         return Math.min(TenantSchemaCompatibility.SUPPORTED_MAXIMUM, compatibleMaximum);
     }
 
+    /** Lowest and highest recorded schema version across ACTIVE tenants, as "min..max", or "none". */
+    public String activeTenantVersions() {
+        return jdbc.queryForObject("""
+                select coalesce(min(v.current_version) || '..' || max(v.current_version), 'none')
+                  from platform.tenants t join platform.tenant_schema_versions v on v.tenant_id=t.id
+                 where t.status='ACTIVE'
+                """, String.class);
+    }
+
     public long readinessFailures(int ignoredPackagedTarget) {
         assertPlatformDependencies();
         Long count=jdbc.queryForObject("""

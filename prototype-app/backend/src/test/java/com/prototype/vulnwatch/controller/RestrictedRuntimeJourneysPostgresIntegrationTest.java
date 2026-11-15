@@ -200,6 +200,13 @@ class RestrictedRuntimeJourneysPostgresIntegrationTest {
         assertEquals(0, owner.queryForObject("select count(*) from tenant_default.demo_invites where id = ?", Integer.class, inviteId));
     }
 
+    @Test void schemaStateEvidenceIsReadableByTheRuntimeRole() {
+        String packaged = String.valueOf(new com.prototype.vulnwatch.migration.PackagedMigrationCatalog().tenantTarget());
+        assertTrue(schemaStatus.activeTenantVersions().matches("\\d+\\.\\.\\d+"));
+        assertTrue(schemaStatus.activeTenantVersions().endsWith(".." + packaged));
+        assertEquals(0L, schemaStatus.readinessFailures(Integer.parseInt(packaged)));
+    }
+
     @Test void missingPlatformDependencyBlocksStartupAndReadinessThenRecovers() {
         var startup = new com.prototype.vulnwatch.config.PlatformSchemaStartupValidator(schemaStatus, true);
         var readiness = new com.prototype.vulnwatch.config.TenantSchemaReadinessHealthIndicator(
