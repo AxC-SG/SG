@@ -6,11 +6,12 @@ No AWS credentials, live databases or external services are used.
 """
 import json
 import secrets
-import re
 import subprocess
 import sys
 import time
 import uuid
+import urllib.error
+import urllib.request
 
 POSTGRES = 'postgres:16@sha256:d4d4f1579fcfba19c2257326f6a93f4bcf677a430619f084ced704e18eb428ce'
 
@@ -19,12 +20,15 @@ def docker(*args):
     return subprocess.check_output(['docker', *args], text=True).strip()
 
 
-def status(container, path):
-    result = subprocess.run(['docker', 'exec', container, 'busybox', 'wget', '-S', '-T', '5',
-                             '-O', '/dev/null', 'http://127.0.0.1:8080' + path],
-                            capture_output=True, text=True, timeout=15)
-    found = re.search(r'HTTP/1\.[01]\s+(\d{3})', result.stderr)
-    return int(found[1]) if found else None
+def status(address, path):
+    # The Linux runner can reach the isolated bridge directly; no host-published port is needed.
+    try:
+        with urllib.request.urlopen('http://' + address + ':8080' + path, timeout=5) as response:
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+    except (urllib.error.URLError, TimeoutError):
+        return None
 
 
 def check(image):
@@ -73,11 +77,12 @@ def check(image):
         deadline = time.monotonic() + 240
         for role in ('api', 'worker'):
             container = prefix + '-' + role
-            while status(container, '/actuator/health/readiness') != 200:
+            address = docker('inspect', '--format={{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', container)
+            while status(address, '/actuator/health/readiness') != 200:
                 if docker('inspect', '--format={{.State.Running}}', prefix + '-' + role) != 'true' or time.monotonic() > deadline:
-                    raise RuntimeError(role + ' failed readiness')
+                    raise RuntimeError(f'{role} failed readiness: HTTP {status(address, chr(47) + "actuator/health/readiness")}')
                 time.sleep(3)
-            if role == 'api' and (status(container, '/api/auth/csrf') != 200 or status(container, '/api/me') != 401):
+            if role == 'api' and (status(address, '/api/auth/csrf') != 200 or status(address, '/api/me') != 401):
                 raise RuntimeError('candidate API public/protected contract failed')
         print(json.dumps({'image_id': image, 'migrator': 'passed', 'api': 'passed', 'worker': 'passed'}))
     except BaseException:
