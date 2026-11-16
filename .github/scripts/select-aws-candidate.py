@@ -17,6 +17,12 @@ import os
 import re
 import subprocess
 import sys
+import importlib.util
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("publication_provenance", Path(__file__).with_name("publication_provenance.py"))
+provenance = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(provenance)
 
 QUALITY = "quality.yml"
 GATE_JOB = "Quality gate"
@@ -67,7 +73,7 @@ def called(api, repo, target, run_id, sha):
         raise Skip(f"{sha} is superseded by {head}")
     artifacts = api(f"repos/{repo}/actions/artifacts",
                     {"name": publication_name(target, sha), "per_page": "100"})["artifacts"]
-    if any(not artifact["expired"] for artifact in artifacts):
+    if provenance.trusted_artifacts(api, repo, artifacts, sha):
         raise Skip(f"{sha} is already published to {target}")
     return {"target": target, "source_sha": sha, "candidate_run": run_id}
 

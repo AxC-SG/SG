@@ -69,6 +69,9 @@ VERCEL_TOKEN (paired releases, adopt-frontend, and rollbacks that restore a fron
 Credentials go only to child processes and API calls and are never printed.
 """
 import datetime
+import importlib.util
+import io
+import zipfile
 import json
 import os
 import re
@@ -123,6 +126,9 @@ BROWSER_CHECKS = CFG / "release-browser-checks.json"
 SMOKE_SCRIPT = LAB_DIR.parents[1] / "frontend" / "e2e" / "lab-smoke.mjs"
 SMOKE_TIMEOUT_SECONDS = 600
 REPO_ROOT = LAB_DIR.parents[2]
+spec = importlib.util.spec_from_file_location("publication_provenance", REPO_ROOT / ".github/scripts/publication_provenance.py")
+provenance = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(provenance)
 
 # The lab frontend: Vercel project scout-frontend, production domain scoutgrid.io.
 VERCEL_CLI = "vercel@65.9.0"
@@ -927,6 +933,10 @@ class Release:
             raise ReleaseError("a runtime-only release never stops the services, snapshots or touches the migrator",
                                outcome="needs_operator", reason="refused")
         step = "start"
+        # Durable intent precedes every possible live mutation, including a partial stop/apply.
+        inputs["pending"] = {"release_id": record["release_id"], "source_sha": record["candidate"]["source_sha"],
+                             "kind": record["kind"], "phase": "started"}
+        self.save(inputs, record)
         try:
             if stop and not self.done(record, "stopped"):
                 step = "stopped"
@@ -943,7 +953,24 @@ class Release:
                 inputs["migrator_image_digest"], inputs["migrator"] = migrator, meta
                 self.mark(inputs, record, "migrator")
                 step = "migrate"
-                task = self.lab.run_migrator(self.lab.outputs())
+                task = record.get("migrator_task")
+                if not task:
+                    # Stable identity also covers a lost RunTask response before the ARN can be saved.
+                    if record.get("failed_at") == "migrate" and not record.get("migrator_client_token"):
+                        raise ReleaseError("legacy migration has no durable task identity; inspect ECS before recovery",
+                                           outcome="needs_operator", reason="unfinished")
+                    attempted = record.get("migrator_attempted_at")
+                    if attempted:
+                        age = utc_now() - datetime.datetime.fromisoformat(attempted.replace("Z", "+00:00"))
+                        if age.total_seconds() > 3000:
+                            raise ReleaseError("migration launch outcome is unknown and its safe retry window expired; "
+                                               "inspect ECS before recovery", outcome="needs_operator", reason="unfinished")
+                    record.setdefault("migrator_attempted_at", stamp())
+                    token = record.setdefault("migrator_client_token", record["release_id"])
+                    self.save(inputs, record)
+                    task = self.lab.run_migrator(self.lab.outputs(), token)
+                    record["migrator_task"] = task
+                    self.save(inputs, record)
                 succeeded, detail = migrator_outcome(self.lab.wait_task(task))
                 if not succeeded:
                     raise ReleaseError(f"the migrator failed ({detail}); api and worker were not changed")
@@ -977,7 +1004,9 @@ class Release:
                     raise ReleaseError(f"paired checks failed: {', '.join(failed)}")
                 self.mark(inputs, record, "paired")
         except BaseException as error:
-            if record["kind"] == "rollback":
+            if isinstance(error, ReleaseError) and error.outcome == "needs_operator":
+                outcome, reason = error.outcome, error.reason
+            elif record["kind"] == "rollback":
                 outcome, reason = "needs_operator", "recovery_failed"
             elif step == "frontend":
                 outcome, reason = "failed", "frontend_pending"
@@ -1128,6 +1157,17 @@ class Release:
         self.lab.log(f"Baking until {stamp(bake_end)}: one scheduler cycle on the new tasks.")
         self.lab.wait_until(bake_end)
         record["bake"] = {"from": stamp(settled_at), "to": stamp(utc_now())}
+        # Sample current health again: earlier healthy observations cannot certify the bake's end.
+        current = self.lab.settled_services({role: arns[role] for role in SERVICES})
+        for role in SERVICES:
+            checks[f"{role} settled after bake"] = {"passed": service_settled(current[role], arns[role]),
+                                                      "detail": current[role].get("runningCount")}
+        states = self.lab.target_states()
+        checks["api targets healthy after bake"] = {"passed": bool(states) and set(states) == {"healthy"},
+                                                   "detail": ",".join(states)}
+        for path, expected in (("/api/auth/csrf", 200), ("/api/me", 401)):
+            status = self.lab.http_status(path)
+            checks[f"GET {path} {expected} after bake"] = {"passed": status == expected, "detail": str(status)}
         for role in SERVICES:
             passed, detail = fatal_check(self.lab.log_messages(role, settled_at, FATAL_FILTER))
             checks[f"{role} defined failures"] = {"passed": passed, "detail": detail}
@@ -1233,21 +1273,36 @@ class AwsLab:
             raise ReleaseError(f"cannot resolve {ref} to a commit")
         return sha
 
+    def github_api(self, path, params=None):
+        command = ["gh", "api", "--method", "GET", path]
+        for key, value in (params or {}).items():
+            command += ["-f", f"{key}={value}"]
+        return json.loads(self.run(command))
+
     def publication(self, sha, required=True):
         """The lab publication record for sha; None when there is none and it is not required."""
         name = f"aws-publication-lab-{sha}"
         artifacts = json.loads(self.run(["gh", "api", "--method", "GET", f"repos/{REPO}/actions/artifacts",
                                          "-f", f"name={name}", "-f", "per_page=100"]))["artifacts"]
-        live = sorted((item for item in artifacts if not item["expired"]), key=lambda item: item["created_at"])
+        live = provenance.trusted_artifacts(self.github_api, REPO, artifacts, sha)
         if not live and not required:
             return None
         if not live:
             raise ReleaseError(f"{sha[:7]} has no lab publication record; it is published once its main checks pass")
-        # A new directory per read: reconcile reads the same publication again under the lock, and
-        # gh run download refuses to overwrite a file it extracted before.
-        target = Path(tempfile.mkdtemp(prefix=f"publication-{sha[:7]}.", dir=self.work))
-        self.run(["gh", "run", "download", str(live[-1]["workflow_run"]["id"]), "-R", REPO, "-n", name, "-D", str(target)])
-        return json.loads((target / "aws-publication.json").read_text())
+        # Download this immutable artifact, not another artifact selected again by name.
+        payload = subprocess.run(["gh", "api", f"repos/{REPO}/actions/artifacts/{live[-1]['id']}/zip"],
+                                 check=True, capture_output=True).stdout
+        with zipfile.ZipFile(io.BytesIO(payload)) as zipped:
+            record = json.loads(zipped.read("aws-publication.json"))
+        try:
+            provenance.validate_candidate(self.github_api, REPO, record, sha)
+            producing = self.github_api(f"repos/{REPO}/actions/runs/{live[-1]['workflow_run']['id']}")
+            if producing.get("event") == "push" and str(record.get("candidate_run")) != str(producing.get("id")):
+                raise ValueError("publication is not bound to its producing Quality run")
+        except ValueError as error:
+            raise ReleaseError(f"publication provenance rejected: {error}") from error
+        check_publication(record, sha)
+        return record
 
     def ecr_has(self, digest):
         try:
@@ -1310,11 +1365,11 @@ class AwsLab:
         outputs["task_definition_arns"] = task_definition_arns(json.loads(self.tf("show", "-json")))
         return outputs
 
-    def run_migrator(self, outputs):
+    def run_migrator(self, outputs, client_token):
         network = {"awsvpcConfiguration": {"subnets": outputs["task_subnet_ids"], "assignPublicIp": "DISABLED",
                                            "securityGroups": [outputs["migrator_security_group_id"]]}}
         started = self.aws("ecs", "run-task", "--cluster", CLUSTER, "--launch-type", "FARGATE", "--platform-version", "1.4.0",
-                           "--count", "1", "--task-definition", outputs["task_definition_arns"]["migrator"],
+                           "--count", "1", "--client-token", client_token, "--task-definition", outputs["task_definition_arns"]["migrator"],
                            "--network-configuration", json.dumps(network), "--disable-execute-command",
                            "--tags", "key=Application,value=ScoutGrid", "key=Environment,value=lab",
                            "key=ReleasePurpose,value=Migration")

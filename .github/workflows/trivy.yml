@@ -98,6 +98,9 @@ jobs:
           mkdir -p candidate
           python3 .github/scripts/inspect-aws-backend-image.py "scoutgrid-aws-backend:$GITHUB_SHA" > candidate/image.json
 
+      - name: Boot the exact candidate migrator, API and worker
+        run: python3 .github/scripts/check-aws-image-startup.py "scoutgrid-aws-backend:$GITHUB_SHA"
+
       - name: Scan the ECS image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
