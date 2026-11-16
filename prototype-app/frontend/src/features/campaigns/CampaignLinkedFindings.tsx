@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { pathForFindingDetail } from '../../app/routes';
 import { api } from '../../api/client';
-import { campaignOwnerLabel } from './ownership';
+import { campaignOwnerLabel, outcomeLabel } from './ownership';
+import { OwnerChangeIndicator } from './OwnerChangeIndicator';
 
 /**
  * Members of a campaign created from findings (for example CRYPTO findings), first page of the campaign ledger
@@ -30,8 +31,8 @@ export function CampaignLinkedFindings({ campaignId }: { campaignId: string }) {
                 <td><Link to={pathForFindingDetail(row.displayId)}>{row.displayId}</Link> {row.title}</td>
                 <td>{row.findingKind}</td>
                 <td>{row.severity ?? '—'}</td>
-                <td>{row.outcome}</td>
-                <td>{campaignOwnerLabel(row.currentOwnership)}</td>
+                <td>{outcomeLabel(row.outcome)}</td>
+                <td>{campaignOwnerLabel(row.currentOwnership)} <OwnerChangeIndicator member={row} /></td>
                 <td>{row.dueAt ? new Date(row.dueAt).toLocaleDateString() : '—'}</td>
               </tr>
             ))}

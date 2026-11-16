@@ -24,7 +24,8 @@ function defaultForm(): JiraTicketingConfigRequest {
     issueTypeName: 'Task',
     defaultLabels: '',
     includePriority: true,
-    enabled: true
+    enabled: true,
+    defaultAssignmentGroup: ''
   };
 }
 
@@ -39,7 +40,8 @@ function formFromConfig(config: JiraTicketingConfig | null): JiraTicketingConfig
     issueTypeName: config.issueTypeName ?? 'Task',
     defaultLabels: config.defaultLabels ?? '',
     includePriority: config.includePriority,
-    enabled: config.enabled
+    enabled: config.enabled,
+    defaultAssignmentGroup: config.defaultAssignmentGroup ?? ''
   };
 }
 
@@ -88,7 +90,9 @@ export function JiraTicketingConnectorPage() {
         projectKey: form.projectKey?.trim().toUpperCase() ?? '',
         issueTypeId: form.issueTypeId?.trim() ?? '',
         issueTypeName: form.issueTypeName?.trim() || 'Task',
-        defaultLabels: form.defaultLabels?.trim() ?? ''
+        defaultLabels: form.defaultLabels?.trim() ?? '',
+        // Blank clears the stored default; null would keep it.
+        defaultAssignmentGroup: form.defaultAssignmentGroup?.trim() ?? ''
       };
       const saved = await api.saveJiraTicketingConfig(payload);
       queryClient.setQueryData(['jira-ticketing-config'], saved);
@@ -296,6 +300,19 @@ export function JiraTicketingConnectorPage() {
               value={form.defaultLabels ?? ''}
               onChange={(e) => updateField('defaultLabels', e.target.value)}
               placeholder="security, vulnerability-management"
+            />
+          </label>
+
+          <label>
+            <span>
+              Default assignment group{' '}
+              <InfoTooltip text="Used when a finding's owner team has no mapped group. Jira has no assignment-group field, so the group is written into the summary and description." />
+            </span>
+            <input
+              type="text"
+              value={form.defaultAssignmentGroup ?? ''}
+              onChange={(e) => updateField('defaultAssignmentGroup', e.target.value)}
+              placeholder="Platform Security"
             />
           </label>
         </div>

@@ -5,6 +5,12 @@ import { AsyncSection, type AsyncSectionState } from '../components/AsyncSection
 import { Dialog } from '../components/Dialog';
 import { ActiveFilterChips, ResultScope, type ActiveFilter } from '../components/QueueControls';
 import { useActor } from '../features/auth/context';
+import { canAddCustomCampaignRecipient } from '../features/auth/roles';
+import { CampaignLaunchPreview } from '../features/campaigns/CampaignLaunchPreview';
+import { useCampaignPreview } from '../features/campaigns/useCampaignPreview';
+import { CampaignLaunchOptions, CampaignRecipientsPicker } from '../features/campaigns/CampaignRecipients';
+import { notifyDraftsToRequest, type NotifyDraft } from '../features/campaigns/notifyDrafts';
+import { useOwnershipTeamsQuery } from '../features/ownership/queries';
 import type { TenantMember } from '../features/admin/types';
 import type { OrgSpecificCveExposureRecord } from '../features/cve-workbench/types';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
@@ -33,7 +39,9 @@ type WizardForm = {
   selectedCves: string[];
   selectedSoftwareIds: string[];
   selectedAssetIds: string[];
-  selectedGroups: string[];
+  notify: NotifyDraft[];
+  includeExcepted: boolean;
+  coordinatingTeamId: string;
   selectedWatchlistIds: string[];
 };
 
@@ -95,7 +103,9 @@ function createDefaultForm(): WizardForm {
     selectedCves: [],
     selectedSoftwareIds: [],
     selectedAssetIds: [],
-    selectedGroups: [],
+    notify: [],
+    includeExcepted: false,
+    coordinatingTeamId: '',
     selectedWatchlistIds: [],
   };
 }
@@ -116,8 +126,6 @@ export function CampaignsPage() {
   const [wizardForm, setWizardForm] = React.useState<WizardForm>(() => createDefaultForm());
   const [wizardBusy, setWizardBusy] = React.useState(false);
   const [wizardError, setWizardError] = React.useState<string | null>(null);
-  const [groupOptions, setGroupOptions] = React.useState<string[]>([]);
-  const [groupSearch, setGroupSearch] = React.useState('');
   const [members, setMembers] = React.useState<TenantMember[]>([]);
 
   // ── CVE scope picker ──────────────────────────────────────────────────────
@@ -162,17 +170,13 @@ export function CampaignsPage() {
     void loadCampaigns();
   }, [loadCampaigns]);
 
-  // Load groups + members when wizard opens
+  // Load watchlist members when wizard opens
   React.useEffect(() => {
     if (!wizardOpen) return;
     let cancelled = false;
-    Promise.all([
-      api.listAssignmentGroups(),
-      actor?.tenantId ? api.listTenantMembers(actor.tenantId) : Promise.resolve([] as TenantMember[]),
-    ])
-      .then(([groups, tenantMembers]) => {
+    (actor?.tenantId ? api.listTenantMembers(actor.tenantId) : Promise.resolve([] as TenantMember[]))
+      .then((tenantMembers) => {
         if (cancelled) return;
-        setGroupOptions(Array.from(new Set(groups)).sort((a, b) => a.localeCompare(b)));
         setMembers(tenantMembers);
       })
       .catch((err: unknown) => {
@@ -331,9 +335,7 @@ export function CampaignsPage() {
     return wizardForm.selectedAssetIds.length;
   }
 
-  async function submitWizard(): Promise<void> {
-    setWizardBusy(true);
-    setWizardError(null);
+  function buildRequest(): CampaignCreateRequest {
     const watchlist = members
       .filter((member) => wizardForm.selectedWatchlistIds.includes(member.id))
       .map((member) => ({
@@ -345,22 +347,23 @@ export function CampaignsPage() {
       }));
     // The create request carries CVE scope only; launch is blocked until at least one CVE is chosen,
     // which is the server's own rule. Software and asset picks are not part of the request.
-    const cveIds = wizardForm.selectedCves;
-
-    const payload: CampaignCreateRequest = {
+    return {
       name: wizardForm.name.trim() || 'Untitled Campaign',
       summary: wizardForm.summary.trim() || null,
-      cveIds,
+      cveIds: wizardForm.selectedCves,
       dueAt: wizardForm.dueDate ? new Date(`${wizardForm.dueDate}T00:00:00Z`).toISOString() : null,
       launchNote: wizardForm.launchNote.trim() || null,
-      notifyGroups: wizardForm.selectedGroups.map((groupName, index) => ({
-        groupName,
-        roleLabel: index === 0 ? 'Owner group' : 'Resolver group',
-        triggerSummary: 'Status changes, notes, closure risk',
-        notificationsPaused: false,
-      })),
+      coordinatingTeamId: wizardForm.coordinatingTeamId || null,
+      includeExcepted: wizardForm.includeExcepted,
+      notifyGroups: notifyDraftsToRequest(wizardForm.notify),
       watchlist,
     };
+  }
+
+  async function submitWizard(): Promise<void> {
+    setWizardBusy(true);
+    setWizardError(null);
+    const payload = buildRequest();
     try {
       const created = await api.createCampaign(payload);
       closeWizard();
@@ -375,7 +378,10 @@ export function CampaignsPage() {
 
   const cveCount = wizardForm.selectedCves.length;
   const unsentScopeCount = wizardForm.selectedSoftwareIds.length + wizardForm.selectedAssetIds.length;
-  const canLaunch = cveCount > 0 && !wizardBusy;
+  const teamsQuery = useOwnershipTeamsQuery('', 'ACTIVE', wizardOpen);
+  const preview = useCampaignPreview(buildRequest(), wizardOpen && wizardStep === WIZARD_STEPS.length - 1 && cveCount > 0);
+  const teamsWithoutChannel = new Set((preview.data?.teamsWithoutChannel ?? []).map((team) => team.teamId));
+  const canLaunch = cveCount > 0 && preview.isSuccess && !wizardBusy;
   const launchSubject = `[Campaign launched] ${wizardForm.name.trim() || 'Untitled Campaign'}`;
   const selectedMembers = members.filter((member) => wizardForm.selectedWatchlistIds.includes(member.id));
 
@@ -805,37 +811,22 @@ export function CampaignsPage() {
               {wizardStep === 2 && (
                 <div className="campaign-form-columns">
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <h4 style={{ margin: 0 }}>Notify Groups</h4>
-                    </div>
-                    <input
-                      type="search"
-                      aria-label="Search groups"
-                      placeholder="Search groups…"
-                      value={groupSearch}
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                      style={{ width: '100%', marginBottom: 10, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dp-border)', background: 'var(--dp-surface)', color: 'var(--dp-text)', fontSize: 13 }}
+                    <CampaignRecipientsPicker
+                      teams={teamsQuery.data ?? []}
+                      teamsLoading={teamsQuery.isPending}
+                      teamsError={teamsQuery.isError}
+                      value={wizardForm.notify}
+                      onChange={(notify) => setWizardForm((f) => ({ ...f, notify }))}
+                      canAddCustom={canAddCustomCampaignRecipient(actor)}
+                      teamsWithoutChannel={teamsWithoutChannel}
                     />
-                    <div className="campaign-chip-grid">
-                      {groupOptions.filter((g) => g.toLowerCase().includes(groupSearch.toLowerCase())).map((group) => (
-                        <button
-                          key={group}
-                          type="button"
-                          className={wizardForm.selectedGroups.includes(group) ? 'campaign-chip active' : 'campaign-chip'}
-                          aria-pressed={wizardForm.selectedGroups.includes(group)}
-                          onClick={() => setWizardForm((f) => ({ ...f, selectedGroups: toggleSelection(f.selectedGroups, group) }))}
-                        >
-                          {group}
-                        </button>
-                      ))}
-                    </div>
-                    {wizardForm.selectedGroups.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
-                        <span style={{ fontSize: 11, color: 'var(--dp-text-2)' }}>
-                          {`${wizardForm.selectedGroups.length} group${wizardForm.selectedGroups.length !== 1 ? 's' : ''} selected`}
-                        </span>
-                      </div>
-                    )}
+                    <CampaignLaunchOptions
+                      teams={teamsQuery.data ?? []}
+                      coordinatingTeamId={wizardForm.coordinatingTeamId}
+                      includeExcepted={wizardForm.includeExcepted}
+                      onCoordinatingTeam={(coordinatingTeamId) => setWizardForm((f) => ({ ...f, coordinatingTeamId }))}
+                      onIncludeExcepted={(includeExcepted) => setWizardForm((f) => ({ ...f, includeExcepted }))}
+                    />
                   </div>
                   <div>
                     <h4>Watchlist Members</h4>
@@ -889,8 +880,8 @@ export function CampaignsPage() {
                         <span className="cw-launch-kpi-lbl">CVE scope</span>
                       </div>
                       <div className="cw-launch-kpi">
-                        <span className="cw-launch-kpi-val">{wizardForm.selectedGroups.length}</span>
-                        <span className="cw-launch-kpi-lbl">Notify groups</span>
+                        <span className="cw-launch-kpi-val">{wizardForm.notify.length}</span>
+                        <span className="cw-launch-kpi-lbl">Notify recipients</span>
                       </div>
                       <div className="cw-launch-kpi">
                         <span className="cw-launch-kpi-val">{wizardForm.selectedWatchlistIds.length}</span>
@@ -923,21 +914,23 @@ export function CampaignsPage() {
                     )}
                   </div>
 
+                  {cveCount > 0 && <CampaignLaunchPreview preview={preview} />}
+
                   {/* Launch notification preview: what the server records at launch, in place of a second modal. */}
                   <section className="full cw-launch-notify" aria-labelledby="cw-launch-notify-title">
                     <h4 id="cw-launch-notify-title">Launch notifications</h4>
-                    {wizardForm.selectedGroups.length === 0 && selectedMembers.length === 0 ? (
-                      <p className="cw-launch-note-muted">No recipients selected. Add notify groups or watchlist members on the Watchlist step.</p>
+                    {wizardForm.notify.length === 0 && selectedMembers.length === 0 ? (
+                      <p className="cw-launch-note-muted">No recipients selected. Add notify teams or watchlist members on the Watchlist step.</p>
                     ) : (
                       <>
                         <p className="cw-launch-note-muted">
                           Subject: <span className="mono">{launchSubject}</span>
                         </p>
                         <ul className="cw-launch-recipients">
-                          {wizardForm.selectedGroups.map((group) => (
-                            <li key={`group-${group}`}>
-                              <strong>{group}</strong>
-                              <span>Notify group · no email address on record</span>
+                          {wizardForm.notify.map((draft) => (
+                            <li key={draft.recipientType === 'TEAM' ? `team-${draft.teamId}` : `custom-${draft.groupEmail}`}>
+                              <strong>{draft.recipientType === 'TEAM' ? draft.teamName : draft.groupName}</strong>
+                              <span>{draft.recipientType === 'TEAM' ? 'Owner team · uses the team notification channel' : `Custom recipient, not an owner recipient · ${draft.groupEmail}`}</span>
                             </li>
                           ))}
                           {selectedMembers.map((member) => (

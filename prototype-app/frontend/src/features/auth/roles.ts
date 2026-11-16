@@ -71,3 +71,13 @@ export function canManageFixControls(actor: ActorContext | null): boolean {
 export function canApproveFixControls(actor: ActorContext | null): boolean {
   return !isPlatformScopeOnly(actor) && hasRole(actor, 'TENANT_ADMIN');
 }
+
+/** Create or preview tickets, including routed and overridden ones (mirrors the backend ticket authorization). */
+export function canCreateTickets(actor: ActorContext | null): boolean {
+  return !isPlatformScopeOnly(actor) && hasAnyRole(actor, ['PLATFORM_OWNER', 'TENANT_ADMIN', 'SECURITY_ANALYST']);
+}
+
+/** Add a custom (non-owner) campaign recipient; the server needs TENANT_ADMIN or SECURITY_ANALYST. */
+export function canAddCustomCampaignRecipient(actor: ActorContext | null): boolean {
+  return !isPlatformScopeOnly(actor) && hasAnyRole(actor, ['TENANT_ADMIN', 'SECURITY_ANALYST']);
+}

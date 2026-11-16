@@ -29,7 +29,7 @@
       "count": 1
     },
     "react-hooks/set-state-in-effect": {
-      "count": 6
+      "count": 5
     }
   },
   "src/features/cbom/CbomComponentDetailPanel.tsx": {

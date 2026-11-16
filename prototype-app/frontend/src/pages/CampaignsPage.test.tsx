@@ -7,7 +7,7 @@ import { ActorContextState } from '../features/auth/context';
 import type { ActorContext } from '../features/auth/types';
 import { CampaignDetailPage } from '../features/campaigns/CampaignDetailPage';
 import { cveWorkbenchApi } from '../features/cve-workbench/api';
-import type { CampaignDetail, CampaignSummary } from '../features/campaigns/types';
+import type { CampaignDetail, CampaignPreview, CampaignSummary } from '../features/campaigns/types';
 import { renderWithProviders } from '../test/test-utils';
 import { CampaignsPage } from './CampaignsPage';
 
@@ -151,6 +151,13 @@ function cvePageOf(...externalIds: string[]) {
   };
 }
 
+const TEAM = { id: 'team-1', name: 'Platform Ops', parentTeamId: null, ticketAssignmentGroup: null, status: 'ACTIVE' as const, notificationChannel: true, version: 1 };
+const PREVIEW: CampaignPreview = {
+  memberCount: 12, exceedsCreateBound: false, excluded: { SUPPRESSED: 2 }, teamsWithoutChannel: [],
+  distribution: [{ bucket: 'TEAM', teamId: 'team-1', teamName: 'Platform Ops', members: 9, activeRemaining: 9, outcomes: {} },
+    { bucket: 'PENDING_MIGRATION', teamId: null, teamName: null, members: 3, activeRemaining: 3, outcomes: {} }],
+};
+
 function renderCampaignsPage() {
   return renderWithProviders(
     <ActorContextState.Provider value={ACTOR}>
@@ -229,7 +236,8 @@ describe('CampaignsPage', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValue([createdSummary]);
     vi.spyOn(api, 'getCampaign').mockResolvedValueOnce(createdDetail);
-    vi.spyOn(api, 'listAssignmentGroups').mockResolvedValue(['Platform Ops', 'Server Team']);
+    vi.spyOn(api, 'previewCampaign').mockResolvedValue(PREVIEW);
+    vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([TEAM]);
     vi.spyOn(api, 'listTenantMembers').mockResolvedValue([{
       id: 'member-1',
       userId: 'user-2',
@@ -299,11 +307,16 @@ describe('CampaignsPage', () => {
 
     await screen.findByRole('button', { name: 'Platform Ops' });
     fireEvent.click(screen.getByRole('button', { name: 'Platform Ops' }));
+    fireEvent.change(screen.getByLabelText('Coordinating team (optional)'), { target: { value: 'team-1' } });
+    fireEvent.click(screen.getByLabelText(/Include suppressed, accepted-risk/));
     fireEvent.change(screen.getByLabelText('Trigger Policy'), { target: { value: 'STATUS_CHANGES' } });
     fireEvent.click(screen.getByRole('button', { name: /Jordan Resolver/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     fireEvent.change(screen.getByPlaceholderText(/Describe the urgency, context, or initial guidance for this campaign/i), { target: { value: 'Start outreach immediately.' } });
+    expect(await screen.findByText(/12/)).toBeInTheDocument();
+    expect(screen.getByText(/Left out: 2 suppressed/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Launch Campaign' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Launch Campaign' }));
 
     await waitFor(() => {
@@ -312,7 +325,9 @@ describe('CampaignsPage', () => {
         summary: 'Coordinate the cross-team patch train.',
         cveIds: ['CVE-2026-2222'],
         launchNote: 'Start outreach immediately.',
-        notifyGroups: [expect.objectContaining({ groupName: 'Platform Ops' })],
+        coordinatingTeamId: 'team-1',
+        includeExcepted: true,
+        notifyGroups: [expect.objectContaining({ recipientType: 'TEAM', teamId: 'team-1' })],
         watchlist: [expect.objectContaining({
           label: 'Jordan Resolver',
           email: 'jordan@example.com',
@@ -329,7 +344,8 @@ describe('CampaignsPage', () => {
 
   it('opens the wizard as a named modal that stays open while launching and keeps input on failure', async () => {
     vi.spyOn(api, 'listCampaigns').mockResolvedValue([]);
-    vi.spyOn(api, 'listAssignmentGroups').mockResolvedValue([]);
+    vi.spyOn(api, 'previewCampaign').mockResolvedValue(PREVIEW);
+    vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([TEAM]);
     vi.spyOn(api, 'listTenantMembers').mockResolvedValue([]);
     vi.spyOn(cveWorkbenchApi, 'listOrgSpecificCves').mockResolvedValue(cvePageOf('CVE-2026-2222'));
     let rejectCreate: (reason: Error) => void = () => undefined;
@@ -346,6 +362,7 @@ describe('CampaignsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.click(await screen.findByRole('checkbox', { name: /CVE-2026-2222/i }));
     for (let step = 0; step < 2; step += 1) fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Launch Campaign' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Launch Campaign' }));
 
     expect(await screen.findByText(/Launching the campaign/)).toBeInTheDocument();
@@ -513,7 +530,8 @@ describe('CampaignsPage list and wizard states (U13)', () => {
     });
     vi.spyOn(api, 'listCampaigns').mockResolvedValue([]);
     vi.spyOn(api, 'getCampaign').mockResolvedValue(created);
-    vi.spyOn(api, 'listAssignmentGroups').mockResolvedValue(['Platform Ops']);
+    vi.spyOn(api, 'previewCampaign').mockResolvedValue(PREVIEW);
+    vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([TEAM]);
     vi.spyOn(api, 'listTenantMembers').mockResolvedValue([{
       id: 'member-1', userId: 'user-2', subject: 'jordan', email: 'jordan@example.com', displayName: 'Jordan Resolver',
       role: 'SECURITY_ANALYST', status: 'ACTIVE', createdAt: '2026-06-10T00:00:00Z',
@@ -542,16 +560,70 @@ describe('CampaignsPage list and wizard states (U13)', () => {
     const preview = screen.getByRole('region', { name: 'Launch notifications' });
     expect(preview).toHaveTextContent('[Campaign launched] Resolver runway');
     expect(preview).toHaveTextContent('Platform Ops');
+    expect(preview).toHaveTextContent('uses the team notification channel');
     expect(preview).toHaveTextContent('Watchlist · jordan@example.com');
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose CVEs' }));
     fireEvent.click(await screen.findByRole('checkbox', { name: /CVE-2026-2222/i }));
     fireEvent.click(screen.getByRole('button', { name: /^4\s*Launch$/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Launch Campaign' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Launch Campaign' }));
 
     await waitFor(() => expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ cveIds: ['CVE-2026-2222'] })));
     expect(await screen.findByText(/2 launch notifications recorded: queued 1, skipped 1\./)).toBeInTheDocument();
     expect(screen.queryByText(/Notifications sent/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('CampaignDetailPage ledger panels (E14)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockLedger() {
+    vi.spyOn(api, 'getCampaign').mockResolvedValue(buildDetail({ summary: buildSummary({ membershipState: 'MATERIALIZING', totalFindings: 5000 }) }));
+    vi.spyOn(api, 'listCampaignMembers').mockResolvedValue({ items: [], nextCursor: null });
+    vi.spyOn(api, 'listCampaignOwnerBuckets').mockResolvedValue([
+      { bucket: 'PENDING_MIGRATION', teamId: null, teamName: null, members: 4, activeRemaining: 3, outcomes: { REMEDIATED: 1 } },
+    ]);
+    vi.spyOn(api, 'getCampaignReconciliation').mockResolvedValue({
+      campaignId: 'campaign-1', scopeKind: 'CVE', membershipState: 'MATERIALIZING', reconciledAt: null, watermark: null,
+      lastAdded: null, lastError: null, consecutiveFailures: 0, members: 5000,
+    });
+  }
+
+  it('shows the materializing banner on overview and owners with members on the findings tab', async () => {
+    mockLedger();
+    renderCampaignDetailPage();
+    expect(await screen.findByText(/still adding members: 5000 so far/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /^Findings/ }));
+    expect(await screen.findByText('Pending migration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Campaign members' })).toBeInTheDocument();
+  });
+
+  it('adds findings through a saved dialog instead of editing the page locally', async () => {
+    mockLedger();
+    const added = buildDetail({ summary: buildSummary({ totalFindings: 6 }) });
+    vi.spyOn(api, 'listFindings').mockResolvedValue({ items: [{ id: 'f-9', displayId: 'F-009', vulnerabilityId: 'CVE-1', assetName: 'a', packageName: 'p', status: 'OPEN' }] as never, page: 0, size: 50, totalItems: 1, totalPages: 1 });
+    const add = vi.spyOn(api, 'addCampaignMembers').mockResolvedValue(added);
+    renderCampaignDetailPage();
+    fireEvent.click(await screen.findByRole('tab', { name: /^Assets/ }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add findings' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add findings to campaign' });
+    fireEvent.change(within(dialog).getByLabelText('Search findings'), { target: { value: 'CVE-1' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+    fireEvent.click(await within(dialog).findByLabelText('Select F-009'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add 1 finding' }));
+    await waitFor(() => expect(add).toHaveBeenCalledWith('campaign-1', ['f-9']));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByText(/Scope changes on this page are not saved/)).not.toBeInTheDocument();
+  });
+
+  it('offers the campaign-only exception form on the exceptions tab', async () => {
+    mockLedger();
+    renderCampaignDetailPage();
+    fireEvent.click(await screen.findByRole('tab', { name: /^Exceptions/ }));
+    expect(await screen.findByText(/Campaign-only exception, does not change the finding/)).toBeInTheDocument();
   });
 });
 

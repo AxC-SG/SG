@@ -111,6 +111,8 @@ import type {
   GcpDiscoveryTarget,
   GcpDiscoveryTargetRequest,
   CreateFindingTicketRequest,
+  TicketPreview,
+  TicketPreviewRequest,
   FindingTicketResponse,
   JiraConnectionTest,
   JiraTicketingConfig,
@@ -764,12 +766,17 @@ import type {
   CampaignExceptionRequest,
   CampaignExceptionStatus,
   CampaignMemberPage,
+  CampaignMemberQuery,
+  CampaignPreview,
+  CampaignReconciliation,
+  CampaignOwnerGrouping,
   CampaignNote,
   CampaignNotifyGroupRequest,
   CampaignStatus,
   CampaignSummary,
   CampaignWatchlistEntryUpdateRequest,
 } from '../features/campaigns/types';
+import type { OwnerBucket } from '../features/campaigns/ownership';
 
 export type CampaignAdvisory = {
   title: string;
@@ -940,7 +947,7 @@ function formatApiError(payload: ApiErrorPayload, fallback: string): string {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  constructor(message: string, public readonly status: number, public readonly body?: unknown) {
     super(message);
     this.name = 'ApiError';
   }
@@ -955,7 +962,7 @@ async function parseApiError(response: Response): Promise<Error> {
       if (!managedBrowserAuthEnabled && isJwtAuthFailure(response.status, payload)) {
         handleJwtAuthFailure();
       }
-      return new ApiError(formatApiError(payload, fallback), response.status);
+      return new ApiError(formatApiError(payload, fallback), response.status, payload);
     } catch {
       return new ApiError(fallback, response.status);
     }
@@ -966,6 +973,16 @@ async function parseApiError(response: Response): Promise<Error> {
     handleJwtAuthFailure();
   }
   return new ApiError(text || fallback, response.status);
+}
+
+/**
+ * The fresh preview carried by a 409 `TICKET_ROUTING_CHANGED` response (Phase 0B §4.9), or null for any other error.
+ * The caller shows it and asks for a new confirmation; it never retries on its own.
+ */
+export function ticketRoutingChangedPreview(error: unknown): TicketPreview | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const body = error.body as { code?: string; preview?: TicketPreview } | undefined;
+  return body?.code === 'TICKET_ROUTING_CHANGED' && body.preview ? body.preview : null;
 }
 
 export function getStoredAuthToken(): string {
@@ -2806,14 +2823,32 @@ export const api = {
     name: string; summary?: string; findingIds: string[]; dueAt?: string; assigneePrincipalId?: string; launchNote?: string;
   }) => request<{ summary: { id: string; name: string } }>('/campaigns/from-findings', { method: 'POST', body: JSON.stringify(payload) }),
   /** Phase 0B §4.5: cursor-paged campaign members (at most 200 per page). */
-  listCampaignMembers: (campaignId: string, params?: { cursor?: string; limit?: number; includeHidden?: boolean }) => {
+  listCampaignMembers: (campaignId: string, params?: CampaignMemberQuery) => {
     const search = new URLSearchParams();
     if (params?.cursor) search.set('cursor', params.cursor);
     if (params?.limit) search.set('limit', String(params.limit));
     if (params?.includeHidden) search.set('includeHidden', 'true');
+    if (params?.outcome) search.set('outcome', params.outcome);
+    if (params?.groupBy) search.set('groupBy', params.groupBy);
+    if (params?.bucket) search.set('bucket', params.bucket);
+    if (params?.teamId) search.set('teamId', params.teamId);
     const query = search.toString();
     return request<CampaignMemberPage>(`/campaigns/${encodeURIComponent(campaignId)}/members${query ? `?${query}` : ''}`);
   },
+  /** Phase 0B §4.2: writes nothing; returns member count, owner distribution, exclusions and teams without a channel. */
+  previewCampaign: (payload: CampaignCreateRequest) =>
+    request<CampaignPreview>('/campaigns/preview', { method: 'POST', body: JSON.stringify(payload) }),
+  addCampaignMembers: (campaignId: string, findingIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ findingIds })
+    }),
+  listCampaignOwnerBuckets: (campaignId: string, groupBy: CampaignOwnerGrouping = 'current') =>
+    request<OwnerBucket[]>(`/campaigns/${encodeURIComponent(campaignId)}/owner-buckets?groupBy=${groupBy}`),
+  getCampaignReconciliation: (campaignId: string) =>
+    request<CampaignReconciliation>(`/campaigns/${encodeURIComponent(campaignId)}/reconciliation`),
+  previewTickets: (payload: TicketPreviewRequest) =>
+    request<TicketPreview>('/tickets/preview', { method: 'POST', body: JSON.stringify(payload) }),
   getCbomPqcReadiness: () =>
     request<CbomPqcReadiness>('/bom/cbom/governance/pqc-readiness'),
   getCbomOverview: () =>

@@ -6,6 +6,8 @@ export type OwnershipTeam = {
   parentTeamId: string | null;
   ticketAssignmentGroup: string | null;
   status: 'ACTIVE' | 'ARCHIVED';
+  /** True when a notification email is stored; the address itself is never returned. */
+  notificationChannel?: boolean;
   version: number;
 };
 
@@ -14,6 +16,8 @@ export type OwnershipTeamRequest = {
   parentTeamId?: string | null;
   ticketAssignmentGroup?: string | null;
   status?: 'ACTIVE' | 'ARCHIVED';
+  /** Write-only: omitted or null keeps the stored address, blank clears it. */
+  notificationEmail?: string | null;
   version?: number;
 };
 

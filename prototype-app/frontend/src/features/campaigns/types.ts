@@ -1,3 +1,5 @@
+import type { OwnerBucket } from './ownership';
+
 export type CampaignStatus =
   | 'DRAFT'
   | 'ACTIVE'
@@ -283,3 +285,36 @@ export type CampaignMember = {
 };
 
 export type CampaignMemberPage = { items: CampaignMember[]; nextCursor: string | null };
+
+export type CampaignPreview = {
+  memberCount: number;
+  exceedsCreateBound: boolean;
+  distribution: OwnerBucket[];
+  /** Counts of findings left out, keyed by state such as CLOSED, SUPPRESSED, ACCEPTED_RISK, FALSE_POSITIVE. */
+  excluded: Record<string, number>;
+  teamsWithoutChannel: Array<{ teamId: string; teamName: string }>;
+};
+
+export type CampaignReconciliation = {
+  campaignId: string;
+  scopeKind: 'CVE' | 'FINDINGS';
+  membershipState: 'MATERIALIZING' | 'COMPLETE';
+  reconciledAt: string | null;
+  watermark: string | null;
+  lastAdded: number | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  members: number;
+};
+
+export type CampaignOwnerGrouping = 'current' | 'atAdd';
+
+export type CampaignMemberQuery = {
+  outcome?: CampaignOutcome;
+  includeHidden?: boolean;
+  groupBy?: CampaignOwnerGrouping;
+  bucket?: string;
+  teamId?: string;
+  cursor?: string;
+  limit?: number;
+};

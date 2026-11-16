@@ -1058,6 +1058,37 @@ Routing is server-derived on the canonical path. The browser no longer supplies 
   legacy text, and `TicketRoutingPostgresIntegrationTest` checks that the service marks canonical requests as routed
   and legacy requests as not routed.
 
+**Implementation (E14, November 16, 2026, branch `feat/e14-campaign-ticket-frontend`, not merged).**
+
+- **API layer.** `api/client.ts` gains `previewCampaign`, `addCampaignMembers`, `listCampaignOwnerBuckets`,
+  `getCampaignReconciliation` and `previewTickets`, and `listCampaignMembers` takes outcome, grouping, bucket and team
+  filters. `ApiError` now keeps the parsed response body, and `ticketRoutingChangedPreview(error)` returns the fresh
+  preview of a 409 `TICKET_ROUTING_CHANGED`. `Team.notificationChannel`, write-only `notificationEmail` and
+  `defaultAssignmentGroup` on both connector configs are typed.
+- **Campaign detail** (new files in `features/campaigns/`, mounted in `CampaignDetailPage`): owner buckets with a
+  Current / Owner-at-add toggle, a cursor-paged members table (outcome filter, "Include hidden", Load more),
+  `OwnerChangeIndicator` (a change is flagged; "Owner assigned since launch" is a calm note), a MATERIALIZING banner and
+  the reconciliation status line. The local-only "Add assets" dialog is replaced by a saved add-findings dialog (search,
+  multi-select, at most 500, server 400/409 shown). The exceptions tab has a form that picks a member finding and says
+  the exception is campaign-only. Pending migration is never shown as Unowned.
+- **Launch wizard.** The free-text notify group input is gone. TEAM recipients come from the active teams (with a
+  no-channel warning), CUSTOM recipients are offered only to `TENANT_ADMIN`/`SECURITY_ANALYST` and labelled "not an owner
+  recipient", plus `includeExcepted` and a coordinating team. Launch is enabled only after `POST /campaigns/preview`
+  succeeds; the preview shows member count, owner distribution, excluded counts, the over-bound warning and teams without a
+  channel.
+- **Tickets.** `FindingTicketDialog` previews first. A canonical preview shows owner team, assignment group and routing
+  source separately, lists unroutable and excluded findings, requires the hash, offers a group selection and an override
+  with a required reason (500 characters), and on 409 replaces the preview and asks for a new confirmation without
+  retrying. A non-canonical preview keeps today's behaviour. Attempts show group, source and override reason, and finding
+  detail shows "owner changed since ticket" when both owners are canonical.
+- **Settings.** The Teams panel has a write-only notification email with "Channel configured" and a clear option; the
+  ServiceNow and Jira connector pages have a default assignment group (blank clears).
+- **Deferred.** The ticket dialog is mounted only where a finding ticket was already created from (the crypto ticket
+  attempts panel and its retry); `FindingDetailPage` has no create-ticket button for other kinds, and the CVE workbench
+  and `VulnRepoCveAssetsPage` ticket flows are Release 3. The members table filters by outcome only (the API's `bucket`
+  and `teamId` filters are typed but not surfaced). The exception form lists the first 200 members. The override applies
+  to the whole request, as in E11. No browser/e2e run was done in this branch.
+
 ### 4.10 Rollout and rollback
 
 1. **Schema and backfill (dark).** V24 ships (§4.11). A one-time job materializes every existing CVE campaign's

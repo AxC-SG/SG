@@ -14,11 +14,13 @@ type StatusFilter = 'ACTIVE' | 'ARCHIVED' | '';
 const COLUMNS: DataTableColumn[] = [
   { id: 'name', label: 'Team', header: 'Team', priority: 'essential', initialSize: 240, minWidth: 160 },
   { id: 'ticket', label: 'Ticket assignment group', header: 'Ticket assignment group', initialSize: 220, minWidth: 160 },
+  { id: 'channel', label: 'Notification channel', header: 'Notification channel', initialSize: 170 },
   { id: 'status', label: 'Status', header: 'Status', initialSize: 120 },
   { id: 'actions', label: 'Actions', header: 'Actions', priority: 'essential', initialSize: 280, minWidth: 240 }
 ];
 
-type Draft = { name: string; ticketAssignmentGroup: string };
+type Draft = { name: string; ticketAssignmentGroup: string; notificationEmail: string; clearChannel: boolean };
+const EMPTY_DRAFT: Draft = { name: '', ticketAssignmentGroup: '', notificationEmail: '', clearChannel: false };
 
 /** Canonical teams (plan §6.7): the only ownership targets. Names and aliases share one tenant-wide namespace. */
 export function TeamsPanel({ canWrite }: { canWrite: boolean }) {
@@ -28,7 +30,7 @@ export function TeamsPanel({ canWrite }: { canWrite: boolean }) {
   const create = useCreateTeamMutation();
   const update = useUpdateTeamMutation();
   const [editing, setEditing] = React.useState<OwnershipTeam | 'new' | null>(null);
-  const [draft, setDraft] = React.useState<Draft>({ name: '', ticketAssignmentGroup: '' });
+  const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
   const [aliasTeam, setAliasTeam] = React.useState<OwnershipTeam | null>(null);
   const [statusTarget, setStatusTarget] = React.useState<OwnershipTeam | null>(null);
   const [message, setMessage] = React.useState('');
@@ -36,26 +38,28 @@ export function TeamsPanel({ canWrite }: { canWrite: boolean }) {
 
   const openCreate = () => {
     create.reset();
-    setDraft({ name: '', ticketAssignmentGroup: '' });
+    setDraft(EMPTY_DRAFT);
     setEditing('new');
   };
   const openEdit = (team: OwnershipTeam) => {
     update.reset();
-    setDraft({ name: team.name, ticketAssignmentGroup: team.ticketAssignmentGroup ?? '' });
+    setDraft({ ...EMPTY_DRAFT, name: team.name, ticketAssignmentGroup: team.ticketAssignmentGroup ?? '' });
     setEditing(team);
   };
   const ticketGroup = draft.ticketAssignmentGroup.trim() || null;
+  // Write-only: omitted keeps the stored address, blank clears it. The address is never read back.
+  const notificationEmail = draft.clearChannel ? '' : draft.notificationEmail.trim() || undefined;
 
   const save = () => {
     if (editing === 'new') {
-      create.mutate({ name: draft.name.trim(), ticketAssignmentGroup: ticketGroup }, {
+      create.mutate({ name: draft.name.trim(), ticketAssignmentGroup: ticketGroup, notificationEmail }, {
         onSuccess: (team) => { setEditing(null); setMessage(`Team ${team.name} created.`); }
       });
     } else if (editing) {
       update.mutate({
         teamId: editing.id,
         // PATCH replaces parent and ticket group as given; send the current parent to keep it.
-        payload: { name: draft.name.trim(), parentTeamId: editing.parentTeamId, ticketAssignmentGroup: ticketGroup, version: editing.version }
+        payload: { name: draft.name.trim(), parentTeamId: editing.parentTeamId, ticketAssignmentGroup: ticketGroup, notificationEmail, version: editing.version }
       }, { onSuccess: (team) => { setEditing(null); setMessage(`Team ${team.name} saved.`); } });
     }
   };
@@ -76,6 +80,9 @@ export function TeamsPanel({ canWrite }: { canWrite: boolean }) {
     cells: {
       name: { content: <strong>{team.name}</strong> },
       ticket: { content: team.ticketAssignmentGroup ?? <span className="panel-caption">Not mapped</span> },
+      channel: { content: team.notificationChannel
+        ? <span className="status-pill status-success">Channel configured</span>
+        : <span className="panel-caption">No channel</span> },
       status: { content: <span className={`status-pill ${team.status === 'ACTIVE' ? 'status-success' : 'status-unknown'}`}>{team.status === 'ACTIVE' ? 'Active' : 'Archived'}</span> },
       actions: {
         content: (
@@ -156,6 +163,24 @@ export function TeamsPanel({ canWrite }: { canWrite: boolean }) {
             placeholder="External ServiceNow/Jira group"
           />
         </label>
+        <label>
+          <span>Notification email (optional)</span>
+          <input
+            type="email"
+            autoComplete="off"
+            value={draft.notificationEmail}
+            disabled={draft.clearChannel}
+            onChange={(event) => setDraft({ ...draft, notificationEmail: event.target.value })}
+            placeholder={editing !== 'new' && editing?.notificationChannel ? 'Channel configured; enter an address to replace it' : 'Where campaign notices for this team are sent'}
+          />
+        </label>
+        <p className="panel-caption">The address is stored encrypted and is never shown again.</p>
+        {editing !== 'new' && editing?.notificationChannel && (
+          <label>
+            <input type="checkbox" checked={draft.clearChannel} onChange={(event) => setDraft({ ...draft, clearChannel: event.target.checked, notificationEmail: '' })} />
+            <span>Clear the notification channel</span>
+          </label>
+        )}
       </OwnershipFormDialog>
 
       <ConfirmDialog

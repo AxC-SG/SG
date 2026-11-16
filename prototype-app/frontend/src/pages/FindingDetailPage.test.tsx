@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -372,6 +372,7 @@ describe('FindingDetailPage', () => {
       errorMessage: 'Jira rejected the request', attemptedBy: 'user-1', attemptedAt: '2026-11-02T00:00:00Z',
     }]);
     const create = vi.spyOn(api, 'createFindingTicket').mockResolvedValue({} as never);
+    vi.spyOn(api, 'previewTickets').mockResolvedValue({ canonical: false, batches: [], unroutable: [], excluded: [], tenantDefaultGroup: null, routingHash: null, expiresAt: null });
     const finding = { ...FINDING, findingKind: 'CRYPTO' as const, vulnerabilityId: 'CBOM-RSA-SMALL-KEY' };
     vi.spyOn(api, 'getFinding').mockResolvedValue({ ...finding, incidentId: 'JIRA-123' });
     renderWithFinding(finding);
@@ -379,6 +380,9 @@ describe('FindingDetailPage', () => {
     expect(await screen.findByText('Jira rejected the request')).toBeInTheDocument();
     expect(screen.getByText(/crypto template/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry ticket' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
+    expect(await within(dialog).findByText(/follows the existing behaviour/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create ticket' }));
     await waitFor(() => expect(create).toHaveBeenCalledWith(FINDING.id, {}));
     await waitFor(() => expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument());
   });

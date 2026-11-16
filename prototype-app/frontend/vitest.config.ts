@@ -22,10 +22,10 @@ export default mergeConfig(viteConfig, defineConfig({
       ],
       // Ratcheted 2026-10-30 after NVD credential lifecycle and dashboard navigation regressions.
       thresholds: {
-        lines: 60.5,
-        statements: 57.8,
-        functions: 50.0,
-        branches: 50.3
+        lines: 61.3,
+        statements: 58.6,
+        functions: 51.1,
+        branches: 51.4
       }
     }
   }
