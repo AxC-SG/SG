@@ -46,13 +46,21 @@ public class OwnershipReadAdapter {
     private final OwnershipEffectiveCacheService cache;
     private final Map<Consumer, Set<String>> readWaves;
 
+    /**
+     * Read waves per consumer: a comma-separated tenant ID list or {@code *}, empty (off) by default. Campaigns and
+     * tickets (Phase 0B §4.10 step 4) are enabled per tenant only after CORE is CANONICAL; emptying a wave is the
+     * rollback.
+     */
     public OwnershipReadAdapter(JdbcTemplate jdbc, OwnershipAuthorityService authority, OwnershipEffectiveCacheService cache,
                                 @Value("${app.ownership.read-waves.inventory:}") String inventory,
-                                @Value("${app.ownership.read-waves.findings:}") String findings) {
+                                @Value("${app.ownership.read-waves.findings:}") String findings,
+                                @Value("${app.ownership.read-waves.campaigns:}") String campaigns,
+                                @Value("${app.ownership.read-waves.tickets:}") String tickets) {
         this.jdbc = jdbc;
         this.authority = authority;
         this.cache = cache;
-        this.readWaves = Map.of(Consumer.INVENTORY, parse(inventory), Consumer.FINDINGS, parse(findings));
+        this.readWaves = Map.of(Consumer.INVENTORY, parse(inventory), Consumer.FINDINGS, parse(findings),
+                Consumer.CAMPAIGNS, parse(campaigns), Consumer.TICKETS, parse(tickets));
     }
 
     /** True when {@code consumer} reads canonical ownership for the current tenant. */

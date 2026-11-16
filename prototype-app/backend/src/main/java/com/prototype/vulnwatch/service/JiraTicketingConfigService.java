@@ -177,6 +177,10 @@ public class JiraTicketingConfigService {
         config.setIssueTypeName(defaultIfBlank(request.issueTypeName(), "Task"));
         config.setDefaultLabels(trimToNull(request.defaultLabels()));
         config.setIncludePriority(request.includePriority() == null || request.includePriority());
+        // Null keeps the stored default (older clients do not send it); blank clears it.
+        if (request.defaultAssignmentGroup() != null) {
+            config.setDefaultAssignmentGroup(request.defaultAssignmentGroup().isBlank() ? null : request.defaultAssignmentGroup().trim());
+        }
         config.setEnabled(request.enabled() == null || request.enabled());
 
         validate(new JiraRuntimeConfig(
@@ -263,7 +267,7 @@ public class JiraTicketingConfigService {
         if (config == null) {
             return new JiraTicketingConfigResponse(
                     null, false, null, JiraAuthType.BASIC.name(), null, false,
-                    null, null, "Task", null, true, false, null, null, null);
+                    null, null, "Task", null, true, false, null, null, null, null);
         }
         return new JiraTicketingConfigResponse(
                 config.getId(),
@@ -280,7 +284,8 @@ public class JiraTicketingConfigService {
                 config.isEnabled(),
                 config.getLastTestStatus(),
                 config.getLastTestMessage(),
-                config.getLastTestedAt()
+                config.getLastTestedAt(),
+                config.getDefaultAssignmentGroup()
         );
     }
 

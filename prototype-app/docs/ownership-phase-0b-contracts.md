@@ -969,6 +969,50 @@ Routing is server-derived on the canonical path. The browser no longer supplies 
   Jira to test against.
 - **CVE ticket authorization.** See §4.12.
 
+**Implementation (E11, November 16, 2026, branch `feat/e11-ticket-routing`, not merged).**
+
+- **`TicketRoutingService`** computes the plan for a set of findings in the caller's transaction, reading the live
+  owner from `ownership_effective_assignment` and the team's `ticket_assignment_group`. It applies every row of the
+  routing table: an unlinked finding counts as `UNOWNED`, a selection is used only when the tenant has no default, and
+  Conflict findings are listed as unroutable. There are no implicit values on this path, and the team name is never sent
+  as a group. Canonical means every finding's domain is `CANONICAL` and the tenant is in
+  `app.ownership.read-waves.tickets`. E11 wires that property and `app.ownership.read-waves.campaigns` in
+  `OwnershipReadAdapter` (both empty by default), because routing cannot be tested without them. E15 keeps the
+  enablement, qualification and rollback work.
+- **Batches.** There is one batch per owner team and one for Unowned; Conflict gets no batch. Two teams on one group
+  still get two tickets. An override (`assignmentGroupOverride` plus a required `overrideReason` of at most 500
+  characters, 400 otherwise) sends every eligible finding as one ticket. In this version the override applies to the
+  whole request, not to a single batch. Closed and already-ticketed findings are listed as excluded.
+- **Preview and hash.** `POST /api/tickets/preview` takes finding IDs, or a CVE plus component IDs, and returns batches,
+  unroutable and excluded findings, the tenant default, and a `routingHash`. The hash is a SHA-256 digest of the batches,
+  the per-finding assignment IDs and statuses, the excluded findings and the choice. It is HMAC-signed under the tenant
+  key (`ticket.routing.preview`), carries its own 10-minute expiry, and fails with 503 when the key is not ready. Every
+  canonical create recomputes the plan. A missing, tampered, expired or stale hash returns 409 `TICKET_ROUTING_CHANGED`,
+  with the fresh preview in the body (`ApiExceptionHandler`). Previews are read-only.
+- **Create.** `POST /api/findings/{id}/ticket` and the CVE endpoints accept `routingHash`, `selectedAssignmentGroup`,
+  `assignmentGroupOverride` and `overrideReason`. On the canonical path the routed group replaces the request's
+  `assignmentGroup`. On CVE tickets the per-asset CMDB group is stripped, and each ticket carries only its batch's
+  assets and links only its batch's findings. With the wave off, or for non-canonical kinds (CRYPTO before the
+  `CLOUD_BOM` switch, AI Grid), today's behaviour is unchanged.
+- **Tenant default.** `default_assignment_group` is now read and written through the ServiceNow CMDB and Jira connector
+  config APIs. Null keeps the stored value and blank clears it. The active provider's config supplies the default.
+- **Audit.** `TicketingService` writes one `finding_ticket_attempts` row per linked finding on every path (single,
+  CVE, AI Grid, crypto). Each row records `owner_team_id`, `ownership_assignment_id`, the group sent, `routing_source`,
+  `override_reason` and a `batch_id` shared by one ticket's findings. Failures are written in their own transaction, and
+  only for findings that exist. `CryptoRemediationService` no longer records attempts itself, and `GET
+  /api/findings/{id}/ticket-attempts` returns the new fields. An override also writes a `TICKET_ROUTING_OVERRIDE` finding
+  event with the V23 owner snapshot. On the legacy path `assignment_group` is the caller-supplied group, because the
+  provider still chooses its own fallback.
+- **Roles (§4.12).** The CVE ticket endpoints (`/ticket`, `/servicenow-incident`) and the preview now require
+  `PLATFORM_OWNER`, `TENANT_ADMIN` or `SECURITY_ANALYST`. `TicketAuthorizationPostgresIntegrationTest` covers them and
+  fails without the check.
+- **Not in E11 (E12, provider changes).** The ServiceNow single-finding provider still sends `findings.owner_group` or
+  `App-Sec Manager` and ignores the routed group. The CVE provider already sends `CveTicketRequest.assignmentGroup`. Jira
+  renders the finding's `owner_group` as text. Until E12 the canonical single-finding path routes and audits correctly,
+  but the ServiceNow payload does not yet carry the routed group. The `MockRestServiceServer` payload test and the
+  finding-detail "owner changed since ticket" display are therefore E12 and E14 work. `FindingIncidentSyncService` is
+  unchanged, and a source check asserts that it never reads ownership.
+
 ### 4.10 Rollout and rollback
 
 1. **Schema and backfill (dark).** V24 ships (§4.11). A one-time job materializes every existing CVE campaign's

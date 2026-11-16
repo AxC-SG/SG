@@ -16,6 +16,8 @@ public record JiraTicketingConfigRequest(
         String issueTypeName,
         String defaultLabels,
         Boolean includePriority,
-        Boolean enabled
+        Boolean enabled,
+        /** Tenant default assignment group for canonical ticket routing; null keeps the stored value, blank clears it (Phase 0B §4.9). */
+        String defaultAssignmentGroup
 ) {
 }

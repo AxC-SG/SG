@@ -10,6 +10,8 @@ import com.prototype.vulnwatch.ticketing.CveTicketRequest;
 import com.prototype.vulnwatch.ticketing.TicketAsset;
 import com.prototype.vulnwatch.ticketing.TicketRef;
 import com.prototype.vulnwatch.ticketing.TicketingService;
+import com.prototype.vulnwatch.ticketing.TicketRoutingService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,12 @@ public class ServiceNowIncidentController {
     private final WorkspaceService workspaceService;
     private final ServiceNowIncidentService serviceNowIncidentService;
     private final TicketingService ticketingService;
+    private com.prototype.vulnwatch.service.RequestActorService actors;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setActors(com.prototype.vulnwatch.service.RequestActorService actors) {
+        this.actors = actors;
+    }
 
     public ServiceNowIncidentController(
             WorkspaceService workspaceService,
@@ -51,8 +59,10 @@ public class ServiceNowIncidentController {
     /**
      * POST /api/cve-detail/{cveId}/servicenow-incident
      *
-     * <p>Raises remediation tickets for a CVE, one per assignment group and then one per
-     * package for assets without a group.
+     * <p>Raises remediation tickets for a CVE. On the canonical routing path (Phase 0B §4.9) there is one ticket per
+     * current owner team, the per-asset group is ignored and the preview's {@code routingHash} is required; otherwise
+     * one per assignment group and then one per package for assets without a group. Limited to the ticket-creating
+     * roles (§4.12).
      *
      * <p>The path and response shape are unchanged for existing clients, but the tickets now go
      * to whichever system the tenant has active — Jira overrides ServiceNow here just as it
@@ -60,6 +70,7 @@ public class ServiceNowIncidentController {
      * response names the provider.
      */
     @PostMapping("/{cveId}/servicenow-incident")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
     public ResponseEntity<List<ServiceNowIncidentResponse>> createIncident(
             @PathVariable String cveId,
             @RequestBody CreateServiceNowIncidentRequest request
@@ -77,6 +88,7 @@ public class ServiceNowIncidentController {
      * each ticket so the UI can label it correctly.
      */
     @PostMapping("/{cveId}/ticket")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
     public List<FindingTicketResponse> createTickets(
             @PathVariable String cveId,
             @RequestBody CreateServiceNowIncidentRequest request
@@ -95,7 +107,12 @@ public class ServiceNowIncidentController {
 
     private List<TicketRef> raiseTickets(String cveId, CreateServiceNowIncidentRequest request) {
         Tenant tenant = workspaceService.getWorkspace();
-        return ticketingService.createTicketsForCve(tenant, cveId, toCveTicketRequest(cveId, request));
+        String actor = actors == null || actors.currentActor() == null ? "api" : actors.currentActor().userId();
+        TicketingService.TicketContext context = new TicketingService.TicketContext(actor, "DEFAULT",
+                request == null ? null : request.routingHash(),
+                request == null ? TicketRoutingService.Choice.none()
+                        : new TicketRoutingService.Choice(request.selectedAssignmentGroup(), request.assignmentGroupOverride(), request.overrideReason()));
+        return ticketingService.createTicketsForCve(tenant, cveId, toCveTicketRequest(cveId, request), context);
     }
 
     private static CveTicketRequest toCveTicketRequest(String cveId, CreateServiceNowIncidentRequest request) {

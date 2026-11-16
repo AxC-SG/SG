@@ -45,7 +45,10 @@ public class AiGridFindingIncidentController {
                                              @RequestBody CreateServiceNowIncidentRequest request) {
         Tenant tenant = workspaces.getWorkspace();
         access.assertEntitled(tenant);
-        TicketRef ref = ticketing.createTicketForFinding(tenant, findingId, toTicketRequest(request));
+        // AI Grid findings are not canonical in Release 2, so this always takes the legacy routing path; the attempt is
+        // still recorded (Phase 0B §4.9).
+        TicketRef ref = ticketing.createTicketForFinding(tenant, findingId, toTicketRequest(request),
+                com.prototype.vulnwatch.ticketing.TicketingService.TicketContext.system("api"));
         return new ServiceNowIncidentResponse(
                 ref.externalKey(), ref.externalId(), ref.url(), "created", ref.message());
     }

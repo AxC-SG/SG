@@ -23,9 +23,6 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -39,8 +36,10 @@ public class CryptoRemediationService {
     public static final int MAX_EFFECTIVENESS_DAYS = 365;
     private static final String SEVERITY = "upper(coalesce(f.severity_override, 'UNKNOWN'))";
 
+    /** One ticket attempt with its routing audit (Phase 0B §4.9). */
     public record TicketAttempt(UUID id, String provider, String template, String outcome, String ticketKey,
-            String errorMessage, String attemptedBy, Instant attemptedAt) { }
+            String errorMessage, String attemptedBy, Instant attemptedAt, UUID ownerTeamId, UUID ownershipAssignmentId,
+            String assignmentGroup, String routingSource, String overrideReason, UUID batchId) { }
 
     public record QueueItem(UUID findingId, String displayId, String title, String severity, String status, String assignedTo,
             String ownerGroup, Instant dueAt, String workflowSubstate, String verificationStatus, String targetState,
@@ -61,41 +60,34 @@ public class CryptoRemediationService {
     private final TicketingService ticketing;
     private final CampaignService campaigns;
     private final ObjectMapper mapper;
-    private final TransactionTemplate independent;
 
     public CryptoRemediationService(JdbcTemplate jdbc, TicketingService ticketing, CampaignService campaigns,
-            ObjectMapper mapper, PlatformTransactionManager transactions) {
+            ObjectMapper mapper) {
         this.jdbc = jdbc; this.ticketing = ticketing; this.campaigns = campaigns; this.mapper = mapper;
-        this.independent = new TransactionTemplate(transactions);
-        this.independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     // ------------------------------------------------------------------ tickets
 
-    /** Raises a ticket (crypto template for CRYPTO findings) and records the attempt, including failures. */
-    public TicketRef createTicket(Tenant tenant, UUID findingId, TicketRequest request, String actor) {
-        String kind = findingKind(findingId);
-        boolean crypto = "CRYPTO".equals(kind);
+    /**
+     * Raises a ticket (crypto template for CRYPTO findings). {@link TicketingService} routes it and records the attempt,
+     * including failures.
+     */
+    public TicketRef createTicket(Tenant tenant, UUID findingId, TicketRequest request, TicketingService.TicketContext context) {
+        boolean crypto = "CRYPTO".equals(findingKind(findingId));
         TicketRequest effective = crypto ? merge(template(findingId), request) : request;
-        String provider = ticketing.status(tenant).active() == null ? null : ticketing.status(tenant).active().key();
-        try {
-            TicketRef ref = ticketing.createTicketForFinding(tenant, findingId, effective);
-            record(findingId, ref.system().key(), crypto ? "CRYPTO" : "DEFAULT", "SUCCEEDED", ref.externalKey(), null, actor);
-            return ref;
-        } catch (RuntimeException failure) {
-            String message = failure instanceof ResponseStatusException status ? status.getReason() : failure.getMessage();
-            record(findingId, provider, crypto ? "CRYPTO" : "DEFAULT", "FAILED", null, message, actor);
-            throw failure;
-        }
+        return ticketing.createTicketForFinding(tenant, findingId, effective, new TicketingService.TicketContext(context.actor(),
+                crypto ? "CRYPTO" : "DEFAULT", context.routingHash(), context.choice()));
     }
 
     public List<TicketAttempt> attempts(UUID findingId) {
         findingKind(findingId);
         return jdbc.query("""
-                SELECT id, provider, template, outcome, ticket_key, error_message, attempted_by, attempted_at
+                SELECT id, provider, template, outcome, ticket_key, error_message, attempted_by, attempted_at, owner_team_id,
+                       ownership_assignment_id, assignment_group, routing_source, override_reason, batch_id
                   FROM finding_ticket_attempts WHERE finding_id = ? ORDER BY attempted_at DESC LIMIT 50
                 """, (rs, row) -> new TicketAttempt(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
-                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getTimestamp(8).toInstant()), findingId);
+                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getTimestamp(8).toInstant(), rs.getObject(9, UUID.class),
+                        rs.getObject(10, UUID.class), rs.getString(11), rs.getString(12), rs.getString(13), rs.getObject(14, UUID.class)), findingId);
     }
 
     /** The provider-neutral ticket a CRYPTO finding produces: exact evidence, rule reasoning, target and verification steps. */
@@ -164,14 +156,6 @@ public class CryptoRemediationService {
                 pick(request.priority(), template.priority()), pick(request.dueDate(), template.dueDate()),
                 pick(request.assignee(), template.assignee()), pick(request.assignmentGroup(), template.assignmentGroup()),
                 pick(request.notes(), template.notes()), pick(request.solutionInfo(), template.solutionInfo()));
-    }
-
-    /** Recorded in its own transaction so a failed ticket push still leaves a visible attempt. */
-    private void record(UUID findingId, String provider, String template, String outcome, String key, String error, String actor) {
-        independent.executeWithoutResult(tx -> jdbc.update("""
-                INSERT INTO finding_ticket_attempts (id, finding_id, provider, template, outcome, ticket_key, error_message, attempted_by, routing_source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'LEGACY')
-                """, UUID.randomUUID(), findingId, provider, template, outcome, key, truncate(error, 500), actor == null ? "api" : actor));
     }
 
     // ------------------------------------------------------------------ queues and SLA

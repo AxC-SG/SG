@@ -18,6 +18,7 @@ public record JiraTicketingConfigResponse(
         boolean enabled,
         String lastTestStatus,
         String lastTestMessage,
-        Instant lastTestedAt
+        Instant lastTestedAt,
+        String defaultAssignmentGroup
 ) {
 }

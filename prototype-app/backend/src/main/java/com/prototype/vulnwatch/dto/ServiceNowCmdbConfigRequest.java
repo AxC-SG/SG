@@ -15,6 +15,8 @@ public record ServiceNowCmdbConfigRequest(
         Integer pageSize,
         Boolean enabled,
         Boolean autoSyncEnabled,
-        Integer intervalMinutes
+        Integer intervalMinutes,
+        /** Tenant default assignment group for canonical ticket routing; null keeps the stored value, blank clears it (Phase 0B §4.9). */
+        String defaultAssignmentGroup
 ) {
 }
