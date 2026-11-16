@@ -1,5 +1,7 @@
 # Single-pipeline CD plan: lab first
 
+> **Closed 2026-11-16 (owner decision): the plan stops at a successful lab deployment.** Phases 1–4 are done. The pipeline delivered a recorded paired release (`20261116t082637z-cbb265b`) and a runtime-only reconcile from GitHub Actions (`20261116t160758z-e7f871c`), both verified. Phase 0 is not pursued, phase 5 is not pursued, and production (phase 6) is deferred to a separate plan. See [§10 Closure](#10-closure).
+
 **Status:** revised 2026-11-15 to incorporate the [review](cd-consolidation-review.md) and agreed follow-up. Revised again the same day after the `c013bd7` browser checks, with priorities re-ordered for one owner and a lab:
 1. fix the observed failures;
 2. improve detection;
@@ -263,8 +265,8 @@ Detection (phase 1) pays off even if releases stay manual. Every 2026-11-15 defe
 | 2 | **PR D:** consolidate CI, artifacts and publication; no automatic rollout. Measure critical path before and after; evaluate npm/Actions Dependabot grouping | One `Quality gate` covers image, security and main performance for the same SHA. A missing or failed required result blocks a test PR. Publication comes from the consolidated run. Critical-path time recorded before and after |
 | 3 | **Recovery drill** between two healthy compatible releases (the phase 0 baseline and the next healthy release) | Force a failed check, restore the accepted pair, and pass API and worker checks within 15 minutes. Move forward again. Both recorded |
 | 4 | **Coordinated paired releases**, still owner-run: `release.py` plus staged Vercel promotion under one lock and record; manual reconcile action; the runtime-only path and role; independent Vercel `main` promotion disabled once the replacement is proven | A backend and frontend pair ships as one recorded transaction. Parked, acceptance-outstanding and frontend-only retries behave as §7. Neutral mode cannot launch the migrator (simulated and tested) |
-| 5 | **Automatic schema-neutral lab rollout**, only when release frequency justifies it and the owner enables it | Phases 0–4 are complete. A forced failure recovers the healthy pair automatically. Schema-changing, unverified or migrator-drift candidates stay `blocked` |
-| 6 | Production delivery | Separate plan |
+| 5 | **Not pursued (owner, 2026-11-16; §10).** **Automatic schema-neutral lab rollout**, only when release frequency justifies it and the owner enables it | Phases 0–4 are complete. A forced failure recovers the healthy pair automatically. Schema-changing, unverified or migrator-drift candidates stay `blocked` |
+| 6 | **Deferred (§10).** Production delivery | Separate plan |
 
 Phases 1 and 2 can be prepared in parallel once phase 0 is under way. Do not claim phase 0 complete before the browser checks pass and are recorded. Owner-run paired releases (phase 4) come before automatic rollout, so automation never preserves the frontend/backend drift.
 
@@ -353,3 +355,39 @@ These are planning directions, not evidence that roles, tests, reviewers or auto
 - Hosting migration, a new scheduler/orchestrator, automatic production or schema-changing deployment.
 - Blue/green migration; retain the existing rolling strategy while qualifying its recovery limits.
 - Unrelated Jackson/PR F work, blanket scanner retirement, visibility changes or unreviewed audit-stack enablement.
+
+## 10. Closure
+
+**Decision (owner, 2026-11-16): stop at a successful lab deployment.** The architect review agrees.
+
+| Phase | Outcome |
+|---|---|
+| 0. Fix failures, healthy baseline | **Not pursued.** The fixes are released and pass every automated check. The nine browser checks are not run, so releases are accepted with `--waive` (see the phase 0 decision in §6.1) |
+| 1. Detection | Done |
+| 2. Consolidate CI (PR D) | Done |
+| 3. Recovery drill | Done |
+| 4. Paired releases, reconcile, runtime-only role | Done. A paired release, Vercel's own promotion turned off, and the first reconcile from Actions verified |
+| 5. Automatic lab rollout | **Not pursued** (below) |
+| 6. Production | **Deferred** to a separate plan |
+
+**Why phase 5 is not pursued.** Releases are expected about once a week. At that rate automation saves one manual dispatch a week. In exchange it would add an always-on path that changes the lab unattended, and automatic recovery trusted on automated checks alone, without browser checks behind it. Owner-run delivery already gives the important properties: `lab-reconcile.yml` is one click with the same gates, and the phase 3 drill proved owner-run rollback within 15 minutes. The runtime-only role and the §4.4 outcomes, which phase 5 would build on, are already live, so the work is not lost if it is revisited.
+
+**Revisit phase 5 if** releases become daily or more often, if merged work regularly waits unreleased, or if someone other than the owner needs to release.
+
+**How releases work from now on**
+- **Schema-neutral:** dispatch *Lab reconcile* on `main`, with frontend on once `VERCEL_TOKEN` is set. Then accept with `release.py accept --waive`.
+- **Schema-changing, or a rollback:** owner-run locally with `release.py deploy SHA --frontend` or `release.py rollback`, through the Release role.
+- **One release at a time:** a release awaiting acceptance blocks the next one. Accept or roll back before the next merge's release.
+
+**Optional follow-ups, not exit criteria**
+1. Add the environment's `VERCEL_TOKEN` (a separate team-scoped token, S2), so reconcile can release the frontend.
+2. A paired release whose backend image changes happens naturally on the next merge that changes the backend. Record it in the lab record.
+3. Keep or delete the pre-migration snapshot (lab record, Open).
+
+**For the production plan (phase 6).** Start a new plan. It can reuse the publication, `release.py`'s transaction and outcomes, and the role pattern. It must decide again what this plan let go:
+- browser acceptance (phase 0's checks), not waivers;
+- an approval gate;
+- a separate account and roles;
+- a production Trivy severity policy.
+Nothing in this plan is approved for production by implication.
+
