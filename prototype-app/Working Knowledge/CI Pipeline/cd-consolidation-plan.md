@@ -258,7 +258,7 @@ Detection (phase 1) pays off even if releases stay manual. Every 2026-11-15 defe
 
 | # | Scope | Done when (measurable) |
 |---|---|---|
-| 0 | **Fix the observed failures; first healthy baseline.** `audit_events` RLS on platform-scope writes, then email delivery (traced, §4.6), each with restricted-role regression tests. Release the fix; record `c013bd7` as rejected | The new restricted-role tests fail before the fix and pass after. Released to the lab: all nine browser checks pass and are recorded with `release.py accept`. Zero `row-level security` and zero "outside this release" lines across two scheduler cycles. An invitation reaches a test inbox |
+| 0 | **Not pursued (owner, 2026-11-16; see the phase 0 decision below).** **Fix the observed failures; first healthy baseline.** `audit_events` RLS on platform-scope writes, then email delivery (traced, §4.6), each with restricted-role regression tests. Release the fix; record `c013bd7` as rejected | The new restricted-role tests fail before the fix and pass after. Released to the lab: all nine browser checks pass and are recorded with `release.py accept`. Zero `row-level security` and zero "outside this release" lines across two scheduler cycles. An invitation reaches a test inbox |
 | 1 | **Detection.** Restricted-role tests for each platform-scope write (§4.6); worker progress signal (application change); lab release alarms independent of `operations`; signed-in Playwright smoke with seeded fixtures; startup ERROR gating on defined failures; live schema-state check (§4.3) | A deliberately broken platform write fails CI. A forced worker schema failure raises an alarm to the owner within 10 minutes. The smoke suite fails on a forced 500 from one write route, and passes on the healthy release. No traces or auth state in public artifacts (contract test) |
 | 2 | **PR D:** consolidate CI, artifacts and publication; no automatic rollout. Measure critical path before and after; evaluate npm/Actions Dependabot grouping | One `Quality gate` covers image, security and main performance for the same SHA. A missing or failed required result blocks a test PR. Publication comes from the consolidated run. Critical-path time recorded before and after |
 | 3 | **Recovery drill** between two healthy compatible releases (the phase 0 baseline and the next healthy release) | Force a failed check, restore the accepted pair, and pass API and worker checks within 15 minutes. Move forward again. Both recorded |
@@ -296,11 +296,11 @@ PR D changed only CI files and docs, so the image published for `90cb7e2` is byt
 - **Forward again:** the lab moved back to 52163ec (`20261116t055459z-52163ec`, accepted with a waiver). Previous accepted is 2c382df.
 - **Gaps for phases 4–5:** the failed release and its recovery aren't linked (§4.7's `failed`/`recovered`). `rollback` takes no reason. `previous_accepted` empties after a rollback is accepted. And a rollback has only about 2.5 minutes of margin inside the 15-minute limit.
 
-**Phase 4 status (2026-11-16, later): slices 1 and 3 done; slice 2 open.**
+**Phase 4 status (2026-11-16, later): done, except the frontend half of reconcile, which waits for the environment's `VERCEL_TOKEN`.**
 - **First live paired release:** `20261116t082637z-cbb265b` shipped backend and frontend as one recorded transaction ([lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md#first-live-paired-release-2026-11-16)). The backend image was unchanged (`9d83db25…`). Frontend `dpl_G3By6vq5QDcH2dwSQoXpyQcfLEST` was staged from `cbb265b` and promoted only after the backend verified. The signed-in smoke passed before and after promotion.
 - **Vercel's independent promotion is off** (`autoAssignCustomDomains = false`), verified by the following `main` merge.
 - **Still to prove:** a pair whose backend image changes.
-- **Slice 2** (runtime-only role, reconcile dispatch): [design](phase4-slice2-design.md) approved and the code built (`release.py reconcile`, role `scoutgrid-lab-github-release` at `count = 0`, `lab-reconcile.yml`, offline tests). Not live: the rollout (grants, environment, role, simulation, denied cases, first reconcile) is owner-run, step by step.
+- **Slice 2** (runtime-only role, reconcile dispatch): live. [Design](phase4-slice2-design.md) and code in #130/#131, a download fix in #132. Rollout done: part2 v3, environment `aws-standard-lab-release`, role `scoutgrid-lab-github-release`, simulation 31/31, the GitHub denials, and the first reconcile `20261116t160758z-e7f871c` verified backend-only ([lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md#reconcile-rollout-phase-4-slice-2-2026-11-16)).
 
 **Phase 4, slice 1 (code):** It adds `release.py deploy --frontend`: a pinned Vercel stage outside the lock, then promotion of that exact deployment after the backend verifies, then paired checks, with one record and the pair in the accepted entry.
 - **Frontend retries:** `frontend_pending` retries repeat no backend step.
@@ -312,6 +312,12 @@ PR D changed only CI files and docs, so the image published for `90cb7e2` is byt
 - **Slice 2:** the runtime-only role and the manual reconcile dispatch.
 
 **Phase 0 correction (2026-11-16):** 2c382df was later accepted with `release.py accept --waive` (#123), so it could serve as the recovery target. The waiver doesn't close phase 0: the nine browser checks still have to pass and be recorded.
+
+**Phase 0 decision (2026-11-16, owner): not proceeding.** Phase 0 stays closed as *not pursued*, not as *passed*. Its fixes (R1 and the R2 trace) are released and the automated checks pass, but the nine browser checks and the invitation-to-inbox check will not be run under this plan. What that means:
+- Releases keep being accepted with `release.py accept --waive`, which records every check as waived (`passed: null`), never as passed. Acceptance still gates the next deploy as before.
+- "Healthy" in phases 3–5 means every automated check, the bake and the signed-in smoke passed. It never means browser-verified.
+- Phase 5's entry condition "phases 0–4 are complete" reads as "phases 1–4 are complete" for the lab.
+- Full-app browser testing, if it is done later, belongs to a separate test plan, not this one.
 
 ## 7. Required failure and resume tests
 

@@ -1,6 +1,6 @@
 # Phase 4, slice 2: runtime-only release role and manual reconcile (design for approval)
 
-Status: **approved 2026-11-16, with the §6 recommendations; code built, not live.** The code, Terraform (role at `count = 0`), workflow and tests are in one PR (§7). Nothing in AWS, GitHub or Vercel has changed; the rollout in §5 follows, each live step approved.
+Status: **approved and live 2026-11-16.** Code in #131 (with the #132 download fix). Rollout steps 1–6 done; the first reconcile, `20261116t160758z-e7f871c`, verified backend-only. Open: the environment's `VERCEL_TOKEN` (S2), so reconcile can release the frontend.
 
 This slice touches the never-touch list: IAM (a new role) and `.github/workflows/` (a new workflow). It needs the owner's approval of this design and of the decisions in §6 before any code.
 

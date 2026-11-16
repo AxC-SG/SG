@@ -260,9 +260,33 @@ One invite from the first run stays open, `SENT` to `delivered+smoke@resend.dev`
 
 **Dry-run leftovers:** deployments `dpl_AcWAF5…` and `dpl_AJQJfSt…` were never assigned a domain.
 
+## Reconcile rollout (phase 4 slice 2, 2026-11-16)
+
+PRs #130 (design) and #131 (code) merged as `86074ff9`. The owner asked for the rollout to be completed ("proceed to complete slice2"). The steps follow the lab README "Reconcile" section.
+
+| UTC | Step | Result | Undo |
+|---|---|---|---|
+| 14:59:15 | 1. `ScoutGridSydneyLab-common-read-state-part2` v3 published as default (`grants/common-read-state-part2.json`). The only difference from v2 is the new role's ARN in `ReadExactRuntimeRoleMetadata` | v1, v2 kept (3 of 5 versions) | `aws iam set-default-policy-version --version-id v2` |
+| 14:59:32 | 2. GitHub environment `aws-standard-lab-release`: custom deployment branch policy `main` only, no required reviewer (S3). Variable `AWS_LAB_RELEASE_ROLE_ARN`. Secret `LAB_SMOKE_TENANT_CONFIG` from the local smoke config with `platform` removed by `jq del(.platform)`, piped straight into `gh secret set`, never printed (S1) | `VERCEL_TOKEN` not set: the separate team-scoped token (S2) has to be created by the owner in the Vercel dashboard | Delete the environment |
+| ~15:01 | 3a. Inline `GithubReleaseRole` (`grants/bootstrap-github-release-role.json`) on `ScoutGridSydneyLabBootstrap`. Access Analyzer: no findings. Inline total 3,612 bytes | Detached again at ~15:06 | `delete-role-policy` |
+| ~15:02–15:04 | 3b. `github_releaser` set in `sydney-lab.foundation.tfvars`. Targeted plan as Bootstrap (foundation + `runtime-running` + released images, the three `github_releaser` targets), under the shared release lock: **6 to add, 0 to change, 0 to destroy**, all IAM. Applied: 6 added | Role trust is exactly `aud=sts.amazonaws.com` and `sub=…:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main`; max session 3600; inline `runtime-only-release`; the four read policies attached | `github_releaser = null`, same targets |
+| 15:05:53 | 3c. `lab.sh plan-up` (cycle role) | **no changes** (part2 v3 lets the cycle role read the new role) | - |
+| ~15:07 | 4. `aws iam simulate-principal-policy` on the role, 31 cases | **31/31 as expected** (below) | - |
+| ~15:10–15:14 | 5. GitHub denials | All three refused (below) | Probe branch deleted |
+
+**Simulation (step 4).** Allowed: api and worker `RegisterTaskDefinition` with the required tags, Fargate and the reviewed CPU/memory; `UpdateService` on api and worker to api/worker revisions; `PassRole` on the api task role to ECS tasks; `PutObject` on release inputs and records; `DeleteObject` on the release lock and the Terraform state lock; state `GetObject`/`PutObject`; the state key through S3 only; `DescribeServices`; api logs. Implicitly denied: untagged or resized registrations, pointing a service at the migrator family, direct (non-S3) use of the state key, `rds:StopDBInstance`. Explicitly denied: migrator `RegisterTaskDefinition`, `RunTask`, `StopTask`, `CreateDBSnapshot`, `GetSecretValue`, `PassRole` on the migrator execution role, IAM writes, `DeleteObject` on the inputs or the state, `DeleteObjectVersion`.
+
+**GitHub denials (step 5).**
+- `lab-reconcile.yml` dispatched from `chore/lab-reconcile-rollout` with `confirm=reconcile`: the job was **skipped** by its `main`-only guard (run 43893260929).
+- A temporary probe workflow on branch `probe/releaser-trust` (run 43893344721, branch deleted afterwards, never merged) tried `AssumeRoleWithWebIdentity` with its own OIDC token. With no environment (`sub=…:ref:refs/heads/probe/releaser-trust:job_workflow_ref:…probe-releaser-trust.yml@…`) and in the publisher's environment `aws-standard-lab`: **AccessDenied** both times. In `aws-standard-lab-release`: GitHub **rejected the job** ("Branch "probe/releaser-trust" is not allowed to deploy to aws-standard-lab-release due to environment protection rules").
+
+**First reconcile (step 6), attempt 1.** `release.py check 86074ff9` from a local checkout: `eligible`, no reasons, catalog same, schema V23..V23. `lab-reconcile.yml` dispatched on `main` (86074ff9) with `frontend=false`, because `VERCEL_TOKEN` is not set yet (run 43895100051, 15:16–15:21). The role was assumed, the tenant-only smoke config was accepted and Playwright was installed. Reconcile then returned **`failed` at `eligibility`**: `error downloading aws-publication-lab-86074ff9…: error extracting "aws-publication.json": … file exists`. Nothing changed: the lock was released, the runtime stayed on `9d83db25…` from cbb265b, and no release record was written. Cause: reconcile reads the publication before the lock and again under it, and both reads used the same folder (`deploy` reads once; the fake lab in the tests never downloads). Fixed in PR #132 with a regression test.
+
+**First reconcile (step 6), attempt 2: verified.** #132 merged as `e7f871ca`; once its lab publication existed, `lab-reconcile.yml` was dispatched on `main` with `frontend=false` (run 43903715270). Release **`20261116t160758z-e7f871c`**, kind `reconcile`, path `runtime-only`, mode neutral: outcome `verified`, 16:07:58–~16:15. The image was unchanged (`9d83db25…`), so api `:11` and worker `:10` kept running. Every check passed: csrf 200, `/api/me` 401, both services settled, targets healthy, no defined failures, 0 startup ERROR lines, 7 healthy progress lines, schema V23..V23, and the signed-in smoke with the tenant-only config (6 checks; the platform journey is not configured in Actions, by S1). No migrator, snapshot or stop. It awaits acceptance (`release.py accept --waive`, phase 0 not pursued). Frontend not released: `VERCEL_TOKEN` is not set in the environment yet.
+
 ## Open
 
-1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
+1. ~~Full-app browser checks~~: phase 0 is not pursued (owner, 2026-11-16; see the CD plan's phase 0 decision). Releases are accepted with waivers.
 2. **Signed-in smoke:** configured and passing (see above). Remaining gaps: no operator path for a second managed platform owner, and the migration operator grant must be re-pinned after each new migrator revision.
 3. **Recovery record gaps** from the drill: items 2–4 and 6 are addressed by phase 4 slice 1 (`release.py deploy --frontend`, linked recovery records, `rollback --note`). Item 5 is kept on purpose; the CD plan's phase 4 status explains why. Item 1 waits for automatic recovery (phase 5).
 4. **Later:** keep or delete the pre-migration snapshot. Delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
