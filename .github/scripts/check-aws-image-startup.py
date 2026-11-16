@@ -6,11 +6,10 @@ No AWS credentials, live databases or external services are used.
 """
 import json
 import secrets
+import re
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 import uuid
 
 POSTGRES = 'postgres:16@sha256:d4d4f1579fcfba19c2257326f6a93f4bcf677a430619f084ced704e18eb428ce'
@@ -20,14 +19,12 @@ def docker(*args):
     return subprocess.check_output(['docker', *args], text=True).strip()
 
 
-def status(url):
-    try:
-        with urllib.request.urlopen(url, timeout=5) as response:
-            return response.status
-    except urllib.error.HTTPError as error:
-        return error.code
-    except (urllib.error.URLError, TimeoutError):
-        return None
+def status(container, path):
+    result = subprocess.run(['docker', 'exec', container, 'busybox', 'wget', '-S', '-T', '5',
+                             '-O', '/dev/null', 'http://127.0.0.1:8080' + path],
+                            capture_output=True, text=True, timeout=15)
+    found = re.search(r'HTTP/1\.[01]\s+(\d{3})', result.stderr)
+    return int(found[1]) if found else None
 
 
 def check(image):
@@ -72,16 +69,15 @@ def check(image):
                    'APP_PLATFORM_MIGRATION_ENABLED': 'false', 'APP_SCHEMA_MIGRATION_ENABLED': 'false',
                    'DB_MAX_POOL_SIZE': '5', 'DB_MIN_IDLE': '1'}
         for role in ('api', 'worker'):
-            start(role, {**runtime, 'APP_RUNTIME_ROLE': role}, '-p', '127.0.0.1::8080', image)
+            start(role, {**runtime, 'APP_RUNTIME_ROLE': role}, image)
         deadline = time.monotonic() + 240
         for role in ('api', 'worker'):
-            port = docker('port', prefix + '-' + role, '8080/tcp').rsplit(':', 1)[-1]
-            base = 'http://127.0.0.1:' + port
-            while status(base + '/actuator/health/readiness') != 200:
+            container = prefix + '-' + role
+            while status(container, '/actuator/health/readiness') != 200:
                 if docker('inspect', '--format={{.State.Running}}', prefix + '-' + role) != 'true' or time.monotonic() > deadline:
                     raise RuntimeError(role + ' failed readiness')
                 time.sleep(3)
-            if role == 'api' and (status(base + '/api/auth/csrf') != 200 or status(base + '/api/me') != 401):
+            if role == 'api' and (status(container, '/api/auth/csrf') != 200 or status(container, '/api/me') != 401):
                 raise RuntimeError('candidate API public/protected contract failed')
         print(json.dumps({'image_id': image, 'migrator': 'passed', 'api': 'passed', 'worker': 'passed'}))
     except BaseException:
