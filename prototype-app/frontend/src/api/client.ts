@@ -2845,6 +2845,17 @@ export const api = {
   /** Phase 0B §4.2: writes nothing; returns member count, owner distribution, exclusions and teams without a channel. */
   previewCampaign: (payload: CampaignCreateRequest) =>
     request<CampaignPreview>('/campaigns/preview', { method: 'POST', body: JSON.stringify(payload) }),
+  /** Saves CVEs into a CVE-scoped campaign; 400 for an unknown or already tracked CVE, 409 for a findings or closed campaign. */
+  addCampaignCves: (campaignId: string, cveIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/cves`, {
+      method: 'POST',
+      body: JSON.stringify({ cveIds })
+    }),
+  addCampaignSoftware: (campaignId: string, softwareIdentityIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/software`, {
+      method: 'POST',
+      body: JSON.stringify({ softwareIdentityIds })
+    }),
   addCampaignMembers: (campaignId: string, findingIds: string[]) =>
     request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/members`, {
       method: 'POST',

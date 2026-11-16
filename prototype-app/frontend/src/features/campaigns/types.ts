@@ -210,7 +210,8 @@ export type CampaignDetail = {
   findings: CampaignFindingRow[];
   assets: CampaignAssetRow[];
   evidence: CampaignEvidenceRow[];
-  softwareItems?: CampaignSoftwareItem[];
+  /** Always present from the server; pages still tolerate an older response without it. */
+  softwareItems: CampaignSoftwareItem[];
 };
 
 export type CampaignNotifyGroupRequest = {

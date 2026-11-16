@@ -9,6 +9,8 @@ import { CampaignMembershipStatus } from './CampaignMembershipStatus';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
 import { ApiError, api } from '../../api/client';
 import { usePageHeader } from '../../app/pageHeaderState';
+import { useActor } from '../auth/context';
+import { canRunSecurityWorkflow } from '../auth/roles';
 import { AsyncSection } from '../../components/AsyncSection';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Dialog } from '../../components/Dialog';
@@ -18,7 +20,6 @@ import type { SoftwareIdentitySummary } from '../software-identities/types';
 import type {
   CampaignDetail,
   CampaignExceptionStatus,
-  CampaignSoftwareItem,
   CampaignStatus,
 } from './types';
 import { deliveryStateLabel, readLaunchState, summarizeDeliveries } from './deliveryOutcome';
@@ -128,6 +129,7 @@ const isActiveOutcome = (outcome: string) => outcome === 'OPEN' || outcome === '
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const actor = useActor();
   const location = useLocation();
   const returnTo = location.pathname;
 
@@ -220,6 +222,7 @@ export function CampaignDetailPage() {
   // Map<externalId, record> so we remember selections across page turns
   const [selectedCveMap, setSelectedCveMap] = React.useState<Map<string, OrgSpecificCveExposureRecord>>(new Map());
   const [addCveError, setAddCveError] = React.useState('');
+  const [addCveBusy, setAddCveBusy] = React.useState(false);
 
   // Debounce search input → query
   React.useEffect(() => {
@@ -259,26 +262,26 @@ export function CampaignDetailPage() {
       return next;
     });
   }
-  function submitAddCve() {
+  async function submitAddCve() {
     const existing = new Set(detail?.summary.cveIds ?? []);
     const toAdd = Array.from(selectedCveMap.values()).filter((r) => !existing.has(r.externalId));
     if (toAdd.length === 0) {
       setAddCveError('All selected CVEs are already tracked in this campaign.');
       return;
     }
-    setDetail((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        summary: { ...prev.summary, cveIds: [...prev.summary.cveIds, ...toAdd.map((r) => r.externalId)] },
-        vulnerabilities: [
-          ...prev.vulnerabilities,
-          ...toAdd.map((r) => ({ externalId: r.externalId, title: r.title, severity: r.severity })),
-        ],
-      };
-    });
-    setScopeEditedLocally(true);
-    closeAddCve();
+    if (!id) return;
+    setAddCveBusy(true);
+    setAddCveError('');
+    try {
+      // The response is the source of truth: counts, members and membership state all change on the server.
+      const updated = await api.addCampaignCves(id, toAdd.map((r) => r.externalId));
+      setDetail(updated);
+      closeAddCve();
+    } catch (err) {
+      setAddCveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddCveBusy(false);
+    }
   }
 
   // ── Add Software modal ────────────────────────────────────────────────────
@@ -292,6 +295,7 @@ export function CampaignDetailPage() {
   const [softwareTotalItems, setSoftwareTotalItems] = React.useState(0);
   const [selectedSoftwareMap, setSelectedSoftwareMap] = React.useState<Map<string, SoftwareIdentitySummary>>(new Map());
   const [addSoftwareError, setAddSoftwareError] = React.useState('');
+  const [addSoftwareBusy, setAddSoftwareBusy] = React.useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => { setSoftwareSearchQuery(softwareSearchInput); setSoftwarePage(0); }, 300);
@@ -363,23 +367,25 @@ export function CampaignDetailPage() {
       return next;
     });
   }
-  function submitAddSoftware() {
+  async function submitAddSoftware() {
     const existing = new Set((detail?.softwareItems ?? []).map((s) => s.id));
     const toAdd = Array.from(selectedSoftwareMap.values()).filter((sw) => !existing.has(sw.id));
     if (toAdd.length === 0) {
       setAddSoftwareError('All selected software is already tracked in this campaign.');
       return;
     }
-    const newItems: CampaignSoftwareItem[] = toAdd.map((sw) => ({
-      id: sw.id,
-      displayName: sw.displayName,
-      vendor: sw.vendor ?? null,
-      assetCount: sw.assetCount,
-      openFindingCount: sw.openFindingCount,
-    }));
-    setDetail((prev) => prev ? { ...prev, softwareItems: [...(prev.softwareItems ?? []), ...newItems] } : prev);
-    setScopeEditedLocally(true);
-    closeAddSoftware();
+    if (!id) return;
+    setAddSoftwareBusy(true);
+    setAddSoftwareError('');
+    try {
+      const updated = await api.addCampaignSoftware(id, toAdd.map((sw) => sw.id));
+      setDetail(updated);
+      closeAddSoftware();
+    } catch (err) {
+      setAddSoftwareError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddSoftwareBusy(false);
+    }
   }
 
   // ── Delete helpers ────────────────────────────────────────────────────────
@@ -528,6 +534,8 @@ export function CampaignDetailPage() {
   }
 
   const s = detail.summary;
+  // Saved scope additions: CVE-scoped, still open, and the actor may run security workflow actions.
+  const canAddScope = s.scopeKind === 'CVE' && s.status !== 'CLOSED' && s.status !== 'CANCELLED' && canRunSecurityWorkflow(actor);
   const left = daysLeft(s.dueAt);
   const pct = s.completionPercent;
   const notifyOwner = detail.notifyGroups[0];
@@ -1200,10 +1208,12 @@ export function CampaignDetailPage() {
               <span className="cd-tab-toolbar-count">
                 {productRows.length + (detail.softwareItems ?? []).length} software item{productRows.length + (detail.softwareItems ?? []).length !== 1 ? 's' : ''}
               </span>
-              <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
-                onClick={() => setShowAddSoftware(true)}>
-                + Add Software
-              </button>
+              {canAddScope && (
+                <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
+                  onClick={() => setShowAddSoftware(true)}>
+                  + Add Software
+                </button>
+              )}
             </div>
             {scopeLocalNotice}
             <table className="data-table cd-findings-table">
@@ -1575,10 +1585,12 @@ export function CampaignDetailPage() {
             <div className="cd-tab-body">
               <div className="cd-tab-toolbar">
                 <span className="cd-tab-toolbar-count">{displayRows.length} CVE{displayRows.length !== 1 ? 's' : ''} tracked</span>
-                <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
-                  onClick={() => setShowAddCve(true)}>
-                  + Add CVE
-                </button>
+                {canAddScope && (
+                  <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
+                    onClick={() => setShowAddCve(true)}>
+                    + Add CVE
+                  </button>
+                )}
               </div>
               {scopeLocalNotice}
               <table className="data-table cd-findings-table">
@@ -1723,7 +1735,7 @@ export function CampaignDetailPage() {
               <span id="cd-add-software-title">Add Software to Campaign</span>
               <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddSoftware}>✕</button>
             </div>
-            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
+            <p className="cd-scope-dialog-note">Selected items are saved to the campaign. New findings join its membership and counts update.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addSoftwareError && <div className="notice error" style={{ marginBottom: 10 }}>{addSoftwareError}</div>}
               <div className="cd-asset-search-wrap">
@@ -1793,8 +1805,8 @@ export function CampaignDetailPage() {
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeAddSoftware}>Cancel</button>
-                <button type="button" className="btn btn-primary" disabled={selectedSoftwareMap.size === 0} onClick={submitAddSoftware}>
-                  {selectedSoftwareMap.size > 0 ? `Add ${selectedSoftwareMap.size} Item${selectedSoftwareMap.size !== 1 ? 's' : ''}` : 'Add Software'}
+                <button type="button" className="btn btn-primary" disabled={selectedSoftwareMap.size === 0 || addSoftwareBusy} onClick={() => void submitAddSoftware()}>
+                  {addSoftwareBusy ? 'Saving…' : selectedSoftwareMap.size > 0 ? `Add ${selectedSoftwareMap.size} Item${selectedSoftwareMap.size !== 1 ? 's' : ''}` : 'Add Software'}
                 </button>
               </div>
             </div>
@@ -1807,7 +1819,7 @@ export function CampaignDetailPage() {
               <span id="cd-add-cve-title">Add CVE to Campaign</span>
               <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddCve}>✕</button>
             </div>
-            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
+            <p className="cd-scope-dialog-note">Selected items are saved to the campaign. New findings join its membership and counts update.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addCveError && <div className="notice error" style={{ marginBottom: 10 }}>{addCveError}</div>}
 
@@ -1884,8 +1896,8 @@ export function CampaignDetailPage() {
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeAddCve}>Cancel</button>
-                <button type="button" className="btn btn-primary" disabled={selectedCveMap.size === 0} onClick={submitAddCve}>
-                  {selectedCveMap.size > 0 ? `Add ${selectedCveMap.size} CVE${selectedCveMap.size !== 1 ? 's' : ''}` : 'Add CVE'}
+                <button type="button" className="btn btn-primary" disabled={selectedCveMap.size === 0 || addCveBusy} onClick={() => void submitAddCve()}>
+                  {addCveBusy ? 'Saving…' : selectedCveMap.size > 0 ? `Add ${selectedCveMap.size} CVE${selectedCveMap.size !== 1 ? 's' : ''}` : 'Add CVE'}
                 </button>
               </div>
             </div>

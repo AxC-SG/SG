@@ -108,6 +108,7 @@ function buildDetail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
       members: 1,
     }],
     evidence: [],
+    softwareItems: [],
     ...overrides,
   };
 }
