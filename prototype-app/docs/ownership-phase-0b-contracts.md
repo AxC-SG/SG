@@ -1231,6 +1231,22 @@ Routing is server-derived on the canonical path. The browser no longer supplies 
   any path that deletes findings must remove campaign rows first. **Decided (November 14, 2026):** tenant purge
   deletes `campaign_findings` (and the campaign tables) before findings; nothing is archived.
 
+**Implementation (E16, November 16, 2026, branch `feat/e16-delete-guard-purge`, not merged).**
+
+- **`FindingWorkflowService.bulkDelete`** (`DELETE /api/findings/bulk`) refuses the whole request with 409 when any selected
+  finding is a campaign member (`"N selected finding(s) are campaign members and cannot be deleted; close them instead"`),
+  deleting nothing. A member added between that check and the delete surfaces the `RESTRICT` key as the same 409
+  instead of a 500. The §4.12 observation that deleting a finding removes its history is therefore closed.
+- **Tenant purge needs no change.** The contract planned an ordered row delete (campaign rows before findings), but no
+  purge path deletes finding rows: `DemoTenantPurgeService` and `TenantSchemaService.resetTenantSchema` remove a tenant by
+  `DROP SCHEMA … CASCADE`, and `bulkDelete` is the only runtime code that deletes findings. A regression test
+  (`FindingDeleteGuardPostgresIntegrationTest`) shows a tenant with campaign membership drops cleanly. Any future
+  row-level purge must delete the campaign tables before findings.
+- **Directory preview audit** (§1.6) was already built with E2, not added here: `IdentitySourceService.preview` records
+  `ownership.identity_source.previewed` with the actor, source and sample-row count (never the values), and
+  `IdentitySourceController` answers with `Cache-Control: no-store` (`IdentitySourceControllerTest`,
+  `OwnershipIdentitySourcePostgresIntegrationTest`). The §5.1 ledger row "Directory preview (new)" is done.
+
 ### 4.13 Decisions and open items
 
 **DECISIONS (approved by the product owner, November 14, 2026):**
