@@ -1243,7 +1243,9 @@ class AwsLab:
             return None
         if not live:
             raise ReleaseError(f"{sha[:7]} has no lab publication record; it is published once its main checks pass")
-        target = self.work / f"publication-{sha[:7]}"
+        # A new directory per read: reconcile reads the same publication again under the lock, and
+        # gh run download refuses to overwrite a file it extracted before.
+        target = Path(tempfile.mkdtemp(prefix=f"publication-{sha[:7]}.", dir=self.work))
         self.run(["gh", "run", "download", str(live[-1]["workflow_run"]["id"]), "-R", REPO, "-n", name, "-D", str(target)])
         return json.loads((target / "aws-publication.json").read_text())
 
