@@ -74,6 +74,6 @@ Local merge commit: `569a54a0` (parents `8c76d3db`, `1282d2a9`). All four `CLAUD
 API, architecture, ownership and AWS qualification documents are updated. The temporary PostgreSQL cluster has been
 stopped after verification. Remote main and deployments are unchanged.
 
-Publishing the integration branch and opening a draft PR remain pending explicit user approval. Automatic approval
-review rejected the push because external publication of repository contents was not considered specifically authorized;
-no alternate publication route was used. This publication approval is separate from the retained release block.
+The user approved publishing the integration branch and opening a draft PR on November 17, 2026, after the initial
+push was rejected for missing explicit publication authorization. Publication approval does not lift the release block.
+Remote CI qualification and final merge review remain required; deployment and tenant enablement remain blocked.
