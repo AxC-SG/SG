@@ -23,6 +23,7 @@ if (!process.argv.includes('--config') || !configPath) {
 const config = JSON.parse(readFileSync(configPath, 'utf8'));
 const { appOrigin, apiOrigin } = config;
 const WORKSPACE_HEADER = 'X-Scout-Workspace';
+const INVITE_DELIVERY_TIMEOUT_MS = 90_000;
 const checks = [];
 
 function check(name, ok, detail = '') {
@@ -76,9 +77,12 @@ async function csrfHeaders(context) {
   return { [token.headerName]: token.token, Origin: appOrigin };
 }
 
+// Every write gets a fresh CSRF token, as the app's own client does (addManagedCsrf in src/api/client.ts):
+// the CSRF cookie can rotate after an authenticated write, so a reused token is rejected with 403.
 async function api(context, method, path, { headers = {}, data } = {}) {
+  const csrf = ['GET', 'HEAD', 'OPTIONS'].includes(method) ? {} : await csrfHeaders(context);
   const response = await context.request.fetch(`${apiOrigin}${path}`, {
-    method, headers: { Origin: appOrigin, ...headers }, data, failOnStatusCode: false,
+    method, headers: { Origin: appOrigin, ...headers, ...csrf }, data, failOnStatusCode: false,
   });
   let body = null;
   try {
@@ -99,8 +103,7 @@ async function pageLoads(session, name, path) {
 }
 
 async function signOut(session, name) {
-  const headers = await csrfHeaders(session.context);
-  const logout = await api(session.context, 'POST', '/api/auth/managed/logout', { headers });
+  const logout = await api(session.context, 'POST', '/api/auth/managed/logout');
   const after = await api(session.context, 'GET', '/api/auth/context');
   check(name, logout.status === 204 && after.status === 401, `logout ${logout.status}, then context ${after.status}`);
 }
@@ -121,22 +124,20 @@ async function platformChecks(browser) {
     }
     // Platform-scope writes on disposable fixtures: the 2026-11-15 audit_events RLS failure.
     await step('platform write: reject a demo request', async () => {
-      const headers = await csrfHeaders(session.context);
-      const fixture = await api(session.context, 'POST', '/api/platform/demo-requests/smoke-fixtures', { headers });
+      const fixture = await api(session.context, 'POST', '/api/platform/demo-requests/smoke-fixtures');
       if (!check('platform write: create a smoke fixture', fixture.status === 200, `status ${fixture.status}`)) return;
       const rejected = await api(session.context, 'POST', `/api/platform/demo-requests/${fixture.body.id}/reject`,
-        { headers, data: { reason: 'Release smoke' } });
+        { data: { reason: 'Release smoke' } });
       check('platform write: reject a demo request', rejected.status === 200 && rejected.body?.status === 'REJECTED',
         `status ${rejected.status} ${rejected.body?.status ?? ''}`);
     });
     await step('platform write: delete a demo request', async () => {
-      const headers = await csrfHeaders(session.context);
-      const fixture = await api(session.context, 'POST', '/api/platform/demo-requests/smoke-fixtures', { headers });
+      const fixture = await api(session.context, 'POST', '/api/platform/demo-requests/smoke-fixtures');
       if (fixture.status !== 200) {
         check('platform write: delete a demo request', false, `fixture status ${fixture.status}`);
         return;
       }
-      const removed = await api(session.context, 'DELETE', `/api/platform/demo-requests/${fixture.body.id}`, { headers });
+      const removed = await api(session.context, 'DELETE', `/api/platform/demo-requests/${fixture.body.id}`);
       const queue = await api(session.context, 'GET', '/api/platform/demo-requests');
       const gone = Array.isArray(queue.body) && !queue.body.some((request) => request.id === fixture.body.id);
       check('platform write: delete a demo request', removed.status === 200 && gone, `status ${removed.status}, gone ${gone}`);
@@ -156,9 +157,10 @@ async function tenantChecks(browser) {
     check('tenant admin enters the workspace', context.status === 200 && context.body?.tenantId === tenantId,
       `context ${context.status}`);
     await step('Findings loads', () => pageLoads(session, 'Findings loads', '/findings'));
-    // Tenant write that produces email: an invite Resend must accept (SENT), then cancelled.
+    // Tenant write that produces email: an invite is queued, the worker's outbox submits it (every 5 s), and
+    // Resend must accept it (SENT). Then it is cancelled.
     await step('tenant write: invite is accepted by the email provider', async () => {
-      const headers = { ...(await csrfHeaders(session.context)), ...workspace };
+      const headers = workspace;
       const invitesPath = `/api/tenants/${tenantId}/invites`;
       const create = () => api(session.context, 'POST', invitesPath, {
         headers, data: { email: config.inviteAddress, displayName: 'Release smoke', role: 'READ_ONLY_AUDITOR' },
@@ -166,15 +168,25 @@ async function tenantChecks(browser) {
       let invite = await create();
       if (invite.status === 409) {
         // A previous run stopped before cancelling its invite; cancel open smoke invites and retry once.
-        const open = await api(session.context, 'GET', invitesPath, { headers: workspace });
+        const open = await api(session.context, 'GET', invitesPath, { headers });
         for (const stale of (open.body ?? []).filter((item) => item.email === config.inviteAddress.toLowerCase()
             && !['CANCELLED', 'ACCEPTED'].includes(item.status))) {
           await api(session.context, 'DELETE', `${invitesPath}/${stale.id}`, { headers });
         }
         invite = await create();
       }
-      check('tenant write: invite is accepted by the email provider', invite.status === 200 && invite.body?.status === 'SENT',
-        `status ${invite.status} ${invite.body?.status ?? ''} ${invite.body?.deliveryDetail ?? ''}`);
+      let status = invite.body?.status;
+      let detail = invite.body?.deliveryDetail ?? '';
+      const deadline = Date.now() + INVITE_DELIVERY_TIMEOUT_MS;
+      while (invite.status === 200 && status === 'QUEUED' && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        const listed = await api(session.context, 'GET', invitesPath, { headers });
+        const current = (listed.body ?? []).find((item) => item.id === invite.body.id);
+        status = current?.status ?? status;
+        detail = current?.deliveryDetail ?? detail;
+      }
+      check('tenant write: invite is accepted by the email provider', invite.status === 200 && status === 'SENT',
+        `status ${invite.status} ${status ?? ''} ${detail}`);
       if (invite.body?.id) {
         const cancelled = await api(session.context, 'DELETE', `${invitesPath}/${invite.body.id}`, { headers });
         check('tenant write: cancel the smoke invite', cancelled.status === 200, `status ${cancelled.status}`);
