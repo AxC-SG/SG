@@ -260,6 +260,26 @@ One invite from the first run stays open, `SENT` to `delivered+smoke@resend.dev`
 
 **Dry-run leftovers:** deployments `dpl_AcWAF5…` and `dpl_AJQJfSt…` were never assigned a domain.
 
+## Reconcile rollout (phase 4 slice 2, 2026-11-16)
+
+PRs #130 (design) and #131 (code) merged as `86074ff9`. The owner asked for the rollout to be completed ("proceed to complete slice2"). The steps follow the lab README "Reconcile" section.
+
+| UTC | Step | Result | Undo |
+|---|---|---|---|
+| 14:59:15 | 1. `ScoutGridSydneyLab-common-read-state-part2` v3 published as default (`grants/common-read-state-part2.json`). The only difference from v2 is the new role's ARN in `ReadExactRuntimeRoleMetadata` | v1, v2 kept (3 of 5 versions) | `aws iam set-default-policy-version --version-id v2` |
+| 14:59:32 | 2. GitHub environment `aws-standard-lab-release`: custom deployment branch policy `main` only, no required reviewer (S3). Variable `AWS_LAB_RELEASE_ROLE_ARN`. Secret `LAB_SMOKE_TENANT_CONFIG` from the local smoke config with `platform` removed by `jq del(.platform)`, piped straight into `gh secret set`, never printed (S1) | `VERCEL_TOKEN` not set: the separate team-scoped token (S2) has to be created by the owner in the Vercel dashboard | Delete the environment |
+| ~15:01 | 3a. Inline `GithubReleaseRole` (`grants/bootstrap-github-release-role.json`) on `ScoutGridSydneyLabBootstrap`. Access Analyzer: no findings. Inline total 3,612 bytes | Detached again at ~15:06 | `delete-role-policy` |
+| ~15:02–15:04 | 3b. `github_releaser` set in `sydney-lab.foundation.tfvars`. Targeted plan as Bootstrap (foundation + `runtime-running` + released images, the three `github_releaser` targets), under the shared release lock: **6 to add, 0 to change, 0 to destroy**, all IAM. Applied: 6 added | Role trust is exactly `aud=sts.amazonaws.com` and `sub=…:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main`; max session 3600; inline `runtime-only-release`; the four read policies attached | `github_releaser = null`, same targets |
+| 15:05:53 | 3c. `lab.sh plan-up` (cycle role) | **no changes** (part2 v3 lets the cycle role read the new role) | - |
+| ~15:07 | 4. `aws iam simulate-principal-policy` on the role, 31 cases | **31/31 as expected** (below) | - |
+| ~15:10–15:14 | 5. GitHub denials | All three refused (below) | Probe branch deleted |
+
+**Simulation (step 4).** Allowed: api and worker `RegisterTaskDefinition` with the required tags, Fargate and the reviewed CPU/memory; `UpdateService` on api and worker to api/worker revisions; `PassRole` on the api task role to ECS tasks; `PutObject` on release inputs and records; `DeleteObject` on the release lock and the Terraform state lock; state `GetObject`/`PutObject`; the state key through S3 only; `DescribeServices`; api logs. Implicitly denied: untagged or resized registrations, pointing a service at the migrator family, direct (non-S3) use of the state key, `rds:StopDBInstance`. Explicitly denied: migrator `RegisterTaskDefinition`, `RunTask`, `StopTask`, `CreateDBSnapshot`, `GetSecretValue`, `PassRole` on the migrator execution role, IAM writes, `DeleteObject` on the inputs or the state, `DeleteObjectVersion`.
+
+**GitHub denials (step 5).**
+- `lab-reconcile.yml` dispatched from `chore/lab-reconcile-rollout` with `confirm=reconcile`: the job was **skipped** by its `main`-only guard (run 43893260929).
+- A temporary probe workflow on branch `probe/releaser-trust` (run 43893344721, branch deleted afterwards, never merged) tried `AssumeRoleWithWebIdentity` with its own OIDC token. With no environment (`sub=…:ref:refs/heads/probe/releaser-trust:job_workflow_ref:…probe-releaser-trust.yml@…`) and in the publisher's environment `aws-standard-lab`: **AccessDenied** both times. In `aws-standard-lab-release`: GitHub **rejected the job** ("Branch "probe/releaser-trust" is not allowed to deploy to aws-standard-lab-release due to environment protection rules").
+
 ## Open
 
 1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
