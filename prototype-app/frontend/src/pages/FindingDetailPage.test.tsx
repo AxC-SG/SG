@@ -400,4 +400,50 @@ describe('FindingDetailPage', () => {
     const link = screen.getByRole('link', { name: 'Active credential encryption key slot' });
     expect(link).toHaveAttribute('href', '/inventory/bom-components/cbom/cbom-comp-1?returnTo=%2Ffindings%2FF-001');
   });
+
+  describe('create ticket entry point', () => {
+    const preview = (hash: string, group: string, team: string) => ({
+      canonical: true, unroutable: [], excluded: [], tenantDefaultGroup: null, routingHash: hash, expiresAt: null,
+      batches: [{ bucket: 'TEAM' as const, teamId: 't', teamName: team, assignmentGroup: group, routingSource: 'TEAM_MAPPING' as const, findingIds: [FINDING.id] }],
+    });
+    function mockBase() {
+      vi.spyOn(api, 'listAssets').mockResolvedValue([]);
+      vi.spyOn(api, 'listFindingSuppressionRequests').mockResolvedValue([]);
+      vi.spyOn(api, 'listFindingTicketAttempts').mockResolvedValue([]);
+    }
+
+    it('is hidden for a finding with a ticket, a closed finding and a read-only actor', async () => {
+      mockBase();
+      const { unmount } = renderWithFinding({ ...FINDING, incidentId: 'INC-1' });
+      await screen.findAllByText('F-001');
+      expect(screen.queryByRole('button', { name: 'Create ticket' })).not.toBeInTheDocument();
+      unmount();
+      const closed = renderWithFinding({ ...FINDING, status: 'RESOLVED' });
+      await screen.findAllByText('F-001');
+      expect(screen.queryByRole('button', { name: 'Create ticket' })).not.toBeInTheDocument();
+      closed.unmount();
+      renderWithFinding(FINDING, { ...ANALYST, roles: ['ROLE_READ_ONLY_AUDITOR'] });
+      await screen.findAllByText('F-001');
+      expect(screen.queryByRole('button', { name: 'Create ticket' })).not.toBeInTheDocument();
+    });
+
+    it('creates a ticket with the canonical preview and refreshes on a routing change', async () => {
+      mockBase();
+      vi.spyOn(api, 'previewTickets').mockResolvedValue(preview('h1', 'SN-PAY', 'Payments'));
+      const create = vi.spyOn(api, 'createFindingTicket')
+        .mockRejectedValueOnce(new ApiError('changed', 409, { code: 'TICKET_ROUTING_CHANGED', preview: preview('h2', 'SN-ID', 'Identity') }))
+        .mockResolvedValue({} as never);
+      vi.spyOn(api, 'getFinding').mockResolvedValue({ ...FINDING, incidentId: 'INC-9' });
+      renderWithFinding(FINDING);
+      fireEvent.click(await screen.findByRole('button', { name: 'Create ticket' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
+      expect(await within(dialog).findByText('SN-PAY')).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Create ticket' }));
+      expect(await within(dialog).findByText('SN-ID')).toBeInTheDocument();
+      expect(create).toHaveBeenCalledWith(FINDING.id, { routingHash: 'h1' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm updated routing' }));
+      await waitFor(() => expect(create).toHaveBeenLastCalledWith(FINDING.id, { routingHash: 'h2' }));
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Create ticket' })).not.toBeInTheDocument());
+    });
+  });
 });

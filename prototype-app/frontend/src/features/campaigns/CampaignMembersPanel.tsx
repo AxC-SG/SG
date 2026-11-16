@@ -5,9 +5,10 @@ import { api } from '../../api/client';
 import { pathForFindingDetail } from '../../app/routes';
 import { AsyncSection } from '../../components/AsyncSection';
 import { DataTable, type DataTableColumn, type DataTableRow } from '../../components/DataTable';
-import { CAMPAIGN_OUTCOMES, campaignOwnerLabel, outcomeLabel, ownerAtAddLabel } from './ownership';
+import type { BucketSelection } from './CampaignOwnerBucketsPanel';
+import { CAMPAIGN_OUTCOMES, ownerBucketLabel, campaignOwnerLabel, outcomeLabel, ownerAtAddLabel } from './ownership';
 import { OwnerChangeIndicator } from './OwnerChangeIndicator';
-import type { CampaignOutcome } from './types';
+import type { CampaignOutcome, CampaignOwnerGrouping } from './types';
 
 const COLUMNS: DataTableColumn[] = [
   { id: 'finding', label: 'Finding', header: 'Finding', priority: 'essential', initialSize: 280, minWidth: 180 },
@@ -22,19 +23,22 @@ const PAGE_SIZE = 50;
  * Cursor-paged campaign members (Phase 0B §4.5). Suppressed, false-positive and accepted-risk members are hidden
  * until the outcome filter names them or "Include hidden" is on.
  */
-export function CampaignMembersPanel({ campaignId }: { campaignId: string }) {
+export function CampaignMembersPanel({ campaignId, groupBy = 'current', bucket = null, onClearBucket }: {
+  campaignId: string; groupBy?: CampaignOwnerGrouping; bucket?: BucketSelection | null; onClearBucket?: () => void;
+}) {
   const [outcome, setOutcome] = React.useState<CampaignOutcome | ''>('');
   const [includeHidden, setIncludeHidden] = React.useState(false);
   const members = useInfiniteQuery({
-    queryKey: ['campaign-members-panel', campaignId, outcome, includeHidden],
+    queryKey: ['campaign-members-panel', campaignId, outcome, includeHidden, groupBy, bucket],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => api.listCampaignMembers(campaignId, {
       cursor: pageParam, limit: PAGE_SIZE, outcome: outcome || undefined, includeHidden,
+      ...(bucket ? { groupBy, bucket: bucket.bucket, teamId: bucket.teamId ?? undefined } : {}),
     }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
   const items = members.data?.pages.flatMap((page) => page.items) ?? [];
-  const filtered = outcome !== '' || includeHidden;
+  const filtered = outcome !== '' || includeHidden || bucket !== null;
   const state = members.isPending ? 'pending' : members.isError && !members.data ? 'error'
     : items.length > 0 ? 'ready' : filtered ? 'filtered-empty' : 'empty';
 
@@ -66,6 +70,12 @@ export function CampaignMembersPanel({ campaignId }: { campaignId: string }) {
           </label>
         </div>
       </div>
+      {bucket && (
+        <p className="panel-caption" role="status">
+          Showing {ownerBucketLabel({ bucket: bucket.bucket, teamName: null })} ({groupBy === 'atAdd' ? 'owner at add' : 'current owner'}){' '}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClearBucket}>Clear owner filter</button>
+        </p>
+      )}
       <AsyncSection
         state={state}
         loadingLabel="Loading members…"
@@ -75,7 +85,7 @@ export function CampaignMembersPanel({ campaignId }: { campaignId: string }) {
         emptyTitle="No members yet"
         emptyMessage="Findings appear here once they are added to the campaign."
         filteredEmptyMessage="No members match this outcome."
-        onClearFilters={() => { setOutcome(''); setIncludeHidden(false); }}
+        onClearFilters={() => { setOutcome(''); setIncludeHidden(false); onClearBucket?.(); }}
         refreshError={members.isError && members.data ? 'The latest members could not be loaded; showing the previous result.' : undefined}
       >
         <DataTable storageKey="campaign-members" columns={COLUMNS} rows={rows} label="Campaign members" />

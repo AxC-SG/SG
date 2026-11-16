@@ -4,9 +4,8 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { AddFindingsDialog } from './AddFindingsDialog';
 import { CampaignExceptionForm } from './CampaignExceptionForm';
 import { CampaignLinkedFindings } from './CampaignLinkedFindings';
-import { CampaignMembersPanel } from './CampaignMembersPanel';
+import { CampaignOwnerMembers } from './CampaignOwnerMembers';
 import { CampaignMembershipStatus } from './CampaignMembershipStatus';
-import { CampaignOwnerBucketsPanel } from './CampaignOwnerBucketsPanel';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
 import { ApiError, api } from '../../api/client';
 import { usePageHeader } from '../../app/pageHeaderState';
@@ -1341,8 +1340,7 @@ export function CampaignDetailPage() {
 
         {tab === 'findings' && (
           <div className="cd-tab-body">
-            {id && <CampaignOwnerBucketsPanel campaignId={id} />}
-            {id && <CampaignMembersPanel campaignId={id} />}
+            {id && <CampaignOwnerMembers campaignId={id} />}
             <table className="data-table cd-findings-table">
               <thead>
                 <tr>

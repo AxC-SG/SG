@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import { AsyncSection } from '../../components/AsyncSection';
@@ -7,8 +6,12 @@ import { ownerBucketLabel } from './ownership';
 import type { CampaignOwnerGrouping } from './types';
 
 /** Members by owner (Phase 0B §4.5): current owner by default, owner at add as an alternative. A rename changes only the label. */
-export function CampaignOwnerBucketsPanel({ campaignId }: { campaignId: string }) {
-  const [groupBy, setGroupBy] = React.useState<CampaignOwnerGrouping>('current');
+export type BucketSelection = { bucket: string; teamId: string | null };
+
+export function CampaignOwnerBucketsPanel({ campaignId, groupBy, onGroupByChange, selected, onSelect }: {
+  campaignId: string; groupBy: CampaignOwnerGrouping; onGroupByChange: (value: CampaignOwnerGrouping) => void;
+  selected: BucketSelection | null; onSelect: (selection: BucketSelection | null) => void;
+}) {
   const buckets = useQuery({
     queryKey: ['campaign-owner-buckets', campaignId, groupBy],
     queryFn: () => api.listCampaignOwnerBuckets(campaignId, groupBy),
@@ -23,7 +26,7 @@ export function CampaignOwnerBucketsPanel({ campaignId }: { campaignId: string }
         <SegmentedControl<CampaignOwnerGrouping>
           ariaLabel="Group owners by"
           value={groupBy}
-          onChange={setGroupBy}
+          onChange={onGroupByChange}
           options={[{ value: 'current', label: 'Current owner' }, { value: 'atAdd', label: 'Owner at add' }]}
         />
       </div>
@@ -43,7 +46,16 @@ export function CampaignOwnerBucketsPanel({ campaignId }: { campaignId: string }
             <tbody>
               {rows.map((bucket) => (
                 <tr key={`${bucket.bucket}:${bucket.teamId ?? ''}`}>
-                  <td>{ownerBucketLabel(bucket)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      aria-pressed={selected?.bucket === bucket.bucket && selected.teamId === bucket.teamId}
+                      onClick={() => onSelect(selected?.bucket === bucket.bucket && selected.teamId === bucket.teamId ? null : { bucket: bucket.bucket, teamId: bucket.teamId })}
+                    >
+                      {ownerBucketLabel(bucket)}
+                    </button>
+                  </td>
                   <td>{bucket.members}</td>
                   <td>{bucket.activeRemaining}</td>
                   <td>{bucket.outcomes.REMEDIATED ?? 0}</td>

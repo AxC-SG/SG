@@ -7,7 +7,7 @@ import { AddFindingsDialog } from './AddFindingsDialog';
 import { CampaignExceptionForm } from './CampaignExceptionForm';
 import { CampaignMembersPanel } from './CampaignMembersPanel';
 import { CampaignMembershipStatus } from './CampaignMembershipStatus';
-import { CampaignOwnerBucketsPanel } from './CampaignOwnerBucketsPanel';
+import { CampaignOwnerMembers } from './CampaignOwnerMembers';
 import { OwnerChangeIndicator } from './OwnerChangeIndicator';
 import { ownerAtAddLabel, outcomeLabel, type OwnerBucket } from './ownership';
 import type { CampaignMember, CampaignReconciliation } from './types';
@@ -56,7 +56,8 @@ describe('CampaignOwnerBucketsPanel', () => {
       ? [{ bucket: 'NOT_RECORDED', teamId: null, teamName: null, members: 4, activeRemaining: 4, outcomes: {} }]
       : [{ bucket: 'TEAM', teamId: 't1', teamName: 'Payments', members: 6, activeRemaining: 5, outcomes: { REMEDIATED: 1 } },
         { bucket: 'PENDING_MIGRATION', teamId: null, teamName: null, members: 2, activeRemaining: 2, outcomes: {} }]);
-    renderWithProviders(<CampaignOwnerBucketsPanel campaignId="c1" />);
+    vi.spyOn(api, 'listCampaignMembers').mockResolvedValue({ items: [], nextCursor: null });
+    renderWithProviders(<CampaignOwnerMembers campaignId="c1" />);
     expect(await screen.findByText('Payments')).toBeInTheDocument();
     expect(screen.getByText('Pending migration')).toBeInTheDocument();
     expect(screen.queryByText('Unowned')).not.toBeInTheDocument();
@@ -66,9 +67,32 @@ describe('CampaignOwnerBucketsPanel', () => {
   });
 
   it('shows an error with retry', async () => {
+    vi.spyOn(api, 'listCampaignMembers').mockResolvedValue({ items: [], nextCursor: null });
     vi.spyOn(api, 'listCampaignOwnerBuckets').mockRejectedValue(new Error('boom'));
-    renderWithProviders(<CampaignOwnerBucketsPanel campaignId="c1" />);
+    renderWithProviders(<CampaignOwnerMembers campaignId="c1" />);
     expect(await screen.findByText('Owner buckets could not be loaded.')).toBeInTheDocument();
+  });
+});
+
+describe('owner bucket drill-down', () => {
+  it('filters members by the clicked bucket and grouping, and clears the filter', async () => {
+    vi.spyOn(api, 'listCampaignOwnerBuckets').mockResolvedValue([
+      { bucket: 'TEAM', teamId: 't1', teamName: 'Payments', members: 6, activeRemaining: 5, outcomes: {} },
+      { bucket: 'CONFLICT', teamId: null, teamName: null, members: 1, activeRemaining: 1, outcomes: {} },
+    ]);
+    const list = vi.spyOn(api, 'listCampaignMembers').mockResolvedValue({ items: [member()], nextCursor: null });
+    renderWithProviders(<CampaignOwnerMembers campaignId="c1" />);
+    await screen.findByText('F-100');
+    fireEvent.click(await screen.findByRole('button', { name: 'Payments' }));
+    await waitFor(() => expect(list).toHaveBeenCalledWith('c1', expect.objectContaining({ groupBy: 'current', bucket: 'TEAM', teamId: 't1' })));
+    expect(screen.getByText(/Showing Payments|Showing Owned/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear owner filter' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Clear owner filter' })).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Owner at add' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Conflict' }));
+    await waitFor(() => expect(list).toHaveBeenCalledWith('c1', expect.objectContaining({ groupBy: 'atAdd', bucket: 'CONFLICT' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Current owner' }));
+    expect(screen.queryByRole('button', { name: 'Clear owner filter' })).not.toBeInTheDocument();
   });
 });
 

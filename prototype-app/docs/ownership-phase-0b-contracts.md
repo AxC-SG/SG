@@ -1088,6 +1088,11 @@ Routing is server-derived on the canonical path. The browser no longer supplies 
   and `VulnRepoCveAssetsPage` ticket flows are Release 3. The members table filters by outcome only (the API's `bucket`
   and `teamId` filters are typed but not surfaced). The exception form lists the first 200 members. The override applies
   to the whole request, as in E11. No browser/e2e run was done in this branch.
+- **Addendum (E14 follow-up).** Finding detail now has a "Create ticket" action
+  (`FindingCreateTicketAction`) for OPEN findings with no ticket, shown only when `canCreateTickets(actor)`; it opens
+  `FindingTicketDialog`, and the crypto retry is unchanged. Clicking an owner bucket filters the members table by that
+  bucket (`bucket`, `teamId`, and `groupBy` matching the Current / Owner-at-add toggle), with a "Clear owner filter"
+  control; changing the toggle drops the filter (`CampaignOwnerMembers`).
 
 ### 4.10 Rollout and rollback
 
