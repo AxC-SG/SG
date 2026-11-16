@@ -70,7 +70,7 @@ describe('CBOM governance panels', () => {
     fireEvent.change(within(dialog).getByLabelText('Campaign name'), { target: { value: 'PQC wave 2' } });
     fireEvent.change(within(dialog).getByLabelText('Migration due date'), { target: { value: '2027-12-31' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create campaign' }));
-    await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'PQC wave 2', dueAt: '2027-12-31T23:59:59.000Z', assignedTo: undefined, environment: undefined }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'PQC wave 2', dueAt: '2027-12-31T23:59:59.000Z', environment: undefined }));
     expect(await screen.findByRole('link', { name: 'PQC wave 2' })).toHaveAttribute('href', '/vuln-repo/campaigns/c-2');
   });
 });

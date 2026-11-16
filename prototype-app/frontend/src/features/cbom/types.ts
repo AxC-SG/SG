@@ -118,11 +118,6 @@ export type CryptoEffectiveness = {
   bySeverity: Array<{ severity: string; closed: number; meanDaysToClose: number | null; closedWithinSla: number | null }>;
 };
 
-export type CampaignFinding = {
-  findingId: string; displayId: string; title: string; findingKind: string; severity: string | null; status: string;
-  assignedTo: string | null; ownerGroup: string | null; dueAt: string | null; verificationStatus: string | null; addedAt: string;
-};
-
 export type CbomGraphNode = {
   type: string; id: string; distance: number; label: string | null; kind: string | null; openFindings: number; highestSeverity: string | null;
 };

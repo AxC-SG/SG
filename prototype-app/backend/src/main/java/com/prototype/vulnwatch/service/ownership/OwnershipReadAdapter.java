@@ -175,6 +175,11 @@ public class OwnershipReadAdapter {
                 num(counts.get("conflict")), teams));
     }
 
+    /** Whether {@code consumer} reads each domain canonically for the current tenant (wave and authority). */
+    public Map<Domain, Boolean> canonicalDomains(Consumer consumer) {
+        return canonicalByDomain(consumer);
+    }
+
     private Map<Domain, Boolean> canonicalByDomain(Consumer consumer) {
         Map<Domain, Boolean> map = new java.util.EnumMap<>(Domain.class);
         for (Domain domain : Domain.values()) map.put(domain, canonical(consumer, domain));
@@ -200,9 +205,18 @@ public class OwnershipReadAdapter {
     /** Domain-aware finding envelope: each row is canonical only when its own kind's domain is canonical. */
     @Transactional(readOnly = true)
     public List<Summary> forFindings(List<UUID> findingIds) {
+        return forFindings(Consumer.FINDINGS, findingIds);
+    }
+
+    /**
+     * The finding envelope for another finding consumer (campaign members read under {@link Consumer#CAMPAIGNS},
+     * Phase 0B §4.5). With that consumer's read wave off it returns the legacy labels and runs no ownership query.
+     */
+    @Transactional(readOnly = true)
+    public List<Summary> forFindings(Consumer consumer, List<UUID> findingIds) {
         List<UUID> ids = bounded(findingIds);
         if (ids.isEmpty()) return List.of();
-        Map<Domain, Boolean> canonicalByDomain = canonicalByDomain(Consumer.FINDINGS);
+        Map<Domain, Boolean> canonicalByDomain = canonicalByDomain(consumer);
         if (!canonicalByDomain.containsValue(true)) {
             // Nothing canonical yet: skip the effective walk and return the legacy labels only.
             return order(ids, jdbc.query("SELECT id, finding_kind, owner_group FROM findings WHERE id = ANY (?::uuid[])",

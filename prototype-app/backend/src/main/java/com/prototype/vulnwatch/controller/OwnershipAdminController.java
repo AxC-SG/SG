@@ -35,7 +35,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/ownership")
 public class OwnershipAdminController {
 
-    public record TeamRequest(String name, UUID parentTeamId, String ticketAssignmentGroup, String status, Long version) { }
+    /** {@code notificationEmail} is write-only: null keeps the current address, blank clears it (Phase 0B §4.6). */
+    public record TeamRequest(String name, UUID parentTeamId, String ticketAssignmentGroup, String status, Long version,
+                              String notificationEmail) { }
 
     public record AliasRequest(String alias, String sourceKind) { }
 
@@ -84,7 +86,7 @@ public class OwnershipAdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(teams.createTeam(req.name(), req.parentTeamId(), req.ticketAssignmentGroup(), actor()));
     }
 
-    /** Applies rename, parent/ticket-group and status changes in that order. {@code parentTeamId} and {@code ticketAssignmentGroup} are replaced as given (null clears); send the current values to keep them. */
+    /** Applies rename, parent/ticket-group, notification address and status changes in that order. {@code parentTeamId} and {@code ticketAssignmentGroup} are replaced as given (null clears); send the current values to keep them. */
     @PatchMapping("/teams/{id}")
     @PreAuthorize("@ownershipAuthorization.can('WRITE_TEAMS')")
     public Team updateTeam(@PathVariable UUID id, @RequestBody TeamRequest req) {
@@ -94,6 +96,7 @@ public class OwnershipAdminController {
         if (current.version() != req.version()) throw new ResponseStatusException(HttpStatus.CONFLICT, "The team changed since it was loaded; reload and try again");
         if (req.name() != null && !req.name().strip().equals(current.name())) current = teams.renameTeam(id, req.name(), current.version(), actor);
         current = teams.updateTeam(id, req.parentTeamId(), req.ticketAssignmentGroup(), current.version(), actor);
+        if (req.notificationEmail() != null) current = teams.setNotificationEmail(id, req.notificationEmail(), current.version(), actor);
         if (req.status() != null && !req.status().equalsIgnoreCase(current.status())) {
             current = teams.setStatus(id, req.status().toUpperCase(Locale.ROOT), current.version(), actor);
         }

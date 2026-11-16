@@ -139,7 +139,6 @@ import type {
   CbomSemanticDiff,
   CbomTrends,
   CryptoEffectiveness,
-  CampaignFinding,
   CbomBlastRadius,
   CbomContradiction,
   CbomGatePolicy,
@@ -764,6 +763,7 @@ import type {
   CampaignException,
   CampaignExceptionRequest,
   CampaignExceptionStatus,
+  CampaignMemberPage,
   CampaignNote,
   CampaignNotifyGroupRequest,
   CampaignStatus,
@@ -2795,7 +2795,7 @@ export const api = {
   saveCbomGatePolicy: (environment: string, payload: { failOnSeverities: string[]; minimumCompleteness: number; blockOnInvalid: boolean; version?: number }) =>
     request<CbomGatePolicy>(`/bom/cbom/governance/gate-policies/${encodeURIComponent(environment)}`, { method: 'PUT', body: JSON.stringify(payload) }),
   getCbomPqcProgress: () => request<CbomPqcProgress>('/bom/cbom/pqc/progress'),
-  createCbomPqcCampaign: (payload: { name: string; dueAt: string; assignedTo?: string; ownerGroup?: string; environment?: string }) =>
+  createCbomPqcCampaign: (payload: { name: string; dueAt: string; assigneePrincipalId?: string; environment?: string }) =>
     request<{ summary: { id: string; name: string } }>('/bom/cbom/pqc/campaigns', { method: 'POST', body: JSON.stringify(payload) }),
   getCbomPortfolio: (groupBy: string) => request<CbomPortfolio>(`/bom/cbom/portfolio?groupBy=${encodeURIComponent(groupBy)}`),
   getCryptoRemediationQueue: () =>
@@ -2803,10 +2803,17 @@ export const api = {
   getCryptoRemediationEffectiveness: (days = 90) =>
     request<CryptoEffectiveness>(`/bom/cbom/remediation/effectiveness?days=${days}`),
   createCampaignFromFindings: (payload: {
-    name: string; summary?: string; findingIds: string[]; dueAt?: string; assignedTo?: string; ownerGroup?: string; launchNote?: string;
+    name: string; summary?: string; findingIds: string[]; dueAt?: string; assigneePrincipalId?: string; launchNote?: string;
   }) => request<{ summary: { id: string; name: string } }>('/campaigns/from-findings', { method: 'POST', body: JSON.stringify(payload) }),
-  listCampaignFindings: (campaignId: string) =>
-    request<CampaignFinding[]>(`/campaigns/${encodeURIComponent(campaignId)}/findings`),
+  /** Phase 0B §4.5: cursor-paged campaign members (at most 200 per page). */
+  listCampaignMembers: (campaignId: string, params?: { cursor?: string; limit?: number; includeHidden?: boolean }) => {
+    const search = new URLSearchParams();
+    if (params?.cursor) search.set('cursor', params.cursor);
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.includeHidden) search.set('includeHidden', 'true');
+    const query = search.toString();
+    return request<CampaignMemberPage>(`/campaigns/${encodeURIComponent(campaignId)}/members${query ? `?${query}` : ''}`);
+  },
   getCbomPqcReadiness: () =>
     request<CbomPqcReadiness>('/bom/cbom/governance/pqc-readiness'),
   getCbomOverview: () =>

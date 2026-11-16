@@ -864,6 +864,65 @@ applied in order; the first match wins.
 - Reopen detection reads `finding_events` by `(finding_id, created_at)` only for members, in the same SQL as the
   counts.
 
+**Implementation (E10, November 16, 2026, branch `feat/e10-campaign-ledger`, not merged).**
+
+- **Ledger.** `CampaignLedger` is the only writer of `campaign_findings` and only inserts (`CampaignLedgerWriterControlTest`
+  rejects any update or delete, and any `SET` of an at-add column, anywhere in `src/main`). Every insert is one
+  set-based `INSERT … SELECT … ON CONFLICT DO NOTHING` with `tenant_id` from the session. The snapshot joins
+  `ownership_effective_assignment` in the same statement, gated per finding kind by domain authority
+  (`CANONICAL` → resolved status, unlinked → `UNOWNED`; otherwise `LEGACY_PENDING_MIGRATION`, no team), never by read
+  wave and never from the cache. Every read path (summary, detail rows, asset rows, members, buckets) is SQL over
+  `campaign_findings`; `loadFindingsForCampaign` and `isResolvedFinding` are gone.
+- **Create.** `POST /api/campaigns` takes `cveIds` or `findingIds` (exactly one), `assigneePrincipalId` (an ACTIVE user
+  with an ACTIVE membership of the tenant), `coordinatingTeamId` (ACTIVE team) and `includeExcepted`; a body that names
+  `ownerGroup` or `supportGroup` (even as `null`) is 400. CVE scope materializes at most 5,000 members ordered by
+  `(updated_at, id)`; when more are eligible the campaign is `MATERIALIZING` and its reconciler watermark starts after
+  the last materialized member. Tenant **V26** adds `campaigns.include_excepted`, so the reconciler applies the same
+  filter. `POST /api/campaigns/preview` returns the count, the distribution by owner as the snapshot would record it,
+  excluded counts (`CLOSED`, `SUPPRESSED`, `ACCEPTED_RISK`, `FALSE_POSITIVE`), `exceedsCreateBound` and the teams
+  (owners and TEAM recipients) without a notification channel.
+- **Finding scope.** `POST /api/campaigns/from-findings` and the PQC request reject `ownerGroup` and the free-text
+  `assignedTo` with 400 and take `assigneePrincipalId`. `CryptoRemediationService.createCampaign` no longer bulk-writes
+  `findings.assigned_to`, `owner_group` or `due_at`: the assignee is stored on the campaign only, because nothing writes
+  `findings.assignee_principal_id` yet and a campaign must not change finding workflow. Finding-scope campaigns now show
+  their members, progress and launch notifications. The PQC "owners" list stays empty until E13 moves it to team buckets.
+- **Add-findings.** `POST /api/campaigns/{id}/members` (≤ 500 IDs, `add_source = 'MANUAL'`, 409 on a closed or cancelled
+  campaign) is the backend for the §4.12 action; the dialog is E14.
+- **Reconciler.** `CampaignMembershipReconciler` (every 15 minutes, `app.campaigns.reconciler.cron`, worker nodes) picks at
+  most 20 campaigns per tenant, least recently reconciled first, locks each row `FOR UPDATE SKIP LOCKED` and runs one
+  1,000-row keyset batch in its own transaction inside `run(tenant, …)`. Findings updated in the last minute are left
+  for the next run so a transaction still in flight is not skipped; the watermark therefore lags by one minute. A
+  `MATERIALIZING` campaign whose batch comes back short becomes `COMPLETE`, records `MATERIALIZED` and sends its launch
+  notifications. Failures increment `reconcile_failures`; the third consecutive one records `RECONCILE_FAILED` and
+  increments `campaign.reconciliation.failures`. `GET /api/campaigns/{id}/reconciliation` reports the state.
+- **Outcomes.** `CampaignOutcomeClassifier` holds the §4.8 rules once, as Java and as the SQL `CASE` the ledger uses
+  for counts, buckets and filters; a Postgres IT checks both agree for every status, closed reason and flag. An OPEN
+  finding is never classified by a stale closed reason. Reopen detection is a `finding_events` row after `added_at` whose
+  type contains `REOPEN`, or a `STATUS_CHANGED` event to `OPEN` from another status. The summary returns
+  `remediatedCount`, `activeRemainingCount` and `outcomes`; `resolvedFindings`/`openFindings` are removed.
+- **Reads.** `GET /api/campaigns/{id}/members` is cursor-paged on `(added_at, finding_id)` (≤ 200), hides suppressed,
+  false-positive and accepted-risk members unless `outcome` names them or `includeHidden=true`, and filters by
+  `groupBy`/`bucket`/`teamId`. `currentOwnership` comes from `OwnershipReadAdapter.forFindings(Consumer.CAMPAIGNS, …)`;
+  `GET /api/campaigns/{id}/owner-buckets?groupBy=current|atAdd` returns the §4.5 buckets with outcome counts. The
+  `CAMPAIGNS` read-wave property itself is wired in E15, so until then current ownership is always the legacy envelope
+  and current grouping is `PENDING_MIGRATION` with no ownership query; owner-at-add buckets work now. The unpaged
+  `GET /api/campaigns/{id}/findings` is removed. Detail asset rows group by asset ID without `support_group`.
+- **Recipients.** TEAM recipients name a team and use `team.notification_email_enc`, set (or cleared with a blank) through
+  the write-only `notificationEmail` field of `PATCH /api/ownership/teams/{id}` (`WRITE_TEAMS`, `TeamNamespaceService`,
+  tenant ciphertext, 503 when the key is not ready); a team without one gets a `SKIPPED` "Team has no notification
+  channel" attempt. CUSTOM recipients store only `group_email_enc` (purpose `campaign.recipient.email`), need
+  `TENANT_ADMIN` or `SECURITY_ANALYST` (403 otherwise, including a platform owner without either role), record
+  `CUSTOM_RECIPIENT_ADDED`/`UPDATED` and return `ownerRecipient = false`. **V26** drops the plaintext `group_email`;
+  with no customer data nothing is re-encrypted.
+- **Exceptions.** New exceptions need `findingId` (or a resolvable `findingDisplayId`) of a member (409 otherwise, 404
+  for an unknown finding); asset and package names are copied from the finding and the owner is snapshot at request.
+  Only `APPROVED` counts for `CAMPAIGN_EXCEPTED` (there is no separate expiry column).
+- **Backfill (§4.10 step 1) is not built**: there are no customer campaigns, so `BACKFILL` and `NOT_RECORDED` remain only
+  for rows written before the ledger.
+- Frontend changes in E10 are limited to keeping the existing campaign and CBOM screens working against the new DTOs
+  (outcome-based progress, owner labels from the read envelope, no owner or assignee inputs on the crypto and PQC
+  dialogs); the §5.2 campaign UI is E14.
+
 ### 4.9 Ticket routing
 
 Routing is server-derived on the canonical path. The browser no longer supplies the assignment group.

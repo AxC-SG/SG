@@ -480,7 +480,7 @@ export function CampaignsPage() {
                           <span className="campaign-progress-detail">
                             {campaign.totalFindings === 0
                               ? 'No findings yet'
-                              : `${campaign.resolvedFindings} of ${campaign.totalFindings} findings resolved`}
+                              : `${campaign.remediatedCount} of ${campaign.totalFindings} findings remediated`}
                           </span>
                         </td>
                         <td>{campaign.assetCount}</td>

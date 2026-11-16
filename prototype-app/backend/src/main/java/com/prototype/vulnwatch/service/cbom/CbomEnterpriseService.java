@@ -28,8 +28,10 @@ public class CbomEnterpriseService {
             "department", "a.department", "ownerTeam", "a.owner_team", "environment", "a.environment",
             "businessCriticality", "a.business_criticality", "supportGroup", "a.support_group");
 
-    public record PqcCampaignRequest(String name, String summary, Instant dueAt, String assignedTo, String ownerGroup,
-            String environment, UUID assetId, String launchNote) { }
+    /** {@code ownerGroup} and the free-text {@code assignedTo} are rejected with 400 (Phase 0B §4.2, §4.12). */
+    public record PqcCampaignRequest(String name, String summary, Instant dueAt, UUID assigneePrincipalId,
+            String environment, UUID assetId, String launchNote, com.fasterxml.jackson.databind.JsonNode ownerGroup,
+            com.fasterxml.jackson.databind.JsonNode assignedTo) { }
 
     public record PqcCampaignProgress(UUID campaignId, String name, String status, Instant dueAt, String createdBy, int findings,
             int open, int resolved, int overdue, BigDecimal percentComplete, List<String> owners) { }
@@ -52,6 +54,8 @@ public class CbomEnterpriseService {
     public CampaignDetailResponse createPqcCampaign(Tenant tenant, PqcCampaignRequest request, String actor) {
         if (request == null || request.name() == null || request.name().isBlank()) throw new IllegalArgumentException("name is required");
         if (request.dueAt() == null) throw new IllegalArgumentException("dueAt is required for a PQC migration campaign");
+        if (request.ownerGroup() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campaigns do not set ownership; ownerGroup is not accepted");
+        if (request.assignedTo() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignedTo is not accepted; use assigneePrincipalId");
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder("""
                 SELECT f.id FROM findings f LEFT JOIN assets a ON a.id = f.asset_id
@@ -69,7 +73,7 @@ public class CbomEnterpriseService {
         }
         return remediation.createCampaign(tenant, new CampaignFromFindingsRequest(request.name(),
                 request.summary() == null ? "Post-quantum migration of quantum-vulnerable cryptography" : request.summary(),
-                ids, request.dueAt(), request.assignedTo(), request.ownerGroup(), request.launchNote()), actor);
+                ids, request.dueAt(), request.assigneePrincipalId(), request.launchNote(), request.ownerGroup(), request.assignedTo()), actor);
     }
 
     public PqcProgress pqcProgress() {

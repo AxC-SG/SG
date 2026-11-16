@@ -1,4 +1,5 @@
 import React from 'react';
+import { campaignOwnerLabel } from './ownership';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { CampaignLinkedFindings } from './CampaignLinkedFindings';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
@@ -123,6 +124,8 @@ const NOTIFY_TEMPLATES: Record<NotifyTemplate, { label: string; subject: string;
 };
 
 const NOTIFY_VARIABLES = ['{{owner_name}}', '{{asset_count}}', '{{asset_list}}', '{{cve_id}}', '{{due_date}}', '{{severity}}'] as const;
+
+const isActiveOutcome = (outcome: string) => outcome === 'OPEN' || outcome === 'REOPENED';
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -282,9 +285,9 @@ export function CampaignDetailPage() {
       assetName: a.name,
       assetIdentifier: a.identifier,
       environment: a.environment ?? null,
-      supportGroup: a.ownerTeam ?? null,
-      openFindings: 0,
-      resolvedFindings: 0,
+      activeFindings: 0,
+      remediatedFindings: 0,
+      members: 0,
     }));
     setDetail((prev) =>
       prev
@@ -628,10 +631,10 @@ export function CampaignDetailPage() {
   // ── Overview computed values ─────────────────────────────────────────────
   const nowMs = Date.now();
   const overdueCount = detail.findings.filter(
-    (f) => f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs,
+    (f) => isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs,
   ).length;
   const criticalExposed = detail.findings.filter(
-    (f) => (f.severity ?? '').toUpperCase() === 'CRITICAL' && f.status !== 'RESOLVED',
+    (f) => (f.severity ?? '').toUpperCase() === 'CRITICAL' && isActiveOutcome(f.outcome),
   ).length;
 
   type SevStats = { total: number; resolved: number; overdue: number };
@@ -639,10 +642,10 @@ export function CampaignDetailPage() {
   for (const f of detail.findings) {
     const sev = (f.severity ?? 'UNKNOWN').toUpperCase();
     const eg = sevStatMap.get(sev) ?? { total: 0, resolved: 0, overdue: 0 };
-    const isOverdue = f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
+    const isOverdue = isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
     sevStatMap.set(sev, {
       total: eg.total + 1,
-      resolved: eg.resolved + (f.status === 'RESOLVED' ? 1 : 0),
+      resolved: eg.resolved + (f.outcome === 'REMEDIATED' ? 1 : 0),
       overdue: eg.overdue + (isOverdue ? 1 : 0),
     });
   }
@@ -652,13 +655,13 @@ export function CampaignDetailPage() {
   type TeamStats = { group: string; total: number; resolved: number; overdue: number };
   const teamStatMap = new Map<string, TeamStats>();
   for (const f of detail.findings) {
-    const grp = f.ownerGroup ?? 'Unassigned';
+    const grp = campaignOwnerLabel(f.currentOwnership);
     const eg = teamStatMap.get(grp) ?? { group: grp, total: 0, resolved: 0, overdue: 0 };
-    const isOverdue = f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
+    const isOverdue = isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
     teamStatMap.set(grp, {
       group: grp,
       total: eg.total + 1,
-      resolved: eg.resolved + (f.status === 'RESOLVED' ? 1 : 0),
+      resolved: eg.resolved + (f.outcome === 'REMEDIATED' ? 1 : 0),
       overdue: eg.overdue + (isOverdue ? 1 : 0),
     });
   }
@@ -977,7 +980,7 @@ export function CampaignDetailPage() {
                   <span className="cd-kpi-label">Assets Affected</span>
                 </div>
                 <div className="cd-kpi-tile">
-                  <strong className="cd-kpi-value">{s.openFindings}</strong>
+                  <strong className="cd-kpi-value">{s.activeRemainingCount}</strong>
                   <span className="cd-kpi-label">Open Findings</span>
                 </div>
                 <div className={`cd-kpi-tile${criticalExposed > 0 ? ' cd-kpi-tile--danger' : ''}`}>
@@ -1029,7 +1032,7 @@ export function CampaignDetailPage() {
               <div className="cd-progress-card">
                 <div className="cd-progress-header">
                   <span className="cd-progress-title">Remediation Progress</span>
-                  <span className="cd-progress-summary">{pct}% · {s.resolvedFindings} of {s.totalFindings} findings resolved</span>
+                  <span className="cd-progress-summary">{pct}% · {s.remediatedCount} of {s.totalFindings} findings remediated</span>
                 </div>
                 <div className="cd-progress-bar-wrap">
                   <div className="cd-progress-bar">
@@ -1038,7 +1041,7 @@ export function CampaignDetailPage() {
                 </div>
                 <div className="cd-progress-labels">
                   <span>0%</span>
-                  <span className="cd-progress-resolved">{s.resolvedFindings} resolved</span>
+                  <span className="cd-progress-resolved">{s.remediatedCount} remediated</span>
                   <span>100%</span>
                 </div>
 
@@ -1144,8 +1147,8 @@ export function CampaignDetailPage() {
                   <span className="cd-detail-label">CVE(s)</span>
                   <span className="cd-detail-value cd-detail-value--mono">{cveLabel || '—'}</span>
                   <span className="cd-detail-label">Evidence</span>
-                  <span className={`cd-detail-value${s.resolvedFindings > 0 && s.resolvedFindings < s.totalFindings ? ' cd-evidence-partial' : ''}`}>
-                    {s.resolvedFindings === 0 ? 'None' : s.resolvedFindings === s.totalFindings ? 'Complete' : 'Partial'}
+                  <span className={`cd-detail-value${s.remediatedCount > 0 && s.remediatedCount < s.totalFindings ? ' cd-evidence-partial' : ''}`}>
+                    {s.remediatedCount === 0 ? 'None' : s.remediatedCount === s.totalFindings ? 'Complete' : 'Partial'}
                   </span>
                 </div>
               </div>
@@ -1376,10 +1379,10 @@ export function CampaignDetailPage() {
               <thead>
                 <tr>
                   <th>ASSET / CI</th>
-                  <th>SUPPORT GROUP</th>
+                  <th>MEMBERS</th>
                   <th>OWNER</th>
-                  <th>OPEN</th>
-                  <th>RESOLVED</th>
+                  <th>ACTIVE</th>
+                  <th>REMEDIATED</th>
                   <th>PRIORITY</th>
                   <th></th>
                 </tr>
@@ -1390,7 +1393,7 @@ export function CampaignDetailPage() {
                     (f) => f.assetIdentifier === a.assetIdentifier || f.assetName === a.assetName,
                   );
                   const maxSev = assetFindings.find((f) => f.severity)?.severity;
-                  const ownerGroup = assetFindings.find((f) => f.ownerGroup)?.ownerGroup;
+                  const owner = assetFindings.length > 0 ? campaignOwnerLabel(assetFindings[0].currentOwnership) : null;
                   return (
                     <tr key={`${a.assetIdentifier}-${a.assetName}`}>
                       <td>
@@ -1403,15 +1406,12 @@ export function CampaignDetailPage() {
                           {a.assetIdentifier && (
                             <span className="cd-asset-ci mono">{a.assetIdentifier}</span>
                           )}
-                          <span className="cd-asset-unassigned-badge">
-                            {a.supportGroup || 'Unassigned'}
-                          </span>
                         </div>
                       </td>
-                      <td style={{ fontSize: 13 }}>{a.supportGroup || '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>{ownerGroup || '—'}</td>
-                      <td style={{ fontSize: 13 }}>{a.openFindings}</td>
-                      <td style={{ fontSize: 13, color: '#21d07a' }}>{a.resolvedFindings}</td>
+                      <td style={{ fontSize: 13 }}>{a.members}</td>
+                      <td style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>{owner || '—'}</td>
+                      <td style={{ fontSize: 13 }}>{a.activeFindings}</td>
+                      <td style={{ fontSize: 13, color: '#21d07a' }}>{a.remediatedFindings}</td>
                       <td>
                         {maxSev
                           ? <span className={sevPill(maxSev)}>{maxSev}</span>
@@ -1486,7 +1486,7 @@ export function CampaignDetailPage() {
                       <td>
                         <span className={statusPill(f.status)}>{f.status || '—'}</span>
                       </td>
-                      <td style={{ fontSize: 13 }}>{f.ownerGroup || 'Unassigned'}</td>
+                      <td style={{ fontSize: 13 }}>{campaignOwnerLabel(f.currentOwnership)}</td>
                       <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                         {formatDate(f.dueAt)}
                       </td>

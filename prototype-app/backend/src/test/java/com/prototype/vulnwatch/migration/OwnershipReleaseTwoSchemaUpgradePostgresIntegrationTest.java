@@ -63,7 +63,7 @@ class OwnershipReleaseTwoSchemaUpgradePostgresIntegrationTest {
                 + " where membership_state = 'COMPLETE' and reconcile_failures = 0"));
         // Pre-ledger members keep a null add_source and no snapshot.
         assertNull(text("select add_source from tenant_default.campaign_findings where finding_id = ?", finding));
-        // Existing notify groups are CUSTOM and keep their address until E10 encrypts it.
+        // Existing notify groups are CUSTOM and keep their address until V26 drops the plaintext column.
         assertEquals("CUSTOM|platform@example.test",
                 text("select recipient_type || '|' || group_email from tenant_default.campaign_notify_groups"));
         assertEquals("LEGACY", text("select routing_source from tenant_default.finding_ticket_attempts"));
@@ -95,6 +95,18 @@ class OwnershipReleaseTwoSchemaUpgradePostgresIntegrationTest {
         // The upgraded schema is structurally identical to a tenant provisioned straight to V24.
         registerTenant(TENANT_B, "tenant_v24_fresh");
         tenant("tenant_v24_fresh", TENANT_B, "24").migrate();
+        try (Connection connection = connection()) {
+            assertEquals(TenantSchemaFingerprint.of(connection, "tenant_v24_fresh"),
+                    TenantSchemaFingerprint.of(connection, "tenant_default"));
+        }
+
+        // V26 (Phase 0B §4.6): the plaintext recipient address is gone and existing campaigns do not include excepted
+        // findings; the upgrade still matches a fresh tenant.
+        tenant("tenant_default", TENANT_A, "26").migrate();
+        assertEquals(0, integer("select count(*) from information_schema.columns where table_schema = 'tenant_default'"
+                + " and table_name = 'campaign_notify_groups' and column_name = 'group_email'"));
+        assertEquals(2, integer("select count(*) from tenant_default.campaigns where not include_excepted"));
+        tenant("tenant_v24_fresh", TENANT_B, "26").migrate();
         try (Connection connection = connection()) {
             assertEquals(TenantSchemaFingerprint.of(connection, "tenant_v24_fresh"),
                     TenantSchemaFingerprint.of(connection, "tenant_default"));

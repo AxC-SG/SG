@@ -167,8 +167,11 @@ class CbomEnterpriseGovernancePostgresIntegrationTest {
 
         mockMvc.perform(post("/api/bom/cbom/pqc/campaigns").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"PQC wave 1\"}")).andExpect(status().isBadRequest());
+        // Phase 0B §4.12: a PQC campaign sets no free-text assignee or owner.
+        mockMvc.perform(post("/api/bom/cbom/pqc/campaigns").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"PQC wave 1\",\"dueAt\":\"2027-06-30T00:00:00Z\",\"ownerGroup\":\"pqc-team\"}")).andExpect(status().isBadRequest());
         JsonNode campaign = json(mockMvc.perform(post("/api/bom/cbom/pqc/campaigns").header("Authorization", "Bearer " + admin)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"PQC wave 1\",\"dueAt\":\"2027-06-30T00:00:00Z\",\"assignedTo\":\"pqc-team\"}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"PQC wave 1\",\"dueAt\":\"2027-06-30T00:00:00Z\"}"))
                 .andExpect(status().isCreated()).andReturn());
         String campaignId = campaign.path("summary").path("id").asText();
 
@@ -181,7 +184,6 @@ class CbomEnterpriseGovernancePostgresIntegrationTest {
         assertEquals(campaignId, wave.path("campaignId").asText());
         assertEquals(2, wave.path("open").asInt());
         assertEquals(0.0, wave.path("percentComplete").asDouble(), 0.0001);
-        assertEquals("pqc-team", wave.path("owners").get(0).asText());
 
         JsonNode portfolio = json(mockMvc.perform(get("/api/bom/cbom/portfolio?groupBy=environment").header("Authorization", "Bearer " + admin))
                 .andExpect(status().isOk()).andReturn());

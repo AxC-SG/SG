@@ -2,7 +2,12 @@ package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.domain.CampaignStatus;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddMembersRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignCreateRequest;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignMemberPage;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignOwnerBucket;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignPreviewResponse;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignReconciliationResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignDetailResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignExceptionRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignExceptionResponse;
@@ -82,6 +87,49 @@ public class CampaignController {
     public CampaignDetailResponse create(@RequestBody CampaignCreateRequest request) {
         Tenant tenant = workspaceService.getWorkspace();
         return campaignService.create(tenant, request, requestActorService.currentActor().userId());
+    }
+
+    /** Phase 0B §4.2: the create body, writing nothing. */
+    @PostMapping("/preview")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
+    public CampaignPreviewResponse preview(@RequestBody CampaignCreateRequest request) {
+        return campaignService.preview(workspaceService.getWorkspace(), request);
+    }
+
+    /**
+     * §4.5: cursor-paged members (at most 200 per page) with owner at add and current owner. Suppressed,
+     * false-positive and accepted-risk members are hidden unless {@code outcome} names them or
+     * {@code includeHidden=true}. {@code bucket}/{@code teamId} filter by the {@code groupBy} owner grouping.
+     */
+    @GetMapping("/{campaignId}/members")
+    public CampaignMemberPage members(@PathVariable UUID campaignId,
+                                      @RequestParam(required = false) List<String> outcome,
+                                      @RequestParam(defaultValue = "false") boolean includeHidden,
+                                      @RequestParam(required = false) String groupBy,
+                                      @RequestParam(required = false) String bucket,
+                                      @RequestParam(required = false) UUID teamId,
+                                      @RequestParam(required = false) String cursor,
+                                      @RequestParam(defaultValue = "50") int limit) {
+        return campaignService.members(workspaceService.getWorkspace(), campaignId, outcome, includeHidden, groupBy, bucket, teamId, cursor, limit);
+    }
+
+    /** §4.12 add-findings action. */
+    @PostMapping("/{campaignId}/members")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
+    public CampaignDetailResponse addMembers(@PathVariable UUID campaignId, @RequestBody CampaignAddMembersRequest request) {
+        return campaignService.addMembers(workspaceService.getWorkspace(), campaignId, request, requestActorService.currentActor().userId());
+    }
+
+    /** §4.5 owner buckets; {@code groupBy} is {@code current} (default) or {@code atAdd}. */
+    @GetMapping("/{campaignId}/owner-buckets")
+    public List<CampaignOwnerBucket> ownerBuckets(@PathVariable UUID campaignId, @RequestParam(required = false) String groupBy) {
+        return campaignService.buckets(workspaceService.getWorkspace(), campaignId, groupBy);
+    }
+
+    /** §4.3 reconciler state. */
+    @GetMapping("/{campaignId}/reconciliation")
+    public CampaignReconciliationResponse reconciliation(@PathVariable UUID campaignId) {
+        return campaignService.reconciliation(workspaceService.getWorkspace(), campaignId);
     }
 
     @PostMapping("/{campaignId}/status")

@@ -12,10 +12,17 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Membership state and the reconciler columns are written by {@code CampaignLedger} and
+ * {@code CampaignMembershipReconciler} through JDBC; {@link DynamicUpdate} and {@code updatable = false} keep a
+ * stale entity save from overwriting them (Phase 0B §4.2, §4.3).
+ */
 @Entity
+@DynamicUpdate
 @Table(
         name = "campaigns",
         indexes = {
@@ -64,12 +71,21 @@ public class Campaign {
     private Instant updatedAt = Instant.now();
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "scope_kind", nullable = false, length = 16)
+    @Column(name = "scope_kind", nullable = false, length = 16, updatable = false)
     private CampaignScopeKind scopeKind;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "membership_state", nullable = false, length = 16)
+    @Column(name = "membership_state", nullable = false, length = 16, updatable = false)
     private CampaignMembershipState membershipState = CampaignMembershipState.COMPLETE;
+
+    @Column(name = "assignee_principal_id", updatable = false)
+    private UUID assigneePrincipalId;
+
+    @Column(name = "coordinating_team_id", updatable = false)
+    private UUID coordinatingTeamId;
+
+    @Column(name = "include_excepted", nullable = false, updatable = false)
+    private boolean includeExcepted;
 
     public UUID getId() {
         return id;
@@ -183,5 +199,29 @@ public class Campaign {
 
     public void setMembershipState(CampaignMembershipState membershipState) {
         this.membershipState = membershipState;
+    }
+
+    public UUID getAssigneePrincipalId() {
+        return assigneePrincipalId;
+    }
+
+    public void setAssigneePrincipalId(UUID assigneePrincipalId) {
+        this.assigneePrincipalId = assigneePrincipalId;
+    }
+
+    public UUID getCoordinatingTeamId() {
+        return coordinatingTeamId;
+    }
+
+    public void setCoordinatingTeamId(UUID coordinatingTeamId) {
+        this.coordinatingTeamId = coordinatingTeamId;
+    }
+
+    public boolean isIncludeExcepted() {
+        return includeExcepted;
+    }
+
+    public void setIncludeExcepted(boolean includeExcepted) {
+        this.includeExcepted = includeExcepted;
     }
 }

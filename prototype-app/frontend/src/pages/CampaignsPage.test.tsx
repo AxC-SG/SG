@@ -30,9 +30,14 @@ function buildSummary(overrides: Partial<CampaignSummary> = {}): CampaignSummary
     startedAt: '2026-06-10T00:00:00Z',
     updatedAt: '2026-06-10T12:00:00Z',
     cveIds: ['CVE-2026-1111'],
+    scopeKind: 'CVE',
+    membershipState: 'COMPLETE',
+    assigneePrincipalId: null,
+    coordinatingTeamId: null,
     totalFindings: 4,
-    resolvedFindings: 1,
-    openFindings: 3,
+    remediatedCount: 1,
+    activeRemainingCount: 3,
+    outcomes: { OPEN: 3, REOPENED: 0, CAMPAIGN_EXCEPTED: 0, REMEDIATED: 1, SUPPRESSED: 0, FALSE_POSITIVE: 0, ACCEPTED_RISK: 0, CLOSED_OTHER: 0 },
     assetCount: 2,
     exceptionCount: 0,
     notifyGroupCount: 1,
@@ -49,8 +54,12 @@ function buildDetail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
     vulnerabilities: [{ externalId: 'CVE-2026-1111', title: 'Kernel issue', severity: 'HIGH' }],
     notifyGroups: [{
       id: 'group-1',
+      recipientType: 'CUSTOM',
+      teamId: null,
       groupName: 'Platform Ops',
       groupEmail: 'platform.ops@example.com',
+      channelConfigured: true,
+      ownerRecipient: false,
       roleLabel: 'Owner group',
       triggerSummary: 'Status changes',
       notificationsPaused: false,
@@ -81,19 +90,22 @@ function buildDetail(overrides: Partial<CampaignDetail> = {}): CampaignDetail {
       assetIdentifier: 'asset-1',
       packageName: 'openssl',
       severity: 'HIGH',
-      ownerGroup: 'Platform Ops',
       status: 'IMPACTED',
+      outcome: 'OPEN',
       dueAt: '2026-06-20T00:00:00Z',
       incidentId: 'INC-100',
+      ownerAtAdd: { teamId: null, teamName: null, status: 'LEGACY_PENDING_MIGRATION', assignmentId: null },
+      currentOwnership: { objectId: 'uuid-f-100', authorityDomain: 'CORE', authorityState: 'LEGACY_PENDING_MIGRATION', ownerTeamId: null,
+        ownerTeamName: null, ownershipStatus: null, sourceKind: null, resolvedAt: null, legacyOwnerLabel: 'Platform Ops' },
     }],
     assets: [{
       assetId: 'uuid-asset-1',
       assetName: 'web-prod-01',
       assetIdentifier: 'asset-1',
       environment: 'prod',
-      supportGroup: 'Platform Ops',
-      openFindings: 1,
-      resolvedFindings: 0,
+      activeFindings: 1,
+      remediatedFindings: 0,
+      members: 1,
     }],
     evidence: [],
     ...overrides,
@@ -352,6 +364,9 @@ describe('CampaignsPage', () => {
     const detailWithPendingException = buildDetail({
       exceptions: [{
         id: 'exception-1',
+        findingId: 'uuid-f-100',
+        linked: true,
+        ownerTeamIdAtRequest: null,
         findingDisplayId: 'F-100',
         assetName: 'web-prod-01',
         packageName: 'openssl',
@@ -371,10 +386,12 @@ describe('CampaignsPage', () => {
         assetIdentifier: 'asset-1',
         packageName: 'openssl',
         severity: 'HIGH',
-        ownerGroup: 'Platform Ops',
         status: 'OPEN',
+        outcome: 'OPEN',
         incidentId: 'INC-100',
         dueAt: '2026-06-20T00:00:00Z',
+        currentOwnership: { objectId: 'uuid-f-100', authorityDomain: 'CORE', authorityState: 'LEGACY_PENDING_MIGRATION', ownerTeamId: null,
+        ownerTeamName: null, ownershipStatus: null, sourceKind: null, resolvedAt: null, legacyOwnerLabel: 'Platform Ops' },
       }],
     });
     const detailWithApprovedException = buildDetail({
@@ -404,7 +421,9 @@ describe('CampaignsPage', () => {
     await screen.findByRole('heading', { name: 'Kernel patch sprint' });
 
     fireEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
-    expect(screen.getByRole('columnheader', { name: /SUPPORT GROUP/i })).toBeInTheDocument();
+    // Phase 0B §4.5: asset rows group by asset ID and no longer show the CMDB support group as ownership.
+    expect(screen.getByRole('columnheader', { name: /MEMBERS/i })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /SUPPORT GROUP/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /^Findings/ }));
     expect(screen.getAllByText('F-100').length).toBeGreaterThan(0);

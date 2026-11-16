@@ -1,10 +1,8 @@
 package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignDetailResponse;
-import com.prototype.vulnwatch.dto.CampaignDtos.CampaignFindingResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignFromFindingsRequest;
 import com.prototype.vulnwatch.security.SensitiveTenantAction;
-import com.prototype.vulnwatch.service.CampaignService;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import com.prototype.vulnwatch.service.cbom.CryptoRemediationService;
@@ -21,17 +19,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Crypto remediation operations: ticket template and attempts, queues, effectiveness, finding campaigns. */
+/**
+ * Crypto remediation operations: ticket template and attempts, queues, effectiveness, finding campaigns. Campaign members
+ * are read through {@code GET /api/campaigns/{id}/members} (Phase 0B §4.5).
+ */
 @RestController
 public class CryptoRemediationController {
     private final WorkspaceService workspace;
     private final RequestActorService actors;
     private final CryptoRemediationService remediation;
-    private final CampaignService campaigns;
 
-    public CryptoRemediationController(WorkspaceService workspace, RequestActorService actors,
-            CryptoRemediationService remediation, CampaignService campaigns) {
-        this.workspace = workspace; this.actors = actors; this.remediation = remediation; this.campaigns = campaigns;
+    public CryptoRemediationController(WorkspaceService workspace, RequestActorService actors, CryptoRemediationService remediation) {
+        this.workspace = workspace; this.actors = actors; this.remediation = remediation;
     }
 
     @GetMapping("/api/findings/{findingId}/ticket-template")
@@ -68,12 +67,6 @@ public class CryptoRemediationController {
     @SensitiveTenantAction("campaign.created_from_findings")
     public CampaignDetailResponse createCampaign(@RequestBody CampaignFromFindingsRequest request) {
         return remediation.createCampaign(workspace.getWorkspace(), request, actor());
-    }
-
-    @GetMapping("/api/campaigns/{campaignId}/findings")
-    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST','INVENTORY_ADMIN','READ_ONLY_AUDITOR')")
-    public List<CampaignFindingResponse> campaignFindings(@PathVariable UUID campaignId) {
-        return campaigns.findings(workspace.getWorkspace(), campaignId);
     }
 
     private String actor() {

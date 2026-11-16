@@ -5,9 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignDetailResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignFromFindingsRequest;
-import com.prototype.vulnwatch.dto.FindingWorkflowUpdateRequest;
 import com.prototype.vulnwatch.service.CampaignService;
-import com.prototype.vulnwatch.service.FindingWorkflowService;
 import com.prototype.vulnwatch.ticketing.TicketRef;
 import com.prototype.vulnwatch.ticketing.TicketRequest;
 import com.prototype.vulnwatch.ticketing.TicketingService;
@@ -33,7 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Remediation operations for CRYPTO findings (plan Milestone 3): crypto ticket templates with an
  * attempt history for retry visibility, verification and SLA queues, remediation-effectiveness
- * reporting, and campaigns created from findings with optional bulk assignment. Canonical findings
+ * reporting, and campaigns created from findings. Canonical findings
  * keep owning workflow; nothing here writes suppression or resolution state directly.
  */
 @Service
@@ -62,13 +60,12 @@ public class CryptoRemediationService {
     private final JdbcTemplate jdbc;
     private final TicketingService ticketing;
     private final CampaignService campaigns;
-    private final FindingWorkflowService workflow;
     private final ObjectMapper mapper;
     private final TransactionTemplate independent;
 
     public CryptoRemediationService(JdbcTemplate jdbc, TicketingService ticketing, CampaignService campaigns,
-            FindingWorkflowService workflow, ObjectMapper mapper, PlatformTransactionManager transactions) {
-        this.jdbc = jdbc; this.ticketing = ticketing; this.campaigns = campaigns; this.workflow = workflow; this.mapper = mapper;
+            ObjectMapper mapper, PlatformTransactionManager transactions) {
+        this.jdbc = jdbc; this.ticketing = ticketing; this.campaigns = campaigns; this.mapper = mapper;
         this.independent = new TransactionTemplate(transactions);
         this.independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -256,19 +253,12 @@ public class CryptoRemediationService {
 
     // ------------------------------------------------------------------ campaigns
 
-    /** Creates a campaign from findings and, when an owner is given, assigns them with the campaign due date. */
+    /**
+     * Creates a campaign from findings. Plan §6.13 / Phase 0B §4.12: launch may name an assignee principal (stored on the
+     * campaign) but never writes ownership or workflow fields onto the member findings.
+     */
     public CampaignDetailResponse createCampaign(Tenant tenant, CampaignFromFindingsRequest request, String actor) {
-        boolean assigning = request != null && (notBlank(request.assignedTo()) || notBlank(request.ownerGroup()));
-        if (assigning && request.dueAt() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dueAt is required when assigning the campaign's findings");
-        }
-        CampaignDetailResponse created = campaigns.createFromFindings(tenant, request, actor);
-        if (assigning) {
-            workflow.updateWorkflowBulkByIds(request.findingIds().stream().distinct().toList(), new FindingWorkflowUpdateRequest(
-                    null, notBlank(request.assignedTo()) ? request.assignedTo() : null,
-                    notBlank(request.ownerGroup()) ? request.ownerGroup() : null, request.dueAt(), null, null, actor));
-        }
-        return created;
+        return campaigns.createFromFindings(tenant, request, actor);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -305,7 +295,6 @@ public class CryptoRemediationService {
     }
 
     private static String pick(String requested, String fallback) { return requested == null || requested.isBlank() ? fallback : requested; }
-    private static boolean notBlank(String value) { return value != null && !value.isBlank(); }
     private static String truncate(String value, int max) { return value == null || value.length() <= max ? value : value.substring(0, max); }
     private static Instant instant(Timestamp value) { return value == null ? null : value.toInstant(); }
 }
