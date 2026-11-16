@@ -109,7 +109,7 @@ eval "$(aws configure export-credentials --profile sglab-release --format env)"
 AWS_REGION=ap-southeast-2 <terraform 1.13.5> force-unlock -force <ID>
 ```
 
-Then rerun the same `release.py deploy <commit>` (or `rollback`). It resumes from the record: a resumed deploy runs its migrator task again, which changes nothing on an unchanged schema. A step that fails before Terraform applies anything, such as a DNS failure while refreshing, is recorded as `failed` with no steps and changes nothing. Check `release.py status`, then rerun.
+Then rerun the same `release.py deploy <commit>` (or `rollback`). It resumes from the record and skips a migrator that already exited 0. A step that fails before Terraform applies anything, such as a DNS failure while refreshing, is recorded as `failed` with no steps and changes nothing. Check `release.py status`, then rerun.
 
 ### Signed-in smoke
 
@@ -123,12 +123,19 @@ The demo requests come from `POST /api/platform/demo-requests/smoke-fixtures`: p
 
 Privacy (public repository): it records no trace, screenshot, video, HAR or storage state, prints only check names and statuses, and runs without AWS credentials. No workflow runs it. `.github/scripts/test-ci-contracts.py` enforces all of this.
 
-Setup, once:
-1. **Tenant admin.** Onboard a dedicated smoke workspace with the Standard flow (`Working Knowledge/AWS/STANDARD_IMPLEMENTATION_READINESS.md`, steps 3–5), using an address you control. Create a disposable request with the smoke-fixture route, approve it, and link the admin. Sign in once by hand to replace the temporary password. Note the workspace UUID.
-2. **Platform owner.** Today there is no operator path to bind a *second* managed platform owner: managed operator enrollment only runs on a fresh installation. Until one exists, either use your own platform-owner account in the local config, or leave `platform` out and accept the gap for platform writes (the restricted-role ITs still cover them before merge). Adding a binding command is a separate, reviewed migrator change.
-3. Copy `config/lab-smoke.example.json` to a file **outside the repository**, fill it in, and `chmod 600` it.
+Setup, once. This is how the lab's smoke workspace was set up on 2026-11-16 (see the lab record for its identifiers):
+1. **Tenant admin: a dedicated Standard workspace** (`Working Knowledge/AWS/STANDARD_IMPLEMENTATION_READINESS.md`, A10/P10).
+   1. Submit a demo request at `https://scoutgrid.io/demo/request` for the admin's address, then approve it in **Platform → Demo Requests**. It stays `QUEUED`, which is expected. The lab uses `delivered+smoke-admin@resend.dev`, Resend's test address: app email to it is accepted and discarded.
+   2. As the **migration operator** (`sglab-migration`), under the release lock, run the migrator with `--provision-standard-request <request-id>` and confirm `standard_tenant_activated`. The request ID is the workspace UUID. That role's `RunOnlyReviewedMigratorRevision` grant names one migrator revision (`grants/migration-operator.json`), so re-pin it after a release registers a new one. The task must carry the tag `ReleasePurpose=Migration`.
+   3. As the **identity operator** (`sglab-identity`), create the Cognito user with `AdminCreateUser`, `MessageAction=SUPPRESS`, `email_verified=true` and a generated temporary password. Write the password straight into the config file, never to output. The identity role cannot set a permanent password.
+   4. Run the migrator with `--link-standard-admin <request-id> <cognito-sub>` and confirm `standard_admin_link_verified`.
+   5. Sign in once by hand at `https://scoutgrid.io` with the temporary password. Choose the permanent one and put it in the config.
+2. **Platform owner.** Today there is no operator path to bind a *second* managed platform owner: managed operator enrollment only runs on a fresh installation. Until one exists, either use your own platform-owner account in the local config, or leave `platform` out and accept the gap for platform writes (the restricted-role ITs still cover them before merge). `email` is the address you sign in with, not a username. Adding a binding command is a separate, reviewed migrator change.
+3. Keep the config **outside the repository** (the lab uses `~/.config/scoutgrid/lab-smoke.json`, mode 0600, from `config/lab-smoke.example.json`). Lab MFA is off, so treat the file as a credential.
 4. In `prototype-app/frontend`, run `npm ci` and `npx playwright install chromium`.
 5. Run it once without a release: `node prototype-app/frontend/e2e/lab-smoke.mjs --config <file>`. Then export `LAB_SMOKE_CONFIG=<file>` before `release.py deploy`.
+
+The smoke fetches a fresh CSRF token for every write, as the app does; a reused token is rejected after the first write. It waits up to 90 seconds for the invite to reach `SENT`, because the worker's outbox submits it every five seconds.
 
 **Release alarms (off until enabled).** `release_alarms_enabled` in Terraform adds, independently of `operations` and its audit stack: SNS topic `scoutgrid-lab-release`, log metric filters for worker progress and the defined failures above, and five alarms: API or worker defined failures, tenant work failing for ten minutes, API without a running task for three minutes, and a running worker without succeeding tenant work for fifteen minutes. They read fixed names only, so `lab.sh` cycles plan no change to them, and they stay OK while the lab is parked. To enable, in order:
 

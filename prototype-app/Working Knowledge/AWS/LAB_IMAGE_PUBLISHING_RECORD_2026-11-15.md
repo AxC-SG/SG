@@ -211,10 +211,35 @@ The previous image restarted on today's schema and configuration through the Rel
 5. **No second rollback target.** Accepting a rollback to the previous accepted release sets `previous_accepted` to null until a new release is accepted.
 6. **A resumed or neutral deploy always reruns the migrator task.** It is harmless on an unchanged schema, but adds about 1.5 minutes.
 
+## Signed-in smoke setup (2026-11-16)
+
+**Smoke workspace.** Demo request `e8d1afb0-e27d-453c-bcc6-7cbb47423591` for `delivered+smoke-admin@resend.dev`, submitted through `/demo/request` and approved by the owner. The request ID is the workspace UUID.
+
+| Step | Identity | Evidence |
+|---|---|---|
+| Re-pin the migration operator | owner, `put-role-policy` | `ScoutGridSydneyLabMigration` / `MigrationOperator`: `RunOnlyReviewedMigratorRevision` changed from `migrator:1` to `migrator:6` (the repo's `grants/migration-operator.json` matched the live policy apart from this line) |
+| Provision | `sglab-migration`, release lock held | task `b7dccecea48d4dce809ddac63aff1ee5` on `migrator:6`, 07:40:42Z, exit 0: `database_preflight`, `standard_tenant_reserved`, `standard_tenant_activated`, `runtime_verification` |
+| Cognito user | `sglab-identity` | `AdminCreateUser` with `SUPPRESS`, `email_verified=true`; sub `99dee4c8-d011-7069-cbe4-5bd52378cdc9`; temporary password written only to the config file |
+| Link the admin | `sglab-migration`, release lock held | task `decd7aa806044f0499796a57a15ec067`, 07:44:19Z, exit 0: `standard_admin_link_verified` |
+| First sign-in | owner, by hand | temporary password replaced |
+
+**Platform owner.** The config uses the owner's own platform-owner account. There is still no operator path for a second one.
+
+**Config.** `~/.config/scoutgrid/lab-smoke.json`, mode 0600, outside the repository. Lab MFA is off, so it is a credential.
+
+**What the first runs found.** The smoke had only been tested against a stub, and three of its failures were the smoke's own:
+- **CSRF token reuse.** The smoke reused one CSRF token for several writes, so the second write (cancelling the invite) got 403. The app fetches a fresh token per write, and the smoke now does too.
+- **Asynchronous invite.** The smoke expected the invite to be `SENT` immediately. The API returns `QUEUED`, and the worker's outbox submits it every five seconds, so the smoke now waits up to 90 seconds.
+- **Bad config value.** The platform `email` was not an address, so Cognito showed "Invalid email address."
+
+One invite from the first run stays open, `SENT` to `delivered+smoke@resend.dev`, until it expires.
+
+**First full run passed** all 14 checks. Platform side: sign-in without a workspace, four pages, a fixture created, then rejected and deleted, sign-out. Tenant side: workspace entry, Findings, an invite reaching `SENT` and cancelled, sign-out. Set `LAB_SMOKE_CONFIG=~/.config/scoutgrid/lab-smoke.json` for every release from now on.
+
 ## Open
 
 1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
-2. **Configure the signed-in smoke** (`LAB_SMOKE_CONFIG`, the account steps from R4) so later releases check platform writes and the invitation themselves.
+2. **Signed-in smoke:** configured and passing (see above). Remaining gaps: no operator path for a second managed platform owner, and the migration operator grant must be re-pinned after each new migrator revision.
 3. **Recovery record gaps** from the drill: items 2–4 and 6 are addressed by phase 4 slice 1 (`release.py deploy --frontend`, linked recovery records, `rollback --note`). Item 5 is kept on purpose; the CD plan's phase 4 status explains why. Item 1 waits for automatic recovery (phase 5).
 4. **Later:** keep or delete the pre-migration snapshot. Delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
 5. **Later:** write a production severity and exceptions policy for Trivy.
