@@ -28,7 +28,23 @@ class ContractsTest(unittest.TestCase):
         for workflow in (root / '.github/workflows').glob('*.yml'):
             text = workflow.read_text()
             self.assertNotIn('lab-smoke', text, f'{workflow.name} must not run the credentialed lab smoke')
+            self.assertNotIn('upload-artifact', text if workflow.name == 'lab-reconcile.yml' else '', workflow.name)
+            if workflow.name == 'lab-reconcile.yml':
+                continue
             self.assertNotIn('LAB_SMOKE_CONFIG', text, workflow.name)
+        # The one exception: the manual lab reconcile hands release.py a tenant-only smoke config
+        # (owner decision S1) in a private temporary file it removes, and never prints or uploads it.
+        reconcile = self.job((root / '.github/workflows/lab-reconcile.yml').read_text(), 'reconcile')
+        self.assertEqual(reconcile.count('LAB_SMOKE_CONFIG'), 1)
+        self.assertIn('export LAB_SMOKE_CONFIG="$smoke/config.json"', reconcile)
+        self.assertIn('smoke="$RUNNER_TEMP/smoke"', reconcile)
+        self.assertIn('umask 077', reconcile)
+        self.assertIn("trap 'rm -rf -- \"$smoke\"' EXIT", reconcile)
+        self.assertIn('(has("platform") | not)', reconcile)
+        self.assertEqual(reconcile.count('$SMOKE_CONFIG_JSON'), 3)   # two presence checks and one write
+        self.assertIn('printf \'%s\' "$SMOKE_CONFIG_JSON" > "$smoke/config.json"', reconcile)
+        for leak in ('cat "$smoke', 'echo "$SMOKE_CONFIG_JSON', 'set -x', 'ACTIONS_STEP_DEBUG'):
+            self.assertNotIn(leak, reconcile)
 
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
@@ -97,6 +113,48 @@ class ContractsTest(unittest.TestCase):
         self.assertNotIn('inputs.', job)
         self.assertIn('group: aws-publish-${{ needs.qualify.outputs.target }}', job)
         self.assertIn('cancel-in-progress: false', job)
+
+    def test_lab_reconcile_is_manual_main_only_and_runtime_only(self):
+        # Phase 4 slice 2: the only Actions path that changes what the lab runs. Manual, main only,
+        # one at a time, never cancelled, and through the runtime-only release role alone.
+        root = Path(__file__).resolve().parents[2]
+        text = (root / '.github/workflows/lab-reconcile.yml').read_text()
+        events = text.split('\non:\n', 1)[1].split('\npermissions:', 1)[0]
+        self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', events), ['workflow_dispatch'])
+        self.assertRegex(events, r"frontend:\n[^\n]*\n        required: true\n        type: boolean\n        default: true\n")
+        self.assertRegex(events, r"confirm:\n[^\n]*\n        required: true\n        type: string\n")
+        self.assertIn('\npermissions: {}\n', text)
+        self.assertIn('\nconcurrency:\n  group: lab-release\n  cancel-in-progress: false\n', text)
+        self.assertEqual(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', text.split('\njobs:\n', 1)[1]), ['reconcile'])
+        job = self.job(text, 'reconcile')
+        self.assertIn("    if: github.ref == 'refs/heads/main'\n", job)
+        self.assertIn('if [[ "$CONFIRM" != reconcile ]]; then', job)
+        self.assertIn('    environment: aws-standard-lab-release\n', job)
+        self.assertIn('    permissions:\n      actions: read\n      contents: read\n      id-token: write\n    env:', job)
+        self.assertEqual(text.count('id-token: write'), 1)
+        # The environment and workflow are the releaser role's exact OIDC subject.
+        iam = (root / 'prototype-app/infrastructure/terraform/standard/release-iam.tf').read_text()
+        self.assertIn('environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/\\\\.github/workflows/'
+                      'lab-reconcile\\\\.yml@refs/heads/main$', iam)
+        self.assertIn('role/scoutgrid-lab-github-release"', job)
+        self.assertIn('role-to-assume: ${{ vars.AWS_LAB_RELEASE_ROLE_ARN }}', job)
+        self.assertIn("LAB_RELEASE_PROFILE: ''", job)
+        # Every action is pinned by commit.
+        uses = re.findall(r'uses: ([^\s]+)', text)
+        self.assertTrue(uses)
+        for action in uses:
+            self.assertRegex(action, r'^[a-z0-9-]+/[a-z0-9-]+@[0-9a-f]{40}$')
+        # The same checksum-verified Terraform as the offline validation.
+        quality = (root / '.github/workflows/quality.yml').read_text()
+        checksum = re.search(r'echo "([0-9a-f]{64})  \$RUNNER_TEMP/terraform.zip"', quality).group(1)
+        self.assertIn(f'echo "{checksum}  $RUNNER_TEMP/terraform.zip" | sha256sum --check', job)
+        self.assertIn('terraform_1.13.5_linux_amd64.zip', job)
+        # It runs reconcile and nothing else: no schema release, rollback, acceptance or unlock.
+        self.assertIn('args=(reconcile --yes)', job)
+        self.assertEqual(job.count('scripts/release.py'), 1)
+        for forbidden in ('release.py deploy', 'rollback', 'accept ', 'unlock', 'terraform apply', 'run-task',
+                          'upload-artifact', 'cancel-in-progress: true'):
+            self.assertNotIn(forbidden, job)
 
     @staticmethod
     def job(workflow, name):

@@ -300,7 +300,7 @@ PR D changed only CI files and docs, so the image published for `90cb7e2` is byt
 - **First live paired release:** `20261116t082637z-cbb265b` shipped backend and frontend as one recorded transaction ([lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md#first-live-paired-release-2026-11-16)). The backend image was unchanged (`9d83db25…`). Frontend `dpl_G3By6vq5QDcH2dwSQoXpyQcfLEST` was staged from `cbb265b` and promoted only after the backend verified. The signed-in smoke passed before and after promotion.
 - **Vercel's independent promotion is off** (`autoAssignCustomDomains = false`), verified by the following `main` merge.
 - **Still to prove:** a pair whose backend image changes.
-- **Slice 2** (runtime-only role, reconcile dispatch) is still to do.
+- **Slice 2** (runtime-only role, reconcile dispatch): [design](phase4-slice2-design.md) approved and the code built (`release.py reconcile`, role `scoutgrid-lab-github-release` at `count = 0`, `lab-reconcile.yml`, offline tests). Not live: the rollout (grants, environment, role, simulation, denied cases, first reconcile) is owner-run, step by step.
 
 **Phase 4, slice 1 (code):** It adds `release.py deploy --frontend`: a pinned Vercel stage outside the lock, then promotion of that exact deployment after the backend verifies, then paired checks, with one record and the pair in the accepted entry.
 - **Frontend retries:** `frontend_pending` retries repeat no backend step.

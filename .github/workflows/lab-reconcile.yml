@@ -1,0 +1,164 @@
+name: Lab reconcile
+
+# The manual reconcile action (CD plan 4.4, phase 4 slice 2). It resumes an interrupted
+# runtime-only lab release, or releases main's head to the lab through the runtime-only path
+# once `release.py check` would call it eligible. It never plans, registers or runs the
+# migrator; schema-changing releases, rollbacks and acceptance stay owner-run and local.
+# A green run is not acceptance: the summary shows the outcome and the next manual action.
+on:
+  workflow_dispatch:
+    inputs:
+      frontend:
+        description: Release the frontend with the backend, as one paired release
+        required: true
+        type: boolean
+        default: true
+      confirm:
+        description: Type reconcile to release to the lab
+        required: true
+        type: string
+
+permissions: {}
+
+# One lab release at a time; a running release is never cancelled by a newer dispatch.
+concurrency:
+  group: lab-release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  reconcile:
+    name: Reconcile the lab
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    # Its deployment branch policy is main only, and the releaser role trusts only this
+    # environment and this workflow on main (terraform/standard/release-iam.tf).
+    environment: aws-standard-lab-release
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-2
+      AWS_ACCOUNT_ID: '736486260824'
+    steps:
+      - name: Require the typed confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [[ "$CONFIRM" != reconcile ]]; then
+            echo "::error::Type reconcile in the confirm input to release to the lab."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install verified Terraform CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/terraform-cli"
+          curl --fail --silent --show-error --location \
+            https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_amd64.zip \
+            --output "$RUNNER_TEMP/terraform.zip"
+          echo "0dbe3fcc268eb670801af6a6456799d1ae26e72e73797f6c6167e18aafd1fd9a  $RUNNER_TEMP/terraform.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/terraform.zip" -d "$RUNNER_TEMP/terraform-cli"
+          echo "$RUNNER_TEMP/terraform-cli" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Check for the signed-in smoke configuration
+        id: smoke
+        env:
+          SMOKE_CONFIG_JSON: ${{ secrets.LAB_SMOKE_TENANT_CONFIG }}
+        run: |
+          if [[ -n "$SMOKE_CONFIG_JSON" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install the signed-in smoke's browser
+        if: steps.smoke.outputs.configured == 'true'
+        working-directory: prototype-app/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Verify the release role
+        env:
+          ROLE_ARN: ${{ vars.AWS_LAB_RELEASE_ROLE_ARN }}
+        run: test "$ROLE_ARN" = "arn:aws:iam::$AWS_ACCOUNT_ID:role/scoutgrid-lab-github-release"
+
+      - name: Assume the runtime-only release role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_LAB_RELEASE_ROLE_ARN }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: scoutgrid-reconcile-${{ github.run_id }}-${{ github.run_attempt }}
+          role-duration-seconds: 3600
+
+      - name: Reconcile
+        id: reconcile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          SMOKE_CONFIG_JSON: ${{ secrets.LAB_SMOKE_TENANT_CONFIG }}
+          FRONTEND: ${{ inputs.frontend }}
+          LAB_RELEASE_PROFILE: ''
+          TERRAFORM: terraform
+        run: |
+          umask 077
+          smoke="$RUNNER_TEMP/smoke"
+          trap 'rm -rf -- "$smoke"' EXIT
+          if [[ -n "$SMOKE_CONFIG_JSON" ]]; then
+            mkdir -p "$smoke"
+            printf '%s' "$SMOKE_CONFIG_JSON" > "$smoke/config.json"
+            # Owner decision S1: only the dedicated tenant smoke admin, never a platform owner's password.
+            if ! jq -e 'type == "object" and (has("platform") | not) and (.tenant | type == "object")' \
+                "$smoke/config.json" > /dev/null 2>&1; then
+              echo "::error::LAB_SMOKE_TENANT_CONFIG must be a tenant-only smoke configuration."
+              exit 1
+            fi
+            export LAB_SMOKE_CONFIG="$smoke/config.json"
+          fi
+          unset SMOKE_CONFIG_JSON
+          args=(reconcile --yes)
+          if [[ "$FRONTEND" == true ]]; then
+            args+=(--frontend)
+          fi
+          status=0
+          python3 -I prototype-app/infrastructure/lab/scripts/release.py "${args[@]}" > "$RUNNER_TEMP/reconcile.json" || status=$?
+          cat "$RUNNER_TEMP/reconcile.json"
+          exit "$status"
+
+      - name: Summarize the outcome
+        if: always() && steps.reconcile.outcome != 'skipped'
+        run: |
+          result="$RUNNER_TEMP/reconcile.json"
+          if ! jq -e . "$result" > /dev/null 2>&1; then
+            printf '### Lab reconcile\n\nNo result was recorded; read the job log and run release.py status.\n' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          jq -r '
+            "### Lab reconcile: \(.outcome)\(if .reason then " / \(.reason)" else "" end)",
+            "",
+            "Not acceptance: browser checks are recorded locally with `release.py accept`.",
+            "",
+            "| | |", "|---|---|",
+            "| Phase | \(.phase // "-") |",
+            "| Candidate | \(.source_sha // "-") |",
+            "| Release | \(.release_id // "-") |",
+            "| Live backend | \(.backend // "-") |",
+            "| Live frontend | \(.frontend // "-") |",
+            "| Acceptance | \(.acceptance // "-") (accepted \(.accepted // "-"), awaiting \(.awaiting_acceptance // "-")) |",
+            "| Record | \(.record // "-") |",
+            "| Next | \(.next // "-") |",
+            (if .error then "\n```\n\(.error)\n```" else empty end)' "$result" >> "$GITHUB_STEP_SUMMARY"

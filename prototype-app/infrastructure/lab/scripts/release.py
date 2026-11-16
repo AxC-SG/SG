@@ -16,6 +16,11 @@
                                          frontend, once, before the first paired release
   release.py check SHA                   read-only: would SHA be a proven schema-neutral, runtime-only release?
                                          (catalog fingerprint, live schema state, migrator drift; changes nothing)
+  release.py reconcile [--frontend] [--yes]
+                                         resume the interrupted runtime-only release, or release the main head
+                                         through the runtime-only path when `check` would call it eligible: never
+                                         plans, registers or runs the migrator. Run it from a clean checkout of the
+                                         commit it releases. --yes skips the prompt, after every eligibility check
   release.py accept [--answers yn… [--note TEXT]]
                                          record the browser checks for the live release (interactive, or
                                          answers the operator relayed, one y/n per check in order)
@@ -52,10 +57,13 @@ resumes (finished steps are skipped or idempotent), and `rollback` recovers wher
 Restoring the exact accepted release reuses its acceptance (CD plan 4.7), and the release it
 replaced is marked `recovered`; returning to the release before it waits for `release.py accept`.
 
-deploy and rollback print a result (CD plan 4.4): outcome `verified`, `blocked` (nothing live
-changed), `failed` (a live step or check failed) or `needs_operator`, with its reason.
+deploy, rollback and reconcile print a result (CD plan 4.4): outcome `verified`, `blocked` (nothing
+live changed), `failed` (a live step or check failed) or `needs_operator`, with its reason. reconcile's
+result also names the live pair, the acceptance state, the record and the next manual action; it exits 0
+for `verified` and for `blocked` with a planned reason (nothing changed, by design), otherwise 1.
 
-Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5), LAB_SMOKE_CONFIG
+Environment: LAB_RELEASE_PROFILE (default sglab-release; set it empty to use the ambient credentials, as
+on a GitHub runner), TERRAFORM (Terraform 1.13.5), LAB_SMOKE_CONFIG
 (the signed-in smoke's config, outside the repo; unset records the smoke as not configured), CHROMIUM_PATH,
 VERCEL_TOKEN (paired releases, adopt-frontend, and rollbacks that restore a frontend).
 Credentials go only to child processes and API calls and are never printed.
@@ -137,6 +145,26 @@ PHASES = {
 TARGETS = {
     "migrator": [TASK.format("migrator")],
     "runtime": [TASK.format(role) for role in SERVICES] + [SERVICE.format(role) for role in SERVICES],
+}
+# Steps that only a release with schema or migrator authority takes; a runtime-only release has none.
+MIGRATOR_STEPS = {"stopped", "snapshot", "migrator", "migrated"}
+# reconcile's planned refusals (CD plan 4.4): nothing changed, so the command succeeds and says why.
+RECONCILE_BLOCKED = ("parked", "awaiting_acceptance", "superseded", "schema_changed", "schema_unverified",
+                     "migrator_drift")
+NEXT_ACTION = {
+    ("verified", None): "run the browser checks, then record them locally with release.py accept",
+    ("verified", "no_change"): "nothing to do: the lab already runs this pair",
+    ("blocked", "parked"): "start the lab with lab.sh up, then reconcile again",
+    ("blocked", "awaiting_acceptance"): "record the live release's browser checks with release.py accept "
+                                        "(or roll it back), then reconcile again",
+    ("blocked", "superseded"): "wait until main's head is published to the lab, then reconcile again",
+    ("blocked", "schema_changed"): "a schema change: release it locally with release.py deploy (owner-run)",
+    ("blocked", "schema_unverified"): "inspect the worker's tenant_schema_state line and the migration catalog, "
+                                      "then reconcile again, or release locally with release.py deploy",
+    ("blocked", "migrator_drift"): "review the migrator change, then release it locally with release.py deploy",
+    ("failed", "frontend_pending"): "reconcile again to promote the recorded frontend, or run release.py rollback",
+    ("failed", "check_failed"): "run release.py rollback, or fix forward",
+    ("failed", "step_failed"): "inspect the record, then reconcile again to resume, or run release.py rollback",
 }
 
 
@@ -552,35 +580,228 @@ class Release:
         inputs = self.inputs()
         publication = self.lab.publication(sha)
         check_publication(publication, sha)
-        reasons = []
-        if inputs.get("pending"):
-            reasons.append(f"needs_operator: {inputs['pending']['kind']} {inputs['pending']['release_id']} stopped "
-                           f"after {inputs['pending']['phase']}")
-        if inputs.get("awaiting_acceptance"):
-            reasons.append(f"awaiting_acceptance: {inputs['awaiting_acceptance']['release_id']}")
-        if not self.lab.services_present():
-            reasons.append("parked: the lab services are not running")
-        if publication["migration_heads"] != inputs["database_heads"]:
-            reasons.append(f"schema_changed: heads {publication['migration_heads']} against the database "
-                           f"{inputs['database_heads']}")
-        catalog = catalog_check(inputs.get("database_catalog_sha256"), publication.get("migration_catalog_sha256"))
-        if catalog != "same":
-            reasons.append(f"schema_{catalog}: migration catalog fingerprint is {catalog}")
+        found = self.eligibility(inputs, publication)
+        reasons = [f"{reason}: {detail}" for reason, detail in found["reasons"]]
+        outcome = "eligible" if not reasons else (
+            "needs_operator" if any(reason == "needs_operator" for reason, _ in found["reasons"]) else "blocked")
+        result = {"source_sha": sha, "outcome": outcome, "reasons": reasons, "schema_state": found["schema_state"],
+                  "catalog": found["catalog"]}
+        print(json.dumps(result, indent=2))
+        return result
+
+    def eligibility(self, inputs, publication, first_only=False):
+        """Why a published commit is not a proven schema-neutral, runtime-only release (CD plan 4.3), as
+        (reason, detail) pairs; none when it is eligible. first_only stops at the first reason, before
+        the slower checks. Reads only: logs and a migrator plan that is never applied."""
+        found = {"reasons": [], "catalog": None, "schema_state": None}
+
+        def stop(reason, detail):
+            found["reasons"].append((reason, detail))
+            return first_only
+
+        pending = inputs.get("pending")
+        if pending and stop("needs_operator", f"{pending['kind']} {pending['release_id']} stopped after {pending['phase']}"):
+            return found
+        waiting = inputs.get("awaiting_acceptance")
+        if waiting and stop("awaiting_acceptance", f"{waiting['release_id']} is waiting for its browser checks"):
+            return found
+        if not self.lab.services_present() and stop("parked", "the lab services are not running"):
+            return found
+        if publication["migration_heads"] != inputs["database_heads"] and stop(
+                "schema_changed", f"heads {publication['migration_heads']} against the database {inputs['database_heads']}"):
+            return found
+        catalog = found["catalog"] = catalog_check(inputs.get("database_catalog_sha256"),
+                                                   publication.get("migration_catalog_sha256"))
+        if catalog != "same" and stop(f"schema_{catalog}", f"migration catalog fingerprint is {catalog}"):
+            return found
         passed, detail = schema_state_check(
             self.lab.log_messages("worker", utc_now() - SCHEMA_LOOKBACK, SCHEMA_FILTER), inputs["database_heads"]["tenant"])
-        if not passed:
-            reasons.append(f"schema_unverified: {detail}")
+        found["schema_state"] = detail
+        if not passed and stop("schema_unverified", detail):
+            return found
         # The runtime-only path keeps the retained migrator. Rendering it from this checkout with that
         # digest must change nothing; any change means its configuration moved, which needs review.
         _, document = self.lab.plan("migrator-drift", {"runtime": inputs["runtime_image_digest"],
                                                         "migrator": inputs["migrator_image_digest"]}, TARGETS["migrator"])
         drift, _ = check_plan(document, "migrator")
         if drift:
-            reasons.append("migrator_drift: " + "; ".join(line.strip() for line in drift))
-        outcome = "eligible" if not reasons else (
-            "needs_operator" if any(reason.startswith("needs_operator") for reason in reasons) else "blocked")
-        result = {"source_sha": sha, "outcome": outcome, "reasons": reasons, "schema_state": detail, "catalog": catalog}
-        print(json.dumps(result, indent=2))
+            stop("migrator_drift", "; ".join(line.strip() for line in drift))
+        return found
+
+    # ---- reconcile: the runtime-only path (CD plan 4.3, 4.4) ------------------------------
+    def reconcile(self, frontend=False, assume_yes=False):
+        """Resume the interrupted runtime-only release, or release main's head through the runtime-only
+        path once it qualifies. Never plans, registers or runs the migrator, stops the services or takes a
+        snapshot. Returns the result instead of raising, so every outcome carries the same fields."""
+        state = {"sha": None, "record": None, "reason": None}
+        try:
+            self.reconcile_under_lock(frontend, assume_yes, state)
+        except ReleaseError as error:
+            return self.reconcile_result(state, error.outcome, error.reason, str(error))
+        return self.reconcile_result(state, "verified", state["reason"])
+
+    def reconcile_under_lock(self, frontend, assume_yes, state):
+        inputs = self.inputs()
+        sha, record, _ = self.reconcile_target(inputs)
+        state["sha"], state["record"] = sha, record
+        # Cheap refusals first, so a parked or waiting lab never builds a frontend.
+        if not self.lab.services_present():
+            raise ReleaseError("the lab is parked; nothing changed", reason="parked")
+        staged = self.reconcile_frontend(inputs, sha, record) if frontend else None
+        with self.locked("reconcile " + sha[:7]):
+            inputs = self.inputs()
+            again, record, publication = self.reconcile_target(inputs)
+            state["record"] = record
+            if again != sha:
+                raise ReleaseError(f"the lab moved from {sha[:7]} to {again[:7]} meanwhile; nothing changed. "
+                                   "Reconcile again", reason="superseded")
+            if record:
+                self.resume_runtime_only(inputs, record, frontend, staged, assume_yes)
+            else:
+                self.start_runtime_only(inputs, sha, publication, staged, assume_yes, state)
+
+    def reconcile_target(self, inputs):
+        """(commit, record to resume or None, publication or None): the interrupted runtime-only release
+        first; otherwise main's head, once published. Nothing new is chosen while anything is unfinished."""
+        pending, record, publication = inputs.get("pending"), None, None
+        if pending:
+            record = self.lab.s3_get(f"{RECORDS}/{pending['release_id']}.json")
+            if not record or record.get("kind") != "reconcile" or record.get("path") != "runtime-only" or \
+                    record.get("mode") != "neutral" or \
+                    any(step["step"] in MIGRATOR_STEPS for step in record.get("steps", [])):
+                raise ReleaseError(f"{pending['kind']} {pending['release_id']} stopped after {pending['phase']} and is not a "
+                                   f"runtime-only release; resume it with release.py {pending['kind']} from a checkout of "
+                                   f"{pending['source_sha'][:7]}, or run release.py rollback",
+                                   outcome="needs_operator", reason="unfinished")
+            sha = pending["source_sha"]
+        else:
+            waiting = inputs.get("awaiting_acceptance")
+            if waiting:
+                raise ReleaseError(f"{waiting['release_id']} is waiting for its browser checks; nothing changed",
+                                   reason="awaiting_acceptance")
+            sha = self.lab.resolve_sha("main")
+            publication = self.lab.publication(sha, required=False)
+            if publication is None:
+                raise ReleaseError(f"main is at {sha[:7]}, which has no lab publication yet (its checks are still "
+                                   "running, or failed); nothing changed", reason="superseded")
+        head, clean = self.lab.checkout()
+        if head != sha or not clean:
+            where = f"this checkout is at {head[:7]}{'' if clean else ' with uncommitted changes'}"
+            if record:
+                raise ReleaseError(f"{record['release_id']} releases {sha[:7]} but {where}; resume it from a clean "
+                                   f"checkout of {sha[:7]}, or run release.py rollback",
+                                   outcome="needs_operator", reason="unfinished")
+            raise ReleaseError(f"main is at {sha[:7]} but {where}; nothing changed. Reconcile again from main",
+                               reason="superseded")
+        return sha, record, publication
+
+    def reconcile_frontend(self, inputs, sha, record):
+        """The frontend a paired reconcile promotes, staged before the lock (CD plan 4.5); None when the
+        tracked frontend already comes from this commit."""
+        if record and record.get("frontend"):
+            return record["frontend"]
+        tracked = inputs.get("frontend") or {}
+        if tracked.get("source_sha") == sha and not inputs.get("frontend_promoting"):
+            return None
+        staged = self.lab.frontend_stage(sha)
+        if not DEPLOYMENT_ID.fullmatch(staged.get("deployment_id") or "") or staged.get("source_sha") != sha:
+            raise ReleaseError(f"the staged frontend is not a recorded deployment of {sha[:7]}: {json.dumps(staged)}")
+        self.lab.log(f"Staged frontend {staged['deployment_id']} ({staged.get('url')}) for {sha[:7]}; not promoted yet.")
+        return staged
+
+    def start_runtime_only(self, inputs, sha, publication, staged, assume_yes, state):
+        check_publication(publication, sha)
+        digest, heads = publication["image_digest"], publication["migration_heads"]
+        if not self.lab.ecr_has(digest):
+            raise ReleaseError(f"{digest} is not in the lab ECR repository")
+        # Recheck everything under the lock, before the first mutation (CD plan 4.4).
+        found = self.eligibility(inputs, publication, first_only=True)
+        if found["reasons"]:
+            reason, detail = found["reasons"][0]
+            raise ReleaseError(f"{sha[:7]} is not a proven runtime-only release ({reason}: {detail}); nothing changed",
+                               reason=reason)
+        runtime = inputs.get("runtime") or {}
+        if staged is None and inputs["runtime_image_digest"] == digest and runtime.get("source_sha") == sha:
+            self.lab.log(f"The lab already runs {sha[:7]} ({short(digest)}); nothing to do.")
+            state["reason"] = "no_change"
+            return
+        fingerprint = publication.get("migration_catalog_sha256")
+        record = {"release_id": release_id(sha, utc_now()), "kind": "reconcile", "path": "runtime-only",
+                  "status": "started", "mode": schema_mode(inputs["database_heads"], heads),
+                  "candidate": {"source_sha": sha, "image_digest": digest, "migration_heads": heads,
+                                "migration_catalog_sha256": fingerprint, "publication_run": publication.get("candidate_run")},
+                  "from": {key: inputs[key] for key in ("runtime_image_digest", "migrator_image_digest", "database_heads")},
+                  "catalog": found["catalog"], "schema_state_before": {"passed": True, "detail": found["schema_state"]},
+                  "migrator_drift": "none", "steps": [], "checks": {}, "browser_checks": [], "started_at": stamp()}
+        record["from"]["frontend"] = frontend_id(inputs.get("frontend"))
+        if staged:
+            record["frontend"] = staged
+        state["record"] = record
+        self.lab.log(f"Reconcile {record['release_id']}: api and worker {short(inputs['runtime_image_digest'])} -> "
+                     f"{short(digest)} ({sha[:7]}), runtime-only: the migrator {short(inputs['migrator_image_digest'])} "
+                     f"and the schema {heads} stay."
+                     + (f" After the backend verifies, {APP_DOMAIN} moves to {staged['deployment_id']}." if staged else ""))
+        if not self.confirmed(f"Release {sha[:7]} to the lab?", assume_yes):
+            raise ReleaseError("not confirmed; nothing changed", reason="not_confirmed")
+        meta = {"source_sha": sha, "migration_heads": heads, "migration_catalog_sha256": fingerprint}
+        self.run(inputs, record, runtime=digest, migrator=None, meta=meta, stop=False, frontend=staged)
+
+    def resume_runtime_only(self, inputs, record, frontend, staged, assume_yes):
+        sha, digest = record["candidate"]["source_sha"], record["candidate"]["image_digest"]
+        if not self.lab.services_present():
+            raise ReleaseError("the lab is parked; nothing changed", reason="parked")
+        if record.get("frontend") and not frontend:
+            raise ReleaseError(f"{record['release_id']} is a paired release; reconcile with --frontend",
+                               outcome="needs_operator", reason="unfinished")
+        if staged and frontend_id(record.get("frontend")) not in (None, staged["deployment_id"]):
+            raise ReleaseError(f"{record['release_id']} names frontend {frontend_id(record['frontend'])}, "
+                               f"not {staged['deployment_id']}", outcome="needs_operator", reason="unfinished")
+        publication = self.lab.publication(sha)
+        check_publication(publication, sha)
+        if publication["image_digest"] != digest:
+            raise ReleaseError(f"{sha[:7]} is now published as {short(publication['image_digest'])}, but "
+                               f"{record['release_id']} releases {short(digest)}", outcome="needs_operator", reason="unfinished")
+        if staged:
+            record["frontend"] = staged
+        self.lab.log(f"Resuming reconcile {record['release_id']} ({sha[:7]}) after "
+                     f"{record['steps'][-1]['step'] if record['steps'] else 'no step'}; runtime-only.")
+        if not self.confirmed(f"Resume {record['release_id']}?", assume_yes):
+            raise ReleaseError("not confirmed; nothing changed", reason="not_confirmed")
+        meta = {"source_sha": sha, "migration_heads": record["candidate"]["migration_heads"],
+                "migration_catalog_sha256": record["candidate"].get("migration_catalog_sha256")}
+        self.run(inputs, record, runtime=digest, migrator=None, meta=meta, stop=False, frontend=record.get("frontend"))
+
+    def confirmed(self, question, assume_yes):
+        if assume_yes:
+            self.lab.log(f"{question} Confirmed by --yes, after every eligibility check.")
+            return True
+        return self.lab.confirm(question)
+
+    def reconcile_result(self, state, outcome, reason, error=None):
+        """The reconcile result (CD plan 4.4): outcome, reason and phase, the candidate and release, the live
+        pair and its acceptance as recorded now, the record, and the next manual action."""
+        record = state.get("record")
+        try:
+            inputs = self.lab.s3_get(INPUTS_KEY) or {}
+        except ReleaseError:
+            inputs = {}
+        waiting = (inputs.get("awaiting_acceptance") or {}).get("release_id")
+        if record and record.get("status") == "failed":
+            phase = record.get("failed_at")
+        elif record and record.get("steps") and outcome == "verified":
+            phase = record["steps"][-1]["step"]
+        else:
+            phase = "eligibility"
+        result = {"outcome": outcome, "reason": reason, "phase": phase, "kind": "reconcile", "path": "runtime-only",
+                  "source_sha": state.get("sha"), "release_id": record["release_id"] if record else None,
+                  "backend": inputs.get("runtime_image_digest"), "frontend": frontend_id(inputs.get("frontend")),
+                  "acceptance": "awaiting" if waiting else ("unfinished" if inputs.get("pending") else "accepted"),
+                  "accepted": (inputs.get("accepted") or {}).get("release_id"), "awaiting_acceptance": waiting,
+                  "record": f"s3://{STATE_BUCKET}/{RECORDS}/{record['release_id']}.json" if record else None,
+                  "next": NEXT_ACTION.get((outcome, reason), "inspect release.py status and the record; resume or "
+                                                             "roll back locally")}
+        if error:
+            result["error"] = error
         return result
 
     def rollback(self, progress_required=True, note=""):
@@ -701,6 +922,10 @@ class Release:
     # ---- the release itself -----------------------------------------------------------
     def run(self, inputs, record, runtime, migrator, meta, stop, restores=None, progress_required=True,
             frontend=None, reuse_acceptance=False):
+        # The code half of the runtime-only guarantee; the GitHub release role denies the same actions.
+        if record.get("path") == "runtime-only" and (migrator or stop):
+            raise ReleaseError("a runtime-only release never stops the services, snapshots or touches the migrator",
+                               outcome="needs_operator", reason="refused")
         step = "start"
         try:
             if stop and not self.done(record, "stopped"):
@@ -741,7 +966,7 @@ class Release:
                 if failed:
                     raise ReleaseError(f"automated checks failed: {', '.join(failed)}")
                 self.mark(inputs, record, "verified")
-            if frontend and record["kind"] == "deploy":
+            if frontend and record["kind"] != "rollback":
                 step = "frontend"
                 self.promote(inputs, record, frontend)
             if frontend:
@@ -761,9 +986,9 @@ class Release:
             record.update(status="failed", failed_at=step, error=str(error) or type(error).__name__, ended_at=stamp(),
                           result={"outcome": outcome, "reason": reason, "phase": step})
             self.save(inputs, record)
-            retry = (" The backend is verified: rerun the same deploy to promote the recorded frontend without "
-                     "redeploying the backend, or run release.py rollback.") if reason == "frontend_pending" else (
-                     " lab.sh refuses until a deploy of the same commit resumes it or release.py rollback recovers.")
+            retry = (f" The backend is verified: rerun the same {record['kind']} to promote the recorded frontend "
+                     "without redeploying the backend, or run release.py rollback.") if reason == "frontend_pending" else (
+                     f" lab.sh refuses until a {record['kind']} of the same commit resumes it or release.py rollback recovers.")
             raise ReleaseError(f"{record['kind']} {record['release_id']} failed at {step}: {error}. "
                                f"The record is in s3://{STATE_BUCKET}/{RECORDS}/.{retry}",
                                outcome=outcome, reason=reason) from error
@@ -922,6 +1147,7 @@ class AwsLab:
     """The real lab: AWS CLI, Terraform and GitHub CLI calls."""
 
     def __init__(self, profile, terraform):
+        # An empty profile uses the ambient credentials: a GitHub runner's short-lived OIDC session.
         self.profile, self.terraform = profile, terraform
         self.work = Path(tempfile.mkdtemp(prefix="scoutgrid-release."))
         os.chmod(self.work, 0o700)
@@ -938,15 +1164,23 @@ class AwsLab:
                                f"{(result.stderr or '').strip()[-600:]}")
         return result.stdout
 
+    def aws_command(self, *args):
+        return ["aws", *(["--profile", self.profile] if self.profile else []), "--region", REGION, *args]
+
     def aws(self, *args):
-        output = self.run(["aws", "--profile", self.profile, "--region", REGION, "--output", "json", *args])
+        output = self.run(self.aws_command("--output", "json", *args))
         return json.loads(output) if output.strip() else None
 
     def credentials_env(self):
-        exported = json.loads(self.run(["aws", "configure", "export-credentials", "--profile", self.profile, "--format", "process"]))
-        env = {key: value for key, value in os.environ.items() if not key.startswith("AWS_")}
-        env.update(AWS_ACCESS_KEY_ID=exported["AccessKeyId"], AWS_SECRET_ACCESS_KEY=exported["SecretAccessKey"],
-                   AWS_SESSION_TOKEN=exported.get("SessionToken", ""), AWS_REGION=REGION)
+        """Terraform's environment: the profile's exported credentials, or the ambient ones. Never the Vercel token."""
+        env = {key: value for key, value in os.environ.items()
+               if key != "VERCEL_TOKEN" and not (self.profile and key.startswith("AWS_"))}
+        if self.profile:
+            exported = json.loads(self.run(["aws", "configure", "export-credentials", "--profile", self.profile,
+                                            "--format", "process"]))
+            env.update(AWS_ACCESS_KEY_ID=exported["AccessKeyId"], AWS_SECRET_ACCESS_KEY=exported["SecretAccessKey"],
+                       AWS_SESSION_TOKEN=exported.get("SessionToken", ""))
+        env["AWS_REGION"] = REGION
         return env
 
     def tf(self, *args):
@@ -955,7 +1189,8 @@ class AwsLab:
     def guard(self):
         account = self.aws("sts", "get-caller-identity")["Account"]
         if account != ACCOUNT_ID:
-            raise ReleaseError(f"profile {self.profile} is account {account}, not the lab {ACCOUNT_ID}")
+            source = f"profile {self.profile}" if self.profile else "the ambient credentials"
+            raise ReleaseError(f"{source} is account {account}, not the lab {ACCOUNT_ID}")
         version = json.loads(self.run([self.terraform, "version", "-json"]))["terraform_version"]
         if version != TF_REQUIRED:
             raise ReleaseError(f"Terraform {TF_REQUIRED} wrote the lab state; found {version}")
@@ -963,8 +1198,8 @@ class AwsLab:
     # ---- S3 release objects -------------------------------------------------------------
     def s3_get(self, key):
         target = self.work / "get.json"
-        result = subprocess.run(["aws", "--profile", self.profile, "--region", REGION, "s3api", "get-object",
-                                 "--bucket", STATE_BUCKET, "--key", key, "--expected-bucket-owner", ACCOUNT_ID, str(target)],
+        result = subprocess.run(self.aws_command("s3api", "get-object", "--bucket", STATE_BUCKET, "--key", key,
+                                                 "--expected-bucket-owner", ACCOUNT_ID, str(target)),
                                 text=True, capture_output=True)
         if result.returncode != 0:
             if "NoSuchKey" in result.stderr:
@@ -975,9 +1210,10 @@ class AwsLab:
     def s3_put(self, key, data, create_only=False):
         body = self.work / "put.json"
         body.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
-        command = ["aws", "--profile", self.profile, "--region", REGION, "s3api", "put-object", "--bucket", STATE_BUCKET,
-                   "--key", key, "--expected-bucket-owner", ACCOUNT_ID, "--body", str(body), "--content-type", "application/json",
-                   "--server-side-encryption", "aws:kms", "--ssekms-key-id", STATE_KMS_KEY]
+        command = self.aws_command("s3api", "put-object", "--bucket", STATE_BUCKET, "--key", key,
+                                   "--expected-bucket-owner", ACCOUNT_ID, "--body", str(body),
+                                   "--content-type", "application/json",
+                                   "--server-side-encryption", "aws:kms", "--ssekms-key-id", STATE_KMS_KEY)
         if create_only:
             command += ["--if-none-match", "*"]
         result = subprocess.run(command, text=True, capture_output=True)
@@ -997,11 +1233,14 @@ class AwsLab:
             raise ReleaseError(f"cannot resolve {ref} to a commit")
         return sha
 
-    def publication(self, sha):
+    def publication(self, sha, required=True):
+        """The lab publication record for sha; None when there is none and it is not required."""
         name = f"aws-publication-lab-{sha}"
         artifacts = json.loads(self.run(["gh", "api", "--method", "GET", f"repos/{REPO}/actions/artifacts",
                                          "-f", f"name={name}", "-f", "per_page=100"]))["artifacts"]
         live = sorted((item for item in artifacts if not item["expired"]), key=lambda item: item["created_at"])
+        if not live and not required:
+            return None
         if not live:
             raise ReleaseError(f"{sha[:7]} has no lab publication record; it is published once its main checks pass")
         target = self.work / f"publication-{sha[:7]}"
@@ -1181,12 +1420,17 @@ class AwsLab:
         return {"deployment_id": found.get("id"), "url": found.get("url"), "ready_state": found.get("readyState"),
                 "target": found.get("target"), "source_sha": (found.get("meta") or {}).get("githubCommitSha")}
 
+    def checkout(self):
+        """(HEAD commit, whether tracked files are unchanged) of the checkout this script runs from."""
+        head = self.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"]).strip()
+        return head, not self.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=no"]).strip()
+
     def frontend_stage(self, sha):
         """Build this checkout for production and upload it without assigning a domain (CD plan 4.5, step 1-2)."""
-        head = self.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"]).strip()
+        head, clean = self.checkout()
         if head != sha:
             raise ReleaseError(f"this checkout is at {head[:7]}; check out {sha[:7]} to build its frontend")
-        if self.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=no"]).strip():
+        if not clean:
             raise ReleaseError("this checkout has uncommitted changes; the frontend must be built from the commit alone")
         self.log(f"Building the frontend for {sha[:7]} with {VERCEL_CLI} (production settings).")
         try:
@@ -1261,6 +1505,11 @@ class AwsLab:
         return answers
 
 
+def reconcile_succeeded(result):
+    """reconcile exits 0 when the lab verified, or when it refused for a planned reason and changed nothing."""
+    return result["outcome"] == "verified" or (result["outcome"] == "blocked" and result["reason"] in RECONCILE_BLOCKED)
+
+
 def main(argv):
     lab = AwsLab(os.environ.get("LAB_RELEASE_PROFILE", "sglab-release"), os.environ.get("TERRAFORM", "terraform"))
     release = Release(lab)
@@ -1268,6 +1517,7 @@ def main(argv):
     deploy_options = parse_options(args[1:], flags=("--frontend", "--no-progress-signal")) \
         if args and not args[0].startswith("--") else None
     rollback_options = parse_options(args, flags=("--no-progress-signal",), valued=("--note",))
+    reconcile_options = parse_options(args, flags=("--frontend", "--yes"))
     try:
         if command == "status" and not args:
             lab.guard()
@@ -1279,6 +1529,11 @@ def main(argv):
             lab.guard()
             print(json.dumps(release.deploy(args[0], progress_required="--no-progress-signal" not in deploy_options,
                                             frontend="--frontend" in deploy_options), indent=2))
+        elif command == "reconcile" and reconcile_options is not None:
+            lab.guard()
+            result = release.reconcile(frontend="--frontend" in reconcile_options, assume_yes="--yes" in reconcile_options)
+            print(json.dumps(result, indent=2))
+            return 0 if reconcile_succeeded(result) else 1
         elif command == "check" and len(args) == 1:
             lab.guard()
             release.check(args[0])
@@ -1306,7 +1561,7 @@ def main(argv):
             return 2
     except ReleaseError as error:
         lab.log(f"ERROR: {error}")
-        if command in ("deploy", "rollback"):
+        if command in ("deploy", "rollback", "reconcile"):
             print(json.dumps({"outcome": error.outcome, "reason": error.reason, "error": str(error)}, indent=2))
         return 1
     except ValueError as error:

@@ -47,7 +47,8 @@
     "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution",
     "arn:aws:iam::736486260824:role/scoutgrid-lab-api-task",
     "arn:aws:iam::736486260824:role/scoutgrid-lab-worker-task",
-    "arn:aws:iam::736486260824:role/scoutgrid-lab-github-ecr-publish"
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-github-ecr-publish",
+    "arn:aws:iam::736486260824:role/scoutgrid-lab-github-release"
    ]
   },
   {

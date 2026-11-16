@@ -5,9 +5,11 @@
 import copy
 import datetime
 import importlib.util
+import os
 import re
 import unittest
 from pathlib import Path
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location("release", Path(__file__).resolve().parents[1] / "release.py")
 release = importlib.util.module_from_spec(spec)
@@ -57,9 +59,9 @@ def stopped_task(exit_code=0, stop_code="EssentialContainerExited"):
 
 class FakeLab:
     def __init__(self, store_inputs=None, pub=None, migrator=None, plans=None, browser_ok=True, confirmed=True,
-                 present=True, live=None):
+                 present=True, live=None, unpublished=False):
         self.store = {} if store_inputs is None else {release.INPUTS_KEY: copy.deepcopy(store_inputs)}
-        self.pub = pub or publication()
+        self.pub = None if unpublished else (pub or publication())
         self.migrator = migrator or stopped_task()
         self.plans = {**DEFAULT_PLANS, **(plans or {})}
         self.browser_ok, self.confirmed, self.present = browser_ok, confirmed, present
@@ -87,11 +89,18 @@ class FakeLab:
     def s3_delete(self, key):
         self.store.pop(key, None)
 
+    head, clean = NEW_SHA, True
+
     def resolve_sha(self, ref):
         return NEW_SHA
 
-    def publication(self, sha):
+    def publication(self, sha, required=True):
+        if self.pub is None and required:
+            raise release.ReleaseError(f"{sha[:7]} has no lab publication record")
         return copy.deepcopy(self.pub)
+
+    def checkout(self):
+        return self.head, self.clean
 
     def ecr_has(self, digest):
         return True
@@ -850,6 +859,269 @@ class OutcomeTest(unittest.TestCase):
         self.assertEqual(release.parse_options(["--note", "x"], valued=("--note",)), {"--note": "x"})
         for bad in (["--frontend", "--frontend"], ["--other"], ["--note"]):
             self.assertIsNone(release.parse_options(bad, flags=("--frontend",), valued=("--note",)))
+
+
+# What only a release with migrator or schema authority may do; reconcile must never do any of it.
+FORBIDDEN = ("migrate", "stop", "snapshot")
+
+
+class ReconcileTest(unittest.TestCase):
+    def reconcile(self, lab, frontend=False):
+        return release.Release(lab).reconcile(frontend=frontend, assume_yes=True)
+
+    def assert_runtime_only(self, lab):
+        for call in lab.calls:
+            self.assertNotIn(call, FORBIDDEN)
+            if isinstance(call, tuple) and call[0] == "plan":
+                self.assertIn(call[1], ("runtime", "migrator-drift"), call)
+            if isinstance(call, tuple) and call[0] == "apply":
+                self.assertEqual(call[1], "runtime.tfplan", call)
+
+    def test_an_eligible_head_is_released_without_the_migrator(self):
+        lab = FakeLab(inputs())
+        result = self.reconcile(lab)
+        self.assertEqual(lab.calls, [("plan", "migrator-drift", OLD, OLD), ("plan", "runtime", NEW, OLD),
+                                     ("apply", "runtime.tfplan")])
+        record, state = lab.record(), lab.inputs
+        self.assertEqual((record["kind"], record["path"], record["mode"]), ("reconcile", "runtime-only", "neutral"))
+        self.assertEqual([step["step"] for step in record["steps"]], ["runtime", "verified"])
+        self.assertEqual((state["runtime_image_digest"], state["migrator_image_digest"]), (NEW, OLD))
+        self.assertEqual(state["migrator"]["source_sha"], OLD_SHA)
+        self.assertEqual(state["database_heads"], V23)
+        self.assertEqual(state["awaiting_acceptance"]["release_id"], record["release_id"])
+        self.assertEqual((result["outcome"], result["reason"], result["phase"], result["acceptance"]),
+                         ("verified", None, "verified", "awaiting"))
+        self.assertEqual((result["backend"], result["source_sha"], result["accepted"]), (NEW, NEW_SHA, "baseline"))
+        self.assertTrue(result["record"].endswith(f"{record['release_id']}.json"))
+        self.assertIn("release.py accept", result["next"])
+        self.assertTrue(release.reconcile_succeeded(result))
+        self.assertNotIn(release.LOCK_KEY, lab.store)
+        # Acceptance stays local and works as for any release.
+        release.Release(lab).accept()
+        self.assertEqual(lab.inputs["accepted"]["runtime_image_digest"], NEW)
+        self.assertEqual(lab.inputs["previous_accepted"]["release_id"], "baseline")
+
+    def test_a_paired_reconcile_stages_first_and_promotes_after_the_backend_verifies(self):
+        lab = FakeLab(tracked())
+        result = self.reconcile(lab, frontend=True)
+        self.assertEqual(lab.calls, [("stage", False), ("plan", "migrator-drift", OLD, OLD),
+                                     ("plan", "runtime", NEW, OLD), ("apply", "runtime.tfplan"),
+                                     ("promote", STAGED_FRONTEND)])
+        self.assertEqual([step["step"] for step in lab.record()["steps"]], ["runtime", "verified", "frontend", "paired"])
+        self.assertEqual((result["outcome"], result["frontend"]), ("verified", STAGED_FRONTEND))
+
+    def test_each_refusal_is_blocked_changes_nothing_and_succeeds(self):
+        waiting = {**inputs(), "awaiting_acceptance": {"release_id": "r1"}}
+        cases = {
+            "parked": dict(present=False),
+            "awaiting_acceptance": dict(store_inputs=waiting),
+            "superseded": dict(unpublished=True),
+            "schema_changed": dict(pub=publication(heads={"platform": 16, "tenant": 24})),
+            "schema_unverified": dict(pub=publication(catalog=None)),
+            "migrator_drift": dict(plans={"migrator-drift": plan((release.TASK.format("migrator"), ("delete", "create")))}),
+        }
+        for reason, options in cases.items():
+            with self.subTest(reason=reason):
+                lab = FakeLab(options.pop("store_inputs", tracked()), **options)
+                before = copy.deepcopy(lab.store)
+                result = self.reconcile(lab, frontend=True)
+                self.assertEqual((result["outcome"], result["reason"]), ("blocked", reason))
+                self.assertEqual(lab.store, before)
+                self.assertFalse([call for call in lab.calls if call[0] in ("apply", "promote")], lab.calls)
+                self.assert_runtime_only(lab)
+                self.assertTrue(release.reconcile_succeeded(result))
+                self.assertEqual(result["next"], release.NEXT_ACTION[("blocked", reason)])
+
+    def test_parked_and_waiting_labs_build_no_frontend(self):
+        for lab in (FakeLab(tracked(), present=False), FakeLab({**tracked(), "awaiting_acceptance": {"release_id": "r1"}}),
+                    FakeLab(tracked(), unpublished=True)):
+            self.reconcile(lab, frontend=True)
+            self.assertEqual(lab.calls, [])
+
+    def test_unready_tenants_are_schema_unverified(self):
+        lab = FakeLab(inputs())
+        lab.logs[("worker", release.SCHEMA_FILTER)] = [
+            "message=tenant_schema_state unready_tenants=1 supported=23..23 active_versions=22..23 packaged_target=23"]
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("blocked", "schema_unverified"))
+        self.assertEqual(lab.calls, [])
+
+    def test_a_checkout_other_than_mains_head_is_superseded(self):
+        for head, clean in (("f" * 40, True), (NEW_SHA, False)):
+            lab = FakeLab(tracked())
+            lab.head, lab.clean = head, clean
+            result = self.reconcile(lab, frontend=True)
+            self.assertEqual((result["outcome"], result["reason"]), ("blocked", "superseded"))
+            self.assertEqual(lab.calls, [])
+
+    def test_the_pair_already_live_is_no_change(self):
+        state = tracked(digest=NEW, sha=NEW_SHA)
+        state["frontend"]["source_sha"] = NEW_SHA
+        lab = FakeLab(state)
+        result = self.reconcile(lab, frontend=True)
+        self.assertEqual((result["outcome"], result["reason"], result["release_id"]), ("verified", "no_change", None))
+        self.assertEqual(lab.calls, [("plan", "migrator-drift", NEW, NEW)])
+        self.assertEqual(lab.store[release.INPUTS_KEY], state)
+        self.assertTrue(release.reconcile_succeeded(result))
+
+    def test_the_same_image_from_another_commit_is_still_released(self):
+        # Its task-definition configuration may differ; the runtime plan decides what changes.
+        lab = FakeLab(inputs(digest=NEW))
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("verified", None))
+        self.assertIn(("plan", "runtime", NEW, NEW), lab.calls)
+
+    def test_a_new_frontend_for_the_live_backend_is_a_paired_release(self):
+        lab = FakeLab(tracked(digest=NEW, sha=NEW_SHA))
+        result = self.reconcile(lab, frontend=True)
+        self.assertEqual(result["outcome"], "verified")
+        self.assertIn(("promote", STAGED_FRONTEND), lab.calls)
+
+    def test_a_failed_check_is_failed_and_reconcile_resumes_it_before_anything_new(self):
+        lab = FakeLab(inputs())
+        lab.http_status = lambda path: 503
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"], result["phase"]), ("failed", "check_failed", "verify"))
+        self.assertFalse(release.reconcile_succeeded(result))
+        self.assertEqual(result["acceptance"], "unfinished")
+        failed_id = result["release_id"]
+        self.assertEqual(lab.inputs["pending"]["kind"], "reconcile")
+        self.assert_runtime_only(lab)
+
+        del lab.http_status
+        lab.calls = []
+        lab.resolve_sha = lambda ref: self.fail("a pending release must be resumed before choosing main's head")
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["release_id"]), ("verified", failed_id))
+        self.assertEqual(lab.calls, [("plan", "runtime", NEW, OLD), ("apply", "runtime.tfplan")])
+        self.assertIsNone(lab.inputs["pending"])
+        self.assert_runtime_only(lab)
+
+    def test_a_resume_needs_a_checkout_of_its_commit(self):
+        lab = FakeLab(inputs())
+        lab.http_status = lambda path: 503
+        self.reconcile(lab)
+        del lab.http_status
+        lab.head, lab.calls = "f" * 40, []
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("needs_operator", "unfinished"))
+        self.assertEqual(lab.calls, [])
+
+    def test_a_failed_promotion_retries_only_the_frontend(self):
+        lab = FakeLab(tracked())
+        lab.promote_error, lab.promote_moves_alias = "Vercel POST returned 502", False
+        result = self.reconcile(lab, frontend=True)
+        self.assertEqual((result["outcome"], result["reason"], result["phase"]), ("failed", "frontend_pending", "frontend"))
+        self.assertIn("reconcile again", result["next"])
+        lab.promote_error, lab.promote_moves_alias, lab.calls = None, True, []
+        result = self.reconcile(lab, frontend=True)
+        self.assertEqual(lab.calls, [("promote", STAGED_FRONTEND)])
+        self.assertEqual((result["outcome"], result["frontend"]), ("verified", STAGED_FRONTEND))
+        self.assertEqual(len(lab.baked), 1)
+
+    def test_a_paired_reconcile_resumes_only_as_a_paired_one(self):
+        lab = FakeLab(tracked())
+        lab.promote_error, lab.promote_moves_alias = "502", False
+        self.reconcile(lab, frontend=True)
+        lab.calls = []
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("needs_operator", "unfinished"))
+        self.assertEqual(lab.calls, [])
+
+    def test_a_stopped_deploy_is_never_resumed_by_reconcile(self):
+        # A deploy that stopped after its migrator step: only the owner-run deploy may resume it.
+        lab = FakeLab(inputs())
+        lab.http_status = lambda path: 503
+        with self.assertRaises(release.ReleaseError):
+            release.Release(lab).deploy("main")
+        del lab.http_status
+        before, lab.calls = copy.deepcopy(lab.store), []
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("needs_operator", "unfinished"))
+        self.assertIn("release.py deploy", result["error"])
+        self.assertEqual((lab.store, lab.calls), (before, []))
+        self.assertFalse(release.reconcile_succeeded(result))
+
+    def test_deploy_never_resumes_a_runtime_only_release_through_the_migrator(self):
+        lab = FakeLab(inputs())
+        lab.http_status = lambda path: 503
+        self.reconcile(lab)
+        del lab.http_status
+        lab.calls = []
+        with self.assertRaises(release.ReleaseError) as raised:
+            release.Release(lab).deploy("main")
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("needs_operator", "unfinished"))
+        self.assertEqual(lab.calls, [])
+
+    def test_rollback_recovers_a_failed_reconcile(self):
+        lab = FakeLab(inputs())
+        lab.http_status = lambda path: 503
+        failed = self.reconcile(lab)
+        del lab.http_status
+        lab.calls = []
+        result = release.Release(lab).rollback(note="reconcile failed its checks")
+        self.assertEqual((result["outcome"], result["acceptance"], result["replaces"]), ("verified", "reused", failed["release_id"]))
+        self.assertEqual(lab.inputs["runtime_image_digest"], OLD)
+        self.assertEqual(lab.store[f"{release.RECORDS}/{failed['release_id']}.json"]["result"]["reason"], "recovered")
+
+    def test_the_runtime_only_path_refuses_migrator_work_even_if_asked(self):
+        lab = FakeLab(inputs())
+        record = {"release_id": "r", "kind": "reconcile", "path": "runtime-only", "candidate": {"source_sha": NEW_SHA},
+                  "steps": []}
+        for options in (dict(migrator=NEW, stop=False), dict(migrator=None, stop=True)):
+            with self.assertRaisesRegex(release.ReleaseError, "never stops the services"):
+                release.Release(lab).run(lab.inputs, record, runtime=NEW, meta={}, **options)
+        self.assertEqual(lab.calls, [])
+
+    def test_a_held_lock_or_no_confirmation_is_a_failing_refusal(self):
+        lab = FakeLab(inputs())
+        lab.store[release.LOCK_KEY] = {"holder": "lab.sh", "operation": "up"}
+        result = self.reconcile(lab)
+        self.assertEqual((result["outcome"], result["reason"]), ("blocked", "refused"))
+        self.assertFalse(release.reconcile_succeeded(result))
+        self.assertEqual(lab.store[release.LOCK_KEY]["holder"], "lab.sh")
+
+        lab = FakeLab(inputs(), confirmed=False)
+        before = copy.deepcopy(lab.store)
+        result = release.Release(lab).reconcile()
+        self.assertEqual((result["outcome"], result["reason"]), ("blocked", "not_confirmed"))
+        self.assertIn("confirm", lab.calls)
+        self.assertEqual(lab.store, before)
+        self.assertFalse(release.reconcile_succeeded(result))
+
+    def test_yes_skips_only_the_prompt(self):
+        lab = FakeLab(inputs())
+        self.reconcile(lab)
+        self.assertNotIn("confirm", lab.calls)
+
+
+class CredentialsTest(unittest.TestCase):
+    def test_an_empty_profile_uses_the_ambient_credentials(self):
+        lab = release.AwsLab("", "terraform")
+        self.assertEqual(lab.aws_command("sts", "get-caller-identity"),
+                         ["aws", "--region", release.REGION, "sts", "get-caller-identity"])
+        ambient = {"AWS_ACCESS_KEY_ID": "runner", "AWS_SESSION_TOKEN": "oidc", "VERCEL_TOKEN": "v", "PATH": "/bin"}
+        with mock.patch.dict(os.environ, ambient, clear=True):
+            lab.run = lambda *args, **kwargs: self.fail("no profile to export")
+            env = lab.credentials_env()
+        self.assertEqual((env["AWS_ACCESS_KEY_ID"], env["AWS_SESSION_TOKEN"], env["AWS_REGION"]),
+                         ("runner", "oidc", release.REGION))
+        self.assertNotIn("VERCEL_TOKEN", env)
+
+    def test_a_profile_exports_its_own_credentials(self):
+        lab = release.AwsLab("sglab-release", "terraform")
+        self.assertEqual(lab.aws_command("sts")[:3], ["aws", "--profile", "sglab-release"])
+        lab.run = lambda command, **kwargs: '{"AccessKeyId": "k", "SecretAccessKey": "s", "SessionToken": "t"}'
+        with mock.patch.dict(os.environ, {"AWS_PROFILE": "other", "VERCEL_TOKEN": "v"}, clear=True):
+            env = lab.credentials_env()
+        self.assertEqual((env["AWS_ACCESS_KEY_ID"], env["AWS_SESSION_TOKEN"]), ("k", "t"))
+        self.assertNotIn("AWS_PROFILE", env)
+        self.assertNotIn("VERCEL_TOKEN", env)
+
+    def test_reconcile_options(self):
+        self.assertEqual(release.parse_options(["--frontend", "--yes"], flags=("--frontend", "--yes")),
+                         {"--frontend": True, "--yes": True})
+        self.assertIsNone(release.parse_options(["--no-progress-signal"], flags=("--frontend", "--yes")))
 
 
 class InitTest(unittest.TestCase):

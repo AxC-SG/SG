@@ -5,7 +5,7 @@ Runnable tooling for the Sydney AWS lab, ScoutGrid's only environment (account `
 | Path | Contents |
 |---|---|
 | `scripts/lab.sh` | Lab up, down, status, plan-only and IAM simulation |
-| `scripts/release.py` | Lab releases: move the lab to a published `main` commit (backend, or backend and frontend as a pair), roll back, show release status |
+| `scripts/release.py` | Lab releases: move the lab to a published `main` commit (backend, or backend and frontend as a pair), roll back, show release status, and the runtime-only `reconcile` that the manual Actions workflow runs |
 | `scripts/tests/lab.test.sh` | Offline tests for `lab.sh` failure handling; AWS, Terraform and Cloudflare are stubbed. CI runs it. |
 | `scripts/tests/test_release.py` | Offline tests for `release.py` against a fake lab. CI runs it. |
 | `scripts/bootstrap-sydney-state.sh` | Creates or verifies the encrypted Terraform state bucket |
@@ -59,11 +59,11 @@ The phase 3 drill (CD plan) measured 12–13 minutes per rollback: about 5–6 m
 | Outcome | Meaning |
 |---|---|
 | `verified` | The release is live and passed its checks |
-| `blocked` | Nothing live changed. Reason: `parked`, `awaiting_acceptance`, `schema_changed`, `schema_unverified`, `not_confirmed` or `refused` |
+| `blocked` | Nothing live changed. Reason: `parked`, `awaiting_acceptance`, `schema_changed`, `schema_unverified`, `not_confirmed` or `refused`; `reconcile` adds `superseded` and `migrator_drift` |
 | `failed` | A live step or check failed. Reason: `check_failed`, `step_failed`, `frontend_pending`, or later `recovered` |
 | `needs_operator` | Reason: `unfinished`, `recovery_failed`, `frontend_unrecorded`, `schema_changed` or `no_target` |
 
-The exit status is 0 only for `verified`.
+`reconcile` also returns `verified` / `no_change` when the lab already runs the pair. The exit status is 0 only for `verified`; `reconcile` also exits 0 for `blocked` with one of its planned reasons (`parked`, `awaiting_acceptance`, `superseded`, `schema_changed`, `schema_unverified`, `migrator_drift`), because nothing changed by design.
 
 ### Paired releases (backend and frontend)
 
@@ -121,7 +121,7 @@ What it checks:
 
 The demo requests come from `POST /api/platform/demo-requests/smoke-fixtures`: platform-owner only, at most five pending, `.invalid` addresses, audited. The route answers 404 unless `enable_smoke_fixtures` is set, and Terraform refuses that flag in production. The runtime tfvars set it for the lab api; the next `release.py deploy` registers it. Until then `lab.sh` plans show the api and worker task-definition change and refuse, as for any env change.
 
-Privacy (public repository): it records no trace, screenshot, video, HAR or storage state, prints only check names and statuses, and runs without AWS credentials. No workflow runs it. `.github/scripts/test-ci-contracts.py` enforces all of this.
+Privacy (public repository): it records no trace, screenshot, video, HAR or storage state, prints only check names and statuses, and runs without AWS credentials. No workflow runs it directly. The one workflow that may give release.py a config is the manual lab reconcile (below): tenant part only (owner decision S1), written to a private temporary file that is removed afterwards, never printed or uploaded. `.github/scripts/test-ci-contracts.py` enforces all of this.
 
 Setup, once. This is how the lab's smoke workspace was set up on 2026-11-16 (see the lab record for its identifiers):
 1. **Tenant admin: a dedicated Standard workspace** (`Working Knowledge/AWS/STANDARD_IMPLEMENTATION_READINESS.md`, A10/P10).
@@ -149,6 +149,43 @@ Undo: set it back to `false` and apply the same targets (the topic, filters and 
 **Runtime-only eligibility (read-only).** `release.py check <commit>` reports whether the commit would be a proven schema-neutral, runtime-only release (CD plan §4.3), as `eligible`, `blocked` or `needs_operator` with reasons: `parked`, `awaiting_acceptance`, `schema_changed` (heads), `schema_unverified` or `schema_changed` (catalog fingerprint), `schema_unverified` (no or failing live schema state), `migrator_drift`. For drift, it plans the migrator task definition with the **retained** migrator digest from the inputs, so run it from a checkout of the candidate commit. Any change means the migrator's configuration moved, not merely that a new image exists. It takes no lock and changes nothing; `deploy` stays the only way to release.
 
 Seed the inputs once from what the lab runs: `release.py init <full commit> <platform head> <tenant head>`.
+
+### Reconcile: the runtime-only path (manual)
+
+`release.py reconcile [--frontend] [--yes]` is the manual reconcile action (CD plan §4.4, phase 4 slice 2). It changes the lab only through the **runtime-only path**: it never plans, registers or runs the migrator, stops the services or takes a snapshot. Schema-changing releases, `rollback`, `accept` and `unlock` stay owner-run with the Release role.
+
+Under the shared lock, in this order:
+1. **Resume first.** A pending `reconcile` release is resumed at its recorded commit. Any other unfinished release (a `deploy` that ran its migrator, a `rollback`) returns `needs_operator` / `unfinished`; resume it locally with the command that started it. Nothing new is chosen while anything is unfinished.
+2. **Choose `main`'s head**, once it has a lab publication. Not yet published (checks running or failed), or this checkout is not that commit: `blocked` / `superseded`, nothing changed.
+3. **Recheck eligibility** exactly as `check` does: `parked`, `awaiting_acceptance`, `schema_changed`, `schema_unverified`, `migrator_drift`, each `blocked` with nothing changed.
+4. **Already live:** when the runtime was released from this commit with this image (and, with `--frontend`, the tracked frontend comes from it too): `verified` / `no_change`.
+5. **Runtime-only rollout:** the runtime plan (api/worker task definitions and services only), verify, bake and signed-in smoke. With `--frontend`, the frontend is staged before the lock and promoted after the backend verifies, then the paired checks, as for `deploy --frontend`. A failed promotion is `failed` / `frontend_pending`; reconcile again to promote it.
+6. **Stop at `verified`**, waiting for `release.py accept` locally. Rollback recovers a failed reconcile as it does a deploy.
+
+`deploy` refuses to resume a pending `reconcile`, so the full path's migrator can never run on a runtime-only release. Run `reconcile` from a clean checkout of the commit it releases. `--yes` skips only the prompt, after every check. With `LAB_RELEASE_PROFILE` set empty, release.py uses the ambient credentials (a runner's OIDC session); the account, region and Terraform-version guards are unchanged.
+
+The result names the outcome, reason and phase, the candidate and release, the live backend and frontend, the acceptance state, the record and the next manual action.
+
+**In GitHub Actions:** `.github/workflows/lab-reconcile.yml`, `workflow_dispatch` only (inputs `frontend`, default true, and `confirm`, which must be `reconcile`), on `main` only, in environment `aws-standard-lab-release`, one run at a time (`lab-release`, never cancelled). It assumes `scoutgrid-lab-github-release` (`terraform/standard/release-iam.tf`) and runs `release.py reconcile --yes [--frontend]`. The job summary shows the result. A green run is never acceptance.
+
+The role is a strict subset of the Release role: register, tag and retire api/worker task definitions, pass the api/worker roles, update the two services, read target health and api/worker logs, and keep the release inputs, records and lock, plus the four read policies Terraform's plan needs. It explicitly denies RunTask/StopTask, the migrator family and role, RDS snapshots and changes, secret values, IAM writes, and deleting anything but the release lock and Terraform's state lock. `ecs:DeregisterTaskDefinition` cannot be scoped, so the role could retire a migrator revision; that is an accepted gap. See the [design](<../../Working Knowledge/CI Pipeline/phase4-slice2-design.md>) for the accepted risk.
+
+**Enabling it (owner-run, each live step approved; nothing here is live yet):**
+1. **Grants first.** Publish `ScoutGridSydneyLab-common-read-state-part2` v3 (`grants/common-read-state-part2.json` adds the new role), keeping v2 for rollback. Without it, every `lab.sh plan-up` fails once the role exists.
+2. **Environment.** Create `aws-standard-lab-release` with deployment branches `main` only and no required reviewer (owner decision S3). Add the secrets `VERCEL_TOKEN` (a separate team-scoped token, S2) and, optionally, `LAB_SMOKE_TENANT_CONFIG` (the smoke config **without** `platform`, S1; the workflow refuses one with it), and the variable `AWS_LAB_RELEASE_ROLE_ARN` = `arn:aws:iam::736486260824:role/scoutgrid-lab-github-release`.
+3. **Role.** Attach `grants/bootstrap-github-release-role.json` inline to Bootstrap. Set in `config/sydney-lab.foundation.tfvars`:
+   ```hcl
+   github_releaser = {
+     provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+     subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main"
+   }
+   ```
+   Run one targeted Bootstrap apply of `aws_iam_role.github_releaser`, `aws_iam_role_policy.github_releaser` and `aws_iam_role_policy_attachment.github_releaser`. Then `lab.sh plan-up` must report no changes. Detach the Bootstrap grant.
+4. **Simulate** with `aws iam simulate-principal-policy` on the new role. Allowed: api/worker `RegisterTaskDefinition` (with the required tags) and `UpdateService`. Denied: migrator `RegisterTaskDefinition`, `RunTask`, `CreateDBSnapshot`, `GetSecretValue`, `PassRole` on the migrator execution role, `DeleteObject` on the inputs. Record the results in the lab record.
+5. **Prove the denials in GitHub:** a dispatch from another branch is refused, and a run outside the environment cannot assume the role.
+6. **First reconcile:** dispatch on `main`. Expect `verified` / `no_change` when `main` is the accepted pair, otherwise a runtime-only paired release. Record it, then `release.py accept` locally.
+
+Undo: set `github_releaser = null` and apply the same targets (the role and its policies are deleted; nothing depends on them), or simply delete the environment so the workflow cannot assume it.
 
 Run the tests locally with:
 
