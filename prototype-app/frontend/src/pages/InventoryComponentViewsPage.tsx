@@ -13,6 +13,8 @@ import {
   readHostAssetIdFromSearch,
   writeHostAssetIdToSearch
 } from '../features/inventory/searchState';
+import { OwnerFilters } from '../features/ownership/OwnerFilters';
+import type { OwnerFilterValue } from '../features/ownership/ownerFilterValue';
 import { useInventoryData } from '../features/inventory/useInventoryData';
 import { HostAssetDetailPage } from './HostAssetDetailPage';
 
@@ -36,6 +38,7 @@ export function InventoryComponentViewsPage({ selectedView }: Props) {
   const scopedAssetType = defaultAssetTypeForView(selectedView);
   const [componentPage, setComponentPage] = React.useState(0);
   const [retiredOnly, setRetiredOnly] = React.useState(false);
+  const [ownerFilter, setOwnerFilter] = React.useState<OwnerFilterValue>({ ownerTeamId: '', ownershipStatus: '' });
 
   const selectedHostAssetId = React.useMemo(
     () => (selectedView === 'hosts' ? readHostAssetIdFromSearch(searchParams) : null),
@@ -49,7 +52,8 @@ export function InventoryComponentViewsPage({ selectedView }: Props) {
     loading,
     refreshing,
     latestDataUpdate,
-    error
+    error,
+    errorStatus
   } = useInventoryData({
     selectedView,
     scopedAssetType,
@@ -60,7 +64,9 @@ export function InventoryComponentViewsPage({ selectedView }: Props) {
     componentEcosystems: [],
     componentReviewCategories: [],
     componentPage,
-    debouncedComponentQuery: ''
+    debouncedComponentQuery: '',
+    ownerTeamId: ownerFilter.ownerTeamId,
+    ownershipStatus: ownerFilter.ownershipStatus || undefined
   });
 
   const retiredCount = rows.filter((row) => row.componentStatus === 'RETIRED').length;
@@ -119,9 +125,16 @@ export function InventoryComponentViewsPage({ selectedView }: Props) {
         onRetiredClick={() => { setRetiredOnly((prev) => !prev); setComponentPage(0); }}
       />
 
+      <OwnerFilters
+        value={ownerFilter}
+        onChange={(next) => { setOwnerFilter(next); setComponentPage(0); }}
+        offered={rows.some((row) => row.ownership?.authorityState === 'CANONICAL')}
+        notCanonical={errorStatus === 409}
+      />
+
       <InventoryResultsPanel
         selectedView={selectedView}
-        error={error}
+        error={errorStatus === 409 ? '' : error}
         loading={loading}
         rows={rows}
         componentPage={componentPage}

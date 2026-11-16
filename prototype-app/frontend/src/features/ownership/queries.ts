@@ -10,6 +10,7 @@ import type {
   IdentitySourceRequest,
   IdentitySourceSyncRequest,
   OwnershipAuthorityState,
+  OwnershipSwitchDomain,
   OwnershipTeamRequest
 } from './types';
 
@@ -28,7 +29,7 @@ export const ownershipKeys = {
   cloudSources: ['ownership', 'cloud-sources'] as const,
   awsOrganizationsRole: ['ownership', 'cloud-sources', 'aws-organizations-role'] as const,
   mappingGroups: (q: string) => ['ownership', 'group-mappings', q] as const,
-  qualification: ['ownership', 'qualification', 'CORE'] as const
+  qualification: (domain: OwnershipSwitchDomain) => ['ownership', 'qualification', domain] as const
 };
 
 /** Shortest people/group search the server accepts (DirectoryService MIN_PREFIX). */
@@ -94,8 +95,8 @@ export function useOwnershipEncryptionQuery(enabled: boolean) {
   return useQuery({ queryKey: ownershipKeys.encryption, queryFn: api.getOwnershipEncryption, enabled });
 }
 
-export function useOwnershipQualificationQuery(enabled: boolean) {
-  return useQuery({ queryKey: ownershipKeys.qualification, queryFn: () => api.getOwnershipQualification('CORE'), enabled });
+export function useOwnershipQualificationQuery(enabled: boolean, domain: OwnershipSwitchDomain = 'CORE') {
+  return useQuery({ queryKey: ownershipKeys.qualification(domain), queryFn: () => api.getOwnershipQualification(domain), enabled });
 }
 
 function useOwnershipMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
@@ -159,9 +160,9 @@ export function useProvisionEncryptionMutation() {
   return useOwnershipMutation<void, Awaited<ReturnType<typeof api.provisionOwnershipEncryption>>>(() => api.provisionOwnershipEncryption());
 }
 
-export function useAuthorityTransitionMutation() {
+export function useAuthorityTransitionMutation(domain: OwnershipSwitchDomain = 'CORE') {
   return useOwnershipMutation(({ state, reportHash }: { state: OwnershipAuthorityState; reportHash?: string }) =>
-    api.transitionOwnershipAuthority('CORE', state, reportHash));
+    api.transitionOwnershipAuthority(domain, state, reportHash));
 }
 
 export function useIdentitySourcesQuery() {

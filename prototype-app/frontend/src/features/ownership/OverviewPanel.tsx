@@ -83,7 +83,8 @@ export function OverviewPanel({ canManageEncryption, canManageAuthority }: { can
       <CoverageCards title="Inventory (applications and hosts)" consumer="INVENTORY" />
       <CoverageCards title="Open vulnerability findings" consumer="FINDINGS" />
       {canManageEncryption && <EncryptionCard />}
-      {canManageAuthority && <CutoverPanel />}
+      {canManageAuthority && <CutoverPanel domain="CORE" />}
+      {canManageAuthority && <CutoverPanel domain="CLOUD_BOM" />}
     </div>
   );
 }

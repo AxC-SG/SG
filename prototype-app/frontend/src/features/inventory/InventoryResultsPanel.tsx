@@ -5,6 +5,7 @@ import {
   type DataTableRow
 } from '../../components/DataTable';
 import { EolBadge } from '../../components/EolBadge';
+import { AssignOwnerButton } from '../ownership/AssignOwnerButton';
 import { isCanonicalOwnership, resolvedOwnerLabel } from '../ownership/resolvedOwnership';
 import type {
   InventoryComponentRecord
@@ -114,7 +115,16 @@ function buildComponentRows(
           </>
         )
       },
-      owner: { content: isCanonicalOwnership(row.ownership) ? resolvedOwnerLabel(row.ownership) : '-' },
+      owner: {
+        content: isCanonicalOwnership(row.ownership)
+          ? (
+            <>
+              {resolvedOwnerLabel(row.ownership)}{' '}
+              <AssignOwnerButton kind="inventory-components" rowId={row.id} rowLabel={`${row.packageName} on ${row.assetName}`} />
+            </>
+          )
+          : '-'
+      },
       assetType: { content: formatAssetType(row.assetType) },
       component: { content: row.packageName },
       group: { content: row.packageGroup || '-', props: { className: 'mono' } },

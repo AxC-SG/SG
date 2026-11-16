@@ -117,6 +117,9 @@ export type OwnershipEncryptionStatus = { ready: boolean; reason: string | null 
 
 export type OwnershipAuthorityState = 'LEGACY' | 'DARK' | 'CANONICAL';
 
+/** Domains the hub can switch; AI_GRID is refused by the server. */
+export type OwnershipSwitchDomain = 'CORE' | 'CLOUD_BOM';
+
 export type OwnershipQualification = {
   domain: string;
   state: OwnershipAuthorityState;

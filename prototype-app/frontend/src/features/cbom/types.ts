@@ -46,6 +46,8 @@ export type CbomInventoryPage = {
 export type CbomInventoryFilters = {
   assetType?: string; primitive?: string; severity?: string; evidenceState?: string; custody?: string;
   environment?: string; q?: string; bomId?: string;
+  /** Owner filters; the server answers 409 until CLOUD_BOM is canonical. */
+  ownerTeamId?: string; ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
 };
 
 export type CbomComponentDetail = {

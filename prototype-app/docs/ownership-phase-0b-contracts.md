@@ -673,8 +673,17 @@ R1 benchmark.
   `ReadWaveRollbackPostgresIntegrationTest` proves the rollback: with both empty and every domain canonical, campaign
   members read `LEGACY_PENDING_MIGRATION`, tickets take the legacy route and record `LEGACY` attempts, and the owner-at-add
   snapshot is still recorded.
-- **Not in E15:** the hub UI for the CLOUD_BOM switch and for these filters and assignments. The backend and the contract
-  are complete; the screens follow the CORE cutover panel pattern.
+- **Implementation (E15 frontend).** `CutoverPanel` takes a `domain` (CORE or CLOUD_BOM; AI_GRID is never offered) and the
+  Overview shows both. For CLOUD_BOM it lists the gates and, separately under "Evidence for review (not gates)", every
+  `evidence.` entry, with the report hash, the same go / no-go confirmations and the rollback-window message once
+  canonical. `OwnerFilters` (team and status) sits above the BOM components table and in the CBOM inventory panel; the BOM
+  table offers it once its rows carry a canonical envelope, and a 409 shows "available once BOM ownership is canonical" as a
+  plain state. `AssignOwnerButton` and `AssignOccurrenceOwnerDialog` (team, required reason, optional expiry, preview of
+  `affectedFindings` and `wouldChange`, then confirm, with plain 404 and 409 states) are on BOM component rows when the row
+  is canonical and the actor may MANUAL_ASSIGN (`canManualAssign`). The CBOM inventory item has no ownership envelope, so
+  its filters are always offered and its Assign owner button is shown to permitted roles without a canonical check; the
+  server's 409 is the gate there. The finding-adapters dark report is not rendered in the hub (its owner-change count is
+  the `findingAdapterOwnerChanges` gate). The CBOM chip for the team filter says "Selected team" rather than the name.
 
 ### 3.7 Aggregates and reads
 

@@ -54,6 +54,11 @@ export function canMapGroups(actor: ActorContext | null): boolean {
   return hasAnyRole(actor, ADMINS);
 }
 
+/** MANUAL_ASSIGN: assign or revoke an owner on a subject or occurrence. */
+export function canManualAssign(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, [...ADMINS, 'SECURITY_ANALYST']);
+}
+
 /** CONFIGURE_OWNERSHIP_PRODUCER: the AWS/GCP producer's key and account-input switches. */
 export function canConfigureOwnershipProducer(actor: ActorContext | null): boolean {
   return hasAnyRole(actor, ADMINS);

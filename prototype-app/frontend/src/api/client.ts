@@ -59,6 +59,7 @@ import type {
   OwnershipCoverage,
   OwnershipEncryptionStatus,
   OwnershipQualification,
+  OwnershipSwitchDomain,
   OwnershipReviewItem,
   OwnershipTeam,
   OwnershipTeamAlias,
@@ -777,6 +778,7 @@ import type {
   CampaignWatchlistEntryUpdateRequest,
 } from '../features/campaigns/types';
 import type { OwnerBucket } from '../features/campaigns/ownership';
+import type { OccurrenceAssignmentPreview, OccurrenceAssignmentRequest, OccurrenceKind } from '../features/ownership/occurrenceTypes';
 
 export type CampaignAdvisory = {
   title: string;
@@ -1475,6 +1477,9 @@ export const api = {
       ecosystem?: string[];
       reviewCategory?: string[];
       query?: string;
+      /** Owner filters need CLOUD_BOM canonical; the server answers 409 before that. */
+      ownerTeamId?: string;
+      ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
       page?: number;
       size?: number;
     }
@@ -1486,6 +1491,8 @@ export const api = {
     params?.ecosystem?.forEach((value) => searchParams.append('ecosystem', value));
     params?.reviewCategory?.forEach((value) => searchParams.append('reviewCategory', value));
     if (params?.query && params.query.trim().length > 0) searchParams.set('query', params.query.trim());
+    if (params?.ownerTeamId) searchParams.set('ownerTeamId', params.ownerTeamId);
+    if (params?.ownershipStatus) searchParams.set('ownershipStatus', params.ownershipStatus);
     if (params?.page != null) searchParams.set('page', String(params.page));
     if (params?.size != null) searchParams.set('size', String(params.size));
     const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
@@ -1901,8 +1908,8 @@ export const api = {
     request<GroupTeamMapping>(`/ownership/group-mappings/${encodeURIComponent(mappingId)}/dismiss`, { method: 'POST' }),
   getOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption'),
   provisionOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption/provision', { method: 'POST' }),
-  getOwnershipQualification: (domain: 'CORE') => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),
-  transitionOwnershipAuthority: (domain: 'CORE', state: OwnershipAuthorityState, reportHash?: string) =>
+  getOwnershipQualification: (domain: OwnershipSwitchDomain) => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),
+  transitionOwnershipAuthority: (domain: OwnershipSwitchDomain, state: OwnershipAuthorityState, reportHash?: string) =>
     request<OwnershipQualification>(`/ownership/authority/${domain}`, { method: 'POST', body: JSON.stringify({ state, reportHash }) }),
   listCampaigns: (status?: CampaignStatus) =>
     request<CampaignSummary[]>(status ? `/campaigns?status=${encodeURIComponent(status)}` : '/campaigns'),
@@ -2847,6 +2854,17 @@ export const api = {
     request<OwnerBucket[]>(`/campaigns/${encodeURIComponent(campaignId)}/owner-buckets?groupBy=${groupBy}`),
   getCampaignReconciliation: (campaignId: string) =>
     request<CampaignReconciliation>(`/campaigns/${encodeURIComponent(campaignId)}/reconciliation`),
+  /** Phase 0B §3.7: preview or assign an owner on one occurrence (never every occurrence of the package). */
+  previewOccurrenceAssignment: (kind: OccurrenceKind, rowId: string, teamId: string) =>
+    request<OccurrenceAssignmentPreview>(`/ownership/occurrences/${kind}/${encodeURIComponent(rowId)}/manual-assignment/preview`, {
+      method: 'POST', body: JSON.stringify({ teamId })
+    }),
+  assignOccurrenceOwner: (kind: OccurrenceKind, rowId: string, payload: OccurrenceAssignmentRequest, idempotencyKey?: string) =>
+    request<OccurrenceAssignmentPreview>(`/ownership/occurrences/${kind}/${encodeURIComponent(rowId)}/manual-assignment`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined
+    }),
   previewTickets: (payload: TicketPreviewRequest) =>
     request<TicketPreview>('/tickets/preview', { method: 'POST', body: JSON.stringify(payload) }),
   getCbomPqcReadiness: () =>
