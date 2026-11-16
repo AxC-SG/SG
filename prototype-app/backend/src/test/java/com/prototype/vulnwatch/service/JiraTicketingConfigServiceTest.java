@@ -54,7 +54,7 @@ class JiraTicketingConfigServiceTest {
 
     private static JiraTicketingConfigRequest request(String baseUrl, String secret) {
         return new JiraTicketingConfigRequest(baseUrl, "BASIC", "svc@acme.test", secret,
-                "sec", null, null, null, null, null);
+                "sec", null, null, null, null, null, null);
     }
 
     @Test

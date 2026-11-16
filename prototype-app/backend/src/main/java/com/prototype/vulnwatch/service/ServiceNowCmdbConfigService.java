@@ -219,6 +219,10 @@ public class ServiceNowCmdbConfigService {
         config.setEnabled(request.enabled() == null || request.enabled());
         config.setAutoSyncEnabled(request.autoSyncEnabled() != null && request.autoSyncEnabled());
         config.setIntervalMinutes(request.intervalMinutes() == null ? 1440 : Math.max(5, request.intervalMinutes()));
+        // Null keeps the stored default (older clients do not send it); blank clears it.
+        if (request.defaultAssignmentGroup() != null) {
+            config.setDefaultAssignmentGroup(request.defaultAssignmentGroup().isBlank() ? null : request.defaultAssignmentGroup().trim());
+        }
 
         ServiceNowRuntimeConfig runtimeConfig = new ServiceNowRuntimeConfig(
                 config.getBaseUrl(),
@@ -355,6 +359,7 @@ public class ServiceNowCmdbConfigService {
                     null,
                     null,
                     null,
+                    null,
                     null
             );
         }
@@ -380,7 +385,8 @@ public class ServiceNowCmdbConfigService {
                 config.getLastTestStatus(),
                 config.getLastTestMessage(),
                 config.getLastTestedAt(),
-                config.getLastSyncAt()
+                config.getLastSyncAt(),
+                config.getDefaultAssignmentGroup()
         );
     }
 

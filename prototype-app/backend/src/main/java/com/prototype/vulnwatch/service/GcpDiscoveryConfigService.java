@@ -38,6 +38,14 @@ public class GcpDiscoveryConfigService {
     private final CredentialEncryptionService encryption;
     private final ObjectMapper objectMapper;
 
+    private com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService cloudOwnershipSources;
+
+    /** Phase 0B §2.1: while the cloud ownership producer is enabled, connector intervals must suit its TTLs. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCloudOwnershipSources(com.prototype.vulnwatch.service.ownership.CloudOwnershipSourceService cloudOwnershipSources) {
+        this.cloudOwnershipSources = cloudOwnershipSources;
+    }
+
     public GcpDiscoveryConfigService(
             GcpDiscoveryConfigRepository repo,
             GcpDiscoveryTargetRepository targets,
@@ -87,6 +95,7 @@ public class GcpDiscoveryConfigService {
         }
         config.setEnabled(safe.enabled() == null || safe.enabled());
         config.setAutoSyncEnabled(safe.autoSyncEnabled() != null && safe.autoSyncEnabled());
+        if (cloudOwnershipSources != null) cloudOwnershipSources.requireValidConnectorInterval(safe.intervalMinutes());
         config.setIntervalMinutes(safe.intervalMinutes() == null ? 1440 : Math.max(60, safe.intervalMinutes()));
         config.touch();
         GcpDiscoveryConfig saved = repo.save(config);

@@ -103,7 +103,7 @@ class TicketingServiceCveTest {
     void routesCveTicketsToJiraWhenJiraIsActive() {
         TicketingProvider serviceNow = provider(TicketingSystem.SERVICENOW);
         TicketingProvider jira = provider(TicketingSystem.JIRA);
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(serviceNow, jira)), findings);
 
         List<TicketRef> refs = service.createTicketsForCve(tenant, "CVE-2026-1", request(
@@ -116,7 +116,7 @@ class TicketingServiceCveTest {
     @Test
     void linksMatchingFindingsWithTheProviderThatRaisedTheTicket() {
         TicketingProvider provider = provider(TicketingSystem.JIRA);
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(provider)), findings);
 
         UUID componentId = UUID.randomUUID();
@@ -153,7 +153,7 @@ class TicketingServiceCveTest {
         TicketingProvider provider = mock(TicketingProvider.class);
         when(provider.system()).thenReturn(TicketingSystem.SERVICENOW);
         when(provider.isConfigured(tenant)).thenReturn(false);
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(provider)), findings);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -163,7 +163,7 @@ class TicketingServiceCveTest {
     }
 
     private TicketingService serviceWith(TicketingProvider provider) {
-        return new TicketingService(new TicketingProviderRegistry(List.of(provider)), findings);
+        return TicketingServices.legacy(new TicketingProviderRegistry(List.of(provider)), findings);
     }
 
     private TicketingProvider provider(TicketingSystem system) {

@@ -131,9 +131,10 @@ public class CbomController {
             @RequestParam(required=false) String custody,@RequestParam(required=false) String environment,
             @RequestParam(required=false) UUID assetId,@RequestParam(required=false) UUID bomId,
             @RequestParam(required=false) String q,@RequestParam(defaultValue="false") boolean includeInactive,
+            @RequestParam(required=false) UUID ownerTeamId,@RequestParam(required=false) String ownershipStatus,
             @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size){
         return visibility.inventory(workspaceService.getWorkspace(),new com.prototype.vulnwatch.service.cbom.CbomVisibilityService.InventoryFilter(
-                assetType,primitive,severity,evidenceState,custody,environment,assetId,bomId,q,includeInactive),page,size);
+                assetType,primitive,severity,evidenceState,custody,environment,assetId,bomId,q,includeInactive,ownerTeamId,ownershipStatus),page,size);
     }
 
     /** Evidence drawer: component, provenance, claims, explainable findings and relationships. */

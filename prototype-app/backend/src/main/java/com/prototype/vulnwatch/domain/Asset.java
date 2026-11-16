@@ -132,7 +132,7 @@ public class Asset {
     private String cloudArn;
 
     /** JSON object of all raw AWS resource tags, e.g. {"Name":"my-db","Env":"prod"}. */
-    @Column(name = "cloud_tags_json")
+    @Column(name = "cloud_tags_json", columnDefinition = "text")
     private String cloudTagsJson;
 
     /** Launch/creation time reported by the cloud provider. */

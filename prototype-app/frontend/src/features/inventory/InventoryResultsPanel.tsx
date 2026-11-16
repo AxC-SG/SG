@@ -5,6 +5,8 @@ import {
   type DataTableRow
 } from '../../components/DataTable';
 import { EolBadge } from '../../components/EolBadge';
+import { AssignOwnerButton } from '../ownership/AssignOwnerButton';
+import { isCanonicalOwnership, resolvedOwnerLabel } from '../ownership/resolvedOwnership';
 import type {
   InventoryComponentRecord
 } from './api-types';
@@ -32,6 +34,7 @@ const COMPONENT_COLUMNS: DataTableColumn[] = [
   { id: 'component', label: 'Component', header: 'Component', initialSize: 180 },
   { id: 'version', label: 'Version', header: 'Version', initialSize: 140 },
   { id: 'asset', label: 'Asset', header: 'Asset', initialSize: 220 },
+  { id: 'owner', label: 'Owner', header: 'Owner', initialSize: 160 },
   { id: 'ecosystem', label: 'Ecosystem', header: 'Ecosystem', initialSize: 140 },
   { id: 'cves', label: 'CVEs', header: 'CVEs', initialSize: 180 },
   { id: 'group', label: 'Group', header: 'Group', initialSize: 160 },
@@ -111,6 +114,16 @@ function buildComponentRows(
             )}
           </>
         )
+      },
+      owner: {
+        content: isCanonicalOwnership(row.ownership)
+          ? (
+            <>
+              {resolvedOwnerLabel(row.ownership)}{' '}
+              <AssignOwnerButton kind="inventory-components" rowId={row.id} rowLabel={`${row.packageName} on ${row.assetName}`} />
+            </>
+          )
+          : '-'
       },
       assetType: { content: formatAssetType(row.assetType) },
       component: { content: row.packageName },
@@ -225,9 +238,11 @@ export function InventoryResultsPanel({
 }: Props) {
   const [filters, setFilters] = React.useState<ColumnFilters>(EMPTY_FILTERS);
 
+  // The owner column appears once component ownership is canonical (Phase 0B §3.7); before that there is nothing to show.
+  const showOwner = React.useMemo(() => rows.some((row) => isCanonicalOwnership(row.ownership)), [rows]);
   const tableColumns = React.useMemo(
-    () => COMPONENT_COLUMNS.filter((column) => selectedView === 'hosts' || column.id !== 'review'),
-    [selectedView]
+    () => COMPONENT_COLUMNS.filter((column) => (selectedView === 'hosts' || column.id !== 'review') && (showOwner || column.id !== 'owner')),
+    [selectedView, showOwner]
   );
 
   const filteredRows = React.useMemo(

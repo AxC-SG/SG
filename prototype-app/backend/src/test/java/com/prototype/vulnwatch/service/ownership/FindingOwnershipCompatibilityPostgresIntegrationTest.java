@@ -47,6 +47,7 @@ class FindingOwnershipCompatibilityPostgresIntegrationTest {
 
     @Autowired private FindingQueryService findings;
     @Autowired private InventorySubjectAdapter inventory;
+    @Autowired private FindingSubjectAdapterRegistry findingSubjects;
     @Autowired private OwnershipClaimService claims;
     @Autowired private TeamNamespaceService teams;
     @Autowired private TenantService tenantService;
@@ -86,8 +87,8 @@ class FindingOwnershipCompatibilityPostgresIntegrationTest {
                 .containsEntry("authorityState", "LEGACY_PENDING_MIGRATION");
 
         UUID subject = inventory.subjectForAsset(asset).orElseThrow();
-        inventory.subjectForFinding(vulnerabilityFinding);
-        assertThat(inventory.subjectForFinding(aiFinding)).as("AI findings are not linked by adapter v1").isEmpty();
+        findingSubjects.subjectForFinding(vulnerabilityFinding);
+        assertThat(findingSubjects.subjectForFinding(aiFinding)).as("AI findings are not linked by adapter v1").isEmpty();
         claims.recordClaim(new ClaimRequest(subject, payments, null, "SERVICENOW", "SERVICENOW", null, "cmdb_ci:web-1",
                 "v1", "sn", Instant.now(), null, null, null, "sn"));
         setCoreCanonical();
@@ -128,9 +129,9 @@ class FindingOwnershipCompatibilityPostgresIntegrationTest {
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode().value()).isEqualTo(409));
 
         UUID subject = inventory.subjectForAsset(asset).orElseThrow();
-        inventory.subjectForFinding(owned);
+        findingSubjects.subjectForFinding(owned);
         inventory.subjectForAsset(orphanAsset);
-        inventory.subjectForFinding(unowned);
+        findingSubjects.subjectForFinding(unowned);
         claims.recordClaim(new ClaimRequest(subject, payments, null, "SERVICENOW", "SERVICENOW", null, "cmdb_ci:web-1",
                 "v1", "sn", Instant.now(), null, null, null, "sn"));
         setCoreCanonical();

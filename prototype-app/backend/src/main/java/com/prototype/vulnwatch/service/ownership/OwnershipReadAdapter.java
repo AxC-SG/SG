@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,13 +46,21 @@ public class OwnershipReadAdapter {
     private final OwnershipEffectiveCacheService cache;
     private final Map<Consumer, Set<String>> readWaves;
 
+    /**
+     * Read waves per consumer: a comma-separated tenant ID list or {@code *}, empty (off) by default. Campaigns and
+     * tickets (Phase 0B §4.10 step 4) are enabled per tenant only after CORE is CANONICAL; emptying a wave is the
+     * rollback.
+     */
     public OwnershipReadAdapter(JdbcTemplate jdbc, OwnershipAuthorityService authority, OwnershipEffectiveCacheService cache,
                                 @Value("${app.ownership.read-waves.inventory:}") String inventory,
-                                @Value("${app.ownership.read-waves.findings:}") String findings) {
+                                @Value("${app.ownership.read-waves.findings:}") String findings,
+                                @Value("${app.ownership.read-waves.campaigns:}") String campaigns,
+                                @Value("${app.ownership.read-waves.tickets:}") String tickets) {
         this.jdbc = jdbc;
         this.authority = authority;
         this.cache = cache;
-        this.readWaves = Map.of(Consumer.INVENTORY, parse(inventory), Consumer.FINDINGS, parse(findings));
+        this.readWaves = Map.of(Consumer.INVENTORY, parse(inventory), Consumer.FINDINGS, parse(findings),
+                Consumer.CAMPAIGNS, parse(campaigns), Consumer.TICKETS, parse(tickets));
     }
 
     /** True when {@code consumer} reads canonical ownership for the current tenant. */
@@ -122,6 +131,114 @@ public class OwnershipReadAdapter {
         return byId;
     }
 
+    /** Which component rows an occurrence read covers (Phase 0B §3.7). */
+    public enum OccurrenceTable { INVENTORY_COMPONENTS("inventory_components"), CBOM_COMPONENTS("cbom_components");
+        private final String table;
+        OccurrenceTable(String table) { this.table = table; }
+    }
+
+    /**
+     * Owner envelopes for BOM or CBOM component rows, through their occurrence link (Phase 0B §3.7). Empty, with no
+     * ownership query, unless inventory reads are canonical for CLOUD_BOM; callers then show no owner column value.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Summary> forOccurrences(OccurrenceTable table, List<UUID> rowIds) {
+        if (rowIds.isEmpty() || !canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) return Map.of();
+        Map<UUID, Summary> byId = new LinkedHashMap<>();
+        for (int from = 0; from < rowIds.size(); from += MAX_IDS) {
+            List<UUID> batch = rowIds.subList(from, Math.min(rowIds.size(), from + MAX_IDS));
+            jdbc.query("SELECT r.id, NULL, r.ownership_subject_id, e.owner_team_id, t.name, e.ownership_status, e.ownership_origin_subject_id,"
+                    + " e.ownership_assignment_id, e.ownership_source_kind, e.ownership_resolved_at, e.ownership_stale, e.inheritance_depth, NULL"
+                    + " FROM " + table.table + " r"
+                    + " LEFT JOIN ownership_effective_assignment e ON e.subject_id = r.ownership_subject_id"
+                    + " LEFT JOIN team t ON t.id = e.owner_team_id WHERE r.id = ANY (?::uuid[])",
+                    rs -> { Summary summary = summary(rs, true, Domain.CLOUD_BOM.name()); byId.put(summary.objectId(), summary); },
+                    array(batch));
+        }
+        return byId;
+    }
+
+    /** Largest owner-filtered id set a list query will accept; a broader filter must be narrowed. */
+    public static final int MAX_OCCURRENCE_FILTER_IDS = 10_000;
+
+    /**
+     * SQL predicate for the BOM and CBOM owner filters (Phase 0B §3.7) over occurrence rows aliased {@code alias}:
+     * a row matches on its live effective owner team and/or status, and an unlinked row is UNOWNED. Throws 409 while
+     * CLOUD_BOM reads are not canonical, because legacy labels cannot be filtered by canonical team, and 400 for an
+     * unknown status. Binds its parameters into {@code args}; returns null when neither filter is set.
+     */
+    public String occurrenceFilterPredicate(String alias, UUID teamId, String status, List<Object> args) {
+        if (teamId == null && (status == null || status.isBlank())) return null;
+        if (!canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Owner team and ownership status filters are available once BOM ownership is canonical");
+        }
+        if (status != null && !status.isBlank() && !Set.of("OWNED", "UNOWNED", "CONFLICT").contains(status)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Unknown ownership status");
+        }
+        StringBuilder sql = new StringBuilder("(1 = 1");
+        if (teamId != null) {
+            sql.append(" AND (SELECT e.owner_team_id FROM ownership_effective_assignment e WHERE e.subject_id = ")
+                    .append(alias).append(".ownership_subject_id) = ?");
+            args.add(teamId);
+        }
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND COALESCE((SELECT e.ownership_status FROM ownership_effective_assignment e WHERE e.subject_id = ")
+                    .append(alias).append(".ownership_subject_id), 'UNOWNED') = ?");
+            args.add(status);
+        }
+        return sql.append(")").toString();
+    }
+
+    /**
+     * IDs of the occurrence rows whose live owner matches, for list queries that cannot join the effective view (the
+     * JPA-backed BOM component list). At most {@link #MAX_OCCURRENCE_FILTER_IDS}; more is a 400 asking for a narrower filter.
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> occurrenceIds(OccurrenceTable table, UUID teamId, String status) {
+        List<Object> args = new java.util.ArrayList<>();
+        String predicate = occurrenceFilterPredicate("r", teamId, status, args);
+        if (predicate == null) return List.of();
+        args.add(MAX_OCCURRENCE_FILTER_IDS + 1);
+        List<UUID> ids = jdbc.queryForList("SELECT r.id FROM " + table.table + " r WHERE " + predicate + " ORDER BY r.id LIMIT ?",
+                UUID.class, args.toArray());
+        if (ids.size() > MAX_OCCURRENCE_FILTER_IDS) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "More than " + MAX_OCCURRENCE_FILTER_IDS + " rows match this owner filter; add another filter");
+        }
+        return ids;
+    }
+
+    /** Owner-team coverage of a software identity's occurrences, by stable team ID (§3.7); never stored. */
+    public record IdentityCoverage(long occurrences, long ownedOccurrences, long unownedOccurrences, long conflictOccurrences, List<UUID> teamIds) { }
+
+    @Transactional(readOnly = true)
+    public Optional<IdentityCoverage> identityCoverage(UUID softwareIdentityId) {
+        if (!canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) return Optional.empty();
+        Map<String, Object> counts = jdbc.queryForMap("""
+                SELECT count(DISTINCT ic.ownership_subject_id) AS occurrences,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status = 'OWNED') AS owned,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status IS NULL OR e.ownership_status = 'UNOWNED') AS unowned,
+                       count(DISTINCT ic.ownership_subject_id) FILTER (WHERE e.ownership_status = 'CONFLICT') AS conflict
+                  FROM inventory_components ic
+                  LEFT JOIN ownership_effective_assignment e ON e.subject_id = ic.ownership_subject_id
+                 WHERE ic.software_identity_id = ? AND ic.ownership_subject_id IS NOT NULL AND ic.component_status = 'ACTIVE'
+                """, softwareIdentityId);
+        List<UUID> teams = jdbc.queryForList("""
+                SELECT DISTINCT e.owner_team_id FROM inventory_components ic
+                  JOIN ownership_effective_assignment e ON e.subject_id = ic.ownership_subject_id
+                 WHERE ic.software_identity_id = ? AND ic.component_status = 'ACTIVE' AND e.owner_team_id IS NOT NULL
+                 ORDER BY 1
+                """, UUID.class, softwareIdentityId);
+        return Optional.of(new IdentityCoverage(num(counts.get("occurrences")), num(counts.get("owned")), num(counts.get("unowned")),
+                num(counts.get("conflict")), teams));
+    }
+
+    /** Whether {@code consumer} reads each domain canonically for the current tenant (wave and authority). */
+    public Map<Domain, Boolean> canonicalDomains(Consumer consumer) {
+        return canonicalByDomain(consumer);
+    }
+
     private Map<Domain, Boolean> canonicalByDomain(Consumer consumer) {
         Map<Domain, Boolean> map = new java.util.EnumMap<>(Domain.class);
         for (Domain domain : Domain.values()) map.put(domain, canonical(consumer, domain));
@@ -147,9 +264,18 @@ public class OwnershipReadAdapter {
     /** Domain-aware finding envelope: each row is canonical only when its own kind's domain is canonical. */
     @Transactional(readOnly = true)
     public List<Summary> forFindings(List<UUID> findingIds) {
+        return forFindings(Consumer.FINDINGS, findingIds);
+    }
+
+    /**
+     * The finding envelope for another finding consumer (campaign members read under {@link Consumer#CAMPAIGNS},
+     * Phase 0B §4.5). With that consumer's read wave off it returns the legacy labels and runs no ownership query.
+     */
+    @Transactional(readOnly = true)
+    public List<Summary> forFindings(Consumer consumer, List<UUID> findingIds) {
         List<UUID> ids = bounded(findingIds);
         if (ids.isEmpty()) return List.of();
-        Map<Domain, Boolean> canonicalByDomain = canonicalByDomain(Consumer.FINDINGS);
+        Map<Domain, Boolean> canonicalByDomain = canonicalByDomain(consumer);
         if (!canonicalByDomain.containsValue(true)) {
             // Nothing canonical yet: skip the effective walk and return the legacy labels only.
             return order(ids, jdbc.query("SELECT id, finding_kind, owner_group FROM findings WHERE id = ANY (?::uuid[])",

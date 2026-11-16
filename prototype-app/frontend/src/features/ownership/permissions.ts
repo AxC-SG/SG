@@ -33,3 +33,33 @@ export function canManageOwnershipEncryption(actor: ActorContext | null): boolea
 export function canManageOwnershipAuthority(actor: ActorContext | null): boolean {
   return hasAnyRole(actor, ['TENANT_ADMIN']);
 }
+
+/** VIEW_IDENTITY_SOURCE: the Sources view. */
+export function canViewIdentitySources(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ADMINS);
+}
+
+/** CONFIGURE_IDENTITY_SOURCE: configure, test, preview, enable, sync now, resume and disable. */
+export function canConfigureIdentitySource(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ['TENANT_ADMIN']);
+}
+
+/** PAUSE_SOURCE. */
+export function canPauseIdentitySource(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ADMINS);
+}
+
+/** MAP_GROUPS: preview, activate, retire and dismiss group-to-team mappings. Reading them needs VIEW_OWNERSHIP. */
+export function canMapGroups(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ADMINS);
+}
+
+/** MANUAL_ASSIGN: assign or revoke an owner on a subject or occurrence. */
+export function canManualAssign(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, [...ADMINS, 'SECURITY_ANALYST']);
+}
+
+/** CONFIGURE_OWNERSHIP_PRODUCER: the AWS/GCP producer's key and account-input switches. */
+export function canConfigureOwnershipProducer(actor: ActorContext | null): boolean {
+  return hasAnyRole(actor, ADMINS);
+}

@@ -34,6 +34,7 @@ public final class OutboundHostPolicy {
             "msrc=api.msrc.microsoft.com",
             "azure-management=management.azure.com",
             "gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com",
+            "aws=organizations.us-east-1.amazonaws.com",
             "intune=graph.microsoft.com,login.microsoftonline.com",
             "csaf-microsoft=msrc.microsoft.com",
             "csaf-redhat=security.access.redhat.com",
@@ -70,12 +71,18 @@ public final class OutboundHostPolicy {
     }
 
     public static OutboundHostPolicy forTests() {
-        return new OutboundHostPolicy(
+        return forTests(
                 "test=example.test;github=example.test,api.github.com;nvd=example.test,services.nvd.nist.gov;epss=example.test;eol=example.test,endoflife.date;"
                         + "openai=example.test;resend=example.test;kev=example.test;jvn=example.test;"
                         + "euvd=example.test;servicenow=example.test;jira=example.test;sbom-endpoint=example.test;gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com;"
+                        + "aws=organizations.us-east-1.amazonaws.com;"
                         + "intune=graph.microsoft.com,login.microsoftonline.com;"
-                        + "csaf-test=example.test;paced=example.test;euvd=example.test,euvdservices.enisa.europa.eu",
+                        + "csaf-test=example.test;paced=example.test;euvd=example.test,euvdservices.enisa.europa.eu");
+    }
+
+    /** A policy for the given allowlist whose hosts all resolve to one public test address, without DNS. */
+    public static OutboundHostPolicy forTests(String allowlist) {
+        return new OutboundHostPolicy(allowlist,
                 host -> {
                     try {
                         return new InetAddress[]{InetAddress.getByAddress(host, new byte[]{93, (byte) 184, (byte) 216, 34})};

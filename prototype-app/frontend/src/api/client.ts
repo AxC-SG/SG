@@ -42,15 +42,30 @@ import type {
   DirectoryPerson,
   DirectoryPersonCreate,
   DirectoryPersonUpdate,
+  ExternalGroupRow,
+  GroupMappingChange,
+  GroupMappingImpact,
+  GroupTeamMapping,
+  AwsOrganizationsRole,
+  AwsOrganizationsRoleTest,
+  CloudOwnershipSettingsRequest,
+  CloudOwnershipSource,
+  IdentitySource,
+  IdentitySourceConnectionTest,
+  IdentitySourcePreview,
+  IdentitySourceRequest,
+  IdentitySourceSyncRequest,
   OwnershipAuthorityState,
   OwnershipCoverage,
   OwnershipEncryptionStatus,
   OwnershipQualification,
+  OwnershipSwitchDomain,
   OwnershipReviewItem,
   OwnershipTeam,
   OwnershipTeamAlias,
   OwnershipTeamRequest
 } from '../features/ownership/types';
+import type { ResolvedOwnership } from '../features/ownership/resolvedOwnership';
 import type {
   ClusterImpactResult,
   ConnectorIssueGroup,
@@ -97,6 +112,8 @@ import type {
   GcpDiscoveryTarget,
   GcpDiscoveryTargetRequest,
   CreateFindingTicketRequest,
+  TicketPreview,
+  TicketPreviewRequest,
   FindingTicketResponse,
   JiraConnectionTest,
   JiraTicketingConfig,
@@ -125,7 +142,6 @@ import type {
   CbomSemanticDiff,
   CbomTrends,
   CryptoEffectiveness,
-  CampaignFinding,
   CbomBlastRadius,
   CbomContradiction,
   CbomGatePolicy,
@@ -259,6 +275,8 @@ export type CbomComponent = {
   openFindingCount: number;
   highFindingCount: number;
   criticalFindingCount: number;
+  /** Resolved owner of the component's occurrence (Phase 0B §3.7); absent until CLOUD_BOM inventory reads are canonical. */
+  ownership?: ResolvedOwnership | null;
 };
 
 export type CbomRiskFinding = {
@@ -748,12 +766,19 @@ import type {
   CampaignException,
   CampaignExceptionRequest,
   CampaignExceptionStatus,
+  CampaignMemberPage,
+  CampaignMemberQuery,
+  CampaignPreview,
+  CampaignReconciliation,
+  CampaignOwnerGrouping,
   CampaignNote,
   CampaignNotifyGroupRequest,
   CampaignStatus,
   CampaignSummary,
   CampaignWatchlistEntryUpdateRequest,
 } from '../features/campaigns/types';
+import type { OwnerBucket } from '../features/campaigns/ownership';
+import type { OccurrenceAssignmentPreview, OccurrenceAssignmentRequest, OccurrenceKind } from '../features/ownership/occurrenceTypes';
 
 export type CampaignAdvisory = {
   title: string;
@@ -924,7 +949,7 @@ function formatApiError(payload: ApiErrorPayload, fallback: string): string {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number) {
+  constructor(message: string, public readonly status: number, public readonly body?: unknown) {
     super(message);
     this.name = 'ApiError';
   }
@@ -939,7 +964,7 @@ async function parseApiError(response: Response): Promise<Error> {
       if (!managedBrowserAuthEnabled && isJwtAuthFailure(response.status, payload)) {
         handleJwtAuthFailure();
       }
-      return new ApiError(formatApiError(payload, fallback), response.status);
+      return new ApiError(formatApiError(payload, fallback), response.status, payload);
     } catch {
       return new ApiError(fallback, response.status);
     }
@@ -950,6 +975,16 @@ async function parseApiError(response: Response): Promise<Error> {
     handleJwtAuthFailure();
   }
   return new ApiError(text || fallback, response.status);
+}
+
+/**
+ * The fresh preview carried by a 409 `TICKET_ROUTING_CHANGED` response (Phase 0B §4.9), or null for any other error.
+ * The caller shows it and asks for a new confirmation; it never retries on its own.
+ */
+export function ticketRoutingChangedPreview(error: unknown): TicketPreview | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const body = error.body as { code?: string; preview?: TicketPreview } | undefined;
+  return body?.code === 'TICKET_ROUTING_CHANGED' && body.preview ? body.preview : null;
 }
 
 export function getStoredAuthToken(): string {
@@ -1442,6 +1477,9 @@ export const api = {
       ecosystem?: string[];
       reviewCategory?: string[];
       query?: string;
+      /** Owner filters need CLOUD_BOM canonical; the server answers 409 before that. */
+      ownerTeamId?: string;
+      ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
       page?: number;
       size?: number;
     }
@@ -1453,6 +1491,8 @@ export const api = {
     params?.ecosystem?.forEach((value) => searchParams.append('ecosystem', value));
     params?.reviewCategory?.forEach((value) => searchParams.append('reviewCategory', value));
     if (params?.query && params.query.trim().length > 0) searchParams.set('query', params.query.trim());
+    if (params?.ownerTeamId) searchParams.set('ownerTeamId', params.ownerTeamId);
+    if (params?.ownershipStatus) searchParams.set('ownershipStatus', params.ownershipStatus);
     if (params?.page != null) searchParams.set('page', String(params.page));
     if (params?.size != null) searchParams.set('size', String(params.size));
     const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
@@ -1814,10 +1854,62 @@ export const api = {
   },
   closeOwnershipReviewItem: (itemId: string, state: 'RESOLVED' | 'DISMISSED', note?: string) =>
     request<void>(`/ownership/review-items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify({ state, note }) }),
+  listIdentitySources: () => request<IdentitySource[]>('/ownership/identity-sources'),
+  createIdentitySource: (payload: IdentitySourceRequest) =>
+    request<IdentitySource>('/ownership/identity-sources', { method: 'POST', body: JSON.stringify(payload) }),
+  updateIdentitySource: (sourceId: string, payload: IdentitySourceRequest) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  testIdentitySource: (sourceId: string) =>
+    request<IdentitySourceConnectionTest>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/test`, { method: 'POST' }),
+  /** Samples hold full names and emails; the response is no-store and must stay in component state only. */
+  previewIdentitySource: (sourceId: string) =>
+    request<IdentitySourcePreview>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/preview`, { method: 'POST' }),
+  enableIdentitySource: (sourceId: string, previewToken: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/enable`, {
+      method: 'POST',
+      body: JSON.stringify({ previewToken })
+    }),
+  syncIdentitySource: (sourceId: string, complete: boolean) =>
+    request<IdentitySourceSyncRequest>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ complete })
+    }),
+  pauseIdentitySource: (sourceId: string, reason?: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    }),
+  resumeIdentitySource: (sourceId: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/resume`, { method: 'POST' }),
+  disableIdentitySource: (sourceId: string) =>
+    request<IdentitySource>(`/ownership/identity-sources/${encodeURIComponent(sourceId)}/disable`, { method: 'POST' }),
+  getAwsOrganizationsRole: () => request<AwsOrganizationsRole>('/ownership/cloud-sources/aws/organizations-role'),
+  /** The external ID is write-only: send it to set or replace it; it is never returned. */
+  saveAwsOrganizationsRole: (payload: { roleArn: string; externalId?: string | null }) =>
+    request<AwsOrganizationsRole>('/ownership/cloud-sources/aws/organizations-role', { method: 'PUT', body: JSON.stringify(payload) }),
+  testAwsOrganizationsRole: (accountId?: string) =>
+    request<AwsOrganizationsRoleTest>('/ownership/cloud-sources/aws/organizations-role/test', { method: 'POST', body: JSON.stringify({ accountId }) }),
+  listCloudOwnershipSources: () => request<CloudOwnershipSource[]>('/ownership/cloud-sources'),
+  updateCloudOwnershipSettings: (provider: CloudOwnershipSource['provider'], payload: CloudOwnershipSettingsRequest) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/settings`, { method: 'PUT', body: JSON.stringify(payload) }),
+  pauseCloudOwnershipSource: (provider: CloudOwnershipSource['provider'], reason?: string) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/pause`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  resumeCloudOwnershipSource: (provider: CloudOwnershipSource['provider']) =>
+    request<CloudOwnershipSource>(`/ownership/cloud-sources/${provider.toLowerCase()}/resume`, { method: 'POST' }),
+  listGroupMappingGroups: (q: string, limit = 50) =>
+    request<ExternalGroupRow[]>(`/ownership/group-mappings/groups?q=${encodeURIComponent(q)}&limit=${limit}`),
+  previewGroupMapping: (externalGroupId: string, teamId: string | null) =>
+    request<GroupMappingImpact>('/ownership/group-mappings/preview', { method: 'POST', body: JSON.stringify({ externalGroupId, teamId }) }),
+  activateGroupMapping: (payload: { externalGroupId: string; teamId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    request<GroupMappingChange>('/ownership/group-mappings', { method: 'POST', body: JSON.stringify(payload) }),
+  retireGroupMapping: (mappingId: string, payload: { reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    request<GroupMappingChange>(`/ownership/group-mappings/${encodeURIComponent(mappingId)}/retire`, { method: 'POST', body: JSON.stringify(payload) }),
+  dismissGroupMapping: (mappingId: string) =>
+    request<GroupTeamMapping>(`/ownership/group-mappings/${encodeURIComponent(mappingId)}/dismiss`, { method: 'POST' }),
   getOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption'),
   provisionOwnershipEncryption: () => request<OwnershipEncryptionStatus>('/ownership/encryption/provision', { method: 'POST' }),
-  getOwnershipQualification: (domain: 'CORE') => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),
-  transitionOwnershipAuthority: (domain: 'CORE', state: OwnershipAuthorityState, reportHash?: string) =>
+  getOwnershipQualification: (domain: OwnershipSwitchDomain) => request<OwnershipQualification>(`/ownership/authority/${domain}/qualification`),
+  transitionOwnershipAuthority: (domain: OwnershipSwitchDomain, state: OwnershipAuthorityState, reportHash?: string) =>
     request<OwnershipQualification>(`/ownership/authority/${domain}`, { method: 'POST', body: JSON.stringify({ state, reportHash }) }),
   listCampaigns: (status?: CampaignStatus) =>
     request<CampaignSummary[]>(status ? `/campaigns?status=${encodeURIComponent(status)}` : '/campaigns'),
@@ -2727,7 +2819,7 @@ export const api = {
   saveCbomGatePolicy: (environment: string, payload: { failOnSeverities: string[]; minimumCompleteness: number; blockOnInvalid: boolean; version?: number }) =>
     request<CbomGatePolicy>(`/bom/cbom/governance/gate-policies/${encodeURIComponent(environment)}`, { method: 'PUT', body: JSON.stringify(payload) }),
   getCbomPqcProgress: () => request<CbomPqcProgress>('/bom/cbom/pqc/progress'),
-  createCbomPqcCampaign: (payload: { name: string; dueAt: string; assignedTo?: string; ownerGroup?: string; environment?: string }) =>
+  createCbomPqcCampaign: (payload: { name: string; dueAt: string; assigneePrincipalId?: string; environment?: string }) =>
     request<{ summary: { id: string; name: string } }>('/bom/cbom/pqc/campaigns', { method: 'POST', body: JSON.stringify(payload) }),
   getCbomPortfolio: (groupBy: string) => request<CbomPortfolio>(`/bom/cbom/portfolio?groupBy=${encodeURIComponent(groupBy)}`),
   getCryptoRemediationQueue: () =>
@@ -2735,10 +2827,57 @@ export const api = {
   getCryptoRemediationEffectiveness: (days = 90) =>
     request<CryptoEffectiveness>(`/bom/cbom/remediation/effectiveness?days=${days}`),
   createCampaignFromFindings: (payload: {
-    name: string; summary?: string; findingIds: string[]; dueAt?: string; assignedTo?: string; ownerGroup?: string; launchNote?: string;
+    name: string; summary?: string; findingIds: string[]; dueAt?: string; assigneePrincipalId?: string; launchNote?: string;
   }) => request<{ summary: { id: string; name: string } }>('/campaigns/from-findings', { method: 'POST', body: JSON.stringify(payload) }),
-  listCampaignFindings: (campaignId: string) =>
-    request<CampaignFinding[]>(`/campaigns/${encodeURIComponent(campaignId)}/findings`),
+  /** Phase 0B §4.5: cursor-paged campaign members (at most 200 per page). */
+  listCampaignMembers: (campaignId: string, params?: CampaignMemberQuery) => {
+    const search = new URLSearchParams();
+    if (params?.cursor) search.set('cursor', params.cursor);
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.includeHidden) search.set('includeHidden', 'true');
+    if (params?.outcome) search.set('outcome', params.outcome);
+    if (params?.groupBy) search.set('groupBy', params.groupBy);
+    if (params?.bucket) search.set('bucket', params.bucket);
+    if (params?.teamId) search.set('teamId', params.teamId);
+    const query = search.toString();
+    return request<CampaignMemberPage>(`/campaigns/${encodeURIComponent(campaignId)}/members${query ? `?${query}` : ''}`);
+  },
+  /** Phase 0B §4.2: writes nothing; returns member count, owner distribution, exclusions and teams without a channel. */
+  previewCampaign: (payload: CampaignCreateRequest) =>
+    request<CampaignPreview>('/campaigns/preview', { method: 'POST', body: JSON.stringify(payload) }),
+  /** Saves CVEs into a CVE-scoped campaign; 400 for an unknown or already tracked CVE, 409 for a findings or closed campaign. */
+  addCampaignCves: (campaignId: string, cveIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/cves`, {
+      method: 'POST',
+      body: JSON.stringify({ cveIds })
+    }),
+  addCampaignSoftware: (campaignId: string, softwareIdentityIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/software`, {
+      method: 'POST',
+      body: JSON.stringify({ softwareIdentityIds })
+    }),
+  addCampaignMembers: (campaignId: string, findingIds: string[]) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(campaignId)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ findingIds })
+    }),
+  listCampaignOwnerBuckets: (campaignId: string, groupBy: CampaignOwnerGrouping = 'current') =>
+    request<OwnerBucket[]>(`/campaigns/${encodeURIComponent(campaignId)}/owner-buckets?groupBy=${groupBy}`),
+  getCampaignReconciliation: (campaignId: string) =>
+    request<CampaignReconciliation>(`/campaigns/${encodeURIComponent(campaignId)}/reconciliation`),
+  /** Phase 0B §3.7: preview or assign an owner on one occurrence (never every occurrence of the package). */
+  previewOccurrenceAssignment: (kind: OccurrenceKind, rowId: string, teamId: string) =>
+    request<OccurrenceAssignmentPreview>(`/ownership/occurrences/${kind}/${encodeURIComponent(rowId)}/manual-assignment/preview`, {
+      method: 'POST', body: JSON.stringify({ teamId })
+    }),
+  assignOccurrenceOwner: (kind: OccurrenceKind, rowId: string, payload: OccurrenceAssignmentRequest, idempotencyKey?: string) =>
+    request<OccurrenceAssignmentPreview>(`/ownership/occurrences/${kind}/${encodeURIComponent(rowId)}/manual-assignment`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined
+    }),
+  previewTickets: (payload: TicketPreviewRequest) =>
+    request<TicketPreview>('/tickets/preview', { method: 'POST', body: JSON.stringify(payload) }),
   getCbomPqcReadiness: () =>
     request<CbomPqcReadiness>('/bom/cbom/governance/pqc-readiness'),
   getCbomOverview: () =>

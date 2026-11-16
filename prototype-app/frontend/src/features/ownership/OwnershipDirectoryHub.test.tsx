@@ -159,14 +159,15 @@ describe('OwnershipDirectoryHub', () => {
   });
 
   it('blocks the canonical switch while qualification fails and binds an accepted switch to the report hash', async () => {
-    vi.mocked(api.getOwnershipQualification).mockResolvedValue(qualification({ passed: false, blockers: ['unlinkedAssets must be 0 (is 4)'] }));
+    const legacyBom = qualification({ domain: 'CLOUD_BOM', state: 'LEGACY', passed: false });
+    vi.mocked(api.getOwnershipQualification).mockImplementation(async (domain) => domain === 'CORE' ? qualification({ passed: false, blockers: ['unlinkedAssets must be 0 (is 4)'] }) : legacyBom);
     const transition = vi.spyOn(api, 'transitionOwnershipAuthority').mockResolvedValue(qualification({ state: 'CANONICAL' }));
     const view = renderHub('TENANT_ADMIN');
     expect(await screen.findByText('unlinkedAssets must be 0 (is 4)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Accept and switch to canonical' })).toBeDisabled();
     view.unmount();
 
-    vi.mocked(api.getOwnershipQualification).mockResolvedValue(qualification());
+    vi.mocked(api.getOwnershipQualification).mockImplementation(async (domain) => domain === 'CORE' ? qualification() : legacyBom);
     renderHub('TENANT_ADMIN');
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and switch to canonical' }));
     const dialog = await screen.findByRole('dialog', { name: 'Switch core ownership to canonical?' });

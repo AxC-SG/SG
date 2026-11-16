@@ -1,5 +1,10 @@
 # AI Grid — Working Context & Decision Memory
 
+> **Current integration pointer — November 17, 2026:** Ownership Release 2 is a lab-only, release-blocked integration
+> with the AWS/CI/CD baseline. Read the [integration review](../../../../../docs/ownership-release-2-integration-review.md)
+> and active project/backend/frontend guidance linked below. AI Grid ownership migration remains Release 3 work; this
+> historical archive does not authorize enabling runtime collection or ownership consumers.
+
 > **Archived context — current guidance updated October 28, 2026:** The dated pilot decisions below are historical and do not override the current code, capability containment or UI rules. For active work read [project guidance](../../../../../CLAUDE.md), [frontend guidance](../../../../../frontend/CLAUDE.md), [backend guidance](../../../../../backend/CLAUDE.md), [the UI development standard](<../../../../New UI 2.0/ui-development-standard.md>) and [business logic](../../../../../docs/business-logic-guide.md). UI 2.0 is the only app/auth presentation, with shared components and tokens; `/demo` retains the public boundary. Any departure needs user approval during new development with pros/cons and a plan to update affected screens consistently. Do not resume the old pilot roadmap or runtime collection from this archive.
 
 

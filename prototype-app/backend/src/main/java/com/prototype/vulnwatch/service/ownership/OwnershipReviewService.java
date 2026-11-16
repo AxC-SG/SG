@@ -86,4 +86,13 @@ public class OwnershipReviewService {
                 """, state, actor, note == null || note.isBlank() ? null : note.strip(), id);
         if (changed != 1) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Open review item not found");
     }
+
+    /** Closes the open item for {@code dedupeKey}, if there is one, as RESOLVED or DISMISSED. Returns true when one closed. */
+    public boolean closeOpen(String dedupeKey, String state, String note, String actor) {
+        if (!Set.of("RESOLVED", "DISMISSED").contains(state)) throw new IllegalArgumentException("Unknown review state");
+        return jdbc.update("""
+                UPDATE ownership_review_item SET state = ?, resolved_at = now(), resolved_by = ?, resolution_note = ?
+                 WHERE dedupe_key = ? AND state = 'OPEN'
+                """, state, actor, note == null || note.isBlank() ? null : note.strip(), dedupeKey) == 1;
+    }
 }

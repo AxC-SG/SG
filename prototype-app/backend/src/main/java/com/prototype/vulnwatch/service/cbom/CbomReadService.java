@@ -40,6 +40,14 @@ public class CbomReadService {
         this.findingRepository = findingRepository;
     }
 
+    private com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads;
+
+    /** Phase 0B §3.7: owner envelopes on component rows once CLOUD_BOM inventory reads are canonical. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipReads(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads) {
+        this.ownershipReads = ownershipReads;
+    }
+
     @Transactional(readOnly = true)
     public List<CbomPostureSummaryResponse> listPosture(Tenant tenant) {
         return postureSummaryRepository.findByTenant_IdOrderByPostureScoreDesc(tenant.getId())
@@ -68,7 +76,9 @@ public class CbomReadService {
                 .findByTenant_IdAndComponent_IdIn(tenant.getId(), componentIds)
                 .stream()
                 .collect(Collectors.groupingBy(f -> f.getComponent().getId()));
-        return components.stream().map(component -> toComponentResponse(component, findingsByComponent.getOrDefault(component.getId(), List.of()))).toList();
+        Map<UUID, com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary> owners = owners(componentIds);
+        return components.stream().map(component -> toComponentResponse(component, findingsByComponent.getOrDefault(component.getId(), List.of()),
+                owners.get(component.getId()))).toList();
     }
 
     /** The assets one CBOM document reported, riskiest first, each with its findings of any status. */
@@ -82,11 +92,12 @@ public class CbomReadService {
                 : findingRepository.findByTenant_IdAndComponent_IdIn(tenant.getId(), componentIds)
                         .stream()
                         .collect(Collectors.groupingBy(f -> f.getComponent().getId()));
+        Map<UUID, com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary> owners = owners(componentIds);
         return components.stream()
                 .map(component -> {
                     List<CbomRiskFinding> findings = findingsByComponent.getOrDefault(component.getId(), List.of());
                     return new CbomBomAssetResponse(
-                            toComponentResponse(component, findings),
+                            toComponentResponse(component, findings, owners.get(component.getId())),
                             findings.stream().map(this::toFindingResponse).toList()
                     );
                 })
@@ -135,7 +146,13 @@ public class CbomReadService {
         );
     }
 
-    private CbomComponentResponse toComponentResponse(CbomComponent component, List<CbomRiskFinding> findings) {
+    private Map<UUID, com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary> owners(List<UUID> componentIds) {
+        return ownershipReads == null ? Map.of() : ownershipReads.forOccurrences(
+                com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.OccurrenceTable.CBOM_COMPONENTS, componentIds);
+    }
+
+    private CbomComponentResponse toComponentResponse(CbomComponent component, List<CbomRiskFinding> findings,
+                                                      com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary owner) {
         int open = (int) findings.stream().filter(f -> f.getStatus() == CbomFindingStatus.OPEN).count();
         int high = (int) findings.stream().filter(f -> f.getStatus() == CbomFindingStatus.OPEN && f.getSeverity() == CbomRiskSeverity.HIGH).count();
         int critical = (int) findings.stream().filter(f -> f.getStatus() == CbomFindingStatus.OPEN && f.getSeverity() == CbomRiskSeverity.CRITICAL).count();
@@ -163,7 +180,8 @@ public class CbomReadService {
                 component.getRiskScore(),
                 open,
                 high,
-                critical
+                critical,
+                owner
         );
     }
 

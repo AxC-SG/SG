@@ -30,6 +30,8 @@ public class OwnershipMaintenanceJob {
     private final OwnershipClaimService claims;
     private final OwnershipResolutionService resolution;
     private final InventorySubjectAdapter inventory;
+    private final OwnershipSubjectService subjects;
+    private final FindingSubjectAdapterRegistry findings;
     private final OwnershipAuthorityService authority;
     private final OwnershipEffectiveCacheService cache;
     private final BackgroundTaskExecutionPolicy backgroundTasks;
@@ -37,7 +39,8 @@ public class OwnershipMaintenanceJob {
     private final int maxBatchesPerTenant;
 
     public OwnershipMaintenanceJob(TenantService tenants, TenantWorkRunner runner, OwnershipClaimService claims,
-                                   OwnershipResolutionService resolution, InventorySubjectAdapter inventory,
+                                   OwnershipResolutionService resolution, InventorySubjectAdapter inventory, OwnershipSubjectService subjects,
+                                   FindingSubjectAdapterRegistry findings,
                                    OwnershipAuthorityService authority, OwnershipEffectiveCacheService cache,
                                    BackgroundTaskExecutionPolicy backgroundTasks,
                                    @Value("${app.ownership.maintenance.batch-size:500}") int batchSize,
@@ -47,6 +50,8 @@ public class OwnershipMaintenanceJob {
         this.claims = claims;
         this.resolution = resolution;
         this.inventory = inventory;
+        this.subjects = subjects;
+        this.findings = findings;
         this.authority = authority;
         this.cache = cache;
         this.backgroundTasks = backgroundTasks;
@@ -77,7 +82,21 @@ public class OwnershipMaintenanceJob {
         drain(tenant, () -> resolution.drainQueue(batchSize, "system"));
         boolean populating = runner.runScoped(tenant,
                 () -> authority.stateFor(OwnershipAuthorityService.Domain.CORE) != OwnershipAuthorityService.State.LEGACY);
-        if (populating) drain(tenant, () -> inventory.linkBatch(batchSize));
+        if (populating) {
+            drain(tenant, () -> inventory.linkAssets(batchSize));
+            drain(tenant, () -> findings.linkBatch(batchSize));
+        }
+        // Phase 0B §3.4: software occurrences register once CLOUD_BOM has left LEGACY, in batches of at most 10,000.
+        boolean occurrences = runner.runScoped(tenant,
+                () -> authority.stateFor(OwnershipAuthorityService.Domain.CLOUD_BOM) != OwnershipAuthorityService.State.LEGACY);
+        if (occurrences) {
+            drain(tenant, () -> inventory.linkAssets(batchSize));
+            drain(tenant, () -> subjects.registerOccurrences(cacheBatchSize()), cacheBatchSize());
+            drain(tenant, () -> subjects.registerCbomOccurrences(cacheBatchSize()), cacheBatchSize());
+            // §3.6: once CLOUD_BOM is CANONICAL the registry moves findings to v2 and keeps them current; a no-op before.
+            drain(tenant, () -> findings.switchBatch(cacheBatchSize()), cacheBatchSize());
+            drain(tenant, () -> subjects.retireOccurrences(batchSize));
+        }
         if (cache.enabled()) {
             drain(tenant, () -> cache.expandBatch(cacheBatchSize()), cacheBatchSize());
             drain(tenant, () -> cache.refreshBatch(cacheBatchSize()), cacheBatchSize());

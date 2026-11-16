@@ -1,6 +1,10 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import React from 'react';
-import { api } from '../../api/client';
+import { ApiError, api } from '../../api/client';
+import { useActor } from '../auth/context';
+import { AssignOwnerButton } from '../ownership/AssignOwnerButton';
+import { OwnerFilters } from '../ownership/OwnerFilters';
+import { canManualAssign } from '../ownership/permissions';
 import { AsyncSection } from '../../components/AsyncSection';
 import { ActiveFilterChips, Pager, ResultScope } from '../../components/QueueControls';
 import { CbomContradictionsPanel } from './CbomContradictionsPanel';
@@ -14,7 +18,7 @@ const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const EVIDENCE_STATES = ['SUPPORTED', 'WITHDRAWN', 'CONFLICTING', 'LEGACY_UNKNOWN'];
 const FILTER_LABELS: Record<keyof CbomInventoryFilters, string> = {
   q: 'Search', assetType: 'Asset type', primitive: 'Algorithm', severity: 'Severity', evidenceState: 'Evidence',
-  custody: 'Custody', environment: 'Environment', bomId: 'Document',
+  custody: 'Custody', environment: 'Environment', bomId: 'Document', ownerTeamId: 'Owner team', ownershipStatus: 'Ownership status',
 };
 
 /** Tenant-wide crypto inventory with analyst filters; rows open the evidence drawer. */
@@ -25,6 +29,7 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
   const [draft, setDraft] = React.useState<CbomInventoryFilters>(initialFilters);
   const [page, setPage] = React.useState(0);
   const [selected, setSelected] = React.useState<string | null>(null);
+  const canAssign = canManualAssign(useActor());
 
   const query = useQuery({
     queryKey: ['cbom-inventory', filters, page],
@@ -33,7 +38,10 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
   });
   const data = query.data;
   const filtered = Object.values(filters).some(Boolean);
+  // 409: owner filters before CLOUD_BOM is canonical; a plain state, not an error.
+  const notCanonical = query.error instanceof ApiError && query.error.status === 409;
   const state = query.isPending ? 'pending'
+    : notCanonical ? 'unavailable'
     : query.isError && !data ? 'error'
       : (data?.items.length ?? 0) === 0 ? (filtered ? 'filtered-empty' : 'empty')
         : 'ready';
@@ -44,7 +52,7 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
   const chips = (Object.keys(filters) as Array<keyof CbomInventoryFilters>)
     .filter((key) => filters[key])
     .map((key) => ({
-      key, label: FILTER_LABELS[key], value: key === 'bomId' ? 'This document' : titleCase(filters[key] as string),
+      key, label: FILTER_LABELS[key], value: key === 'bomId' ? 'This document' : key === 'ownerTeamId' ? 'Selected team' : titleCase(filters[key] as string),
       onRemove: () => apply({ ...filters, [key]: undefined }),
     }));
 
@@ -80,11 +88,18 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
         <label>Environment<input value={draft.environment ?? ''} onChange={update('environment')} placeholder="e.g. production" /></label>
         <button type="submit" className="btn btn-primary btn-sm">Apply filters</button>
       </form>
+      <OwnerFilters
+        value={{ ownerTeamId: filters.ownerTeamId ?? '', ownershipStatus: filters.ownershipStatus ?? '' }}
+        onChange={(next) => apply({ ...filters, ownerTeamId: next.ownerTeamId || undefined, ownershipStatus: next.ownershipStatus || undefined })}
+        offered
+        notCanonical={notCanonical}
+      />
       <ActiveFilterChips filters={chips} onClearAll={() => apply({})} />
       <AsyncSection
         state={state}
         loadingLabel="Loading cryptographic inventory…"
         errorMessage="The cryptographic inventory could not be loaded."
+        unavailableMessage="Owner filters are available once BOM ownership is canonical."
         onRetry={() => void query.refetch()}
         retryLabel="Retry cryptographic inventory"
         retrying={query.isFetching}
@@ -104,7 +119,7 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
                 <thead>
                   <tr>
                     <th>Name</th><th>Asset type</th><th>Algorithm / parameters</th><th>Custody</th>
-                    <th>Asset</th><th>Open findings</th><th>Evidence</th><th>Risk</th>
+                    <th>Asset</th><th>Open findings</th><th>Evidence</th><th>Risk</th>{canAssign && <th>Owner</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -127,6 +142,7 @@ export function CbomInventoryPanel({ initialFilters = {}, showContradictions = f
                       </td>
                       <td>{item.evidenceState ? presenceLabel(item.evidenceState) : '—'}</td>
                       <td>{item.riskScore == null ? '—' : item.riskScore.toFixed(2)}</td>
+                      {canAssign && <td><AssignOwnerButton kind="cbom-components" rowId={item.id} rowLabel={item.name} /></td>}
                     </tr>
                   ))}
                 </tbody>

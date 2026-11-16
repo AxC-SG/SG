@@ -38,6 +38,23 @@ describe('CbomAssetsPanel', () => {
     expect(list).toHaveBeenCalledWith('bom-1');
   });
 
+  it('adds an owner column once CBOM ownership is canonical', async () => {
+    vi.spyOn(api, 'listCbomAssetsForBom').mockResolvedValue([{
+      ...ASSET,
+      asset: { ...ASSET.asset, ownership: { objectId: 'c-1', authorityDomain: 'CLOUD_BOM', authorityState: 'CANONICAL', ownershipStatus: 'OWNED', ownerTeamName: 'Payments' } }
+    }]);
+    renderWithProviders(<CbomAssetsPanel bomId="bom-1" />);
+    expect(await screen.findByRole('columnheader', { name: 'Owner' })).toBeInTheDocument();
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+  });
+
+  it('shows no owner column before CBOM ownership is canonical', async () => {
+    vi.spyOn(api, 'listCbomAssetsForBom').mockResolvedValue([ASSET]);
+    renderWithProviders(<CbomAssetsPanel bomId="bom-1" />);
+    expect(await screen.findByText('SHA-1')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Owner' })).not.toBeInTheDocument();
+  });
+
   it('says so when the CBOM has no active assets', async () => {
     vi.spyOn(api, 'listCbomAssetsForBom').mockResolvedValue([]);
     renderWithProviders(<CbomAssetsPanel bomId="bom-1" />);

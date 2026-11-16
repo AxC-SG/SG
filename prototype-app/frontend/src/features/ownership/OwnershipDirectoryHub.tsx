@@ -4,29 +4,36 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import { useActor } from '../auth/context';
 import { GroupsPanel } from './GroupsPanel';
 import { ImportsPanel } from './ImportsPanel';
+import { MappingsPanel } from './MappingsPanel';
 import { OverviewPanel } from './OverviewPanel';
 import { PeoplePanel } from './PeoplePanel';
 import { ReviewPanel } from './ReviewPanel';
+import { SourcesPanel } from './SourcesPanel';
 import { TeamsPanel } from './TeamsPanel';
 import {
+  canConfigureIdentitySource,
+  canConfigureOwnershipProducer,
   canImportDirectory,
   canManageOwnershipAuthority,
   canManageOwnershipEncryption,
+  canMapGroups,
+  canPauseIdentitySource,
   canResolveReview,
   canViewDirectory,
+  canViewIdentitySources,
   canWriteDirectory,
   canWriteTeams
 } from './permissions';
 import { useOwnershipCoverageQuery } from './queries';
 
-export type OwnershipHubView = 'overview' | 'teams' | 'people' | 'groups' | 'imports' | 'review' | 'legacy';
+export type OwnershipHubView = 'overview' | 'teams' | 'people' | 'groups' | 'sources' | 'mappings' | 'imports' | 'review' | 'legacy';
 
 const VIEW_PARAM = 'view';
 
 /**
  * Ownership & Directory hub (plan §9.1), the Configurations Ownership section. Release 1 covers teams and aliases,
- * manual and CSV people/groups, review and the core cutover. Provider sources and group-to-team mappings arrive with
- * the ServiceNow directory, Entra and Okta work. The legacy rule editor stays available, labelled as pending
+ * manual and CSV people/groups, review and the core cutover. Release 2 adds the Sources view (ServiceNow identity
+ * sources) and the Mappings view (group-to-team mappings, Phase 0B contract §1.8); Entra and Okta follow. The legacy rule editor stays available, labelled as pending
  * migration, until inventory ownership is canonical (user decision, November 9, 2026; removed in the §15.5 cleanup).
  */
 export function OwnershipDirectoryHub({ legacyRules }: { legacyRules: React.ReactNode }) {
@@ -40,6 +47,8 @@ export function OwnershipDirectoryHub({ legacyRules }: { legacyRules: React.Reac
     { value: 'overview', label: 'Overview' },
     { value: 'teams', label: 'Teams' },
     ...(canViewDirectory(actor) ? [{ value: 'people' as const, label: 'People' }, { value: 'groups' as const, label: 'Groups' }] : []),
+    ...(canViewIdentitySources(actor) ? [{ value: 'sources' as const, label: 'Sources' }] : []),
+    { value: 'mappings', label: 'Mappings' },
     ...(canImportDirectory(actor) ? [{ value: 'imports' as const, label: 'Imports' }] : []),
     { value: 'review', label: 'Review' },
     ...(legacyActive ? [{ value: 'legacy' as const, label: 'Legacy rules' }] : [])
@@ -70,6 +79,11 @@ export function OwnershipDirectoryHub({ legacyRules }: { legacyRules: React.Reac
         {view === 'teams' && <TeamsPanel canWrite={canWriteTeams(actor)} />}
         {view === 'people' && <PeoplePanel canWrite={canWriteDirectory(actor)} />}
         {view === 'groups' && <GroupsPanel canWrite={canWriteDirectory(actor)} />}
+        {view === 'sources' && (
+          <SourcesPanel canConfigure={canConfigureIdentitySource(actor)} canPause={canPauseIdentitySource(actor)}
+            canConfigureProducer={canConfigureOwnershipProducer(actor)} />
+        )}
+        {view === 'mappings' && <MappingsPanel canMap={canMapGroups(actor)} />}
         {view === 'imports' && <ImportsPanel />}
         {view === 'review' && <ReviewPanel canResolve={canResolveReview(actor)} />}
         {view === 'legacy' && (

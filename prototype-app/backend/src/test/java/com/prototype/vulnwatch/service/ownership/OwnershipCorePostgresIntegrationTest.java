@@ -161,7 +161,9 @@ class OwnershipCorePostgresIntegrationTest {
         assertThat(((Number) effective(resource).get("inheritance_depth")).intValue()).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM ownership_assignment", Integer.class)).isEqualTo(1);
 
-        // A reviewed cloud tag directly on the resource beats the manual claim inherited from the application.
+        // A reviewed cloud tag directly on the resource beats the manual claim inherited from the application. Cloud claims
+        // count only once CLOUD_BOM is canonical (Phase 0B §2.6).
+        cloudBomCanonical();
         claims.recordClaim(new ClaimRequest(resource, identity, null, "AWS", "CLOUD_TAG", null, "tag:team", "v1", "aws-1",
                 Instant.now(), null, null, null, "aws-producer"));
         assertOwned(resource, identity, 0);
@@ -204,6 +206,7 @@ class OwnershipCorePostgresIntegrationTest {
     void archivingATeamReResolvesItsSubjectsAndRaisesInactiveOwner() {
         UUID host = host("web-4");
         claims.recordClaim(serviceNow(host, payments, "ci-4", "v1"));
+        cloudBomCanonical();
         claims.recordClaim(new ClaimRequest(host, identity, null, "AWS", "CLOUD_TAG", null, "tag:team", "v1", "aws-1",
                 Instant.now(), null, null, null, "aws-producer"));
         var team = teams.team(payments).orElseThrow();
@@ -275,6 +278,14 @@ class OwnershipCorePostgresIntegrationTest {
         enter(tenant);
         assertThatThrownBy(() -> jdbc.update("UPDATE ownership_event SET actor = 'x'")).isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("DELETE FROM ownership_event")).isInstanceOf(DataAccessException.class);
+    }
+
+    /** Cloud claims are eligible only while the tenant's CLOUD_BOM domain is CANONICAL (Phase 0B §2.6). */
+    private void cloudBomCanonical() {
+        UUID id = tenant.getId();
+        TenantContext.runAsPlatform(() -> jdbc.update("""
+                INSERT INTO platform.ownership_domain_authority (tenant_id, domain, state, accepted_by, accepted_at, updated_by)
+                VALUES (?, 'CLOUD_BOM', 'CANONICAL', 'test', now(), 'test') ON CONFLICT (tenant_id, domain) DO NOTHING""", id));
     }
 
     private void assertOwned(UUID subject, UUID team, int depth) {

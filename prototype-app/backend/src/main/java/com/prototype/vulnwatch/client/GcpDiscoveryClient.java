@@ -138,6 +138,19 @@ public class GcpDiscoveryClient {
         return granted;
     }
 
+    // ── Resource Manager ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * The project's labels from Resource Manager {@code projects.get} (Phase 0B §2.2). Needs
+     * {@code resourcemanager.projects.get}, which {@code roles/browser} grants. Throws on failure so the caller
+     * leaves the project's account claims untouched for the run.
+     */
+    public Map<String, String> projectLabels(String token, String projectId) {
+        JsonNode response = call(HttpMethod.GET, RESOURCE_MANAGER + "/projects/" + encode(projectId), token, null,
+                "GCP project labels");
+        return labels(response.path("labels"));
+    }
+
     // ── Compute Engine ───────────────────────────────────────────────────────────────────────
 
     public ListResult<GcpInstanceRecord> listInstances(String token, String projectId) {

@@ -60,6 +60,13 @@ public class CbomVisibilityService {
         this.jdbc = jdbc; this.tenants = tenants; this.schemas = schemas; this.transactions = transactions;
     }
 
+    private com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownership;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOwnershipReadAdapter(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter value) {
+        ownership = value;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public void setBackgroundTaskExecutionPolicy(BackgroundTaskExecutionPolicy value) {
         policy = value == null ? BackgroundTaskExecutionPolicy.allowAll() : value;
@@ -236,8 +243,14 @@ public class CbomVisibilityService {
 
     // ------------------------------------------------------------------ analyst inventory
 
+    /** {@code ownerTeamId} and {@code ownershipStatus} filter by the component's occurrence owner (Phase 0B §3.7). */
     public record InventoryFilter(String assetType, String primitive, String severity, String evidenceState, String custody,
-            String environment, UUID assetId, UUID bomId, String query, boolean includeInactive) { }
+            String environment, UUID assetId, UUID bomId, String query, boolean includeInactive, UUID ownerTeamId, String ownershipStatus) {
+        public InventoryFilter(String assetType, String primitive, String severity, String evidenceState, String custody,
+                String environment, UUID assetId, UUID bomId, String query, boolean includeInactive) {
+            this(assetType, primitive, severity, evidenceState, custody, environment, assetId, bomId, query, includeInactive, null, null);
+        }
+    }
 
     @Transactional(readOnly = true)
     public InventoryPage inventory(Tenant tenant, InventoryFilter filter, int page, int size) {
@@ -288,6 +301,8 @@ public class CbomVisibilityService {
         if (present(f.primitive())) { sql.append(" AND lower(c.primitive) LIKE ?"); args.add(like(f.primitive())); }
         if (present(f.custody())) { sql.append(" AND lower(c.storage_location) LIKE ?"); args.add(like(f.custody())); }
         if (present(f.environment())) { sql.append(" AND lower(a.environment) = ?"); args.add(f.environment().trim().toLowerCase(Locale.ROOT)); }
+        String ownerPredicate = ownership == null ? null : ownership.occurrenceFilterPredicate("c", f.ownerTeamId(), f.ownershipStatus(), args);
+        if (ownerPredicate != null) sql.append(" AND ").append(ownerPredicate);
         if (f.assetId() != null) { sql.append(" AND c.asset_id = ?"); args.add(f.assetId()); }
         if (f.bomId() != null) { sql.append(" AND c.source_bom_id = ?"); args.add(f.bomId()); }
         if (present(f.query())) {

@@ -147,6 +147,7 @@ class RbacControllerSecurityIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 null
         ));
         doThrow(new RuntimeException("audit down")).when(auditEventService)

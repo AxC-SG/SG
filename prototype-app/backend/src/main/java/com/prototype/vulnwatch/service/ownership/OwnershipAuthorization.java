@@ -19,7 +19,7 @@ public class OwnershipAuthorization {
     public enum Action {
         VIEW_OWNERSHIP, VIEW_DIRECTORY, WRITE_DIRECTORY, IMPORT_DIRECTORY, MANAGE_ENCRYPTION, CONFIGURE_IDENTITY_SOURCE,
         CONFIGURE_OWNERSHIP_PRODUCER, WRITE_TEAMS, MAP_GROUPS, MANUAL_ASSIGN, REVOKE_ASSIGNMENT, RESOLVE_REVIEW, PAUSE_SOURCE,
-        INGEST_CLAIMS, MANAGE_AUTHORITY
+        INGEST_CLAIMS, MANAGE_AUTHORITY, VIEW_IDENTITY_SOURCE
     }
 
     private static final Set<String> ADMINS = Set.of("TENANT_ADMIN", "INVENTORY_ADMIN");
@@ -40,6 +40,8 @@ public class OwnershipAuthorization {
             Map.entry(Action.MANAGE_AUTHORITY, Set.of("TENANT_ADMIN")),
             Map.entry(Action.RESOLVE_REVIEW, ADMINS),
             Map.entry(Action.PAUSE_SOURCE, ADMINS),
+            // Whoever may pause a source must be able to see it; configuring stays TENANT_ADMIN only.
+            Map.entry(Action.VIEW_IDENTITY_SOURCE, ADMINS),
             Map.entry(Action.INGEST_CLAIMS, Set.of("SERVICE_ACCOUNT")));
 
     public boolean can(String action) {

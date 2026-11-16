@@ -209,6 +209,8 @@ export type InventoryComponentRecord = {
   eolDate?: string;
   isEol?: boolean;
   eolDaysRemaining?: number;
+  /** Resolved owner of the component's occurrence (Phase 0B §3.7); absent until CLOUD_BOM inventory reads are canonical. */
+  ownership?: ResolvedOwnership | null;
 };
 
 export type InventoryComponentPage = {

@@ -104,7 +104,7 @@ public class CampaignAiService {
         long overdue = detail.findings().stream().filter(this::isOverdue).count();
         String teams = detail.findings().stream()
                 .collect(java.util.stream.Collectors.groupingBy(
-                        finding -> valueOr(finding.ownerGroup(), "Unassigned"),
+                        CampaignAiService::ownerLabel,
                         java.util.stream.Collectors.counting()))
                 .entrySet().stream()
                 .map(entry -> entry.getKey() + ": " + entry.getValue() + " findings")
@@ -118,7 +118,7 @@ public class CampaignAiService {
                 Status: %s
                 CVEs: %s
                 Due: %s
-                Progress: %d%% (%d of %d resolved)
+                Progress: %d%% (%d of %d remediated)
                 Overdue findings: %d
                 Assets: %d
                 Exceptions: %d
@@ -129,7 +129,7 @@ public class CampaignAiService {
                 String.join(", ", summary.cveIds()),
                 summary.dueAt(),
                 summary.completionPercent(),
-                summary.resolvedFindings(),
+                summary.remediatedCount(),
                 summary.totalFindings(),
                 overdue,
                 summary.assetCount(),
@@ -159,7 +159,7 @@ public class CampaignAiService {
     private boolean isOverdue(CampaignFindingRowResponse finding) {
         return finding.dueAt() != null
                 && finding.dueAt().isBefore(Instant.now())
-                && !"RESOLVED".equalsIgnoreCase(finding.status());
+                && ("OPEN".equals(finding.outcome()) || "REOPENED".equals(finding.outcome()));
     }
 
     private String valueOr(String value, String fallback) {
@@ -171,6 +171,14 @@ public class CampaignAiService {
     }
 
     private record RequestWindow(long minute, int count) {
+    }
+
+    /** Phase 0B §4.5: team name by stable team ID when canonical, else Unowned/Conflict/Pending migration. */
+    static String ownerLabel(CampaignFindingRowResponse finding) {
+        var current = finding.currentOwnership();
+        if (current == null || !"CANONICAL".equals(current.authorityState())) return "Pending migration";
+        if ("OWNED".equals(current.ownershipStatus()) && current.ownerTeamName() != null) return current.ownerTeamName();
+        return "CONFLICT".equals(current.ownershipStatus()) ? "Conflict" : "Unowned";
     }
 
     public record CampaignAiResponse(

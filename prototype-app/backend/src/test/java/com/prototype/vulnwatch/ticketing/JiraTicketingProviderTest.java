@@ -209,6 +209,36 @@ class JiraTicketingProviderTest {
         assertFalse(provider.isConfigured(tenant));
     }
 
+    @Test
+    void aRoutedFindingNamesTheMappedGroupAsTextAndNotTheFreeTextOwnerGroup() throws Exception {
+        givenConfig(config(true, null, "Task", null));
+        givenCreateResponse("{\"id\":\"1\",\"key\":\"SEC-1\"}");
+
+        provider.createForFinding(tenant, finding(),
+                new TicketRequest(null, null, null, null, null, "caller-group", null, null, "Payments Support"));
+
+        ArgumentCaptor<HttpEntity<?>> captor = captor();
+        org.mockito.Mockito.verify(outbound).exchange(anyString(), eq(HttpMethod.POST), captor.capture(),
+                eq(String.class), anyString(), any(), any());
+        JsonNode fields = objectMapper.readTree(String.valueOf(captor.getValue().getBody())).path("fields");
+        String body = fields.toString();
+        assertTrue(fields.path("summary").asText().endsWith(" — Payments Support"), body);
+        assertTrue(body.contains("Assignment group: Payments Support"), body);
+        assertFalse(body.contains("AI Platform Team"), body);
+        assertFalse(body.contains("caller-group"), body);
+    }
+
+    @Test
+    void aLegacyFindingStillShowsTheOwnerGroupText() throws Exception {
+        givenConfig(config(true, null, "Task", null));
+        givenCreateResponse("{\"id\":\"1\",\"key\":\"SEC-1\"}");
+
+        JsonNode fields = captureCreatePayload().path("fields");
+
+        assertTrue(fields.toString().contains("Owner group: AI Platform Team"), fields.toString());
+        assertFalse(fields.path("summary").asText().contains(" — "), fields.toString());
+    }
+
     private JsonNode captureCreatePayload() throws Exception {
         provider.createForFinding(tenant, finding(), TicketRequest.empty());
         ArgumentCaptor<HttpEntity<?>> captor = captor();

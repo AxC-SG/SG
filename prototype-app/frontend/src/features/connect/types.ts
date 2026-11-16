@@ -150,6 +150,8 @@ export type ServiceNowCmdbConfig = {
   enabled: boolean;
   autoSyncEnabled: boolean;
   intervalMinutes: number;
+  /** Tenant default ticket assignment group (Phase 0B §4.9). */
+  defaultAssignmentGroup?: string | null;
   lastTestStatus?: string;
   lastTestMessage?: string;
   lastTestedAt?: string;
@@ -172,6 +174,8 @@ export type ServiceNowCmdbConfigRequest = {
   enabled: boolean;
   autoSyncEnabled: boolean;
   intervalMinutes: number;
+  /** Null or omitted keeps the stored value; blank clears it. */
+  defaultAssignmentGroup?: string | null;
 };
 
 export type ServiceNowCmdbConnectionTest = {
@@ -198,6 +202,7 @@ export type JiraTicketingConfig = {
   defaultLabels: string;
   includePriority: boolean;
   enabled: boolean;
+  defaultAssignmentGroup?: string | null;
   lastTestStatus?: string;
   lastTestMessage?: string;
   lastTestedAt?: string;
@@ -215,6 +220,8 @@ export type JiraTicketingConfigRequest = {
   defaultLabels?: string;
   includePriority: boolean;
   enabled: boolean;
+  /** Null or omitted keeps the stored value; blank clears it. */
+  defaultAssignmentGroup?: string | null;
 };
 
 export type JiraConnectionTest = {
@@ -235,6 +242,38 @@ export type CreateFindingTicketRequest = {
   assignmentGroup?: string;
   notes?: string;
   solutionInfo?: string;
+  /** Canonical routing (Phase 0B §4.9): the preview's hash is required on the canonical path. */
+  routingHash?: string;
+  selectedAssignmentGroup?: string;
+  assignmentGroupOverride?: string;
+  /** Required with an override, at most 500 characters. */
+  overrideReason?: string;
+};
+
+export type TicketRoutingBucket = 'TEAM' | 'UNOWNED' | 'OVERRIDE';
+export type TicketRoutingSource = 'TEAM_MAPPING' | 'TENANT_DEFAULT' | 'USER_SELECTED' | 'OVERRIDE';
+
+export type TicketPreviewRequest = {
+  findingIds?: string[];
+  cveId?: string;
+  componentIds?: string[];
+  selectedAssignmentGroup?: string;
+  assignmentGroupOverride?: string;
+  overrideReason?: string;
+};
+
+export type TicketPreview = {
+  /** False while the tickets read wave is off: today's behaviour applies and nothing is routed. */
+  canonical: boolean;
+  batches: Array<{
+    bucket: TicketRoutingBucket; teamId: string | null; teamName: string | null; assignmentGroup: string | null;
+    routingSource: TicketRoutingSource; findingIds: string[];
+  }>;
+  unroutable: Array<{ findingId: string; displayId: string | null; bucket: string; teamId: string | null; reason: string }>;
+  excluded: Array<{ findingId: string; displayId: string | null; reason: string }>;
+  tenantDefaultGroup: string | null;
+  routingHash: string | null;
+  expiresAt: string | null;
 };
 
 export type FindingTicketResponse = {

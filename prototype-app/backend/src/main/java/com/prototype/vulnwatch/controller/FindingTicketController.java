@@ -7,6 +7,9 @@ import com.prototype.vulnwatch.dto.TicketingProviderStatusResponse;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import com.prototype.vulnwatch.ticketing.TicketRef;
 import com.prototype.vulnwatch.ticketing.TicketRequest;
+import com.prototype.vulnwatch.ticketing.TicketRoutingService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.prototype.vulnwatch.ticketing.TicketingService;
 import com.prototype.vulnwatch.ticketing.TicketingSystem;
 import java.util.List;
@@ -57,6 +60,26 @@ public class FindingTicketController {
         );
     }
 
+    /**
+     * Phase 0B §4.9 routing preview: finding IDs, or a CVE plus component IDs. Returns the batches (owner team, group,
+     * routing source, findings), the unroutable and excluded findings and the {@code routingHash} create must send.
+     */
+    public record TicketPreviewRequest(List<UUID> findingIds, String cveId, List<String> componentIds, String selectedAssignmentGroup,
+                                       String assignmentGroupOverride, String overrideReason) { }
+
+    @PostMapping("/api/tickets/preview")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
+    public TicketRoutingService.Preview preview(@RequestBody TicketPreviewRequest request) {
+        Tenant tenant = workspaceService.getWorkspace();
+        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "findingIds or a CVE is required");
+        TicketRoutingService.Choice choice = new TicketRoutingService.Choice(request.selectedAssignmentGroup(),
+                request.assignmentGroupOverride(), request.overrideReason());
+        if (request.cveId() != null && !request.cveId().isBlank()) {
+            return ticketingService.previewForCve(tenant, request.cveId().trim(), request.componentIds(), choice);
+        }
+        return ticketingService.previewForFindings(tenant, request.findingIds(), choice);
+    }
+
     @PostMapping("/api/findings/{findingId}/ticket")
     @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
     public FindingTicketResponse create(
@@ -64,10 +87,14 @@ public class FindingTicketController {
             @RequestBody(required = false) CreateFindingTicketRequest request
     ) {
         Tenant tenant = workspaceService.getWorkspace();
+        String actor = actors == null || actors.currentActor() == null ? "api" : actors.currentActor().userId();
+        TicketingService.TicketContext context = new TicketingService.TicketContext(actor, "DEFAULT",
+                request == null ? null : request.routingHash(),
+                request == null ? TicketRoutingService.Choice.none()
+                        : new TicketRoutingService.Choice(request.selectedAssignmentGroup(), request.assignmentGroupOverride(), request.overrideReason()));
         TicketRef ref = remediation == null
-                ? ticketingService.createTicketForFinding(tenant, findingId, toTicketRequest(request))
-                : remediation.createTicket(tenant, findingId, toTicketRequest(request),
-                        actors.currentActor() == null ? "api" : actors.currentActor().userId());
+                ? ticketingService.createTicketForFinding(tenant, findingId, toTicketRequest(request), context)
+                : remediation.createTicket(tenant, findingId, toTicketRequest(request), context);
         return new FindingTicketResponse(
                 ref.system().key(),
                 ref.system().displayName(),

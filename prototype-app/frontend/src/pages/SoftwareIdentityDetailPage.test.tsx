@@ -122,6 +122,23 @@ describe('SoftwareIdentityDetailPage', () => {
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
   });
 
+  it('shows owner-team coverage across occurrences once it is canonical', async () => {
+    vi.spyOn(api, 'getSoftwareIdentityDetail').mockResolvedValue(buildDetail({
+      ownershipCoverage: { occurrences: 5, ownedOccurrences: 4, unownedOccurrences: 1, conflictOccurrences: 0, teamIds: ['t-1', 't-2', 't-3'] }
+    }));
+    mockSupportingQueries();
+    renderWithProviders(<SoftwareIdentityDetailPage softwareIdentityId="si-1" />);
+    expect(await screen.findByText('3 teams · 1 unowned occurrence')).toBeInTheDocument();
+  });
+
+  it('shows no owner-team row before CLOUD_BOM ownership is canonical', async () => {
+    vi.spyOn(api, 'getSoftwareIdentityDetail').mockResolvedValue(buildDetail());
+    mockSupportingQueries();
+    renderWithProviders(<SoftwareIdentityDetailPage softwareIdentityId="si-1" />);
+    await waitFor(() => expect(screen.getByText('lodash')).toBeInTheDocument());
+    expect(screen.queryByText('Owner teams')).not.toBeInTheDocument();
+  });
+
   it('renders vendor/product as title when both are present', async () => {
     vi.spyOn(api, 'getSoftwareIdentityDetail').mockResolvedValue(
       buildDetail({ vendor: 'Lodash Corp', product: 'lodash' })

@@ -130,6 +130,25 @@ public class OwnershipClaimService {
     }
 
     /**
+     * Ends every active claim of {@code sourceKind} whose {@code source_ref} matches the SQL {@code LIKE} pattern, after
+     * an admin switched that input off (Phase 0B §2.2). Set-based: the subjects are queued for re-resolution instead
+     * of being resolved one by one in the request.
+     */
+    @Transactional
+    public int endBySourceRef(String sourceKind, String sourceRefPattern, String actor) {
+        List<UUID> subjects = jdbc.queryForList("""
+                UPDATE ownership_claim SET status = 'REVOKED', ended_at = now(), ended_by = ?, updated_at = now()
+                 WHERE source_kind = ? AND status = 'ACTIVE' AND source_ref LIKE ? RETURNING subject_id
+                """, UUID.class, actor, sourceKind, sourceRefPattern);
+        List<UUID> distinct = subjects.stream().distinct().sorted().toList();
+        if (!distinct.isEmpty()) {
+            resolution.enqueueSubjects(distinct);
+            distinct.forEach(subject -> events.record("CLAIM_INPUT_DISABLED", subject, null, null, actor, "sourceKind", sourceKind));
+        }
+        return subjects.size();
+    }
+
+    /**
      * Marks up to {@code limit} past-expiry claims EXPIRED and re-resolves their subjects. The resolver already
      * ignores expired claims, so this keeps stored direct results current between other changes.
      */

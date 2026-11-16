@@ -29,6 +29,16 @@ public class CampaignException {
     @Column(name = "finding_display_id", length = 64)
     private String findingDisplayId;
 
+    /** Null only for exceptions written before Phase 0B §4.7; those count in no outcome bucket. */
+    @Column(name = "finding_id", updatable = false)
+    private UUID findingId;
+
+    @Column(name = "owner_team_id_at_request", updatable = false)
+    private UUID ownerTeamIdAtRequest;
+
+    @Column(name = "ownership_assignment_id_at_request", updatable = false)
+    private UUID ownershipAssignmentIdAtRequest;
+
     @Column(name = "asset_name", length = 255)
     private String assetName;
 
@@ -183,5 +193,29 @@ public class CampaignException {
 
     public void touch() {
         updatedAt = Instant.now();
+    }
+
+    public UUID getFindingId() {
+        return findingId;
+    }
+
+    public void setFindingId(UUID findingId) {
+        this.findingId = findingId;
+    }
+
+    public UUID getOwnerTeamIdAtRequest() {
+        return ownerTeamIdAtRequest;
+    }
+
+    public void setOwnerTeamIdAtRequest(UUID ownerTeamIdAtRequest) {
+        this.ownerTeamIdAtRequest = ownerTeamIdAtRequest;
+    }
+
+    public UUID getOwnershipAssignmentIdAtRequest() {
+        return ownershipAssignmentIdAtRequest;
+    }
+
+    public void setOwnershipAssignmentIdAtRequest(UUID ownershipAssignmentIdAtRequest) {
+        this.ownershipAssignmentIdAtRequest = ownershipAssignmentIdAtRequest;
     }
 }

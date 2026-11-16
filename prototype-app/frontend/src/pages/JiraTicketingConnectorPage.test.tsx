@@ -172,4 +172,21 @@ describe('JiraTicketingConnectorPage', () => {
     expect(await screen.findByRole('button', { name: /save connector/i })).toBeDisabled();
     expect(screen.getByText(/need the Tenant Admin or Inventory Admin role/i)).toBeInTheDocument();
   });
+
+  it('sends the default assignment group, trimmed, and blank to clear it', async () => {
+    vi.spyOn(api, 'getJiraTicketingConfig').mockResolvedValue(
+      config({ configured: true, baseUrl: 'https://acme.atlassian.net', projectKey: 'SEC', hasCredentialSecret: true, defaultAssignmentGroup: 'Platform Security' })
+    );
+    vi.spyOn(api, 'getTicketingProviderStatus').mockResolvedValue(providerStatus());
+    const save = vi.spyOn(api, 'saveJiraTicketingConfig').mockResolvedValue(config({ configured: true }));
+    renderPage();
+    const input = await screen.findByLabelText(/Default assignment group/);
+    expect(input).toHaveValue('Platform Security');
+    fireEvent.change(input, { target: { value: ' SOC ' } });
+    fireEvent.click(screen.getByRole('button', { name: /save connector/i }));
+    await waitFor(() => expect(save.mock.calls[0][0].defaultAssignmentGroup).toBe('SOC'));
+    fireEvent.change(await screen.findByLabelText(/Default assignment group/), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /save connector/i }));
+    await waitFor(() => expect(save.mock.calls[1][0].defaultAssignmentGroup).toBe(''));
+  });
 });

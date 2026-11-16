@@ -42,6 +42,8 @@ public record InventoryComponentResponse(
         String eolCycle,
         LocalDate eolDate,
         Boolean isEol,
-        Integer eolDaysRemaining
+        Integer eolDaysRemaining,
+        /** Resolved owner of the component's occurrence (Phase 0B §3.7); null unless CLOUD_BOM inventory reads are canonical. */
+        com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary ownership
 ) {
 }

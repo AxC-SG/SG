@@ -1,6 +1,22 @@
 # VulnWatch Backend
 
-Last updated November 13, 2026 for the UI 2.0 connector contract changes.
+Last updated November 17, 2026 for the ownership Release 2/AWS/CI/CD integration.
+
+## Ownership Release 2 integration boundary
+
+**Lab-only; release blocked.** The [integration review](ownership-release-2-integration-review.md) records exact
+revisions and current validation. Platform head is V16 and tenant head/default compatibility is V27. Existing AWS
+runtime roles, CI checks and paired releases are retained; cloud discovery schedulers must receive the configured
+role policy through Spring. The V23 → V27 transition requires the forward schema release procedure.
+
+Release 2 adds `/api/ownership/identity-sources` (test/preview/enable/sync/pause/resume/disable),
+`/api/ownership/group-mappings` (preview/write/retire/dismiss), `/api/ownership/cloud-sources` (provider settings and
+Organizations-role test), occurrence owner assignment, campaign preview/membership/scope/reconciliation, and ticket
+routing preview. See controllers and the [contracts](ownership-phase-0b-contracts.md) for payloads and authorization.
+Campaign writes and reconciliation are active independently of ownership read waves. V26 discards existing recipient
+emails; new custom email recipients require tenant keys and return 503 with the default disabled wrapper. Ticket
+routing becomes canonical only with its tenant wave/domain authority; keep that wave empty for the CVE workbench,
+which does not yet supply preview hashes. See the [qualification runbook](ownership-release-2-qualification.md).
 
 ## UI 2.0 integration boundary
 
@@ -458,6 +474,11 @@ Per-tenant configuration of which vulnerability intelligence sources participate
 | GET | `/` | List campaigns (optional status filter) |
 | GET | `/{campaignId}` | Get campaign detail |
 | POST | `/` | Create campaign |
+| POST | `/preview` | Preview campaign scope and owner buckets without writing |
+| GET, POST | `/{campaignId}/members` | Cursor-paged ledger members with outcomes/current and at-add owners; add findings |
+| POST | `/{campaignId}/cves` | Extend an active CVE campaign's saved scope and materialize its matching findings |
+| POST | `/{campaignId}/software` | Extend an active CVE campaign's saved software scope |
+| GET | `/{campaignId}/reconciliation` | Watermark, last reconciliation result and consecutive failures |
 | POST | `/{campaignId}/status` | Update campaign status |
 | POST | `/{campaignId}/notes` | Add note |
 | POST | `/{campaignId}/exceptions` | Add exception |
@@ -1004,7 +1025,7 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 
 - **`TenantSchemaMigrationService`** — drives the rollout: acquire a Postgres advisory lock (`scout-tenant-schema-migrator`) → migrate the `tenant_default` template and compute a SHA-256 structural fingerprint → migrate a canary tenant → migrate remaining tenants in batches of 10, comparing each tenant's fingerprint against the template and halting the batch on drift. Runs against `classpath:db/migration/tenant`, with its own `tenant_schema_history` table per schema, starting at V1. Also drives `provisionNewTenant(tenant)` for on-demand provisioning of a single new tenant.
 - **`TenantSchemaStatusService`** — reads/writes `platform.tenant_schema_versions` (list for the Platform Console, `readinessFailures(minVersion)` for the health indicator, `markMigrating`/`markCurrent`/`markFailure` called by the migration service).
-- **`PlatformSchemaStartupValidator` / `TenantSchemaReadinessHealthIndicator`** — when schema enforcement is enabled, startup/readiness share a read-only structural and SELECT-grant check for required platform work, the schedule-occurrence index and V6 waiting-state constraint. Missing shared dependencies fail startup or readiness. Readiness stays UP for compatible tenants while reporting `unreadyTenantCount`; an incompatible individual tenant is rejected at request entry. Required tenant floor and supported maximum are both V23, even if a lower minimum is configured. Platform head is V16. These checks do not establish actual deployed history or rollback compatibility.
+- **`PlatformSchemaStartupValidator` / `TenantSchemaReadinessHealthIndicator`** — when schema enforcement is enabled, startup/readiness share a read-only structural and SELECT-grant check for required platform work, the schedule-occurrence index and V6 waiting-state constraint. Missing shared dependencies fail startup or readiness. Readiness stays UP for compatible tenants while reporting `unreadyTenantCount`; an incompatible individual tenant is rejected at request entry. Required tenant floor and supported maximum are both V27, even if a lower minimum is configured. Platform head is V16. These checks do not establish actual deployed history or rollback compatibility.
 - **`TenantSchemaMigratorRunner`** — a legacy/test-only `ApplicationReadyEvent` listener, gated behind `app.schema-migration.legacy-test-runner-enabled=true` (off by default); superseded in production by `ProductionBootstrapCli` below but still used by some integration tests.
 - **`ProductionBootstrapCli`** (`com.prototype.vulnwatch.migration`) — standalone production bootstrap entry point; does **not** start Spring/JPA. Runs platform migrations, optionally reconciles the configured platform-owner identity (`APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED`), registers/migrates the default tenant, migrates every other tenant (canary + batches of 10, same drift-checking as above), provisions/rotates the least-privilege `scout_runtime` Postgres role, verifies the full control-plane invariants (RLS coverage on every active tenant table, no unsafe role attributes, runtime role actually denied DDL at runtime), and — when `PLATFORM_OWNER_SETUP_LINK_ENABLED=true` — emails a one-time password-setup link via `ResendEmailClient`. Prints a single-line `production_bootstrap_report=<json>` summary and exits non-zero on any phase failure. Invoked via `/app/scripts/run-schema-migration.sh --run-once` in a standalone ECS task; `backend/scripts/provision-runtime-role.sql` is the equivalent automated role-provisioning script. See [bootstrap wrapper](../backend/scripts/run-schema-migration.sh), [runtime grants](../backend/scripts/provision-runtime-role.sql) and [qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>).
 - **`TenantLifecycleGuardService`** — centralizes tenant-accessibility checks (demo-tenant detection/expiry, `DELETED`/`PURGING`/`EXPIRED`/non-`ACTIVE` status → `ResponseStatusException` with the appropriate HTTP status) previously duplicated across tenant-status filtering call sites.
@@ -1036,8 +1057,8 @@ Per-tenant DDL now runs on its own Flyway line, separate from the platform's sta
 | `app.schema-migration.report-only` | `APP_SCHEMA_MIGRATION_REPORT_ONLY` | `false` | Runs the tenant schema rollout in read-only drift-report mode (read by `TenantSchemaMigratorRunner`) |
 | `app.schema-migration.legacy-test-runner-enabled` | — | `false` | Gates `TenantSchemaMigratorRunner` registration (legacy/test path; production uses `ProductionBootstrapCli`) |
 | `app.tenancy.enforce-schema-version` | `APP_ENFORCE_TENANT_SCHEMA_VERSION` | `false` (production: `true`) | Checks required platform work structures at startup/readiness and tenant compatibility at request entry |
-| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `23` | Required tenant floor V23 (`TenantSchemaCompatibility`); configured values cannot lower it. Supported tenant range is V23–V23; independent platform head is V16 |
-| `app.tenancy.maximum-compatible-schema-version` | `APP_MAXIMUM_TENANT_SCHEMA_VERSION` | `23` | Upper bound, intersected with the binary's `SUPPORTED_MAXIMUM`; a value below the tenant head leaves no supported version and stops tenant-scoped work. Both defaults move with each tenant migration (`MigrationCatalogTest`) |
+| `app.tenancy.minimum-compatible-schema-version` | `APP_MINIMUM_TENANT_SCHEMA_VERSION` | `27` | Required tenant floor V27 (`TenantSchemaCompatibility`); configured values cannot lower it. Supported tenant range is V27–V27; independent platform head is V16 |
+| `app.tenancy.maximum-compatible-schema-version` | `APP_MAXIMUM_TENANT_SCHEMA_VERSION` | `27` | Upper bound, intersected with the binary's `SUPPORTED_MAXIMUM`; a value below the tenant head leaves no supported version and stops tenant-scoped work. Both defaults move with each tenant migration (`MigrationCatalogTest`) |
 | `app.security.tenant-keys.wrapper` | `APP_TENANT_KEY_WRAPPER` | `disabled` | Per-tenant data-key wrapper. `disabled` makes every directory/PII write fail closed; `local` is refused unless `APP_ENVIRONMENT` is local/test |
 | `app.security.tenant-keys.local-master-key` | `APP_TENANT_KEY_LOCAL_MASTER_KEY` | — | Master key for the `local` wrapper |
 | `app.security.tenant-keys.cache-ttl` / `cache-max-keys` | `APP_TENANT_KEY_CACHE_TTL` / `APP_TENANT_KEY_CACHE_MAX_KEYS` | `PT10M` / `10000` | In-memory DEK cache bounds |

@@ -163,4 +163,36 @@ class GcpDiscoveryClientTest {
         assertEquals("456", GcpDiscoveryClient.instanceIdFromInventoryName("projects/1/locations/z/instances/456/inventory"));
         assertEquals(null, GcpDiscoveryClient.instanceIdFromInventoryName("projects/1/locations/z/instances/name/inventory"));
     }
+
+    // ── Project labels (Phase 0B §2.2) ──────────────────────────────────────────────────────
+
+    @Test
+    void readsProjectLabelsWithProjectsGet() {
+        server.expect(requestTo("https://cloudresourcemanager.googleapis.com/v1/projects/acme-prod"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer token"))
+                .andRespond(withSuccess("""
+                        {"projectId":"acme-prod","labels":{"team":"payments","env":"prod"}}
+                        """, MediaType.APPLICATION_JSON));
+        assertEquals(Map.of("team", "payments", "env", "prod"), client.projectLabels("token", "acme-prod"));
+        server.verify();
+    }
+
+    @Test
+    void aDeniedProjectLabelReadThrowsSoTheProjectsClaimsStayUntouched() {
+        server.expect(requestTo("https://cloudresourcemanager.googleapis.com/v1/projects/acme-prod"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN).contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":{\"code\":403,\"message\":\"Permission denied\"}}"));
+        GcpDiscoveryClient.GcpApiException denied = assertThrows(GcpDiscoveryClient.GcpApiException.class,
+                () -> client.projectLabels("token", "acme-prod"));
+        assertEquals(403, denied.status());
+    }
+
+    @Test
+    void aTimedOutProjectLabelReadThrows() {
+        server.expect(requestTo("https://cloudresourcemanager.googleapis.com/v1/projects/acme-prod"))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withException(
+                        new java.net.SocketTimeoutException("Read timed out")));
+        assertThrows(RuntimeException.class, () -> client.projectLabels("token", "acme-prod"));
+    }
 }

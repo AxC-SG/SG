@@ -1,29 +1,30 @@
 import React from 'react';
+import { campaignOwnerLabel } from './ownership';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { AddFindingsDialog } from './AddFindingsDialog';
+import { CampaignExceptionForm } from './CampaignExceptionForm';
 import { CampaignLinkedFindings } from './CampaignLinkedFindings';
+import { CampaignOwnerMembers } from './CampaignOwnerMembers';
+import { CampaignMembershipStatus } from './CampaignMembershipStatus';
 import { pathForFindingDetail, pathForInventoryHostAsset, pathForInventoryViewWithSearch, pathForSoftwareIdentityDetail, pathForVulnRepoView } from '../../app/routes';
 import { ApiError, api } from '../../api/client';
 import { usePageHeader } from '../../app/pageHeaderState';
+import { useActor } from '../auth/context';
+import { canRunSecurityWorkflow } from '../auth/roles';
 import { AsyncSection } from '../../components/AsyncSection';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Dialog } from '../../components/Dialog';
 import { cveWorkbenchApi } from '../cve-workbench/api';
 import type { OrgSpecificCveExposureRecord } from '../cve-workbench/types';
-import type { Asset } from '../inventory/api-types';
 import type { SoftwareIdentitySummary } from '../software-identities/types';
 import type {
-  CampaignAssetRow,
   CampaignDetail,
   CampaignExceptionStatus,
-  CampaignSoftwareItem,
   CampaignStatus,
 } from './types';
 import { deliveryStateLabel, readLaunchState, summarizeDeliveries } from './deliveryOutcome';
 
 type DetailTab = 'overview' | 'products' | 'assets' | 'findings' | 'exceptions' | 'evidence' | 'activity';
-type AssetAddTab = 'search' | 'tag' | 'class';
-
-const ADD_ASSETS_PAGE_SIZE = 10;
 
 function sevPill(severity?: string | null): string {
   const s = (severity ?? '').toLowerCase();
@@ -124,8 +125,11 @@ const NOTIFY_TEMPLATES: Record<NotifyTemplate, { label: string; subject: string;
 
 const NOTIFY_VARIABLES = ['{{owner_name}}', '{{asset_count}}', '{{asset_list}}', '{{cve_id}}', '{{due_date}}', '{{severity}}'] as const;
 
+const isActiveOutcome = (outcome: string) => outcome === 'OPEN' || outcome === 'REOPENED';
+
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const actor = useActor();
   const location = useLocation();
   const returnTo = location.pathname;
 
@@ -203,101 +207,8 @@ export function CampaignDetailPage() {
     } catch { /* ignore */ }
   }, [id]);
 
-  // ── Add Assets modal ─────────────────────────────────────────────────────
-  const [showAddAssets, setShowAddAssets] = React.useState(false);
-  const [addAssetsTab, setAddAssetsTab] = React.useState<AssetAddTab>('search');
-  const [availableAssets, setAvailableAssets] = React.useState<Asset[]>([]);
-  const [assetsLoading, setAssetsLoading] = React.useState(false);
-  // search tab
-  const [assetSearch, setAssetSearch] = React.useState('');
-  const [selectedAssetIds, setSelectedAssetIds] = React.useState<Set<string>>(new Set());
-  const [assetPage, setAssetPage] = React.useState(0);
-  // tag tab
-  const [assetTagInput, setAssetTagInput] = React.useState('');
-  // class tab
-  const [assetClassSel, setAssetClassSel] = React.useState<Set<string>>(new Set());
-  // shared
-  const [addAssetsError, setAddAssetsError] = React.useState('');
-
-  React.useEffect(() => {
-    if (!showAddAssets) return;
-    setAssetsLoading(true);
-    setAvailableAssets([]);
-    api.listAssets()
-      .then((assets) => setAvailableAssets(assets))
-      .catch((err) => setAddAssetsError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setAssetsLoading(false));
-  }, [showAddAssets]);
-
-  function closeAddAssets() {
-    setShowAddAssets(false);
-    setAddAssetsTab('search');
-    setAssetSearch('');
-    setSelectedAssetIds(new Set());
-    setAssetPage(0);
-    setAssetTagInput('');
-    setAssetClassSel(new Set());
-    setAddAssetsError('');
-  }
-  function toggleAssetId(assetId: string) {
-    setSelectedAssetIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(assetId)) next.delete(assetId); else next.add(assetId);
-      return next;
-    });
-  }
-  function toggleAssetClass(cls: string) {
-    setAssetClassSel((prev) => {
-      const next = new Set(prev);
-      if (next.has(cls)) next.delete(cls); else next.add(cls);
-      return next;
-    });
-  }
-
-  function resolveAssetsToAdd(): Asset[] {
-    const existingIds = new Set(detail?.assets.map((a) => a.assetIdentifier).filter(Boolean));
-    if (addAssetsTab === 'search') {
-      return availableAssets.filter((a) => selectedAssetIds.has(a.id) && !existingIds.has(a.identifier));
-    }
-    if (addAssetsTab === 'tag') {
-      const tags = assetTagInput.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      if (tags.length === 0) return [];
-      return availableAssets.filter((a) => {
-        const haystack = [a.name, a.identifier, a.environment ?? '', a.ownerTeam ?? '', a.type, a.businessCriticality].join(' ').toLowerCase();
-        return tags.some((tag) => haystack.includes(tag)) && !existingIds.has(a.identifier);
-      });
-    }
-    // class tab
-    return availableAssets.filter((a) => assetClassSel.has(a.type) && !existingIds.has(a.identifier));
-  }
-
-  function submitAddAssets() {
-    const assetsToAdd = resolveAssetsToAdd();
-    if (assetsToAdd.length === 0) {
-      setAddAssetsError('No new assets matched — they may already be in this campaign.');
-      return;
-    }
-    const newRows: CampaignAssetRow[] = assetsToAdd.map((a) => ({
-      assetId: a.id,
-      assetName: a.name,
-      assetIdentifier: a.identifier,
-      environment: a.environment ?? null,
-      supportGroup: a.ownerTeam ?? null,
-      openFindings: 0,
-      resolvedFindings: 0,
-    }));
-    setDetail((prev) =>
-      prev
-        ? {
-            ...prev,
-            assets: [...prev.assets, ...newRows],
-            summary: { ...prev.summary, assetCount: prev.summary.assetCount + newRows.length },
-          }
-        : prev,
-    );
-    setScopeEditedLocally(true);
-    closeAddAssets();
-  }
+  // ── Add findings (saved) ─────────────────────────────────────────────────
+  const [showAddFindings, setShowAddFindings] = React.useState(false);
 
   // ── Add CVE modal ────────────────────────────────────────────────────────
   const [showAddCve, setShowAddCve] = React.useState(false);
@@ -311,6 +222,7 @@ export function CampaignDetailPage() {
   // Map<externalId, record> so we remember selections across page turns
   const [selectedCveMap, setSelectedCveMap] = React.useState<Map<string, OrgSpecificCveExposureRecord>>(new Map());
   const [addCveError, setAddCveError] = React.useState('');
+  const [addCveBusy, setAddCveBusy] = React.useState(false);
 
   // Debounce search input → query
   React.useEffect(() => {
@@ -350,26 +262,26 @@ export function CampaignDetailPage() {
       return next;
     });
   }
-  function submitAddCve() {
+  async function submitAddCve() {
     const existing = new Set(detail?.summary.cveIds ?? []);
     const toAdd = Array.from(selectedCveMap.values()).filter((r) => !existing.has(r.externalId));
     if (toAdd.length === 0) {
       setAddCveError('All selected CVEs are already tracked in this campaign.');
       return;
     }
-    setDetail((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        summary: { ...prev.summary, cveIds: [...prev.summary.cveIds, ...toAdd.map((r) => r.externalId)] },
-        vulnerabilities: [
-          ...prev.vulnerabilities,
-          ...toAdd.map((r) => ({ externalId: r.externalId, title: r.title, severity: r.severity })),
-        ],
-      };
-    });
-    setScopeEditedLocally(true);
-    closeAddCve();
+    if (!id) return;
+    setAddCveBusy(true);
+    setAddCveError('');
+    try {
+      // The response is the source of truth: counts, members and membership state all change on the server.
+      const updated = await api.addCampaignCves(id, toAdd.map((r) => r.externalId));
+      setDetail(updated);
+      closeAddCve();
+    } catch (err) {
+      setAddCveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddCveBusy(false);
+    }
   }
 
   // ── Add Software modal ────────────────────────────────────────────────────
@@ -383,6 +295,7 @@ export function CampaignDetailPage() {
   const [softwareTotalItems, setSoftwareTotalItems] = React.useState(0);
   const [selectedSoftwareMap, setSelectedSoftwareMap] = React.useState<Map<string, SoftwareIdentitySummary>>(new Map());
   const [addSoftwareError, setAddSoftwareError] = React.useState('');
+  const [addSoftwareBusy, setAddSoftwareBusy] = React.useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => { setSoftwareSearchQuery(softwareSearchInput); setSoftwarePage(0); }, 300);
@@ -454,23 +367,25 @@ export function CampaignDetailPage() {
       return next;
     });
   }
-  function submitAddSoftware() {
+  async function submitAddSoftware() {
     const existing = new Set((detail?.softwareItems ?? []).map((s) => s.id));
     const toAdd = Array.from(selectedSoftwareMap.values()).filter((sw) => !existing.has(sw.id));
     if (toAdd.length === 0) {
       setAddSoftwareError('All selected software is already tracked in this campaign.');
       return;
     }
-    const newItems: CampaignSoftwareItem[] = toAdd.map((sw) => ({
-      id: sw.id,
-      displayName: sw.displayName,
-      vendor: sw.vendor ?? null,
-      assetCount: sw.assetCount,
-      openFindingCount: sw.openFindingCount,
-    }));
-    setDetail((prev) => prev ? { ...prev, softwareItems: [...(prev.softwareItems ?? []), ...newItems] } : prev);
-    setScopeEditedLocally(true);
-    closeAddSoftware();
+    if (!id) return;
+    setAddSoftwareBusy(true);
+    setAddSoftwareError('');
+    try {
+      const updated = await api.addCampaignSoftware(id, toAdd.map((sw) => sw.id));
+      setDetail(updated);
+      closeAddSoftware();
+    } catch (err) {
+      setAddSoftwareError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddSoftwareBusy(false);
+    }
   }
 
   // ── Delete helpers ────────────────────────────────────────────────────────
@@ -619,6 +534,8 @@ export function CampaignDetailPage() {
   }
 
   const s = detail.summary;
+  // Saved scope additions: CVE-scoped, still open, and the actor may run security workflow actions.
+  const canAddScope = s.scopeKind === 'CVE' && s.status !== 'CLOSED' && s.status !== 'CANCELLED' && canRunSecurityWorkflow(actor);
   const left = daysLeft(s.dueAt);
   const pct = s.completionPercent;
   const notifyOwner = detail.notifyGroups[0];
@@ -628,10 +545,10 @@ export function CampaignDetailPage() {
   // ── Overview computed values ─────────────────────────────────────────────
   const nowMs = Date.now();
   const overdueCount = detail.findings.filter(
-    (f) => f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs,
+    (f) => isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs,
   ).length;
   const criticalExposed = detail.findings.filter(
-    (f) => (f.severity ?? '').toUpperCase() === 'CRITICAL' && f.status !== 'RESOLVED',
+    (f) => (f.severity ?? '').toUpperCase() === 'CRITICAL' && isActiveOutcome(f.outcome),
   ).length;
 
   type SevStats = { total: number; resolved: number; overdue: number };
@@ -639,10 +556,10 @@ export function CampaignDetailPage() {
   for (const f of detail.findings) {
     const sev = (f.severity ?? 'UNKNOWN').toUpperCase();
     const eg = sevStatMap.get(sev) ?? { total: 0, resolved: 0, overdue: 0 };
-    const isOverdue = f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
+    const isOverdue = isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
     sevStatMap.set(sev, {
       total: eg.total + 1,
-      resolved: eg.resolved + (f.status === 'RESOLVED' ? 1 : 0),
+      resolved: eg.resolved + (f.outcome === 'REMEDIATED' ? 1 : 0),
       overdue: eg.overdue + (isOverdue ? 1 : 0),
     });
   }
@@ -652,13 +569,13 @@ export function CampaignDetailPage() {
   type TeamStats = { group: string; total: number; resolved: number; overdue: number };
   const teamStatMap = new Map<string, TeamStats>();
   for (const f of detail.findings) {
-    const grp = f.ownerGroup ?? 'Unassigned';
+    const grp = campaignOwnerLabel(f.currentOwnership);
     const eg = teamStatMap.get(grp) ?? { group: grp, total: 0, resolved: 0, overdue: 0 };
-    const isOverdue = f.status !== 'RESOLVED' && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
+    const isOverdue = isActiveOutcome(f.outcome) && f.dueAt != null && new Date(f.dueAt).getTime() < nowMs;
     teamStatMap.set(grp, {
       group: grp,
       total: eg.total + 1,
-      resolved: eg.resolved + (f.status === 'RESOLVED' ? 1 : 0),
+      resolved: eg.resolved + (f.outcome === 'REMEDIATED' ? 1 : 0),
       overdue: eg.overdue + (isOverdue ? 1 : 0),
     });
   }
@@ -884,6 +801,7 @@ export function CampaignDetailPage() {
           <div className="cd-overview-layout">
             {/* ── Main column ── */}
             <div className="cd-overview-main">
+              {id && <CampaignMembershipStatus campaignId={id} summary={s} />}
               {id && <CampaignLinkedFindings campaignId={id} />}
 
               {/* Hero card — campaign identity + threat context */}
@@ -977,7 +895,7 @@ export function CampaignDetailPage() {
                   <span className="cd-kpi-label">Assets Affected</span>
                 </div>
                 <div className="cd-kpi-tile">
-                  <strong className="cd-kpi-value">{s.openFindings}</strong>
+                  <strong className="cd-kpi-value">{s.activeRemainingCount}</strong>
                   <span className="cd-kpi-label">Open Findings</span>
                 </div>
                 <div className={`cd-kpi-tile${criticalExposed > 0 ? ' cd-kpi-tile--danger' : ''}`}>
@@ -1029,7 +947,7 @@ export function CampaignDetailPage() {
               <div className="cd-progress-card">
                 <div className="cd-progress-header">
                   <span className="cd-progress-title">Remediation Progress</span>
-                  <span className="cd-progress-summary">{pct}% · {s.resolvedFindings} of {s.totalFindings} findings resolved</span>
+                  <span className="cd-progress-summary">{pct}% · {s.remediatedCount} of {s.totalFindings} findings remediated</span>
                 </div>
                 <div className="cd-progress-bar-wrap">
                   <div className="cd-progress-bar">
@@ -1038,7 +956,7 @@ export function CampaignDetailPage() {
                 </div>
                 <div className="cd-progress-labels">
                   <span>0%</span>
-                  <span className="cd-progress-resolved">{s.resolvedFindings} resolved</span>
+                  <span className="cd-progress-resolved">{s.remediatedCount} remediated</span>
                   <span>100%</span>
                 </div>
 
@@ -1144,8 +1062,8 @@ export function CampaignDetailPage() {
                   <span className="cd-detail-label">CVE(s)</span>
                   <span className="cd-detail-value cd-detail-value--mono">{cveLabel || '—'}</span>
                   <span className="cd-detail-label">Evidence</span>
-                  <span className={`cd-detail-value${s.resolvedFindings > 0 && s.resolvedFindings < s.totalFindings ? ' cd-evidence-partial' : ''}`}>
-                    {s.resolvedFindings === 0 ? 'None' : s.resolvedFindings === s.totalFindings ? 'Complete' : 'Partial'}
+                  <span className={`cd-detail-value${s.remediatedCount > 0 && s.remediatedCount < s.totalFindings ? ' cd-evidence-partial' : ''}`}>
+                    {s.remediatedCount === 0 ? 'None' : s.remediatedCount === s.totalFindings ? 'Complete' : 'Partial'}
                   </span>
                 </div>
               </div>
@@ -1290,10 +1208,12 @@ export function CampaignDetailPage() {
               <span className="cd-tab-toolbar-count">
                 {productRows.length + (detail.softwareItems ?? []).length} software item{productRows.length + (detail.softwareItems ?? []).length !== 1 ? 's' : ''}
               </span>
-              <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
-                onClick={() => setShowAddSoftware(true)}>
-                + Add Software
-              </button>
+              {canAddScope && (
+                <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
+                  onClick={() => setShowAddSoftware(true)}>
+                  + Add Software
+                </button>
+              )}
             </div>
             {scopeLocalNotice}
             <table className="data-table cd-findings-table">
@@ -1367,8 +1287,8 @@ export function CampaignDetailPage() {
             <div className="cd-tab-toolbar">
               <span className="cd-tab-toolbar-count">{detail.assets.length} assets in scope</span>
               <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
-                onClick={() => setShowAddAssets(true)}>
-                + Add Assets
+                onClick={() => setShowAddFindings(true)}>
+                + Add findings
               </button>
             </div>
             {scopeLocalNotice}
@@ -1376,10 +1296,10 @@ export function CampaignDetailPage() {
               <thead>
                 <tr>
                   <th>ASSET / CI</th>
-                  <th>SUPPORT GROUP</th>
+                  <th>MEMBERS</th>
                   <th>OWNER</th>
-                  <th>OPEN</th>
-                  <th>RESOLVED</th>
+                  <th>ACTIVE</th>
+                  <th>REMEDIATED</th>
                   <th>PRIORITY</th>
                   <th></th>
                 </tr>
@@ -1390,7 +1310,7 @@ export function CampaignDetailPage() {
                     (f) => f.assetIdentifier === a.assetIdentifier || f.assetName === a.assetName,
                   );
                   const maxSev = assetFindings.find((f) => f.severity)?.severity;
-                  const ownerGroup = assetFindings.find((f) => f.ownerGroup)?.ownerGroup;
+                  const owner = assetFindings.length > 0 ? campaignOwnerLabel(assetFindings[0].currentOwnership) : null;
                   return (
                     <tr key={`${a.assetIdentifier}-${a.assetName}`}>
                       <td>
@@ -1403,15 +1323,12 @@ export function CampaignDetailPage() {
                           {a.assetIdentifier && (
                             <span className="cd-asset-ci mono">{a.assetIdentifier}</span>
                           )}
-                          <span className="cd-asset-unassigned-badge">
-                            {a.supportGroup || 'Unassigned'}
-                          </span>
                         </div>
                       </td>
-                      <td style={{ fontSize: 13 }}>{a.supportGroup || '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>{ownerGroup || '—'}</td>
-                      <td style={{ fontSize: 13 }}>{a.openFindings}</td>
-                      <td style={{ fontSize: 13, color: '#21d07a' }}>{a.resolvedFindings}</td>
+                      <td style={{ fontSize: 13 }}>{a.members}</td>
+                      <td style={{ fontSize: 13, color: 'var(--dp-text-2)' }}>{owner || '—'}</td>
+                      <td style={{ fontSize: 13 }}>{a.activeFindings}</td>
+                      <td style={{ fontSize: 13, color: '#21d07a' }}>{a.remediatedFindings}</td>
                       <td>
                         {maxSev
                           ? <span className={sevPill(maxSev)}>{maxSev}</span>
@@ -1433,6 +1350,7 @@ export function CampaignDetailPage() {
 
         {tab === 'findings' && (
           <div className="cd-tab-body">
+            {id && <CampaignOwnerMembers campaignId={id} />}
             <table className="data-table cd-findings-table">
               <thead>
                 <tr>
@@ -1486,7 +1404,7 @@ export function CampaignDetailPage() {
                       <td>
                         <span className={statusPill(f.status)}>{f.status || '—'}</span>
                       </td>
-                      <td style={{ fontSize: 13 }}>{f.ownerGroup || 'Unassigned'}</td>
+                      <td style={{ fontSize: 13 }}>{campaignOwnerLabel(f.currentOwnership)}</td>
                       <td style={{ fontSize: 12, color: 'var(--dp-text-2)', whiteSpace: 'nowrap' }}>
                         {formatDate(f.dueAt)}
                       </td>
@@ -1501,6 +1419,7 @@ export function CampaignDetailPage() {
 
         {tab === 'exceptions' && (
           <div className="cd-tab-body">
+            {id && <CampaignExceptionForm campaignId={id} onCreated={() => setLoadAttempt((n) => n + 1)} />}
             {exceptionError && <div className="notice error cd-action-feedback" role="alert">{exceptionError}</div>}
             <table className="data-table cd-findings-table">
               <thead>
@@ -1666,10 +1585,12 @@ export function CampaignDetailPage() {
             <div className="cd-tab-body">
               <div className="cd-tab-toolbar">
                 <span className="cd-tab-toolbar-count">{displayRows.length} CVE{displayRows.length !== 1 ? 's' : ''} tracked</span>
-                <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
-                  onClick={() => setShowAddCve(true)}>
-                  + Add CVE
-                </button>
+                {canAddScope && (
+                  <button type="button" className="btn btn-primary" style={{ fontSize: 13, padding: '6px 14px' }}
+                    onClick={() => setShowAddCve(true)}>
+                    + Add CVE
+                  </button>
+                )}
               </div>
               {scopeLocalNotice}
               <table className="data-table cd-findings-table">
@@ -1797,214 +1718,14 @@ export function CampaignDetailPage() {
         })()}
       </div>
 
-      {/* ── Add Assets modal ─────────────────────────────────────────── */}
-      {showAddAssets && (() => {
-        // Search tab computed values
-        const q = assetSearch.toLowerCase();
-        const filtered = availableAssets.filter(
-          (a) => a.name.toLowerCase().includes(q) || a.identifier.toLowerCase().includes(q) || (a.ownerTeam ?? '').toLowerCase().includes(q),
-        );
-        const totalPages = Math.max(1, Math.ceil(filtered.length / ADD_ASSETS_PAGE_SIZE));
-        const safePage = Math.min(assetPage, totalPages - 1);
-        const pageAssets = filtered.slice(safePage * ADD_ASSETS_PAGE_SIZE, (safePage + 1) * ADD_ASSETS_PAGE_SIZE);
-        const allPageSelected = pageAssets.length > 0 && pageAssets.every((a) => selectedAssetIds.has(a.id));
-
-        // Unique asset types for By Class tab
-        const uniqueTypes = Array.from(new Set(availableAssets.map((a) => a.type).filter(Boolean))).sort();
-
-        // Preview count for footer
-        const previewCount = resolveAssetsToAdd().length;
-
-        // Footer label
-        const addLabel = previewCount > 0 ? `Add ${previewCount} Asset${previewCount !== 1 ? 's' : ''}` : 'Add Assets';
-
-        return (
-          <Dialog isOpen labelledBy="cd-add-assets-title" onClose={closeAddAssets} className="fd3-modal cd-asset-picker-modal">
-              <div className="fd3-modal-header">
-                <span id="cd-add-assets-title">Add Assets to Campaign</span>
-                <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddAssets}>✕</button>
-              </div>
-              <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
-
-              {/* Tab selector */}
-              <div className="cd-asset-tab-bar">
-                {(['search', 'tag', 'class'] as AssetAddTab[]).map((t) => (
-                  <button key={t} type="button"
-                    className={`cd-asset-tab${addAssetsTab === t ? ' active' : ''}`}
-                    onClick={() => { setAddAssetsTab(t); setAddAssetsError(''); }}>
-                    {t === 'search' ? 'Search & Select' : t === 'tag' ? 'By Tag' : 'By Asset Type'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
-                {addAssetsError && <div className="notice error" style={{ marginBottom: 10 }}>{addAssetsError}</div>}
-
-                {/* ── Search & Select tab ── */}
-                {addAssetsTab === 'search' && (
-                  <>
-                    <div className="cd-asset-search-wrap">
-                      <svg className="cd-asset-search-icon" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
-                      </svg>
-                      <input
-                        className="cd-asset-search-input"
-                        placeholder="Search by name, CI identifier, or team…"
-                        value={assetSearch}
-                        onChange={(e) => { setAssetSearch(e.target.value); setAssetPage(0); }}
-                        autoFocus
-                      />
-                      {assetSearch && (
-                        <button className="cd-asset-search-clear" onClick={() => { setAssetSearch(''); setAssetPage(0); }}>✕</button>
-                      )}
-                    </div>
-                    <div className="cd-asset-list">
-                      {assetsLoading && <div className="cd-asset-loading">Loading assets…</div>}
-                      {!assetsLoading && filtered.length === 0 && (
-                        <div className="cd-asset-loading">{assetSearch ? 'No assets match your search.' : 'No assets found in inventory.'}</div>
-                      )}
-                      {!assetsLoading && pageAssets.length > 0 && (
-                        <>
-                          <div className="cd-asset-row cd-asset-row--header">
-                            <label className="cd-asset-check-label">
-                              <input type="checkbox" checked={allPageSelected}
-                                onChange={() => {
-                                  setSelectedAssetIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (allPageSelected) pageAssets.forEach((a) => next.delete(a.id));
-                                    else pageAssets.forEach((a) => next.add(a.id));
-                                    return next;
-                                  });
-                                }}
-                              />
-                              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--dp-text-2)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                                Select page
-                              </span>
-                            </label>
-                            <span className="cd-asset-col-head">TYPE</span>
-                            <span className="cd-asset-col-head">ENV</span>
-                            <span className="cd-asset-col-head">TEAM</span>
-                          </div>
-                          {pageAssets.map((a) => (
-                            <label key={a.id} className={`cd-asset-row${selectedAssetIds.has(a.id) ? ' cd-asset-row--selected' : ''}`}>
-                              <input type="checkbox" checked={selectedAssetIds.has(a.id)} onChange={() => toggleAssetId(a.id)} />
-                              <div className="cd-asset-row-name">
-                                <strong>{a.name}</strong>
-                                <span className="mono" style={{ fontSize: 11, color: 'var(--dp-text-2)' }}>{a.identifier}</span>
-                              </div>
-                              <span className="cd-asset-col-cell">{a.type || '—'}</span>
-                              <span className="cd-asset-col-cell">{a.environment || '—'}</span>
-                              <span className="cd-asset-col-cell">{a.ownerTeam || '—'}</span>
-                            </label>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                    {!assetsLoading && totalPages > 1 && (
-                      <div className="cd-asset-pagination">
-                        <button className="cd-asset-page-btn" disabled={safePage === 0} onClick={() => setAssetPage(safePage - 1)}>‹ Prev</button>
-                        <span className="cd-asset-page-info">{safePage + 1} / {totalPages} · {filtered.length} assets</span>
-                        <button className="cd-asset-page-btn" disabled={safePage >= totalPages - 1} onClick={() => setAssetPage(safePage + 1)}>Next ›</button>
-                      </div>
-                    )}
-                    {!assetsLoading && filtered.length > 0 && totalPages === 1 && (
-                      <div className="cd-asset-pagination">
-                        <span className="cd-asset-page-info">{filtered.length} asset{filtered.length !== 1 ? 's' : ''}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* ── By Tag tab ── */}
-                {addAssetsTab === 'tag' && (
-                  <div className="cd-mode-body">
-                    <p className="cd-mode-desc">
-                      Enter tags to scope matching assets. Separate multiple tags with commas — any match is included.
-                      <br/>Tags are matched against asset name, environment, team, type, and criticality.
-                      <br/><span style={{ fontStyle: 'italic' }}>Examples: <code>prod</code>, <code>critical</code>, <code>banking</code>, <code>SAP</code></span>
-                    </p>
-                    <label className="cd-mode-label" style={{ marginTop: 8 }}>Tags</label>
-                    <input
-                      className="fpl-form-input"
-                      style={{ width: '100%', boxSizing: 'border-box' }}
-                      placeholder="prod, critical, us-east, SAP"
-                      value={assetTagInput}
-                      onChange={(e) => setAssetTagInput(e.target.value)}
-                      autoFocus
-                    />
-                    {assetTagInput.trim() && (
-                      <div className="cd-tag-preview">
-                        {assetTagInput.split(',').map((t) => t.trim()).filter(Boolean).map((t) => (
-                          <span key={t} className="cd-tag-chip">{t}</span>
-                        ))}
-                      </div>
-                    )}
-                    {!assetsLoading && assetTagInput.trim() && (
-                      <p className="cd-mode-desc" style={{ marginTop: 8 }}>
-                        {previewCount > 0
-                          ? <><strong style={{ color: 'var(--dp-accent)' }}>{previewCount}</strong> new assets would be added.</>
-                          : 'No new assets match these tags (they may already be in this campaign).'}
-                      </p>
-                    )}
-                    {assetsLoading && <p className="cd-mode-desc" style={{ marginTop: 8 }}>Loading inventory…</p>}
-                  </div>
-                )}
-
-                {/* ── By Asset Type tab ── */}
-                {addAssetsTab === 'class' && (
-                  <div className="cd-mode-body">
-                    <p className="cd-mode-desc">Select one or more asset types to add all matching assets from inventory.</p>
-                    {assetsLoading
-                      ? <p className="cd-mode-desc">Loading inventory…</p>
-                      : uniqueTypes.length === 0
-                        ? <p className="cd-mode-desc">No asset types found in inventory.</p>
-                        : (
-                          <div className="cd-class-grid" style={{ marginTop: 8 }}>
-                            {uniqueTypes.map((cls) => {
-                              const count = availableAssets.filter((a) => a.type === cls).length;
-                              return (
-                                <button key={cls} type="button"
-                                  className={`cd-class-chip${assetClassSel.has(cls) ? ' selected' : ''}`}
-                                  onClick={() => toggleAssetClass(cls)}>
-                                  {assetClassSel.has(cls) && <span className="cd-class-check">✓ </span>}
-                                  {cls}
-                                  <span className="cd-class-count">{count}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                    {assetClassSel.size > 0 && !assetsLoading && (
-                      <p className="cd-mode-desc" style={{ marginTop: 10 }}>
-                        {previewCount > 0
-                          ? <><strong style={{ color: 'var(--dp-accent)' }}>{previewCount}</strong> new assets would be added.</>
-                          : 'All matching assets are already in this campaign.'}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="fd3-modal-footer" style={{ justifyContent: 'space-between' }}>
-                <span className="cd-asset-sel-count">
-                  {addAssetsTab === 'search'
-                    ? selectedAssetIds.size > 0
-                      ? <><strong>{selectedAssetIds.size}</strong> asset{selectedAssetIds.size !== 1 ? 's' : ''} selected</>
-                      : <span style={{ color: 'var(--dp-text-2)' }}>No assets selected</span>
-                    : previewCount > 0
-                      ? <><strong>{previewCount}</strong> asset{previewCount !== 1 ? 's' : ''} will be added</>
-                      : <span style={{ color: 'var(--dp-text-2)' }}>No assets matched</span>}
-                </span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className="btn btn-secondary" onClick={closeAddAssets}>Cancel</button>
-                  <button type="button" className="btn btn-primary" disabled={previewCount === 0} onClick={submitAddAssets}>
-                    {addLabel}
-                  </button>
-                </div>
-              </div>
-          </Dialog>
-        );
-      })()}
+      {id && (
+        <AddFindingsDialog
+          campaignId={id}
+          isOpen={showAddFindings}
+          onClose={() => setShowAddFindings(false)}
+          onAdded={(updated) => setDetail(updated)}
+        />
+      )}
 
       {/* ── Add CVE modal ────────────────────────────────────────────── */}
       {/* ── Add Software modal ───────────────────────────────────────── */}
@@ -2014,7 +1735,7 @@ export function CampaignDetailPage() {
               <span id="cd-add-software-title">Add Software to Campaign</span>
               <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddSoftware}>✕</button>
             </div>
-            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
+            <p className="cd-scope-dialog-note">Selected items are saved to the campaign. New findings join its membership and counts update.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addSoftwareError && <div className="notice error" style={{ marginBottom: 10 }}>{addSoftwareError}</div>}
               <div className="cd-asset-search-wrap">
@@ -2084,8 +1805,8 @@ export function CampaignDetailPage() {
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeAddSoftware}>Cancel</button>
-                <button type="button" className="btn btn-primary" disabled={selectedSoftwareMap.size === 0} onClick={submitAddSoftware}>
-                  {selectedSoftwareMap.size > 0 ? `Add ${selectedSoftwareMap.size} Item${selectedSoftwareMap.size !== 1 ? 's' : ''}` : 'Add Software'}
+                <button type="button" className="btn btn-primary" disabled={selectedSoftwareMap.size === 0 || addSoftwareBusy} onClick={() => void submitAddSoftware()}>
+                  {addSoftwareBusy ? 'Saving…' : selectedSoftwareMap.size > 0 ? `Add ${selectedSoftwareMap.size} Item${selectedSoftwareMap.size !== 1 ? 's' : ''}` : 'Add Software'}
                 </button>
               </div>
             </div>
@@ -2098,7 +1819,7 @@ export function CampaignDetailPage() {
               <span id="cd-add-cve-title">Add CVE to Campaign</span>
               <button type="button" className="fd3-modal-close" aria-label="Close" onClick={closeAddCve}>✕</button>
             </div>
-            <p className="cd-scope-dialog-note">Added items show on this page only. They are not saved to the campaign and are lost when the page reloads.</p>
+            <p className="cd-scope-dialog-note">Selected items are saved to the campaign. New findings join its membership and counts update.</p>
             <div className="fd3-modal-body" style={{ padding: '14px 20px' }}>
               {addCveError && <div className="notice error" style={{ marginBottom: 10 }}>{addCveError}</div>}
 
@@ -2175,8 +1896,8 @@ export function CampaignDetailPage() {
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={closeAddCve}>Cancel</button>
-                <button type="button" className="btn btn-primary" disabled={selectedCveMap.size === 0} onClick={submitAddCve}>
-                  {selectedCveMap.size > 0 ? `Add ${selectedCveMap.size} CVE${selectedCveMap.size !== 1 ? 's' : ''}` : 'Add CVE'}
+                <button type="button" className="btn btn-primary" disabled={selectedCveMap.size === 0 || addCveBusy} onClick={() => void submitAddCve()}>
+                  {addCveBusy ? 'Saving…' : selectedCveMap.size > 0 ? `Add ${selectedCveMap.size} CVE${selectedCveMap.size !== 1 ? 's' : ''}` : 'Add CVE'}
                 </button>
               </div>
             </div>

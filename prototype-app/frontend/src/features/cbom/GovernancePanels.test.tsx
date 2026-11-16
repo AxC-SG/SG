@@ -50,15 +50,18 @@ describe('CBOM governance panels', () => {
   it('shows PQC progress, plans a campaign and rolls the portfolio up by the chosen group', async () => {
     vi.spyOn(api, 'getCbomPqcProgress').mockResolvedValue({ openQuantumVulnerable: 5, inCampaigns: 2, notInCampaign: 3, campaigns: [{
       campaignId: 'c-1', name: 'PQC wave 1', status: 'ACTIVE', dueAt: '2027-06-30T00:00:00Z', createdBy: 'admin', findings: 4,
-      open: 2, resolved: 2, overdue: 0, percentComplete: 0.5, owners: ['pqc-team'] }] });
+      active: 2, remediated: 2, overdue: 0, percentComplete: 0.5, outcomes: { REMEDIATED: 2, OPEN: 2 },
+      owners: [{ bucket: 'TEAM', teamId: 't-1', teamName: 'Crypto Platform', members: 3, activeRemaining: 1, outcomes: {} },
+        { bucket: 'CONFLICT', teamId: null, teamName: null, members: 1, activeRemaining: 1, outcomes: {} }] }] });
     const portfolio = vi.spyOn(api, 'getCbomPortfolio').mockResolvedValue({ groupBy: 'department', groups: [{ group: 'Payments', assets: 3,
       components: 40, openCritical: 1, openHigh: 2, openMedium: 0, openLow: 0, quantumVulnerable: 5, openCryptoFindings: 8,
-      overdueCryptoFindings: 1, averagePostureScore: 6.2 }] });
+      overdueCryptoFindings: 1, averagePostureScore: 6.2, teamId: null, ownerBucket: null }] });
     const create = vi.spyOn(api, 'createCbomPqcCampaign').mockResolvedValue({ summary: { id: 'c-2', name: 'PQC wave 2' } });
     const { container } = renderAs(ADMIN, <CbomPortfolioPanel canManage />);
 
     expect(await screen.findByText(/5 open quantum-vulnerable findings: 2 in migration campaigns, 3 not yet planned/)).toBeInTheDocument();
-    expect(screen.getByText('50% (2 of 4)')).toBeInTheDocument();
+    expect(screen.getByText('50% (2 of 4 remediated)')).toBeInTheDocument();
+    expect(screen.getByText('Crypto Platform, Conflict')).toBeInTheDocument();
     expect(await screen.findByText('Payments')).toBeInTheDocument();
     const audit = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
     expect(audit.violations.map((v) => v.id)).toEqual([]);
@@ -70,7 +73,7 @@ describe('CBOM governance panels', () => {
     fireEvent.change(within(dialog).getByLabelText('Campaign name'), { target: { value: 'PQC wave 2' } });
     fireEvent.change(within(dialog).getByLabelText('Migration due date'), { target: { value: '2027-12-31' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create campaign' }));
-    await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'PQC wave 2', dueAt: '2027-12-31T23:59:59.000Z', assignedTo: undefined, environment: undefined }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith({ name: 'PQC wave 2', dueAt: '2027-12-31T23:59:59.000Z', environment: undefined }));
     expect(await screen.findByRole('link', { name: 'PQC wave 2' })).toHaveAttribute('href', '/vuln-repo/campaigns/c-2');
   });
 });

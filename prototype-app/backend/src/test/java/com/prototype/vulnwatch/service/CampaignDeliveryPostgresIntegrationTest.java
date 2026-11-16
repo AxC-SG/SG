@@ -117,7 +117,7 @@ class CampaignDeliveryPostgresIntegrationTest {
 
     private UUID enqueueEvent() {
         UUID campaign=UUID.randomUUID(),attempt=UUID.randomUUID();
-        jdbc.update("insert into campaigns(id,tenant_id,name,status,created_by,created_at,updated_at) values (?,?,'Offline campaign','ACTIVE','test',now(),now())",campaign,tenant.getId());
+        jdbc.update("insert into campaigns(id,tenant_id,name,status,created_by,created_at,updated_at,scope_kind,membership_state) values (?,?,'Offline campaign','ACTIVE','test',now(),now(),'FINDINGS','COMPLETE')",campaign,tenant.getId());
         jdbc.update("insert into campaign_delivery_attempts(id,tenant_id,campaign_id,target_type,target_label,target_address,subject,delivery_state,created_at) values (?,?,?,'GROUP','Test group','offline@example.test','Repeated event type','QUEUED',now())",attempt,tenant.getId(),campaign);
         outbox.enqueue(tenant.getId(),attempt,message());outbox.enqueue(tenant.getId(),attempt,message());
         return attempt;

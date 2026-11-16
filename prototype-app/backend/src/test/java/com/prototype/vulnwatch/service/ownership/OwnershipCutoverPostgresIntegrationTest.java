@@ -142,7 +142,8 @@ class OwnershipCutoverPostgresIntegrationTest {
 
         assertThatThrownBy(() -> cutover.transition(Domain.CORE, State.LEGACY, null, "admin"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getReason()).contains("rollback window is closed"));
-        assertThatThrownBy(() -> cutover.transition(Domain.CLOUD_BOM, State.DARK, null, "admin")).isInstanceOf(ResponseStatusException.class);
+        // CLOUD_BOM switches in Release 2 (CloudBomCutoverPostgresIntegrationTest); the AI Grid domain still does not.
+        assertThatThrownBy(() -> cutover.transition(Domain.AI_GRID, State.DARK, null, "admin")).isInstanceOf(ResponseStatusException.class);
     }
 
     private UUID asset(String identifier, String ownerTeam) {

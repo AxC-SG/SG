@@ -38,6 +38,15 @@ public class ApiExceptionHandler {
         return error("NOT_FOUND", ex.getMessage());
     }
 
+    /** Phase 0B §4.9: create refused because routing changed; the body carries the fresh preview. */
+    @ExceptionHandler(com.prototype.vulnwatch.ticketing.TicketRoutingService.RoutingChangedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleRoutingChanged(com.prototype.vulnwatch.ticketing.TicketRoutingService.RoutingChangedException ex) {
+        Map<String, Object> body = error("TICKET_ROUTING_CHANGED", ex.getMessage());
+        body.put("preview", ex.preview());
+        return body;
+    }
+
     @ExceptionHandler(CryptoSuppressionPolicyException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Map<String, Object> handleCryptoSuppressionPolicy(CryptoSuppressionPolicyException ex) {

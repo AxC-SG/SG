@@ -1,5 +1,13 @@
 # Phase 3 release qualification
 
+**Ownership integration checkpoint — November 17, 2026:** the candidate combining main `8c76d3db` with ownership
+`1282d2a9` is accepted for lab-only integration and remains release-blocked. See the
+[integration review](../../docs/ownership-release-2-integration-review.md). Tenant V23 → V27 is a forward schema
+release, requiring the existing stopped-runtime/snapshot/migrator procedure; runtime-only Lab reconcile must refuse it.
+V26 removes existing campaign recipient emails and the replacement write path needs an unimplemented deployed key
+wrapper. Empty read waves are not a database or complete campaign-behavior rollback. Prior AWS release evidence does
+not qualify this new catalog or authorize deployment.
+
 **Planning status.** This checklist records the October qualification work. Use the master for the current Standard launch gates and the separate Dedicated qualification. Reuse prior evidence only after checking it against the release candidate and environment. [AWS master migration plan](AWS_MASTER_MIGRATION_PLAN.md)
 
 As of October 21, 2026, local repairs and the current verification checkpoint are recorded in [implementation status](PHASE_3_IMPLEMENTATION_STATUS.md). Phase 3 remains **in progress and not release-qualified**. This checklist is a reviewable handoff, not authorization to deploy, modify a live database, rotate credentials, send real email or change service configuration.

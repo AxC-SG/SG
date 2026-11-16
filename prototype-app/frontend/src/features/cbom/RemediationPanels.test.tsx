@@ -27,12 +27,16 @@ function renderAs(actor: ActorContext, element: React.ReactElement) {
 const QUEUE: CryptoRemediationQueue = {
   observedAt: '2026-11-03T00:00:00Z',
   verificationQueue: [{ findingId: 'f-1', displayId: 'F-1', title: 'RSA key too small', severity: 'HIGH', status: 'OPEN', assignedTo: null,
-    ownerGroup: null, dueAt: null, workflowSubstate: 'VERIFICATION_REQUESTED', verificationStatus: 'REQUESTED', targetState: 'RSA-3072',
+    ownership: { objectId: 'f-1', authorityDomain: 'CLOUD_BOM', authorityState: 'CANONICAL', ownerTeamId: 't-1', ownerTeamName: 'Crypto Platform',
+      ownershipStatus: 'OWNED', sourceKind: 'SERVICENOW', resolvedAt: null, legacyOwnerLabel: null },
+    dueAt: null, workflowSubstate: 'VERIFICATION_REQUESTED', verificationStatus: 'REQUESTED', targetState: 'RSA-3072',
     verificationRequestedAt: '2026-11-02T00:00:00Z', overdue: false }],
   overdue: [{ findingId: 'f-2', displayId: 'F-2', title: 'TLS 1.0 enabled', severity: 'CRITICAL', status: 'OPEN', assignedTo: 'bob',
-    ownerGroup: null, dueAt: '2026-10-01T00:00:00Z', workflowSubstate: null, verificationStatus: 'NOT_REQUIRED', targetState: null,
+    ownership: { objectId: 'f-2', authorityDomain: 'CLOUD_BOM', authorityState: 'LEGACY_PENDING_MIGRATION', ownerTeamId: null, ownerTeamName: null,
+      ownershipStatus: null, sourceKind: null, resolvedAt: null, legacyOwnerLabel: 'Legacy Crypto Ops' },
+    dueAt: '2026-10-01T00:00:00Z', workflowSubstate: null, verificationStatus: 'NOT_REQUIRED', targetState: null,
     verificationRequestedAt: null, overdue: true }],
-  slaBySeverity: [{ severity: 'CRITICAL', open: 1, overdue: 1, dueWithin7Days: 0, unassigned: 0 }],
+  slaBySeverity: [{ severity: 'CRITICAL', open: 1, overdue: 1, dueWithin7Days: 0, unassigned: 0, unowned: null }],
 };
 const EFFECTIVENESS: CryptoEffectiveness = {
   days: 90, from: '2026-08-05', to: '2026-11-03', opened: 10, closed: 4, verifiedClosures: 3, reopened: 1, verificationsAccepted: 3,
@@ -65,6 +69,11 @@ describe('crypto remediation panels', () => {
 
     expect(await screen.findByText('Awaiting verification (1)')).toBeInTheDocument();
     expect(screen.getByText('RSA-3072')).toBeInTheDocument();
+    // Owner team is separate from the workflow assignee; a legacy row shows its label and the SLA says Pending migration.
+    expect(screen.getByText('Crypto Platform')).toBeInTheDocument();
+    expect(screen.getByText('Legacy Crypto Ops')).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader', { name: 'Owner team' })).toHaveLength(2);
+    expect(screen.getByText('Pending migration')).toBeInTheDocument();
     expect(screen.getByText(/\(overdue\)/)).toBeInTheDocument();
     expect(await screen.findByText(/75% \(3 accepted, 1 rejected\)/)).toBeInTheDocument();
     const audit = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
@@ -75,13 +84,15 @@ describe('crypto remediation panels', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create campaign from 2 selected' }));
     const dialog = screen.getByRole('dialog', { name: 'Create remediation campaign' });
     fireEvent.change(within(dialog).getByLabelText('Campaign name'), { target: { value: 'Q1 crypto' } });
-    fireEvent.change(within(dialog).getByLabelText('Assign to (optional)'), { target: { value: 'alice' } });
-    expect(within(dialog).getByRole('button', { name: 'Create campaign' })).toBeDisabled();
-    fireEvent.change(within(dialog).getByLabelText('Due date'), { target: { value: '2027-01-31' } });
+    // Phase 0B §4.12: the dialog offers no free-text owner or assignee.
+    expect(within(dialog).queryByLabelText(/Owner group/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/Assign to/)).not.toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText('Due date (optional)'), { target: { value: '2027-01-31' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create campaign' }));
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Q1 crypto', findingIds: ['f-1', 'f-2'], assignedTo: 'alice', dueAt: '2027-01-31T23:59:59.000Z',
+      name: 'Q1 crypto', findingIds: ['f-1', 'f-2'], dueAt: '2027-01-31T23:59:59.000Z',
     })));
+    expect(create.mock.calls[0][0]).not.toHaveProperty('ownerGroup');
     expect(await screen.findByRole('link', { name: 'Q1 crypto' })).toHaveAttribute('href', '/vuln-repo/campaigns/c-1');
   });
 
@@ -131,13 +142,19 @@ describe('crypto remediation panels', () => {
   });
 
   it('lists findings linked to a campaign and stays hidden when there are none', async () => {
-    const list = vi.spyOn(api, 'listCampaignFindings').mockResolvedValueOnce([{
-      findingId: 'f-1', displayId: 'F-1', title: 'RSA key too small', findingKind: 'CRYPTO', severity: 'HIGH', status: 'OPEN',
-      assignedTo: 'alice', ownerGroup: null, dueAt: '2027-01-31T00:00:00Z', verificationStatus: 'REQUESTED', addedAt: '2026-11-03T00:00:00Z',
-    }]);
+    const list = vi.spyOn(api, 'listCampaignMembers').mockResolvedValueOnce({ nextCursor: null, items: [{
+      findingId: 'f-1', displayId: 'F-1', title: 'RSA key too small', findingKind: 'CRYPTO', severity: 'HIGH', findingStatus: 'OPEN',
+      closedReason: null, outcome: 'OPEN', suppressedUntil: null, dueAt: '2027-01-31T00:00:00Z', assetId: null, assetName: null,
+      addedAt: '2026-11-03T00:00:00Z', addedBy: 'analyst', addSource: 'CREATE',
+      ownerAtAdd: { teamId: null, teamName: null, status: 'LEGACY_PENDING_MIGRATION', assignmentId: null },
+      currentOwnership: { objectId: 'f-1', authorityDomain: 'CLOUD_BOM', authorityState: 'LEGACY_PENDING_MIGRATION', ownerTeamId: null,
+        ownerTeamName: null, ownershipStatus: null, sourceKind: null, resolvedAt: null, legacyOwnerLabel: null },
+      ownershipChanged: false, ownerAssignedSinceLaunch: false, campaignExceptionStatus: null,
+    }] });
     renderAs(ADMIN, <CampaignLinkedFindings campaignId="c-1" />);
     expect(await screen.findByText('Linked findings (1, 1 open)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'F-1' })).toHaveAttribute('href', '/findings/f-1');
-    expect(list).toHaveBeenCalledWith('c-1');
+    expect(screen.getByRole('link', { name: 'F-1' })).toHaveAttribute('href', '/findings/F-1');
+    expect(screen.getByText('Pending migration')).toBeInTheDocument();
+    expect(list).toHaveBeenCalledWith('c-1', { limit: 200, includeHidden: true });
   });
 });

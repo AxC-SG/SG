@@ -5,9 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignDetailResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignFromFindingsRequest;
-import com.prototype.vulnwatch.dto.FindingWorkflowUpdateRequest;
 import com.prototype.vulnwatch.service.CampaignService;
-import com.prototype.vulnwatch.service.FindingWorkflowService;
+import com.prototype.vulnwatch.service.ownership.OwnershipAuthorityService.Domain;
+import com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter;
+import com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Consumer;
 import com.prototype.vulnwatch.ticketing.TicketRef;
 import com.prototype.vulnwatch.ticketing.TicketRequest;
 import com.prototype.vulnwatch.ticketing.TicketingService;
@@ -25,15 +26,12 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Remediation operations for CRYPTO findings (plan Milestone 3): crypto ticket templates with an
  * attempt history for retry visibility, verification and SLA queues, remediation-effectiveness
- * reporting, and campaigns created from findings with optional bulk assignment. Canonical findings
+ * reporting, and campaigns created from findings. Canonical findings
  * keep owning workflow; nothing here writes suppression or resolution state directly.
  */
 @Service
@@ -41,14 +39,25 @@ public class CryptoRemediationService {
     public static final int MAX_EFFECTIVENESS_DAYS = 365;
     private static final String SEVERITY = "upper(coalesce(f.severity_override, 'UNKNOWN'))";
 
+    /** One ticket attempt with its routing audit (Phase 0B §4.9). */
     public record TicketAttempt(UUID id, String provider, String template, String outcome, String ticketKey,
-            String errorMessage, String attemptedBy, Instant attemptedAt) { }
+            String errorMessage, String attemptedBy, Instant attemptedAt, UUID ownerTeamId, UUID ownershipAssignmentId,
+            String assignmentGroup, String routingSource, String overrideReason, UUID batchId) { }
 
+    /**
+     * {@code assignedTo} is the workflow assignee. {@code ownership} is the owner envelope under the findings read wave
+     * (Phase 0B §4.5): the team by ID when canonical, otherwise the legacy label with no ownership query.
+     */
     public record QueueItem(UUID findingId, String displayId, String title, String severity, String status, String assignedTo,
-            String ownerGroup, Instant dueAt, String workflowSubstate, String verificationStatus, String targetState,
+            OwnershipReadAdapter.Summary ownership, Instant dueAt, String workflowSubstate, String verificationStatus, String targetState,
             Instant verificationRequestedAt, boolean overdue) { }
 
-    public record SeveritySla(String severity, int open, int overdue, int dueWithin7Days, int unassigned) { }
+    /**
+     * {@code unassigned} counts open findings with no workflow assignee. {@code unowned} counts those without an owner
+     * team (Unowned or Conflict) and is null while CLOUD_BOM findings are not canonical, because legacy labels cannot be
+     * counted as owners.
+     */
+    public record SeveritySla(String severity, int open, int overdue, int dueWithin7Days, int unassigned, Integer unowned) { }
 
     public record RemediationQueue(Instant observedAt, List<QueueItem> verificationQueue, List<QueueItem> overdue,
             List<SeveritySla> slaBySeverity) { }
@@ -62,49 +71,42 @@ public class CryptoRemediationService {
     private final JdbcTemplate jdbc;
     private final TicketingService ticketing;
     private final CampaignService campaigns;
-    private final FindingWorkflowService workflow;
     private final ObjectMapper mapper;
-    private final TransactionTemplate independent;
+    private final OwnershipReadAdapter ownership;
 
     public CryptoRemediationService(JdbcTemplate jdbc, TicketingService ticketing, CampaignService campaigns,
-            FindingWorkflowService workflow, ObjectMapper mapper, PlatformTransactionManager transactions) {
-        this.jdbc = jdbc; this.ticketing = ticketing; this.campaigns = campaigns; this.workflow = workflow; this.mapper = mapper;
-        this.independent = new TransactionTemplate(transactions);
-        this.independent.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            ObjectMapper mapper, OwnershipReadAdapter ownership) {
+        this.jdbc = jdbc; this.ticketing = ticketing; this.campaigns = campaigns; this.mapper = mapper; this.ownership = ownership;
     }
 
     // ------------------------------------------------------------------ tickets
 
-    /** Raises a ticket (crypto template for CRYPTO findings) and records the attempt, including failures. */
-    public TicketRef createTicket(Tenant tenant, UUID findingId, TicketRequest request, String actor) {
-        String kind = findingKind(findingId);
-        boolean crypto = "CRYPTO".equals(kind);
+    /**
+     * Raises a ticket (crypto template for CRYPTO findings). {@link TicketingService} routes it and records the attempt,
+     * including failures.
+     */
+    public TicketRef createTicket(Tenant tenant, UUID findingId, TicketRequest request, TicketingService.TicketContext context) {
+        boolean crypto = "CRYPTO".equals(findingKind(findingId));
         TicketRequest effective = crypto ? merge(template(findingId), request) : request;
-        String provider = ticketing.status(tenant).active() == null ? null : ticketing.status(tenant).active().key();
-        try {
-            TicketRef ref = ticketing.createTicketForFinding(tenant, findingId, effective);
-            record(findingId, ref.system().key(), crypto ? "CRYPTO" : "DEFAULT", "SUCCEEDED", ref.externalKey(), null, actor);
-            return ref;
-        } catch (RuntimeException failure) {
-            String message = failure instanceof ResponseStatusException status ? status.getReason() : failure.getMessage();
-            record(findingId, provider, crypto ? "CRYPTO" : "DEFAULT", "FAILED", null, message, actor);
-            throw failure;
-        }
+        return ticketing.createTicketForFinding(tenant, findingId, effective, new TicketingService.TicketContext(context.actor(),
+                crypto ? "CRYPTO" : "DEFAULT", context.routingHash(), context.choice()));
     }
 
     public List<TicketAttempt> attempts(UUID findingId) {
         findingKind(findingId);
         return jdbc.query("""
-                SELECT id, provider, template, outcome, ticket_key, error_message, attempted_by, attempted_at
+                SELECT id, provider, template, outcome, ticket_key, error_message, attempted_by, attempted_at, owner_team_id,
+                       ownership_assignment_id, assignment_group, routing_source, override_reason, batch_id
                   FROM finding_ticket_attempts WHERE finding_id = ? ORDER BY attempted_at DESC LIMIT 50
                 """, (rs, row) -> new TicketAttempt(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
-                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getTimestamp(8).toInstant()), findingId);
+                        rs.getString(5), rs.getString(6), rs.getString(7), rs.getTimestamp(8).toInstant(), rs.getObject(9, UUID.class),
+                        rs.getObject(10, UUID.class), rs.getString(11), rs.getString(12), rs.getString(13), rs.getObject(14, UUID.class)), findingId);
     }
 
     /** The provider-neutral ticket a CRYPTO finding produces: exact evidence, rule reasoning, target and verification steps. */
     public TicketRequest template(UUID findingId) {
         Map<String, Object> finding = jdbc.queryForMap("""
-                SELECT f.display_id, f.title, f.severity_override, f.due_at, f.assigned_to, f.owner_group, f.target_state,
+                SELECT f.display_id, f.title, f.severity_override, f.due_at, f.assigned_to, f.target_state,
                        f.evidence::text AS evidence, f.finding_kind, a.name AS asset_name, a.environment
                   FROM findings f LEFT JOIN assets a ON a.id = f.asset_id WHERE f.id = ?
                 """, findingId);
@@ -141,7 +143,10 @@ public class CryptoRemediationService {
         String title = "[Crypto][" + (severity == null ? "UNKNOWN" : severity) + "] " + finding.get("title")
                 + (component == null ? "" : " — " + component) + (asset == null ? "" : " (" + asset + ")");
         // Assignee and assignment group are provider-native identifiers, so they stay with the provider's own derivation.
-        line(notes, "ScoutGrid owner", join(finding.get("assigned_to"), finding.get("owner_group")));
+        // The owner is the finding's current owner team, read live under the tickets read wave (Phase 0B §4.9, §4.12); with
+        // the wave off it is the legacy owner label, as before.
+        line(notes, "ScoutGrid assignee", (String) finding.get("assigned_to"));
+        line(notes, "ScoutGrid owner team", ownerLabel(findingId));
         return new TicketRequest(truncate(title, 240), severity, null, dueDate, null, null,
                 truncate(notes.toString(), 8000), truncate(solution.toString(), 8000));
     }
@@ -169,47 +174,65 @@ public class CryptoRemediationService {
                 pick(request.notes(), template.notes()), pick(request.solutionInfo(), template.solutionInfo()));
     }
 
-    /** Recorded in its own transaction so a failed ticket push still leaves a visible attempt. */
-    private void record(UUID findingId, String provider, String template, String outcome, String key, String error, String actor) {
-        independent.executeWithoutResult(tx -> jdbc.update("""
-                INSERT INTO finding_ticket_attempts (id, finding_id, provider, template, outcome, ticket_key, error_message, attempted_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, UUID.randomUUID(), findingId, provider, template, outcome, key, truncate(error, 500), actor == null ? "api" : actor));
-    }
-
     // ------------------------------------------------------------------ queues and SLA
 
     public RemediationQueue queue() {
-        List<QueueItem> verification = jdbc.query(QUEUE_SELECT + """
+        List<QueueItem> verification = withOwnership(jdbc.query(QUEUE_SELECT + """
                  WHERE f.finding_kind = 'CRYPTO' AND f.status = 'OPEN' AND f.verification_status = 'REQUESTED'
                  ORDER BY f.verification_requested_at NULLS LAST, f.display_id LIMIT 200
-                """, (rs, row) -> item(rs));
-        List<QueueItem> overdue = jdbc.query(QUEUE_SELECT + """
+                """, (rs, row) -> item(rs)));
+        List<QueueItem> overdue = withOwnership(jdbc.query(QUEUE_SELECT + """
                  WHERE f.finding_kind = 'CRYPTO' AND f.status = 'OPEN' AND f.due_at < now()
                  ORDER BY f.due_at, f.display_id LIMIT 200
-                """, (rs, row) -> item(rs));
+                """, (rs, row) -> item(rs)));
+        boolean canonical = ownership.canonical(Consumer.FINDINGS, Domain.CLOUD_BOM);
+        String unowned = canonical ? "count(*) FILTER (WHERE e.ownership_status IS DISTINCT FROM 'OWNED')" : "NULL";
+        String join = canonical ? " LEFT JOIN ownership_effective_assignment e ON e.subject_id = f.ownership_subject_id" : "";
         List<SeveritySla> sla = jdbc.query("SELECT " + SEVERITY + """
                 , count(*), count(*) FILTER (WHERE f.due_at < now()),
                        count(*) FILTER (WHERE f.due_at >= now() AND f.due_at < now() + interval '7 days'),
-                       count(*) FILTER (WHERE f.assigned_to IS NULL AND f.owner_group IS NULL)
-                  FROM findings f WHERE f.finding_kind = 'CRYPTO' AND f.status = 'OPEN'
+                       count(*) FILTER (WHERE f.assigned_to IS NULL),
+                """ + unowned + " FROM findings f" + join + """
+                 WHERE f.finding_kind = 'CRYPTO' AND f.status = 'OPEN'
                  GROUP BY 1
-                """, (rs, row) -> new SeveritySla(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5)));
+                """, (rs, row) -> new SeveritySla(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
+                        rs.getObject(6) == null ? null : ((Number) rs.getObject(6)).intValue()));
         List<SeveritySla> ordered = new ArrayList<>(sla);
         ordered.sort(java.util.Comparator.comparingInt(s -> rank(s.severity())));
         return new RemediationQueue(Instant.now(), verification, overdue, ordered);
     }
 
     private static final String QUEUE_SELECT = """
-            SELECT f.id, f.display_id, f.title, f.severity_override, f.status, f.assigned_to, f.owner_group, f.due_at,
+            SELECT f.id, f.display_id, f.title, f.severity_override, f.status, f.assigned_to, f.due_at,
                    f.workflow_substate, f.verification_status, f.target_state, f.verification_requested_at,
                    f.due_at IS NOT NULL AND f.due_at < now()
               FROM findings f""";
 
     private static QueueItem item(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new QueueItem(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5),
-                rs.getString(6), rs.getString(7), instant(rs.getTimestamp(8)), rs.getString(9), rs.getString(10), rs.getString(11),
-                instant(rs.getTimestamp(12)), rs.getBoolean(13));
+                rs.getString(6), null, instant(rs.getTimestamp(7)), rs.getString(8), rs.getString(9), rs.getString(10),
+                instant(rs.getTimestamp(11)), rs.getBoolean(12));
+    }
+
+    /** Adds each item's owner envelope in one bounded read; the queues are capped at 200 rows, the adapter's limit. */
+    private List<QueueItem> withOwnership(List<QueueItem> items) {
+        if (items.isEmpty()) return items;
+        Map<UUID, OwnershipReadAdapter.Summary> byId = new java.util.HashMap<>();
+        ownership.forFindings(Consumer.FINDINGS, items.stream().map(QueueItem::findingId).toList())
+                .forEach(summary -> byId.put(summary.objectId(), summary));
+        return items.stream().map(i -> new QueueItem(i.findingId(), i.displayId(), i.title(), i.severity(), i.status(), i.assignedTo(),
+                byId.get(i.findingId()), i.dueAt(), i.workflowSubstate(), i.verificationStatus(), i.targetState(),
+                i.verificationRequestedAt(), i.overdue())).toList();
+    }
+
+    /** The owner shown in a ticket: the current owner team, Unowned or Conflict when canonical, else the legacy label. */
+    private String ownerLabel(UUID findingId) {
+        List<OwnershipReadAdapter.Summary> summaries = ownership.forFindings(Consumer.TICKETS, List.of(findingId));
+        if (summaries.isEmpty()) return null;
+        OwnershipReadAdapter.Summary summary = summaries.get(0);
+        if (!"CANONICAL".equals(summary.authorityState())) return summary.legacyOwnerLabel();
+        if ("OWNED".equals(summary.ownershipStatus())) return summary.ownerTeamName();
+        return "CONFLICT".equals(summary.ownershipStatus()) ? "Ownership conflict" : "Unowned";
     }
 
     // ------------------------------------------------------------------ effectiveness
@@ -256,19 +279,12 @@ public class CryptoRemediationService {
 
     // ------------------------------------------------------------------ campaigns
 
-    /** Creates a campaign from findings and, when an owner is given, assigns them with the campaign due date. */
+    /**
+     * Creates a campaign from findings. Plan §6.13 / Phase 0B §4.12: launch may name an assignee principal (stored on the
+     * campaign) but never writes ownership or workflow fields onto the member findings.
+     */
     public CampaignDetailResponse createCampaign(Tenant tenant, CampaignFromFindingsRequest request, String actor) {
-        boolean assigning = request != null && (notBlank(request.assignedTo()) || notBlank(request.ownerGroup()));
-        if (assigning && request.dueAt() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dueAt is required when assigning the campaign's findings");
-        }
-        CampaignDetailResponse created = campaigns.createFromFindings(tenant, request, actor);
-        if (assigning) {
-            workflow.updateWorkflowBulkByIds(request.findingIds().stream().distinct().toList(), new FindingWorkflowUpdateRequest(
-                    null, notBlank(request.assignedTo()) ? request.assignedTo() : null,
-                    notBlank(request.ownerGroup()) ? request.ownerGroup() : null, request.dueAt(), null, null, actor));
-        }
-        return created;
+        return campaigns.createFromFindings(tenant, request, actor);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -305,7 +321,6 @@ public class CryptoRemediationService {
     }
 
     private static String pick(String requested, String fallback) { return requested == null || requested.isBlank() ? fallback : requested; }
-    private static boolean notBlank(String value) { return value != null && !value.isBlank(); }
     private static String truncate(String value, int max) { return value == null || value.length() <= max ? value : value.substring(0, max); }
     private static Instant instant(Timestamp value) { return value == null ? null : value.toInstant(); }
 }

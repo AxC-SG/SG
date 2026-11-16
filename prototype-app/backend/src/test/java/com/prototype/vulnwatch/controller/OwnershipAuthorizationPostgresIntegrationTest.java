@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +57,7 @@ class OwnershipAuthorizationPostgresIntegrationTest {
         PostgresITSupport.registerDatabaseProperties(registry, DATABASE);
         registry.add("APP_JWT_HMAC_SECRET", () -> "ownership-authz-regression-secret-32-bytes");
         registry.add("app.security.jwt.keycloak-client-id", () -> "scout-ui");
+        registry.add("app.ownership.servicenow.directory-enabled", () -> "true");
     }
 
     @Autowired private MockMvc mvc;
@@ -78,12 +80,55 @@ class OwnershipAuthorizationPostgresIntegrationTest {
                 new Endpoint(Action.VIEW_DIRECTORY, "GET", "/api/directory/users?q=ab", null),
                 new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/users", Map.of("displayName", "Person " + UUID.randomUUID())),
                 new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/groups", Map.of("displayName", "Group " + UUID.randomUUID())),
+                new Endpoint(Action.WRITE_DIRECTORY, "POST", "/api/directory/external-identities/" + missing + "/resolve",
+                        Map.of("newPersonDisplayName", "Person")),
                 new Endpoint(Action.IMPORT_DIRECTORY, "GET", "/api/directory/imports/templates/users", null),
                 new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/teams", null),
                 new Endpoint(Action.WRITE_TEAMS, "POST", "/api/ownership/teams", Map.of("name", "Team " + UUID.randomUUID())),
                 new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/review-items", null),
                 new Endpoint(Action.RESOLVE_REVIEW, "PATCH", "/api/ownership/review-items/" + missing, Map.of("state", "DISMISSED")),
-                new Endpoint(Action.MANAGE_ENCRYPTION, "GET", "/api/ownership/encryption", null));
+                new Endpoint(Action.MANAGE_ENCRYPTION, "GET", "/api/ownership/encryption", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/identity-sources", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/identity-sources/" + missing, null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources",
+                        Map.of("displayName", "ServiceNow " + UUID.randomUUID(), "instanceUrl", "https://acme.service-now.com",
+                                "username", "svc", "secret", "s")),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "PUT", "/api/ownership/identity-sources/" + missing,
+                        Map.of("displayName", "ServiceNow", "instanceUrl", "https://acme.service-now.com", "version", 0)),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/test", null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/preview", null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/enable",
+                        Map.of("previewToken", "x.y")),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/sync",
+                        Map.of("complete", true)),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/pause", Map.of("reason", "test")),
+                new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/group-mappings", null),
+                new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/group-mappings/groups?q=a", null),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/preview",
+                        Map.of("externalGroupId", missing, "teamId", missing)),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings",
+                        Map.of("externalGroupId", missing, "teamId", missing, "previewToken", "x.y")),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/retire", Map.of("previewToken", "x.y")),
+                new Endpoint(Action.MAP_GROUPS, "POST", "/api/ownership/group-mappings/" + missing + "/dismiss", null),
+                new Endpoint(Action.MANAGE_AUTHORITY, "GET", "/api/ownership/finding-adapters/report", null),
+                new Endpoint(Action.VIEW_OWNERSHIP, "GET", "/api/ownership/occurrences/inventory-components/" + missing, null),
+                new Endpoint(Action.MANUAL_ASSIGN, "POST", "/api/ownership/occurrences/inventory-components/" + missing + "/manual-assignment/preview",
+                        Map.of("teamId", missing)),
+                new Endpoint(Action.MANUAL_ASSIGN, "POST", "/api/ownership/occurrences/cbom-components/" + missing + "/manual-assignment",
+                        Map.of("teamId", missing, "reason", "test")),
+                new Endpoint(Action.REVOKE_ASSIGNMENT, "POST", "/api/ownership/occurrences/cbom-components/" + missing + "/manual-assignment/revoke", Map.of()),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources/azure", null),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "PUT", "/api/ownership/cloud-sources/azure/settings",
+                        Map.of("ownerKeyEnabled", false)),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/pause", Map.of("reason", "test")),
+                new Endpoint(Action.PAUSE_SOURCE, "POST", "/api/ownership/cloud-sources/azure/resume", null),
+                new Endpoint(Action.VIEW_IDENTITY_SOURCE, "GET", "/api/ownership/cloud-sources/aws/organizations-role", null),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "PUT", "/api/ownership/cloud-sources/aws/organizations-role",
+                        Map.of("roleArn", "not-an-arn")),
+                new Endpoint(Action.CONFIGURE_OWNERSHIP_PRODUCER, "POST", "/api/ownership/cloud-sources/aws/organizations-role/test", null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/resume", null),
+                new Endpoint(Action.CONFIGURE_IDENTITY_SOURCE, "POST", "/api/ownership/identity-sources/" + missing + "/disable", null));
         List<Arguments> cases = new ArrayList<>();
         for (String role : ROLES) for (Endpoint e : endpoints) cases.add(Arguments.of(role, e));
         return cases.stream();
@@ -141,6 +186,7 @@ class OwnershipAuthorizationPostgresIntegrationTest {
             case "GET" -> get(e.path());
             case "POST" -> post(e.path());
             case "PATCH" -> patch(e.path());
+            case "PUT" -> put(e.path());
             default -> throw new IllegalArgumentException(e.method());
         };
         if (e.body() != null) builder.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(e.body()));

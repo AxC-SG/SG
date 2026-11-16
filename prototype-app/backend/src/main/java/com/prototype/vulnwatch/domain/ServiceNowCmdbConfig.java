@@ -286,4 +286,19 @@ public class ServiceNowCmdbConfig {
     public void touch() {
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * Explicit tenant default assignment group for canonical ticket routing (Phase 0B §4.9, §4.11); null means the
+     * user must select one. Never an implicit fallback.
+     */
+    @jakarta.persistence.Column(name = "default_assignment_group", length = 255)
+    private String defaultAssignmentGroup;
+
+    public String getDefaultAssignmentGroup() {
+        return defaultAssignmentGroup;
+    }
+
+    public void setDefaultAssignmentGroup(String defaultAssignmentGroup) {
+        this.defaultAssignmentGroup = defaultAssignmentGroup;
+    }
 }

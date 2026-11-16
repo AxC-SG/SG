@@ -35,7 +35,7 @@ class TicketingServiceTest {
         TicketingProvider jira = provider(TicketingSystem.JIRA, true, new TicketRef(
                 TicketingSystem.JIRA, "SEC-42", "10042",
                 "https://acme.atlassian.net/browse/SEC-42", "Open", "created"));
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(jira, provider(TicketingSystem.SERVICENOW, true, null))),
                 findings);
 
@@ -54,7 +54,7 @@ class TicketingServiceTest {
         Finding finding = openFinding();
         when(findings.findById(findingId)).thenReturn(Optional.of(finding));
 
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(
                         provider(TicketingSystem.JIRA, false, null),
                         provider(TicketingSystem.SERVICENOW, true, new TicketRef(
@@ -70,7 +70,7 @@ class TicketingServiceTest {
 
     @Test
     void refusesWhenNoTicketingSystemIsConfigured() {
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(
                         provider(TicketingSystem.JIRA, false, null),
                         provider(TicketingSystem.SERVICENOW, false, null))),
@@ -90,7 +90,7 @@ class TicketingServiceTest {
         when(finding.getStatus()).thenReturn(FindingStatus.RESOLVED);
         when(findings.findById(findingId)).thenReturn(Optional.of(finding));
 
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(provider(TicketingSystem.JIRA, true, null))), findings);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -109,7 +109,7 @@ class TicketingServiceTest {
         when(finding.getIncidentProvider()).thenReturn("servicenow");
         when(findings.findById(findingId)).thenReturn(Optional.of(finding));
 
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(provider(TicketingSystem.JIRA, true, null))), findings);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -123,7 +123,7 @@ class TicketingServiceTest {
     @Test
     void reportsNotFoundForAnUnknownFinding() {
         when(findings.findById(findingId)).thenReturn(Optional.empty());
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(provider(TicketingSystem.JIRA, true, null))), findings);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -138,7 +138,7 @@ class TicketingServiceTest {
      */
     @Test
     void treatsATicketWithNoRecordedProviderAsServiceNow() {
-        TicketingService service = new TicketingService(new TicketingProviderRegistry(List.of()), findings);
+        TicketingService service = TicketingServices.legacy(new TicketingProviderRegistry(List.of()), findings);
         Finding legacy = mock(Finding.class);
         when(legacy.getIncidentId()).thenReturn("INC0000001");
         when(legacy.getIncidentProvider()).thenReturn(null);
@@ -148,7 +148,7 @@ class TicketingServiceTest {
 
     @Test
     void reportsNoOwningSystemForAFindingWithoutATicket() {
-        TicketingService service = new TicketingService(new TicketingProviderRegistry(List.of()), findings);
+        TicketingService service = TicketingServices.legacy(new TicketingProviderRegistry(List.of()), findings);
         Finding untouched = mock(Finding.class);
         when(untouched.getIncidentId()).thenReturn(null);
 
@@ -158,7 +158,7 @@ class TicketingServiceTest {
 
     @Test
     void statusNamesTheActiveSystemAndTheOnesItOutranks() {
-        TicketingService service = new TicketingService(
+        TicketingService service = TicketingServices.legacy(
                 new TicketingProviderRegistry(List.of(
                         provider(TicketingSystem.SERVICENOW, true, null),
                         provider(TicketingSystem.JIRA, true, null))),

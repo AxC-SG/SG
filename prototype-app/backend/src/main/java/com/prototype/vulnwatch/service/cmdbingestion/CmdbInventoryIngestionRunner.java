@@ -156,6 +156,7 @@ public class CmdbInventoryIngestionRunner {
                                 "installed_on_department", "department"),
                         row.get("installed_on_support_group_display_value", "support_group_display_value",
                                 "installed_on_support_group", "support_group"),
+                        supportGroupSysId(row),
                         row.get("installed_on_assigned_to_display_value", "assigned_to_display_value",
                                 "installed_on_assigned_to", "assigned_to")
                 );
@@ -403,5 +404,19 @@ public class CmdbInventoryIngestionRunner {
             entityManager.clear();
         }
         return findingsRecomputed;
+    }
+
+    /**
+     * The support group's reference sys_id (Phase 0B §1.8). With {@code sysparm_display_value=all} the flattened row
+     * carries it as {@code *_sys_id}; with raw values (an admin field list without display values) the field itself is
+     * the sys_id. A display name is never taken for a sys_id.
+     */
+    static String supportGroupSysId(CmdbHostInventorySupportService.ImportedRow row) {
+        for (String key : new String[] {"installed_on_support_group_sys_id", "support_group_sys_id",
+                "installed_on_support_group", "support_group"}) {
+            String sysId = CiResolutionService.sysIdOrNull(row.get(key));
+            if (sysId != null) return sysId;
+        }
+        return null;
     }
 }
