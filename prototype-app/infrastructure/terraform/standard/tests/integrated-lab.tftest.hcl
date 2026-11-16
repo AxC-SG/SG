@@ -213,3 +213,129 @@ run "start_integrated_lab_after_enrollment_removed" {
     error_message = "Start exactly one private API and worker only after removing enrollment references, keeping Sydney logs and one lab NAT."
   }
 }
+
+# Phase 4 slice 2: the runtime-only GitHub releaser is a strict subset of the Release role.
+run "github_releaser_is_runtime_only" {
+  command = plan
+
+  variables {
+    github_releaser = {
+      provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main"
+    }
+  }
+
+  assert {
+    condition = (
+      aws_iam_role.github_releaser[0].name == "scoutgrid-lab-github-release" &&
+      aws_iam_role.github_releaser[0].max_session_duration == 3600 &&
+      one(jsondecode(aws_iam_role.github_releaser[0].assume_role_policy).Statement).Condition.StringEquals == {
+        "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        "token.actions.githubusercontent.com:sub" = var.github_releaser.subject
+      }
+    )
+    error_message = "Only the reconcile workflow on main, in the lab release environment, may assume the releaser."
+  }
+
+  assert {
+    condition = toset(flatten([
+      for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : statement.Action if statement.Effect == "Allow"
+      ])) == toset([
+      "ecs:RegisterTaskDefinition", "ecs:TagResource", "ecs:DeregisterTaskDefinition", "iam:PassRole", "ecs:UpdateService",
+      "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth",
+      "logs:FilterLogEvents", "logs:GetLogEvents", "s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:GetBucketWebsite",
+    ])
+    error_message = "The releaser may only roll api and worker and keep the release records; no RunTask, snapshot, secret or IAM write."
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : [
+        for resource in flatten([statement.Resource]) : !strcontains(resource, "migrator")
+      ] if statement.Effect == "Allow"
+    ]))
+    error_message = "No allowed action may name the migrator family or its execution role."
+  }
+
+  assert {
+    condition = toset([
+      for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : statement.Sid if statement.Effect == "Deny"
+      ]) == toset([
+      "DenyTaskLaunchAndStop", "DenyMigratorTaskDefinitions", "DenyMigratorRole", "DenyDatabaseSnapshotsAndChanges",
+      "DenySecretValues", "DenyIamWrites", "DenyDeletesOutsideTheLocks", "DenyHistoryAndBucketDeletion",
+    ])
+    error_message = "The releaser must explicitly deny migrator, task, database, secret, IAM and state-deletion actions."
+  }
+
+  assert {
+    condition = (
+      one([for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : statement.Resource if statement.Sid == "DenyMigratorTaskDefinitions"]) ==
+      "arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-migrator:*" &&
+      one([for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : statement.Resource if statement.Sid == "DenyMigratorRole"]) ==
+      "arn:aws:iam::736486260824:role/scoutgrid-lab-migrator-execution" &&
+      toset(one([for statement in jsondecode(aws_iam_role_policy.github_releaser[0].policy).Statement : statement.NotResource if statement.Sid == "DenyDeletesOutsideTheLocks"])) == toset([
+        "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/release/lock.json",
+        "arn:aws:s3:::scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock",
+      ])
+    )
+    error_message = "The denies must name the lab migrator family and role, and allow deletes only of the two locks."
+  }
+
+  assert {
+    condition = toset([for attachment in aws_iam_role_policy_attachment.github_releaser : attachment.policy_arn]) == toset([
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-waf-association-read",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-cycle-watch",
+    ])
+    error_message = "The releaser reuses exactly the Release role's four Terraform read policies."
+  }
+}
+
+run "github_releaser_is_off_until_set" {
+  command = plan
+
+  assert {
+    condition     = length(aws_iam_role.github_releaser) == 0 && length(aws_iam_role_policy_attachment.github_releaser) == 0
+    error_message = "The releaser must not exist until the owner sets github_releaser."
+  }
+}
+
+run "github_releaser_rejects_the_publisher_subject" {
+  command = plan
+
+  variables {
+    github_releaser = {
+      provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
+    }
+  }
+
+  expect_failures = [var.github_releaser]
+}
+
+run "github_releaser_rejects_the_publisher_environment" {
+  command = plan
+
+  variables {
+    github_releaser = {
+      provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main"
+    }
+  }
+
+  expect_failures = [var.github_releaser]
+}
+
+run "github_releaser_rejects_branch_workflows" {
+  command = plan
+
+  variables {
+    github_releaser = {
+      provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/feature"
+    }
+  }
+
+  expect_failures = [var.github_releaser]
+}

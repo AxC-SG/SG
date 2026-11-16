@@ -431,6 +431,20 @@ run "publisher_rejects_other_workflows" {
   expect_failures = [var.github_publisher]
 }
 
+# The runtime-only releaser is lab only (CD plan 4.10: production is a separate plan).
+run "github_releaser_is_lab_only" {
+  command = plan
+
+  variables {
+    github_releaser = {
+      provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      subject      = "repo:AxC-SG/SG:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main"
+    }
+  }
+
+  expect_failures = [var.github_releaser]
+}
+
 run "prepare_managed_operator_enrollment" {
   command = plan
 

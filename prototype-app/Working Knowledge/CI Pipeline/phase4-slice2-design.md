@@ -1,6 +1,6 @@
 # Phase 4, slice 2: runtime-only release role and manual reconcile (design for approval)
 
-Status: **proposed, 2026-11-16.** Nothing here is built.
+Status: **approved 2026-11-16, with the §6 recommendations; code built, not live.** The code, Terraform (role at `count = 0`), workflow and tests are in one PR (§7). Nothing in AWS, GitHub or Vercel has changed; the rollout in §5 follows, each live step approved.
 
 This slice touches the never-touch list: IAM (a new role) and `.github/workflows/` (a new workflow). It needs the owner's approval of this design and of the decisions in §6 before any code.
 
@@ -128,3 +128,23 @@ The publisher keeps its own environment and subject, so neither role can be assu
 | S3 | **Environment protection** | Branch policy `main` only. No required reviewer: the owner is the only dispatcher, and self-review prevention would block them |
 | S4 | **Exit status for `blocked`** | 0 (nothing changed; the summary shows the reason), as in §2 |
 | S5 | **Order** | Build the code and tests first (one PR: release.py, Terraform at count 0, the workflow, tests). The rollout in §5 follows separately, each live step approved |
+
+## 7. As built (2026-11-16)
+
+The PR follows §1–§6 with these refinements, each found while building:
+
+- **Terraform's own lock.** The lab backend uses S3 native locking (`use_lockfile`), which releases its lock by deleting `standard/lab/terraform.tfstate.tflock`. The deny on `s3:DeleteObject` therefore excepts that object as well as `release/lock.json`. Without it, every plan would leave a stale lock. It also denies `s3:DeleteObjectVersion`, bucket deletion, and bucket policy, versioning and lifecycle changes.
+- **Deregistration cannot be scoped.** `ecs:DeregisterTaskDefinition` takes no resource-level permission (`grants/bootstrap-deregister-migrator.INEFFECTIVE-scoped-arn.json`), so the role keeps `Resource: "*"` as the Release role does. It could retire a migrator revision, but never register, pass or run one. Accepted, and recorded in the cycle matrix.
+- **Re-reading the shared read policies** (§3). `common-read-state-part1/part2`, `waf-association-read` and `cycle-watch` grant no secret value; part2 denies `GetSecretValue`. Their only writes are the Terraform state object and its lock, which any apply needs.
+- **Full lab plans must read the new role.** As after #107, `lab.sh plan-up` refreshes every role in state. `common-read-state-part2` v3 adds `scoutgrid-lab-github-release` to `ReadExactRuntimeRoleMetadata`. It must be published before the role is created (README rollout step 1).
+- **"Already live" means the same commit, not only the same image.** `no_change` needs the runtime to have been released from the candidate commit with its image, so a merge that changes only task-definition configuration is still released. With `--frontend`, the tracked frontend must come from that commit too.
+- **Which checkout.** Terraform renders from the checkout, so reconcile runs only from a clean checkout of the commit it releases. A new candidate in another checkout is `blocked` / `superseded`; a resume from another checkout is `needs_operator` / `unfinished`, because Actions can only run at `main`'s head. Resume such a release locally from its commit.
+- **Which pending releases reconcile resumes.** Only its own: kind `reconcile`, mode neutral, no migrator steps. `deploy` refuses to resume a pending `reconcile`, so the full path can never run the migrator on a runtime-only release.
+- **Exit status.** 0 for `verified` and for `blocked` with a planned reason (`parked`, `awaiting_acceptance`, `superseded`, `schema_changed`, `schema_unverified`, `migrator_drift`). A held lock, a refused publication or a missing confirmation stays 1.
+- **The smoke contract.** `.github/scripts/test-ci-contracts.py` used to forbid `LAB_SMOKE_CONFIG` in every workflow. It now allows it only in `lab-reconcile.yml`, and only as a tenant-only config written to a private temporary file that is removed and never printed or uploaded. The workflow refuses a config with a `platform` part (S1).
+- **Ambient credentials** keep the account guard. `LAB_RELEASE_PROFILE=` uses the runner's session. Terraform's environment never receives `VERCEL_TOKEN`.
+
+**Tests:**
+- `test_release.py`: 22 new tests. Every reconcile path (fresh, paired, resumed, each blocked reason, failed check, frontend retry, no change, foreign pending deploy, a held lock) is checked against a fake that records every call. None plans or applies the migrator, runs it, stops the services or snapshots.
+- `integrated-lab.tftest.hcl` and `runtime.tftest.hcl`: the role's exact allowed actions, no allowed resource naming the migrator, the deny set, the four attachments, and rejected subjects (publisher workflow or environment, a branch, production).
+- `test-ci-contracts.py`: the workflow contract in §4.

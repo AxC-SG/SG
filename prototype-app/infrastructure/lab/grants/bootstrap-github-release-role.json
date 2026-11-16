@@ -1,0 +1,43 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "ManageLabGithubReleaseRoleOnly",
+   "Effect": "Allow",
+   "Action": [
+    "iam:CreateRole",
+    "iam:GetRole",
+    "iam:TagRole",
+    "iam:UntagRole",
+    "iam:UpdateAssumeRolePolicy",
+    "iam:PutRolePolicy",
+    "iam:GetRolePolicy",
+    "iam:DeleteRolePolicy",
+    "iam:ListRolePolicies",
+    "iam:ListAttachedRolePolicies",
+    "iam:ListInstanceProfilesForRole",
+    "iam:DeleteRole"
+   ],
+   "Resource": "arn:aws:iam::736486260824:role/scoutgrid-lab-github-release"
+  },
+  {
+   "Sid": "AttachOnlyTheReleaseReadPolicies",
+   "Effect": "Allow",
+   "Action": [
+    "iam:AttachRolePolicy",
+    "iam:DetachRolePolicy"
+   ],
+   "Resource": "arn:aws:iam::736486260824:role/scoutgrid-lab-github-release",
+   "Condition": {
+    "ArnEquals": {
+     "iam:PolicyARN": [
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part1",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-common-read-state-part2",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-waf-association-read",
+      "arn:aws:iam::736486260824:policy/ScoutGridSydneyLab-cycle-watch"
+     ]
+    }
+   }
+  }
+ ]
+}
