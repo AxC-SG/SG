@@ -67,3 +67,13 @@ Verification is performed on the combined branch, not copied from the ownership 
 
 The [qualification scorecard](ownership-release-2-qualification.md) retains its additional external-input and Release 3
 gaps. Passing local checks does not lift the release block.
+
+## Delivery state
+
+Local merge commit: `569a54a0` (parents `8c76d3db`, `1282d2a9`). All four `CLAUDE.md` files and the affected product,
+API, architecture, ownership and AWS qualification documents are updated. The temporary PostgreSQL cluster has been
+stopped after verification. Remote main and deployments are unchanged.
+
+Publishing the integration branch and opening a draft PR remain pending explicit user approval. Automatic approval
+review rejected the push because external publication of repository contents was not considered specifically authorized;
+no alternate publication route was used. This publication approval is separate from the retained release block.
