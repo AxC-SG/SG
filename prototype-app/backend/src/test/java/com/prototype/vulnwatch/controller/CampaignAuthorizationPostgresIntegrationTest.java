@@ -70,6 +70,8 @@ class CampaignAuthorizationPostgresIntegrationTest {
                 new Endpoint(true, "POST", "/api/campaigns/preview", Map.of("name", "Preview", "cveIds", List.of("CVE-1900-0001"))),
                 new Endpoint(true, "POST", "/api/campaigns", custom),
                 new Endpoint(true, "POST", "/api/campaigns/" + missing + "/members", Map.of("findingIds", List.of(missing))),
+                new Endpoint(true, "POST", "/api/campaigns/" + missing + "/cves", Map.of("cveIds", List.of("CVE-1900-0001"))),
+                new Endpoint(true, "POST", "/api/campaigns/" + missing + "/software", Map.of("softwareIdentityIds", List.of(missing))),
                 new Endpoint(false, "GET", "/api/campaigns/" + missing + "/members", null),
                 new Endpoint(false, "GET", "/api/campaigns/" + missing + "/owner-buckets?groupBy=atAdd", null),
                 new Endpoint(false, "GET", "/api/campaigns/" + missing + "/reconciliation", null));

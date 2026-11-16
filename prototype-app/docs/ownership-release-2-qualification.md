@@ -46,6 +46,7 @@ default and not release-qualified.
 | E15 | CLOUD_BOM qualification and switch, cloud dark comparison, owner filters, assign owner on one occurrence, rollback test, hub and list screens | Done |
 | E16 | Delete guard for campaign members; purge verified | Done (smaller than planned: purge drops the schema; preview audit already existed from E2) |
 | E17 | Scorecard, enablement order, rollback table and runbooks | Done (this document) |
+| (after E17) | Add CVE and Add software in campaign detail save to the campaign (tenant V27 `campaign_software`) | Done; removing a CVE, software item or asset stays local-only |
 
 ### Pending: functional (not started)
 
@@ -66,7 +67,7 @@ default and not release-qualified.
 - Run the full writer and reader scan.
 
 ### Pending: gaps left inside Release 2
-- Add CVE and Add software in campaign detail are still local-only edits.
+- Removing a CVE, software item or asset in campaign detail is still a local-only edit (campaign membership is never deleted).
 - The campaign exception form lists only the first 200 members.
 - A ticket override applies to the whole request, not to one batch.
 - CBOM inventory rows carry no ownership envelope, so its owner filters and Assign owner rely on the server's 409.
@@ -101,6 +102,7 @@ a real ServiceNow CMDB sample, and live verification.
 | CORE switch (Release 1) still holds | `OwnershipCutoverPostgresIntegrationTest` | Automated |
 | BOM and CBOM owner filters, per-occurrence assignment that never touches siblings | `CloudBomCutoverPostgresIntegrationTest` | Automated |
 | Campaign membership: materialization, idempotency, create bound, reconciler, never removes, closed campaigns skipped | `CampaignLedgerPostgresIntegrationTest` | Automated; batch sizes at scale need R6 |
+| Add CVE and Add software save: scope grows, findings become MANUAL members, reconciler keeps adding, bound handled, closed and finding-scoped campaigns refused | `CampaignScopeExtensionPostgresIntegrationTest` | Automated |
 | Campaign owner-at-add is live, immutable and authority-gated; one writer | `CampaignLedgerPostgresIntegrationTest`, `CampaignLedgerWriterControlTest` | Automated |
 | Outcome rules (Java and SQL agree for every status and closed reason) | `CampaignOutcomeClassifierTest`, `CampaignLedgerPostgresIntegrationTest` | Automated |
 | Recipients: TEAM channel, encrypted CUSTOM recipients, role check and audit | `CampaignLedgerPostgresIntegrationTest` | Automated |

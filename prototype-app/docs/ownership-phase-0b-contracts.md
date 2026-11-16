@@ -997,6 +997,29 @@ applied in order; the first match wins.
   (outcome-based progress, owner labels from the read envelope, no owner or assignee inputs on the crypto and PQC
   dialogs); the §5.2 campaign UI is E14.
 
+**Implementation (campaign scope saving, branch `feat/campaign-scope-saving`, not merged).** Add CVE and Add software in
+campaign detail were local-only edits; they now save.
+
+- **A CVE campaign's scope is its CVEs (`campaign_vulnerabilities`) plus the software added to it
+  (`campaign_software`, tenant V27: campaign, software identity, who and when; RLS like the other campaign tables).** A
+  finding is in scope when it is a finding of one of the CVEs or sits on a component of one of the software identities.
+  Materialization, the reconciler and the scope watermark all use that one predicate (`CampaignLedger.scope`), so findings
+  that appear later on an added CVE or on added software join like findings of the original CVEs.
+- `POST /api/campaigns/{id}/cves` (`{cveIds}`, 1 to 100) and `POST /api/campaigns/{id}/software` (`{softwareIdentityIds}`, 1 to
+  100) need `PLATFORM_OWNER`, `TENANT_ADMIN` or `SECURITY_ANALYST` and return the campaign detail, which now carries
+  `softwareItems` (identity, vendor, assets and open member findings). They return 400 for an unknown CVE or software item,
+  an empty list, or when every item is already tracked, and 409 for a finding-scoped campaign (those never gain members
+  automatically; use add findings) or a CLOSED or CANCELLED one.
+- The new scope's eligible findings (OPEN, plus excepted ones when the campaign was created with `includeExcepted`) are added
+  as `MANUAL` members with the live owner snapshot, up to the create bound. If more remain the campaign returns to
+  `MATERIALIZING` and the reconciler's watermark is set to the last finding taken, so it resumes there instead of rescanning
+  what was just added. A `SCOPE_ADDED` activity records each change.
+- **Still local-only:** removing a CVE, software item or asset in campaign detail. Membership is never deleted (§4.2), so
+  those controls cannot be saved; they keep the "not saved" notice.
+- Tests: `CampaignScopeExtensionPostgresIntegrationTest` (extension, reconciler pickup, bound, guards),
+  `CampaignAuthorizationPostgresIntegrationTest` (roles) and the V27 upgrade check in
+  `OwnershipReleaseTwoSchemaUpgradePostgresIntegrationTest`.
+
 ### 4.9 Ticket routing
 
 Routing is server-derived on the canonical path. The browser no longer supplies the assignment group.

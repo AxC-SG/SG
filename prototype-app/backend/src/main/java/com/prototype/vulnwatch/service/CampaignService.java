@@ -19,7 +19,10 @@ import com.prototype.vulnwatch.domain.CampaignWatchlistEntry;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.domain.Vulnerability;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignActivityResponse;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddCvesRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddMembersRequest;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddSoftwareRequest;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignSoftwareItemResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAssetRowResponse;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignCreateRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignDeliveryAttemptResponse;
@@ -427,6 +430,104 @@ public class CampaignService {
             });
             return getDetailInCurrentTenantSchema(tenant, campaignId);
         });
+    }
+
+    /** Largest CVE or software list one scope-extension call accepts. */
+    public static final int MAX_SCOPE_ADDITIONS = 100;
+
+    /**
+     * Adds CVEs to a CVE campaign's scope (the same CVE definition as at create). Their OPEN findings (and excepted ones
+     * when the campaign was created with {@code includeExcepted}) become MANUAL members in this transaction, up to the
+     * create bound; if more remain the campaign goes back to MATERIALIZING and the reconciler adds the rest.
+     */
+    public CampaignDetailResponse addCves(Tenant tenant, UUID campaignId, CampaignAddCvesRequest request, String actor) {
+        List<String> cveIds = nullSafe(request == null ? null : request.cveIds()).stream().filter(Objects::nonNull)
+                .map(String::trim).filter(v -> !v.isEmpty()).distinct().toList();
+        requireScopeList(cveIds.size(), "cveIds");
+        return tenantSchemaExecutionService.run(tenant, () -> {
+            executeWrite(() -> {
+                Campaign campaign = loadExtendableCampaign(tenant, campaignId);
+                List<Vulnerability> vulnerabilities = resolveVulnerabilities(cveIds);
+                Set<String> tracked = campaignVulnerabilityRepository.findAllByCampaign_IdOrderByExternalIdAsc(campaignId).stream()
+                        .map(CampaignVulnerability::getExternalId).collect(Collectors.toSet());
+                List<Vulnerability> fresh = vulnerabilities.stream().filter(v -> !tracked.contains(v.getExternalId())).toList();
+                if (fresh.isEmpty()) throw badRequest("Every CVE is already tracked in this campaign");
+                for (Vulnerability vulnerability : fresh) {
+                    CampaignVulnerability link = new CampaignVulnerability();
+                    link.setCampaign(campaign);
+                    link.setVulnerability(vulnerability);
+                    link.setExternalId(vulnerability.getExternalId());
+                    link.setTitle(vulnerability.getTitle());
+                    link.setSeverity(vulnerability.getSeverity());
+                    campaignVulnerabilityRepository.save(link);
+                }
+                campaignVulnerabilityRepository.flush();
+                int added = materializeExtendedScope(campaign, actor);
+                recordActivity(campaign, actor, "SCOPE_ADDED", "Added " + fresh.size() + " CVE" + (fresh.size() == 1 ? "" : "s") + " ("
+                        + fresh.stream().map(Vulnerability::getExternalId).limit(10).collect(Collectors.joining(", "))
+                        + (fresh.size() > 10 ? ", …" : "") + "); " + added + " finding" + (added == 1 ? "" : "s") + " added to the campaign.");
+                campaign.touch();
+                campaignRepository.save(campaign);
+                return null;
+            });
+            return getDetailInCurrentTenantSchema(tenant, campaignId);
+        });
+    }
+
+    /**
+     * Adds software identities to a CVE campaign's scope. The scope is saved, so findings that later appear on those
+     * components join through the reconciler like findings of the campaign's CVEs.
+     */
+    public CampaignDetailResponse addSoftware(Tenant tenant, UUID campaignId, CampaignAddSoftwareRequest request, String actor) {
+        List<UUID> ids = nullSafe(request == null ? null : request.softwareIdentityIds()).stream().filter(Objects::nonNull).distinct().toList();
+        requireScopeList(ids.size(), "softwareIdentityIds");
+        return tenantSchemaExecutionService.run(tenant, () -> {
+            executeWrite(() -> {
+                Campaign campaign = loadExtendableCampaign(tenant, campaignId);
+                if (ledger.countSoftwareIdentities(ids) != ids.size()) throw badRequest("Unknown software identity");
+                int fresh = ledger.addSoftware(campaignId, ids, actor);
+                if (fresh == 0) throw badRequest("Every software item is already tracked in this campaign");
+                int added = materializeExtendedScope(campaign, actor);
+                recordActivity(campaign, actor, "SCOPE_ADDED", "Added " + fresh + " software item" + (fresh == 1 ? "" : "s") + "; "
+                        + added + " finding" + (added == 1 ? "" : "s") + " added to the campaign.");
+                campaign.touch();
+                campaignRepository.save(campaign);
+                return null;
+            });
+            return getDetailInCurrentTenantSchema(tenant, campaignId);
+        });
+    }
+
+    private static void requireScopeList(int size, String field) {
+        if (size == 0) throw badRequest(field + " is required");
+        if (size > MAX_SCOPE_ADDITIONS) throw badRequest("At most " + MAX_SCOPE_ADDITIONS + " " + field + " per request");
+    }
+
+    /** Only CVE-scoped, unfinished campaigns can grow by CVE or software: finding-scoped ones never gain members automatically. */
+    private Campaign loadExtendableCampaign(Tenant tenant, UUID campaignId) {
+        Campaign campaign = loadCampaign(tenant, campaignId);
+        if (campaign.getScopeKind() != CampaignScopeKind.CVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only CVE-scoped campaigns can be extended by CVE or software; add findings instead");
+        }
+        if (FINISHED.contains(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The campaign is " + campaign.getStatus());
+        }
+        return campaign;
+    }
+
+    /**
+     * Materializes the grown scope up to the create bound. If eligible findings remain, the campaign returns to
+     * MATERIALIZING and the reconciler resumes right after the last finding taken, so it neither skips the remainder nor
+     * rescans what was just added.
+     */
+    private int materializeExtendedScope(Campaign campaign, String actor) {
+        CampaignLedger.Extension extension = ledger.materializeExtension(campaign.getId(), campaign.isIncludeExcepted(), actor,
+                CampaignLedger.CREATE_BOUND, AddSource.MANUAL);
+        if (extension.boundReached() && ledger.hasUnmaterialized(campaign.getId(), campaign.isIncludeExcepted())) {
+            ledger.setMembershipState(campaign.getId(), CampaignMembershipState.MATERIALIZING.name());
+            ledger.setWatermark(campaign.getId(), extension.lastUpdatedAt(), extension.lastId());
+        }
+        return extension.added();
     }
 
     public List<CampaignOwnerBucket> buckets(Tenant tenant, UUID campaignId, String groupBy) {
@@ -890,7 +991,9 @@ public class CampaignService {
                             row.identifier(), row.environment(), row.active(), row.remediated(), row.members())).toList(),
                     recent.stream().map(row -> new CampaignEvidenceRowResponse(row.cveId(), row.displayId(), row.assetName(),
                             row.assetIdentifier(), row.packageName(), row.severity(), row.status(), row.outcome(), row.incidentId(), row.dueAt(),
-                            current.get(row.findingId()))).toList()
+                            current.get(row.findingId()))).toList(),
+                    ledger.softwareItems(campaignId).stream().map(item -> new CampaignSoftwareItemResponse(item.id(), item.displayName(),
+                            item.vendor(), item.assetCount(), item.openFindingCount())).toList()
             );
         });
     }

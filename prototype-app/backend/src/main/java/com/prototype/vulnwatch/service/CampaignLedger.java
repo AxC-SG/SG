@@ -65,18 +65,26 @@ public class CampaignLedger {
      * how many were added. Findings must be OPEN, or excepted when {@code includeExcepted}.
      */
     public int materializeCve(UUID campaignId, boolean includeExcepted, String actor, int limit) {
+        return materializeScope(campaignId, includeExcepted, actor, limit, AddSource.CREATE);
+    }
+
+    /**
+     * As {@link #materializeCve}, recording how the members arrived. A scope is the campaign's CVEs plus the software a
+     * user added to it ({@code campaign_software}); members already in the ledger are skipped.
+     */
+    public int materializeScope(UUID campaignId, boolean includeExcepted, String actor, int limit, AddSource source) {
         Snapshot snapshot = snapshot();
-        String sql = "WITH c AS (SELECT f.id FROM findings f WHERE " + cveScope("f") + " AND " + eligible("f", includeExcepted)
+        String sql = "WITH c AS (SELECT f.id FROM findings f WHERE " + scope("f") + " AND " + eligible("f", includeExcepted)
                 + " AND NOT EXISTS (SELECT 1 FROM campaign_findings m WHERE m.campaign_id = ? AND m.finding_id = f.id)"
                 + " ORDER BY f.updated_at, f.id LIMIT ?) " + insertFrom("c", snapshot);
-        return jdbc.update(sql, campaignId, campaignId, limit, campaignId, actor, AddSource.CREATE.name());
+        return jdbc.update(sql, campaignId, campaignId, campaignId, limit, campaignId, actor, source.name());
     }
 
     /** True when an eligible in-scope finding is not yet a member (the create bound was reached). */
     public boolean hasUnmaterialized(UUID campaignId, boolean includeExcepted) {
-        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM findings f WHERE " + cveScope("f") + " AND "
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM findings f WHERE " + scope("f") + " AND "
                 + eligible("f", includeExcepted) + " AND NOT EXISTS (SELECT 1 FROM campaign_findings m WHERE m.campaign_id = ?"
-                + " AND m.finding_id = f.id))", Boolean.class, campaignId, campaignId));
+                + " AND m.finding_id = f.id))", Boolean.class, campaignId, campaignId, campaignId));
     }
 
     /** Adds the given findings (any status) as members; returns how many were new. Unknown IDs are ignored. */
@@ -103,7 +111,7 @@ public class CampaignLedger {
         Snapshot snapshot = snapshot();
         String sql = "WITH w AS (SELECT COALESCE((reconcile_watermark ->> 'updatedAt')::timestamptz, '-infinity'::timestamptz) AS ts,"
                 + " COALESCE((reconcile_watermark ->> 'id')::uuid, '" + NIL_UUID + "'::uuid) AS id FROM campaigns WHERE id = ?),"
-                + " b AS (SELECT f.id, f.updated_at FROM findings f, w WHERE " + cveScope("f")
+                + " b AS (SELECT f.id, f.updated_at FROM findings f, w WHERE " + scope("f")
                 + " AND (f.updated_at, f.id) > (w.ts, w.id) AND f.updated_at < now() - " + RECONCILE_LAG
                 + " ORDER BY f.updated_at, f.id LIMIT ?),"
                 + " c AS (SELECT b.id FROM b JOIN findings f ON f.id = b.id WHERE " + eligible("f", includeExcepted) + "),"
@@ -111,7 +119,7 @@ public class CampaignLedger {
                 + " last AS (SELECT updated_at, id FROM b ORDER BY updated_at DESC, id DESC LIMIT 1)"
                 + " SELECT (SELECT count(*) FROM ins), (SELECT count(*) FROM b), (SELECT updated_at::text FROM last), (SELECT id FROM last)";
         Object[] row = jdbc.queryForObject(sql, (rs, n) -> new Object[] { rs.getInt(1), rs.getInt(2), rs.getString(3), rs.getObject(4, UUID.class) },
-                campaignId, campaignId, limit, campaignId, "system", AddSource.RECONCILER.name());
+                campaignId, campaignId, campaignId, limit, campaignId, "system", AddSource.RECONCILER.name());
         int added = (Integer) row[0];
         int scanned = (Integer) row[1];
         if (row[2] != null) {
@@ -129,9 +137,78 @@ public class CampaignLedger {
     public void initializeWatermark(UUID campaignId, boolean materializing) {
         String last = materializing
                 ? "SELECT f.updated_at, f.id FROM campaign_findings m JOIN findings f ON f.id = m.finding_id WHERE m.campaign_id = ?"
-                : "SELECT f.updated_at, f.id FROM findings f WHERE " + cveScope("f") + " AND f.updated_at < now() - " + RECONCILE_LAG;
+                : "SELECT f.updated_at, f.id FROM findings f WHERE " + scope("f") + " AND f.updated_at < now() - " + RECONCILE_LAG;
+        Object[] args = materializing ? new Object[] { campaignId, campaignId } : new Object[] { campaignId, campaignId, campaignId };
         jdbc.update("UPDATE campaigns SET reconcile_watermark = (SELECT jsonb_build_object('updatedAt', x.updated_at, 'id', x.id) FROM ("
-                + last + " ORDER BY f.updated_at DESC, f.id DESC LIMIT 1) x) WHERE id = ?", campaignId, campaignId);
+                + last + " ORDER BY f.updated_at DESC, f.id DESC LIMIT 1) x) WHERE id = ?", args);
+    }
+
+    /**
+     * The result of materializing a grown scope: how many members were added and, when the bound was reached, the
+     * {@code (updated_at, id)} of the last finding taken, which is where the reconciler must resume.
+     */
+    public record Extension(int added, boolean boundReached, Instant lastUpdatedAt, UUID lastId) { }
+
+    /**
+     * Adds up to {@code limit} not-yet-member in-scope findings, oldest first, as {@code source} members. Everything in the
+     * scope at or before the returned key is a member or ineligible, so a caller that hit the bound moves the reconciler
+     * watermark there (see {@link #setWatermark}) rather than rescanning the whole scope.
+     */
+    public Extension materializeExtension(UUID campaignId, boolean includeExcepted, String actor, int limit, AddSource source) {
+        Snapshot snapshot = snapshot();
+        String sql = "WITH c AS (SELECT f.id, f.updated_at FROM findings f WHERE " + scope("f") + " AND " + eligible("f", includeExcepted)
+                + " AND NOT EXISTS (SELECT 1 FROM campaign_findings m WHERE m.campaign_id = ? AND m.finding_id = f.id)"
+                + " ORDER BY f.updated_at, f.id LIMIT ?),"
+                + " ins AS (" + insertFrom("c", snapshot) + " RETURNING 1),"
+                + " last AS (SELECT updated_at, id FROM c ORDER BY updated_at DESC, id DESC LIMIT 1)"
+                + " SELECT (SELECT count(*) FROM ins), (SELECT count(*) FROM c), (SELECT updated_at FROM last), (SELECT id FROM last)";
+        return jdbc.queryForObject(sql, (rs, n) -> {
+            Timestamp lastAt = rs.getTimestamp(3);
+            return new Extension(rs.getInt(1), rs.getInt(2) >= limit, lastAt == null ? null : lastAt.toInstant(), rs.getObject(4, UUID.class));
+        }, campaignId, campaignId, campaignId, limit, campaignId, actor, source.name());
+    }
+
+    /** Sets the reconciler's resume point; the next batch scans findings after this key. */
+    public void setWatermark(UUID campaignId, Instant updatedAt, UUID id) {
+        jdbc.update("UPDATE campaigns SET reconcile_watermark = jsonb_build_object('updatedAt', ?::timestamptz, 'id', ?::uuid) WHERE id = ?",
+                updatedAt.toString(), id, campaignId);
+    }
+
+    /** Number of the given software identities that exist. */
+    public int countSoftwareIdentities(List<UUID> ids) {
+        if (ids.isEmpty()) return 0;
+        Integer n = jdbc.queryForObject("SELECT count(*) FROM platform.software_identities WHERE id = ANY (?::uuid[])", Integer.class, array(ids));
+        return n == null ? 0 : n;
+    }
+
+    /** Adds software identities to the campaign's scope; returns how many were new. */
+    public int addSoftware(UUID campaignId, List<UUID> identityIds, String actor) {
+        return jdbc.update("INSERT INTO campaign_software (tenant_id, campaign_id, software_identity_id, added_by)"
+                + " SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, si.id, ?"
+                + " FROM platform.software_identities si WHERE si.id = ANY (?::uuid[]) ON CONFLICT DO NOTHING",
+                campaignId, actor, array(identityIds));
+    }
+
+    /** IDs of the software already in the campaign's scope. */
+    public List<UUID> softwareIds(UUID campaignId) {
+        return jdbc.queryForList("SELECT software_identity_id FROM campaign_software WHERE campaign_id = ?", UUID.class, campaignId);
+    }
+
+    public record SoftwareItem(UUID id, String displayName, String vendor, long assetCount, long openFindingCount) { }
+
+    /** The campaign's software scope with how many assets and open member findings each identity accounts for. */
+    public List<SoftwareItem> softwareItems(UUID campaignId) {
+        return jdbc.query("""
+                SELECT si.id, si.display_name, si.vendor,
+                       (SELECT count(DISTINCT f.asset_id) FROM campaign_findings cf JOIN findings f ON f.id = cf.finding_id
+                          JOIN inventory_components ic ON ic.id = f.component_id
+                         WHERE cf.campaign_id = cs.campaign_id AND ic.software_identity_id = si.id) AS assets,
+                       (SELECT count(*) FROM campaign_findings cf JOIN findings f ON f.id = cf.finding_id
+                          JOIN inventory_components ic ON ic.id = f.component_id
+                         WHERE cf.campaign_id = cs.campaign_id AND ic.software_identity_id = si.id AND f.status = 'OPEN') AS open_findings
+                  FROM campaign_software cs JOIN platform.software_identities si ON si.id = cs.software_identity_id
+                 WHERE cs.campaign_id = ? ORDER BY lower(si.display_name), si.id
+                """, (rs, n) -> new SoftwareItem(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getLong(4), rs.getLong(5)), campaignId);
     }
 
     public void setMembershipState(UUID campaignId, String state) {
@@ -358,8 +435,11 @@ public class CampaignLedger {
                 + " ON CONFLICT DO NOTHING";
     }
 
-    private static String cveScope(String f) {
-        return f + ".vulnerability_id IN (SELECT cv.vulnerability_id FROM campaign_vulnerabilities cv WHERE cv.campaign_id = ?)";
+    /** The scope of a CVE campaign: findings of its CVEs, or on components of the software added to it. Binds the campaign twice. */
+    private static String scope(String f) {
+        return "(" + f + ".vulnerability_id IN (SELECT cv.vulnerability_id FROM campaign_vulnerabilities cv WHERE cv.campaign_id = ?)"
+                + " OR " + f + ".component_id IN (SELECT ic.id FROM inventory_components ic"
+                + " JOIN campaign_software cs ON cs.software_identity_id = ic.software_identity_id WHERE cs.campaign_id = ?))";
     }
 
     /** OPEN, plus suppressed, false-positive and accepted-risk findings when {@code includeExcepted} (§4.2). */

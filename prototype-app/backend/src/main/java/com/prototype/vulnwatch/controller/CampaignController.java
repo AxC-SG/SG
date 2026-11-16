@@ -2,7 +2,9 @@ package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.domain.CampaignStatus;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddCvesRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddMembersRequest;
+import com.prototype.vulnwatch.dto.CampaignDtos.CampaignAddSoftwareRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignCreateRequest;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignMemberPage;
 import com.prototype.vulnwatch.dto.CampaignDtos.CampaignOwnerBucket;
@@ -118,6 +120,20 @@ public class CampaignController {
     @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
     public CampaignDetailResponse addMembers(@PathVariable UUID campaignId, @RequestBody CampaignAddMembersRequest request) {
         return campaignService.addMembers(workspaceService.getWorkspace(), campaignId, request, requestActorService.currentActor().userId());
+    }
+
+    /** Adds CVEs to a CVE campaign's scope (1 to 100); their findings become members. 409 for other scopes or closed campaigns. */
+    @PostMapping("/{campaignId}/cves")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
+    public CampaignDetailResponse addCves(@PathVariable UUID campaignId, @RequestBody CampaignAddCvesRequest request) {
+        return campaignService.addCves(workspaceService.getWorkspace(), campaignId, request, requestActorService.currentActor().userId());
+    }
+
+    /** Adds software identities to a CVE campaign's scope (1 to 100); their findings become members, now and later. */
+    @PostMapping("/{campaignId}/software")
+    @PreAuthorize("hasAnyRole('PLATFORM_OWNER','TENANT_ADMIN','SECURITY_ANALYST')")
+    public CampaignDetailResponse addSoftware(@PathVariable UUID campaignId, @RequestBody CampaignAddSoftwareRequest request) {
+        return campaignService.addSoftware(workspaceService.getWorkspace(), campaignId, request, requestActorService.currentActor().userId());
     }
 
     /** §4.5 owner buckets; {@code groupBy} is {@code current} (default) or {@code atAdd}. */

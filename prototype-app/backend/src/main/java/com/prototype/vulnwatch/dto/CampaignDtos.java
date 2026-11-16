@@ -94,6 +94,18 @@ public final class CampaignDtos {
     public record CampaignAddMembersRequest(List<UUID> findingIds) {
     }
 
+    /** Extends a CVE campaign's scope with CVEs (1 to 100 external IDs); their in-scope findings become MANUAL members. */
+    public record CampaignAddCvesRequest(List<String> cveIds) {
+    }
+
+    /** Extends a CVE campaign's scope with software identities (1 to 100); findings on their components become members. */
+    public record CampaignAddSoftwareRequest(List<UUID> softwareIdentityIds) {
+    }
+
+    /** One software identity in a campaign's scope, with the assets and open member findings it accounts for. */
+    public record CampaignSoftwareItemResponse(UUID id, String displayName, String vendor, long assetCount, long openFindingCount) {
+    }
+
     public record CampaignStatusUpdateRequest(
             CampaignStatus status,
             String note
@@ -298,7 +310,8 @@ public final class CampaignDtos {
             List<CampaignDeliveryAttemptResponse> deliveryAttempts,
             List<CampaignFindingRowResponse> findings,
             List<CampaignAssetRowResponse> assets,
-            List<CampaignEvidenceRowResponse> evidence
+            List<CampaignEvidenceRowResponse> evidence,
+            List<CampaignSoftwareItemResponse> softwareItems
     ) {
     }
 

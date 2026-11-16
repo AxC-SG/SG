@@ -111,6 +111,16 @@ class OwnershipReleaseTwoSchemaUpgradePostgresIntegrationTest {
             assertEquals(TenantSchemaFingerprint.of(connection, "tenant_v24_fresh"),
                     TenantSchemaFingerprint.of(connection, "tenant_default"));
         }
+
+        // V27: a CVE campaign's saved software scope.
+        tenant("tenant_default", TENANT_A, "27").migrate();
+        assertEquals(1, integer("select count(*) from information_schema.tables where table_schema = 'tenant_default'"
+                + " and table_name = 'campaign_software'"));
+        tenant("tenant_v24_fresh", TENANT_B, "27").migrate();
+        try (Connection connection = connection()) {
+            assertEquals(TenantSchemaFingerprint.of(connection, "tenant_v24_fresh"),
+                    TenantSchemaFingerprint.of(connection, "tenant_default"));
+        }
     }
 
     private UUID insertCampaign(String name) throws SQLException {
