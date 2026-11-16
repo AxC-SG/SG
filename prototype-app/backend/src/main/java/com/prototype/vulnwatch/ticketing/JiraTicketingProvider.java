@@ -419,7 +419,11 @@ public class JiraTicketingProvider implements TicketingProvider {
 
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("project", Map.of("key", config.projectKey()));
-        fields.put("summary", finding.getDisplayId() + ": " + title);
+        // Jira has no assignment-group field (Phase 0B §4.9): the routed group is written as text. A routed ticket
+        // names it in the summary and description; the finding's free-text owner_group is not shown on that path.
+        String routedGroup = request.routedAssignmentGroup() == null || request.routedAssignmentGroup().isBlank()
+                ? null : request.routedAssignmentGroup().trim();
+        fields.put("summary", finding.getDisplayId() + ": " + title + (routedGroup == null ? "" : " — " + routedGroup));
         fields.put("description", adfDocument(buildDescription(finding, severity, request, dueDate)));
 
         // An explicit id wins: issue type names are not unique across an instance's schemes.
@@ -487,7 +491,9 @@ public class JiraTicketingProvider implements TicketingProvider {
         if (finding.getReasonCode() != null) {
             text.append("Reason: ").append(finding.getReasonCode()).append('\n');
         }
-        if (finding.getOwnerGroup() != null) {
+        if (request.routedAssignmentGroup() != null && !request.routedAssignmentGroup().isBlank()) {
+            text.append("Assignment group: ").append(request.routedAssignmentGroup().trim()).append('\n');
+        } else if (finding.getOwnerGroup() != null) {
             text.append("Owner group: ").append(finding.getOwnerGroup()).append('\n');
         }
         if (dueDate != null) {

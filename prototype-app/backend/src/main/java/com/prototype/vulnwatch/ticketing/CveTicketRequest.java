@@ -21,8 +21,18 @@ public record CveTicketRequest(
         String assignee,
         String notes,
         String solutionInfo,
-        List<TicketAsset> assets
+        List<TicketAsset> assets,
+        /**
+         * True on the canonical routing path (Phase 0B §4.9): {@code assignmentGroup} was derived by the server for this
+         * ticket's owner team and must be used as is; providers never fall back to a built-in default group.
+         */
+        boolean routed
 ) {
+    public CveTicketRequest(String cveId, String assignmentGroup, String severity, String priority, String dueDate, String assignee,
+                            String notes, String solutionInfo, List<TicketAsset> assets) {
+        this(cveId, assignmentGroup, severity, priority, dueDate, assignee, notes, solutionInfo, assets, false);
+    }
+
 
     public List<TicketAsset> safeAssets() {
         return assets == null ? List.of() : assets;

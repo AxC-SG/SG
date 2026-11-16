@@ -159,6 +159,7 @@ class TicketRoutingPostgresIntegrationTest {
         List<TicketRef> refs = ticketing.createTicketsForCve(tenant, cve, request, context(preview.routingHash(), Choice.none()));
         assertThat(refs).hasSize(2);
         assertThat(provider.cveRequests).allSatisfy(r -> {
+            assertThat(r.routed()).isTrue();
             assertThat(r.assignmentGroup()).isEqualTo("grp-shared");
             assertThat(r.safeAssets()).hasSize(1).allSatisfy(asset -> assertThat(asset.assignmentGroup()).as("caller CMDB group ignored").isNull());
         });
@@ -190,7 +191,10 @@ class TicketRoutingPostgresIntegrationTest {
         // The fresh hash works, and the routed group replaces the caller's.
         TicketRequest withGroup = new TicketRequest(null, null, null, null, null, "caller-group", null, null);
         ticketing.createTicketForFinding(tenant, f, withGroup, context(changed.preview().routingHash(), Choice.none()));
-        assertThat(provider.findingRequests).singleElement().satisfies(r -> assertThat(r.assignmentGroup()).isEqualTo("grp-payments-new"));
+        assertThat(provider.findingRequests).singleElement().satisfies(r -> {
+            assertThat(r.assignmentGroup()).isEqualTo("grp-payments-new");
+            assertThat(r.routedAssignmentGroup()).as("providers use exactly the routed group").isEqualTo("grp-payments-new");
+        });
         assertThat(jdbc.queryForObject("""
                 SELECT routing_source || '|' || assignment_group || '|' || owner_team_id || '|' || (ownership_assignment_id IS NOT NULL) || '|' || outcome
                   FROM finding_ticket_attempts WHERE finding_id = ?""", String.class, f))
@@ -218,7 +222,10 @@ class TicketRoutingPostgresIntegrationTest {
         UUID f = finding(host(payments));
         TicketRequest withGroup = new TicketRequest(null, null, null, null, null, "caller-group", null, null);
         ticketing.createTicketForFinding(tenant, f, withGroup, context(null, Choice.none()));
-        assertThat(provider.findingRequests).singleElement().satisfies(r -> assertThat(r.assignmentGroup()).isEqualTo("caller-group"));
+        assertThat(provider.findingRequests).singleElement().satisfies(r -> {
+            assertThat(r.assignmentGroup()).isEqualTo("caller-group");
+            assertThat(r.routedAssignmentGroup()).as("legacy requests are never marked routed").isNull();
+        });
         assertThat(jdbc.queryForObject("SELECT routing_source || '|' || outcome FROM finding_ticket_attempts WHERE finding_id = ?", String.class, f))
                 .isEqualTo("LEGACY|SUCCEEDED");
 

@@ -220,7 +220,7 @@ public class TicketingService {
             List<TicketAsset> batchAssets = assetsByComponent.entrySet().stream().filter(e -> components.contains(e.getKey()))
                     .map(e -> withoutGroup(e.getValue())).toList();
             CveTicketRequest batchRequest = new CveTicketRequest(cveId, batch.assignmentGroup(), request.severity(), request.priority(),
-                    request.dueDate(), request.assignee(), request.notes(), request.solutionInfo(), batchAssets);
+                    request.dueDate(), request.assignee(), request.notes(), request.solutionInfo(), batchAssets, true);
             try {
                 TicketRef ref = provider.createForCve(tenant, batchRequest);
                 List<Finding> findings = findingRepository.findAllById(batch.findingIds());
@@ -441,7 +441,7 @@ public class TicketingService {
 
     private static TicketRequest withGroup(TicketRequest request, String group) {
         return new TicketRequest(request.title(), request.severity(), request.priority(), request.dueDate(), request.assignee(), group,
-                request.notes(), request.solutionInfo());
+                request.notes(), request.solutionInfo(), group);
     }
 
     private static TicketAsset withoutGroup(TicketAsset asset) {

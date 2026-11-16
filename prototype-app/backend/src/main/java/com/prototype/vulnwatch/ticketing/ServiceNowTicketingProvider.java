@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ServiceNowTicketingProvider implements TicketingProvider {
 
+    /** Legacy fallback only: never used for a routed ticket (Phase 0B §4.9). */
     private static final String DEFAULT_ASSIGNMENT_GROUP = "App-Sec Manager";
 
     /** ServiceNow incident states: 2 = In Progress, 6 = Resolved. */
@@ -60,7 +61,7 @@ public class ServiceNowTicketingProvider implements TicketingProvider {
         ServiceNowCmdbConfigService.ServiceNowRuntimeConfig config =
                 serviceNowIncidentService.resolveIncidentConfig(tenant);
         ServiceNowIncidentResponse response = serviceNowIncidentService.createFindingIncidentRemote(
-                config, finding, toServiceNowRequest(request));
+                config, finding, toServiceNowRequest(request), request == null ? null : request.routedAssignmentGroup());
         return toTicketRef(response, "New");
     }
 
@@ -68,9 +69,12 @@ public class ServiceNowTicketingProvider implements TicketingProvider {
     public TicketRef createForCve(Tenant tenant, CveTicketRequest request) {
         ServiceNowCmdbConfigService.ServiceNowRuntimeConfig config =
                 serviceNowIncidentService.resolveIncidentConfig(tenant);
-        String assignmentGroup = request.assignmentGroup() == null || request.assignmentGroup().isBlank()
-                ? DEFAULT_ASSIGNMENT_GROUP
-                : request.assignmentGroup().trim();
+        boolean blank = request.assignmentGroup() == null || request.assignmentGroup().isBlank();
+        if (request.routed() && blank) {
+            // Phase 0B §4.9: a routed ticket always has a server-derived group; the built-in default never stands in.
+            throw new IllegalStateException("A routed ServiceNow ticket needs an assignment group");
+        }
+        String assignmentGroup = blank ? DEFAULT_ASSIGNMENT_GROUP : request.assignmentGroup().trim();
         ServiceNowIncidentResponse response = serviceNowIncidentService.createCveIncidentRemote(
                 config,
                 request.cveId(),

@@ -1006,12 +1006,28 @@ Routing is server-derived on the canonical path. The browser no longer supplies 
 - **Roles (§4.12).** The CVE ticket endpoints (`/ticket`, `/servicenow-incident`) and the preview now require
   `PLATFORM_OWNER`, `TENANT_ADMIN` or `SECURITY_ANALYST`. `TicketAuthorizationPostgresIntegrationTest` covers them and
   fails without the check.
-- **Not in E11 (E12, provider changes).** The ServiceNow single-finding provider still sends `findings.owner_group` or
-  `App-Sec Manager` and ignores the routed group. The CVE provider already sends `CveTicketRequest.assignmentGroup`. Jira
-  renders the finding's `owner_group` as text. Until E12 the canonical single-finding path routes and audits correctly,
-  but the ServiceNow payload does not yet carry the routed group. The `MockRestServiceServer` payload test and the
-  finding-detail "owner changed since ticket" display are therefore E12 and E14 work. `FindingIncidentSyncService` is
-  unchanged, and a source check asserts that it never reads ownership.
+- **Provider payloads** are E12 (below). `FindingIncidentSyncService` is unchanged, and a source check asserts that it
+  never reads ownership.
+
+**Implementation (E12, November 16, 2026, branch `feat/e12-provider-routed-group`, not merged).**
+
+- **Routed marker.** `TicketRequest.routedAssignmentGroup` and `CveTicketRequest.routed` are set only by
+  `TicketingService` on the canonical path. A routed finding request replaces any caller `assignmentGroup`; a routed CVE
+  request carries the batch's group. Callers cannot set either field: `FindingTicketController` and the AI Grid and crypto
+  paths build requests through the old constructors. A request without the marker keeps today's behaviour exactly.
+- **ServiceNow.** A routed single-finding incident sends `assignment_group` = the routed group, never the finding's
+  `owner_group` and never `App-Sec Manager` (`ServiceNowIncidentService.createFindingIncidentRemote` has a routed-group
+  overload; the old signature delegates with null). A routed CVE ticket sends its batch group; a routed ticket without a
+  group is refused (`IllegalStateException`) instead of defaulting. The legacy path still falls back to `owner_group`
+  and then `App-Sec Manager` for single findings, and to `App-Sec Manager` for CVE tickets, until the wave is on.
+- **Jira.** A routed finding ticket appends ` — <group>` to the summary and writes `Assignment group: <group>` in the
+  description, and no longer shows the finding's free-text `owner_group`. This matches the CVE ticket, which already
+  named its group in both places. Mapping to a Jira component, label or team field still waits for a customer Jira (R8).
+- **Tests.** `ServiceNowRoutedGroupTest` (`MockRestServiceServer` over a real `OutboundHttpClient`) checks the
+  ServiceNow payload on routed and legacy paths for single findings and CVEs, including that `App-Sec Manager`,
+  `owner_group` and a caller group never appear on a routed ticket. `JiraTicketingProviderTest` covers the routed and
+  legacy text, and `TicketRoutingPostgresIntegrationTest` checks that the service marks canonical requests as routed
+  and legacy requests as not routed.
 
 ### 4.10 Rollout and rollback
 
