@@ -14,8 +14,8 @@ Automated results prove behaviour against mocks and a local PostgreSQL. They do 
 ServiceNow instance, AWS organization or customer data. Those need the inputs in §5.
 
 **Last full run (stack tip).** Backend `mvn -Ppostgres-it verify`, whole repository: 1,704 unit tests
-and 928 integration tests, 0 failures, SpotBugs 0, coverage gate met. Frontend: lint 0 errors (2 older warnings),
-typecheck clean, 123 test files and 1,259 tests, `npm run build` (production bundle and credential scan) passing. The
+and 941 integration tests, 0 failures, SpotBugs 0, coverage gate met. Frontend: lint 0 errors (2 older warnings),
+typecheck clean, 124 test files and 1,265 tests, `npm run build` (production bundle and credential scan) passing. The
 migration-integrity and tenant-DDL CI checks pass. No browser, accessibility or visual run was made.
 
 ## 0. Where the overall plan stands
