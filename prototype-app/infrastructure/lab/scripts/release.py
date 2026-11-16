@@ -3,12 +3,17 @@
 
   release.py status                      release inputs, lock, running images and the last release
   release.py init SHA PLATFORM TENANT    seed the release inputs from what the lab runs now (once)
-  release.py deploy SHA [--no-progress-signal]
-                                         release a published main commit to the lab
-  release.py rollback [--no-progress-signal]
-                                         return api and worker to the last accepted release, or the one before it
+  release.py deploy SHA [--frontend] [--no-progress-signal]
+                                         release a published main commit to the lab; with --frontend, as a pair:
+                                         the frontend for SHA (built from this checkout, which must be SHA) is
+                                         staged first, then promoted to scoutgrid.io under the same lock once the
+                                         backend is verified, then the pair is checked and recorded together
+  release.py rollback [--no-progress-signal] [--note TEXT]
+                                         return the lab to the last accepted release (pair), or the one before it
                                          (--no-progress-signal: the image predates the worker progress line, so its
-                                         absence is recorded instead of failing the release)
+                                         absence is recorded instead of failing the release; --note: why)
+  release.py adopt-frontend              record the frontend scoutgrid.io serves now as the accepted release's
+                                         frontend, once, before the first paired release
   release.py check SHA                   read-only: would SHA be a proven schema-neutral, runtime-only release?
                                          (catalog fingerprint, live schema state, migrator drift; changes nothing)
   release.py accept [--answers yn… [--note TEXT]]
@@ -34,14 +39,26 @@ A deploy, recorded step by step in s3://<state bucket>/standard/lab/release/reco
                 accepted release, any failure rejects it (then roll back or deploy a fix). The owner
                 may waive them instead (`--waive`); the record and the accepted entry say so
 
+A paired release (--frontend) adds, after step 6:
+  6a. frontend  promote the exact staged Vercel deployment (recorded before the lock) to scoutgrid.io
+  6b. paired    scoutgrid.io serves that deployment and answers 200, then the signed-in smoke again
+A failure at 6a is `failed` / `frontend_pending`: rerunning the same deploy promotes the recorded
+deployment without repeating the migrator, runtime or bake. A failure at 6b enters recovery.
+
 Terraform renders images only from the release inputs object, which lab.sh reads too, and
 lab.sh and this script share one lock, so a lab cycle never runs mid-release. A step that
 fails leaves `pending` set: lab.sh then refuses, rerunning `deploy` for the same commit
-resumes (every step is idempotent), and `rollback` recovers where the schema allows.
+resumes (finished steps are skipped or idempotent), and `rollback` recovers where the schema allows.
+Restoring the exact accepted release reuses its acceptance (CD plan 4.7), and the release it
+replaced is marked `recovered`; returning to the release before it waits for `release.py accept`.
+
+deploy and rollback print a result (CD plan 4.4): outcome `verified`, `blocked` (nothing live
+changed), `failed` (a live step or check failed) or `needs_operator`, with its reason.
 
 Environment: LAB_RELEASE_PROFILE (default sglab-release), TERRAFORM (Terraform 1.13.5), LAB_SMOKE_CONFIG
-(the signed-in smoke's config, outside the repo; unset records the smoke as not configured), CHROMIUM_PATH.
-Credentials go only to child processes and are never printed.
+(the signed-in smoke's config, outside the repo; unset records the smoke as not configured), CHROMIUM_PATH,
+VERCEL_TOKEN (paired releases, adopt-frontend, and rollbacks that restore a frontend).
+Credentials go only to child processes and API calls and are never printed.
 """
 import datetime
 import json
@@ -97,6 +114,16 @@ TF_ROOT = (LAB_DIR / ".." / "terraform" / "standard").resolve()
 BROWSER_CHECKS = CFG / "release-browser-checks.json"
 SMOKE_SCRIPT = LAB_DIR.parents[1] / "frontend" / "e2e" / "lab-smoke.mjs"
 SMOKE_TIMEOUT_SECONDS = 600
+REPO_ROOT = LAB_DIR.parents[2]
+
+# The lab frontend: Vercel project scout-frontend, production domain scoutgrid.io.
+VERCEL_CLI = "vercel@65.9.0"
+VERCEL_API = "https://api.vercel.com"
+VERCEL_TEAM = "team_kaGUpiyT7rWaj2XZlCnsB7Mx"
+VERCEL_PROJECT = "prj_BTTCC6KBOQSkBaihL6MZd07ezJn2"
+APP_DOMAIN = "scoutgrid.io"
+APP_ORIGIN = f"https://{APP_DOMAIN}"
+DEPLOYMENT_ID = re.compile(r"dpl_[A-Za-z0-9]+")
 
 TASK = 'aws_ecs_task_definition.backend["{}"]'
 SERVICE = 'aws_ecs_service.backend["{}"]'
@@ -114,7 +141,11 @@ TARGETS = {
 
 
 class ReleaseError(Exception):
-    pass
+    """A stopped command. outcome and reason follow CD plan 4.4; the default is a refusal before any change."""
+
+    def __init__(self, message, outcome="blocked", reason="refused"):
+        super().__init__(message)
+        self.outcome, self.reason = outcome, reason
 
 
 def utc_now():
@@ -266,13 +297,41 @@ def fatal_check(messages):
     return False, f"{len(messages)} line(s), first: {messages[0].strip()[:300]}"
 
 
+def frontend_id(frontend):
+    return (frontend or {}).get("deployment_id")
+
+
+def live_differs(inputs, entry):
+    """Whether the lab runs something other than entry's pair. A frontend counts once release.py tracks one."""
+    if entry["runtime_image_digest"] != inputs["runtime_image_digest"]:
+        return True
+    live = frontend_id(inputs.get("frontend"))
+    return bool(inputs.get("frontend_promoting")) or (live is not None and live != frontend_id(entry.get("frontend")))
+
+
 def rollback_target(inputs):
     """The release to return to: the accepted one while a release is unfinished or the lab has
     left it (failed or rejected), otherwise the accepted release before it."""
     accepted = inputs.get("accepted")
-    if accepted and (inputs.get("pending") or accepted["runtime_image_digest"] != inputs["runtime_image_digest"]):
+    if accepted and (inputs.get("pending") or live_differs(inputs, accepted)):
         return accepted
     return inputs.get("previous_accepted")
+
+
+def parse_options(args, flags=(), valued=()):
+    """{option: True or value} for each option given once; None for anything else."""
+    parsed, rest = {}, list(args)
+    while rest:
+        item = rest.pop(0)
+        if item in parsed:
+            return None
+        if item in flags:
+            parsed[item] = True
+        elif item in valued and rest:
+            parsed[item] = rest.pop(0)
+        else:
+            return None
+    return parsed
 
 
 class Release:
@@ -341,6 +400,18 @@ class Release:
             for role, digest in live.items():
                 expected = inputs["migrator_image_digest" if role == "migrator" else "runtime_image_digest"]
                 print(f"live {role:<9}{short(digest)}{'' if digest in (None, expected) else '  DIFFERS FROM INPUTS'}")
+            frontend = inputs.get("frontend")
+            if not frontend:
+                print("frontend:  not tracked (release.py adopt-frontend records the live one)")
+                return
+            adopted = " (adopted from the live domain)" if frontend.get("adopted") else ""
+            print(f"frontend:  {frontend['deployment_id']} from {(frontend.get('source_sha') or '-')[:7]}{adopted}; "
+                  f"accepted {frontend_id(accepted.get('frontend')) or '-'}")
+            if inputs.get("frontend_promoting"):
+                print(f"promoting: {inputs['frontend_promoting']} (outcome unknown; rerun the deploy or roll back)")
+            served = self.lab.frontend_live(required=False)
+            print(f"live {APP_DOMAIN}: {served or 'not checked (VERCEL_TOKEN unset)'}"
+                  f"{'  DIFFERS FROM INPUTS' if served and served != frontend['deployment_id'] else ''}")
 
     def init(self, sha, platform, tenant):
         if not FULL_SHA.fullmatch(sha):
@@ -365,17 +436,36 @@ class Release:
                 raise ReleaseError("release inputs appeared meanwhile; nothing changed")
             self.lab.log(f"Seeded release inputs: {short(digest)} from {sha[:7]}, platform V{platform}, tenant V{tenant}.")
 
-    def deploy(self, ref, progress_required=True):
+    def refuse_unfinished(self, inputs, sha):
+        pending = inputs.get("pending")
+        if pending and (pending["kind"] != "deploy" or pending["source_sha"] != sha):
+            raise ReleaseError(f"{pending['kind']} {pending['release_id']} stopped after {pending['phase']}; "
+                               f"rerun it, or run release.py rollback", outcome="needs_operator", reason="unfinished")
+        if inputs.get("awaiting_acceptance"):
+            raise ReleaseError(f"{inputs['awaiting_acceptance']['release_id']} is waiting for its browser checks; "
+                               "run release.py accept, or release.py rollback", reason="awaiting_acceptance")
+        return pending
+
+    def staged_frontend(self, sha):
+        """The frontend for a paired release, staged outside the lock (CD plan 4.5). A resumed release
+        reuses the deployment its record already names; a staging failure changes nothing live."""
+        inputs = self.inputs()
+        pending = self.refuse_unfinished(inputs, sha)
+        record = self.lab.s3_get(f"{RECORDS}/{pending['release_id']}.json") if pending else None
+        if record and record.get("frontend"):
+            return record["frontend"]
+        staged = self.lab.frontend_stage(sha)
+        if not DEPLOYMENT_ID.fullmatch(staged.get("deployment_id") or "") or staged.get("source_sha") != sha:
+            raise ReleaseError(f"the staged frontend is not a recorded deployment of {sha[:7]}: {json.dumps(staged)}")
+        self.lab.log(f"Staged frontend {staged['deployment_id']} ({staged.get('url')}) for {sha[:7]}; not promoted yet.")
+        return staged
+
+    def deploy(self, ref, progress_required=True, frontend=False):
         sha = self.lab.resolve_sha(ref)
+        staged = self.staged_frontend(sha) if frontend else None
         with self.locked("deploy " + sha[:7]):
             inputs = self.inputs()
-            pending = inputs.get("pending")
-            if pending and (pending["kind"] != "deploy" or pending["source_sha"] != sha):
-                raise ReleaseError(f"{pending['kind']} {pending['release_id']} stopped after {pending['phase']}; "
-                                   f"rerun it, or run release.py rollback")
-            if inputs.get("awaiting_acceptance"):
-                raise ReleaseError(f"{inputs['awaiting_acceptance']['release_id']} is waiting for its browser checks; "
-                                   "run release.py accept, or release.py rollback")
+            pending = self.refuse_unfinished(inputs, sha)
             publication = self.lab.publication(sha)
             check_publication(publication, sha)
             digest, heads = publication["image_digest"], publication["migration_heads"]
@@ -383,10 +473,16 @@ class Release:
             if not self.lab.ecr_has(digest):
                 raise ReleaseError(f"{digest} is not in the lab ECR repository")
             if not self.lab.services_present():
-                raise ReleaseError("the lab is parked; run lab.sh up first (publication does not need it)")
+                raise ReleaseError("the lab is parked; run lab.sh up first (publication does not need it)", reason="parked")
             record = self.lab.s3_get(f"{RECORDS}/{pending['release_id']}.json") if pending else None
             if record:
                 mode = record["mode"]
+                if record.get("frontend") and not frontend:
+                    raise ReleaseError(f"{record['release_id']} is a paired release; rerun it with --frontend",
+                                       outcome="needs_operator", reason="unfinished")
+                if staged and frontend_id(record.get("frontend")) not in (None, staged["deployment_id"]):
+                    raise ReleaseError(f"{record['release_id']} names frontend {frontend_id(record['frontend'])}, "
+                                       f"not {staged['deployment_id']}", outcome="needs_operator", reason="unfinished")
             else:
                 mode = schema_mode(inputs["database_heads"], heads)
                 record = {"release_id": release_id(sha, utc_now()), "kind": "deploy", "status": "started", "mode": mode,
@@ -395,6 +491,9 @@ class Release:
                                         "publication_run": publication.get("candidate_run")},
                           "from": {key: inputs[key] for key in ("runtime_image_digest", "migrator_image_digest", "database_heads")},
                           "steps": [], "checks": {}, "browser_checks": [], "started_at": stamp()}
+                record["from"]["frontend"] = frontend_id(inputs.get("frontend"))
+            if staged:
+                record["frontend"] = staged
             if not pending:
                 self.qualify_schema(inputs, record, fingerprint)
             self.lab.log(f"Release {record['release_id']}: {short(inputs['runtime_image_digest'])} -> {short(digest)} "
@@ -404,11 +503,15 @@ class Release:
                 self.lab.log("Schema-changing release: api and worker stop, RDS is snapshotted, the migrator runs, "
                              "then the candidate starts. Sign-in and the API are offline meanwhile (about 5-10 minutes). "
                              "The previous image cannot run on the new schema; recovery is the snapshot.")
+            if record.get("frontend"):
+                self.lab.log(f"Paired release: after the backend verifies, {APP_DOMAIN} moves to "
+                             f"{record['frontend']['deployment_id']}.")
             if not self.lab.confirm(f"Release {sha[:7]} to the lab?"):
-                raise ReleaseError("not confirmed; nothing changed")
+                raise ReleaseError("not confirmed; nothing changed", reason="not_confirmed")
             meta = {"source_sha": sha, "migration_heads": heads, "migration_catalog_sha256": fingerprint}
             self.run(inputs, record, runtime=digest, migrator=digest, meta=meta, stop=(mode == "forward"),
-                     progress_required=progress_required)
+                     progress_required=progress_required, frontend=record.get("frontend"))
+            return self.result(inputs, record)
 
     def qualify_schema(self, inputs, record, fingerprint):
         """Refuse before any change when the catalog or the live schema state contradicts the heads."""
@@ -416,7 +519,7 @@ class Release:
         record["catalog"] = catalog
         if record["mode"] == "neutral" and catalog == "changed":
             raise ReleaseError("the migration heads are equal but the migration catalog differs from the one the "
-                               "database ran (an applied migration was changed); nothing changed")
+                               "database ran (an applied migration was changed); nothing changed", reason="schema_changed")
         if catalog == "unverified":
             self.lab.log("The migration catalog cannot be compared (the inputs or the publication predate the "
                          "fingerprint); this release is recorded as schema-unverified.")
@@ -424,7 +527,8 @@ class Release:
         passed, detail = schema_state_check(messages, inputs["database_heads"]["tenant"], required=False)
         record["schema_state_before"] = {"passed": passed, "detail": detail}
         if not passed and record["mode"] == "neutral":
-            raise ReleaseError(f"the live tenant schema state is not ready ({detail}); nothing changed")
+            raise ReleaseError(f"the live tenant schema state is not ready ({detail}); nothing changed",
+                               reason="schema_unverified")
 
     def check(self, ref):
         """Read-only eligibility for a runtime-only release (CD plan section 4.3). Changes nothing."""
@@ -463,31 +567,105 @@ class Release:
         print(json.dumps(result, indent=2))
         return result
 
-    def rollback(self, progress_required=True):
+    def rollback(self, progress_required=True, note=""):
         with self.locked("rollback"):
             inputs = self.inputs()
             target = rollback_target(inputs)
             if not target:
-                raise ReleaseError("there is no earlier accepted release to return to")
+                raise ReleaseError("there is no earlier accepted release to return to", outcome="needs_operator",
+                                   reason="no_target")
             if target["migration_heads"] != inputs["database_heads"]:
                 snapshots = [step.get("snapshot") for step in self.last_record_steps(inputs) if step.get("snapshot")]
                 raise ReleaseError(f"{target['release_id']} needs schema {target['migration_heads']} but the database is at "
                                    f"{inputs['database_heads']}; its image cannot run here. Fix forward with deploy, or "
-                                   f"restore the pre-migration snapshot {snapshots or '(none recorded)'} through the reviewed path")
+                                   f"restore the pre-migration snapshot {snapshots or '(none recorded)'} through the reviewed path",
+                                   outcome="needs_operator", reason="schema_changed")
+            # The frontend comes back too when release.py moved it (or may have) away from the target's.
+            restore_frontend = target.get("frontend") if (
+                inputs.get("frontend_promoting") or frontend_id(inputs.get("frontend")) != frontend_id(target.get("frontend"))) else None
+            moved = inputs.get("frontend_promoting") or (
+                inputs.get("frontend") and not inputs["frontend"].get("adopted") and frontend_id(inputs["frontend"]))
+            if moved and not target.get("frontend"):
+                raise ReleaseError(f"{target['release_id']} has no recorded frontend, but a release moved {APP_DOMAIN} to "
+                                   f"{moved}; restore the frontend by hand first", outcome="needs_operator",
+                                   reason="frontend_unrecorded")
+            replaced = self.replaced_release(inputs, target)
             record = {"release_id": release_id(target["source_sha"], utc_now()), "kind": "rollback", "status": "started",
-                      "mode": "neutral", "rolls_back_to": target["release_id"],
+                      "mode": "neutral", "rolls_back_to": target["release_id"], "replaces": replaced, "note": note,
                       "candidate": {"source_sha": target["source_sha"], "image_digest": target["runtime_image_digest"],
                                     "migration_heads": target["migration_heads"]},
                       "from": {key: inputs[key] for key in ("runtime_image_digest", "migrator_image_digest", "database_heads")},
                       "steps": [], "checks": {}, "browser_checks": [], "started_at": stamp()}
+            record["from"]["frontend"] = frontend_id(inputs.get("frontend"))
+            if restore_frontend:
+                record["frontend"] = restore_frontend
+            reuse = target["release_id"] == (inputs.get("accepted") or {}).get("release_id")
             self.lab.log(f"Rollback {record['release_id']}: api and worker {short(inputs['runtime_image_digest'])} -> "
-                         f"{short(target['runtime_image_digest'])} ({target['release_id']}); the migrator and schema stay.")
+                         f"{short(target['runtime_image_digest'])} ({target['release_id']}); the migrator and schema stay."
+                         + (f" {APP_DOMAIN} returns to {restore_frontend['deployment_id']} first." if restore_frontend else ""))
             if not self.lab.confirm("Roll back api and worker?"):
-                raise ReleaseError("not confirmed; nothing changed")
+                raise ReleaseError("not confirmed; nothing changed", reason="not_confirmed")
             self.reject_waiting(inputs, "rolled back before acceptance")
             meta = {"source_sha": target["source_sha"], "migration_heads": target["migration_heads"]}
             self.run(inputs, record, runtime=target["runtime_image_digest"], migrator=None, meta=meta,
-                     stop=False, restores=target, progress_required=progress_required)
+                     stop=False, restores=target, progress_required=progress_required, frontend=restore_frontend,
+                     reuse_acceptance=reuse)
+            self.mark_replaced(replaced, record)
+            return self.result(inputs, record)
+
+    @staticmethod
+    def replaced_release(inputs, target):
+        """The release a rollback takes the lab away from."""
+        for key in ("pending", "awaiting_acceptance"):
+            if inputs.get(key):
+                return inputs[key]["release_id"]
+        if target == inputs.get("previous_accepted"):
+            return (inputs.get("accepted") or {}).get("release_id")
+        return (inputs.get("last_release") or {}).get("release_id")
+
+    def mark_replaced(self, replaced, record):
+        """Link a verified rollback to the release it replaced, so each record names the other."""
+        key = f"{RECORDS}/{replaced}.json"
+        old = self.lab.s3_get(key) if replaced else None
+        if not old or old["release_id"] == record["release_id"]:
+            return
+        recovered = old["status"] in ("failed", "rejected")
+        old["rolled_back"] = {"by": record["release_id"], "at": stamp(),
+                              "reason": "recovered" if recovered else "rolled back by the operator",
+                              "note": record.get("note", "")}
+        if old["status"] == "failed":
+            old["result"] = {**old.get("result", {}), "outcome": "failed", "reason": "recovered"}
+        self.lab.s3_put(key, old)
+
+    def adopt_frontend(self):
+        """Record the deployment scoutgrid.io serves now as the accepted release's frontend, once. It was not
+        promoted by release.py, so the entry says it was adopted; later paired releases replace it."""
+        with self.locked("adopt-frontend"):
+            inputs = self.inputs()
+            if inputs.get("pending") or inputs.get("awaiting_acceptance") or inputs.get("frontend_promoting"):
+                raise ReleaseError("finish or roll back the current release first; nothing changed")
+            if inputs.get("frontend"):
+                raise ReleaseError(f"the frontend is already tracked ({inputs['frontend']['deployment_id']}); nothing changed")
+            live = self.lab.frontend_live()
+            deployment = self.lab.frontend_deployment(live)
+            if deployment.get("ready_state") != "READY" or deployment.get("target") != "production":
+                raise ReleaseError(f"{APP_DOMAIN} serves {live}, which is not a ready production deployment: {deployment}")
+            frontend = {"deployment_id": live, "url": deployment.get("url"), "source_sha": deployment.get("source_sha"),
+                        "adopted": True, "adopted_at": stamp()}
+            inputs["frontend"] = frontend
+            inputs["accepted"]["frontend"] = frontend
+            inputs["updated_at"] = stamp()
+            self.lab.s3_put(INPUTS_KEY, inputs)
+            self.lab.log(f"Adopted {live} ({deployment.get('url')}) as the frontend of {inputs['accepted']['release_id']}.")
+
+    @staticmethod
+    def result(inputs, record):
+        """The machine-readable outcome of a deploy or rollback that finished (CD plan 4.4)."""
+        return {"outcome": "verified", "reason": None, "phase": record["steps"][-1]["step"] if record["steps"] else None,
+                "release_id": record["release_id"], "kind": record["kind"], "source_sha": record["candidate"]["source_sha"],
+                "backend": inputs["runtime_image_digest"], "frontend": frontend_id(inputs.get("frontend")),
+                "acceptance": "reused" if record["status"] == "accepted" else "awaiting",
+                "replaces": record.get("replaces")}
 
     def unlock(self):
         lock = self.lab.s3_get(LOCK_KEY)
@@ -505,7 +683,8 @@ class Release:
         return record["steps"] if record else []
 
     # ---- the release itself -----------------------------------------------------------
-    def run(self, inputs, record, runtime, migrator, meta, stop, restores=None, progress_required=True):
+    def run(self, inputs, record, runtime, migrator, meta, stop, restores=None, progress_required=True,
+            frontend=None, reuse_acceptance=False):
         step = "start"
         try:
             if stop and not self.done(record, "stopped"):
@@ -516,7 +695,8 @@ class Release:
                 step = "snapshot"
                 snapshot = self.lab.snapshot(f"{CLUSTER}-release-{record['release_id']}", record["release_id"])
                 self.mark(inputs, record, "snapshot", snapshot=snapshot)
-            if migrator:
+            # A resumed release never runs a migrator that already exited 0.
+            if migrator and not self.done(record, "migrated"):
                 step = "migrator"
                 self.terraform("migrator", {"runtime": inputs["runtime_image_digest"], "migrator": migrator})
                 inputs["migrator_image_digest"], inputs["migrator"] = migrator, meta
@@ -529,30 +709,94 @@ class Release:
                 inputs["database_heads"] = meta["migration_heads"]
                 inputs["database_catalog_sha256"] = meta.get("migration_catalog_sha256")
                 self.mark(inputs, record, "migrated", task=task, detail=detail)
-            step = "runtime"
-            self.terraform("runtime", {"runtime": runtime, "migrator": inputs["migrator_image_digest"]})
-            inputs["runtime_image_digest"], inputs["runtime"] = runtime, meta
-            self.mark(inputs, record, "runtime")
-            step = "verify"
-            record["checks"] = self.verify(record, progress_required)
-            failed = [name for name, check in record["checks"].items() if not check["passed"]]
-            if failed:
-                raise ReleaseError(f"automated checks failed: {', '.join(failed)}")
-            self.mark(inputs, record, "verified")
+            # A rollback restores the frontend first: backend N serves frontend N-1 (CD plan 4.5).
+            if frontend and record["kind"] == "rollback":
+                step = "frontend"
+                self.promote(inputs, record, frontend)
+            # A frontend retry after a verified backend repeats neither the rollout nor the bake.
+            if not self.done(record, "verified"):
+                step = "runtime"
+                self.terraform("runtime", {"runtime": runtime, "migrator": inputs["migrator_image_digest"]})
+                inputs["runtime_image_digest"], inputs["runtime"] = runtime, meta
+                self.mark(inputs, record, "runtime")
+                step = "verify"
+                record["checks"] = self.verify(record, progress_required)
+                failed = [name for name, check in record["checks"].items() if not check["passed"]]
+                if failed:
+                    raise ReleaseError(f"automated checks failed: {', '.join(failed)}")
+                self.mark(inputs, record, "verified")
+            if frontend and record["kind"] == "deploy":
+                step = "frontend"
+                self.promote(inputs, record, frontend)
+            if frontend:
+                step = "paired"
+                record["paired_checks"] = self.paired_checks(frontend)
+                failed = [name for name, check in record["paired_checks"].items() if not check["passed"]]
+                if failed:
+                    raise ReleaseError(f"paired checks failed: {', '.join(failed)}")
+                self.mark(inputs, record, "paired")
         except BaseException as error:
-            record.update(status="failed", failed_at=step, error=str(error) or type(error).__name__, ended_at=stamp())
+            if record["kind"] == "rollback":
+                outcome, reason = "needs_operator", "recovery_failed"
+            elif step == "frontend":
+                outcome, reason = "failed", "frontend_pending"
+            else:
+                outcome, reason = "failed", "check_failed" if step in ("verify", "paired") else "step_failed"
+            record.update(status="failed", failed_at=step, error=str(error) or type(error).__name__, ended_at=stamp(),
+                          result={"outcome": outcome, "reason": reason, "phase": step})
             self.save(inputs, record)
+            retry = (" The backend is verified: rerun the same deploy to promote the recorded frontend without "
+                     "redeploying the backend, or run release.py rollback.") if reason == "frontend_pending" else (
+                     " lab.sh refuses until a deploy of the same commit resumes it or release.py rollback recovers.")
             raise ReleaseError(f"{record['kind']} {record['release_id']} failed at {step}: {error}. "
-                               f"The record is in s3://{STATE_BUCKET}/{RECORDS}/. lab.sh refuses until a deploy of the "
-                               f"same commit resumes it or release.py rollback recovers.") from error
+                               f"The record is in s3://{STATE_BUCKET}/{RECORDS}/.{retry}",
+                               outcome=outcome, reason=reason) from error
         # Terraform and the inputs agree again, so lab cycles may run; acceptance is the operator's.
         record["status"] = "verified"
+        record["result"] = {"outcome": "verified", "reason": None, "phase": record["steps"][-1]["step"]}
         inputs["pending"] = None
+        if reuse_acceptance:
+            # The exact accepted release is back and verified: its acceptance stands (CD plan 4.7).
+            record.update(status="accepted", ended_at=stamp(),
+                          acceptance=f"reuses the acceptance of {restores['release_id']}: restored exactly and verified")
+            inputs["awaiting_acceptance"] = None
+            self.save(inputs, record)
+            self.lab.log(f"Rollback {record['release_id']} restored the accepted {restores['release_id']} and passed the "
+                         "automated checks; its acceptance stands.")
+            return
         inputs["awaiting_acceptance"] = {"release_id": record["release_id"], "kind": record["kind"],
-                                         "runtime_image_digest": runtime, **meta, "restores": restores}
+                                         "runtime_image_digest": runtime, **meta, "frontend": inputs.get("frontend"),
+                                         "restores": restores}
         self.save(inputs, record)
         self.lab.log(f"{record['kind'].capitalize()} {record['release_id']} is live and passed the automated checks. "
                      "Run the browser checks, then record them with release.py accept.")
+
+    def promote(self, inputs, record, frontend):
+        """Point the domain at the recorded deployment. Intent is saved first, because a failed call does not prove
+        the domain did not move; a retry or rollback reads the domain before acting."""
+        target = frontend["deployment_id"]
+        inputs["frontend_promoting"] = target
+        self.save(inputs, record)
+        if self.lab.frontend_live() != target:
+            self.lab.frontend_promote(target)
+        served = self.lab.frontend_live()
+        if served != target:
+            raise ReleaseError(f"{APP_DOMAIN} serves {served}, not {target}")
+        inputs["frontend"], inputs["frontend_promoting"] = frontend, None
+        self.mark(inputs, record, "frontend", deployment=target)
+
+    def paired_checks(self, frontend):
+        """The pair on the canonical origin: the domain serves the recorded deployment, and the signed-in smoke passes."""
+        served = self.lab.frontend_live()
+        checks = {f"{APP_DOMAIN} serves {frontend['deployment_id']}": {"passed": served == frontend["deployment_id"],
+                                                                         "detail": str(served)}}
+        status = self.lab.app_status("/")
+        checks[f"GET {APP_ORIGIN}/ 200"] = {"passed": status == 200, "detail": str(status)}
+        passed, detail = smoke_check(self.lab.signed_in_smoke())
+        checks["signed-in smoke on the pair"] = {"passed": passed, "detail": detail}
+        for name, check in checks.items():
+            self.lab.log(f"  {'ok  ' if check['passed'] else 'FAIL'} {name}: {check['detail']}")
+        return checks
 
     def accept(self, answers=None, note="", waive=False):
         if waive and not note.strip():
@@ -594,6 +838,8 @@ class Release:
                     "migration_catalog_sha256": waiting.get("migration_catalog_sha256")}
             if waived:
                 meta["browser_checks"] = "waived"
+            if waiting.get("frontend"):
+                meta["frontend"] = waiting["frontend"]
             inputs["previous_accepted"] = inputs.get("accepted")
             inputs["accepted"] = {"release_id": record["release_id"], "runtime_image_digest": waiting["runtime_image_digest"], **meta}
         self.save(inputs, record)
@@ -669,8 +915,8 @@ class AwsLab:
     def log(self, message):
         print(f"{utc_now().strftime('%H:%M:%SZ')} {message}", file=sys.stderr)
 
-    def run(self, command, env=None, capture=True):
-        result = subprocess.run(command, env=env, text=True, capture_output=capture)
+    def run(self, command, env=None, capture=True, cwd=None):
+        result = subprocess.run(command, env=env, text=True, capture_output=capture, cwd=cwd)
         if result.returncode != 0:
             raise ReleaseError(f"{command[0]} {command[1] if len(command) > 1 else ''} failed: "
                                f"{(result.stderr or '').strip()[-600:]}")
@@ -883,6 +1129,89 @@ class AwsLab:
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
             return {"passed": False, "checks": [{"name": "smoke run", "ok": False, "detail": type(error).__name__}]}
 
+    # ---- the frontend (Vercel) ----------------------------------------------------------
+    @staticmethod
+    def vercel_token(required=True):
+        token = os.environ.get("VERCEL_TOKEN")
+        if not token and required:
+            raise ReleaseError("VERCEL_TOKEN is not set; the frontend half of a release needs it")
+        return token
+
+    def vercel(self, *args):
+        """The pinned Vercel CLI from the repository root, without AWS credentials. The token is an argument
+        (the CLI's documented way), so it is never echoed: failures report only the command name and stderr."""
+        env = {key: value for key, value in os.environ.items() if not key.startswith("AWS_") and key != "VERCEL_TOKEN"}
+        env.update(VERCEL_ORG_ID=VERCEL_TEAM, VERCEL_PROJECT_ID=VERCEL_PROJECT, VERCEL_TELEMETRY_DISABLED="1")
+        return self.run(["npx", "--yes", VERCEL_CLI, *args, "--token", self.vercel_token()], env=env, cwd=REPO_ROOT)
+
+    def vercel_api(self, method, path, body=None):
+        separator = "&" if "?" in path else "?"
+        request = urllib.request.Request(
+            f"{VERCEL_API}{path}{separator}teamId={VERCEL_TEAM}", method=method,
+            data=None if body is None else json.dumps(body).encode(),
+            headers={"Authorization": f"Bearer {self.vercel_token()}", "Content-Type": "application/json",
+                     "User-Agent": "scoutgrid-lab-release"})
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                text = response.read()
+        except urllib.error.HTTPError as error:
+            raise ReleaseError(f"Vercel {method} {path} returned {error.code}: {error.read()[:300]!r}")
+        except (urllib.error.URLError, TimeoutError) as error:
+            raise ReleaseError(f"Vercel {method} {path} unreachable: {error}")
+        return json.loads(text) if text.strip() else {}
+
+    def frontend_deployment(self, deployment):
+        found = self.vercel_api("GET", f"/v13/deployments/{deployment}")
+        return {"deployment_id": found.get("id"), "url": found.get("url"), "ready_state": found.get("readyState"),
+                "target": found.get("target"), "source_sha": (found.get("meta") or {}).get("githubCommitSha")}
+
+    def frontend_stage(self, sha):
+        """Build this checkout for production and upload it without assigning a domain (CD plan 4.5, step 1-2)."""
+        head = self.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"]).strip()
+        if head != sha:
+            raise ReleaseError(f"this checkout is at {head[:7]}; check out {sha[:7]} to build its frontend")
+        if self.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=no"]).strip():
+            raise ReleaseError("this checkout has uncommitted changes; the frontend must be built from the commit alone")
+        self.log(f"Building the frontend for {sha[:7]} with {VERCEL_CLI} (production settings).")
+        self.vercel("pull", "--yes", "--environment=production")
+        self.vercel("build", "--prod")
+        url = self.vercel("deploy", "--prebuilt", "--prod", "--skip-domain").strip().splitlines()[-1].strip()
+        deadline = time.time() + 900
+        while True:
+            deployment = self.frontend_deployment(url.removeprefix("https://"))
+            if deployment["ready_state"] == "READY":
+                break
+            if deployment["ready_state"] in ("ERROR", "CANCELED") or time.time() > deadline:
+                raise ReleaseError(f"the staged frontend {deployment['deployment_id']} is {deployment['ready_state']}")
+            time.sleep(10)
+        if deployment["target"] != "production":
+            raise ReleaseError(f"the staged frontend {deployment['deployment_id']} targets {deployment['target']}")
+        return {"deployment_id": deployment["deployment_id"], "url": deployment["url"], "source_sha": sha,
+                "cli": VERCEL_CLI, "staged_at": stamp()}
+
+    def frontend_live(self, required=True):
+        """The deployment the production domain serves now; None without a token when not required."""
+        if not self.vercel_token(required):
+            return None
+        return self.vercel_api("GET", f"/v4/aliases/{APP_DOMAIN}").get("deploymentId")
+
+    def frontend_promote(self, deployment, timeout=300):
+        self.log(f"Promoting {deployment} to {APP_DOMAIN}.")
+        self.vercel_api("POST", f"/v10/projects/{VERCEL_PROJECT}/promote/{deployment}")
+        deadline = time.time() + timeout
+        while self.frontend_live() != deployment and time.time() < deadline:
+            time.sleep(5)
+
+    def app_status(self, path):
+        request = urllib.request.Request(APP_ORIGIN + path, headers={"User-Agent": "scoutgrid-lab-release"})
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return response.status
+        except urllib.error.HTTPError as error:
+            return error.code
+        except (urllib.error.URLError, TimeoutError) as error:
+            return f"unreachable: {error}"
+
     def startup_errors(self, since):
         start = int(datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ")
                     .replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
@@ -913,6 +1242,9 @@ def main(argv):
     lab = AwsLab(os.environ.get("LAB_RELEASE_PROFILE", "sglab-release"), os.environ.get("TERRAFORM", "terraform"))
     release = Release(lab)
     command, args = (argv[0], argv[1:]) if argv else ("", [])
+    deploy_options = parse_options(args[1:], flags=("--frontend", "--no-progress-signal")) \
+        if args and not args[0].startswith("--") else None
+    rollback_options = parse_options(args, flags=("--no-progress-signal",), valued=("--note",))
     try:
         if command == "status" and not args:
             lab.guard()
@@ -920,15 +1252,20 @@ def main(argv):
         elif command == "init" and len(args) == 3:
             lab.guard()
             release.init(args[0], int(args[1]), int(args[2]))
-        elif command == "deploy" and len(args) in (1, 2) and args[1:] in ([], ["--no-progress-signal"]):
+        elif command == "deploy" and deploy_options is not None:
             lab.guard()
-            release.deploy(args[0], progress_required=len(args) == 1)
+            print(json.dumps(release.deploy(args[0], progress_required="--no-progress-signal" not in deploy_options,
+                                            frontend="--frontend" in deploy_options), indent=2))
         elif command == "check" and len(args) == 1:
             lab.guard()
             release.check(args[0])
-        elif command == "rollback" and args in ([], ["--no-progress-signal"]):
+        elif command == "rollback" and rollback_options is not None:
             lab.guard()
-            release.rollback(progress_required=not args)
+            print(json.dumps(release.rollback(progress_required="--no-progress-signal" not in rollback_options,
+                                              note=rollback_options.get("--note", "")), indent=2))
+        elif command == "adopt-frontend" and not args:
+            lab.guard()
+            release.adopt_frontend()
         elif command == "accept" and not args:
             lab.guard()
             release.accept()
@@ -946,6 +1283,8 @@ def main(argv):
             return 2
     except ReleaseError as error:
         lab.log(f"ERROR: {error}")
+        if command in ("deploy", "rollback"):
+            print(json.dumps({"outcome": error.outcome, "reason": error.reason, "error": str(error)}, indent=2))
         return 1
     except ValueError as error:
         lab.log(f"ERROR: {error}")

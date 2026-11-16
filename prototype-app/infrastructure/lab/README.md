@@ -5,7 +5,7 @@ Runnable tooling for the Sydney AWS lab, ScoutGrid's only environment (account `
 | Path | Contents |
 |---|---|
 | `scripts/lab.sh` | Lab up, down, status, plan-only and IAM simulation |
-| `scripts/release.py` | Backend releases: move the lab to a published `main` commit, roll back, show release status |
+| `scripts/release.py` | Lab releases: move the lab to a published `main` commit (backend, or backend and frontend as a pair), roll back, show release status |
 | `scripts/tests/lab.test.sh` | Offline tests for `lab.sh` failure handling; AWS, Terraform and Cloudflare are stubbed. CI runs it. |
 | `scripts/tests/test_release.py` | Offline tests for `release.py` against a fake lab. CI runs it. |
 | `scripts/bootstrap-sydney-state.sh` | Creates or verifies the encrypted Terraform state bucket |
@@ -46,7 +46,40 @@ Each step is recorded in `release/records/<id>.json`. The bucket is versioned, s
 
 **When a step fails.** The inputs keep `pending`, so `lab.sh` refuses to run. Rerunning `deploy` for the same commit resumes it, because every step is idempotent. `release.py rollback` recovers.
 
-**Rollback.** It moves only `api` and `worker`, to the accepted release (after a failed or rejected one) or to the accepted release before it, and only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image. A verified rollback waits for `release.py accept` like a deploy; accepting it makes the restored release the accepted one again. The phase 3 drill (CD plan) measured 12–13 minutes per rollback: about 5–6 minutes of Terraform apply and ECS rollout, then the six-minute bake.
+**Rollback.** It moves `api` and `worker`, and the frontend when a release moved it, to the accepted release (after a failed or rejected one) or to the accepted release before it. It runs only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image.
+
+`--note TEXT` records why. When the rollback verifies, it and the release it replaced each name the other: the replaced record gets `rolled_back`, with reason `recovered` for a failed or rejected release.
+- **Restoring the exact accepted release** reuses that release's acceptance (CD plan §4.7), so nothing waits for `accept`.
+- **Returning to the accepted release before it** is a change of accepted release, so it waits for `release.py accept`.
+
+The phase 3 drill (CD plan) measured 12–13 minutes per rollback: about 5–6 minutes of Terraform apply and ECS rollout, then the six-minute bake.
+
+**Result.** `deploy` and `rollback` print a JSON result (CD plan §4.4):
+
+| Outcome | Meaning |
+|---|---|
+| `verified` | The release is live and passed its checks |
+| `blocked` | Nothing live changed. Reason: `parked`, `awaiting_acceptance`, `schema_changed`, `schema_unverified`, `not_confirmed` or `refused` |
+| `failed` | A live step or check failed. Reason: `check_failed`, `step_failed`, `frontend_pending`, or later `recovered` |
+| `needs_operator` | Reason: `unfinished`, `recovery_failed`, `frontend_unrecorded`, `schema_changed` or `no_target` |
+
+The exit status is 0 only for `verified`.
+
+### Paired releases (backend and frontend)
+
+`release.py deploy <commit> --frontend` ships the backend and the scoutgrid.io frontend as one recorded transaction (CD plan §4.5). Run it from a clean checkout of that commit, with `VERCEL_TOKEN` set to a token for the `scout-frontend` project.
+
+1. **Stage, before the lock.** The pinned Vercel CLI (`vercel@65.9.0`, through `npx`) pulls the production settings, runs `vercel build --prod` (including the bundle verification), and uploads with `vercel deploy --prebuilt --prod --skip-domain`. The deployment ID goes into the record. A staging failure changes nothing live. The staged URL sits behind Vercel authentication, so nothing is checked on it beyond its READY state.
+2. **Backend.** Steps 1–6 above run unchanged, with the old frontend serving.
+3. **Promote, under the lock.** Only after the backend verifies, scoutgrid.io is pointed at that exact deployment. The intent is saved before the call, because a failed call does not prove the domain didn't move. A retry or rollback reads the domain first.
+4. **Paired checks.** scoutgrid.io serves the recorded deployment and answers 200, then the signed-in smoke runs again (when configured).
+5. **Accept.** It records the pair. The accepted entry and the inputs carry `frontend.deployment_id`.
+
+If promotion fails, the result is `failed` / `frontend_pending`. Rerun the same `deploy … --frontend`: it promotes the recorded deployment without repeating the migrator, the runtime rollout or the bake. A failed paired check enters recovery: `rollback` restores the accepted frontend first (backend N serves frontend N-1), then the backend, then reruns the paired checks.
+
+**Start tracking the frontend once.** Before the first paired release, run `release.py adopt-frontend`. It records the deployment scoutgrid.io serves now as the accepted release's frontend, marked `adopted`. A rollback to a release with no recorded frontend leaves the frontend alone, unless a release moved it; then it stops with `frontend_unrecorded`.
+
+Vercel's own `main` → scoutgrid.io promotion stays on until a paired release is proven live (CD plan phase 4). Until then, a merge can still move the domain outside the release record. `release.py status` shows `DIFFERS FROM INPUTS` when that happens.
 
 ### Long releases and stale locks
 

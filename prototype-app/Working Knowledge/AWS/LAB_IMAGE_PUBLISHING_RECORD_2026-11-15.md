@@ -215,6 +215,6 @@ The previous image restarted on today's schema and configuration through the Rel
 
 1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
 2. **Configure the signed-in smoke** (`LAB_SMOKE_CONFIG`, the account steps from R4) so later releases check platform writes and the invitation themselves.
-3. **Recovery record gaps** from the drill (items 2–5 above), before automatic recovery (phase 5).
+3. **Recovery record gaps** from the drill: items 2–4 and 6 are addressed by phase 4 slice 1 (`release.py deploy --frontend`, linked recovery records, `rollback --note`). Item 5 is kept on purpose; the CD plan's phase 4 status explains why. Item 1 waits for automatic recovery (phase 5).
 4. **Later:** keep or delete the pre-migration snapshot. Delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
 5. **Later:** write a production severity and exceptions policy for Trivy.

@@ -296,6 +296,15 @@ PR D changed only CI files and docs, so the image published for `90cb7e2` is byt
 - **Forward again:** the lab moved back to 52163ec (`20261116t055459z-52163ec`, accepted with a waiver). Previous accepted is 2c382df.
 - **Gaps for phases 4–5:** the failed release and its recovery aren't linked (§4.7's `failed`/`recovered`). `rollback` takes no reason. `previous_accepted` empties after a rollback is accepted. And a rollback has only about 2.5 minutes of margin inside the 15-minute limit.
 
+**Phase 4 status (2026-11-16): slice 1 of 3, code only.** It adds `release.py deploy --frontend`: a pinned Vercel stage outside the lock, then promotion of that exact deployment after the backend verifies, then paired checks, with one record and the pair in the accepted entry.
+- **Frontend retries:** `frontend_pending` retries repeat no backend step.
+- **Pair recovery:** the frontend is restored first. Restoring the exact accepted pair reuses its acceptance (§4.7).
+- **Outcomes:** §4.4 results.
+- **Drill gaps closed:** the failed and recovered records are linked, `rollback --note` records why, and a resumed deploy no longer reruns a migrator that exited 0.
+- **Kept on purpose:** `previous_accepted` stays null after an accepted rollback to it. Refilling it with the release just left would make the next rollback return to a release the operator fled.
+- **Tests:** offline only, against a fake Vercel. The Vercel API calls (`/v13/deployments`, `/v4/aliases`, `/v10/projects/…/promote`) and the CLI flow are unqualified until slice 3, the first live paired release. Slice 3 then disables Vercel's independent `main` promotion.
+- **Slice 2:** the runtime-only role and the manual reconcile dispatch.
+
 **Phase 0 correction (2026-11-16):** 2c382df was later accepted with `release.py accept --waive` (#123), so it could serve as the recovery target. The waiver doesn't close phase 0: the nine browser checks still have to pass and be recorded.
 
 ## 7. Required failure and resume tests
