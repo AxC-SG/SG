@@ -79,7 +79,7 @@ If promotion fails, the result is `failed` / `frontend_pending`. Rerun the same 
 
 **Start tracking the frontend once.** Before the first paired release, run `release.py adopt-frontend`. It records the deployment scoutgrid.io serves now as the accepted release's frontend, marked `adopted`. A rollback to a release with no recorded frontend leaves the frontend alone, unless a release moved it; then it stops with `frontend_unrecorded`.
 
-Vercel's own `main` → scoutgrid.io promotion stays on until a paired release is proven live (CD plan phase 4). Until then, a merge can still move the domain outside the release record. `release.py status` shows `DIFFERS FROM INPUTS` when that happens.
+**Vercel no longer promotes `main` by itself.** Since 2026-11-16, `scout-frontend` has `autoAssignCustomDomains = false`. A `main` merge still builds a production deployment, and PR previews are unchanged. But scoutgrid.io moves only when `release.py deploy … --frontend` (or `rollback`) promotes, so every frontend change ships as a paired release. `release.py status` shows `DIFFERS FROM INPUTS` if anyone promotes outside it. To undo, set the project's `autoAssignCustomDomains` back to `true` (Vercel API `PATCH /v9/projects/{id}`).
 
 ### Long releases and stale locks
 

@@ -296,7 +296,13 @@ PR D changed only CI files and docs, so the image published for `90cb7e2` is byt
 - **Forward again:** the lab moved back to 52163ec (`20261116t055459z-52163ec`, accepted with a waiver). Previous accepted is 2c382df.
 - **Gaps for phases 4–5:** the failed release and its recovery aren't linked (§4.7's `failed`/`recovered`). `rollback` takes no reason. `previous_accepted` empties after a rollback is accepted. And a rollback has only about 2.5 minutes of margin inside the 15-minute limit.
 
-**Phase 4 status (2026-11-16): slice 1 of 3, code only.** It adds `release.py deploy --frontend`: a pinned Vercel stage outside the lock, then promotion of that exact deployment after the backend verifies, then paired checks, with one record and the pair in the accepted entry.
+**Phase 4 status (2026-11-16, later): slices 1 and 3 done; slice 2 open.**
+- **First live paired release:** `20261116t082637z-cbb265b` shipped backend and frontend as one recorded transaction ([lab record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md#first-live-paired-release-2026-11-16)). The backend image was unchanged (`9d83db25…`). Frontend `dpl_G3By6vq5QDcH2dwSQoXpyQcfLEST` was staged from `cbb265b` and promoted only after the backend verified. The signed-in smoke passed before and after promotion.
+- **Vercel's independent promotion is off** (`autoAssignCustomDomains = false`), verified by the following `main` merge.
+- **Still to prove:** a pair whose backend image changes.
+- **Slice 2** (runtime-only role, reconcile dispatch) is still to do.
+
+**Phase 4, slice 1 (code):** It adds `release.py deploy --frontend`: a pinned Vercel stage outside the lock, then promotion of that exact deployment after the backend verifies, then paired checks, with one record and the pair in the accepted entry.
 - **Frontend retries:** `frontend_pending` retries repeat no backend step.
 - **Pair recovery:** the frontend is restored first. Restoring the exact accepted pair reuses its acceptance (§4.7).
 - **Outcomes:** §4.4 results.
