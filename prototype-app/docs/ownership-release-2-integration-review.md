@@ -76,4 +76,5 @@ stopped after verification. Remote main and deployments are unchanged.
 
 The user approved publishing the integration branch and opening a draft PR on November 17, 2026, after the initial
 push was rejected for missing explicit publication authorization. Publication approval does not lift the release block.
-Remote CI qualification and final merge review remain required; deployment and tenant enablement remain blocked.
+The branch is published in [draft PR #136](https://github.com/AxC-SG/SG/pull/136), targeting main. Remote CI qualification
+and final merge review remain required; deployment and tenant enablement remain blocked.
