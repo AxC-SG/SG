@@ -156,10 +156,65 @@ No separate email defect was found, so R2 needs no code change. The phase 0 exit
 
 **Phase 0 is not closed.** Acceptance has not been recorded, so 2c382df is not yet the accepted baseline. `release.py deploy` refuses while it awaits acceptance, so the next release (PR D) first needs its nine answers.
 
+**2026-11-16 update:** the owner waived the browser checks. PR #123 (merged in #124) added `release.py accept --waive --note`, which records every check as waived (`passed: null`), never as passed. 2c382df was accepted that way, which made it the recovery target. Phase 0 stays open until the checks actually pass.
+
+## Fourth release (52163ec) and the stale-lock incident
+
+**Release `20261115t214430z-52163ec`** rolled out #124, the combined PR. It includes the AWS SDK BOM 2.58.0 bump, which changes the backend image. Image `9d83db25…`, api `scoutgrid-lab-api:7`, worker `scoutgrid-lab-worker:6`. It was schema-neutral (V16 / V23, catalog `839784f6…` same), and `release.py check 52163ec` reported `eligible` first.
+
+**Incident: a laptop sleep left a stale Terraform lock.**
+- 21:45:03Z: the migrator step applied. The migrator task ran and exited 0, but it was only recorded at 22:10:11Z. Long gaps like this suggest the laptop slept.
+- 22:25:38Z: the runtime plan left a stale S3 Terraform plan lock (`standard/lab/terraform.tfstate.tflock`, ID `12117951-9cd6-3eeb-1066-6ed3ca21889d`). The deploy failed at `runtime`.
+- Nothing ran on the new image: the state was untouched since the 21:45 migrator apply, and ECS stayed on api `:6` / worker `:5` (`fc1b533f…`). There was no outage.
+- Before unlocking, the operator proved four things: it was a plan lock, no terraform or release.py process was running, the state hadn't changed since the last recorded step, and the release lock was free. Auto mode refused Claude's `force-unlock`, so the owner ran it.
+- Terraform cannot read the `aws login` source profile, so the unlock needs `eval "$(aws configure export-credentials --profile sglab-release --format env)"` first. The procedure is now in the [lab README](../../infrastructure/lab/README.md#long-releases-and-stale-locks).
+
+**Resume (2026-11-16, under `caffeinate -i`).** Rerunning `deploy 52163ec` resumed the same record:
+- migrator step at 04:36:58Z (no changes); the migrator task ran again (exit 0, 04:38:17Z);
+- runtime at 04:43:53Z;
+- bake 04:44:22–04:50:22Z;
+- verified at 04:50:30Z.
+
+All automated checks passed: six healthy progress lines, schema state V23..V23, no defined failures, smoke not configured. The owner accepted it with a waiver at 04:54:13Z. The record keeps the first attempt's `failed_at: runtime` and the lock error alongside `status: accepted`, so the history of the resume stays visible.
+
+## Phase 3 recovery drill (2026-11-16)
+
+**Participants.** Accepted `20261115t214430z-52163ec` (`9d83db25…`) and previous accepted `20261115t171747z-2c382df` (`fc1b533f…`). Both were accepted with browser checks waived, not passed. Both are V16 / V23 with the same catalog, so recovery is runtime-only.
+
+**Forcing the failure.** The owner chose a real failed automated check over an operator-only rollback, and over injecting fake application log lines. The forced-failure deploy ran with `LAB_SMOKE_CONFIG` set to an empty `{}` config. The signed-in smoke check therefore failed (`smoke run: JSONDecodeError`) without signing in or touching the app. The image itself was healthy, and every other check passed. No browser answers were recorded: each acceptance is a waiver whose note names the drill step.
+
+**Why four operations.** A rollback after a failed release returns to the *accepted* release. With 52163ec accepted, a failed 52163ec deploy would roll back to 52163ec itself. So the drill first made 2c382df the accepted release.
+
+| # | Release | Kind, outcome | api / worker | Start → end (UTC) | Duration |
+|---|---|---|---|---|---|
+| – | `20261116t051149z-2c382df` | rollback, **failed** at the runtime plan: DNS lookup of the ECS endpoint failed (`no such host`). No steps, nothing changed. A read-only `release.py check 52163ec` then passed, so it was transient | `:7` / `:6` | 05:11:49 → 05:12:11 | 31 s |
+| 1 | `20261116t051350z-2c382df` | operator rollback 52163ec → 2c382df, verified, accepted (waived) | `:8` / `:7` | 05:13:50 → verified 05:26:43 | 12m59s |
+| 2 | `20261116t052737z-52163ec` | deploy with the forced failure, **failed at verify** (`signed-in smoke`); the migrator ran again (no-op, exit 0) | `:9` / `:8` | 05:27:37 → failed 05:41:39 | 14m14s |
+| 3 | `20261116t054145z-2c382df` | recovery rollback to the accepted 2c382df, verified, accepted (waived) | `:10` / `:9` | 05:41:45 → verified 05:54:05 | **12m26s** |
+| 4 | `20261116t055459z-52163ec` | forward again, clean deploy, verified, accepted (waived) | `:11` / `:10` | 05:54:59 → verified 06:09:20 | 14m33s |
+
+**Exit criterion met.** The failed check was at 05:41:39Z (record ended 05:41:42Z). The restored 2c382df passed API and worker checks at 05:54:02Z and was verified at 05:54:05Z: 12m26s, within 15 minutes.
+- Rollback runtime apply and ECS rollout: 05:42:10 → 05:47:28.
+- Bake: 05:47:55 → 05:53:55.
+- API: both services settled, targets healthy, `GET /api/auth/csrf` 200, `GET /api/me` 401.
+- Worker: six healthy progress lines; schema state `unready_tenants=0 supported=V23..V23`; no defined failures in either log; 0 startup ERROR lines.
+
+The previous image restarted on today's schema and configuration through the Release role. Moving forward again ended in the same state as before the drill: accepted 52163ec (now `20261116t055459z-52163ec`), previous accepted 2c382df, lock free, nothing pending.
+
+**Records** (`s3://scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/release/records/`): `20261116t051149z-2c382df.json`, `20261116t051350z-2c382df.json`, `20261116t052737z-52163ec.json`, `20261116t054145z-2c382df.json`, `20261116t055459z-52163ec.json`. The bucket is versioned, so every state of each record is kept. The Release role cannot list versions (`s3:ListBucketVersions`).
+
+**What the drill showed about the tooling** (inputs for phases 4–5, not fixed here):
+1. **Little margin.** Each rollback took 12–13 minutes, so it stays inside 15 minutes only if it starts within about 2.5 minutes of the failure. Automatic recovery (phase 5) must start at once, not wait for an operator.
+2. **No link between the failure and its recovery.** §4.7 asks for the attempted release to be recorded as `failed` with reason `recovered`. Today the failed deploy record says `failed`, and the rollback record names only `rolls_back_to`. Neither names the other.
+3. **No reason on a rollback.** `rollback` takes no reason or note, so the drill context lives only in the acceptance notes.
+4. **The left release's record isn't updated.** An operator rollback away from an accepted release leaves that release's record at `accepted`.
+5. **No second rollback target.** Accepting a rollback to the previous accepted release sets `previous_accepted` to null until a new release is accepted.
+6. **A resumed or neutral deploy always reruns the migrator task.** It is harmless on an unchanged schema, but adds about 1.5 minutes.
+
 ## Open
 
-1. **Accept or reject 2c382df** with `release.py accept --answers <9 letters> --note …` after the owner's full-app checks. Every check must pass for it to become the healthy baseline.
+1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
 2. **Configure the signed-in smoke** (`LAB_SMOKE_CONFIG`, the account steps from R4) so later releases check platform writes and the invitation themselves.
-3. **Rollback exercise** between the accepted 2c382df and the next healthy release (CD plan phase 3). `abd8c038…` and `eae5dafa…` are not healthy recovery targets.
+3. **Recovery record gaps** from the drill (items 2–5 above), before automatic recovery (phase 5).
 4. **Later:** keep or delete the pre-migration snapshot. Delete the stale `aws-cleanup` follow-up about deploying #81 (done by the first release).
-5. **Later:** PR D must update the publisher trigger and selector if it renames workflows. Write a production severity and exceptions policy for Trivy.
+5. **Later:** write a production severity and exceptions policy for Trivy.

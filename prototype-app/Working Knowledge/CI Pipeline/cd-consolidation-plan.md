@@ -290,6 +290,14 @@ PR D of the CI plan follows these.
 
 PR D changed only CI files and docs, so the image published for `90cb7e2` is byte-identical to the one 2c382df runs (`sha256:fc1b533f…`). Releasing it would change nothing that runs, so it cannot serve as the second healthy release for the phase 3 drill. That needs the next merge that changes the backend image.
 
+**Phase 3 status (2026-11-16): done.** The [drill record](../AWS/LAB_IMAGE_PUBLISHING_RECORD_2026-11-15.md#phase-3-recovery-drill-2026-11-16) has the full evidence.
+- **Participants:** 2c382df (`fc1b533f…`) and 52163ec (#124, `9d83db25…`, the AWS SDK BOM bump). Both are V16 / V23 with the same catalog, and both are accepted with browser checks *waived*, not passed. "Healthy" here therefore means every automated check and the bake passed.
+- **Failure and recovery:** a 52163ec deploy was forced to fail its signed-in smoke check with a deliberately empty `LAB_SMOKE_CONFIG`. `release.py rollback` then restored the accepted 2c382df through the Release role and passed the API and worker checks and the bake 12m26s after the failed check.
+- **Forward again:** the lab moved back to 52163ec (`20261116t055459z-52163ec`, accepted with a waiver). Previous accepted is 2c382df.
+- **Gaps for phases 4–5:** the failed release and its recovery aren't linked (§4.7's `failed`/`recovered`). `rollback` takes no reason. `previous_accepted` empties after a rollback is accepted. And a rollback has only about 2.5 minutes of margin inside the 15-minute limit.
+
+**Phase 0 correction (2026-11-16):** 2c382df was later accepted with `release.py accept --waive` (#123), so it could serve as the recovery target. The waiver doesn't close phase 0: the nine browser checks still have to pass and be recorded.
+
 ## 7. Required failure and resume tests
 
 Offline tests cover missing/security/performance results, allowed skips, schema fingerprints across skipped commits, outcomes, lock conflicts, partial Terraform effects, failed state writes, interrupted waits, frontend failure/retry and deferred catch-up. Add live supervised evidence for authenticated/worker failures, alarm delivery, exact frontend promotion and healthy recovery.
