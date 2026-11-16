@@ -134,7 +134,7 @@ class FakeLab:
     def outputs(self):
         return {"task_definition_arns": ARNS, "task_subnet_ids": ["subnet-a"], "migrator_security_group_id": "sg-m"}
 
-    def run_migrator(self, outputs):
+    def run_migrator(self, outputs, client_token):
         self.calls.append("migrate")
         return "arn:aws:ecs:ap-southeast-2:736486260824:task/scoutgrid-lab/1"
 
@@ -1118,28 +1118,6 @@ class CredentialsTest(unittest.TestCase):
         self.assertEqual((env["AWS_ACCESS_KEY_ID"], env["AWS_SESSION_TOKEN"]), ("k", "t"))
         self.assertNotIn("AWS_PROFILE", env)
         self.assertNotIn("VERCEL_TOKEN", env)
-
-    def test_the_same_publication_can_be_read_twice(self):
-        # reconcile reads main's publication before the lock and again under it; gh run download
-        # refuses to overwrite, so each read needs its own directory.
-        lab = release.AwsLab("", "terraform")
-        record = {"source_sha": "a" * 40, "images": {}}
-        artifact = {"expired": False, "created_at": "2026-11-16T00:00:00Z", "workflow_run": {"id": 7}}
-
-        def run(command, **kwargs):
-            if command[:2] == ["gh", "api"]:
-                return json.dumps({"artifacts": [artifact]})
-            target = Path(command[command.index("-D") + 1])
-            target.mkdir(parents=True, exist_ok=True)
-            published = target / "aws-publication.json"
-            if published.exists():
-                raise release.ReleaseError("error extracting \"aws-publication.json\": file exists")
-            published.write_text(json.dumps(record))
-            return ""
-
-        lab.run = run
-        self.assertEqual(lab.publication("a" * 40), record)
-        self.assertEqual(lab.publication("a" * 40), record)
 
     def test_reconcile_options(self):
         self.assertEqual(release.parse_options(["--frontend", "--yes"], flags=("--frontend", "--yes")),

@@ -33,6 +33,10 @@ class FakeApi:
         prefix = f"repos/{REPO}/"
         assert path.startswith(prefix), path
         path = path[len(prefix):]
+        if path == "actions/runs/200":
+            return {**run(), "path": ".github/workflows/quality.yml"}
+        if path == "actions/runs/200/jobs":
+            return {"jobs": [{"name": "publish / Publish verified candidate to ECR", "conclusion": "success"}]}
         if path == f"actions/workflows/{selector.QUALITY}":
             return {"id": QUALITY_ID}
         if path == f"actions/runs/{RUN}":
@@ -81,7 +85,7 @@ class CalledTest(unittest.TestCase):
     def test_publishes_each_commit_once(self):
         name = selector.publication_name("lab", SHA)
         with self.assertRaisesRegex(selector.Skip, "already published"):
-            self.select(FakeApi(published=[{"name": name, "expired": False}]))
+            self.select(FakeApi(published=[{"id": 1, "name": name, "expired": False, "created_at": "2026-11-16", "workflow_run": {"id": 200}}]))
         # An expired record or another commit's record does not block publication.
         self.assertTrue(self.select(FakeApi(published=[{"name": name, "expired": True},
                                                        {"name": selector.publication_name("lab", NEWER),
