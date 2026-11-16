@@ -76,6 +76,7 @@ default and not release-qualified.
 - The cloud dark comparison counts unmapped values but does not break them down by key.
 - A campaign's assignee is stored on the campaign only; nothing writes `findings.assignee_principal_id`.
 - Jira component, label or team-field mapping (R8); the routed group is text only.
+- Enabling the `tickets` read wave stops CVE workbench ticket creation until the workbench sends a routing preview hash.
 - The §4.10 backfill of existing campaigns is not built (moot while there are no customers).
 - The legacy columns and paths stay until Release 3 (decision in §5, item 7).
 
@@ -143,6 +144,9 @@ with its `reportHash`).
    every subject holding a cloud claim; the maintenance job then moves findings to their occurrences.
 6. **Campaigns and tickets.** Set `app.ownership.read-waves.campaigns` and `.tickets`. Before that, set each team's
    `ticket_assignment_group` and notification address, and a default assignment group on the ServiceNow or Jira connector.
+   **Caveat:** with the `tickets` wave on and a domain canonical, the CVE ticket endpoints require a routing preview hash. The
+   CVE workbench does not send one yet (Release 3), so its ticket creation returns 409 until it does. Keep the wave off
+   for tenants that raise tickets from the workbench.
 7. **Reconciler.** Always on worker nodes (`app.campaigns.reconciler.cron`, default every 15 minutes). Set the cron to `-`
    to stop it.
 
