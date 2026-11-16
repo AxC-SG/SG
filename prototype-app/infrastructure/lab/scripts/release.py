@@ -318,6 +318,22 @@ def rollback_target(inputs):
     return inputs.get("previous_accepted")
 
 
+def staged_reference(output):
+    """The deployment `vercel deploy --json` created: its dpl_ ID, else its *.vercel.app host."""
+    try:
+        found = json.loads(output)
+    except json.JSONDecodeError:
+        found = None
+    candidates = [found.get("id"), (found.get("deployment") or {}).get("id")] if isinstance(found, dict) else []
+    for candidate in candidates:
+        if isinstance(candidate, str) and DEPLOYMENT_ID.fullmatch(candidate):
+            return candidate
+    match = DEPLOYMENT_ID.search(output) or re.search(r"[a-z0-9-]+\.vercel\.app", output)
+    if not match:
+        raise ReleaseError(f"vercel deploy reported no deployment: {output.strip()[-300:]}")
+    return match.group(0)
+
+
 def parse_options(args, flags=(), valued=()):
     """{option: True or value} for each option given once; None for anything else."""
     parsed, rest = {}, list(args)
@@ -1173,12 +1189,17 @@ class AwsLab:
         if self.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=no"]).strip():
             raise ReleaseError("this checkout has uncommitted changes; the frontend must be built from the commit alone")
         self.log(f"Building the frontend for {sha[:7]} with {VERCEL_CLI} (production settings).")
-        self.vercel("pull", "--yes", "--environment=production")
-        self.vercel("build", "--prod")
-        url = self.vercel("deploy", "--prebuilt", "--prod", "--skip-domain").strip().splitlines()[-1].strip()
+        try:
+            self.vercel("pull", "--yes", "--environment=production")
+            self.vercel("build", "--prod")
+        finally:
+            # The pulled environment includes a short-lived Vercel OIDC token; the build no longer needs it.
+            for pulled in (REPO_ROOT / ".vercel").glob(".env*.local"):
+                pulled.unlink()
+        reference = staged_reference(self.vercel("deploy", "--prebuilt", "--prod", "--skip-domain", "--json"))
         deadline = time.time() + 900
         while True:
-            deployment = self.frontend_deployment(url.removeprefix("https://"))
+            deployment = self.frontend_deployment(reference)
             if deployment["ready_state"] == "READY":
                 break
             if deployment["ready_state"] in ("ERROR", "CANCELED") or time.time() > deadline:
@@ -1186,6 +1207,8 @@ class AwsLab:
             time.sleep(10)
         if deployment["target"] != "production":
             raise ReleaseError(f"the staged frontend {deployment['deployment_id']} targets {deployment['target']}")
+        if deployment["source_sha"] not in (None, sha):
+            raise ReleaseError(f"the staged frontend {deployment['deployment_id']} names commit {deployment['source_sha']}")
         return {"deployment_id": deployment["deployment_id"], "url": deployment["url"], "source_sha": sha,
                 "cli": VERCEL_CLI, "staged_at": stamp()}
 

@@ -836,6 +836,15 @@ class OutcomeTest(unittest.TestCase):
             release.Release(lab).rollback()
         self.assertEqual((raised.exception.outcome, raised.exception.reason), ("needs_operator", "recovery_failed"))
 
+    def test_staged_reference_reads_the_deploy_output(self):
+        # vercel@65.9.0 prints JSON when stdout is not a terminal; the last line alone is "}".
+        self.assertEqual(release.staged_reference('{\n  "id": "dpl_AcWAF5",\n  "url": "x.vercel.app"\n}\n'), "dpl_AcWAF5")
+        self.assertEqual(release.staged_reference('{"deployment": {"id": "dpl_Nested1"}}'), "dpl_Nested1")
+        self.assertEqual(release.staged_reference("https://scout-frontend-abc-scoutgrid.vercel.app\n"),
+                         "scout-frontend-abc-scoutgrid.vercel.app")
+        with self.assertRaisesRegex(release.ReleaseError, "no deployment"):
+            release.staged_reference("}\n")
+
     def test_parse_options(self):
         self.assertEqual(release.parse_options(["--frontend"], flags=("--frontend",)), {"--frontend": True})
         self.assertEqual(release.parse_options(["--note", "x"], valued=("--note",)), {"--note": "x"})
