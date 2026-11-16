@@ -24,7 +24,10 @@ import org.springframework.web.server.ResponseStatusException;
  * automatic rollback window is closed and recovery is source pause plus forward fix.
  *
  * <p>The go decision must quote the {@code reportHash} of a qualification report that passed, so the acceptance is
- * bound to the evidence the approver saw; any change in the evidence invalidates it. Release 1 switches CORE only.
+ * bound to the evidence the approver saw; any change in the evidence invalidates it. CORE switched in Release 1;
+ * {@code CLOUD_BOM} switches in Release 2 (Phase 0B §2.6, §3.6) once CORE is canonical, with the finding-adapter dark
+ * report and occurrence registration as gates and the cloud producer comparison as evidence. {@code AI_GRID} switches
+ * in a later release.
  */
 @Service
 public class OwnershipCutoverService {
@@ -38,18 +41,23 @@ public class OwnershipCutoverService {
     private final OwnershipAuthorityService authority;
     private final AuditEventService audit;
     private final OwnershipEffectiveCacheService cache;
+    private final FindingSubjectAdapterRegistry findingAdapters;
+    private final OwnershipResolutionService resolution;
 
     public OwnershipCutoverService(JdbcTemplate jdbc, OwnershipAuthorityService authority, AuditEventService audit,
-                                   OwnershipEffectiveCacheService cache) {
+                                   OwnershipEffectiveCacheService cache, FindingSubjectAdapterRegistry findingAdapters,
+                                   OwnershipResolutionService resolution) {
         this.jdbc = jdbc;
         this.authority = authority;
         this.audit = audit;
         this.cache = cache;
+        this.findingAdapters = findingAdapters;
+        this.resolution = resolution;
     }
 
     /** Dark reconciliation and impact report (§15.3 step 2). Differences from legacy are reported, not treated as defects. */
     public Qualification qualify(Domain domain) {
-        requireCore(domain);
+        requireSwitchable(domain);
         State state = authority.stateFor(domain);
         Map<String, Long> checks = new LinkedHashMap<>();
         checks.put("unlinkedAssets", count("""
@@ -73,6 +81,7 @@ public class OwnershipCutoverService {
             checks.put("effectiveCacheBacklog", cache.backlog().total());
             gates.add("effectiveCacheBacklog");
         }
+        if (domain == Domain.CLOUD_BOM) addCloudBomChecks(checks, gates);
 
         List<String> blockers = new ArrayList<>();
         if (state != State.DARK) blockers.add("Domain must be DARK to qualify (is " + state + ")");
@@ -85,11 +94,54 @@ public class OwnershipCutoverService {
     }
 
     /**
+     * Phase 0B §3.6 and §2.6 gates and evidence for {@code CLOUD_BOM}. Gates: CORE is already canonical, every active
+     * software occurrence on a linked asset is registered, and the finding adapters would change no effective owner.
+     * Evidence (reported for the approver, not gates; prefixed {@code evidence.}): CBOM occurrences still unregistered,
+     * CRYPTO findings waiting for an occurrence, and what the cloud claims would do once they stop being paused.
+     */
+    private void addCloudBomChecks(Map<String, Long> checks, List<String> gates) {
+        checks.put("coreNotCanonical", authority.stateFor(Domain.CORE) == State.CANONICAL ? 0L : 1L);
+        checks.put("unregisteredOccurrences", count("""
+                SELECT count(*) FROM inventory_components ic JOIN assets a ON a.id = ic.asset_id
+                 WHERE ic.component_status = 'ACTIVE' AND ic.ownership_subject_id IS NULL AND a.ownership_subject_id IS NOT NULL"""));
+        FindingSubjectAdapterRegistry.DarkReport adapters = findingAdapters.darkReport();
+        checks.put("findingAdapterOwnerChanges", adapters.effectiveOwnerChanges());
+        gates.addAll(List.of("coreNotCanonical", "unregisteredOccurrences", "findingAdapterOwnerChanges"));
+
+        checks.put("evidence.unregisteredCbomOccurrences", count("""
+                SELECT count(*) FROM cbom_components cc JOIN bom_ingestion_records r ON r.id = cc.source_bom_id
+                 WHERE r.status = 'ACTIVE' AND r.superseded_by IS NULL AND cc.asset_id IS NOT NULL
+                   AND cc.ownership_subject_id IS NULL"""));
+        checks.put("evidence.cryptoFindingsWithoutOccurrence", adapters.cryptoSubjectPending());
+        checks.put("evidence.findingsWouldMoveToOccurrence", adapters.wouldMoveToOccurrence());
+        Map<String, Object> cloud = jdbc.queryForMap("""
+                SELECT count(*) AS claims, count(DISTINCT c.subject_id) AS subjects,
+                       count(DISTINCT c.subject_id) FILTER (WHERE s.subject_type = 'HOST' AND e.ownership_status = 'OWNED'
+                                                              AND e.owner_team_id <> c.team_id) AS hosts_would_change,
+                       count(DISTINCT c.subject_id) FILTER (WHERE s.subject_type = 'CLOUD_RESOURCE'
+                                                              AND COALESCE(e.ownership_status, 'UNOWNED') <> 'OWNED') AS resources_newly_owned,
+                       count(DISTINCT c.subject_id) FILTER (WHERE e.ownership_status = 'OWNED' AND e.owner_team_id <> c.team_id) AS disagreeing
+                  FROM ownership_claim c
+                  JOIN ownership_subject s ON s.id = c.subject_id
+                  LEFT JOIN ownership_effective_assignment e ON e.subject_id = c.subject_id
+                 WHERE c.status = 'ACTIVE' AND c.source_kind IN ('AWS', 'GCP') AND c.role = 'TECHNICAL_OWNER'
+                """);
+        checks.put("evidence.cloudClaims", num(cloud.get("claims")));
+        checks.put("evidence.cloudClaimSubjects", num(cloud.get("subjects")));
+        checks.put("evidence.hostsWhoseOwnerWouldChange", num(cloud.get("hosts_would_change")));
+        checks.put("evidence.cloudResourcesNewlyOwned", num(cloud.get("resources_newly_owned")));
+        checks.put("evidence.claimsDisagreeingWithCurrentOwner", num(cloud.get("disagreeing")));
+        checks.put("evidence.openUnmappedCloudValues", count("""
+                SELECT count(*) FROM ownership_review_item
+                 WHERE state = 'OPEN' AND item_type = 'UNMAPPED_VALUE' AND source_kind IN ('AWS', 'GCP')"""));
+    }
+
+    /**
      * Moves the domain. {@code reportHash} is required for DARK→CANONICAL and must match a fresh, passing report.
      * The acceptance (who, when) is recorded on the authority row and in the audit log.
      */
     public Qualification transition(Domain domain, State target, String reportHash, String actor) {
-        requireCore(domain);
+        requireSwitchable(domain);
         UUID tenant = TenantContext.getCurrentTenantId();
         State current = authority.stateFor(domain);
         boolean allowed = (current == State.LEGACY && target == State.DARK) || (current == State.DARK && target == State.LEGACY)
@@ -117,6 +169,12 @@ public class OwnershipCutoverService {
         audit.record("ownership.authority.transition", "tenant", tenant.toString(), OwnershipEvents.json(Map.of(
                 "domain", domain.name(), "from", current.name(), "to", target.name(), "reportHash", report.reportHash(),
                 "passed", report.passed())));
+        if (canonical && domain == Domain.CLOUD_BOM) {
+            // §2.6: cloud claims stop being treated as paused, so every subject holding one is resolved again. The
+            // resolution queue drains in bounded batches; the finding adapters then follow in the maintenance job.
+            resolution.enqueueSubjectsOfSource("AWS");
+            resolution.enqueueSubjectsOfSource("GCP");
+        }
         return qualify(domain);
     }
 
@@ -142,9 +200,9 @@ public class OwnershipCutoverService {
                 num(row.get("canonical_only")), num(row.get("both_empty")));
     }
 
-    private static void requireCore(Domain domain) {
-        if (domain != Domain.CORE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, domain + " switches in a later release; only CORE is switchable in Release 1");
+    private static void requireSwitchable(Domain domain) {
+        if (domain == Domain.AI_GRID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, domain + " switches in a later release; CORE and CLOUD_BOM are switchable");
         }
     }
 

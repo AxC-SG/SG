@@ -131,6 +131,7 @@ public interface InventoryComponentRepository extends JpaRepository<InventoryCom
               and (:componentStatuses is null or c.componentStatus in :componentStatuses)
               and (:normalizedSourceSystems is null or lower(coalesce(u.ingestionSourceSystem, '')) in :normalizedSourceSystems)
               and (:normalizedEcosystems is null or lower(coalesce(c.ecosystem, '')) in :normalizedEcosystems)
+              and (:applyOwnerIds = false or c.id in :ownerIds)
               and (:applyReviewFilters = false or c.asset.type = com.prototype.vulnwatch.domain.AssetType.HOST)
               and (
                 :normalizedQueryPattern is null
@@ -233,6 +234,8 @@ public interface InventoryComponentRepository extends JpaRepository<InventoryCom
             @Param("reviewDiscoveryModel") boolean reviewDiscoveryModel,
             @Param("lowConfidenceAliasThreshold") double lowConfidenceAliasThreshold,
             @Param("normalizedQueryPattern") String normalizedQueryPattern,
+            @Param("applyOwnerIds") boolean applyOwnerIds,
+            @Param("ownerIds") Collection<UUID> ownerIds,
             Pageable pageable
     );
 

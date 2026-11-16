@@ -85,6 +85,33 @@ public class InventoryService {
             int page,
             int size
     ) {
+        return listComponentsPage(tenant, assetTypes, componentStatuses, sourceSystems, ecosystems, reviewCategories, query, null, null, page, size);
+    }
+
+    /**
+     * As above, optionally filtered by the occurrence's live owner team and/or status (Phase 0B §3.7). The filter is
+     * 409 while BOM ownership is not canonical, and 400 when more than
+     * {@link com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter#MAX_OCCURRENCE_FILTER_IDS} rows match.
+     */
+    @Transactional(readOnly = true)
+    public InventoryComponentPageResponse listComponentsPage(
+            Tenant tenant,
+            List<AssetType> assetTypes,
+            List<InventoryComponentStatus> componentStatuses,
+            List<String> sourceSystems,
+            List<String> ecosystems,
+            List<String> reviewCategories,
+            String query,
+            UUID ownerTeamId,
+            String ownershipStatus,
+            int page,
+            int size
+    ) {
+        boolean ownerFilter = ownerTeamId != null || (ownershipStatus != null && !ownershipStatus.isBlank());
+        List<UUID> ownerIds = ownerFilter && ownershipReads != null
+                ? ownershipReads.occurrenceIds(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.OccurrenceTable.INVENTORY_COMPONENTS,
+                        ownerTeamId, ownershipStatus)
+                : List.of();
         int safePage = Math.max(0, page);
         int safeSize = Math.min(200, Math.max(1, size));
         List<AssetType> normalizedAssetTypes = sanitizeEnumValues(assetTypes);
@@ -114,6 +141,8 @@ public class InventoryService {
                 reviewDiscoveryModel,
                 HostInventoryReviewEvaluator.LOW_CONFIDENCE_ALIAS_THRESHOLD,
                 normalizedQueryPattern,
+                ownerFilter,
+                ownerFilter ? ownerIds : List.of(new UUID(0L, 0L)),
                 pageable
         );
         Map<UUID, ComponentVulnerabilitySummary> vulnerabilitySummaryByComponentId =

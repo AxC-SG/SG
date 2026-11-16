@@ -158,6 +158,57 @@ public class OwnershipReadAdapter {
         return byId;
     }
 
+    /** Largest owner-filtered id set a list query will accept; a broader filter must be narrowed. */
+    public static final int MAX_OCCURRENCE_FILTER_IDS = 10_000;
+
+    /**
+     * SQL predicate for the BOM and CBOM owner filters (Phase 0B §3.7) over occurrence rows aliased {@code alias}:
+     * a row matches on its live effective owner team and/or status, and an unlinked row is UNOWNED. Throws 409 while
+     * CLOUD_BOM reads are not canonical, because legacy labels cannot be filtered by canonical team, and 400 for an
+     * unknown status. Binds its parameters into {@code args}; returns null when neither filter is set.
+     */
+    public String occurrenceFilterPredicate(String alias, UUID teamId, String status, List<Object> args) {
+        if (teamId == null && (status == null || status.isBlank())) return null;
+        if (!canonical(Consumer.INVENTORY, Domain.CLOUD_BOM)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "Owner team and ownership status filters are available once BOM ownership is canonical");
+        }
+        if (status != null && !status.isBlank() && !Set.of("OWNED", "UNOWNED", "CONFLICT").contains(status)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Unknown ownership status");
+        }
+        StringBuilder sql = new StringBuilder("(1 = 1");
+        if (teamId != null) {
+            sql.append(" AND (SELECT e.owner_team_id FROM ownership_effective_assignment e WHERE e.subject_id = ")
+                    .append(alias).append(".ownership_subject_id) = ?");
+            args.add(teamId);
+        }
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND COALESCE((SELECT e.ownership_status FROM ownership_effective_assignment e WHERE e.subject_id = ")
+                    .append(alias).append(".ownership_subject_id), 'UNOWNED') = ?");
+            args.add(status);
+        }
+        return sql.append(")").toString();
+    }
+
+    /**
+     * IDs of the occurrence rows whose live owner matches, for list queries that cannot join the effective view (the
+     * JPA-backed BOM component list). At most {@link #MAX_OCCURRENCE_FILTER_IDS}; more is a 400 asking for a narrower filter.
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> occurrenceIds(OccurrenceTable table, UUID teamId, String status) {
+        List<Object> args = new java.util.ArrayList<>();
+        String predicate = occurrenceFilterPredicate("r", teamId, status, args);
+        if (predicate == null) return List.of();
+        args.add(MAX_OCCURRENCE_FILTER_IDS + 1);
+        List<UUID> ids = jdbc.queryForList("SELECT r.id FROM " + table.table + " r WHERE " + predicate + " ORDER BY r.id LIMIT ?",
+                UUID.class, args.toArray());
+        if (ids.size() > MAX_OCCURRENCE_FILTER_IDS) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "More than " + MAX_OCCURRENCE_FILTER_IDS + " rows match this owner filter; add another filter");
+        }
+        return ids;
+    }
+
     /** Owner-team coverage of a software identity's occurrences, by stable team ID (§3.7); never stored. */
     public record IdentityCoverage(long occurrences, long ownedOccurrences, long unownedOccurrences, long conflictOccurrences, List<UUID> teamIds) { }
 

@@ -640,6 +640,42 @@ days `RETIRED`, no active claim, no open finding, subject older than 90 days), r
 so a reappearance registers generation 2. `switchBatch` and the dark report scan `findings`; their plans belong in the
 R1 benchmark.
 
+**Implementation (E15, November 16, 2026, branch `feat/e15-read-waves-cloud-bom`, not merged).**
+
+- **`CLOUD_BOM` is switchable** through the same endpoints as CORE (`GET /api/ownership/authority/CLOUD_BOM/qualification`,
+  `POST /api/ownership/authority/CLOUD_BOM`); only `AI_GRID` is still refused. LEGACY → DARK starts occurrence
+  registration (maintenance job), DARK → CANONICAL needs the hash of a passing report and cannot be reverted.
+- **Gates** (each must be 0): `coreNotCanonical` (CORE must be CANONICAL first, §3.6 step 3), `unregisteredOccurrences`
+  (active software components on a linked asset without a subject), `findingAdapterOwnerChanges` (the §3.6 dark report: v2
+  and the CRYPTO adapter must change no effective owner), plus the shared checks (`unlinkedAssets`, `queuedResolutions`,
+  `staleResolverVersions`, `inheritanceErrors`, `openProducerAnomalies`, and the cache backlog while the cache is on).
+- **Evidence** (reported with the hash, not a gate; keys start `evidence.`): `cloudClaims`, `cloudClaimSubjects`,
+  `hostsWhoseOwnerWouldChange`, `cloudResourcesNewlyOwned`, `claimsDisagreeingWithCurrentOwner`,
+  `openUnmappedCloudValues`, `unregisteredCbomOccurrences`, `cryptoFindingsWithoutOccurrence` and
+  `findingsWouldMoveToOccurrence`. This is the §2.6 dark comparison. Because the hash covers it, evidence that moves
+  between review and approval (a sync adding claims) forces another review. Unmapped values are counted, not broken
+  down by key.
+- **The go decision** also enqueues every subject holding an active `AWS` or `GCP` claim on the resolution queue
+  (`SOURCE_STATE_CHANGED`), so cloud claims start to resolve; the maintenance job's `switchBatch` then moves findings to
+  their occurrence subjects. The queue drains in bounded batches; the enqueue itself is one statement.
+- **Owner filters** on the BOM component list (`GET /api/inventory/components`) and the CBOM inventory
+  (`GET /api/bom/cbom/inventory`) take `ownerTeamId` and `ownershipStatus` (OWNED, UNOWNED, CONFLICT). They read the live
+  effective view, count an unlinked row as UNOWNED, return 409 until CLOUD_BOM is canonical for inventory reads and 400 for
+  an unknown status. The JPA-backed BOM list resolves the matching row IDs first and refuses more than 10,000 matches (400:
+  add another filter); the CBOM list filters in SQL. At the expected scale this needs the R1 benchmark's index plan.
+  The effective cache is not used for these filters.
+- **Assign owner on an occurrence** (`/api/ownership/occurrences/{inventory-components|cbom-components}/{rowId}/…`):
+  `GET` explanation, `POST manual-assignment/preview`, `POST manual-assignment`, `POST manual-assignment/revoke`, with the
+  same actions and rules as subject assignment. The preview already counts the occurrence's affected findings, and the
+  assignment is a claim on that one occurrence subject, so sibling occurrences of the same package keep their owner. A
+  row without a registered occurrence is 404, and assignment is 409 until CLOUD_BOM is canonical.
+- **Read waves.** `app.ownership.read-waves.campaigns` and `.tickets` were wired in E11 (empty by default).
+  `ReadWaveRollbackPostgresIntegrationTest` proves the rollback: with both empty and every domain canonical, campaign
+  members read `LEGACY_PENDING_MIGRATION`, tickets take the legacy route and record `LEGACY` attempts, and the owner-at-add
+  snapshot is still recorded.
+- **Not in E15:** the hub UI for the CLOUD_BOM switch and for these filters and assignments. The backend and the contract
+  are complete; the screens follow the CORE cutover panel pattern.
+
 ### 3.7 Aggregates and reads
 
 - Software identity and global package views show owner-team coverage across occurrences (`1 team`, `3 teams`,

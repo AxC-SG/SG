@@ -54,11 +54,14 @@ public class InventoryController {
             @RequestParam(required = false) List<String> ecosystem,
             @RequestParam(required = false) List<String> reviewCategory,
             @RequestParam(required = false) String query,
+            @RequestParam(required = false) java.util.UUID ownerTeamId,
+            @RequestParam(required = false) String ownershipStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size
     ) {
         Tenant tenant = workspaceService.getWorkspace();
-        return inventoryService.listComponentsPage(tenant, assetType, componentStatus, sourceSystem, ecosystem, reviewCategory, query, page, size);
+        return inventoryService.listComponentsPage(tenant, assetType, componentStatus, sourceSystem, ecosystem, reviewCategory, query,
+                ownerTeamId, ownershipStatus, page, size);
     }
 
     @GetMapping("/components/filters")
