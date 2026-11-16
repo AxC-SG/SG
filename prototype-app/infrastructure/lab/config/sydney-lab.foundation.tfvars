@@ -21,6 +21,13 @@ github_publisher = {
   subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab:job_workflow_ref:AxC-SG/SG/.github/workflows/aws-publish-candidate.yml@refs/heads/main"
 }
 
+# Phase 4 slice 2: the runtime-only release role for the manual reconcile workflow
+# (terraform/standard/release-iam.tf). Trusts only that workflow on main in its environment.
+github_releaser = {
+  provider_arn = "arn:aws:iam::736486260824:oidc-provider/token.actions.githubusercontent.com"
+  subject      = "repo:AxC-SG@351325919/SG@1427276590:environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/.github/workflows/lab-reconcile.yml@refs/heads/main"
+}
+
 # Owner decision 2026-11-12: MFA off for platform and tenant sign-in.
 cognito_mfa_configuration = "OFF"
 
