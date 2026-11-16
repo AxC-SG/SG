@@ -13,6 +13,11 @@ complete MVP (Release 3 adds Entra/Okta, AI Grid and the CVE workbench).
 Automated results prove behaviour against mocks and a local PostgreSQL. They do not prove behaviour against a real
 ServiceNow instance, AWS organization or customer data. Those need the inputs in §5.
 
+**Last full run (stack tip, November 16, 2026).** Backend `mvn -Ppostgres-it verify`, whole repository: 1,704 unit tests
+and 928 integration tests, 0 failures, SpotBugs 0, coverage gate met. Frontend: lint 0 errors (2 older warnings),
+typecheck clean, 123 test files and 1,259 tests, `npm run build` (production bundle and credential scan) passing. The
+migration-integrity and tenant-DDL CI checks pass. No browser, accessibility or visual run was made.
+
 ## 1. Scorecard
 
 | Gate | Evidence | Status |
