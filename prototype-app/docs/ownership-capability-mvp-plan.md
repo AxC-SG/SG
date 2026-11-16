@@ -1,8 +1,82 @@
 # Scoutgrid Identity and Ownership MVP Execution Plan
 
-Status: implementation planning baseline  
+Status: implementation in progress. Release 1 and Release 2 are built; Release 3 and cleanup are pending (see Implementation status)  
 Audience: product, architecture, backend, frontend, security, SRE, QA and connector teams  
 Related target-state plan: `docs/ownership-capability-final-plan.md`
+
+## Implementation status
+
+This section records where the plan stands. It has no dates. Detail, evidence and runbooks are in
+`docs/ownership-release-2-qualification.md`; the field-level decisions for Release 2 are in
+`docs/ownership-phase-0b-contracts.md`.
+
+### Done
+
+**Release 1 (§16.4), built; off by default and not release-qualified.** Teams and aliases, directory people, groups and
+memberships (manual and CSV), the ownership core (subjects, claims, deterministic resolution, assignments, review items,
+events, effective-owner view and optional cache), per-tenant encryption of directory data, manual assignment with preview,
+the CORE domain cutover, and resolved ownership in inventory and findings with owner filters and the hub screens.
+
+**Release 2 (§16.5), built; nothing is enabled for a real tenant.**
+
+- ServiceNow directory: sources (configure, test, preview, enable), durable sync, non-destructive linking, group-to-team
+  mappings, CMDB support-group `sys_id` kept with the name, and a producer that reads only ServiceNow-originated CIs.
+- AWS and GCP ownership producers, including AWS Organizations account owners. Their claims own nothing until CLOUD_BOM is
+  canonical.
+- BOM, SBOM and CBOM occurrences: shared occurrence key, registration and retirement, finding adapters v2 and CRYPTO with
+  a dark report, owner columns, owner filters, and assign owner on a single occurrence with a findings preview.
+- CLOUD_BOM qualification and switch (gates, evidence, hash-bound go decision, re-resolution of cloud claims).
+- Campaigns: materialized membership ledger, live owner-at-add snapshot, reconciler, outcome classifier, TEAM and CUSTOM
+  recipients, member-linked exceptions, preview, owner buckets, add findings, and saved Add CVE and Add software (a CVE
+  campaign's scope is its CVEs plus its software).
+- Tickets: server-derived routing from the live owner, one ticket per owner team, signed preview hash, override with reason,
+  an audit row per finding on every path, the routed group carried by ServiceNow and Jira, and role checks on the CVE
+  ticket endpoints.
+- CBOM progress, remediation queue, SLA, portfolio and ticket notes by owner team.
+- Read waves for campaigns and tickets with a tested rollback, the finding delete guard, and the campaign and ticket
+  screens.
+- Release 2 qualification: scorecard, enablement order, rollback table and runbooks.
+
+### Pending: functional
+
+**Release 3 (§16.6), not started**
+
+- Entra ID and Okta synchronization (initial and delta or incremental).
+- AI Grid producers and consumers on the common model: AI systems and artifacts, AI-BOM, and the posture and exposure
+  finding adapters. The AI Grid ownership step still reads `ownership_rules`.
+- CVE investigation workbench: ownership coverage with lead and coordinating team kept separate from affected owners,
+  application-principal and team selection, finding creation, notification export, and campaign launch and mixed-team
+  ticket batching from the workbench (it still uses per-asset CMDB support groups on the legacy ticket path).
+- Exception and suppression UI across vulnerability, AI, BOM/CBOM and campaign contexts, including the false-positive
+  decision path (the campaign FALSE_POSITIVE bucket reads 0 until it exists).
+- The final consumer wave: AI Grid consumers and the remaining dashboards and exports.
+
+**Cleanup and general availability (§16.7), not started.** Remove the legacy endpoints, rules, UI and storage
+(`owner_group`, `support_group`, `ownership_rules`, the owner-group edit and free-text columns and filters), the
+compatibility adapter and the transition flags; run the full writer and reader scan. Irreversible, and only after sign-off.
+
+**Gaps inside Release 2**
+
+- Removing a CVE, software item or asset in campaign detail is a local-only edit (membership is never deleted).
+- The campaign exception form lists only the first 200 members.
+- A ticket override applies to the whole request, not to one batch.
+- CBOM inventory rows carry no ownership envelope, so its owner filters and Assign owner rely on the server's 409.
+- The CBOM team filter chip reads "Selected team"; the finding-adapter dark report is not rendered in the hub; the cloud
+  dark comparison does not break unmapped values down by key.
+- A campaign's assignee is stored on the campaign only; nothing writes `findings.assignee_principal_id`.
+- Jira component, label or team-field mapping (needs a customer Jira); the routed group is text only.
+- The backfill of existing campaigns is not built (moot while there are no customers).
+- Enabling the `tickets` read wave stops CVE workbench ticket creation until the workbench sends a routing preview hash
+  (Release 3 workbench work, or keep the wave off for tenants that use it).
+
+### Pending: before any release (not code)
+
+A production tenant-key wrapper (none exists; the KMS spike is open); a real ServiceNow instance and real samples for
+package keys, CBOM fingerprints, cloud tags and an AWS organization; a benchmark environment at the expected size; a
+browser, accessibility and visual pass of the new screens; dashboards, alerts and the kill-switch drill; review and merge
+of the branch stack; and per-tenant enablement in the documented order. Release 1 also still has its own open items: the
+KMS spike, benchmarks at expected size, the 100k and 300k user search plans, a real ServiceNow CMDB sample and live
+verification. The full list is in the qualification document, §5.
 
 ## 1. Executive decision
 
