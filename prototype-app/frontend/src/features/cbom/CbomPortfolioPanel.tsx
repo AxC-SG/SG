@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { AsyncSection } from '../../components/AsyncSection';
 import { Dialog } from '../../components/Dialog';
+import { ownerBucketLabel } from '../campaigns/ownership';
 import { formatDate, percent } from './labels';
 
 const GROUPS = [
@@ -11,6 +12,7 @@ const GROUPS = [
   { value: 'ownerTeam', label: 'Owner team' },
   { value: 'environment', label: 'Environment' },
   { value: 'businessCriticality', label: 'Business criticality' },
+  { value: 'supportGroup', label: 'CMDB support group (evidence, not ownership)' },
 ];
 
 /** Portfolio rollups and post-quantum migration progress. */
@@ -42,10 +44,10 @@ export function CbomPortfolioPanel({ canManage }: { canManage: boolean }) {
                       {pqc.data.campaigns.map((campaign) => (
                         <tr key={campaign.campaignId}>
                           <td><Link to={`/vuln-repo/campaigns/${encodeURIComponent(campaign.campaignId)}`}>{campaign.name}</Link> <span className="panel-caption">{campaign.status}</span></td>
-                          <td>{campaign.owners.length === 0 ? 'Unassigned' : campaign.owners.join(', ')}</td>
+                          <td>{campaign.owners.length === 0 ? 'Unowned' : campaign.owners.map(ownerBucketLabel).join(', ')}</td>
                           <td>{formatDate(campaign.dueAt)}</td>
-                          <td>{percent(campaign.percentComplete)} ({campaign.resolved} of {campaign.findings})</td>
-                          <td>{campaign.open}</td>
+                          <td>{percent(campaign.percentComplete)} ({campaign.remediated} of {campaign.findings} remediated)</td>
+                          <td>{campaign.active}</td>
                           <td>{campaign.overdue}</td>
                         </tr>
                       ))}
@@ -73,8 +75,8 @@ export function CbomPortfolioPanel({ canManage }: { canManage: boolean }) {
               <thead><tr><th>Group</th><th>Assets</th><th>Crypto assets</th><th>Critical</th><th>High</th><th>Quantum-vulnerable</th><th>Open crypto findings</th><th>Overdue</th><th>Avg posture</th></tr></thead>
               <tbody>
                 {(portfolio.data?.groups ?? []).map((group) => (
-                  <tr key={group.group}>
-                    <td>{group.group}</td><td>{group.assets}</td><td>{group.components}</td><td>{group.openCritical}</td><td>{group.openHigh}</td>
+                  <tr key={group.teamId ?? `${group.ownerBucket ?? 'group'}-${group.group}`}>
+                    <td>{group.group}{group.ownerBucket === 'PENDING_MIGRATION' && <span className="panel-caption"> (pending migration)</span>}</td><td>{group.assets}</td><td>{group.components}</td><td>{group.openCritical}</td><td>{group.openHigh}</td>
                     <td>{group.quantumVulnerable}</td><td>{group.openCryptoFindings}</td><td>{group.overdueCryptoFindings}</td>
                     <td>{group.averagePostureScore ?? '—'}</td>
                   </tr>

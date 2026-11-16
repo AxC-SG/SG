@@ -233,6 +233,43 @@ public class CampaignLedger {
                 (rs, n) -> memberRow(rs), campaignId, limit);
     }
 
+    /** One campaign's progress over a kind of finding: outcomes, overdue active members and current owner buckets. */
+    public record KindProgress(UUID campaignId, Map<Outcome, Long> outcomes, long overdueActive, List<CampaignOwnerBucket> owners) {
+        public long members() { return outcomes.values().stream().mapToLong(Long::longValue).sum(); }
+        public long count(Outcome outcome) { return outcomes.getOrDefault(outcome, 0L); }
+    }
+
+    /**
+     * Per-campaign progress of the members matching {@code findingFilter}, a trusted SQL fragment over {@code f}, for
+     * example {@code f.finding_kind = 'CRYPTO'} (Phase 0B §4.8, §4.12). Counts use the shared outcome rules; owners are
+     * the current owner buckets, so with the campaigns read wave off every member is PENDING_MIGRATION.
+     */
+    public Map<UUID, KindProgress> progressByCampaign(String findingFilter) {
+        Bucket b = bucket(Grouping.CURRENT);
+        Map<UUID, Map<Outcome, Long>> outcomes = new LinkedHashMap<>();
+        Map<UUID, Long> overdue = new LinkedHashMap<>();
+        Map<UUID, Map<String, BucketAcc>> owners = new LinkedHashMap<>();
+        jdbc.query("SELECT m.campaign_id, m.bucket, m.bucket_team, t.name, m.outcome, count(*), count(*) FILTER (WHERE m.due_at < now())"
+                + " FROM (" + members(b, findingFilter) + ") m LEFT JOIN team t ON t.id = m.bucket_team"
+                + " GROUP BY m.campaign_id, m.bucket, m.bucket_team, t.name, m.outcome", rs -> {
+                    UUID campaign = rs.getObject(1, UUID.class);
+                    Outcome outcome = Outcome.valueOf(rs.getString(5));
+                    long count = rs.getLong(6);
+                    outcomes.computeIfAbsent(campaign, k -> new EnumMap<>(Outcome.class)).merge(outcome, count, Long::sum);
+                    if (CampaignOutcomeClassifier.ACTIVE.contains(outcome)) overdue.merge(campaign, rs.getLong(7), Long::sum);
+                    owners.computeIfAbsent(campaign, k -> new LinkedHashMap<>())
+                            .computeIfAbsent(rs.getString(2) + "|" + rs.getString(3), k -> {
+                                try { return new BucketAcc(rs.getString(2), rs.getObject(3, UUID.class), rs.getString(4)); }
+                                catch (SQLException e) { throw new IllegalStateException(e); }
+                            }).outcomes.merge(outcome, count, Long::sum);
+                });
+        Map<UUID, KindProgress> result = new LinkedHashMap<>();
+        outcomes.forEach((campaign, counts) -> result.put(campaign, new KindProgress(campaign, counts, overdue.getOrDefault(campaign, 0L),
+                owners.get(campaign).values().stream().map(BucketAcc::toBucket)
+                        .sorted((x, y) -> Long.compare(y.members(), x.members())).toList())));
+        return result;
+    }
+
     public record AssetRow(UUID assetId, String name, String identifier, String environment, long active, long remediated, long members) { }
 
     /** Members grouped by asset ID (§4.5); never reads {@code assets.support_group}. */
@@ -360,12 +397,20 @@ public class CampaignLedger {
 
     /** One row per member of campaign {@code ?} with its outcome and the chosen bucket. */
     private static String members(Bucket b) {
+        return members(b, "cf.campaign_id = ?");
+    }
+
+    /**
+     * One row per member matching {@code where} (a trusted SQL fragment over {@code cf} and {@code f}, never request
+     * input) with its outcome and the chosen bucket.
+     */
+    private static String members(Bucket b, String where) {
         String excepted = "EXISTS (SELECT 1 FROM campaign_exceptions x WHERE x.campaign_id = cf.campaign_id AND x.finding_id = cf.finding_id"
                 + " AND x.status = 'APPROVED')";
         String reopened = "EXISTS (SELECT 1 FROM finding_events ev WHERE ev.finding_id = cf.finding_id AND ev.created_at > cf.added_at"
                 + " AND (ev.event_type LIKE '%REOPEN%' OR (ev.event_type = 'STATUS_CHANGED' AND ev.details_json ->> 'to' = 'OPEN'"
                 + " AND COALESCE(ev.details_json ->> 'from', 'OPEN') <> 'OPEN')))";
-        return "SELECT cf.finding_id, f.display_id, f.title, f.finding_kind, COALESCE(f.severity_override, v.severity) AS severity,"
+        return "SELECT cf.campaign_id, cf.finding_id, f.display_id, f.title, f.finding_kind, COALESCE(f.severity_override, v.severity) AS severity,"
                 + " f.status, f.closed_reason, " + CampaignOutcomeClassifier.sql("f.status", "f.closed_reason", excepted, reopened) + " AS outcome,"
                 + " f.suppressed_until, f.due_at, f.asset_id, a.name AS asset_name, a.identifier AS asset_identifier, a.environment,"
                 + " ic.package_name, v.external_id AS cve_id, f.incident_id, cf.added_at, cf.added_by, cf.add_source,"
@@ -378,7 +423,7 @@ public class CampaignLedger {
                 + " LEFT JOIN assets a ON a.id = f.asset_id"
                 + " LEFT JOIN inventory_components ic ON ic.id = f.component_id"
                 + " LEFT JOIN team ta ON ta.id = cf.owner_team_id_at_add" + b.join
-                + " WHERE cf.campaign_id = ?";
+                + " WHERE " + where;
     }
 
     private static void appendFilter(StringBuilder where, List<Object> args, MemberFilter filter) {

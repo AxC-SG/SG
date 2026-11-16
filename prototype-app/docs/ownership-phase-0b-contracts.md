@@ -664,6 +664,35 @@ or "Owner teams" row only then. Owner filters on BOM/CBOM lists and the assign-o
 occurrence (§3.7) are not built yet; they follow with the E15 read-wave work. R3 (CBOM fingerprint stability) still
 gates CBOM occurrences outside test tenants.
 
+**Implementation (E13, November 16, 2026, branch `feat/e13-cbom-owner-teams`, not merged).**
+
+- **PQC progress** (`GET /api/bom/cbom/pqc/progress`) reads `CampaignLedger.progressByCampaign`, so it uses the same §4.8
+  outcome rules and §4.5 owner buckets as campaigns. `open`/`resolved` become `active` (OPEN + REOPENED) and
+  `remediated` (REMEDIATED only; accepted risk, suppressed and retired-asset closes no longer count), and each wave also
+  returns `outcomes`. `owners` is a list of buckets (team ID and name, Unowned, Conflict, Pending Migration) instead of
+  `coalesce(assigned_to, owner_group)`. The campaigns read wave is still off by default, so owners show as one Pending
+  Migration bucket until E15 enables it; nothing falls back to a free-text owner.
+- **Remediation queue and SLA** (`GET /api/bom/cbom/remediation/queue`). Each item carries the owner envelope from the
+  findings read wave (`ownership`, replacing `ownerGroup`) beside the workflow `assignedTo`. SLA rows split
+  `unassigned` (no workflow assignee) from `unowned` (no owner team, Conflict included). `unowned` is null while CLOUD_BOM
+  findings are not canonical, because legacy labels cannot be counted as owners.
+- **Ticket note** (`CryptoRemediationService.template`). The "ScoutGrid owner" line is now "ScoutGrid assignee" and "ScoutGrid
+  owner team". The team is read live under the tickets read wave (Unowned or Ownership conflict when not owned) and is
+  the legacy `owner_group` label only while the wave is off. `GET /api/findings/{id}/ticket-attempts` already returns the
+  E11 routing fields.
+- **Portfolio** (`GET /api/bom/cbom/portfolio?groupBy=ownerTeam`). Groups by the asset's current owner team ID through the
+  effective view, adds `teamId` and `ownerBucket` (TEAM, UNOWNED, CONFLICT, PENDING_MIGRATION), and relabels a renamed
+  team without splitting it. An asset whose type's domain is not canonical for inventory reads keeps its legacy
+  `assets.owner_team` label as a PENDING_MIGRATION group. The `supportGroup` grouping is unchanged and offered in the UI
+  as "CMDB support group (evidence, not ownership)".
+- **Frontend.** The three CBOM rows of the §5.2 ledger are done here, so E14 does not revisit them:
+  `CryptoRemediationPanel` (assignee and owner team in separate columns, an Unowned SLA column), `CbomPortfolioPanel`
+  (owner buckets, remediated progress, pending-migration labelling) and `features/cbom/types.ts`. Shared helpers
+  `ownerBucketLabel` and `campaignOwnerLabel` live in `features/campaigns/ownership.ts`.
+- **Tests.** `CbomOwnerTeamsPostgresIntegrationTest` covers each read with CLOUD_BOM canonical and dark, including
+  progress that counts only remediated findings, owner buckets by team ID, queue and SLA owners, a team rename and the
+  legacy portfolio rows. The PQC and crypto remediation controller ITs and the three CBOM panel tests are updated.
+
 ### 3.8 Schema and code impact
 
 - **Tenant V24 is needed.** It adds nullable `ownership_subject_id` columns, each with a tenant-inclusive foreign key

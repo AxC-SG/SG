@@ -182,7 +182,10 @@ class CbomEnterpriseGovernancePostgresIntegrationTest {
         assertEquals(0, progress.path("notInCampaign").asInt());
         JsonNode wave = progress.path("campaigns").get(0);
         assertEquals(campaignId, wave.path("campaignId").asText());
-        assertEquals(2, wave.path("open").asInt());
+        assertEquals(2, wave.path("active").asInt());
+        assertEquals(0, wave.path("remediated").asInt());
+        // The campaigns read wave is off here, so owners are one Pending Migration bucket, never a free-text owner.
+        assertEquals("PENDING_MIGRATION", wave.path("owners").get(0).path("bucket").asText());
         assertEquals(0.0, wave.path("percentComplete").asDouble(), 0.0001);
 
         JsonNode portfolio = json(mockMvc.perform(get("/api/bom/cbom/portfolio?groupBy=environment").header("Authorization", "Bearer " + admin))

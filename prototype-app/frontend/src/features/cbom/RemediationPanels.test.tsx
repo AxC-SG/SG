@@ -27,12 +27,16 @@ function renderAs(actor: ActorContext, element: React.ReactElement) {
 const QUEUE: CryptoRemediationQueue = {
   observedAt: '2026-11-03T00:00:00Z',
   verificationQueue: [{ findingId: 'f-1', displayId: 'F-1', title: 'RSA key too small', severity: 'HIGH', status: 'OPEN', assignedTo: null,
-    ownerGroup: null, dueAt: null, workflowSubstate: 'VERIFICATION_REQUESTED', verificationStatus: 'REQUESTED', targetState: 'RSA-3072',
+    ownership: { objectId: 'f-1', authorityDomain: 'CLOUD_BOM', authorityState: 'CANONICAL', ownerTeamId: 't-1', ownerTeamName: 'Crypto Platform',
+      ownershipStatus: 'OWNED', sourceKind: 'SERVICENOW', resolvedAt: null, legacyOwnerLabel: null },
+    dueAt: null, workflowSubstate: 'VERIFICATION_REQUESTED', verificationStatus: 'REQUESTED', targetState: 'RSA-3072',
     verificationRequestedAt: '2026-11-02T00:00:00Z', overdue: false }],
   overdue: [{ findingId: 'f-2', displayId: 'F-2', title: 'TLS 1.0 enabled', severity: 'CRITICAL', status: 'OPEN', assignedTo: 'bob',
-    ownerGroup: null, dueAt: '2026-10-01T00:00:00Z', workflowSubstate: null, verificationStatus: 'NOT_REQUIRED', targetState: null,
+    ownership: { objectId: 'f-2', authorityDomain: 'CLOUD_BOM', authorityState: 'LEGACY_PENDING_MIGRATION', ownerTeamId: null, ownerTeamName: null,
+      ownershipStatus: null, sourceKind: null, resolvedAt: null, legacyOwnerLabel: 'Legacy Crypto Ops' },
+    dueAt: '2026-10-01T00:00:00Z', workflowSubstate: null, verificationStatus: 'NOT_REQUIRED', targetState: null,
     verificationRequestedAt: null, overdue: true }],
-  slaBySeverity: [{ severity: 'CRITICAL', open: 1, overdue: 1, dueWithin7Days: 0, unassigned: 0 }],
+  slaBySeverity: [{ severity: 'CRITICAL', open: 1, overdue: 1, dueWithin7Days: 0, unassigned: 0, unowned: null }],
 };
 const EFFECTIVENESS: CryptoEffectiveness = {
   days: 90, from: '2026-08-05', to: '2026-11-03', opened: 10, closed: 4, verifiedClosures: 3, reopened: 1, verificationsAccepted: 3,
@@ -65,6 +69,11 @@ describe('crypto remediation panels', () => {
 
     expect(await screen.findByText('Awaiting verification (1)')).toBeInTheDocument();
     expect(screen.getByText('RSA-3072')).toBeInTheDocument();
+    // Owner team is separate from the workflow assignee; a legacy row shows its label and the SLA says Pending migration.
+    expect(screen.getByText('Crypto Platform')).toBeInTheDocument();
+    expect(screen.getByText('Legacy Crypto Ops')).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader', { name: 'Owner team' })).toHaveLength(2);
+    expect(screen.getByText('Pending migration')).toBeInTheDocument();
     expect(screen.getByText(/\(overdue\)/)).toBeInTheDocument();
     expect(await screen.findByText(/75% \(3 accepted, 1 rejected\)/)).toBeInTheDocument();
     const audit = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
