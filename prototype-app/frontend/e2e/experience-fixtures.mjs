@@ -121,10 +121,14 @@ const platformSourceStats = {
 
 // ── Campaigns ───────────────────────────────────────────────────────────────
 function summary(overrides) {
+  const { resolvedFindings = 0, openFindings = 0, ...current } = overrides;
   return {
     summary: null, status: 'ACTIVE', dueAt: iso(21), startedAt: iso(-14), updatedAt: iso(-1), cveIds: [],
-    totalFindings: 0, resolvedFindings: 0, openFindings: 0, assetCount: 0, exceptionCount: 0,
-    notifyGroupCount: 0, watchlistCount: 0, completionPercent: 0, ...overrides,
+    scopeKind: 'CVE', membershipState: 'COMPLETE', assigneePrincipalId: null, coordinatingTeamId: null,
+    totalFindings: 0, remediatedCount: resolvedFindings, activeRemainingCount: openFindings,
+    outcomes: { OPEN: openFindings, REOPENED: 0, CAMPAIGN_EXCEPTED: 0, REMEDIATED: resolvedFindings,
+      SUPPRESSED: 0, FALSE_POSITIVE: 0, ACCEPTED_RISK: 0, CLOSED_OTHER: 0 },
+    assetCount: 0, exceptionCount: 0, notifyGroupCount: 0, watchlistCount: 0, completionPercent: 0, ...current,
   };
 }
 
@@ -152,6 +156,10 @@ function detailFor(campaign) {
     { findingId: 'f-uuid-1003', displayId: 'F-1003', vulnerabilityId: 'CVE-2026-28810', assetName: 'build-runner-07', assetIdentifier: 'build-runner-07.example.test',
       packageName: 'glibc', severity: 'HIGH', ownerGroup: null, status: 'RESOLVED', dueAt: iso(-2), incidentId: null },
   ] : [];
+  for (const finding of findings) {
+    finding.outcome = finding.status === 'RESOLVED' ? 'REMEDIATED' : 'OPEN';
+    finding.currentOwnership = { authorityState: 'LEGACY_PENDING_MIGRATION', legacyOwnerLabel: finding.ownerGroup };
+  }
   return {
     summary: campaign,
     vulnerabilities: campaign.cveIds.map((externalId, index) => ({ externalId, title: index === 0 ? 'OpenSSL X.509 name-constraint bypass' : 'glibc iconv buffer overflow', severity: index === 0 ? 'CRITICAL' : 'HIGH' })),
@@ -310,6 +318,19 @@ export function experienceFixtureFor(rawUrl, method = 'GET', body = null) {
     if (!record) return notFound;
     const action = campaign[2];
     if (!action && isGet) return ok(detailFor(record));
+    if (action === 'members' && isGet) {
+      return ok({ items: detailFor(record).findings.map((finding) => ({ ...finding,
+        title: finding.packageName, findingKind: 'VULNERABILITY', findingStatus: finding.status, closedReason: null,
+        assetId: null, suppressedUntil: null, addedAt: record.startedAt, addedBy: 'fixture.analyst@example.test',
+        addSource: 'CREATE', ownerAtAdd: { teamId: null, teamName: null, status: 'LEGACY_PENDING_MIGRATION', assignmentId: null },
+        ownershipChanged: false, ownerAssignedSinceLaunch: false, campaignExceptionStatus: null,
+      })), nextCursor: null });
+    }
+    if (action === 'owner-buckets' && isGet) return ok(record.totalFindings ? [{ bucket: 'PENDING_MIGRATION', teamId: null,
+      teamName: null, members: record.totalFindings, activeRemaining: record.activeRemainingCount, outcomes: record.outcomes }] : []);
+    if (action === 'reconciliation' && isGet) return ok({ campaignId: record.id, scopeKind: record.scopeKind,
+      membershipState: record.membershipState, reconciledAt: iso(-1), watermark: null, lastAdded: 0, lastError: null,
+      consecutiveFailures: 0, members: record.totalFindings });
     if (action === 'findings' && isGet) return ok([]);
     if (action === 'status') return ok(detailFor({ ...record, status: json.status ?? record.status, updatedAt: iso(0) }));
     if (action === 'notes') return ok({ id: 'note-new', author: 'fixture.analyst@example.test', body: json.body ?? '', createdAt: iso(0) });

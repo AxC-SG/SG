@@ -12,6 +12,11 @@ Add CVE and Add software persist to the server; removal of CVEs/software/assets 
 occurrence assignment, campaign membership and ticket dialogs are implemented but browser/accessibility/visual
 qualification remains open. Local checks do not establish deployed or real-provider qualification.
 
+The fixture browser router must explicitly model Release 2 CLOUD_BOM qualification, finding ticket attempts and campaign
+members/owner buckets/reconciliation, including outcome/current-ownership fields. Keep unexpected API enforcement and
+journey assertions enabled; generic paginated fallbacks do not satisfy those API contracts. Remote verification is
+tracked in [PR #136](https://github.com/AxC-SG/SG/pull/136) and the integration review.
+
 > **Current prerequisite contract (October 21, 2026):** [implementation closure](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>). Generic Azure, local archive operations, tenant OSV, runtime evidence and destructive tenant purge remain contained; Fix Intelligence and the patch connectors are re-enabled (tenant V9) but not yet release-qualified; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>). Documentation completion is not release qualification.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.

@@ -24,6 +24,7 @@ a tenant, discard deployed campaign data, or remove CI/CD gates.
 | P1 | Both cloud discovery services lost `@Autowired` on `setBackgroundTaskExecutionPolicy`; it was accidentally moved onto the new producer field. Their default `allowAll()` would permit discovery scheduling on API and schema-migrator nodes. | Fixed: restore policy injection, retain one optional producer setter, add six Spring-wiring regression cases for AWS/GCP × api/schema-migrator/worker. |
 | P1 | Binary schema compatibility is V27 but base YAML still defaults both bounds to V23 and production pins the minimum to V23. The effective range becomes empty, rejecting upgraded tenants under enforcement. | Fixed: align YAML bounds to V27; the existing `MigrationCatalogTest` guards agreement with the packaged catalog. External environment overrides still need inspection before deployment. |
 | P2 | Two existing CBOM integration tests derive fixture/assertion dates from the database session's `current_date`, while the application uses UTC. During India's post-midnight/UTC-previous-day window, one expiry fixture is not expired and the snapshot query checks the wrong day. | Test-only fix: derive both SQL dates explicitly in UTC, retaining the application's existing behavior. Rerun results are recorded below. |
+| P2 | The first remote browser run uses pre-Release-2 fixtures: CLOUD_BOM qualification and campaign ledger endpoints fall through to incompatible generic payloads, while ticket-attempt reads are unhandled. Ownership/campaign pages fail to render in those fixtures. | Add explicit qualification, members, owner-buckets, reconciliation and ticket-attempt fixtures, and update campaign outcome/ownership fields. Preserve unexpected-request enforcement and all journey assertions; no production behavior is changed by this follow-up. |
 | P1 | V26 drops `campaign_notify_groups.group_email` without migrating existing addresses into `group_email_enc`. The upgrade test explicitly seeds an address and then asserts the old column is removed. | Accepted for this lab-only integration; remains a release blocker for any database whose recipient data must survive. No applied migrations were edited and no shared database was migrated. |
 | P1 | Existing custom-recipient workflows now encrypt email unconditionally. `CampaignService.prepareRecipient` returns 503 when the tenant key is unavailable. Only the local/test key wrapper exists; ownership read switches do not restore the old write path. | Release blocked until a deployed wrapper and key provisioning are qualified, or a separately reviewed compatibility implementation preserves the old workflow. Never enable the local wrapper in deployed environments. |
 | P2 | Campaign writes, membership materialization, the 15-minute reconciler and the campaign-member finding delete restriction apply independently of ownership read switches. Existing CVE campaigns can acquire members after launch. | Accepted lab behavior. Read-wave rollback restores ownership display/routing only; it is not a full application or database rollback. Reconciler cron `-` stops scheduled reconciliation but does not restore old campaign writes. |
@@ -63,7 +64,22 @@ Verification is performed on the combined branch, not copied from the ownership 
 - PostgreSQL tests use a new disposable cluster on port 55432, not a shared/deployed database.
 - Local Node is v26.12.1; CI's pinned Node 24 qualification remains required. Java is 17.
 - Browser/accessibility/visual checks, exact-container qualification and live ServiceNow/AWS/GCP/KMS qualification have
-  not been performed in this review. Existing CI checks remain required before merging to remote main.
+  not been performed in the initial local review. Remote CI results are recorded separately below; existing CI checks
+  remain required before merging to remote main.
+
+### Remote CI follow-up
+
+The [first remote Quality run](https://github.com/AxC-SG/SG/actions/runs/43937391391) tests `eaf295f9`. Node 24 frontend,
+backend unit/coverage/SpotBugs, static/migration checks, Gitleaks, Semgrep, filesystem scanning, and the exact ECS image's
+packaged migration inspection, migrator/API/worker startup and image scan pass. CodeQL and the Vercel branch preview
+also pass. The browser gate finds the stale fixture contracts described above; it remains enforced while those are
+corrected. PostgreSQL and follow-up browser results are tracked in [PR #136](https://github.com/AxC-SG/SG/pull/136).
+After the fixture corrections, the local findings, connector and campaign/experience journeys pass 67, 126 and 264
+checks respectively (457 total), with zero known/new failures or unexpected API requests. Lint passes with the same
+two existing warnings, and all five browser-runner tests pass. Production source and CI gates are unchanged by the
+fixture follow-up; the remote pinned-browser run remains required for its final revision.
+CI fixture journeys and isolated image startup do not establish live-provider, full new-screen accessibility/visual or
+production release qualification.
 
 The [qualification scorecard](ownership-release-2-qualification.md) retains its additional external-input and Release 3
 gaps. Passing local checks does not lift the release block.

@@ -573,8 +573,9 @@ export function connectFixtureFor(rawUrl, method = 'GET', body = null) {
       : { authorityState: 'LEGACY_PENDING_MIGRATION', owned: 1284, unowned: 132, conflict: 9, unlinked: 58, refreshing: 0 });
   }
   if (path === '/ownership/encryption') return ok({ ready: true, reason: null });
-  if (path === '/ownership/authority/CORE/qualification') {
-    return ok({ domain: 'CORE', state: 'LEGACY', passed: false, blockers: ['Domain must be DARK to qualify (is LEGACY)'], checks: {},
+  const qualification = path.match(/^\/ownership\/authority\/(CORE|CLOUD_BOM)\/qualification$/);
+  if (qualification && isGet) {
+    return ok({ domain: qualification[1], state: 'LEGACY', passed: false, blockers: ['Domain must be DARK to qualify (is LEGACY)'], checks: {},
       comparison: { match: 0, mismatch: 0, legacyOnly: 0, canonicalOnly: 0, bothEmpty: 0 }, reportHash: 'fixture-legacy-report' });
   }
   if (path === '/ownership/teams') {
