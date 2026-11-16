@@ -236,6 +236,30 @@ One invite from the first run stays open, `SENT` to `delivered+smoke@resend.dev`
 
 **First full run passed** all 14 checks. Platform side: sign-in without a workspace, four pages, a fixture created, then rejected and deleted, sign-out. Tenant side: workspace entry, Findings, an invite reaching `SENT` and cancelled, sign-out. Set `LAB_SMOKE_CONFIG=~/.config/scoutgrid/lab-smoke.json` for every release from now on.
 
+## First live paired release (2026-11-16)
+
+**Release `20261116t082637z-cbb265b`** (`release.py deploy cbb265b --frontend`, with `VERCEL_TOKEN` and `LAB_SMOKE_CONFIG` set): outcome `verified`, phase `paired`, 10m30s.
+
+| UTC | Step |
+|---|---|
+| 08:26:10–08:26:29 | Staged frontend `dpl_G3By6vq5QDcH2dwSQoXpyQcfLEST` from `cbb265b` (`vercel@65.9.0`), not promoted |
+| 08:27:03–08:28:24 | Migrator plan: no changes; the migrator task ran as a no-op, exit 0 |
+| 08:28:43 | Runtime plan: no changes. The image `9d83db25…` was unchanged, so api `:11` and worker `:10` kept running |
+| 08:29:03–08:34:56 | Bake |
+| 08:35:40 | All backend checks passed (six healthy progress lines, schema V23..V23, no defined failures, 0 startup ERROR lines). The signed-in smoke passed 14/14 against the old frontend and the new backend |
+| 08:35:46–08:35:55 | Promotion: the first live `POST /v10/projects/…/promote`, which worked |
+| 08:36:32 | Paired checks: scoutgrid.io serves `dpl_G3By…`, `GET /` 200, and the signed-in smoke passed 14/14 on the pair |
+
+**Accepted** at 08:59:51Z with the browser checks waived. The accepted pair is now `9d83db25…` with `dpl_G3By…`. The previous accepted pair is 52163ec with the adopted `dpl_4cm35SwLZ48ddWwsDek6sex1zrYt`.
+
+**Before the release,** Vercel's own `main` promotion had moved scoutgrid.io to `dpl_GrRcgUafDEbzM66yC1ofZPKhZjTh` (the #128 merge), outside the record, and `status` showed `DIFFERS FROM INPUTS`. At 09:03:26Z, with the owner's approval, `autoAssignCustomDomains` was set to `false` (`PATCH /v9/projects/{id}` returned 200; a read-back showed `false`). Verification: the merge of this record must build a production deployment and leave scoutgrid.io on `dpl_G3By…`.
+
+**What is proven live now:** staging, promotion, the paired checks, and the signed-in smoke inside a release.
+
+**Still to prove:** a pair whose backend image changes, and a paired recovery (frontend-first rollback).
+
+**Dry-run leftovers:** deployments `dpl_AcWAF5…` and `dpl_AJQJfSt…` were never assigned a domain.
+
 ## Open
 
 1. **Full-app browser checks** for the accepted release. Until all nine pass and are recorded, phase 0 stays open; waivers do not count.
