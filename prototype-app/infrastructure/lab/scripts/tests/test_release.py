@@ -18,6 +18,7 @@ OLD, NEW = "sha256:" + "0" * 64, "sha256:" + "e" * 64
 V20, V23 = {"platform": 15, "tenant": 20}, {"platform": 16, "tenant": 23}
 CATALOG, OTHER_CATALOG = "c" * 64, "d" * 64
 ARNS = {role: f"arn:aws:ecs:ap-southeast-2:736486260824:task-definition/scoutgrid-lab-{role}:9" for role in ("api", "worker", "migrator")}
+LIVE_FRONTEND, STAGED_FRONTEND = "dpl_live", "dpl_staged"
 
 
 def inputs(heads=V23, digest=OLD, sha=OLD_SHA, previous=None, pending=None, catalog=CATALOG):
@@ -156,6 +157,37 @@ class FakeLab:
     def browser_checks(self, checks):
         self.calls.append("browser")
         return [{"check": check, "passed": self.browser_ok, "note": ""} for check in checks]
+
+    # ---- the frontend: a fake Vercel project whose domain serves self.alias ----------------
+    alias = LIVE_FRONTEND
+    staged_id = STAGED_FRONTEND
+    stage_error = promote_error = None
+    promote_moves_alias = True
+    app_code = 200
+
+    def frontend_stage(self, sha):
+        self.calls.append(("stage", release.LOCK_KEY in self.store))
+        if self.stage_error:
+            raise release.ReleaseError(self.stage_error)
+        return {"deployment_id": self.staged_id, "url": "scout-frontend-new.vercel.app", "source_sha": sha,
+                "staged_at": "2026-11-16T07:00:00Z"}
+
+    def frontend_live(self, required=True):
+        return self.alias
+
+    def frontend_deployment(self, deployment):
+        return {"deployment_id": deployment, "url": "scout-frontend-live.vercel.app", "ready_state": "READY",
+                "target": "production", "source_sha": OLD_SHA}
+
+    def frontend_promote(self, deployment):
+        self.calls.append(("promote", deployment))
+        if self.promote_moves_alias:
+            self.alias = deployment
+        if self.promote_error:
+            raise release.ReleaseError(self.promote_error)
+
+    def app_status(self, path):
+        return self.app_code
 
     @property
     def inputs(self):
@@ -575,10 +607,14 @@ class RollbackTest(unittest.TestCase):
         lab = FakeLab(inputs())
         release.Release(lab).deploy("main")
         deployed = lab.inputs["awaiting_acceptance"]["release_id"]
-        release.Release(lab).rollback()
-        self.assertEqual(lab.store[f"{release.RECORDS}/{deployed}.json"]["status"], "rejected")
+        result = release.Release(lab).rollback()
+        rejected = lab.store[f"{release.RECORDS}/{deployed}.json"]
+        self.assertEqual(rejected["status"], "rejected")
+        self.assertEqual(rejected["rolled_back"]["reason"], "recovered")
         self.assertEqual(lab.inputs["runtime_image_digest"], OLD)
-        self.assertEqual(lab.inputs["awaiting_acceptance"]["kind"], "rollback")
+        # The exact accepted release came back, so its acceptance stands (CD plan 4.7).
+        self.assertIsNone(lab.inputs["awaiting_acceptance"])
+        self.assertEqual((result["outcome"], result["acceptance"], result["replaces"]), ("verified", "reused", deployed))
 
     def test_rollback_after_a_failed_deploy_restores_the_accepted_release(self):
         lab = FakeLab(inputs(heads=V20), plans={"migrator": plan(("aws_lb.api[\"standard\"]", ("update",)))})
@@ -602,6 +638,209 @@ class RollbackTest(unittest.TestCase):
     def test_rollback_needs_an_earlier_release(self):
         with self.assertRaisesRegex(release.ReleaseError, "no earlier accepted release"):
             release.Release(FakeLab(inputs())).rollback()
+
+
+def tracked(**options):
+    """Inputs whose accepted release has the adopted live frontend."""
+    state = inputs(**options)
+    frontend = {"deployment_id": LIVE_FRONTEND, "url": "scout-frontend-live.vercel.app", "source_sha": OLD_SHA, "adopted": True}
+    state["frontend"] = frontend
+    state["accepted"]["frontend"] = frontend
+    return state
+
+
+BACKEND_CALLS = [("plan", "migrator", OLD, NEW), ("apply", "migrator.tfplan"), "migrate",
+                 ("plan", "runtime", NEW, NEW), ("apply", "runtime.tfplan")]
+
+
+class PairedReleaseTest(unittest.TestCase):
+    def deploy(self, lab):
+        return release.Release(lab).deploy("main", frontend=True)
+
+    def test_the_frontend_is_staged_outside_the_lock_and_promoted_after_the_backend_verifies(self):
+        lab = FakeLab(tracked())
+        result = self.deploy(lab)
+        self.assertEqual(lab.calls, [("stage", False), "confirm", *BACKEND_CALLS, ("promote", STAGED_FRONTEND)])
+        record, state = lab.record(), lab.inputs
+        self.assertEqual([step["step"] for step in record["steps"]],
+                         ["migrator", "migrated", "runtime", "verified", "frontend", "paired"])
+        self.assertEqual((record["frontend"]["deployment_id"], record["from"]["frontend"]), (STAGED_FRONTEND, LIVE_FRONTEND))
+        self.assertTrue(all(check["passed"] for check in record["paired_checks"].values()))
+        self.assertEqual((state["frontend"]["deployment_id"], state["awaiting_acceptance"]["frontend"]["deployment_id"]),
+                         (STAGED_FRONTEND, STAGED_FRONTEND))
+        self.assertIsNone(state["frontend_promoting"])
+        self.assertEqual((result["outcome"], result["acceptance"], result["frontend"]), ("verified", "awaiting", STAGED_FRONTEND))
+        self.assertNotIn(release.LOCK_KEY, lab.store)
+
+        release.Release(lab).accept()
+        state = lab.inputs
+        self.assertEqual(state["accepted"]["frontend"]["deployment_id"], STAGED_FRONTEND)
+        self.assertEqual(state["previous_accepted"]["frontend"]["deployment_id"], LIVE_FRONTEND)
+
+    def test_a_staging_failure_changes_nothing(self):
+        lab = FakeLab(tracked())
+        lab.stage_error = "vercel build failed"
+        before = copy.deepcopy(lab.store)
+        with self.assertRaisesRegex(release.ReleaseError, "vercel build failed"):
+            self.deploy(lab)
+        self.assertEqual(lab.store, before)
+        self.assertEqual(lab.calls, [("stage", False)])
+
+    def test_a_failed_promotion_is_frontend_pending_and_the_retry_repeats_no_backend_step(self):
+        lab = FakeLab(tracked())
+        lab.promote_error, lab.promote_moves_alias = "Vercel POST returned 502", False
+        with self.assertRaises(release.ReleaseError) as raised:
+            self.deploy(lab)
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("failed", "frontend_pending"))
+        record, state = lab.record(), lab.inputs
+        self.assertEqual((record["failed_at"], record["result"]["reason"]), ("frontend", "frontend_pending"))
+        self.assertEqual((state["pending"]["phase"], state["frontend_promoting"]), ("verified", STAGED_FRONTEND))
+        self.assertEqual(state["frontend"]["deployment_id"], LIVE_FRONTEND)
+
+        lab.promote_error, lab.promote_moves_alias, lab.calls = None, True, []
+        self.deploy(lab)
+        self.assertEqual(lab.calls, ["confirm", ("promote", STAGED_FRONTEND)])
+        self.assertEqual(len(lab.baked), 1)
+        self.assertEqual(lab.record()["status"], "verified")
+        self.assertIsNone(lab.inputs["frontend_promoting"])
+
+    def test_an_uncertain_promotion_is_read_from_the_domain_before_acting_again(self):
+        lab = FakeLab(tracked())
+        lab.promote_error = "timed out waiting for the alias"   # the call failed, but the domain moved
+        with self.assertRaises(release.ReleaseError):
+            self.deploy(lab)
+        lab.promote_error, lab.calls = None, []
+        self.deploy(lab)
+        self.assertEqual(lab.calls, ["confirm"])
+        self.assertEqual(lab.inputs["frontend"]["deployment_id"], STAGED_FRONTEND)
+
+    def test_a_paired_release_resumes_only_as_a_paired_release(self):
+        lab = FakeLab(tracked())
+        lab.promote_error, lab.promote_moves_alias = "502", False
+        with self.assertRaises(release.ReleaseError):
+            self.deploy(lab)
+        with self.assertRaisesRegex(release.ReleaseError, "rerun it with --frontend"):
+            release.Release(lab).deploy("main")
+
+    def test_a_failed_paired_check_recovers_the_accepted_pair_frontend_first(self):
+        lab = FakeLab(tracked())
+        lab.app_code = 503
+        with self.assertRaises(release.ReleaseError) as raised:
+            self.deploy(lab)
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("failed", "check_failed"))
+        failed_id = lab.inputs["pending"]["release_id"]
+        lab.app_code, lab.calls = 200, []
+
+        result = release.Release(lab).rollback(note="paired check failed")
+        self.assertEqual(lab.calls, ["confirm", ("promote", LIVE_FRONTEND), ("plan", "runtime", OLD, NEW),
+                                     ("apply", "runtime.tfplan")])
+        state = lab.inputs
+        self.assertEqual((state["frontend"]["deployment_id"], state["runtime_image_digest"]), (LIVE_FRONTEND, OLD))
+        self.assertIsNone(state["pending"])
+        self.assertIsNone(state["awaiting_acceptance"])
+        self.assertEqual(state["accepted"]["release_id"], "baseline")
+        self.assertEqual((result["outcome"], result["acceptance"], result["replaces"]), ("verified", "reused", failed_id))
+
+        failed = lab.store[f"{release.RECORDS}/{failed_id}.json"]
+        rollback = lab.store[f"{release.RECORDS}/{result['release_id']}.json"]
+        self.assertEqual((failed["status"], failed["result"]["reason"]), ("failed", "recovered"))
+        self.assertEqual(failed["rolled_back"]["by"], rollback["release_id"])
+        self.assertEqual((rollback["replaces"], rollback["note"], rollback["status"]), (failed_id, "paired check failed", "accepted"))
+        self.assertIn("reuses the acceptance of baseline", rollback["acceptance"])
+        self.assertTrue(all(check["passed"] for check in rollback["paired_checks"].values()))
+
+    def test_an_operator_rollback_from_an_accepted_pair_waits_for_acceptance_and_marks_the_left_release(self):
+        lab = FakeLab(tracked())
+        self.deploy(lab)
+        release.Release(lab).accept()
+        left = lab.inputs["accepted"]["release_id"]
+        lab.calls = []
+        result = release.Release(lab).rollback(note="phase 3 drill")
+        self.assertEqual(lab.calls[:2], ["confirm", ("promote", LIVE_FRONTEND)])
+        self.assertEqual(result["acceptance"], "awaiting")
+        self.assertEqual(lab.inputs["awaiting_acceptance"]["restores"]["release_id"], "baseline")
+        marked = lab.store[f"{release.RECORDS}/{left}.json"]
+        self.assertEqual((marked["status"], marked["rolled_back"]["reason"], marked["rolled_back"]["note"]),
+                         ("accepted", "rolled back by the operator", "phase 3 drill"))
+
+    def test_a_backend_only_rollback_leaves_the_frontend(self):
+        lab = FakeLab(tracked())
+        release.Release(lab).deploy("main")
+        release.Release(lab).accept()
+        lab.calls = []
+        release.Release(lab).rollback()
+        self.assertNotIn(("promote", LIVE_FRONTEND), lab.calls)
+        self.assertNotIn("paired_checks", lab.record())
+
+    def test_a_rollback_without_the_target_frontend_needs_the_operator(self):
+        lab = FakeLab(inputs())   # the accepted release predates frontend tracking
+        lab.app_code = 503
+        with self.assertRaises(release.ReleaseError):
+            self.deploy(lab)
+        before, lab.calls = copy.deepcopy(lab.store), []
+        with self.assertRaises(release.ReleaseError) as raised:
+            release.Release(lab).rollback()
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("needs_operator", "frontend_unrecorded"))
+        self.assertEqual(lab.store, before)
+        self.assertEqual(lab.calls, [])
+
+    def test_the_rollback_target_counts_the_frontend(self):
+        state = tracked(previous={"release_id": "older", "runtime_image_digest": NEW})
+        self.assertEqual(release.rollback_target(state)["release_id"], "older")
+        self.assertEqual(release.rollback_target({**state, "frontend": {"deployment_id": STAGED_FRONTEND}})["release_id"],
+                         "baseline")
+        self.assertEqual(release.rollback_target({**state, "frontend_promoting": STAGED_FRONTEND})["release_id"], "baseline")
+
+    def test_adopt_frontend_records_the_live_domain_once(self):
+        lab = FakeLab(inputs())
+        release.Release(lab).adopt_frontend()
+        state = lab.inputs
+        self.assertEqual((state["frontend"]["deployment_id"], state["accepted"]["frontend"]["deployment_id"]),
+                         (LIVE_FRONTEND, LIVE_FRONTEND))
+        self.assertTrue(state["frontend"]["adopted"])
+        with self.assertRaisesRegex(release.ReleaseError, "already tracked"):
+            release.Release(lab).adopt_frontend()
+        busy = FakeLab({**inputs(), "awaiting_acceptance": {"release_id": "r1"}})
+        with self.assertRaisesRegex(release.ReleaseError, "finish or roll back"):
+            release.Release(busy).adopt_frontend()
+        self.assertNotIn("frontend", busy.inputs)
+
+
+class OutcomeTest(unittest.TestCase):
+    def test_a_resumed_deploy_does_not_rerun_a_migrator_that_succeeded(self):
+        lab = FakeLab(inputs(), plans={"runtime": plan(("aws_lb.api[\"standard\"]", ("update",)))})
+        with self.assertRaises(release.ReleaseError) as raised:
+            release.Release(lab).deploy("main")
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("failed", "step_failed"))
+        lab.plans["runtime"], lab.calls = DEFAULT_PLANS["runtime"], []
+        release.Release(lab).deploy("main")
+        self.assertEqual(lab.calls, ["confirm", ("plan", "runtime", NEW, NEW), ("apply", "runtime.tfplan")])
+
+    def test_refusals_name_their_reason(self):
+        cases = [(FakeLab(inputs(), present=False), ("blocked", "parked")),
+                 (FakeLab({**inputs(), "awaiting_acceptance": {"release_id": "r1"}}), ("blocked", "awaiting_acceptance")),
+                 (FakeLab(inputs(pending={"release_id": "r1", "source_sha": OLD_SHA, "kind": "deploy", "phase": "migrator"})),
+                  ("needs_operator", "unfinished")),
+                 (FakeLab(inputs(), pub=publication(catalog=OTHER_CATALOG)), ("blocked", "schema_changed"))]
+        for lab, expected in cases:
+            with self.subTest(expected=expected), self.assertRaises(release.ReleaseError) as raised:
+                release.Release(lab).deploy("main")
+            self.assertEqual((raised.exception.outcome, raised.exception.reason), expected)
+
+    def test_a_failed_rollback_needs_the_operator(self):
+        lab = FakeLab(inputs())
+        release.Release(lab).deploy("main")
+        release.Release(lab).accept()
+        lab.http_status = lambda path: 503
+        with self.assertRaises(release.ReleaseError) as raised:
+            release.Release(lab).rollback()
+        self.assertEqual((raised.exception.outcome, raised.exception.reason), ("needs_operator", "recovery_failed"))
+
+    def test_parse_options(self):
+        self.assertEqual(release.parse_options(["--frontend"], flags=("--frontend",)), {"--frontend": True})
+        self.assertEqual(release.parse_options(["--note", "x"], valued=("--note",)), {"--note": "x"})
+        for bad in (["--frontend", "--frontend"], ["--other"], ["--note"]):
+            self.assertIsNone(release.parse_options(bad, flags=("--frontend",), valued=("--note",)))
 
 
 class InitTest(unittest.TestCase):
