@@ -46,7 +46,37 @@ Each step is recorded in `release/records/<id>.json`. The bucket is versioned, s
 
 **When a step fails.** The inputs keep `pending`, so `lab.sh` refuses to run. Rerunning `deploy` for the same commit resumes it, because every step is idempotent. `release.py rollback` recovers.
 
-**Rollback.** It moves only `api` and `worker`, to the accepted release (after a failed or rejected one) or to the accepted release before it, and only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image.
+**Rollback.** It moves only `api` and `worker`, to the accepted release (after a failed or rejected one) or to the accepted release before it, and only when that image supports the current schema. The binary accepts exactly one tenant schema version. After a schema-changing release, recovery is fixing forward or restoring the pre-migration snapshot, never an older image. A verified rollback waits for `release.py accept` like a deploy; accepting it makes the restored release the accepted one again. The phase 3 drill (CD plan) measured 12–13 minutes per rollback: about 5–6 minutes of Terraform apply and ECS rollout, then the six-minute bake.
+
+### Long releases and stale locks
+
+**Run every release command under `caffeinate -i`.** A release takes 15–30 minutes. If the laptop sleeps mid-step, Terraform cannot release its state lock and the release stops:
+
+```sh
+echo yes | caffeinate -i env TERRAFORM=<terraform 1.13.5> python3 release.py deploy <commit>
+```
+
+On 2026-11-16 the laptop slept during a deploy, after its migrator step and during the runtime plan. That left a stale Terraform plan lock.
+
+**Two locks.**
+- `release/lock.json` is the release lock, shared with `lab.sh`. `release.py status` shows it and `release.py unlock` clears it.
+- `standard/lab/terraform.tfstate.tflock` is Terraform's S3 state lock. `release.py` cannot clear it.
+
+**Clearing a stale Terraform lock.** Unlock only after proving all four of these:
+1. **It is a plan lock.** `aws s3 cp s3://scoutgrid-lab-tfstate-736486260824-ap-southeast-2/standard/lab/terraform.tfstate.tflock -` shows `"Operation": "OperationTypePlan"`. Note its `ID` and `Created`.
+2. **Nothing is running.** `pgrep -fl 'terraform|release.py'` prints nothing.
+3. **The state hasn't changed since the last recorded step.** The `LastModified` of `standard/lab/terraform.tfstate` is not later than the last step in the release record. The live task definitions (`aws ecs describe-services --cluster scoutgrid-lab --services api worker`) match that step.
+4. **The release lock is free**, or is held only by the stopped release. `release.py status` shows it.
+
+Terraform cannot read the `aws login` source profile, so export the release role's credentials first:
+
+```sh
+cd prototype-app/infrastructure/terraform/standard
+eval "$(aws configure export-credentials --profile sglab-release --format env)"
+AWS_REGION=ap-southeast-2 <terraform 1.13.5> force-unlock -force <ID>
+```
+
+Then rerun the same `release.py deploy <commit>` (or `rollback`). It resumes from the record: a resumed deploy runs its migrator task again, which changes nothing on an unchanged schema. A step that fails before Terraform applies anything, such as a DNS failure while refreshing, is recorded as `failed` with no steps and changes nothing. Check `release.py status`, then rerun.
 
 ### Signed-in smoke
 
