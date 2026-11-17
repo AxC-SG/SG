@@ -32,3 +32,11 @@ export function usePlatformVulnIntelDetailQuery(externalId: string) {
     enabled: !!externalId,
   });
 }
+
+export function usePlatformVulnIntelObservationsQuery(externalId: string, afterId?: string) {
+  return useQuery({
+    queryKey: ['platform-vuln-intel-observations', externalId, afterId],
+    queryFn: () => api.getPlatformVulnIntelObservations(externalId, afterId),
+    enabled: !!externalId,
+  });
+}

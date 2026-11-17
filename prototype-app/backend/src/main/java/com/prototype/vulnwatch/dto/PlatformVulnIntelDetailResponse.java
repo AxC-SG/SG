@@ -34,8 +34,12 @@ public record PlatformVulnIntelDetailResponse(
             String description,
             String severity,
             Double cvssScore,
+            String cvssVersion,
             String cvssVector,
             String publishedAt,
-            String lastModifiedAt
+            String lastModifiedAt,
+            String observedAt,
+            String lastSeenAt,
+            String payloadHash
     ) {}
 }

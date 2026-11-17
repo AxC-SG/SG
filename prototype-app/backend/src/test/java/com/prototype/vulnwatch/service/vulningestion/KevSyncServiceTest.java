@@ -2,6 +2,7 @@ package com.prototype.vulnwatch.service.vulningestion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -141,5 +142,45 @@ class KevSyncServiceTest {
         verify(effectsService).enqueueCveMetadataDeltas(any());
         verify(syncRunService).completeRun(run, "completed", 1, 1, 0, 0, null);
         verify(syncRunService, never()).completeRun(run, "failed", 1, 1, 0, 0, null);
+    }
+
+    @Test
+    void malformedSnapshotFailsBeforeAnyObservationIsWritten() throws Exception {
+        SyncRun run = new SyncRun();
+        run.setSyncType("KEV");
+        var filters = new VulnerabilitySourceFilterConfigService.KevFilters(
+                null, null, null, null, null, null, false);
+        OutboundPolicy policy = new OutboundPolicy("kev", 0L, 1, 0L, 0L, Set.of(), false, true);
+        when(syncRunService.createRunningRun("KEV")).thenReturn(run);
+        when(vulnerabilitySourceFilterConfigService.resolvePlatformKevFilters()).thenReturn(filters);
+        when(syncRunService.kevFiltersMetadata(filters)).thenReturn(Map.of());
+        when(outboundPolicyFactory.forProvider("kev", 0L, null, null)).thenReturn(policy);
+        when(outboundHttpClient.execute(eq(KEV_URL), eq(HttpMethod.GET), any(HttpEntity.class),
+                eq(String.class), eq("KEV feed request"), eq(policy), any(), any()))
+                .thenReturn("{\"vulnerabilities\":[{\"cveID\":\"CVE-2026-9999\"},{}]}");
+
+        IngestionResult result = service.syncKev();
+
+        assertEquals("failed", result.status());
+        assertEquals(0, result.fetched());
+        verify(observationIngestionService, never()).upsertObservation(any());
+        verify(syncRunService).completeRun(eq(run), eq("failed"), eq(0), eq(0), eq(0), eq(0),
+                eq("KEV snapshot contains an invalid or duplicate CVE identifier"));
+        verify(effectsService, never()).enqueueCveMetadataDeltas(any());
+    }
+
+    @Test
+    void snapshotContractRejectsMissingEmptyMismatchedAndDuplicateData() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        for (String payload : List.of("{}", "[]", "{\"vulnerabilities\":[]}",
+                "{\"count\":2,\"vulnerabilities\":[{\"cveID\":\"CVE-2026-9999\"}]}",
+                "{\"vulnerabilities\":[{\"cveID\":\"CVE-2026-9999\"},"
+                        + "{\"cveID\":\"CVE-2026-9999\"}]}")) {
+            assertThrows(IllegalStateException.class,
+                    () -> KevSyncService.validateKevSnapshot(mapper.readTree(payload)));
+        }
+        assertEquals(1, KevSyncService.validateKevSnapshot(mapper.readTree(
+                "{\"count\":1,\"vulnerabilities\":[{\"cveID\":\"CVE-2026-9999\"}]}"
+        )).size());
     }
 }

@@ -84,6 +84,7 @@ public class ObservationIngestionService {
         observation.setDescription(trimToNull(request.description()));
         observation.setSeverity(sourceNormalizationService.normalizeUpperNullable(request.severity()));
         observation.setCvssScore(request.cvssScore());
+        observation.setCvssVersion(normalizeCvssVersion(request.cvssVersion()));
         observation.setCvssVector(trimToNull(request.cvssVector()));
         observation.setEpssScore(request.epssScore());
         observation.setInKev(request.inKev());
@@ -134,6 +135,11 @@ public class ObservationIngestionService {
 
     private String trimToNull(String value) {
         return hasText(value) ? value.trim() : null;
+    }
+
+    private String normalizeCvssVersion(String value) {
+        String version = value == null || value.isBlank() ? null : value.trim();
+        return version != null && java.util.Set.of("2.0", "3.0", "3.1", "4.0").contains(version) ? version : null;
     }
 
     private String sha256Hex(String value) {

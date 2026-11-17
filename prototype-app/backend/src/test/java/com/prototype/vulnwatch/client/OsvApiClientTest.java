@@ -3,11 +3,14 @@ package com.prototype.vulnwatch.client;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.http.OsvApiClient;
 import com.prototype.vulnwatch.client.http.OsvApiClient.OsvQueryResponse;
 import com.prototype.vulnwatch.client.http.OsvApiClient.OsvVulnerability;
+import com.prototype.vulnwatch.client.http.OsvApiClient.OsvQueryRequest;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -70,6 +74,60 @@ class OsvApiClientTest {
 
     assertNotNull(result);
     assertEquals(0, result.getVulns().size());
+  }
+
+  @Test
+  void queryContinuesThroughTokenOnlyPageAndCombinesAllRecords() {
+    OsvQueryResponse first = OsvQueryResponse.builder()
+        .vulns(List.of(OsvVulnerability.builder().id("OSV-1").build()))
+        .nextPageToken("next-1").build();
+    OsvQueryResponse tokenOnly = OsvQueryResponse.builder().nextPageToken("next-2").build();
+    OsvQueryResponse last = OsvQueryResponse.builder()
+        .vulns(List.of(OsvVulnerability.builder().id("OSV-2").build())).build();
+    when(restTemplate.postForObject(anyString(), org.mockito.ArgumentMatchers.any(),
+        org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class)))
+        .thenReturn(first, tokenOnly, last);
+
+    OsvQueryResponse result = client.queryByPackageVersion("npm", "lodash", null);
+
+    assertEquals(List.of("OSV-1", "OSV-2"), result.getVulns().stream().map(OsvVulnerability::getId).toList());
+    ArgumentCaptor<OsvQueryRequest> requests = ArgumentCaptor.forClass(OsvQueryRequest.class);
+    verify(restTemplate, times(3)).postForObject(anyString(), requests.capture(),
+        org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class));
+    assertEquals(Arrays.asList(null, "next-1", "next-2"),
+        requests.getAllValues().stream().map(OsvQueryRequest::getPageToken).toList());
+  }
+
+  @Test
+  void repeatedContinuationTokenFailsInsteadOfReturningPartialResult() {
+    OsvQueryResponse repeated = OsvQueryResponse.builder().nextPageToken("same-token").build();
+    when(restTemplate.postForObject(anyString(), org.mockito.ArgumentMatchers.any(),
+        org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class))).thenReturn(repeated);
+
+    assertThrows(IllegalStateException.class, () -> client.queryByPackageVersion("npm", "lodash", null));
+    verify(restTemplate, times(2)).postForObject(anyString(), org.mockito.ArgumentMatchers.any(),
+        org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class));
+  }
+
+  @Test
+  void pageLimitFailsInsteadOfReturningPartialResult() {
+    java.util.concurrent.atomic.AtomicInteger page = new java.util.concurrent.atomic.AtomicInteger();
+    when(restTemplate.postForObject(anyString(), org.mockito.ArgumentMatchers.any(),
+        org.mockito.ArgumentMatchers.eq(OsvQueryResponse.class)))
+        .thenAnswer(ignored -> OsvQueryResponse.builder()
+            .nextPageToken("token-" + page.incrementAndGet()).build());
+
+    assertThrows(IllegalStateException.class, () -> client.queryByPackageVersion("npm", "lodash", null));
+    assertEquals(100, page.get());
+  }
+
+  @Test
+  void continuationFieldsUseOsvWireNames() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    assertEquals("cursor", mapper.readValue("{\"next_page_token\":\"cursor\"}", OsvQueryResponse.class)
+        .getNextPageToken());
+    String request = mapper.writeValueAsString(OsvQueryRequest.builder().pageToken("cursor").build());
+    assertTrue(request.contains("\"page_token\":\"cursor\""));
   }
 
   @Test

@@ -52,4 +52,33 @@ class OsvPlatformServiceTest {
         Set<Object> cves=new HashSet<>();payload.getAllValues().forEach(row -> cves.add(((Map<?,?>)row).get("nvd_cve_id")));
         assertEquals(Set.of("CVE-2021-23337","CVE-2021-23338"),cves);
     }
+
+    @Test void supportedPurlTypesMapToOsvEcosystemsAndKeepScopedNames() {
+        List<SoftwareIdentity> inventory = new ArrayList<>();
+        for (String purl : List.of(
+                "pkg:npm/%40angular/core@17.0.0",
+                "pkg:pypi/Django@4.0.0",
+                "pkg:golang/github.com/Example/Module@v1.0.0",
+                "pkg:cargo/serde@1.0.0",
+                "pkg:gem/rails@7.0.0",
+                "pkg:maven/org.example/unhandled@1.0")) {
+            SoftwareIdentity identity = new SoftwareIdentity();
+            identity.setPurl(purl);
+            inventory.add(identity);
+        }
+        when(software.findAll()).thenReturn(inventory);
+        when(client.queryByPackageVersion(anyString(), anyString(), isNull()))
+                .thenReturn(OsvApiClient.OsvQueryResponse.builder().vulns(List.of()).build());
+
+        service.syncOsvAdvisories();
+
+        verify(software).findAll();
+        verify(client).queryByPackageVersion("npm", "@angular/core", null);
+        verify(client).queryByPackageVersion("PyPI", "Django", null);
+        verify(client).queryByPackageVersion("Go", "github.com/Example/Module", null);
+        verify(client).queryByPackageVersion("crates.io", "serde", null);
+        verify(client).queryByPackageVersion("RubyGems", "rails", null);
+        verify(client, times(5)).queryByPackageVersion(anyString(), anyString(), isNull());
+        verifyNoInteractions(staging);
+    }
 }

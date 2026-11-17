@@ -4,7 +4,16 @@ import { intelligenceApi } from '../features/intelligence/api';
 
 function formatNextRun(iso: string): string {
   // Name the viewer's time zone so "next run" is not read as server or UTC time.
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' });
+  // Intl does not allow timeZoneName alongside dateStyle/timeStyle; use the
+  // equivalent component options so this view cannot fail during rendering.
+  return new Date(iso).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
 }
 
 export function FeedScheduleControl({ syncType }: { syncType: string }) {

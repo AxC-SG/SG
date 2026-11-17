@@ -46,7 +46,7 @@ public class EuvdApiClient {
 
     public record EuvdPage(
             List<EuvdRecord> records,
-            int totalResults,
+            Integer totalResults,
             int pageNumber,
             int pageSize
     ) {
@@ -117,18 +117,20 @@ public class EuvdApiClient {
 
     private EuvdPage parsePage(String body, int requestedPage) {
         try {
-            JsonNode root = objectMapper.readTree(body == null || body.isBlank() ? "{}" : body);
+            if (body == null || body.isBlank()) {
+                throw new IllegalArgumentException("EUVD returned an empty response");
+            }
+            JsonNode root = objectMapper.readTree(body);
             JsonNode recordsNode = locateRecordsNode(root);
+            if (recordsNode == null || !recordsNode.isArray()) {
+                throw new IllegalArgumentException("EUVD response has no recognized records array");
+            }
             List<EuvdRecord> records = new ArrayList<>();
-            if (recordsNode != null && recordsNode.isArray()) {
-                for (JsonNode recordNode : recordsNode) {
-                    records.add(parseRecord(recordNode));
-                }
+            for (JsonNode recordNode : recordsNode) {
+                records.add(parseRecord(recordNode));
             }
-            int total = intValue(root, "total", "totalResults", "totalElements", "count");
-            if (total <= 0) {
-                total = records.size();
-            }
+            Integer total = parseTotalResults(root);
+            // Null means the feed did not provide a total; explicit zero remains distinct.
             int pageNumber = intValue(root, "page", "pageNumber", "number");
             if (pageNumber < 0) {
                 pageNumber = requestedPage;
@@ -381,6 +383,24 @@ public class EuvdApiClient {
             }
         }
         return -1;
+    }
+
+    private Integer parseTotalResults(JsonNode root) {
+        if (root == null || !root.isObject()) return null;
+        for (String name : List.of("total", "totalResults", "totalElements", "count")) {
+            if (!root.has(name)) continue;
+            JsonNode value = root.get(name);
+            try {
+                int total = value.isIntegralNumber() && value.canConvertToInt()
+                        ? value.intValue()
+                        : value.isTextual() ? Integer.parseInt(value.asText().trim()) : -1;
+                if (total >= 0) return total;
+            } catch (NumberFormatException ignored) {
+                // A present malformed total cannot be treated as an absent total.
+            }
+            throw new IllegalArgumentException("EUVD response has an invalid total");
+        }
+        return null;
     }
 
     private Set<String> extractCveIds(String rawJson) {

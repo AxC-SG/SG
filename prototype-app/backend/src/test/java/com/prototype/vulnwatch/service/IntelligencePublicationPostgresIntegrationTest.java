@@ -30,6 +30,8 @@ class IntelligencePublicationPostgresIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired VulnerabilityIngestionService ingestion;
     @Autowired IntelligencePublicationService publications;
+    @Autowired IntelligenceReleaseChangeScopeService changeScope;
+    @Autowired com.prototype.vulnwatch.controller.PlatformIntelligenceController platformController;
     @Autowired ObservationIngestionService observations;
     @Autowired VexAssertionService vex;
     @Autowired EntityManager entities;
@@ -84,6 +86,19 @@ class IntelligencePublicationPostgresIntegrationTest {
             assertEquals(1,count("platform.vulnerabilities"));assertEquals(1,count("platform.vulnerability_targets"));
             UUID canonical=jdbc.queryForObject("select id from platform.vulnerabilities where external_id=?",UUID.class,external);
             UUID release=jdbc.queryForObject("select release_id from platform.intelligence_active_state",UUID.class);
+            var scope=platformController.changeScope(release,null);
+            assertFalse(scope.routingReady());
+            assertFalse(scope.changes().isEmpty());
+            assertTrue(scope.changes().stream().anyMatch(change -> change.directVulnerabilityIds().contains(canonical)));
+            String targetKey=jdbc.queryForObject("select normalized_target_key from platform.vulnerability_targets where vulnerability_id=?",String.class,canonical);
+            assertTrue(scope.changes().stream().filter(change -> change.tableName().equals("vulnerability_targets"))
+                    .anyMatch(change -> change.directProductKeys().contains(targetKey)));
+            assertFalse(scope.toString().contains("A prepared applicability rule"));
+            assertEquals(0,changeScope.inspect(release,Long.MAX_VALUE).changes().size());
+            assertEquals(400,assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                    ()->changeScope.inspect(release,-1L)).getStatusCode().value());
+            assertEquals(404,assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                    ()->changeScope.inspect(UUID.randomUUID(),null)).getStatusCode().value());
             assertEquals(1,jdbc.queryForObject("select count(*) from platform.intelligence_publication_outbox where kind='FANOUT' and release_id=?",Integer.class,release));
             assertThrows(org.springframework.dao.DataAccessException.class,() -> jdbc.update("update platform.intelligence_releases set digest=? where id=?","f".repeat(64),release));
             jdbc.update("update tenant_default.inventory_components set software_identity_id=(select software_identity_id from platform.vulnerability_targets limit 1)");
@@ -121,6 +136,41 @@ class IntelligencePublicationPostgresIntegrationTest {
             assertEquals(0,count("platform.vulnerability_targets"));assertEquals(canonical,jdbc.queryForObject("select id from platform.vulnerabilities where external_id=?",UUID.class,external));
             assertTrue(jdbc.queryForObject("select intelligence_withdrawn from platform.vulnerabilities where id=?",Boolean.class,canonical));
             assertEquals(2L,jdbc.queryForObject("select generation from platform.intelligence_active_state",Long.class));
+        });
+    }
+    @Test
+    @WithMockUser(roles="TENANT_ADMIN")
+    void tenantAdminCannotInspectPlatformReleaseChangeScope() {
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                ()->platformController.changeScope(UUID.randomUUID(),null));
+    }
+    @Test void malformedJournalReferenceIsUnresolvedWithoutBreakingThePageOrLeakingPayload() {
+        TenantContext.runAsPlatform(() -> {
+            UUID release=UUID.randomUUID();
+            UUID canonical=UUID.randomUUID();
+            jdbc.update("""
+                    insert into platform.intelligence_releases(id,generation,digest,actor,status)
+                    values (?,(select generation+100 from platform.intelligence_active_state where singleton=true),?,?,'PUBLISHED')
+                    """,release,"0".repeat(64),"scope-test");
+            jdbc.update("""
+                    insert into platform.intelligence_release_changes
+                      (release_id,table_schema,table_name,row_id,previous_value,new_value)
+                    values (?,'platform','intelligence_identifiers',?,?::jsonb,?::jsonb)
+                    """,release,UUID.randomUUID(),
+                    "{\"canonical_id\":\""+canonical+"\"}",
+                    "{\"canonical_id\":\"not-a-uuid\",\"raw_payload\":\"private-marker\"}");
+            jdbc.update("""
+                    insert into platform.intelligence_release_changes
+                      (release_id,table_schema,table_name,row_id,previous_value,new_value)
+                    values (?,'platform','vulnerabilities',?,null,null)
+                    """,release,canonical);
+            var scope=changeScope.inspect(release,null);
+            assertEquals(2,scope.changes().size());
+            assertTrue(scope.changes().get(0).directVulnerabilityIds().contains(canonical));
+            assertTrue(scope.changes().get(0).unresolved());
+            assertFalse(scope.changes().get(1).unresolved());
+            assertFalse(scope.routingReady());
+            assertFalse(scope.toString().contains("private-marker"));
         });
     }
     private void assertRuntimeVisibility(UUID tenant,int expected,boolean includeHistory) {

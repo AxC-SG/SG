@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { pathForVulnRepoView } from '../app/routes';
 import { PageFreshnessStatus } from '../components/PageFreshnessStatus';
-import { usePlatformVulnIntelDetailQuery } from '../features/vuln-repo-dashboard/queries';
+import { usePlatformVulnIntelDetailQuery, usePlatformVulnIntelObservationsQuery } from '../features/vuln-repo-dashboard/queries';
 import type { PlatformVulnIntelSourceObservation } from '../features/vuln-repo-dashboard/types';
 import { severityClassName } from '../features/cve-workbench/formatting';
 
@@ -43,7 +43,7 @@ function SourceObservationCard({ obs }: { obs: PlatformVulnIntelSourceObservatio
             </span>
           )}
           {obs.cvssScore != null && (
-            <span style={{ fontSize: 12, fontWeight: 600 }}>CVSS {obs.cvssScore.toFixed(1)}</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>CVSS{obs.cvssVersion ? ` v${obs.cvssVersion}` : ''} {obs.cvssScore.toFixed(1)}</span>
           )}
         </div>
       </div>
@@ -64,7 +64,13 @@ function SourceObservationCard({ obs }: { obs: PlatformVulnIntelSourceObservatio
         )}
         {obs.publishedAt && <span>Published: {formatDate(obs.publishedAt)}</span>}
         {obs.lastModifiedAt && <span>Modified: {formatDate(obs.lastModifiedAt)}</span>}
+        {obs.observedAt && <span>First observed: {new Date(obs.observedAt).toLocaleString()}</span>}
+        {obs.lastSeenAt && <span>Last seen: {new Date(obs.lastSeenAt).toLocaleString()}</span>}
       </div>
+
+      {obs.payloadHash && <p className="mono" style={{ fontSize: 11, wordBreak: 'break-all' }}>
+        Stored payload fingerprint: {obs.payloadHash}
+      </p>}
 
       {obs.sourceUrl && (
         <div style={{ marginTop: 8 }}>
@@ -78,7 +84,9 @@ function SourceObservationCard({ obs }: { obs: PlatformVulnIntelSourceObservatio
 export function PlatformVulnIntelDetailPage() {
   const { externalId } = useParams<{ externalId: string }>();
   const navigate = useNavigate();
+  const [observationCursor, setObservationCursor] = React.useState<string | undefined>();
   const query = usePlatformVulnIntelDetailQuery(externalId ?? '');
+  const observationQuery = usePlatformVulnIntelObservationsQuery(externalId ?? '', observationCursor);
   const detail = query.data;
   const refreshing = query.isFetching && !!detail;
 
@@ -257,19 +265,26 @@ export function PlatformVulnIntelDetailPage() {
           ) : null}
 
           {/* Per-source observations */}
-          {detail.observations.length > 0 ? (
+          {(
             <section className="panel">
               <div className="panel-header">
                 <h3>Source Details</h3>
-                <span className="panel-caption">{detail.observations.length} source{detail.observations.length !== 1 ? 's' : ''}</span>
+                <span className="panel-caption">Paged source evidence (25 per page)</span>
               </div>
+              {observationQuery.isPending ? <p>Loading source evidence…</p> : null}
+              {observationQuery.isError ? <p role="alert">Could not load source evidence. Retry to continue.</p> : null}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {detail.observations.map((obs) => (
-                  <SourceObservationCard key={`${obs.sourceSystem}-${obs.sourceRecordId}`} obs={obs} />
+                {observationQuery.data?.items.map((item) => (
+                  <SourceObservationCard key={item.id} obs={item.observation} />
                 ))}
               </div>
+              {observationQuery.data?.items.length === 0 ? <p>No source evidence recorded.</p> : null}
+              {observationQuery.isError ? <button type="button" onClick={() => void observationQuery.refetch()}>Retry</button> : null}
+              {observationQuery.data?.hasMore && observationQuery.data.nextAfterId ? (
+                <button type="button" onClick={() => setObservationCursor(observationQuery.data.nextAfterId ?? undefined)}>Next evidence page</button>
+              ) : null}
             </section>
-          ) : null}
+          )}
 
           {/* References */}
           {detail.references.length > 0 ? (

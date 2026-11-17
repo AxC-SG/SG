@@ -133,6 +133,9 @@ class ProductionBootstrapCliPostgresIntegrationTest {
                 """));
 
         verifyRuntimeIsolation(tenantId);
+        verifyRuntimeCoverageLedger();
+        UUID vulnerabilityId = verifyRuntimePlatformObservationRead();
+        verifyRuntimeCatalogPolicyIsolation(tenantId, vulnerabilityId);
     }
 
     private void withBootstrapProperties(ThrowingRunnable runnable) throws Exception {
@@ -232,6 +235,216 @@ class ProductionBootstrapCliPostgresIntegrationTest {
                 }
             });
             assertEquals("42501", crossTenantWrite.getSQLState());
+        }
+    }
+
+    private void verifyRuntimeCoverageLedger() throws Exception {
+        UUID runId = UUID.randomUUID();
+        String scope = "nvd:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        java.time.Instant from = java.time.Instant.parse("2026-01-01T00:00:00Z");
+        java.time.Instant to = from.plusSeconds(3 * 86400L);
+        try (Connection runtime = DriverManager.getConnection(DATABASE.url(), RUNTIME_USERNAME, RUNTIME_PASSWORD)) {
+            try (var insert = runtime.prepareStatement("""
+                    insert into platform.sync_runs
+                      (id, records_failed, records_fetched, records_inserted, records_updated,
+                       run_scope, started_at, status, sync_type)
+                    values (?, 0, 0, 0, 0, 'PLATFORM', now(), 'completed', 'NVD')
+                    """)) {
+                insert.setObject(1, runId);
+                assertEquals(1, insert.executeUpdate());
+            }
+            try (var insert = runtime.prepareStatement("""
+                    insert into platform.feed_coverage_observations
+                      (run_id, source_system, feed_key, interval_start, interval_end, fetched_records, ids_recorded_at)
+                    values (?, 'nvd', ?, ?, ?, 1, now())
+                    """)) {
+                insert.setObject(1, runId);
+                insert.setString(2, scope);
+                insert.setObject(3, java.sql.Timestamp.from(from));
+                insert.setObject(4, java.sql.Timestamp.from(from.plusSeconds(86400L)));
+                assertEquals(1, insert.executeUpdate());
+            }
+            try (var insert = runtime.prepareStatement("""
+                    insert into platform.nvd_observed_interval_ids
+                      (run_id, interval_start, interval_end, cve_id)
+                    values (?, ?, ?, 'CVE-2026-12345')
+                    """)) {
+                insert.setObject(1, runId);
+                insert.setObject(2, java.sql.Timestamp.from(from));
+                insert.setObject(3, java.sql.Timestamp.from(from.plusSeconds(86400L)));
+                assertEquals(1, insert.executeUpdate());
+            }
+            try (var read = runtime.prepareStatement("""
+                    select count(*) from platform.feed_coverage_observations o
+                    join platform.nvd_observed_interval_ids ids
+                      on ids.run_id=o.run_id and ids.interval_start=o.interval_start
+                      and ids.interval_end=o.interval_end
+                    where o.run_id = ? and o.feed_key = ? and o.fetched_records = 1
+                      and o.ids_recorded_at is not null and ids.cve_id='CVE-2026-12345'
+                    """)) {
+                read.setObject(1, runId);
+                read.setString(2, scope);
+                try (ResultSet result = read.executeQuery()) {
+                    result.next();
+                    assertEquals(1, result.getInt(1));
+                }
+            }
+        }
+        var dataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                DATABASE.url(), RUNTIME_USERNAME, RUNTIME_PASSWORD);
+        var diagnostic = new com.prototype.vulnwatch.service.vulningestion.NvdObservedGapsService(
+                new org.springframework.jdbc.core.JdbcTemplate(dataSource));
+        var scopes = diagnostic.scopes(null);
+        assertEquals(1, scopes.items().size());
+        assertEquals(scope, scopes.items().get(0).feedKey());
+        assertEquals(1, scopes.items().get(0).observedWindowCount());
+        var gaps = diagnostic.inspect(scope, from, to);
+        assertEquals(1, gaps.observedWindowCount());
+        assertEquals("UNKNOWN", gaps.historicalCoverageStatus());
+        assertEquals(java.util.List.of(new com.prototype.vulnwatch.dto.NvdObservedGapsResponse.Interval(
+                from.plusSeconds(86400L), to)), gaps.unobservedIntervals());
+    }
+
+    private UUID verifyRuntimePlatformObservationRead() throws Exception {
+        UUID vulnerabilityId = UUID.randomUUID();
+        UUID observationId = UUID.randomUUID();
+        try (Connection owner = DriverManager.getConnection(DATABASE.url(), DATABASE.username(), DATABASE.password())) {
+            try (var insert = owner.prepareStatement("""
+                    insert into platform.vulnerabilities
+                      (id, external_id, source, title, severity, in_kev, created_at, updated_at)
+                    values (?, ?, 'NVD', 'Bootstrap observation', 'HIGH', false, now(), now())
+                    """)) {
+                insert.setObject(1, vulnerabilityId);
+                insert.setString(2, "CVE-2098-" + vulnerabilityId.toString().substring(0, 8).toUpperCase());
+                assertEquals(1, insert.executeUpdate());
+            }
+            try (var insert = owner.prepareStatement("""
+                    insert into platform.vulnerability_intel_observations
+                      (id, vulnerability_id, source_system, source_record_id, description,
+                       raw_payload, payload_hash, observed_at, last_seen_at, created_at, updated_at)
+                    values (?, ?, 'nvd', ?, 'Public fixture description',
+                            'private bootstrap payload', 'fixture-fingerprint', now(), now(), now(), now())
+                    """)) {
+                insert.setObject(1, observationId);
+                insert.setObject(2, vulnerabilityId);
+                insert.setString(3, "bootstrap-" + observationId);
+                assertEquals(1, insert.executeUpdate());
+            }
+        }
+        try (Connection runtime = DriverManager.getConnection(DATABASE.url(), RUNTIME_USERNAME, RUNTIME_PASSWORD);
+             Statement statement = runtime.createStatement()) {
+            statement.execute("select set_config('search_path', 'pg_catalog', false)");
+            try (var read = runtime.prepareStatement("""
+                    select id, source_system, source_record_id, description, observed_at,
+                           last_seen_at, payload_hash
+                    from platform.vulnerability_intel_observations
+                    where vulnerability_id = ? and (cast(? as uuid) is null or id > cast(? as uuid))
+                    order by id limit 2
+                    """)) {
+                read.setObject(1, vulnerabilityId);
+                read.setNull(2, java.sql.Types.OTHER);
+                read.setNull(3, java.sql.Types.OTHER);
+                try (ResultSet result = read.executeQuery()) {
+                    assertTrue(result.next());
+                    assertEquals(observationId, result.getObject("id", UUID.class));
+                    assertEquals("fixture-fingerprint", result.getString("payload_hash"));
+                    assertEquals(7, result.getMetaData().getColumnCount());
+                    assertTrue(!result.next());
+                }
+            }
+        }
+        return vulnerabilityId;
+    }
+
+    private void verifyRuntimeCatalogPolicyIsolation(UUID tenantId, UUID vulnerabilityId) throws Exception {
+        try (Connection runtime = DriverManager.getConnection(DATABASE.url(), RUNTIME_USERNAME, RUNTIME_PASSWORD)) {
+            setTenantContext(runtime, tenantId);
+            try (var insert = runtime.prepareStatement("""
+                    insert into tenant_bootstrap_customer.intelligence_catalog_policy_versions
+                      (tenant_id, version, policy_json, policy_sha256)
+                    values (?, 1, '{}'::jsonb, repeat('a', 64))
+                    """)) {
+                insert.setObject(1, tenantId);
+                assertEquals(1, insert.executeUpdate());
+            }
+            assertEquals(1, countCatalogPolicies(runtime));
+            UUID buildId = UUID.randomUUID();
+            try (var insert = runtime.prepareStatement("""
+                    insert into tenant_bootstrap_customer.intelligence_catalog_builds
+                      (tenant_id, id, policy_version, generation, override_state, source_state, status)
+                    values (?, ?, 1, 1, 'test-override-state', 'test-source-state', 'QUEUED')
+                    """)) {
+                insert.setObject(1, tenantId);
+                insert.setObject(2, buildId);
+                assertEquals(1, insert.executeUpdate());
+            }
+            assertEquals(1, countCatalogBuilds(runtime));
+            try (var insert = runtime.prepareStatement("""
+                    insert into tenant_bootstrap_customer.intelligence_catalog_members
+                      (tenant_id, build_id, vulnerability_id, reason)
+                    values (?, ?, ?, 'POLICY')
+                    """)) {
+                insert.setObject(1, tenantId);
+                insert.setObject(2, buildId);
+                insert.setObject(3, vulnerabilityId);
+                assertEquals(1, insert.executeUpdate());
+            }
+            assertEquals(1, countCatalogMembers(runtime));
+            setTenantContext(runtime, UUID.randomUUID());
+            assertEquals(0, countCatalogPolicies(runtime));
+            assertEquals(0, countCatalogBuilds(runtime));
+            assertEquals(0, countCatalogMembers(runtime));
+            SQLException crossTenantWrite = assertThrows(SQLException.class, () -> {
+                try (var insert = runtime.prepareStatement("""
+                        insert into tenant_bootstrap_customer.intelligence_catalog_policy_versions
+                          (tenant_id, version, policy_json, policy_sha256)
+                        values (?, 2, '{}'::jsonb, repeat('b', 64))
+                        """)) {
+                    insert.setObject(1, tenantId);
+                    insert.executeUpdate();
+                }
+            });
+            assertEquals("42501", crossTenantWrite.getSQLState());
+            SQLException crossTenantMember = assertThrows(SQLException.class, () -> {
+                try (var insert = runtime.prepareStatement("""
+                        insert into tenant_bootstrap_customer.intelligence_catalog_members
+                          (tenant_id, build_id, vulnerability_id, reason)
+                        values (?, ?, ?, 'POLICY')
+                        """)) {
+                    insert.setObject(1, tenantId);
+                    insert.setObject(2, buildId);
+                    insert.setObject(3, UUID.randomUUID());
+                    insert.executeUpdate();
+                }
+            });
+            assertEquals("42501", crossTenantMember.getSQLState());
+        }
+    }
+
+    private int countCatalogPolicies(Connection connection) throws SQLException {
+        try (var statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "select count(*) from tenant_bootstrap_customer.intelligence_catalog_policy_versions")) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
+    private int countCatalogBuilds(Connection connection) throws SQLException {
+        try (var statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "select count(*) from tenant_bootstrap_customer.intelligence_catalog_builds")) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
+    private int countCatalogMembers(Connection connection) throws SQLException {
+        try (var statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "select count(*) from tenant_bootstrap_customer.intelligence_catalog_members")) {
+            result.next();
+            return result.getInt(1);
         }
     }
 

@@ -9,10 +9,10 @@ public final class IntelligenceSourceRegistry {
     private IntelligenceSourceRegistry() { }
     public static String setting(String evidenceSource) {
         if(evidenceSource==null) return "";
-        String source=evidenceSource.toLowerCase(Locale.ROOT).replace('_','-');
+        String source=evidenceSource.trim().toLowerCase(Locale.ROOT).replace('_','-');
         if(source.contains("redhat")) return "redhat";
         if(source.contains("microsoft")) return "microsoft";
-        if(source.equals("japan-vulndb")) return "jvn";
+        if(source.equals("japan-vulndb") || source.equals("jvndb")) return "jvn";
         if(source.startsWith("nvd") || source.startsWith("backfill")) return "nvd";
         return source;
     }

@@ -123,6 +123,10 @@ public class CsafSyncService {
         try {
             CsafDistributionSet distributions = discoveryService.discoverDistributions(provider);
             List<CsafDocumentRef> documents = discoveryService.collectDocumentRefs(distributions, provider);
+            if (documents == null || documents.isEmpty()) {
+                throw new IllegalStateException(provider.displayName()
+                        + " CSAF/VEX discovery returned no documents; coverage cannot be confirmed");
+            }
 
             // For MICROSOFT: re-sort the discovered document list so that VEX documents for
             // CVEs already in our inventory appear first. This is a zero-HTTP-request operation —
@@ -239,6 +243,11 @@ public class CsafSyncService {
                     run.setRecordsFailed(failed);
                     syncRunService.save(run);
                 }
+            }
+
+            if (fetched == 0 && failed > 0) {
+                throw new IllegalStateException(provider.displayName()
+                        + " CSAF/VEX sync failed for every discovered document: " + diagnostics.summaryLine());
             }
 
             Set<UUID> allChangedVulnerabilityIds = new LinkedHashSet<>(changedVulnerabilityIds);

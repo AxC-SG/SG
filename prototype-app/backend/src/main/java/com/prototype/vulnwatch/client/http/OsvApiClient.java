@@ -1,11 +1,12 @@
 package com.prototype.vulnwatch.client.http;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ import org.springframework.web.client.HttpClientErrorException;
 public class OsvApiClient {
 
   private static final String OSV_API_URL = "https://api.osv.dev/v1/query";
+  private static final int MAX_QUERY_PAGES = 100;
   private final RestTemplate restTemplate;
 
   @Autowired
@@ -32,19 +34,33 @@ public class OsvApiClient {
     log.debug("Querying OSV: {}:{}@{}", ecosystem, packageName, version);
 
     try {
-      OsvQueryRequest request = OsvQueryRequest.builder()
-          .pkg(OsvPackage.builder().ecosystem(ecosystem).name(packageName).build())
-          .version(version)
-          .build();
-
-      OsvQueryResponse response = restTemplate.postForObject(OSV_API_URL, request, OsvQueryResponse.class);
-
-      if (response != null) {
-        log.debug("OSV returned {} vulnerabilities", response.getVulns().size());
-        return response;
+      List<OsvVulnerability> vulnerabilities = new ArrayList<>();
+      Set<String> seenTokens = new HashSet<>();
+      String pageToken = null;
+      for (int page = 0; page < MAX_QUERY_PAGES; page++) {
+        OsvQueryRequest request = OsvQueryRequest.builder()
+            .pkg(OsvPackage.builder().ecosystem(ecosystem).name(packageName).build())
+            .version(version)
+            .pageToken(pageToken)
+            .build();
+        OsvQueryResponse response = restTemplate.postForObject(OSV_API_URL, request, OsvQueryResponse.class);
+        if (response == null) {
+          throw new IllegalStateException("OSV returned no usable response");
+        }
+        if (response.getVulns() != null) {
+          vulnerabilities.addAll(response.getVulns());
+        }
+        String nextPageToken = response.getNextPageToken();
+        if (nextPageToken == null || nextPageToken.isBlank()) {
+          log.debug("OSV returned {} vulnerabilities across {} pages", vulnerabilities.size(), page + 1);
+          return OsvQueryResponse.builder().vulns(vulnerabilities).build();
+        }
+        if (!seenTokens.add(nextPageToken)) {
+          throw new IllegalStateException("OSV repeated a continuation token");
+        }
+        pageToken = nextPageToken;
       }
-
-      throw new IllegalStateException("OSV returned no usable response");
+      throw new IllegalStateException("OSV query page limit reached before completion");
 
     } catch (HttpClientErrorException e) {
       log.warn("OSV query failed for {}:{}: {}", ecosystem, packageName, e.getMessage());
@@ -81,6 +97,8 @@ public class OsvApiClient {
     @JsonProperty("package")
     private OsvPackage pkg;
     private String version;
+    @JsonProperty("page_token")
+    private String pageToken;
   }
 
   @Data
@@ -99,6 +117,8 @@ public class OsvApiClient {
   @AllArgsConstructor
   public static class OsvQueryResponse {
     private List<OsvVulnerability> vulns;
+    @JsonProperty("next_page_token")
+    private String nextPageToken;
   }
 
   @Data

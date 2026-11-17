@@ -96,6 +96,23 @@ public class AuditEventService {
         }
     }
 
+    /** Use only from an existing platform write transaction when audit and action must commit together. */
+    public void recordPlatformFeedInCurrentTransaction(String action, String targetType,
+                                                       String targetId, String detailsJson) {
+        if (action == null || !action.startsWith("platform.vulnerability_feed.")
+                || !org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("A platform feed action and active transaction are required");
+        }
+        RequestActor currentActor = requestActorService.currentActor();
+        if (!currentActor.roles().contains("PLATFORM_OWNER")) {
+            throw new org.springframework.security.access.AccessDeniedException("Platform owner authority is required");
+        }
+        String actor = currentActor.userId();
+        TenantContext.runAsPlatform(() -> platformJdbc.update(
+                "insert into platform.intelligence_audit_events(id,action,actor,detail) values(?,'FEED_ACTION',?,jsonb_build_object('action',?::text,'targetType',?::text,'targetId',?::text,'outcome','SUCCESS','details',?::jsonb))",
+                UUID.randomUUID(), actor, action, targetType, targetId, detailsJson == null ? "{}" : detailsJson));
+    }
+
     public void recordExplicitActor(
             UUID tenantId,
             String actorSubject,
