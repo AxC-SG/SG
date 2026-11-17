@@ -1,3 +1,4 @@
+-- migration-guard: platform-only
 -- Small control-plane index for pending tenant catalog work. No vulnerability data lives here.
 CREATE TABLE platform.tenant_catalog_build_queue (
     tenant_id uuid PRIMARY KEY REFERENCES platform.tenants(id),
