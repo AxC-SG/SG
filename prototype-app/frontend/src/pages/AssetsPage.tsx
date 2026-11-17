@@ -72,7 +72,8 @@ function defaultForm(): ServiceNowCmdbConfigRequest {
     pageSize: 1000,
     enabled: true,
     autoSyncEnabled: false,
-    intervalMinutes: 1440
+    intervalMinutes: 1440,
+    defaultAssignmentGroup: ''
   };
 }
 
@@ -95,7 +96,8 @@ function formFromConfig(config: ServiceNowCmdbConfig | null): ServiceNowCmdbConf
     pageSize: config.pageSize ?? 1000,
     enabled: config.enabled,
     autoSyncEnabled: config.autoSyncEnabled,
-    intervalMinutes: config.intervalMinutes ?? 1440
+    intervalMinutes: config.intervalMinutes ?? 1440,
+    defaultAssignmentGroup: config.defaultAssignmentGroup ?? ''
   };
 }
 
@@ -163,7 +165,9 @@ export function AssetsPage() {
         baseUrl: form.baseUrl.trim(),
         pageSize: 1000,
         enabled: true,
-        intervalMinutes: Math.max(60, Number(form.intervalMinutes) || 1440)
+        intervalMinutes: Math.max(60, Number(form.intervalMinutes) || 1440),
+        // Blank clears the stored default; null would keep it.
+        defaultAssignmentGroup: form.defaultAssignmentGroup?.trim() ?? ''
       };
       const saved = await api.saveServiceNowCmdbConfig(payload);
       queryClient.setQueryData(['service-now-cmdb-config'], saved);
@@ -368,6 +372,21 @@ export function AssetsPage() {
               value={form.ciTable}
               onChange={(event) => updateField('ciTable', event.target.value)}
               placeholder="cmdb_ci"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h4 className="form-section-title">Ticket routing</h4>
+        <div className="form-grid">
+          <label>
+            <span>Default assignment group</span>
+            <input
+              type="text"
+              value={form.defaultAssignmentGroup ?? ''}
+              onChange={(event) => updateField('defaultAssignmentGroup', event.target.value)}
+              placeholder="Used when a finding's owner team has no mapped group"
             />
           </label>
         </div>

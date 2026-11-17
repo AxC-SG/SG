@@ -51,6 +51,14 @@ public class InventoryService {
     private final CiAliasRepository ciAliasRepository;
     private final ComponentVulnerabilityStateRepository componentVulnerabilityStateRepository;
 
+    private com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads;
+
+    /** Phase 0B §3.7: owner envelopes on component rows once CLOUD_BOM inventory reads are canonical. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setOwnershipReads(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter ownershipReads) {
+        this.ownershipReads = ownershipReads;
+    }
+
     public InventoryService(
             InventoryComponentRepository inventoryComponentRepository,
             SoftwareInstanceRepository softwareInstanceRepository,
@@ -77,6 +85,33 @@ public class InventoryService {
             int page,
             int size
     ) {
+        return listComponentsPage(tenant, assetTypes, componentStatuses, sourceSystems, ecosystems, reviewCategories, query, null, null, page, size);
+    }
+
+    /**
+     * As above, optionally filtered by the occurrence's live owner team and/or status (Phase 0B §3.7). The filter is
+     * 409 while BOM ownership is not canonical, and 400 when more than
+     * {@link com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter#MAX_OCCURRENCE_FILTER_IDS} rows match.
+     */
+    @Transactional(readOnly = true)
+    public InventoryComponentPageResponse listComponentsPage(
+            Tenant tenant,
+            List<AssetType> assetTypes,
+            List<InventoryComponentStatus> componentStatuses,
+            List<String> sourceSystems,
+            List<String> ecosystems,
+            List<String> reviewCategories,
+            String query,
+            UUID ownerTeamId,
+            String ownershipStatus,
+            int page,
+            int size
+    ) {
+        boolean ownerFilter = ownerTeamId != null || (ownershipStatus != null && !ownershipStatus.isBlank());
+        List<UUID> ownerIds = ownerFilter && ownershipReads != null
+                ? ownershipReads.occurrenceIds(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.OccurrenceTable.INVENTORY_COMPONENTS,
+                        ownerTeamId, ownershipStatus)
+                : List.of();
         int safePage = Math.max(0, page);
         int safeSize = Math.min(200, Math.max(1, size));
         List<AssetType> normalizedAssetTypes = sanitizeEnumValues(assetTypes);
@@ -106,16 +141,22 @@ public class InventoryService {
                 reviewDiscoveryModel,
                 HostInventoryReviewEvaluator.LOW_CONFIDENCE_ALIAS_THRESHOLD,
                 normalizedQueryPattern,
+                ownerFilter,
+                ownerFilter ? ownerIds : List.of(new UUID(0L, 0L)),
                 pageable
         );
         Map<UUID, ComponentVulnerabilitySummary> vulnerabilitySummaryByComponentId =
                 buildComponentVulnerabilitySummaries(tenant, componentPage.getContent());
         Map<UUID, HostReviewSignals> hostReviewSignalsByComponentId = buildHostReviewSignals(tenant, componentPage.getContent());
+        Map<UUID, com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary> owners = ownershipReads == null ? Map.of()
+                : ownershipReads.forOccurrences(com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.OccurrenceTable.INVENTORY_COMPONENTS,
+                        componentPage.getContent().stream().map(InventoryComponent::getId).toList());
         List<InventoryComponentResponse> items = componentPage.getContent().stream()
                 .map(component -> toInventoryComponentResponse(
                         component,
                         hostReviewSignalsByComponentId.getOrDefault(component.getId(), HostReviewSignals.NONE),
-                        vulnerabilitySummaryByComponentId.getOrDefault(component.getId(), ComponentVulnerabilitySummary.NONE)
+                        vulnerabilitySummaryByComponentId.getOrDefault(component.getId(), ComponentVulnerabilitySummary.NONE),
+                        owners.get(component.getId())
                 ))
                 .toList();
         return new InventoryComponentPageResponse(
@@ -173,7 +214,8 @@ public class InventoryService {
     private InventoryComponentResponse toInventoryComponentResponse(
             InventoryComponent component,
             HostReviewSignals reviewSignals,
-            ComponentVulnerabilitySummary vulnerabilitySummary
+            ComponentVulnerabilitySummary vulnerabilitySummary,
+            com.prototype.vulnwatch.service.ownership.OwnershipReadAdapter.Summary owner
     ) {
         SbomUpload upload = component.getSbomUpload();
         SoftwareIdentity identity = component.getSoftwareIdentity();
@@ -216,7 +258,8 @@ public class InventoryService {
                 component.getIsEol(),
                 component.getEolDate() != null
                         ? (int) java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), component.getEolDate())
-                        : null
+                        : null,
+                owner
         );
     }
 

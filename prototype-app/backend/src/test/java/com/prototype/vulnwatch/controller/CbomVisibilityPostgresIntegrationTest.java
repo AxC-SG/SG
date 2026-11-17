@@ -87,7 +87,7 @@ class CbomVisibilityPostgresIntegrationTest {
         inTenant(() -> transactions.execute(tx -> { visibility.snapshot(tenantService.getDefaultTenant()); return null; }));
         inTenant(() -> transactions.execute(tx -> { visibility.snapshot(tenantService.getDefaultTenant()); return null; }));
         assertEquals(1L, (long) inTenant(() -> jdbc.queryForObject(
-                "select count(*) from cbom_posture_snapshots where snapshot_date = current_date", Long.class)), "snapshots are idempotent per day");
+                "select count(*) from cbom_posture_snapshots where snapshot_date = (now() AT TIME ZONE 'UTC')::date", Long.class)), "snapshots are idempotent per UTC day");
 
         JsonNode algorithms = get("/api/bom/cbom/inventory?assetType=ALGORITHM&bomId=" + bomId + "&size=2");
         assertEquals(2, algorithms.path("items").size());

@@ -12,6 +12,11 @@ public record CreateFindingTicketRequest(
         String assignee,
         String assignmentGroup,
         String notes,
-        String solutionInfo
+        String solutionInfo,
+        /** Phase 0B §4.9: the preview's routing hash, required on the canonical path, where {@code assignmentGroup} is ignored. */
+        String routingHash,
+        String selectedAssignmentGroup,
+        String assignmentGroupOverride,
+        String overrideReason
 ) {
 }

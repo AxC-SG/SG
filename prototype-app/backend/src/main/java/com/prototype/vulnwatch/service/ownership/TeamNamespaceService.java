@@ -23,7 +23,16 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class TeamNamespaceService {
 
-    public record Team(UUID id, String name, UUID parentTeamId, String ticketAssignmentGroup, String status, long version) { }
+    /**
+     * {@code notificationChannel} says whether the team has a notification address (Phase 0B §4.6). The address itself
+     * is write-only through the team API and is read only by campaign delivery.
+     */
+    public record Team(UUID id, String name, UUID parentTeamId, String ticketAssignmentGroup, String status, long version,
+                       boolean notificationChannel) { }
+
+    /** Purpose bound into the ciphertext AAD of {@code team.notification_email_enc}. */
+    public static final String P_NOTIFICATION_EMAIL = "team.notification.email";
+    private static final java.util.regex.Pattern EMAIL = java.util.regex.Pattern.compile("^[^@\\s]{1,64}@[^@\\s]{1,255}\\.[^@\\s]{1,63}$");
 
     public record Alias(UUID id, UUID teamId, String alias, String sourceKind, UUID sourceId) { }
 
@@ -40,6 +49,51 @@ public class TeamNamespaceService {
         this.jdbc = jdbc;
         this.audit = audit;
         this.resolution = resolution;
+    }
+
+    private com.prototype.vulnwatch.security.tenantkey.TenantDataCipher cipher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setCipher(com.prototype.vulnwatch.security.tenantkey.TenantDataCipher cipher) {
+        this.cipher = cipher;
+    }
+
+    /**
+     * Sets or clears (blank) the team's one notification address (Phase 0B §4.6), encrypted with the tenant key. Fails
+     * with 503 when the tenant key is not ready. The audit event records only whether an address is set.
+     */
+    @Transactional
+    public Team setNotificationEmail(UUID teamId, String email, long expectedVersion, String actor) {
+        String normalized = email == null ? "" : email.strip().toLowerCase(java.util.Locale.ROOT);
+        String ciphertext = null;
+        if (!normalized.isEmpty()) {
+            if (!EMAIL.matcher(normalized).matches()) throw badRequest("notificationEmail is not an email address");
+            UUID tenant = TenantContext.getCurrentTenantId();
+            if (tenant == null) throw new IllegalStateException("Team writes require a tenant context");
+            var readiness = cipher.readiness(tenant);
+            if (!readiness.ready()) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Tenant encryption is not ready (" + readiness.reason() + ")");
+            }
+            ciphertext = cipher.encrypt(tenant, P_NOTIFICATION_EMAIL, normalized);
+        }
+        lock();
+        requireTeam(teamId);
+        int changed = jdbc.update("""
+                UPDATE team SET notification_email_enc = ?, updated_by = ?, updated_at = now(), version = version + 1
+                 WHERE id = ? AND version = ?
+                """, ciphertext, actor, teamId, expectedVersion);
+        if (changed != 1) throw conflict("The team changed since it was loaded; reload and try again");
+        audit.record("ownership.team.notification_channel_updated", "team", teamId.toString(),
+                json("notificationChannel", ciphertext != null));
+        return team(teamId).orElseThrow();
+    }
+
+    /** The team's decrypted notification address, for campaign delivery only; empty when none is set. */
+    @Transactional(readOnly = true)
+    public Optional<String> notificationEmail(UUID teamId) {
+        List<String> values = jdbc.queryForList("SELECT notification_email_enc FROM team WHERE id = ?", String.class, teamId);
+        if (values.isEmpty() || values.get(0) == null) return Optional.empty();
+        return Optional.of(cipher.decrypt(TenantContext.getCurrentTenantId(), P_NOTIFICATION_EMAIL, values.get(0)));
     }
 
     @Transactional
@@ -158,9 +212,9 @@ public class TeamNamespaceService {
 
     @Transactional(readOnly = true)
     public Optional<Team> team(UUID id) {
-        return jdbc.query("SELECT id, name, parent_team_id, ticket_assignment_group, status, version FROM team WHERE id = ?",
+        return jdbc.query("SELECT id, name, parent_team_id, ticket_assignment_group, status, version, notification_email_enc IS NOT NULL FROM team WHERE id = ?",
                 (rs, row) -> new Team(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, UUID.class), rs.getString(4),
-                        rs.getString(5), rs.getLong(6)), id).stream().findFirst();
+                        rs.getString(5), rs.getLong(6), rs.getBoolean(7)), id).stream().findFirst();
     }
 
     /** Bounded, name-ordered page of teams whose name starts with {@code prefix} (blank = all). */
@@ -169,11 +223,11 @@ public class TeamNamespaceService {
         String key = prefix == null ? "" : prefix.strip().toLowerCase(java.util.Locale.ROOT)
                 .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         return jdbc.query("""
-                SELECT id, name, parent_team_id, ticket_assignment_group, status, version FROM team
+                SELECT id, name, parent_team_id, ticket_assignment_group, status, version, notification_email_enc IS NOT NULL FROM team
                  WHERE name_key LIKE ? ESCAPE '\\' AND (?::text IS NULL OR status = ?)
                  ORDER BY name_key LIMIT ? OFFSET ?
                 """, (rs, row) -> new Team(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, UUID.class), rs.getString(4),
-                rs.getString(5), rs.getLong(6)), key + "%", status, status, Math.max(1, Math.min(limit, 200)), Math.max(0, offset));
+                rs.getString(5), rs.getLong(6), rs.getBoolean(7)), key + "%", status, status, Math.max(1, Math.min(limit, 200)), Math.max(0, offset));
     }
 
     @Transactional(readOnly = true)

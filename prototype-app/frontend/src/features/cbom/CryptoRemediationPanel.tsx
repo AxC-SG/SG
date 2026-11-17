@@ -6,6 +6,7 @@ import { api } from '../../api/client';
 import { AsyncSection } from '../../components/AsyncSection';
 import { CryptoCampaignDialog } from './CryptoCampaignDialog';
 import { formatDate, percent, severityBadgeClass, titleCase } from './labels';
+import { campaignOwnerLabel } from '../campaigns/ownership';
 import type { CryptoQueueItem } from './types';
 
 const EFFECTIVENESS_DAYS = 90;
@@ -48,12 +49,13 @@ export function CryptoRemediationPanel({ canManage }: { canManage: boolean }) {
               <h3 id="crypto-sla-heading">SLA by severity</h3>
               <div className="table-scroll">
                 <table className="data-table">
-                  <thead><tr><th>Severity</th><th>Open</th><th>Overdue</th><th>Due within 7 days</th><th>Unassigned</th></tr></thead>
+                  <thead><tr><th>Severity</th><th>Open</th><th>Overdue</th><th>Due within 7 days</th><th>Unassigned</th><th>Unowned</th></tr></thead>
                   <tbody>
                     {queue.slaBySeverity.map((row) => (
                       <tr key={row.severity}>
                         <td><span className={`status-badge ${severityBadgeClass(row.severity)}`}>{row.severity}</span></td>
                         <td>{row.open}</td><td>{row.overdue}</td><td>{row.dueWithin7Days}</td><td>{row.unassigned}</td>
+                        <td>{row.unowned ?? 'Pending migration'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -128,7 +130,7 @@ function QueueTable({ title, id, items, empty, selected, onToggle, showTarget = 
             <thead>
               <tr>
                 {onToggle && <th><span className="panel-caption">Select</span></th>}
-                <th>Finding</th><th>Severity</th><th>Owner</th><th>Due</th>{showTarget ? <th>Target state</th> : <th>Workflow</th>}
+                <th>Finding</th><th>Severity</th><th>Assignee</th><th>Owner team</th><th>Due</th>{showTarget ? <th>Target state</th> : <th>Workflow</th>}
               </tr>
             </thead>
             <tbody>
@@ -140,7 +142,8 @@ function QueueTable({ title, id, items, empty, selected, onToggle, showTarget = 
                   )}
                   <td><Link to={pathForFindingDetail(item.findingId)}>{item.displayId}</Link> {item.title}</td>
                   <td><span className={`status-badge ${severityBadgeClass(item.severity)}`}>{item.severity ?? 'UNKNOWN'}</span></td>
-                  <td>{item.assignedTo ?? item.ownerGroup ?? 'Unassigned'}</td>
+                  <td>{item.assignedTo ?? 'Unassigned'}</td>
+                  <td>{campaignOwnerLabel(item.ownership)}</td>
                   <td>{formatDate(item.dueAt)}{item.overdue ? ' (overdue)' : ''}</td>
                   <td>{showTarget ? item.targetState ?? '—' : titleCase(item.workflowSubstate ?? item.status)}</td>
                 </tr>

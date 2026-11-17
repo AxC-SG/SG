@@ -127,7 +127,7 @@ class CbomRelationshipsPostgresIntegrationTest {
                 insert into cbom_components (id, tenant_id, asset_id, source_bom_id, bom_ref, component_fingerprint, name, asset_type,
                     signature_algorithm, not_after, active, created_at, updated_at)
                 select gen_random_uuid(), tenant_id, asset_id, id, 'crypto/cert/edge', 'cert-edge-' || id, 'edge certificate', 'CERTIFICATE',
-                       'sha256WithRSAEncryption', current_date - 1, true, now() - interval '10 days', now() - interval '10 days'
+                       'sha256WithRSAEncryption', (now() AT TIME ZONE 'UTC')::date - 1, true, now() - interval '10 days', now() - interval '10 days'
                   from bom_ingestion_records where id = ?::uuid
                 """, bomId));
         Tenant tenant = tenantService.getDefaultTenant();

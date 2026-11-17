@@ -1,10 +1,14 @@
 # Ownership MVP — Phase 0A Architecture Gate Design
 
-Status: draft for approval  
+Status: Release 1 design implemented; live qualification gates remain open
 Source plan: `docs/ownership-capability-mvp-plan.md` §16.2  
 Baseline: `main` @ `98155ae6` — tenant migrations V1–V19, platform migrations V1–V10.  
 Renumbered 2026-11-11 (`761fb5ab`) after `main` reached platform V15 / tenant V20: this work is now platform **V16** and
 tenant **V21–V23**. Every version below uses the renumbered values.
+
+Current integration (November 17, 2026): Release 2 adds tenant V24–V27 on the AWS/CI/CD baseline; the next tenant
+migration is V28. The [integration review](ownership-release-2-integration-review.md) records the accepted lab-only
+scope and release block. Baseline references below describe the Release 1 design, not deployed schema qualification.
 
 This document records the repository-grounded decisions for the nine Release-1 prerequisites. Items that need
 deployed infrastructure, production-scale data or people are marked **OPEN** and must be closed by their owners
@@ -15,7 +19,8 @@ that the open items change configuration, not structure.
 
 Versions as merged into this branch: **platform V16**, **tenant V21–V23** (re-verify before each merge;
 `PackagedMigrationCatalog` derives targets from the highest packaged version and rejects gaps/duplicates). The next free
-versions after this work are platform V17 and tenant V24.
+versions after Release 1 were platform V17 and tenant V24. Release 2 consumes V24–V27; current next versions are
+platform V17 and tenant V28.
 
 Conventions copied from tenant V19: `-- migration-guard: tenant-only` header, `${tenantSchema}` /
 `${tenantId}`, `tenant_id uuid NOT NULL DEFAULT '${tenantId}'::uuid REFERENCES platform.tenants(id)`,
@@ -130,9 +135,11 @@ Implements plan §6.9 exactly. Contract points fixed here:
 - Resolver is a pure function `OwnershipResolver.resolve(directClaims, now) -> DirectResult` with a `RESOLVER_VERSION`
   constant; inheritance is applied only by the `ownership_effective_assignment` view, never in Java;
   `OwnershipResolutionService` is the only writer of `ownership_assignment`; unchanged inputs ⇒ zero writes.
-- Default source TTL/staleness: claims carry `observed_at`; a source claim becomes stale after **2× sync interval**
-  and ineligible after **7 days** without re-observation (tenant-lowerable). Anomaly pause: a producer batch that would
-  change > **20 %** of its claims (min 50) pauses and raises a review item. **OPEN:** product confirmation of thresholds.
+- Source TTL/staleness (plan §12.1, implemented in `OwnershipSourcePolicy`): claims carry `observed_at`; a source
+  claim becomes stale after **max(2 × sync interval, 24 h)** and expires after **max(3 × sync interval, 72 h)**, capped
+  at **30 days**, without a complete successful observation. Source schedules must be 15 minutes to 7 days.
+  Anomaly pause (plan §12.3): a run that proposes **≥ 100 changes and ≥ 10 %** of the source's active claims, or
+  **≥ 10,000 changes** regardless of percentage, pauses and raises a review item. Aligned to the plan on 2026-11-14.
 
 ## 6. ServiceNow CMDB contract (prerequisite 6)
 
@@ -224,7 +231,7 @@ exposed missing predicate-shaped indexes on the walk (`ownership_subject_edge (c
   Producers publish only in DARK or CANONICAL. Analyst scope = an open finding with `assignee_principal_id` = caller.
 - ServiceNow producer runs after a successful CMDB sync when `app.ownership.servicenow.producer-enabled=true`, reads
   the synced `cis` rows (no second credential), re-observes unchanged claims (timestamps only, zero assignment
-  writes), pauses with a `PRODUCER_ANOMALY` review item when > 20 % (min 50) of active claims would change or end,
+  writes), pauses with a `PRODUCER_ANOMALY` review item when ≥ 100 and ≥ 10 % (or ≥ 10,000) of active claims would change or end,
   and ends absent CIs' claims only after a complete scan.
 - Resolver watermark excludes timestamps; staleness is computed at read time from the winning-priority claims.
 - Effective view is `ownership_subject ⋈ LATERAL ownership_effective_for(id)` so subject filters and joins walk only
@@ -360,10 +367,7 @@ pass. Frontend lint (0 errors), typecheck, build and `test:coverage` (113 files,
    persistence after reload; screenshots at 390 px and 1280 px in both themes.
 3. **Template-clone limitation** (§11.3): decide whether schema reset should copy functions/triggers/views or run
    through Flyway; it is pre-existing but now also affects ownership.
-4. **Resolve the TTL/anomaly divergence**: §5 of this document and the code use stale after 2 × interval, ineligible
-   after 7 days, and an anomaly pause at > 20 % (min 50) of claims; plan §12.1/§12.3 specify stale after
-   max(2 × interval, 24 h), expiry after max(3 × interval, 72 h) capped at 30 days, and a pause at ≥ 100 changes and
-   ≥ 10 %, or ≥ 10,000 changes. Align one to the other with product sign-off.
+4. **TTL/anomaly divergence: resolved 2026-11-14.** The code now follows plan §12.1/§12.3 (see §5).
 5. **Open Phase 0A evidence** (§10): deployed KMS spike on AWS (infrastructure); benchmark at 1M/5M and 3M/15M on
    representative hardware, including a 10⁵–10⁶-row invalidation subtree; 100k/300k-user search query plans; a real
    ServiceNow CMDB sample and permission list; named leads and release authority (§9).

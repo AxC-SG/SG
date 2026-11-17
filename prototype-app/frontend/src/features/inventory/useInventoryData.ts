@@ -1,4 +1,5 @@
 import React from 'react';
+import { ApiError } from '../../api/client';
 import { latestFreshnessValue } from '../../components/PageFreshnessStatus';
 import type {
   InventoryComponentFilterValues,
@@ -21,6 +22,8 @@ type UseInventoryDataArgs = {
   componentReviewCategories: string[];
   componentPage: number;
   debouncedComponentQuery: string;
+  ownerTeamId?: string;
+  ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
 };
 
 type UseInventoryDataResult = {
@@ -32,6 +35,8 @@ type UseInventoryDataResult = {
   refreshing: boolean;
   latestDataUpdate: number | null;
   error: string;
+  /** HTTP status of a failed list read, for example 409 while BOM ownership is not canonical. */
+  errorStatus: number | null;
   refreshInventory: () => Promise<void>;
 };
 
@@ -45,7 +50,9 @@ export function useInventoryData({
   componentEcosystems,
   componentReviewCategories,
   componentPage,
-  debouncedComponentQuery
+  debouncedComponentQuery,
+  ownerTeamId,
+  ownershipStatus
 }: UseInventoryDataArgs): UseInventoryDataResult {
   const assetTypeParam = scopedAssetType === 'ALL'
     ? (
@@ -76,6 +83,8 @@ export function useInventoryData({
       ? componentReviewCategories
       : undefined,
     query: componentActiveFilters.includes('query') ? debouncedComponentQuery.trim() : undefined,
+    ownerTeamId: ownerTeamId || undefined,
+    ownershipStatus: ownershipStatus || undefined,
     page: componentPage,
     size: 25
   });
@@ -135,6 +144,7 @@ export function useInventoryData({
     refreshing: (inventoryQuery.isFetching || componentFiltersQuery.isFetching) && rows.length > 0,
     latestDataUpdate,
     error: inventoryQuery.error instanceof Error ? String(inventoryQuery.error) : '',
+    errorStatus: inventoryQuery.error instanceof ApiError ? inventoryQuery.error.status : null,
     refreshInventory
   };
 }

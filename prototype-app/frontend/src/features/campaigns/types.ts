@@ -1,3 +1,5 @@
+import type { OwnerBucket } from './ownership';
+
 export type CampaignStatus =
   | 'DRAFT'
   | 'ACTIVE'
@@ -9,10 +11,17 @@ export type CampaignStatus =
 
 export type CampaignWatchlistEntryType = 'USER' | 'GROUP';
 
+export type CampaignRecipientType = 'TEAM' | 'CUSTOM';
+
+/** Phase 0B §4.6: TEAM recipients use the team's channel; CUSTOM recipients are never owner recipients. */
 export type CampaignNotifyGroup = {
   id: string;
+  recipientType: CampaignRecipientType;
+  teamId: string | null;
   groupName: string;
   groupEmail: string | null;
+  channelConfigured: boolean;
+  ownerRecipient: boolean;
   roleLabel: string | null;
   triggerSummary: string | null;
   notificationsPaused: boolean;
@@ -48,9 +57,13 @@ export type CampaignExceptionStatus =
 
 export type CampaignException = {
   id: string;
+  findingId: string | null;
+  /** False for exceptions written before they named a finding; those count in no outcome bucket. */
+  linked: boolean;
   findingDisplayId: string | null;
   assetName: string | null;
   packageName: string | null;
+  ownerTeamIdAtRequest: string | null;
   title: string;
   reason: string;
   status: CampaignExceptionStatus;
@@ -80,6 +93,37 @@ export type CampaignDeliveryAttempt = {
   createdAt: string;
 };
 
+/** Server read envelope for a member's current owner (`OwnershipReadAdapter.Summary`). */
+export type CampaignOwnership = {
+  objectId: string;
+  authorityDomain: string | null;
+  authorityState: 'CANONICAL' | 'LEGACY_PENDING_MIGRATION' | string;
+  ownerTeamId: string | null;
+  ownerTeamName: string | null;
+  ownershipStatus: 'OWNED' | 'UNOWNED' | 'CONFLICT' | string | null;
+  sourceKind: string | null;
+  resolvedAt: string | null;
+  legacyOwnerLabel: string | null;
+};
+
+/** Owner recorded when the member was added; a null status is a member added before the ledger (NOT_RECORDED). */
+export type CampaignOwnerAtAdd = {
+  teamId: string | null;
+  teamName: string | null;
+  status: 'OWNED' | 'UNOWNED' | 'CONFLICT' | 'LEGACY_PENDING_MIGRATION' | null;
+  assignmentId: string | null;
+};
+
+export type CampaignOutcome =
+  | 'OPEN'
+  | 'REOPENED'
+  | 'CAMPAIGN_EXCEPTED'
+  | 'REMEDIATED'
+  | 'SUPPRESSED'
+  | 'FALSE_POSITIVE'
+  | 'ACCEPTED_RISK'
+  | 'CLOSED_OTHER';
+
 export type CampaignFindingRow = {
   findingId: string | null;
   displayId: string | null;
@@ -88,10 +132,12 @@ export type CampaignFindingRow = {
   assetIdentifier: string | null;
   packageName: string | null;
   severity: string | null;
-  ownerGroup: string | null;
   status: string;
+  outcome: CampaignOutcome;
   dueAt: string | null;
   incidentId: string | null;
+  ownerAtAdd: CampaignOwnerAtAdd;
+  currentOwnership: CampaignOwnership | null;
 };
 
 export type CampaignEvidenceRow = {
@@ -101,10 +147,11 @@ export type CampaignEvidenceRow = {
   assetIdentifier: string | null;
   packageName: string | null;
   severity: string | null;
-  ownerGroup: string | null;
   status: string;
+  outcome: CampaignOutcome;
   incidentId: string | null;
   dueAt: string | null;
+  currentOwnership: CampaignOwnership | null;
 };
 
 export type CampaignAssetRow = {
@@ -112,9 +159,9 @@ export type CampaignAssetRow = {
   assetName: string | null;
   assetIdentifier: string | null;
   environment: string | null;
-  supportGroup: string | null;
-  openFindings: number;
-  resolvedFindings: number;
+  activeFindings: number;
+  remediatedFindings: number;
+  members: number;
 };
 
 export type CampaignSoftwareItem = {
@@ -130,13 +177,20 @@ export type CampaignSummary = {
   name: string;
   summary: string | null;
   status: CampaignStatus;
+  scopeKind: 'CVE' | 'FINDINGS';
+  membershipState: 'MATERIALIZING' | 'COMPLETE';
+  assigneePrincipalId: string | null;
+  coordinatingTeamId: string | null;
   dueAt: string | null;
   startedAt: string | null;
   updatedAt: string;
   cveIds: string[];
   totalFindings: number;
-  resolvedFindings: number;
-  openFindings: number;
+  /** Phase 0B §4.8: REMEDIATED members only; completionPercent is remediatedCount over members. */
+  remediatedCount: number;
+  /** OPEN plus REOPENED members. */
+  activeRemainingCount: number;
+  outcomes: Record<CampaignOutcome, number>;
   assetCount: number;
   exceptionCount: number;
   notifyGroupCount: number;
@@ -156,11 +210,14 @@ export type CampaignDetail = {
   findings: CampaignFindingRow[];
   assets: CampaignAssetRow[];
   evidence: CampaignEvidenceRow[];
-  softwareItems?: CampaignSoftwareItem[];
+  /** Always present from the server; pages still tolerate an older response without it. */
+  softwareItems: CampaignSoftwareItem[];
 };
 
 export type CampaignNotifyGroupRequest = {
-  groupName: string;
+  recipientType?: CampaignRecipientType;
+  teamId?: string | null;
+  groupName?: string;
   groupEmail?: string | null;
   roleLabel?: string | null;
   triggerSummary?: string | null;
@@ -182,10 +239,10 @@ export type CampaignWatchlistEntryUpdateRequest = {
   active?: boolean | null;
 };
 
+/** Phase 0B §4.7: the finding must be a campaign member. */
 export type CampaignExceptionRequest = {
+  findingId?: string | null;
   findingDisplayId?: string | null;
-  assetName?: string | null;
-  packageName?: string | null;
   title: string;
   reason: string;
   decisionDueAt?: string | null;
@@ -194,9 +251,71 @@ export type CampaignExceptionRequest = {
 export type CampaignCreateRequest = {
   name: string;
   summary?: string | null;
-  cveIds: string[];
+  cveIds?: string[];
+  findingIds?: string[];
   dueAt?: string | null;
+  assigneePrincipalId?: string | null;
+  coordinatingTeamId?: string | null;
+  includeExcepted?: boolean;
   notifyGroups?: CampaignNotifyGroupRequest[];
   watchlist?: CampaignWatchlistEntryRequest[];
   launchNote?: string | null;
+};
+
+export type CampaignMember = {
+  findingId: string;
+  displayId: string;
+  title: string | null;
+  findingKind: string;
+  severity: string | null;
+  findingStatus: string;
+  closedReason: string | null;
+  outcome: CampaignOutcome;
+  suppressedUntil: string | null;
+  dueAt: string | null;
+  assetId: string | null;
+  assetName: string | null;
+  addedAt: string;
+  addedBy: string;
+  addSource: 'CREATE' | 'RECONCILER' | 'MANUAL' | 'BACKFILL' | null;
+  ownerAtAdd: CampaignOwnerAtAdd;
+  currentOwnership: CampaignOwnership | null;
+  ownershipChanged: boolean;
+  ownerAssignedSinceLaunch: boolean;
+  campaignExceptionStatus: CampaignExceptionStatus | null;
+};
+
+export type CampaignMemberPage = { items: CampaignMember[]; nextCursor: string | null };
+
+export type CampaignPreview = {
+  memberCount: number;
+  exceedsCreateBound: boolean;
+  distribution: OwnerBucket[];
+  /** Counts of findings left out, keyed by state such as CLOSED, SUPPRESSED, ACCEPTED_RISK, FALSE_POSITIVE. */
+  excluded: Record<string, number>;
+  teamsWithoutChannel: Array<{ teamId: string; teamName: string }>;
+};
+
+export type CampaignReconciliation = {
+  campaignId: string;
+  scopeKind: 'CVE' | 'FINDINGS';
+  membershipState: 'MATERIALIZING' | 'COMPLETE';
+  reconciledAt: string | null;
+  watermark: string | null;
+  lastAdded: number | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  members: number;
+};
+
+export type CampaignOwnerGrouping = 'current' | 'atAdd';
+
+export type CampaignMemberQuery = {
+  outcome?: CampaignOutcome;
+  includeHidden?: boolean;
+  groupBy?: CampaignOwnerGrouping;
+  bucket?: string;
+  teamId?: string;
+  cursor?: string;
+  limit?: number;
 };

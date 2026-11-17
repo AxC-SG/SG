@@ -16,6 +16,7 @@ import com.prototype.vulnwatch.repo.FindingRepository;
 import com.prototype.vulnwatch.repo.InventoryComponentRepository;
 import com.prototype.vulnwatch.repo.SbomUploadRepository;
 import com.prototype.vulnwatch.repo.VulnerabilityRepository;
+import com.prototype.vulnwatch.security.tenantkey.TenantKeyRegistry;
 import com.prototype.vulnwatch.service.TenantSchemaExecutionService;
 import com.prototype.vulnwatch.service.TenantService;
 import com.prototype.vulnwatch.support.FindingWorkspaceSeedSupport;
@@ -70,12 +71,17 @@ class CampaignControllerPostgresIntegrationTest {
     @Autowired
     private TenantSchemaExecutionService tenantSchemaExecutionService;
 
+    @Autowired
+    private TenantKeyRegistry keys;
+
     private Tenant tenant;
     private FindingWorkspaceSeedSupport.SeededWorkspace seededWorkspace;
 
     @BeforeEach
     void seedWorkspace() {
         tenant = tenantService.getDefaultTenant();
+        // Custom recipient addresses are tenant ciphertext (Phase 0B §4.6).
+        keys.provision(tenant.getId());
         seededWorkspace = new FindingWorkspaceSeedSupport(
                 assetRepository,
                 sbomUploadRepository,
@@ -124,7 +130,14 @@ class CampaignControllerPostgresIntegrationTest {
                 .andExpect(jsonPath("$.summary.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.summary.cveIds[0]").value(seededWorkspace.vulnerabilityId()))
                 .andExpect(jsonPath("$.summary.totalFindings").value(3))
+                .andExpect(jsonPath("$.summary.scopeKind").value("CVE"))
+                .andExpect(jsonPath("$.summary.membershipState").value("COMPLETE"))
+                .andExpect(jsonPath("$.summary.remediatedCount").value(0))
+                .andExpect(jsonPath("$.summary.activeRemainingCount").value(3))
+                .andExpect(jsonPath("$.summary.outcomes.OPEN").value(3))
                 .andExpect(jsonPath("$.summary.assetCount").value(1))
+                .andExpect(jsonPath("$.notifyGroups[0].recipientType").value("CUSTOM"))
+                .andExpect(jsonPath("$.notifyGroups[0].ownerRecipient").value(false))
                 .andExpect(jsonPath("$.notifyGroups[0].groupEmail").value("platform.ops@example.com"))
                 .andExpect(jsonPath("$.watchlist[0].email").value("alex.analyst@example.com"))
                 .andExpect(jsonPath("$.notes[0].body").value("Launch the resolver swarm today."))
@@ -228,6 +241,58 @@ class CampaignControllerPostgresIntegrationTest {
         assertTrue(updated.path("activity").isArray());
         assertTrue(updated.path("deliveryAttempts").size() >= 4);
         assertTrue(updated.path("exceptions").isArray());
+    }
+
+    @Test
+    void ledgerEndpointsPageMembersReportReconciliationAndRejectOwnershipFields() throws Exception {
+        JsonNode created = createCampaign("Ledger reads");
+        String campaignId = created.path("summary").path("id").asText();
+
+        MvcResult first = mockMvc.perform(asAnalyst(authedGet("/api/campaigns/" + campaignId + "/members?limit=2")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].addSource").value("CREATE"))
+                .andExpect(jsonPath("$.items[0].outcome").value("OPEN"))
+                .andExpect(jsonPath("$.items[0].currentOwnership.authorityState").value("LEGACY_PENDING_MIGRATION"))
+                .andReturn();
+        String cursor = objectMapper.readTree(first.getResponse().getContentAsString()).path("nextCursor").asText();
+        mockMvc.perform(asAnalyst(authedGet("/api/campaigns/" + campaignId + "/members?limit=2&cursor=" + cursor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.nextCursor").doesNotExist());
+        mockMvc.perform(asAnalyst(authedGet("/api/campaigns/" + campaignId + "/members?outcome=BOGUS")))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(asAnalyst(authedGet("/api/campaigns/" + campaignId + "/reconciliation")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scopeKind").value("CVE"))
+                .andExpect(jsonPath("$.membershipState").value("COMPLETE"))
+                .andExpect(jsonPath("$.members").value(3));
+        mockMvc.perform(asAnalyst(authedGet("/api/campaigns/" + campaignId + "/owner-buckets?groupBy=atAdd")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].members").value(3));
+
+        mockMvc.perform(asAnalyst(authedPost("/api/campaigns/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Preview\",\"cveIds\":[\"%s\"]}".formatted(seededWorkspace.vulnerabilityId()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberCount").value(3))
+                .andExpect(jsonPath("$.exceedsCreateBound").value(false));
+
+        mockMvc.perform(asAnalyst(authedPost("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Owned\",\"cveIds\":[\"%s\"],\"ownerGroup\":\"Platform Ops\"}"
+                                .formatted(seededWorkspace.vulnerabilityId()))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(asAnalyst(authedPost("/api/campaigns")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Both\",\"cveIds\":[\"%s\"],\"findingIds\":[\"%s\"]}"
+                                .formatted(seededWorkspace.vulnerabilityId(), java.util.UUID.randomUUID()))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(asAnalyst(authedPost("/api/campaigns/" + campaignId + "/exceptions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"findingId\":\"%s\",\"title\":\"t\",\"reason\":\"r\"}".formatted(java.util.UUID.randomUUID()))))
+                .andExpect(status().isNotFound());
     }
 
     private JsonNode createCampaign(String name) throws Exception {

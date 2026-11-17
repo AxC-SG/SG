@@ -925,8 +925,9 @@ public class CustomerDemoDatasetService {
         UUID id = stableId(tenantId, "campaign:" + name);
         jdbcTemplate.update("""
                 INSERT INTO campaigns
-                    (id, tenant_id, name, summary, status, created_by, due_at, started_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 'security@kanra.example', ?, ?, ?, ?)
+                    (id, tenant_id, name, summary, status, created_by, due_at, started_at, created_at, updated_at,
+                     scope_kind, membership_state)
+                VALUES (?, ?, ?, ?, ?, 'security@kanra.example', ?, ?, ?, ?, 'CVE', 'COMPLETE')
                 ON CONFLICT (id) DO NOTHING
                 """, id, tenantId, name, summary, status, ts(dueAt),
                 "ACTIVE".equals(status) ? ts(now.minus(5, ChronoUnit.DAYS)) : null,

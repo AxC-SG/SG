@@ -241,6 +241,8 @@ export function findingsFixtureFor(rawUrl) {
     return counts(scoped, groupKey(params.get('field') ?? 'severity')).sort((left, right) => right.count - left.count);
   }
   // Direct finding-detail entry: the backend looks findings up by UUID only (display IDs are N01).
+  const attempts = path.match(/^\/findings\/([^/]+)\/ticket-attempts$/);
+  if (attempts) return findings.some((finding) => finding.id === decodeURIComponent(attempts[1])) ? [] : NOT_FOUND;
   const detail = path.match(/^\/findings\/([^/]+)$/);
   if (detail) return findings.find((finding) => finding.id === decodeURIComponent(detail[1])) ?? NOT_FOUND;
   if (path === '/assets') return [];

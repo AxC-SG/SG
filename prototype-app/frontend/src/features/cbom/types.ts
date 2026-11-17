@@ -1,3 +1,5 @@
+import type { CampaignOwnership } from '../campaigns/types';
+import type { OwnerBucket } from '../campaigns/ownership';
 /** Tenant CBOM visibility contracts (backend CbomVisibilityDtos, CbomSemanticDiffService, CbomReportService). */
 
 export type CbomOverview = {
@@ -44,6 +46,8 @@ export type CbomInventoryPage = {
 export type CbomInventoryFilters = {
   assetType?: string; primitive?: string; severity?: string; evidenceState?: string; custody?: string;
   environment?: string; q?: string; bomId?: string;
+  /** Owner filters; the server answers 409 until CLOUD_BOM is canonical. */
+  ownerTeamId?: string; ownershipStatus?: 'OWNED' | 'UNOWNED' | 'CONFLICT';
 };
 
 export type CbomComponentDetail = {
@@ -98,17 +102,23 @@ export type CbomReport = {
 export type FindingTicketAttempt = {
   id: string; provider: string | null; template: 'CRYPTO' | 'DEFAULT'; outcome: 'SUCCEEDED' | 'FAILED';
   ticketKey: string | null; errorMessage: string | null; attemptedBy: string; attemptedAt: string;
+  /** Routing audit (Phase 0B §4.9): the owner when the ticket was raised and where it was sent. */
+  ownerTeamId?: string | null; ownershipAssignmentId?: string | null; assignmentGroup?: string | null;
+  routingSource?: 'TEAM_MAPPING' | 'TENANT_DEFAULT' | 'USER_SELECTED' | 'OVERRIDE' | 'LEGACY'; overrideReason?: string | null;
+  batchId?: string | null;
 };
 
 export type CryptoQueueItem = {
   findingId: string; displayId: string; title: string; severity: string | null; status: string; assignedTo: string | null;
-  ownerGroup: string | null; dueAt: string | null; workflowSubstate: string | null; verificationStatus: string | null;
+  /** Owner envelope under the findings read wave: the team when canonical, the legacy label otherwise. */
+  ownership: CampaignOwnership | null; dueAt: string | null; workflowSubstate: string | null; verificationStatus: string | null;
   targetState: string | null; verificationRequestedAt: string | null; overdue: boolean;
 };
 
 export type CryptoRemediationQueue = {
   observedAt: string; verificationQueue: CryptoQueueItem[]; overdue: CryptoQueueItem[];
-  slaBySeverity: Array<{ severity: string; open: number; overdue: number; dueWithin7Days: number; unassigned: number }>;
+  /** `unassigned` has no workflow assignee; `unowned` has no owner team and is null while CLOUD_BOM is not canonical. */
+  slaBySeverity: Array<{ severity: string; open: number; overdue: number; dueWithin7Days: number; unassigned: number; unowned: number | null }>;
 };
 
 export type CryptoEffectiveness = {
@@ -116,11 +126,6 @@ export type CryptoEffectiveness = {
   verificationsAccepted: number; verificationsRejected: number; verificationAcceptanceRate: number | null;
   closuresByReason: Record<string, number>;
   bySeverity: Array<{ severity: string; closed: number; meanDaysToClose: number | null; closedWithinSla: number | null }>;
-};
-
-export type CampaignFinding = {
-  findingId: string; displayId: string; title: string; findingKind: string; severity: string | null; status: string;
-  assignedTo: string | null; ownerGroup: string | null; dueAt: string | null; verificationStatus: string | null; addedAt: string;
 };
 
 export type CbomGraphNode = {
@@ -150,10 +155,14 @@ export type CbomGatePolicy = {
 export type CbomPqcProgress = {
   openQuantumVulnerable: number; inCampaigns: number; notInCampaign: number;
   campaigns: Array<{ campaignId: string; name: string; status: string; dueAt: string | null; createdBy: string; findings: number;
-    open: number; resolved: number; overdue: number; percentComplete: number | null; owners: string[] }>;
+    /** `active` is OPEN plus REOPENED; `remediated` counts REMEDIATED only (Phase 0B §4.8). */
+    active: number; remediated: number; overdue: number; percentComplete: number | null; outcomes: Record<string, number>;
+    owners: OwnerBucket[] }>;
 };
 export type CbomPortfolio = {
   groupBy: string;
   groups: Array<{ group: string; assets: number; components: number; openCritical: number; openHigh: number; openMedium: number;
-    openLow: number; quantumVulnerable: number; openCryptoFindings: number; overdueCryptoFindings: number; averagePostureScore: number | null }>;
+    openLow: number; quantumVulnerable: number; openCryptoFindings: number; overdueCryptoFindings: number; averagePostureScore: number | null;
+    /** Owner-team grouping only: the stable team ID and TEAM, UNOWNED, CONFLICT or PENDING_MIGRATION. */
+    teamId?: string | null; ownerBucket?: string | null }>;
 };

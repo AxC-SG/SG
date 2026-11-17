@@ -118,6 +118,16 @@ export type SoftwareIdentityDetail = {
   bomEvidence: BomEvidenceSummary;
   versions: SoftwareIdentityVersion[];
   assets: SoftwareIdentityAsset[];
+  /** Owner-team coverage of this identity's occurrences (Phase 0B §3.7); absent until CLOUD_BOM inventory reads are canonical. */
+  ownershipCoverage?: SoftwareIdentityOwnershipCoverage | null;
+};
+
+export type SoftwareIdentityOwnershipCoverage = {
+  occurrences: number;
+  ownedOccurrences: number;
+  unownedOccurrences: number;
+  conflictOccurrences: number;
+  teamIds: string[];
 };
 
 export type SoftwareIdentityMetadata = {

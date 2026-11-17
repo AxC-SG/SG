@@ -2,6 +2,8 @@ package com.prototype.vulnwatch.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,9 +31,6 @@ public class CampaignNotifyGroup {
     @Column(name = "role_label", length = 128)
     private String roleLabel;
 
-    @Column(name = "group_email", length = 255)
-    private String groupEmail;
-
     @Column(name = "trigger_summary", length = 255)
     private String triggerSummary;
 
@@ -40,6 +39,18 @@ public class CampaignNotifyGroup {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    // Phase 0B §4.6: TEAM rows name a team and use its channel; CUSTOM rows keep a label and an encrypted address.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recipient_type", nullable = false, length = 16)
+    private CampaignRecipientType recipientType = CampaignRecipientType.CUSTOM;
+
+    @Column(name = "team_id")
+    private UUID teamId;
+
+    /** Tenant ciphertext ({@code TenantDataCipher}); never plaintext. */
+    @Column(name = "group_email_enc", columnDefinition = "text")
+    private String groupEmailEnc;
 
     public UUID getId() {
         return id;
@@ -73,14 +84,6 @@ public class CampaignNotifyGroup {
         return triggerSummary;
     }
 
-    public String getGroupEmail() {
-        return groupEmail;
-    }
-
-    public void setGroupEmail(String groupEmail) {
-        this.groupEmail = groupEmail;
-    }
-
     public void setTriggerSummary(String triggerSummary) {
         this.triggerSummary = triggerSummary;
     }
@@ -95,5 +98,29 @@ public class CampaignNotifyGroup {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public CampaignRecipientType getRecipientType() {
+        return recipientType;
+    }
+
+    public void setRecipientType(CampaignRecipientType recipientType) {
+        this.recipientType = recipientType;
+    }
+
+    public UUID getTeamId() {
+        return teamId;
+    }
+
+    public void setTeamId(UUID teamId) {
+        this.teamId = teamId;
+    }
+
+    public String getGroupEmailEnc() {
+        return groupEmailEnc;
+    }
+
+    public void setGroupEmailEnc(String groupEmailEnc) {
+        this.groupEmailEnc = groupEmailEnc;
     }
 }

@@ -1,6 +1,10 @@
 # VulnWatch Prototype
 
-Last updated November 13, 2026 for the UI 2.0 improvements and browser CI changes.
+Last updated November 17, 2026 for the ownership Release 2 integration with AWS migration and CI/CD.
+
+Ownership Release 2 is an accepted **lab-only, release-blocked** integration candidate. The
+[integration review](docs/ownership-release-2-integration-review.md) records the exact baseline, fixes, checks and
+remaining campaign-data/encryption and live-qualification blockers. No deployment or tenant enablement is implied.
 
 VulnWatch is a Spring Boot + React prototype for SBOM ingestion, vulnerability intelligence ingestion, deterministic CPE-based correlation, and tenant-scoped finding projection and workflow.
 
@@ -8,6 +12,7 @@ VulnWatch is a Spring Boot + React prototype for SBOM ingestion, vulnerability i
 
 | Document | Contents |
 |----------|---------|
+| [Ownership Release 2 integration review](docs/ownership-release-2-integration-review.md) | Combined AWS/CI/CD baseline, fixes, local verification and lab-only release block |
 | [Architecture](docs/architecture.md) | System shape, data flow, security model, tech decisions |
 | [Backend](docs/backend.md) | REST API reference, services, external integrations, config |
 | [Business Logic Guide](docs/business-logic-guide.md) | Domain concepts, pipeline flows, finding lifecycle, EOL tracking |

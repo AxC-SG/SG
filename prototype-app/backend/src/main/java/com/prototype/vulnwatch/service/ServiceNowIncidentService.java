@@ -129,10 +129,27 @@ public class ServiceNowIncidentService {
             Finding finding,
             CreateServiceNowIncidentRequest request
     ) {
+        return createFindingIncidentRemote(config, finding, request, null);
+    }
+
+    /**
+     * As {@link #createFindingIncidentRemote(ServiceNowCmdbConfigService.ServiceNowRuntimeConfig, Finding,
+     * CreateServiceNowIncidentRequest)}, with the server-routed assignment group (Phase 0B §4.9). When
+     * {@code routedAssignmentGroup} is set it is sent as is: never the finding's {@code owner_group} and never
+     * {@value #DEFAULT_ASSIGNMENT_GROUP}.
+     */
+    public ServiceNowIncidentResponse createFindingIncidentRemote(
+            ServiceNowCmdbConfigService.ServiceNowRuntimeConfig config,
+            Finding finding,
+            CreateServiceNowIncidentRequest request,
+            String routedAssignmentGroup
+    ) {
         String severity = text(request.severity(), finding.getSeverityOverride(), riskSeverity(finding.getRiskScore()));
         String priorityLabel = text(request.priority(), severity, "MEDIUM");
         int priority = PRIORITY_MAP.getOrDefault(priorityLabel.toUpperCase(Locale.ROOT), 3);
-        String assignmentGroup = text(finding.getOwnerGroup(), DEFAULT_ASSIGNMENT_GROUP);
+        String assignmentGroup = routedAssignmentGroup != null && !routedAssignmentGroup.isBlank()
+                ? routedAssignmentGroup.trim()
+                : text(finding.getOwnerGroup(), DEFAULT_ASSIGNMENT_GROUP);
         String dueDate = text(request.dueDate(), isoDate(finding.getDueAt()));
         String title = text(request.findingTitle(), finding.getTitle(), finding.getDisplayId());
 

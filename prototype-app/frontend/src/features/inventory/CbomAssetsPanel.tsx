@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type CbomBomAsset } from '../../api/client';
 import { AsyncSection } from '../../components/AsyncSection';
+import { isCanonicalOwnership, resolvedOwnerLabel } from '../ownership/resolvedOwnership';
 
 function severityClass(severity: string): string {
   const value = severity.toLowerCase();
@@ -30,6 +31,7 @@ export function CbomAssetsPanel({ bomId }: { bomId: string }) {
     queryFn: () => api.listCbomAssetsForBom(bomId),
   });
   const rows = assetsQuery.data ?? [];
+  const showOwner = rows.some((row) => isCanonicalOwnership(row.asset.ownership));
   const state = assetsQuery.isPending ? 'pending'
     : assetsQuery.isError ? 'error'
       : rows.length === 0 ? 'empty'
@@ -37,6 +39,7 @@ export function CbomAssetsPanel({ bomId }: { bomId: string }) {
 
   return (
     <div className="panel bom-components-panel">
+      {/* The owner column appears once CBOM ownership is canonical (Phase 0B §3.7). */}
       <div className="panel-header">
         <h4>Cryptographic assets ({rows.length.toLocaleString()})</h4>
         <span className="panel-caption">
@@ -57,6 +60,7 @@ export function CbomAssetsPanel({ bomId }: { bomId: string }) {
             <thead>
               <tr>
                 <th>Name</th>
+                {showOwner && <th>Owner</th>}
                 <th>Asset type</th>
                 <th>Algorithm / protocol / key</th>
                 <th>State</th>
@@ -68,6 +72,7 @@ export function CbomAssetsPanel({ bomId }: { bomId: string }) {
               {rows.map((row) => (
                 <tr key={row.asset.id}>
                   <td>{row.asset.name}</td>
+                  {showOwner && <td>{isCanonicalOwnership(row.asset.ownership) ? resolvedOwnerLabel(row.asset.ownership) : '—'}</td>}
                   <td><span className="tag">{assetTypeLabel(row.asset.assetType)}</span></td>
                   <td>{cryptoProperties(row)}</td>
                   <td>{row.asset.state ?? '—'}</td>

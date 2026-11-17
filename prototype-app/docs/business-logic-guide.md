@@ -301,19 +301,28 @@ Ownership MVP Release 1 (PR #71) resolves each asset, and through it each vulner
 1. A source publishes a claim that a team owns a subject. Precedence, highest first: manual assignment, ServiceNow, cloud account/project, AI Grid, cloud tag/label, Entra/Okta.
 2. For each subject the highest-precedence eligible claim wins. A direct claim always beats an inherited one.
 3. A subject without a direct result inherits from its parent, up to 6 hops. Cycles, missing parents and longer chains produce `CONFLICT` and a review item.
-4. A claim is stale after twice its source's sync interval and stops counting after 7 days without being seen again. These thresholds differ from the plan (§12.1 and §12.3) and still need product sign-off.
+4. A claim is stale after `max(2 × source interval, 24 hours)` and expires after `max(3 × source interval, 72 hours)`, capped at 30 days. `OwnershipSourcePolicy` implements the plan's §12.1 defaults.
 5. The effective status is `OWNED`, `UNOWNED` or `CONFLICT`. A subject's direct assignment can also be `NONE` (claims exist but none is eligible); it then inherits from its parent.
 
 **Manual assignment.** Tenant and inventory admins can assign any subject. Security analysts can assign only for an open finding assigned to them. A reason is required, expiry is at most 30 days, and the impact preview is capped at 100 descendants or 1,000 findings. Only admins can revoke. Manual assignment needs the subject's domain to be CANONICAL.
 
-**ServiceNow producer.** When enabled, each successful CMDB sync publishes claims from the CI `support_group`. Unchanged claims are re-observed without assignment writes. If more than 20% (minimum 50) of active claims would change or end, publishing pauses and a `PRODUCER_ANOMALY` review item is raised. Claims for missing CIs end only after a complete scan.
+**ServiceNow producer.** When enabled, each successful CMDB sync publishes claims from ServiceNow-originated CIs, retaining the support-group `sys_id` separately from its display name and resolving group-to-team mappings. Unchanged claims are re-observed without assignment writes. The source anomaly policy pauses at at least 100 proposed changes and at least 10% of active claims, or 10,000 changes regardless of percentage. First-baseline creates are exempt from the percentage check only. Claims for missing CIs end only after a complete scan.
 
 **Cutover.** Each domain moves LEGACY → DARK → CANONICAL per tenant:
 - **DARK:** the per-minute maintenance job links assets and findings to subjects. Nothing user-facing changes.
 - **Qualification:** passes only with zero unlinked assets/findings, an empty re-resolution queue, swept expiries, the current resolver version, no inheritance errors, no open producer anomaly and, with the cache on, no cache backlog. It also reports a legacy-vs-canonical comparison.
 - **CANONICAL:** needs the passing report's hash and records who accepted it. The API cannot revert it.
 
-Release 1 covers CORE: APPLICATION and HOST assets and `VULNERABILITY` findings. `CRYPTO` findings and container/cloud assets belong to CLOUD_BOM (Release 2) and AI findings to AI_GRID (Release 3); they keep the legacy display even on a canonical asset.
+Release 1 covers CORE: APPLICATION and HOST assets and `VULNERABILITY` findings. Release 2 implements CLOUD_BOM occurrence registration, cloud claims, finding adapters and domain cutover, including CRYPTO findings. AI_GRID remains Release 3 work. Each consumer retains legacy display until its own domain authority and tenant read wave allow canonical reads.
+
+**Release 2 integration — November 17, 2026.** ServiceNow directory sync, AWS/GCP ownership producers, occurrence
+ownership, campaign membership/outcomes and live-owner ticket routing are implemented in the combined AWS/CI/CD
+candidate. **Lab-only integration is accepted; release remains blocked.** Campaign writes, automatic membership
+reconciliation and the campaign-member finding delete guard apply even with ownership read waves empty. V26 drops
+old campaign recipient emails; new custom email recipients require tenant encryption. A domain's canonical ticket
+path needs a signed preview hash; the CVE workbench does not provide one yet, so keep its tickets wave off. The
+[integration review](ownership-release-2-integration-review.md) and
+[qualification runbook](ownership-release-2-qualification.md) define current limits and recovery boundaries.
 
 **What users see.** Asset and finding responses carry the canonical team only when the tenant's read wave is on and the domain is CANONICAL. Otherwise rows show `LEGACY_PENDING_MIGRATION` and today's owner label. Findings gain an Ownership Status column; owner-team and status filters appear once findings ownership is canonical.
 

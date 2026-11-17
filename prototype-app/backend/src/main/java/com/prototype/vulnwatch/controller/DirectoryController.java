@@ -48,6 +48,9 @@ public class DirectoryController {
 
     public record MemberRequest(UUID userId) { }
 
+    /** Exactly one of {@code userId} (link to that person) or {@code newPersonDisplayName} (create a person). */
+    public record ResolveIdentityRequest(UUID userId, String newPersonDisplayName) { }
+
     private final DirectoryService directory;
     private final DirectoryImportService imports;
     private final RequestActorService actors;
@@ -135,6 +138,13 @@ public class DirectoryController {
         directory.group(id).orElseThrow(() -> notFound("Group not found"));
         directory.removeMember(id, userId, directory.manualSource(actor), actor);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Resolves an AMBIGUOUS external identity (Phase 0B §1.4 rule 3). Linking changes who a person is, so it needs WRITE_DIRECTORY. */
+    @PostMapping("/external-identities/{id}/resolve")
+    @PreAuthorize("@ownershipAuthorization.can('WRITE_DIRECTORY')")
+    public DirectoryService.IdentityResolution resolveIdentity(@PathVariable UUID id, @RequestBody ResolveIdentityRequest req) {
+        return directory.resolveAmbiguousIdentity(id, req.userId(), req.newPersonDisplayName(), actor());
     }
 
     @GetMapping(value = "/imports/templates/{kind}", produces = "text/csv")

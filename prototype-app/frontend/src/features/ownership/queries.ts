@@ -1,6 +1,18 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
-import type { DirectoryPersonCreate, OwnershipAuthorityState, OwnershipTeamRequest } from './types';
+import type {
+  CloudOwnershipSettingsRequest,
+  CloudOwnershipSource,
+  DirectoryPersonCreate,
+  IdentitySource,
+  IdentitySourceConnectionTest,
+  IdentitySourcePreview,
+  IdentitySourceRequest,
+  IdentitySourceSyncRequest,
+  OwnershipAuthorityState,
+  OwnershipSwitchDomain,
+  OwnershipTeamRequest
+} from './types';
 
 // One key root so a write can refresh everything it may affect (teams feed review items and coverage).
 export const ownershipKeys = {
@@ -13,7 +25,11 @@ export const ownershipKeys = {
   members: (groupId: string) => ['ownership', 'members', groupId] as const,
   review: (state: string, type: string) => ['ownership', 'review', state, type] as const,
   encryption: ['ownership', 'encryption'] as const,
-  qualification: ['ownership', 'qualification', 'CORE'] as const
+  identitySources: ['ownership', 'identity-sources'] as const,
+  cloudSources: ['ownership', 'cloud-sources'] as const,
+  awsOrganizationsRole: ['ownership', 'cloud-sources', 'aws-organizations-role'] as const,
+  mappingGroups: (q: string) => ['ownership', 'group-mappings', q] as const,
+  qualification: (domain: OwnershipSwitchDomain) => ['ownership', 'qualification', domain] as const
 };
 
 /** Shortest people/group search the server accepts (DirectoryService MIN_PREFIX). */
@@ -79,8 +95,8 @@ export function useOwnershipEncryptionQuery(enabled: boolean) {
   return useQuery({ queryKey: ownershipKeys.encryption, queryFn: api.getOwnershipEncryption, enabled });
 }
 
-export function useOwnershipQualificationQuery(enabled: boolean) {
-  return useQuery({ queryKey: ownershipKeys.qualification, queryFn: () => api.getOwnershipQualification('CORE'), enabled });
+export function useOwnershipQualificationQuery(enabled: boolean, domain: OwnershipSwitchDomain = 'CORE') {
+  return useQuery({ queryKey: ownershipKeys.qualification(domain), queryFn: () => api.getOwnershipQualification(domain), enabled });
 }
 
 function useOwnershipMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
@@ -144,7 +160,102 @@ export function useProvisionEncryptionMutation() {
   return useOwnershipMutation<void, Awaited<ReturnType<typeof api.provisionOwnershipEncryption>>>(() => api.provisionOwnershipEncryption());
 }
 
-export function useAuthorityTransitionMutation() {
+export function useAuthorityTransitionMutation(domain: OwnershipSwitchDomain = 'CORE') {
   return useOwnershipMutation(({ state, reportHash }: { state: OwnershipAuthorityState; reportHash?: string }) =>
-    api.transitionOwnershipAuthority('CORE', state, reportHash));
+    api.transitionOwnershipAuthority(domain, state, reportHash));
+}
+
+export function useIdentitySourcesQuery() {
+  return useQuery({ queryKey: ownershipKeys.identitySources, queryFn: api.listIdentitySources });
+}
+
+export function useGroupMappingGroupsQuery(q: string) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: ownershipKeys.mappingGroups(trimmed),
+    queryFn: () => api.listGroupMappingGroups(trimmed, 100),
+    placeholderData: keepPreviousData
+  });
+}
+
+export function useSaveIdentitySourceMutation() {
+  return useOwnershipMutation(({ sourceId, payload }: { sourceId: string | null; payload: IdentitySourceRequest }) =>
+    sourceId ? api.updateIdentitySource(sourceId, payload) : api.createIdentitySource(payload));
+}
+
+export type IdentitySourceAction = 'pause' | 'resume' | 'disable' | 'sync' | 'fullScan';
+
+export function useIdentitySourceActionMutation() {
+  return useOwnershipMutation(({ sourceId, action }: { sourceId: string; action: IdentitySourceAction }): Promise<IdentitySource | IdentitySourceSyncRequest> => {
+    switch (action) {
+      case 'pause': return api.pauseIdentitySource(sourceId);
+      case 'resume': return api.resumeIdentitySource(sourceId);
+      case 'disable': return api.disableIdentitySource(sourceId);
+      case 'sync': return api.syncIdentitySource(sourceId, false);
+      case 'fullScan': return api.syncIdentitySource(sourceId, true);
+    }
+  });
+}
+
+export function useEnableIdentitySourceMutation() {
+  return useOwnershipMutation(({ sourceId, previewToken }: { sourceId: string; previewToken: string }) =>
+    api.enableIdentitySource(sourceId, previewToken));
+}
+
+export function useActivateGroupMappingMutation() {
+  return useOwnershipMutation((payload: { externalGroupId: string; teamId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    api.activateGroupMapping(payload));
+}
+
+export function useRetireGroupMappingMutation() {
+  return useOwnershipMutation(({ mappingId, ...payload }: { mappingId: string; reason?: string; previewToken: string; confirmLarge: boolean }) =>
+    api.retireGroupMapping(mappingId, payload));
+}
+
+export function useDismissGroupMappingMutation() {
+  return useOwnershipMutation((mappingId: string) => api.dismissGroupMapping(mappingId));
+}
+
+export type SourceCheck = { source: IdentitySource; mode: 'test' | 'preview' };
+
+/**
+ * A connection test or preview. Not cached and not an ownership write: preview samples hold full names and emails, so
+ * they live only in this request's state; the panel starts it from the button click so it runs once per click.
+ */
+export function useSourceCheckMutation() {
+  return useMutation<IdentitySourceConnectionTest | IdentitySourcePreview, Error, SourceCheck>({
+    mutationFn: ({ source, mode }) => (mode === 'test' ? api.testIdentitySource(source.id) : api.previewIdentitySource(source.id))
+  });
+}
+
+export function useCloudOwnershipSourcesQuery() {
+  return useQuery({ queryKey: ownershipKeys.cloudSources, queryFn: api.listCloudOwnershipSources });
+}
+
+export type CloudSourceAction =
+  | { kind: 'pause' | 'resume'; provider: CloudOwnershipSource['provider'] }
+  | { kind: 'settings'; provider: CloudOwnershipSource['provider']; settings: CloudOwnershipSettingsRequest };
+
+/** Pause, resume and the key/account-input switches of an AWS or GCP ownership producer (Phase 0B §2.1, §2.2). */
+export function useCloudSourceActionMutation() {
+  return useOwnershipMutation((action: CloudSourceAction): Promise<CloudOwnershipSource> => {
+    switch (action.kind) {
+      case 'pause': return api.pauseCloudOwnershipSource(action.provider);
+      case 'resume': return api.resumeCloudOwnershipSource(action.provider);
+      case 'settings': return api.updateCloudOwnershipSettings(action.provider, action.settings);
+    }
+  });
+}
+
+export function useAwsOrganizationsRoleQuery(enabled: boolean) {
+  return useQuery({ queryKey: ownershipKeys.awsOrganizationsRole, queryFn: api.getAwsOrganizationsRole, enabled });
+}
+
+export function useSaveAwsOrganizationsRoleMutation() {
+  return useOwnershipMutation((payload: { roleArn: string; externalId?: string | null }) => api.saveAwsOrganizationsRole(payload));
+}
+
+/** The role's connection test. Not an ownership write, so nothing is invalidated. */
+export function useTestAwsOrganizationsRoleMutation() {
+  return useMutation({ mutationFn: (accountId: string | undefined) => api.testAwsOrganizationsRole(accountId) });
 }

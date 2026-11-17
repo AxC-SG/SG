@@ -134,6 +134,17 @@ public class FindingWorkflowService {
         return updateWorkflowBulk(findingRepository.findAllById(findingIds), request);
     }
 
+    private org.springframework.jdbc.core.JdbcTemplate membershipJdbc;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setMembershipJdbc(org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.membershipJdbc = jdbc;
+    }
+
+    /**
+     * Permanently deletes findings. A finding that is a campaign member cannot be deleted: membership history is never
+     * cascaded away (Phase 0B §4.13, FK {@code RESTRICT}), so the request is refused with 409 and nothing is deleted.
+     */
     @Transactional
     public int bulkDelete(List<UUID> findingIds) {
         if (findingIds == null || findingIds.isEmpty()) {
@@ -143,16 +154,35 @@ public class FindingWorkflowService {
         if (findings.isEmpty()) {
             return 0;
         }
+        requireNoCampaignMembers(findings.stream().map(Finding::getId).toList());
         // Delete child records first to satisfy FK constraints
         for (Finding finding : findings) {
             findingCommentRepository.deleteAll(findingCommentRepository.findByFindingOrderByCreatedAtAsc(finding));
             findingEventRepository.deleteAll(findingEventRepository.findByFindingOrderByCreatedAtAsc(finding));
         }
-        findingRepository.deleteAll(findings);
+        try {
+            findingRepository.deleteAll(findings);
+            findingRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException referenced) {
+            // A member was added between the check above and the delete.
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "A finding is referenced by a campaign or another record and cannot be deleted", referenced);
+        }
         findingListProjectionService.refreshTenantWithSource(findings.get(0).getTenant());
         audit("finding.bulk_deleted", "finding", null,
                 "{\"deleted\":" + findings.size() + "}");
         return findings.size();
+    }
+
+    private void requireNoCampaignMembers(List<UUID> ids) {
+        if (membershipJdbc == null || ids.isEmpty()) return;
+        Integer members = membershipJdbc.queryForObject(
+                "SELECT count(DISTINCT finding_id) FROM campaign_findings WHERE finding_id = ANY (?::uuid[])", Integer.class,
+                "{" + ids.stream().map(UUID::toString).collect(java.util.stream.Collectors.joining(",")) + "}");
+        if (members != null && members > 0) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    members + " selected finding(s) are campaign members and cannot be deleted; close them instead");
+        }
     }
 
     private void applyWorkflowUpdate(Finding finding, FindingWorkflowUpdateRequest request) {

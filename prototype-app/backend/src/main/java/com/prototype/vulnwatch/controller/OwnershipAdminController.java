@@ -4,6 +4,7 @@ import com.prototype.vulnwatch.security.tenantkey.TenantKeyRegistry;
 import com.prototype.vulnwatch.service.AuditEventService;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.TenantContext;
+import com.prototype.vulnwatch.service.ownership.FindingSubjectAdapterRegistry;
 import com.prototype.vulnwatch.service.ownership.OwnershipAuthorityService;
 import com.prototype.vulnwatch.service.ownership.OwnershipCutoverService;
 import com.prototype.vulnwatch.service.ownership.OwnershipCutoverService.Qualification;
@@ -34,7 +35,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/ownership")
 public class OwnershipAdminController {
 
-    public record TeamRequest(String name, UUID parentTeamId, String ticketAssignmentGroup, String status, Long version) { }
+    /** {@code notificationEmail} is write-only: null keeps the current address, blank clears it (Phase 0B §4.6). */
+    public record TeamRequest(String name, UUID parentTeamId, String ticketAssignmentGroup, String status, Long version,
+                              String notificationEmail) { }
 
     public record AliasRequest(String alias, String sourceKind) { }
 
@@ -50,15 +53,18 @@ public class OwnershipAdminController {
     private final RequestActorService actors;
     private final AuditEventService audit;
     private final OwnershipCutoverService cutover;
+    private final FindingSubjectAdapterRegistry findingAdapters;
 
     public OwnershipAdminController(TeamNamespaceService teams, OwnershipReviewService reviews, TenantKeyRegistry keys,
-                                    RequestActorService actors, AuditEventService audit, OwnershipCutoverService cutover) {
+                                    RequestActorService actors, AuditEventService audit, OwnershipCutoverService cutover,
+                                    FindingSubjectAdapterRegistry findingAdapters) {
         this.teams = teams;
         this.reviews = reviews;
         this.keys = keys;
         this.actors = actors;
         this.audit = audit;
         this.cutover = cutover;
+        this.findingAdapters = findingAdapters;
     }
 
     @GetMapping("/teams")
@@ -80,7 +86,7 @@ public class OwnershipAdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(teams.createTeam(req.name(), req.parentTeamId(), req.ticketAssignmentGroup(), actor()));
     }
 
-    /** Applies rename, parent/ticket-group and status changes in that order. {@code parentTeamId} and {@code ticketAssignmentGroup} are replaced as given (null clears); send the current values to keep them. */
+    /** Applies rename, parent/ticket-group, notification address and status changes in that order. {@code parentTeamId} and {@code ticketAssignmentGroup} are replaced as given (null clears); send the current values to keep them. */
     @PatchMapping("/teams/{id}")
     @PreAuthorize("@ownershipAuthorization.can('WRITE_TEAMS')")
     public Team updateTeam(@PathVariable UUID id, @RequestBody TeamRequest req) {
@@ -90,6 +96,7 @@ public class OwnershipAdminController {
         if (current.version() != req.version()) throw new ResponseStatusException(HttpStatus.CONFLICT, "The team changed since it was loaded; reload and try again");
         if (req.name() != null && !req.name().strip().equals(current.name())) current = teams.renameTeam(id, req.name(), current.version(), actor);
         current = teams.updateTeam(id, req.parentTeamId(), req.ticketAssignmentGroup(), current.version(), actor);
+        if (req.notificationEmail() != null) current = teams.setNotificationEmail(id, req.notificationEmail(), current.version(), actor);
         if (req.status() != null && !req.status().equalsIgnoreCase(current.status())) {
             current = teams.setStatus(id, req.status().toUpperCase(Locale.ROOT), current.version(), actor);
         }
@@ -159,6 +166,13 @@ public class OwnershipAdminController {
     @PreAuthorize("@ownershipAuthorization.can('MANAGE_AUTHORITY')")
     public Qualification qualification(@PathVariable String domain) {
         return cutover.qualify(domain(domain));
+    }
+
+    /** §3.6 dark comparison of the finding adapters: v2 must change no effective owner before the CLOUD_BOM switch. */
+    @GetMapping("/finding-adapters/report")
+    @PreAuthorize("@ownershipAuthorization.can('MANAGE_AUTHORITY')")
+    public FindingSubjectAdapterRegistry.DarkReport findingAdapterReport() {
+        return findingAdapters.darkReport();
     }
 
     /** LEGACY→DARK, DARK→LEGACY (no-go) or DARK→CANONICAL (go; requires the reviewed {@code reportHash}). */

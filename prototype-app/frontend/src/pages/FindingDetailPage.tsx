@@ -1,4 +1,6 @@
 import { CryptoTicketAttempts } from '../features/findings/CryptoTicketAttempts';
+import { FindingCreateTicketAction } from '../features/findings/FindingCreateTicketAction';
+import { OwnerChangedSinceTicketNote } from '../features/findings/OwnerChangedSinceTicketNote';
 import { CryptoVerificationDialog, type CryptoVerificationMode } from '../features/findings/CryptoVerificationDialog';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -764,6 +766,15 @@ export function FindingDetailPage({ findingRef }: { findingRef?: string } = {}) 
         </div>
         )}
       </div>
+
+      <FindingCreateTicketAction
+        findingId={currentFinding.id}
+        status={currentFinding.status}
+        incidentId={currentFinding.incidentId}
+        onCreated={() => void api.getFinding(currentFinding.id).then(setCurrentFinding)}
+      />
+
+      {currentFinding.incidentId && <OwnerChangedSinceTicketNote findingId={currentFinding.id} ownership={currentFinding.ownership} />}
 
       {isCryptoFinding && (
         <>

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { AsyncSection } from '../../components/AsyncSection';
 import { Dialog } from '../../components/Dialog';
+import { ownerBucketLabel } from '../campaigns/ownership';
 import { formatDate, percent } from './labels';
 
 const GROUPS = [
@@ -11,6 +12,7 @@ const GROUPS = [
   { value: 'ownerTeam', label: 'Owner team' },
   { value: 'environment', label: 'Environment' },
   { value: 'businessCriticality', label: 'Business criticality' },
+  { value: 'supportGroup', label: 'CMDB support group (evidence, not ownership)' },
 ];
 
 /** Portfolio rollups and post-quantum migration progress. */
@@ -42,10 +44,10 @@ export function CbomPortfolioPanel({ canManage }: { canManage: boolean }) {
                       {pqc.data.campaigns.map((campaign) => (
                         <tr key={campaign.campaignId}>
                           <td><Link to={`/vuln-repo/campaigns/${encodeURIComponent(campaign.campaignId)}`}>{campaign.name}</Link> <span className="panel-caption">{campaign.status}</span></td>
-                          <td>{campaign.owners.length === 0 ? 'Unassigned' : campaign.owners.join(', ')}</td>
+                          <td>{campaign.owners.length === 0 ? 'Unowned' : campaign.owners.map(ownerBucketLabel).join(', ')}</td>
                           <td>{formatDate(campaign.dueAt)}</td>
-                          <td>{percent(campaign.percentComplete)} ({campaign.resolved} of {campaign.findings})</td>
-                          <td>{campaign.open}</td>
+                          <td>{percent(campaign.percentComplete)} ({campaign.remediated} of {campaign.findings} remediated)</td>
+                          <td>{campaign.active}</td>
                           <td>{campaign.overdue}</td>
                         </tr>
                       ))}
@@ -73,8 +75,8 @@ export function CbomPortfolioPanel({ canManage }: { canManage: boolean }) {
               <thead><tr><th>Group</th><th>Assets</th><th>Crypto assets</th><th>Critical</th><th>High</th><th>Quantum-vulnerable</th><th>Open crypto findings</th><th>Overdue</th><th>Avg posture</th></tr></thead>
               <tbody>
                 {(portfolio.data?.groups ?? []).map((group) => (
-                  <tr key={group.group}>
-                    <td>{group.group}</td><td>{group.assets}</td><td>{group.components}</td><td>{group.openCritical}</td><td>{group.openHigh}</td>
+                  <tr key={group.teamId ?? `${group.ownerBucket ?? 'group'}-${group.group}`}>
+                    <td>{group.group}{group.ownerBucket === 'PENDING_MIGRATION' && <span className="panel-caption"> (pending migration)</span>}</td><td>{group.assets}</td><td>{group.components}</td><td>{group.openCritical}</td><td>{group.openHigh}</td>
                     <td>{group.quantumVulnerable}</td><td>{group.openCryptoFindings}</td><td>{group.overdueCryptoFindings}</td>
                     <td>{group.averagePostureScore ?? '—'}</td>
                   </tr>
@@ -93,7 +95,6 @@ export function CbomPortfolioPanel({ canManage }: { canManage: boolean }) {
 function PqcCampaignDialog({ isOpen, onClose, onCreated }: { isOpen: boolean; onClose: () => void; onCreated: (c: { id: string; name: string }) => void }) {
   const [name, setName] = React.useState('');
   const [due, setDue] = React.useState('');
-  const [owner, setOwner] = React.useState('');
   const [environment, setEnvironment] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -102,8 +103,9 @@ function PqcCampaignDialog({ isOpen, onClose, onCreated }: { isOpen: boolean; on
     setBusy(true);
     setError('');
     try {
+      // Phase 0B §4.12: a campaign never sets a free-text owner or assignee on its findings.
       const response = await api.createCbomPqcCampaign({ name: name.trim(), dueAt: new Date(`${due}T23:59:59Z`).toISOString(),
-        assignedTo: owner.trim() || undefined, environment: environment.trim() || undefined });
+        environment: environment.trim() || undefined });
       onCreated({ id: response.summary.id, name: response.summary.name });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The campaign could not be created.');
@@ -117,7 +119,6 @@ function PqcCampaignDialog({ isOpen, onClose, onCreated }: { isOpen: boolean; on
         <p className="panel-caption">Every open quantum-vulnerable crypto finding in scope is linked to the campaign.</p>
         <label>Campaign name<input value={name} onChange={(event) => setName(event.target.value)} required autoFocus /></label>
         <label>Migration due date<input type="date" value={due} onChange={(event) => setDue(event.target.value)} required /></label>
-        <label>Owner (optional)<input value={owner} onChange={(event) => setOwner(event.target.value)} /></label>
         <label>Environment scope (optional)<input value={environment} onChange={(event) => setEnvironment(event.target.value)} placeholder="All environments" /></label>
         {error && <div className="notice error" role="alert">{error}</div>}
         <div className="confirm-dialog-actions">

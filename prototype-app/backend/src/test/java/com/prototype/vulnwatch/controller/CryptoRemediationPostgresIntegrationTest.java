@@ -88,10 +88,17 @@ class CryptoRemediationPostgresIntegrationTest {
     }
 
     @Test
-    void campaignsFromFindingsLinkAndBulkAssignAtomically() throws Exception {
+    void campaignsFromFindingsLinkAtomicallyAndNeverWriteWorkflowOrOwnerFields() throws Exception {
         String ids = "[\"" + crypto.get(0) + "\",\"" + crypto.get(1) + "\"]";
+        // Phase 0B §4.2/§4.12: free-text assignee and owner fields are rejected; the assignee is a principal.
         mockMvc.perform(asPlatformOwner(authedPost("/api/campaigns/from-findings")).contentType("application/json")
                 .content("{\"name\":\"Rotate weak keys\",\"findingIds\":" + ids + ",\"assignedTo\":\"alice\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(asPlatformOwner(authedPost("/api/campaigns/from-findings")).contentType("application/json")
+                .content("{\"name\":\"Rotate weak keys\",\"findingIds\":" + ids + ",\"ownerGroup\":\"Crypto\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(asPlatformOwner(authedPost("/api/campaigns/from-findings")).contentType("application/json")
+                .content("{\"name\":\"Rotate weak keys\",\"findingIds\":" + ids + ",\"assigneePrincipalId\":\"" + UUID.randomUUID() + "\"}"))
                 .andExpect(status().isBadRequest());
         long before = inTenant(() -> jdbc.queryForObject("select count(*) from campaigns", Long.class));
         mockMvc.perform(asPlatformOwner(authedPost("/api/campaigns/from-findings")).contentType("application/json")
@@ -101,17 +108,22 @@ class CryptoRemediationPostgresIntegrationTest {
                 "an unknown finding rolls the whole campaign back");
 
         JsonNode campaign = json(mockMvc.perform(asPlatformOwner(authedPost("/api/campaigns/from-findings")).contentType("application/json")
-                .content("{\"name\":\"Rotate weak keys\",\"findingIds\":" + ids + ",\"assignedTo\":\"alice\",\"dueAt\":\"2027-01-31T00:00:00Z\","
+                .content("{\"name\":\"Rotate weak keys\",\"findingIds\":" + ids + ",\"dueAt\":\"2027-01-31T00:00:00Z\","
                         + "\"launchNote\":\"Q1 crypto hygiene\"}"))
                 .andExpect(status().isCreated()).andReturn());
+        assertEquals("FINDINGS", campaign.path("summary").path("scopeKind").asText());
+        assertEquals(2, campaign.path("summary").path("totalFindings").asInt(), "finding-scope campaigns now show their members");
         String campaignId = campaign.path("summary").path("id").asText();
-        JsonNode linked = get("/api/campaigns/" + campaignId + "/findings");
+        JsonNode linked = get("/api/campaigns/" + campaignId + "/members").path("items");
         assertEquals(2, linked.size());
         linked.forEach(row -> {
-            assertEquals("alice", row.path("assignedTo").asText());
             assertEquals("CRYPTO", row.path("findingKind").asText());
-            assertTrue(row.path("dueAt").asText().startsWith("2027-01-31"));
+            assertEquals("CREATE", row.path("addSource").asText());
+            assertEquals("LEGACY_PENDING_MIGRATION", row.path("ownerAtAdd").path("status").asText());
         });
+        assertEquals(0L, (long) inTenant(() -> jdbc.queryForObject(
+                "select count(*) from findings where finding_kind = 'CRYPTO' and (assigned_to is not null or owner_group is not null)", Long.class)),
+                "launch writes no assignee or owner onto the findings");
     }
 
     @Test

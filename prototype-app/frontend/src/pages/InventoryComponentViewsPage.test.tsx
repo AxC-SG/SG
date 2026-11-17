@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api } from '../api/client';
+import { ApiError, api } from '../api/client';
+import { ActorContextState } from '../features/auth/context';
 import { renderWithProviders } from '../test/test-utils';
 import { InventoryComponentViewsPage } from './InventoryComponentViewsPage';
 
@@ -114,5 +115,49 @@ describe('InventoryComponentViewsPage', () => {
     await waitFor(() =>
       expect(screen.getByText(/Failed to load inventory/i)).toBeInTheDocument()
     );
+  });
+
+  describe('BOM owner filters and assign owner', () => {
+    const canonical = { objectId: 'cmp-1', authorityDomain: 'CLOUD_BOM', authorityState: 'CANONICAL', ownershipStatus: 'OWNED', ownerTeamName: 'Payments' };
+    const team = { id: 'team-1', name: 'Payments', parentTeamId: null, ticketAssignmentGroup: null, status: 'ACTIVE' as const, version: 1 };
+    const analyst = { creator: false, principal: 'a', userId: 'u', tenantId: 't', tenantName: 'T', roles: ['ROLE_SECURITY_ANALYST'] };
+
+    it('offers owner filters once rows are canonical, filters by team, and offers Assign owner on canonical rows', async () => {
+      const list = vi.spyOn(api, 'listInventoryComponents').mockResolvedValue({
+        items: [buildComponentRecord({ ownership: canonical })], page: 0, size: 25, totalItems: 1, totalPages: 1,
+      });
+      vi.spyOn(api, 'listInventoryComponentFilters').mockResolvedValue(EMPTY_FILTER_VALUES);
+      vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([team]);
+      renderWithProviders(<ActorContextState.Provider value={analyst}><InventoryComponentViewsPage selectedView="hosts" /></ActorContextState.Provider>);
+      expect(await screen.findByRole('button', { name: 'Assign owner for lodash on web-prod-01' })).toBeInTheDocument();
+      await screen.findByRole('option', { name: 'Payments' });
+      fireEvent.change(screen.getByLabelText('Owner team'), { target: { value: 'team-1' } });
+      fireEvent.change(screen.getByLabelText('Ownership status'), { target: { value: 'OWNED' } });
+      await waitFor(() => expect(list).toHaveBeenCalledWith(expect.objectContaining({ ownerTeamId: 'team-1', ownershipStatus: 'OWNED' })));
+    });
+
+    it('hides owner filters and Assign owner while ownership is not canonical', async () => {
+      vi.spyOn(api, 'listInventoryComponents').mockResolvedValue({
+        items: [buildComponentRecord()], page: 0, size: 25, totalItems: 1, totalPages: 1,
+      });
+      vi.spyOn(api, 'listInventoryComponentFilters').mockResolvedValue(EMPTY_FILTER_VALUES);
+      renderWithProviders(<ActorContextState.Provider value={analyst}><InventoryComponentViewsPage selectedView="hosts" /></ActorContextState.Provider>);
+      await screen.findByText('lodash');
+      expect(screen.queryByRole('group', { name: 'Owner filters' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Assign owner/ })).not.toBeInTheDocument();
+    });
+
+    it('shows a plain state, not an error, when the server answers 409', async () => {
+      vi.spyOn(api, 'listInventoryComponents')
+        .mockResolvedValueOnce({ items: [buildComponentRecord({ ownership: canonical })], page: 0, size: 25, totalItems: 1, totalPages: 1 })
+        .mockRejectedValue(new ApiError('not canonical', 409));
+      vi.spyOn(api, 'listInventoryComponentFilters').mockResolvedValue(EMPTY_FILTER_VALUES);
+      vi.spyOn(api, 'listOwnershipTeams').mockResolvedValue([team]);
+      renderWithProviders(<InventoryComponentViewsPage selectedView="hosts" />);
+      await screen.findByText('lodash');
+      fireEvent.change(await screen.findByLabelText('Ownership status'), { target: { value: 'UNOWNED' } });
+      expect(await screen.findByText(/available once BOM ownership is canonical/)).toBeInTheDocument();
+      expect(screen.queryByText(/Failed to load inventory/)).not.toBeInTheDocument();
+    });
   });
 });

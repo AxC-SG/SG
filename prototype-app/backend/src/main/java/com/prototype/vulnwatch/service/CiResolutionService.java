@@ -106,6 +106,7 @@ public class CiResolutionService {
                             coalesceDisplay(ciLookup.managedBy(), resolvedOwnership.managedBy()),
                             coalesceDisplay(ciLookup.department(), resolvedOwnership.department()),
                             coalesceDisplay(ciLookup.supportGroup(), resolvedOwnership.supportGroup()),
+                            coalesce(ciLookup.supportGroupSysId(), resolvedOwnership.supportGroupSysId()),
                             coalesceDisplay(ciLookup.assignedTo(), resolvedOwnership.assignedTo())
                     );
                 }
@@ -137,6 +138,7 @@ public class CiResolutionService {
                     coalesce(lookup.managedBy(), resolvedOwnership.managedBy()),
                     coalesce(lookup.department(), resolvedOwnership.department()),
                     coalesce(lookup.supportGroup(), resolvedOwnership.supportGroup()),
+                    coalesce(lookup.supportGroupSysId(), resolvedOwnership.supportGroupSysId()),
                     coalesce(lookup.assignedTo(), resolvedOwnership.assignedTo())
             );
             return upsertCi(
@@ -308,6 +310,7 @@ public class CiResolutionService {
                     coalesce(lookup.managedBy(), resolvedOwnership.managedBy()),
                     coalesce(lookup.department(), resolvedOwnership.department()),
                     coalesce(lookup.supportGroup(), resolvedOwnership.supportGroup()),
+                    coalesce(lookup.supportGroupSysId(), resolvedOwnership.supportGroupSysId()),
                     coalesce(lookup.assignedTo(), resolvedOwnership.assignedTo())
             );
             return upsertCi(
@@ -577,6 +580,7 @@ public class CiResolutionService {
         ci.setManagedBy(displayOrNull(o.managedBy()));
         ci.setDepartment(displayOrNull(o.department()));
         ci.setSupportGroup(displayOrNull(o.supportGroup()));
+        ci.setSupportGroupSysId(sysIdOrNull(o.supportGroupSysId()));
         ci.setAssignedTo(displayOrNull(o.assignedTo()));
     }
 
@@ -610,6 +614,7 @@ public class CiResolutionService {
                 coalesceDisplay(current.managedBy(), ci.getManagedBy()),
                 coalesceDisplay(current.department(), ci.getDepartment()),
                 coalesceDisplay(current.supportGroup(), ci.getSupportGroup()),
+                coalesce(current.supportGroupSysId(), ci.getSupportGroupSysId()),
                 coalesceDisplay(current.assignedTo(), ci.getAssignedTo())
         );
     }
@@ -764,6 +769,7 @@ public class CiResolutionService {
                 fieldValue(selected.path("managed_by")),
                 fieldValue(selected.path("department")),
                 fieldValue(selected.path("support_group")),
+                referenceSysId(selected.path("support_group")),
                 fieldValue(selected.path("assigned_to"))
             );
         } catch (Exception ignored) {
@@ -838,6 +844,7 @@ public class CiResolutionService {
                 fieldValue(selected.path("managed_by")),
                 fieldValue(selected.path("department")),
                 fieldValue(selected.path("support_group")),
+                referenceSysId(selected.path("support_group")),
                 fieldValue(selected.path("assigned_to"))
             );
         } catch (Exception ignored) {
@@ -959,22 +966,41 @@ public class CiResolutionService {
             String managedBy,
             String department,
             String supportGroup,
+            String supportGroupSysId,
             String assignedTo
     ) {
     }
 
+    /**
+     * Ownership fields from a CMDB row. {@code supportGroup} is the display name; {@code supportGroupSysId} is the
+     * referenced {@code sys_user_group} {@code sys_id} when the row carries it (Phase 0B §1.8).
+     */
     public record OwnershipDetails(
             String ownerEmail,
             String managedBy,
             String department,
             String supportGroup,
+            String supportGroupSysId,
             String assignedTo
     ) {
         public static OwnershipDetails ofEmail(String ownerEmail) {
-            return new OwnershipDetails(ownerEmail, null, null, null, null);
+            return new OwnershipDetails(ownerEmail, null, null, null, null, null);
         }
         public static OwnershipDetails empty() {
-            return new OwnershipDetails(null, null, null, null, null);
+            return new OwnershipDetails(null, null, null, null, null, null);
         }
+    }
+
+    /** The lower-case form of {@code value} when it is a ServiceNow sys_id, otherwise null. */
+    public static String sysIdOrNull(String value) {
+        return isLikelyServiceNowSysId(value) ? value.trim().toLowerCase(java.util.Locale.ROOT) : null;
+    }
+
+    /** The reference sys_id of a Table API field read with {@code sysparm_display_value=all} (or a raw sys_id). */
+    private static String referenceSysId(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        return sysIdOrNull(node.isObject() ? node.path("value").asText(null) : node.asText(null));
     }
 }

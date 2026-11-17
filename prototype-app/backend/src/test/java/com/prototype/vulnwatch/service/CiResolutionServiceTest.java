@@ -121,6 +121,44 @@ class CiResolutionServiceTest {
     }
 
     @Test
+    void supportGroupSysIdIsStoredLowerCaseBesideTheNameAndKeptWhenALaterRowOmitsIt() {
+        String sysId = "c4fd7c8437201000deeabfc8bcbe5dc2";
+        String groupSysId = "8A4DDE73C6112278017A6A4BAF547AA7";
+        Tenant tenant = new Tenant();
+        tenant.setId(UUID.randomUUID());
+        CiRepository ciRepository = mock(CiRepository.class);
+        AssetRepository assetRepository = mock(AssetRepository.class);
+        CiAliasRepository ciAliasRepository = mock(CiAliasRepository.class);
+        ServiceNowCmdbConfigService configService = mock(ServiceNowCmdbConfigService.class);
+        when(assetRepository.save(any(Asset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ciRepository.save(any(Ci.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ciAliasRepository.save(any(CiAlias.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        TenantSchemaExecutionService scoped = mock(TenantSchemaExecutionService.class);
+        doAnswer(invocation -> invocation.<java.util.function.Supplier<?>>getArgument(1).get())
+                .when(scoped).run(any(Tenant.class), any(java.util.function.Supplier.class));
+        CiResolutionService service = new CiResolutionService(ciRepository, ciAliasRepository, assetRepository,
+                new OutboundHttpClient(new RestTemplate()),
+                new OutboundPolicyFactory(new OutboundPolicyDefaults(0L, 1, 1L, 60_000L, true, true)),
+                new ObjectMapper(), configService, scoped);
+        CiResolutionService.BatchResolutionContext context = new CiResolutionService.BatchResolutionContext(tenant,
+                "servicenow", new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>(), new LinkedHashMap<>());
+
+        CiResolutionService.Resolution first = service.resolve(context, tenant, sysId, "pay-web-01", null,
+                new CiResolutionService.OwnershipDetails(null, null, null, "Payments Support", groupSysId, null),
+                BusinessCriticality.MEDIUM, "servicenow");
+        assertEquals("Payments Support", first.ci().getSupportGroup());
+        assertEquals(groupSysId.toLowerCase(), first.ci().getSupportGroupSysId());
+
+        // A raw-value field list stores the reference with no display name; the name column stays clean.
+        CiResolutionService.Resolution second = service.resolve(context, tenant, sysId, "pay-web-01", null,
+                new CiResolutionService.OwnershipDetails(null, null, null, groupSysId, groupSysId, null),
+                BusinessCriticality.MEDIUM, "servicenow");
+        assertEquals("Payments Support", second.ci().getSupportGroup());
+        assertEquals(groupSysId.toLowerCase(), second.ci().getSupportGroupSysId());
+        verifyNoInteractions(configService);
+    }
+
+    @Test
     void resolveIgnoresCrossTenantCiAndAssetMatches() {
         String sysId = "b4fd7c8437201000deeabfc8bcbe5dc1";
         Tenant tenant = new Tenant();

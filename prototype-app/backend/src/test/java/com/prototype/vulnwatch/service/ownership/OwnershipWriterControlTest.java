@@ -28,6 +28,7 @@ class OwnershipWriterControlTest {
             Map.entry("external_identity", PKG.resolve("DirectoryService.java")),
             Map.entry("external_group", PKG.resolve("DirectoryService.java")),
             Map.entry("identity_import_run", PKG.resolve("DirectoryImportService.java")),
+            Map.entry("external_group_team_mapping", PKG.resolve("GroupTeamMappingService.java")),
             Map.entry("team", PKG.resolve("TeamNamespaceService.java")),
             Map.entry("team_alias", PKG.resolve("TeamNamespaceService.java")),
             Map.entry("ownership_subject", PKG.resolve("OwnershipSubjectService.java")),
@@ -41,6 +42,29 @@ class OwnershipWriterControlTest {
 
     static Pattern writePattern(String table) {
         return Pattern.compile("(?is)\\b(insert\\s+into|update|delete\\s+from)\\s+(\\$\\{tenantSchema}\\.|\\w+\\.)?" + table + "\\b(?!_)");
+    }
+
+    /**
+     * Phase 0B §3.5: only the finding-adapter registry writes {@code findings.ownership_subject_id}. Matches an UPDATE of
+     * findings that sets the column, in SQL or through a JPA setter.
+     */
+    @Test
+    void onlyTheFindingAdapterRegistryWritesFindingSubjects() throws IOException {
+        Path registry = PKG.resolve("FindingSubjectAdapterRegistry.java");
+        Pattern sql = Pattern.compile("(?is)update\\s+findings\\b[^;]{0,400}?\\bset\\b[^;]{0,200}?\\bownership_subject_id\\s*=");
+        Pattern setter = Pattern.compile("\\bsetOwnershipSubjectId\\(");
+        List<String> offenders = new ArrayList<>();
+        try (Stream<Path> files = Files.walk(MAIN)) {
+            for (Path source : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                if (source.equals(registry)) continue;
+                String text = Files.readString(source);
+                if (sql.matcher(text).find() || (text.contains("class Finding") && setter.matcher(text).find() && !source.endsWith("Finding.java"))) {
+                    offenders.add(source.toString());
+                }
+            }
+        }
+        assertThat(offenders).isEmpty();
+        assertThat(sql.matcher(Files.readString(registry)).find()).as("the registry itself must be detected").isTrue();
     }
 
     @Test

@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/client';
+import { ActorContextState } from '../features/auth/context';
 import { renderWithProviders } from '../test/test-utils';
 import { AssetsPage } from './AssetsPage';
 
@@ -78,5 +79,20 @@ describe('AssetsPage', () => {
       const input = screen.getByDisplayValue('https://myinstance.service-now.com');
       expect(input).toBeInTheDocument();
     });
+  });
+
+  it('saves the default assignment group and clears it with a blank value', async () => {
+    vi.spyOn(api, 'getServiceNowCmdbConfig').mockResolvedValue(buildConfig({ defaultAssignmentGroup: 'Platform Security' }));
+    const save = vi.spyOn(api, 'saveServiceNowCmdbConfig').mockResolvedValue(buildConfig({ defaultAssignmentGroup: null }));
+    renderWithProviders(
+      <ActorContextState.Provider value={{ creator: false, principal: 'a', userId: 'u', tenantId: 't', tenantName: 'T', roles: ['TENANT_ADMIN'] }}>
+        <AssetsPage />
+      </ActorContextState.Provider>
+    );
+    const input = await screen.findByLabelText('Default assignment group');
+    expect(input).toHaveValue('Platform Security');
+    fireEvent.change(input, { target: { value: '  ' } });
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultAssignmentGroup: '' })));
   });
 });

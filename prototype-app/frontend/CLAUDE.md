@@ -1,5 +1,22 @@
 # CLAUDE.md
 
+## Ownership Release 2 integration — November 17, 2026
+
+The combined ownership/AWS/CI/CD candidate is **lab-only and release-blocked**; see the
+[integration review](../docs/ownership-release-2-integration-review.md) and
+[qualification scorecard](../docs/ownership-release-2-qualification.md). Use the paired frontend/backend release path
+from main; do not promote the ownership UI independently of its V27 backend. Ownership waves govern canonical reads,
+not every campaign write. CUSTOM campaign emails require tenant encryption and may return 503 with the default disabled
+wrapper. The CVE workbench does not send ticket routing hashes: keep its tenants out of the tickets read wave.
+Add CVE and Add software persist to the server; removal of CVEs/software/assets is still local-only. Sources, mappings,
+occurrence assignment, campaign membership and ticket dialogs are implemented but browser/accessibility/visual
+qualification remains open. Local checks do not establish deployed or real-provider qualification.
+
+The fixture browser router must explicitly model Release 2 CLOUD_BOM qualification, finding ticket attempts and campaign
+members/owner buckets/reconciliation, including outcome/current-ownership fields. Keep unexpected API enforcement and
+journey assertions enabled; generic paginated fallbacks do not satisfy those API contracts. Remote verification is
+tracked in [PR #136](https://github.com/AxC-SG/SG/pull/136) and the integration review.
+
 > **Current prerequisite contract (October 21, 2026):** [implementation closure](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_IMPLEMENTATION_CLOSURE.md>) and [release qualification](<../Working Knowledge/AWS/PHASE_3_RELEASE_QUALIFICATION.md>). Generic Azure, local archive operations, tenant OSV, runtime evidence and destructive tenant purge remain contained; Fix Intelligence and the patch connectors are re-enabled (tenant V9) but not yet release-qualified; deployed pilot generative assistance remains off. The unsupported Patch Management mock forms and credential-logging handlers have been retired; see [review handoff](<../Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>). Documentation completion is not release qualification.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -119,9 +136,9 @@ src/
 
 ## Ownership feature
 
-`src/features/ownership/` renders the Ownership & Directory hub inside `ConfigurationsPage` (`ownership` section). The sub-view lives in the `view` search parameter (`overview` default, `teams`, `people`, `groups`, `imports`, `review`, `legacy`). `permissions.ts` mirrors the backend `OwnershipAuthorization` matrix for visibility only; the server still decides. People and Groups appear only for roles that can view the directory, and Imports only for `TENANT_ADMIN`. The legacy rule editor is passed in as `legacyRules` and shown as "Legacy rules" while inventory ownership still reports `LEGACY_PENDING_MIGRATION`.
+`src/features/ownership/` renders the Ownership & Directory hub inside `ConfigurationsPage` (`ownership` section). The sub-view lives in the `view` search parameter (`overview` default, `teams`, `people`, `groups`, `sources`, `mappings`, `imports`, `review`, `legacy`). `permissions.ts` mirrors the backend `OwnershipAuthorization` matrix for visibility only; the server still decides. People and Groups appear only for roles that can view the directory, Sources only for `TENANT_ADMIN`/`INVENTORY_ADMIN` (`VIEW_IDENTITY_SOURCE`; configure, preview, enable, sync and resume are `TENANT_ADMIN` only), and Imports only for `TENANT_ADMIN`. Mappings is visible to every directory role; changing a mapping (`MAP_GROUPS`) needs an impact preview whose token is sent with the change. Preview samples (full names and emails) stay in the request's state and are cleared when the dialog closes; the test/preview request starts from the button click, never from an effect. The legacy rule editor is passed in as `legacyRules` and shown as "Legacy rules" while inventory ownership still reports `LEGACY_PENDING_MIGRATION`.
 
-Use `resolvedOwnership.ts` to read the canonical ownership envelope on assets and findings. Show the resolved team only when `authorityState` is `CANONICAL`; otherwise keep today's owner display (findings show "Pending migration"). Findings owner-team and ownership-status filters are offered only when `useOwnershipCoverageQuery('FINDINGS')` reports `CANONICAL`, and they filter by stable team ID. Ownership API calls go through `api/client.ts`. Tests: `OwnershipDirectoryHub.test.tsx`, `resolvedOwnership.test.ts`, and the Findings, Inventory, HostAssetDetail and Configurations page tests.
+Use `resolvedOwnership.ts` to read the canonical ownership envelope on assets and findings. Show the resolved team only when `authorityState` is `CANONICAL`; otherwise keep today's owner display (findings show "Pending migration"). Findings owner-team and ownership-status filters are offered only when `useOwnershipCoverageQuery('FINDINGS')` reports `CANONICAL`, and they filter by stable team ID. Ownership API calls go through `api/client.ts`. Tests: `OwnershipDirectoryHub.test.tsx`, `OwnershipSourcesMappings.test.tsx`, `resolvedOwnership.test.ts`, and the Findings, Inventory, HostAssetDetail and Configurations page tests.
 
 ## cve-workbench feature internals
 

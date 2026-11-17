@@ -1,5 +1,8 @@
 package com.prototype.vulnwatch.service.ownership;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.security.tenantkey.TenantDataCipher;
 import com.prototype.vulnwatch.service.AuditEventService;
 import com.prototype.vulnwatch.service.TenantContext;
@@ -24,6 +27,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -416,6 +420,174 @@ public class DirectoryImportService {
                 teams.addAlias(team, alias, sourceKind, null, actor);
             }
         };
+    }
+
+    // ----- provider sync runs (Phase 0B §1.3, §1.5, §1.7) -----------------------------------------------------
+
+    /**
+     * A claimed PROVIDER_SYNC run. {@code baseline} is true until the source has a complete run that APPLIED;
+     * {@code exemptTables} are the tables an admin approved by resuming after an anomaly pause.
+     */
+    public record ProviderRunStart(UUID runId, boolean complete, boolean baseline, Set<String> exemptTables, String actor) { }
+
+    public record ProviderRunCounts(int total, int created, int updated, int unchanged, int rejected) { }
+
+    private static final ObjectMapper RUN_JSON = new ObjectMapper();
+
+    /**
+     * Queues a sync of {@code sourceId}, or returns the run already queued, upgraded to a complete scan when one is
+     * asked for. The worker claims it with {@link #claimProviderRun}.
+     */
+    @Transactional
+    public UUID queueProviderRun(UUID sourceId, boolean complete, String actor) {
+        lockProviderRuns(sourceId);
+        List<Map<String, Object>> queued = jdbc.queryForList("""
+                SELECT id, cursor_start FROM identity_import_run WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state = 'QUEUED'
+                 ORDER BY created_at LIMIT 1
+                """, sourceId);
+        if (!queued.isEmpty()) {
+            UUID id = (UUID) queued.get(0).get("id");
+            if (complete && !runJson((String) queued.get(0).get("cursor_start")).path("complete").asBoolean(false)) {
+                jdbc.update("UPDATE identity_import_run SET cursor_start = ? WHERE id = ? AND state = 'QUEUED'",
+                        writeRunJson(Map.of("complete", true)), id);
+            }
+            return id;
+        }
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO identity_import_run (tenant_id, id, source_id, kind, state, cursor_start, actor)
+                VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, 'PROVIDER_SYNC', 'QUEUED', ?, ?)
+                """, id, sourceId, writeRunJson(Map.of("complete", complete)), actor);
+        return id;
+    }
+
+    /**
+     * Claims the source's next run under a per-source lock: the oldest queued run, or a new scheduled run when the
+     * last run is older than {@code schedule}. Nothing is claimed while another run is RUNNING; a RUNNING run older
+     * than {@code staleAfter} is first ended as FAILED (its worker died). A run is a complete scan when it was queued
+     * as one, when the source has no applied complete scan yet (the baseline), when the last one is older than
+     * {@code completeEvery}, or when it carries an approved anomaly from a complete scan.
+     */
+    @Transactional
+    public Optional<ProviderRunStart> claimProviderRun(UUID sourceId, Duration schedule, Duration completeEvery, Duration staleAfter,
+                                                       String systemActor) {
+        lockProviderRuns(sourceId);
+        jdbc.update("""
+                UPDATE identity_import_run SET state = 'FAILED', error_summary = 'STALE_RUN', finished_at = now()
+                 WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state = 'RUNNING' AND started_at < now() - make_interval(secs => ?)
+                """, sourceId, staleAfter.toSeconds());
+        if (jdbc.queryForObject("SELECT count(*) FROM identity_import_run WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state = 'RUNNING'",
+                Integer.class, sourceId) > 0) {
+            return Optional.empty();
+        }
+        List<Map<String, Object>> queued = jdbc.queryForList("""
+                SELECT id, cursor_start, actor FROM identity_import_run WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state = 'QUEUED'
+                 ORDER BY created_at LIMIT 1
+                """, sourceId);
+        if (queued.isEmpty() && !Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT coalesce(max(created_at), '-infinity'::timestamptz) <= now() - make_interval(secs => ?)
+                  FROM identity_import_run WHERE source_id = ? AND kind = 'PROVIDER_SYNC'
+                """, Boolean.class, schedule.toSeconds(), sourceId))) {
+            return Optional.empty();
+        }
+        Map<String, Object> completeScan = jdbc.queryForMap("""
+                SELECT count(*) > 0 AS any_applied,
+                       coalesce(max(finished_at) <= now() - make_interval(secs => ?), false) AS weekly_due
+                  FROM identity_import_run
+                 WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state = 'APPLIED' AND cursor_start::jsonb ->> 'complete' = 'true'
+                """, completeEvery.toSeconds(), sourceId);
+        boolean baseline = !Boolean.TRUE.equals(completeScan.get("any_applied"));
+        List<Map<String, Object>> previous = jdbc.queryForList("""
+                SELECT state, cursor_start, cursor_end FROM identity_import_run
+                 WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state IN ('APPLIED','PARTIAL','FAILED')
+                 ORDER BY created_at DESC LIMIT 1
+                """, sourceId);
+        Set<String> exempt = new java.util.TreeSet<>();
+        boolean previousComplete = false;
+        if (!previous.isEmpty()) {
+            JsonNode start = runJson((String) previous.get(0).get("cursor_start"));
+            previousComplete = start.path("complete").asBoolean(false);
+            runJson((String) previous.get(0).get("cursor_end")).path("anomalyTables").forEach(t -> exempt.add(t.asText()));
+            // An approval not yet used by a run that got past the table carries over a failed run.
+            if (exempt.isEmpty() && "FAILED".equals(previous.get(0).get("state"))) start.path("exempt").forEach(t -> exempt.add(t.asText()));
+        }
+        boolean queuedComplete = !queued.isEmpty() && runJson((String) queued.get(0).get("cursor_start")).path("complete").asBoolean(false);
+        boolean complete = queuedComplete || baseline || Boolean.TRUE.equals(completeScan.get("weekly_due")) || (!exempt.isEmpty() && previousComplete);
+        List<String> cursors = jdbc.queryForList("SELECT sync_cursor FROM identity_source WHERE id = ?", String.class, sourceId);
+        String cursor = cursors.isEmpty() ? null : cursors.get(0); // the list holds a null before the first run
+        Map<String, Object> startJson = new java.util.LinkedHashMap<>();
+        startJson.put("complete", complete);
+        startJson.put("baseline", baseline);
+        startJson.put("exempt", List.copyOf(exempt));
+        startJson.put("tables", runJson(cursor));
+        String actor;
+        UUID runId;
+        if (queued.isEmpty()) {
+            runId = UUID.randomUUID();
+            actor = systemActor;
+            jdbc.update("""
+                    INSERT INTO identity_import_run (tenant_id, id, source_id, kind, state, cursor_start, actor, started_at)
+                    VALUES (NULLIF(current_setting('app.current_tenant_id', true), '')::uuid, ?, ?, 'PROVIDER_SYNC', 'RUNNING', ?, ?, now())
+                    """, runId, sourceId, writeRunJson(startJson), actor);
+        } else {
+            runId = (UUID) queued.get(0).get("id");
+            actor = (String) queued.get(0).get("actor");
+            jdbc.update("UPDATE identity_import_run SET state = 'RUNNING', started_at = now(), cursor_start = ? WHERE id = ? AND state = 'QUEUED'",
+                    writeRunJson(startJson), runId);
+        }
+        return Optional.of(new ProviderRunStart(runId, complete, baseline, Set.copyOf(exempt), actor));
+    }
+
+    /**
+     * Ends a RUNNING provider run as APPLIED, PARTIAL (a table held by an anomaly), FAILED or CANCELLED. {@code cursorEnd}
+     * is JSON with the tables' cursors and any {@code anomalyTables}; {@code errorSummary} holds codes, never row values.
+     */
+    @Transactional
+    public void finishProviderRun(UUID runId, String state, ProviderRunCounts counts, Map<String, ?> cursorEnd, String errorSummary) {
+        if (!Set.of("APPLIED", "PARTIAL", "FAILED", "CANCELLED").contains(state)) throw new IllegalArgumentException("Unknown run state");
+        jdbc.update("""
+                UPDATE identity_import_run SET state = ?, rows_total = ?, rows_created = ?, rows_updated = ?, rows_unchanged = ?, rows_rejected = ?,
+                       cursor_end = ?, error_summary = ?, finished_at = now()
+                 WHERE id = ? AND kind = 'PROVIDER_SYNC' AND state = 'RUNNING'
+                """, state, counts.total(), counts.created(), counts.updated(), counts.unchanged(), counts.rejected(), writeRunJson(cursorEnd),
+                errorSummary == null ? null : truncate(errorSummary), runId);
+    }
+
+    /** How many of the source's most recent finished provider runs failed in a row (cancelled runs are skipped). */
+    @Transactional(readOnly = true)
+    public int consecutiveProviderFailures(UUID sourceId, int limit) {
+        List<String> states = jdbc.queryForList("""
+                SELECT state FROM identity_import_run WHERE source_id = ? AND kind = 'PROVIDER_SYNC' AND state IN ('APPLIED','PARTIAL','FAILED')
+                 ORDER BY created_at DESC LIMIT ?
+                """, String.class, sourceId, limit);
+        int failures = 0;
+        for (String state : states) {
+            if (!"FAILED".equals(state)) break;
+            failures++;
+        }
+        return failures;
+    }
+
+    private void lockProviderRuns(UUID sourceId) {
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", rs -> null,
+                TenantContext.getCurrentTenantId() + "|ownership.provider-sync|" + sourceId);
+    }
+
+    private static JsonNode runJson(String value) {
+        if (value == null || value.isBlank()) return RUN_JSON.createObjectNode();
+        try {
+            return RUN_JSON.readTree(value);
+        } catch (JsonProcessingException unreadable) {
+            return RUN_JSON.createObjectNode();
+        }
+    }
+
+    private static String writeRunJson(Object value) {
+        try {
+            return RUN_JSON.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     // ----- helpers --------------------------------------------------------------------------------------------
