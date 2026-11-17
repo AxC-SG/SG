@@ -69,15 +69,18 @@ Verification is performed on the combined branch, not copied from the ownership 
 
 ### Remote CI follow-up
 
-The [first remote Quality run](https://github.com/AxC-SG/SG/actions/runs/43937391391) tests `eaf295f9`. Node 24 frontend,
-backend unit/coverage/SpotBugs, static/migration checks, Gitleaks, Semgrep, filesystem scanning, and the exact ECS image's
-packaged migration inspection, migrator/API/worker startup and image scan pass. CodeQL and the Vercel branch preview
-also pass. The browser gate finds the stale fixture contracts described above; it remains enforced while those are
-corrected. PostgreSQL and follow-up browser results are tracked in [PR #136](https://github.com/AxC-SG/SG/pull/136).
-After the fixture corrections, the local findings, connector and campaign/experience journeys pass 67, 126 and 264
-checks respectively (457 total), with zero known/new failures or unexpected API requests. Lint passes with the same
-two existing warnings, and all five browser-runner tests pass. Production source and CI gates are unchanged by the
-fixture follow-up; the remote pinned-browser run remains required for its final revision.
+The [successful remote Quality run](https://github.com/AxC-SG/SG/actions/runs/43940270940) qualifies code/fixture revision
+`252808d81cca3ca82f1be5d8d4b811eda8a758ef`. The final Quality gate, Node 24 frontend, backend unit/coverage/SpotBugs,
+full PostgreSQL suite with its no-skips report check, static/migration checks, Gitleaks, Semgrep, filesystem scanning,
+and exact ECS image migration inspection, migrator/API/worker startup and image scan all pass. CodeQL and the Vercel
+branch preview also pass. All six pinned-browser journeys pass: findings 67, CVE 94, governance 168, inventory 108,
+connectors 126 and campaign/experience 264 (827 checks total). Terraform and scheduled performance jobs are skipped by
+the existing component/event selection; PR publication is skipped by design. No AWS deployment is performed.
+
+The fixture follow-up also passes 457 local affected-journey checks, lint with the same two existing warnings and all
+five browser-runner tests. Production source and CI gates are unchanged by that follow-up. Later documentation-only
+commits record this immutable evidence; consult [PR #136](https://github.com/AxC-SG/SG/pull/136) for checks on its current
+head. Final merge review and all release blockers remain separate from CI success.
 CI fixture journeys and isolated image startup do not establish live-provider, full new-screen accessibility/visual or
 production release qualification.
 
@@ -88,9 +91,11 @@ gaps. Passing local checks does not lift the release block.
 
 Local merge commit: `569a54a0` (parents `8c76d3db`, `1282d2a9`). All four `CLAUDE.md` files and the affected product,
 API, architecture, ownership and AWS qualification documents are updated. The temporary PostgreSQL cluster has been
-stopped after verification. Remote main and deployments are unchanged.
+stopped after verification. Remote main, AWS runtime and production deployments are unchanged; the existing Vercel
+integration creates a successful branch preview as part of PR validation.
 
 The user approved publishing the integration branch and opening a draft PR on November 17, 2026, after the initial
 push was rejected for missing explicit publication authorization. Publication approval does not lift the release block.
-The branch is published in [draft PR #136](https://github.com/AxC-SG/SG/pull/136), targeting main. Remote CI qualification
-and final merge review remain required; deployment and tenant enablement remain blocked.
+The branch is published in [draft PR #136](https://github.com/AxC-SG/SG/pull/136), targeting main. Revision `252808d8` passes
+all required remote checks and is conflict-free against main `8c76d3db`. Current-head CI and final merge review remain
+required; deployment and tenant enablement remain blocked.

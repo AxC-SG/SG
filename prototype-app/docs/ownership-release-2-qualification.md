@@ -12,6 +12,12 @@ database run found two existing non-UTC test-date assumptions; both corrected cl
 retained class reports have zero failures/errors/skips. Detailed gate results, environment limits and the distinction
 between a full run and targeted follow-up checks are in the integration review.
 
+Remote code/fixture revision `252808d8` passes [Quality run 43940270940](https://github.com/AxC-SG/SG/actions/runs/43940270940),
+including the full PostgreSQL suite, the exact ECS migrator/API/worker image checks and all six pinned-browser journeys
+(827 checks). CodeQL and the branch preview also pass. This closes those CI evidence gaps for that revision; it does
+not qualify live providers, production keys or every new workflow's accessibility/visual behavior. Current PR-head
+checks and the retained release block still apply.
+
 Scope: plan §16.5 exit ("ServiceNow directory, both cloud producers, BOM/CBOM, campaigns and tickets meet their
 scorecards and rollback tests") and the Release 2 rows of the §18 scorecard. Release 2 is implemented but is not the
 complete MVP (Release 3 adds Entra/Okta, AI Grid and the CVE workbench).
