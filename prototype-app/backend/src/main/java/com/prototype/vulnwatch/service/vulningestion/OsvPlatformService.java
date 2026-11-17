@@ -11,6 +11,8 @@ import com.prototype.vulnwatch.repo.AdvisoryEquivalenceRepository;
 import com.prototype.vulnwatch.repo.OsvAdvisoryRepository;
 import com.prototype.vulnwatch.repo.SoftwareIdentityRepository;
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,11 +59,12 @@ public class OsvPlatformService {
     log.info("Starting OSV advisory sync");
 
     try {
-      Set<String> ecosystems = Set.of("npm", "Python", "Go", "Rust", "RubyGems");
+      Map<String, Set<String>> inventoryPackages = getInventoryPackages();
+      List<String> ecosystems = List.of("npm", "PyPI", "Go", "crates.io", "RubyGems");
 
       for (String ecosystem : ecosystems) {
         try {
-          syncEcosystemPackages(ecosystem);
+          syncEcosystemPackages(ecosystem, inventoryPackages.getOrDefault(ecosystem, Set.of()));
         } catch (Exception e) {
           throw new IllegalStateException("OSV ecosystem retrieval is incomplete: " + ecosystem, e);
         }
@@ -76,12 +79,10 @@ public class OsvPlatformService {
     }
   }
 
-  private void syncEcosystemPackages(String ecosystem) {
+  private void syncEcosystemPackages(String ecosystem, Set<String> packages) {
     log.debug("Syncing OSV for ecosystem: {}", ecosystem);
 
     try {
-      Set<String> packages = getInventoryPackages().getOrDefault(ecosystem, Set.of());
-
       if (packages.isEmpty()) {
         log.debug("No packages found for ecosystem: {}", ecosystem);
         return;
@@ -128,8 +129,19 @@ public class OsvPlatformService {
         if (slash < 5) {
           continue;
         }
-        String ecosystem = purl.substring(4, slash);
-        String packageName = purl.substring(slash + 1).split("[@?\\#]", 2)[0];
+        String ecosystem = switch (purl.substring(4, slash).toLowerCase(java.util.Locale.ROOT)) {
+          case "npm" -> "npm";
+          case "pypi" -> "PyPI";
+          case "golang" -> "Go";
+          case "cargo" -> "crates.io";
+          case "gem" -> "RubyGems";
+          default -> null;
+        };
+        if (ecosystem == null) {
+          continue;
+        }
+        String encodedName = purl.substring(slash + 1).split("[@?\\#]", 2)[0];
+        String packageName = URLDecoder.decode(encodedName.replace("+", "%2B"), StandardCharsets.UTF_8);
         if (!packageName.isBlank()) {
           result.computeIfAbsent(ecosystem, ignored -> new HashSet<>()).add(packageName);
         }

@@ -23,8 +23,10 @@ import com.prototype.vulnwatch.service.VulnerabilityIntelligenceService;
 import com.prototype.vulnwatch.service.VulnerabilitySourceFilterConfigService;
 import com.prototype.vulnwatch.util.IdentityUtil;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,12 +40,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class NvdSyncService {
 
     private final NvdApiClient nvdApiClient;
     private final FeedWatermarkService feedWatermarks;
+    private final FeedCoverageLedgerService coverageLedger;
     private final VulnerabilityRepository vulnerabilityRepository;
     private final VulnerabilityRuleRepository vulnerabilityRuleRepository;
     private final VulnerabilityTargetRepository vulnerabilityTargetRepository;
@@ -83,10 +88,12 @@ public class NvdSyncService {
             VulnerabilityIngestionEffectsService effectsService,
             VulnerabilityIngestionCommonSupport support,
             ObjectMapper objectMapper,
-            FeedWatermarkService feedWatermarks
+            FeedWatermarkService feedWatermarks,
+            FeedCoverageLedgerService coverageLedger
     ) {
         this.nvdApiClient = nvdApiClient;
         this.feedWatermarks = feedWatermarks;
+        this.coverageLedger = coverageLedger;
         this.vulnerabilityRepository = vulnerabilityRepository;
         this.vulnerabilityRuleRepository = vulnerabilityRuleRepository;
         this.vulnerabilityTargetRepository = vulnerabilityTargetRepository;
@@ -123,6 +130,22 @@ public class NvdSyncService {
         return decision.toResponse("NVD sync is already in progress", "NVD incremental sync queued");
     }
 
+    /** One historical last-modified window; retries are idempotent and do not move the incremental watermark. */
+    public SyncTriggerResponse triggerNvdHistoricalWindow(Instant from, Instant to) {
+        return triggerNvdHistoricalWindow(from, to, null);
+    }
+
+    /** A planned baseline window must still target its selected filter scope when the worker begins. */
+    public SyncTriggerResponse triggerNvdHistoricalWindow(Instant from, Instant to, String expectedScopeKey) {
+        validateHistoricalWindow(from, to);
+        Map<String, Object> metadata = new java.util.HashMap<>(Map.of(
+                "triggerMode", "historical_window", "from", from.toString(), "to", to.toString()));
+        if (expectedScopeKey != null) metadata.put("expectedScopeKey", expectedScopeKey);
+        VulnerabilitySyncRunService.TriggerDecision decision = syncRunService.prepareQueuedRun(
+                "NVD", List.of("NVD", "NVD_FULL"), metadata);
+        return decision.toResponse("NVD sync is already in progress", "NVD historical window queued");
+    }
+
     public void executeNvdSyncAsync(UUID runId, int lookbackHours) {
         SyncRun run = syncRunService.markRunning(runId);
         executeNvdIncrementalSync(run, lookbackHours);
@@ -130,7 +153,64 @@ public class NvdSyncService {
 
     public void executeQueuedNvdSyncAsync(UUID runId) {
         SyncRun run = syncRunService.markRunning(runId);
-        executeNvdIncrementalSync(run, resolveQueuedLookbackHours(run));
+        JsonNode metadata = readQueuedMetadata(run);
+        String mode = metadata == null ? "incremental" : metadata.path("triggerMode").asText("incremental");
+        if ("historical_window".equals(mode)) {
+            final Instant from;
+            final Instant to;
+            try {
+                from = Instant.parse(metadata.path("from").asText());
+                to = Instant.parse(metadata.path("to").asText());
+                validateHistoricalWindow(from, to);
+            } catch (RuntimeException invalid) {
+                syncRunService.completeRun(run, "failed", 0, 0, 0, 0, "Invalid NVD historical window");
+                return;
+            }
+            String expectedScopeKey = metadata.path("expectedScopeKey").asText(null);
+            executeNvdHistoricalWindow(run, from, to, expectedScopeKey);
+        } else if ("incremental".equals(mode)) {
+            executeNvdIncrementalSync(run, resolveQueuedLookbackHours(run));
+        } else {
+            syncRunService.completeRun(run, "failed", 0, 0, 0, 0, "Unknown NVD trigger mode");
+        }
+    }
+
+    private static void validateHistoricalWindow(Instant from, Instant to) {
+        if (from == null || to == null || !from.isBefore(to) || to.isAfter(Instant.now())
+                || Duration.between(from, to).compareTo(Duration.ofDays(120)) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "NVD historical window must be in the past and at most 120 days");
+        }
+    }
+
+    private IngestionResult executeNvdHistoricalWindow(SyncRun run, Instant from, Instant to,
+                                                       String expectedScopeKey) {
+        var filters = vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters();
+        String key = nvdScopeKey(filters);
+        if (expectedScopeKey != null && !expectedScopeKey.equals(key)) {
+            syncRunService.completeRun(run, "failed", 0, 0, 0, 0,
+                    "NVD platform filter scope changed before baseline window execution");
+            return new IngestionResult("failed", 0, 0, 0,
+                    "NVD platform filter scope changed before baseline window execution");
+        }
+        Set<String> observedIds = new HashSet<>();
+        IngestionResult result = executeNvdSyncInternal(run, from, to, null,
+                "NVD historical window complete", false, filters, observedIds);
+        if (!"ok".equals(result.status())) {
+            syncRunService.completeRun(run, "failed", result.fetched(), result.inserted(),
+                    result.updated(), 0, result.message());
+            return result;
+        }
+        try {
+            coverageLedger.observeNvdInterval(run.getId(), key, from, to, result.fetched(), observedIds);
+        } catch (RuntimeException failure) {
+            syncRunService.completeRun(run, "failed", result.fetched(), result.inserted(),
+                    result.updated(), 0, "NVD interval coverage evidence could not be recorded");
+            return new IngestionResult("failed", result.fetched(), result.inserted(), result.updated(),
+                    "NVD interval coverage evidence could not be recorded");
+        }
+        syncRunService.completeRun(run, "completed", result.fetched(), result.inserted(), result.updated(), 0, null);
+        return result;
     }
 
     public SyncTriggerResponse triggerNvdFullSync(String apiKeyOverride) {
@@ -178,8 +258,7 @@ public class NvdSyncService {
         Instant end = Instant.now();
         var filters = vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters();
         // A filter change starts its own continuity history; filtered coverage cannot certify another scope.
-        String key = "nvd:" + org.springframework.util.DigestUtils.md5DigestAsHex(
-                filters.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String key = nvdScopeKey(filters);
         Instant start = feedWatermarks.completedUntil(key)
                 .map(value -> value.minus(1, ChronoUnit.HOURS))
                 .orElseGet(() -> end.minus(Math.max(1, lookbackHours), ChronoUnit.HOURS));
@@ -187,18 +266,32 @@ public class NvdSyncService {
         while (start.isBefore(end)) {
             Instant intervalEnd = start.plus(120, ChronoUnit.DAYS);
             if (intervalEnd.isAfter(end)) intervalEnd = end;
+            Set<String> observedIds = new HashSet<>();
             IngestionResult result = executeNvdSyncInternal(run, start, intervalEnd, null,
-                    "NVD interval complete", false, filters);
+                    "NVD interval complete", false, filters, observedIds);
             fetched += result.fetched(); inserted += result.inserted(); updated += result.updated();
             if (!"ok".equals(result.status())) {
                 syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, result.message());
                 return new IngestionResult("failed", fetched, inserted, updated, result.message());
+            }
+            try {
+                coverageLedger.observeNvdInterval(run.getId(), key, start, intervalEnd, result.fetched(), observedIds);
+            } catch (RuntimeException failure) {
+                syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0,
+                        "NVD interval coverage evidence could not be recorded");
+                return new IngestionResult("failed", fetched, inserted, updated,
+                        "NVD interval coverage evidence could not be recorded");
             }
             start = intervalEnd;
         }
         syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
         feedWatermarks.complete(key,end);
         return new IngestionResult("ok", fetched, inserted, updated, "NVD incremental coverage complete");
+    }
+
+    static String nvdScopeKey(VulnerabilitySourceFilterConfigService.NvdFilters filters) {
+        return "nvd:" + org.springframework.util.DigestUtils.md5DigestAsHex(
+                filters.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private IngestionResult executeNvdFullSync(SyncRun run, String apiKeyOverride) {
@@ -208,7 +301,7 @@ public class NvdSyncService {
             return new IngestionResult("failed", 0, 0, 0, message);
         }
         return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true,
-                vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters());
+                vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters(), null);
     }
 
     private Map<String, Object> queuedIncrementalMetadata(int lookbackHours) {
@@ -266,7 +359,8 @@ public class NvdSyncService {
             String apiKeyOverride,
             String successMessage,
             boolean terminal,
-            VulnerabilitySourceFilterConfigService.NvdFilters filters
+            VulnerabilitySourceFilterConfigService.NvdFilters filters,
+            Set<String> observedIds
     ) {
         int fetched = 0;
         int inserted = 0;
@@ -274,6 +368,7 @@ public class NvdSyncService {
         int pagesProcessed = 0;
         int recomputeInterval = Math.max(1, cveDeltaRecomputePageInterval);
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
+        Set<String> seenCveIds = observedIds == null ? new HashSet<>() : observedIds;
         syncRunService.applyRunMetadata(
                 run,
                 "nvd",
@@ -281,6 +376,7 @@ public class NvdSyncService {
         );
         try {
             int startIndex = 0;
+            Integer expectedTotal = null;
             while (true) {
                 NvdApiClient.NvdPage page = nvdApiClient.fetchPage(
                         startIndex,
@@ -296,13 +392,11 @@ public class NvdSyncService {
                         apiKeyOverride
                 );
                 List<NvdApiClient.NvdRecord> records = page.records();
-                if (page.resultsPerPage() < 0 || page.totalResults() < startIndex
-                        || records.size() != Math.min(page.resultsPerPage(), page.totalResults() - startIndex)) {
-                    throw new IllegalStateException("NVD returned an incomplete interval page");
+                validateNvdPage(page, startIndex, expectedTotal);
+                for (NvdApiClient.NvdRecord record : records) {
+                    validateNvdIdentity(record == null ? null : record.cveId(), seenCveIds);
                 }
-                if (page.startIndex() != startIndex) {
-                    throw new IllegalStateException("NVD pagination did not match the requested interval page");
-                }
+                if (expectedTotal == null) expectedTotal = page.totalResults();
                 if (records.isEmpty()) {
                     if (page.totalResults() > startIndex) {
                         throw new IllegalStateException("NVD returned an incomplete empty page");
@@ -340,6 +434,7 @@ public class NvdSyncService {
                 }
                 startIndex = nextStart;
             }
+            validateNvdCompletion(fetched, expectedTotal);
             if (!changedVulnerabilityIds.isEmpty()) {
                 effectsService.recomputeCveDeltas(changedVulnerabilityIds);
             }
@@ -349,6 +444,34 @@ public class NvdSyncService {
         } catch (Exception e) {
             if (terminal) syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
             return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
+        }
+    }
+
+    static void validateNvdPage(NvdApiClient.NvdPage page, int requestedStart, Integer expectedTotal) {
+        if (page.startIndex() != requestedStart) {
+            throw new IllegalStateException("NVD pagination did not match the requested interval page");
+        }
+        if (expectedTotal != null && page.totalResults() != expectedTotal) {
+            throw new IllegalStateException("NVD reported a changing total during pagination");
+        }
+        if (page.resultsPerPage() < 0 || page.totalResults() < requestedStart
+                || page.records().size() != Math.min(page.resultsPerPage(), page.totalResults() - requestedStart)) {
+            throw new IllegalStateException("NVD returned an incomplete interval page");
+        }
+    }
+
+    static void validateNvdCompletion(int fetched, Integer expectedTotal) {
+        if (expectedTotal == null || fetched != expectedTotal) {
+            throw new IllegalStateException("NVD pagination ended before the reported total was fetched");
+        }
+    }
+
+    static void validateNvdIdentity(String cveId, Set<String> seenCveIds) {
+        if (cveId == null || !cveId.matches("CVE-[0-9]{4}-[0-9]{4,}")) {
+            throw new IllegalStateException("NVD returned an invalid CVE identifier");
+        }
+        if (!seenCveIds.add(cveId)) {
+            throw new IllegalStateException("NVD returned a duplicate CVE identifier in the interval");
         }
     }
 
@@ -466,7 +589,8 @@ public class NvdSyncService {
                         record.sourceIdentifier(),
                         record.published(),
                         record.lastModified(),
-                        record.rawJson()
+                        record.rawJson(),
+                        record.cvssVersion()
                 )
         );
         Vulnerability vuln = upsertResult.vulnerability();

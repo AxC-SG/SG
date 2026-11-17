@@ -102,16 +102,13 @@ public class KevSyncService {
         try {
             String body = fetchKevFeed();
             JsonNode root = objectMapper.readTree(body == null ? "{}" : body);
-            JsonNode vulns = root.path("vulnerabilities");
+            JsonNode vulns = validateKevSnapshot(root);
 
             for (JsonNode kev : vulns) {
                 if (!matchesKevFilters(kev, filters)) {
                     continue;
                 }
                 String cveId = kev.path("cveID").asText("");
-                if (cveId.isBlank()) {
-                    continue;
-                }
                 fetched++;
 
                 VulnerabilityIntelligenceService.ObservationUpsertResult result = observationIngestionService.upsertObservation(
@@ -167,6 +164,28 @@ public class KevSyncService {
             syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
             return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
         }
+    }
+
+    /** Reject a truncated or malformed current snapshot before any observation is staged. */
+    static JsonNode validateKevSnapshot(JsonNode root) {
+        if (root == null || !root.isObject() || !root.path("vulnerabilities").isArray()
+                || root.path("vulnerabilities").isEmpty()) {
+            throw new IllegalStateException("KEV snapshot is missing a non-empty vulnerabilities array");
+        }
+        JsonNode vulnerabilities = root.path("vulnerabilities");
+        if (root.has("count") && (!root.path("count").canConvertToInt()
+                || root.path("count").intValue() != vulnerabilities.size())) {
+            throw new IllegalStateException("KEV snapshot count does not match its vulnerability records");
+        }
+        Set<String> identifiers = new java.util.HashSet<>();
+        for (JsonNode entry : vulnerabilities) {
+            String identifier = entry.path("cveID").asText("");
+            if (!entry.isObject() || !identifier.matches("CVE-[0-9]{4}-[0-9]{4,}")
+                    || !identifiers.add(identifier)) {
+                throw new IllegalStateException("KEV snapshot contains an invalid or duplicate CVE identifier");
+            }
+        }
+        return vulnerabilities;
     }
 
     private boolean matchesKevFilters(

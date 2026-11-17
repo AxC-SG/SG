@@ -1,6 +1,7 @@
 package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.service.IntelligencePublicationService;
+import com.prototype.vulnwatch.service.IntelligenceReleaseChangeScopeService;
 import java.security.Principal;
 import java.util.*;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +13,13 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('PLATFORM_OWNER')")
 public class PlatformIntelligenceController {
     private final IntelligencePublicationService intelligence;
+    private final IntelligenceReleaseChangeScopeService changeScope;
     @org.springframework.beans.factory.annotation.Autowired
     private com.prototype.vulnwatch.service.TenantIntelligenceProcessingService processing;
-    public PlatformIntelligenceController(IntelligencePublicationService intelligence) { this.intelligence=intelligence; }
+    public PlatformIntelligenceController(IntelligencePublicationService intelligence,
+            IntelligenceReleaseChangeScopeService changeScope) {
+        this.intelligence=intelligence; this.changeScope=changeScope;
+    }
     @org.springframework.beans.factory.annotation.Autowired
     private com.prototype.vulnwatch.service.IntelligenceFeedScheduleService schedules;
     @org.springframework.beans.factory.annotation.Autowired
@@ -58,6 +63,9 @@ public class PlatformIntelligenceController {
     public Map<String,Object> reject(@PathVariable UUID id,@RequestBody RejectRequest request,Principal actor) { return intelligence.reject(id,request.reason(),actor.getName()); }
     @GetMapping("/releases")
     public List<Map<String,Object>> releases(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size) { return intelligence.releases(page,size); }
+    @GetMapping("/releases/{id}/change-scope")
+    public IntelligenceReleaseChangeScopeService.Page changeScope(@PathVariable UUID id,
+            @RequestParam(required=false) Long afterId) { return changeScope.inspect(id,afterId); }
     @GetMapping("/releases/{id}/processing")
     public List<Map<String,Object>> processing(@PathVariable UUID id,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="50") int size) {
         return processing.processing(id,page,size);

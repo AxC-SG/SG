@@ -1,5 +1,7 @@
 # ScoutGrid — AWS master migration plan
 
+> Owner update (2026-11-14): infrastructure has moved from Render to AWS. This update supersedes any assumption that AWS migration is still the requested next step; it does not certify the older execution/qualification statuses below. The [central vulnerability intelligence AWS plan](CENTRAL_VULNERABILITY_INTELLIGENCE_PLAN.md) defines proposed post-migration intelligence improvements and links the architecture, implementation, and UI designs. Verify live topology and reconcile historical gates before implementation.
+
 **Revision** November 7, 2026. Clarifies Standard implementation scope and the Dedicated entry conditions. **Status** Planning baseline with implementation and release qualification open. **Source inspected** `f9426447e18c6f3c4c836e3f1c14e0943fb93a22`, including existing workspace changes. Live environment identifiers still need verification during implementation.
 
 This is the single authoritative execution plan for application prerequisites, AWS implementation, configurable tenant isolation, qualification and production cutover. It consolidates the November 1/2 migration plan and November 5/6 architecture reviews. Earlier plans and closure ledgers are supporting evidence, not competing execution instructions. The [previous full plan](Archive/AWS_FINAL_MIGRATION_PLAN_2026-11-02.md) is preserved unchanged for historical detail.

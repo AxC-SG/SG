@@ -58,7 +58,6 @@ class PlatformVulnRepoServiceTest {
                 vulnerabilityIntelSummarySourceRepository,
                 vulnerabilityIntelObservationRepository,
                 vulnerabilityIntelDescriptionService,
-                findingRepository,
                 jdbcTemplate
         );
     }
@@ -72,23 +71,15 @@ class PlatformVulnRepoServiceTest {
         vulnerability.setTitle("Scoped result");
         vulnerability.setSeverity("HIGH");
 
-        when(vulnerabilityIntelObservationRepository.findDistinctVulnerabilityIdsBySourceSystems(List.of("ghsa")))
-                .thenReturn(List.of(vulnerabilityId));
-        when(vulnerabilityRepository.searchVulnerabilityIntelWithoutQueryScoped(
+        when(vulnerabilityRepository.searchPlatformCatalog(
                 eq("CVE-"),
+                eq(""),
+                eq(""),
                 eq(null),
-                eq(true),
-                eq(List.of(vulnerabilityId)),
-                eq(false),
-                anyList(),
-                eq(false),
-                anyList(),
-                eq(null),
+                eq("ghsa"),
                 any(Pageable.class)
         )).thenReturn(new PageImpl<>(List.of(vulnerability)));
         when(vulnerabilityIntelSummarySourceRepository.findByVulnerabilityIdIn(List.of(vulnerabilityId)))
-                .thenReturn(List.of());
-        when(findingRepository.countByVulnerabilityIdsAndStatus(List.of(vulnerabilityId), com.prototype.vulnwatch.domain.FindingStatus.OPEN))
                 .thenReturn(List.of());
         when(vulnerabilityIntelDescriptionService.toDescriptionSnippet(null)).thenReturn(null);
 
@@ -96,24 +87,24 @@ class PlatformVulnRepoServiceTest {
 
         assertEquals(1L, response.totalItems());
         assertEquals("CVE-2026-1001", response.items().get(0).externalId());
-        verify(vulnerabilityRepository).searchVulnerabilityIntelWithoutQueryScoped(
+        verify(vulnerabilityRepository).searchPlatformCatalog(
                 eq("CVE-"),
+                eq(""),
+                eq(""),
                 eq(null),
-                eq(true),
-                eq(List.of(vulnerabilityId)),
-                eq(false),
-                anyList(),
-                eq(false),
-                anyList(),
-                eq(null),
+                eq("ghsa"),
                 any(Pageable.class)
         );
+        verifyNoInteractions(findingRepository, jdbcTemplate);
+        verify(vulnerabilityIntelObservationRepository, never()).findDistinctVulnerabilityIdsBySourceSystems(any());
+        assertEquals("UNKNOWN", response.items().get(0).impactState());
+        assertEquals(null, response.items().get(0).lastEvaluatedAt());
     }
 
     @Test
     void listVulnerabilitiesReturnsEmptyWhenSourceScopeHasNoMatches() {
-        when(vulnerabilityIntelObservationRepository.findDistinctVulnerabilityIdsBySourceSystems(List.of("ghsa")))
-                .thenReturn(List.of());
+        when(vulnerabilityRepository.searchPlatformCatalog(eq("CVE-"), eq(""), eq(""), eq(null),
+                eq("ghsa"), any(Pageable.class))).thenReturn(Page.empty());
 
         var response = service.listVulnerabilities(0, 25, null, null, null, "ghsa");
 
@@ -131,6 +122,7 @@ class PlatformVulnRepoServiceTest {
                 any(),
                 any(Pageable.class)
         );
-        verifyNoInteractions(vulnerabilityIntelSummarySourceRepository, findingRepository, jdbcTemplate);
+        verifyNoInteractions(vulnerabilityIntelSummarySourceRepository, vulnerabilityIntelObservationRepository,
+                findingRepository, jdbcTemplate);
     }
 }

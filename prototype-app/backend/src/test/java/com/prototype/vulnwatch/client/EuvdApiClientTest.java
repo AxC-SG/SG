@@ -1,6 +1,8 @@
 package com.prototype.vulnwatch.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -65,6 +67,43 @@ class EuvdApiClientTest {
         assertEquals(0, page.totalResults());
         assertEquals(0, page.pageNumber());
         assertEquals(50, page.pageSize());
+        server.verify();
+    }
+
+    @Test
+    void missingTotalRemainsUnknownRatherThanOnePageSize() {
+        server.expect(requestTo("https://euvdservices.enisa.europa.eu/api/search?fromScore=0&toScore=10&page=0&size=50"))
+                .andRespond(withSuccess("{\"page\":0,\"size\":50,\"items\":[{\"id\":\"EUVD-1\"}]}", MediaType.APPLICATION_JSON));
+
+        EuvdApiClient.EuvdPage page = client.fetchPage(0);
+
+        assertEquals(1, page.records().size());
+        assertNull(page.totalResults());
+        server.verify();
+    }
+
+    @Test
+    void blankAndUnrecognizedEnvelopesCannotCompleteAsEmptyPages() {
+        String uri = "https://euvdservices.enisa.europa.eu/api/search?fromScore=0&toScore=10&page=0&size=50";
+        server.expect(requestTo(uri)).andRespond(withSuccess(" ", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(uri)).andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        assertThrows(RuntimeException.class, () -> client.fetchPage(0));
+        assertThrows(RuntimeException.class, () -> client.fetchPage(0));
+        server.verify();
+    }
+
+    @Test
+    void presentMalformedTotalsCannotBeTreatedAsUnknown() {
+        String uri = "https://euvdservices.enisa.europa.eu/api/search?fromScore=0&toScore=10&page=0&size=50";
+        for (String total : new String[] {"null", "-1", "\"bad\"", "1.5"}) {
+            server.expect(requestTo(uri)).andRespond(withSuccess(
+                    "{\"total\":" + total + ",\"items\":[]}", MediaType.APPLICATION_JSON));
+        }
+
+        for (int i = 0; i < 4; i++) {
+            assertThrows(RuntimeException.class, () -> client.fetchPage(0));
+        }
         server.verify();
     }
 }

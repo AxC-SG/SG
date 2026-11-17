@@ -1,14 +1,16 @@
 # VulnWatch Architecture
 
-Last updated: 2026-11-17 (ownership Release 2 integration with AWS migration and CI/CD)
+Last updated: 2026-11-17 (ownership Release 2 and central vulnerability MVP integration)
 
 Ownership Release 2 is integrated as a **lab-only, release-blocked candidate** on the current AWS/CI/CD baseline.
-Platform head remains V16; tenant schema and binary compatibility move to V27. Discovery schedulers obey the injected
+The combined platform schema head is V21; tenant schema and binary compatibility move to V30. Discovery schedulers obey the injected
 API/worker/schema-migrator policy; existing infrastructure and CI/CD release boundaries are retained. Ownership
 producers and read waves remain disabled by default, but campaign ledger writes/reconciliation and recipient encryption
 are independent behavior changes. V26 removes pre-existing campaign recipient emails and no deployed tenant-key wrapper
 exists. See the [integration review](ownership-release-2-integration-review.md) for verification, accepted lab limitations
 and the required forward-schema recovery procedure. This candidate does not qualify live providers or authorize deploys.
+
+The central vulnerability MVP is integrated as an inactive candidate. Its tenant migrations follow the ownership migrations at V28–V30. See the [implementation plan](vulnerability-intelligence/implementation-plan.md) and [MVP release gates](vulnerability-intelligence/mvp-release-plan.md). GA remains NO-GO until qualification passes.
 
 ---
 

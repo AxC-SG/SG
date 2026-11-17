@@ -10,6 +10,7 @@ import com.prototype.vulnwatch.service.ObservationIngestionService;
 import com.prototype.vulnwatch.service.VulnerabilityIntelligenceService;
 import java.util.List;
 import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -68,6 +69,7 @@ public class JvnSyncService {
         int inserted = 0;
         int updated = 0;
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
+        Set<String> seenSourceRecordIds = new HashSet<>();
         syncRunService.applyRunMetadata(
                 run,
                 "jvn",
@@ -78,11 +80,29 @@ public class JvnSyncService {
         );
         try {
             int pageIndex = 0;
+            boolean reachedEnd = false;
+            Integer reportedTotal = null;
             while (pageIndex < Math.max(1, maxPagesPerSync)) {
                 int startItem = pageIndex * jvnApiClient.perPage() + 1;
                 JvnApiClient.JvnPage page = jvnApiClient.fetchPage(startItem);
+                if (reportedTotal != null && page.totalResults() != reportedTotal) {
+                    throw new IllegalStateException("JVN reported total changed during pagination");
+                }
+                if (reportedTotal == null && page.totalResults() > 0) reportedTotal = page.totalResults();
                 if (page.records().isEmpty()) {
+                    if (page.totalResults() > fetched) throw new IllegalStateException("JVN returned an incomplete empty page");
+                    reachedEnd = true;
                     break;
+                }
+
+                for (JvnApiClient.JvnRecord record : page.records()) {
+                    if (record.sourceRecordId() == null || record.sourceRecordId().isBlank()
+                            || !seenSourceRecordIds.add(record.sourceRecordId())) {
+                        throw new IllegalStateException("JVN returned a missing or repeated source record ID");
+                    }
+                }
+                if (page.totalResults() > 0 && fetched + page.records().size() > page.totalResults()) {
+                    throw new IllegalStateException("JVN returned more records than its reported total");
                 }
 
                 fetched += page.records().size();
@@ -128,14 +148,19 @@ public class JvnSyncService {
 
                 int pageSize = page.maxCountItem();
                 int totalResults = page.totalResults();
+                if (totalResults > 0 && fetched >= totalResults) {
+                    reachedEnd = true;
+                    break;
+                }
                 if (page.records().size() < pageSize) {
+                    if (totalResults > fetched) throw new IllegalStateException("JVN returned an incomplete page");
+                    reachedEnd = true;
                     break;
                 }
                 pageIndex++;
-                if (totalResults > 0 && startItem + pageSize - 1 >= totalResults) {
-                    break;
-                }
             }
+
+            if (!reachedEnd) throw new IllegalStateException("JVN page limit reached before the feed ended");
 
             effectsService.enqueueCveMetadataDeltas(changedVulnerabilityIds);
             syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);

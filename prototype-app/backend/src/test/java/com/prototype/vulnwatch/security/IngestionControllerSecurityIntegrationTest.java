@@ -12,6 +12,7 @@ import com.prototype.vulnwatch.config.RequestCorrelationFilter;
 import com.prototype.vulnwatch.config.SecurityConfig;
 import com.prototype.vulnwatch.controller.ApiExceptionHandler;
 import com.prototype.vulnwatch.controller.IngestionController;
+import com.prototype.vulnwatch.controller.NvdBaselineQueueController;
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.dto.IngestionResult;
 import com.prototype.vulnwatch.dto.SyncTriggerResponse;
@@ -25,6 +26,7 @@ import com.prototype.vulnwatch.service.SbomIngestionService;
 import com.prototype.vulnwatch.service.TenantService;
 import com.prototype.vulnwatch.service.TenantSupportGrantService;
 import com.prototype.vulnwatch.service.VulnerabilityIngestionService;
+import com.prototype.vulnwatch.service.vulningestion.NvdBaselineQueueService;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import java.time.Instant;
 import java.util.Set;
@@ -39,7 +41,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
-        controllers = IngestionController.class,
+        controllers = {IngestionController.class, NvdBaselineQueueController.class},
         excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
         properties = {
                 "app.security.api-key=test-api-key",
@@ -76,6 +78,9 @@ class IngestionControllerSecurityIntegrationTest {
 
     @MockitoBean
     private AuditEventService auditEventService;
+
+    @MockitoBean
+    private NvdBaselineQueueService baselineQueueService;
 
     @MockitoBean
     private TenantSupportGrantService tenantSupportGrantService;
@@ -120,6 +125,54 @@ class IngestionControllerSecurityIntegrationTest {
                         .queryParam("lookbackHours", "12")
                         .header("X-API-Key", "test-api-key"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void historicalNvdWindowRequiresPlatformOwnerAndQueuesExactBounds() throws Exception {
+        Instant from = Instant.parse("2025-01-01T00:00:00Z");
+        Instant to = Instant.parse("2025-01-31T00:00:00Z");
+        UUID runId = UUID.randomUUID();
+        when(vulnerabilityIngestionService.triggerNvdHistoricalWindow(from, to))
+                .thenReturn(new SyncTriggerResponse(runId, "queued", "NVD historical window queued"));
+
+        mockMvc.perform(post("/api/ingestion/nvd-historical-window")
+                        .queryParam("from", from.toString()).queryParam("to", to.toString())
+                        .header("X-API-Key", "test-api-key"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/ingestion/nvd-historical-window")
+                        .queryParam("from", from.toString()).queryParam("to", to.toString())
+                        .header("X-API-Key", "test-api-key")
+                        .header("X-Creator-Key", "test-creator-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runId").value(runId.toString()))
+                .andExpect(jsonPath("$.status").value("queued"));
+        org.mockito.Mockito.verify(auditEventService).record(
+                "platform.vulnerability_feed.nvd_historical_window", "sync_run", runId.toString(),
+                "{\"from\":\"" + from + "\",\"to\":\"" + to + "\"}");
+    }
+
+    @Test
+    void baselineNextWindowRequiresPlatformOwnerAndDelegatesExactBounds() throws Exception {
+        Instant from = Instant.parse("2025-01-01T00:00:00Z");
+        Instant to = Instant.parse("2025-01-31T00:00:00Z");
+        UUID runId = UUID.randomUUID();
+        when(baselineQueueService.queueNext(from, to)).thenReturn(
+                new NvdBaselineQueueService.NextWindow(runId, "queued", from, to, "One interval queued"));
+
+        mockMvc.perform(post("/api/ingestion/nvd-baseline/next")
+                        .queryParam("from", from.toString()).queryParam("to", to.toString())
+                        .header("X-API-Key", "test-api-key"))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(baselineQueueService);
+
+        mockMvc.perform(post("/api/ingestion/nvd-baseline/next")
+                        .queryParam("from", from.toString()).queryParam("to", to.toString())
+                        .header("X-API-Key", "test-api-key")
+                        .header("X-Creator-Key", "test-creator-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runId").value(runId.toString()))
+                .andExpect(jsonPath("$.status").value("queued"));
+        org.mockito.Mockito.verify(baselineQueueService).queueNext(from, to);
     }
 
     @Test

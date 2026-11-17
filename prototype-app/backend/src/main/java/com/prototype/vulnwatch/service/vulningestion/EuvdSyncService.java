@@ -10,6 +10,7 @@ import com.prototype.vulnwatch.service.ObservationIngestionService;
 import com.prototype.vulnwatch.service.VulnerabilityIntelligenceService;
 import java.util.List;
 import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -67,6 +68,7 @@ public class EuvdSyncService {
         int inserted = 0;
         int updated = 0;
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
+        Set<String> seenSourceRecordIds = new HashSet<>();
         syncRunService.applyRunMetadata(
                 run,
                 "euvd",
@@ -77,10 +79,32 @@ public class EuvdSyncService {
         );
         try {
             int pageNumber = 0;
+            boolean reachedEnd = false;
+            Integer reportedTotal = null;
             while (pageNumber < Math.max(1, maxPagesPerSync)) {
                 EuvdApiClient.EuvdPage page = euvdApiClient.fetchPage(pageNumber);
+                Integer pageTotal = page.totalResults();
+                if (reportedTotal != null && !reportedTotal.equals(pageTotal)) {
+                    throw new IllegalStateException("EUVD reported total changed during pagination");
+                }
+                if (reportedTotal == null && pageTotal != null) reportedTotal = pageTotal;
+                if (pageTotal != null && pageTotal < fetched) {
+                    throw new IllegalStateException("EUVD reported total is below records already fetched");
+                }
                 if (page.records().isEmpty()) {
+                    if (pageTotal != null && pageTotal > fetched) throw new IllegalStateException("EUVD returned an incomplete empty page");
+                    reachedEnd = true;
                     break;
+                }
+
+                for (EuvdApiClient.EuvdRecord record : page.records()) {
+                    if (record.sourceRecordId() == null || record.sourceRecordId().isBlank()
+                            || !seenSourceRecordIds.add(record.sourceRecordId())) {
+                        throw new IllegalStateException("EUVD returned a missing or repeated source record ID");
+                    }
+                }
+                if (pageTotal != null && fetched + page.records().size() > pageTotal) {
+                    throw new IllegalStateException("EUVD returned more records than its reported total");
                 }
 
                 fetched += page.records().size();
@@ -124,14 +148,19 @@ public class EuvdSyncService {
                 run.setRecordsUpdated(updated);
                 syncRunService.save(run);
 
-                if (page.records().size() < page.pageSize() && page.totalResults() <= fetched) {
+                if (pageTotal != null && fetched >= pageTotal) {
+                    reachedEnd = true;
+                    break;
+                }
+                if (page.records().size() < page.pageSize()) {
+                    if (pageTotal != null && pageTotal > fetched) throw new IllegalStateException("EUVD returned an incomplete page");
+                    reachedEnd = true;
                     break;
                 }
                 pageNumber++;
-                if (page.totalResults() > 0 && pageNumber * page.pageSize() >= page.totalResults()) {
-                    break;
-                }
             }
+
+            if (!reachedEnd) throw new IllegalStateException("EUVD page limit reached before the feed ended");
 
             effectsService.recomputeCveDeltas(changedVulnerabilityIds);
             syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
