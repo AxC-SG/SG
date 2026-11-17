@@ -236,7 +236,8 @@ These are not code. Each blocks enabling the named capability outside test tenan
    each runbook above.
 7. **A decision on the legacy columns.** `owner_group`, `support_group`, `ownership_rules` and the legacy ticket and campaign
    paths still exist because Release 3 screens and the AI Grid ownership step read them. Remove them only with Release 3.
-8. **Land and qualify the integration candidate.** The source branch already includes E1–E17, the E4 fix and the saved
-   campaign scope work. Use the reviewed merge onto current main, including its integration fixes, and require existing
-   CI gates. Local integration evidence and remaining release blockers are recorded in the integration review; neither
-   this scorecard nor a merge authorizes deployment or tenant enablement.
+8. **Verify the integration baseline.** The source branch includes E1–E17, the E4 fix and the saved campaign scope work.
+   Use [PR #136](https://github.com/AxC-SG/SG/pull/136) for the merge/check record and verify that the release contains its
+   integration fixes. Existing CI gates still apply to each release artifact. The integration review records the local
+   and remote evidence and remaining release blockers; neither this scorecard nor a code merge authorizes deployment or
+   tenant enablement.

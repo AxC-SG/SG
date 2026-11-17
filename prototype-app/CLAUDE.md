@@ -2,9 +2,11 @@
 
 ## Ownership Release 2 integration — November 17, 2026
 
-Current candidate: `codex/ownership-release-2-integration` combines main `8c76d3db` (AWS/CI/CD hardening) with ownership
+Integration branch: `codex/ownership-release-2-integration` combines baseline main `8c76d3db` (AWS/CI/CD hardening) with ownership
 `1282d2a9`. **Lab-only integration accepted; release blocked.** See the
 [integration review](docs/ownership-release-2-integration-review.md) for fixes, verification and remaining risks.
+[PR #136](https://github.com/AxC-SG/SG/pull/136) is the authoritative merge/check record; code integration never lifts
+the retained deployment and tenant-enablement block.
 Platform stays V16; tenant head and default compatibility bounds are V27. Keep the AWS API/worker/schema-migrator role
 split and all current CI/CD qualification gates. Both discovery services must receive `BackgroundTaskExecutionPolicy`
 through Spring; `CloudDiscoveryRuntimeRoleTest` tests actual injection, not manual setter calls.

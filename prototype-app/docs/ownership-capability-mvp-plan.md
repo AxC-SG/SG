@@ -79,8 +79,9 @@ compatibility adapter and the transition flags; run the full writer and reader s
 
 A production tenant-key wrapper (none exists; the KMS spike is open); a real ServiceNow instance and real samples for
 package keys, CBOM fingerprints, cloud tags and an AWS organization; a benchmark environment at the expected size; a
-browser, accessibility and visual pass of the new screens; dashboards, alerts and the kill-switch drill; landing and CI
-qualification of the reviewed integration candidate; and per-tenant enablement in the documented order. Release 1 also still has its own open items: the
+browser, accessibility and visual pass of the new screens; dashboards, alerts and the kill-switch drill; verification
+that the release includes the reviewed integration fixes from [PR #136](https://github.com/AxC-SG/SG/pull/136); and
+per-tenant enablement in the documented order. Release 1 also still has its own open items: the
 KMS spike, benchmarks at expected size, the 100k and 300k user search plans, a real ServiceNow CMDB sample and live
 verification. The full list is in the qualification document, §5.
 

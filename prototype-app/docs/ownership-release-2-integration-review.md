@@ -91,11 +91,13 @@ gaps. Passing local checks does not lift the release block.
 
 Local merge commit: `569a54a0` (parents `8c76d3db`, `1282d2a9`). All four `CLAUDE.md` files and the affected product,
 API, architecture, ownership and AWS qualification documents are updated. The temporary PostgreSQL cluster has been
-stopped after verification. Remote main, AWS runtime and production deployments are unchanged; the existing Vercel
-integration creates a successful branch preview as part of PR validation.
+stopped after verification. Initial publication changes neither remote main nor deployed AWS runtime; the existing
+Vercel integration creates a successful branch preview as part of PR validation. Merging the code and deploying it are
+separate actions: this integration retains the deployment and tenant-enablement block.
 
 The user approved publishing the integration branch and opening a draft PR on November 17, 2026, after the initial
 push was rejected for missing explicit publication authorization. Publication approval does not lift the release block.
-The branch is published in [draft PR #136](https://github.com/AxC-SG/SG/pull/136), targeting main. Revision `252808d8` passes
-all required remote checks and is conflict-free against main `8c76d3db`. Current-head CI and final merge review remain
-required; deployment and tenant enablement remain blocked.
+The branch was first published as [draft PR #136](https://github.com/AxC-SG/SG/pull/136), targeting main. Revision
+`252808d8` passes all required remote checks and is conflict-free against baseline main `8c76d3db`. The PR records the
+authoritative current-head CI and merge outcome. Current-head checks and final review are prerequisites for the code
+merge; a successful merge does not authorize deployment or tenant enablement.
