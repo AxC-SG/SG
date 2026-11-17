@@ -19,7 +19,7 @@ def load(name, path):
     return module
 
 
-support = load('release_support', ROOT / 'prototype-app/infrastructure/lab/scripts/tests/test_release.py')
+support = load('release_support', ROOT / 'prototype-app/infrastructure/lab/scripts/tests/support.py')
 r = support.release
 p = r.provenance
 SHA = support.NEW_SHA
@@ -28,7 +28,7 @@ SHA = support.NEW_SHA
 class ProvenanceTest(unittest.TestCase):
     def setUp(self):
         self.runs = {
-            1: {'id': 1, 'path': '.github/workflows/quality.yml', 'event': 'push', 'head_branch': 'main',
+            1: {'id': 1, 'workflow_id': 7, 'path': '.github/workflows/quality.yml', 'event': 'push', 'head_branch': 'main',
                 'head_sha': SHA, 'head_repository': {'full_name': r.REPO}},
             2: {'path': '.github/workflows/aws-publish-candidate.yml', 'event': 'workflow_dispatch',
                 'head_branch': 'main', 'head_sha': support.OLD_SHA, 'head_repository': {'full_name': r.REPO}}}
@@ -39,6 +39,8 @@ class ProvenanceTest(unittest.TestCase):
                      2: [{'name': 'Publish verified candidate to ECR', 'conclusion': 'success'}]}
 
     def api(self, path, params=None):
+        if path.endswith("/actions/workflows/quality.yml"):
+            return {"id": 7}
         if path.endswith('/artifacts'):
             return {'artifacts': self.artifacts}
         parts = path.split('/')
@@ -52,10 +54,13 @@ class ProvenanceTest(unittest.TestCase):
     def test_rejects_untrusted_producers_and_failed_publications(self):
         for change in ({'event': 'pull_request'}, {'event': 'schedule'}, {'head_branch': 'topic'},
                        {'head_repository': {'full_name': 'fork/SG'}}, {'head_sha': support.OLD_SHA},
-                       {'path': '.github/workflows/unrelated.yml'}):
+                       {'path': '.github/workflows/unrelated.yml'}, {'workflow_id': 8}):
             with self.subTest(change=change):
                 self.runs[1] = {**self.runs[1], **change}
-                self.assertEqual(p.trusted_artifacts(self.api, r.REPO, self.artifacts[:1], SHA), [])
+                if 'workflow_id' not in change:
+                    self.assertEqual(p.trusted_artifacts(self.api, r.REPO, self.artifacts[:1], SHA), [])
+                with self.assertRaises(ValueError):
+                    p.validate_candidate(self.api, r.REPO, {'candidate_run': '1'}, SHA)
                 self.setUp()
         self.jobs[1][0]['conclusion'] = 'failure'
         self.assertEqual(p.trusted_artifacts(self.api, r.REPO, self.artifacts[:1], SHA), [])
@@ -71,6 +76,7 @@ class ProvenanceTest(unittest.TestCase):
     def test_consumer_ignores_newer_pr_artifact_and_downloads_verified_id_repeatedly(self):
         self.runs[2]['event'] = 'pull_request'
         lab = r.AwsLab('', 'terraform')
+        self.addCleanup(lab.close)
         lab.github_api = self.api
         lab.run = lambda *args, **kwargs: json.dumps({'artifacts': self.artifacts})
         payload = io.BytesIO()

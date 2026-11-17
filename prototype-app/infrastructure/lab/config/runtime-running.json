@@ -1,0 +1,7 @@
+{
+  "runtime_ingress_enabled": true,
+  "nat_gateway_mode": "single",
+  "backend_candidate": {
+    "start_services": true
+  }
+}

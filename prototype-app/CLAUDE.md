@@ -52,6 +52,12 @@ Frontend quality gates: `npm run lint` → `npm run typecheck` → `npm run buil
 
 Backend CI gates: default `mvn -q verify` runs Surefire + JaCoCo `check` + SpotBugs; `mvn -Ppostgres-it verify` additionally runs PostgreSQL Failsafe integration tests. Repo-wide, `gitleaks` (config: `.gitleaks.toml`, also wired as a `pre-commit` hook via `.pre-commit-config.yaml`) scans for committed secrets. Evidence/review and environment follow-ups are in the [review handoff](<Working Knowledge/AWS/AWS_APPLICATION_PREREQUISITES_REVIEW_HANDOFF.md>).
 
+### CI and lab tooling
+
+Terraform's required CLI version and Linux checksum live in `.github/tool-versions.json`; Quality and lab reconcile share `.github/actions/setup-terraform`. The operator scripts enforce that same version. Run CI contract tests in a virtual environment with `.github/scripts/requirements-ci.txt` installed.
+
+Lab runtime configuration is rendered from `infrastructure/lab/config/runtime-common.json` plus a mode JSON by `infrastructure/lab/scripts/release_lib/runtime_config.py`; do not pass mode JSON directly to Terraform. `release.py` retains orchestration and the CLI; `release_lib/` owns checks and adapters, and `scripts/tests/support.py` owns shared fake-lab fixtures. See the [lab operations guide](infrastructure/lab/README.md#runtime-configuration-and-tooling).
+
 ## Architecture
 
 ### System Shape

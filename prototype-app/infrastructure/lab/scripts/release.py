@@ -70,8 +70,6 @@ Credentials go only to child processes and API calls and are never printed.
 """
 import datetime
 import importlib.util
-import io
-import zipfile
 import json
 import os
 import re
@@ -83,289 +81,90 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-ACCOUNT_ID = "736486260824"
-REGION = "ap-southeast-2"
-CLUSTER = "scoutgrid-lab"
-SERVICES = ("api", "worker")
-DB_ID = "scoutgrid-lab"
-TARGET_GROUP = "scoutgrid-lab-api"
-API_ORIGIN = "https://api-lab.scoutgrid.io"
-ECR_REPOSITORY = "scoutgrid-lab-backend"
-REGISTRY = f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com"
-REPO = "AxC-SG/SG"
-STATE_BUCKET = f"scoutgrid-lab-tfstate-{ACCOUNT_ID}-{REGION}"
-STATE_KMS_KEY = f"arn:aws:kms:{REGION}:{ACCOUNT_ID}:key/2731031f-d79e-4db9-afe6-94fb01cba15a"
-PREFIX = "standard/lab/release"
-INPUTS_KEY = f"{PREFIX}/inputs.json"
-LOCK_KEY = f"{PREFIX}/lock.json"
-RECORDS = f"{PREFIX}/records"
-TF_REQUIRED = "1.13.5"
-DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
-FULL_SHA = re.compile(r"[0-9a-f]{40}")
-# One five-minute scheduler cycle plus a minute of jitter, counted from when the services settle.
-BAKE_SECONDS = 360
-# The defined failures; keep in step with release_fatal_pattern in terraform/standard/release-alarms.tf.
-FATAL_PATTERNS = (
-    "outside this release's supported range",
-    "violates row-level security policy",
-    "Tenant-scoped background work failed",
-    "Unhandled API error",
+# Load only this checkout's sibling package, including under python -I.
+spec = importlib.util.spec_from_file_location("release_lib", Path(__file__).resolve().parent / "release_lib/__init__.py")
+release_lib = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = release_lib
+spec.loader.exec_module(release_lib)
+
+from release_lib.errors import ReleaseError
+from release_lib.frontend import Frontend
+from release_lib.publication import PublicationSource, provenance
+from release_lib.runtime_config import runtime_config
+from release_lib.settings import (
+    ACCOUNT_ID,
+    API_ORIGIN,
+    APP_DOMAIN,
+    APP_ORIGIN,
+    BAKE_SECONDS,
+    BROWSER_CHECKS,
+    CFG,
+    CLUSTER,
+    DB_ID,
+    DEPLOYMENT_ID,
+    DIGEST,
+    ECR_REPOSITORY,
+    FATAL_FILTER,
+    FATAL_PATTERNS,
+    FINGERPRINT,
+    FULL_SHA,
+    INPUTS_KEY,
+    LAB_DIR,
+    LOCK_KEY,
+    MIGRATOR_STEPS,
+    NEXT_ACTION,
+    PHASES,
+    PREFIX,
+    PROGRESS_FILTER,
+    PROGRESS_LINE,
+    RECONCILE_BLOCKED,
+    RECORDS,
+    REGION,
+    REGISTRY,
+    REPLACE,
+    REPO,
+    REPO_ROOT,
+    SCHEMA_FILTER,
+    SCHEMA_LINE,
+    SCHEMA_LOOKBACK,
+    SERVICE,
+    SERVICES,
+    SMOKE_SCRIPT,
+    SMOKE_TIMEOUT_SECONDS,
+    STATE_BUCKET,
+    STATE_KMS_KEY,
+    TARGETS,
+    TARGET_GROUP,
+    TASK,
+    TF_REQUIRED,
+    TF_ROOT,
+    VERCEL_API,
+    VERCEL_CLI,
+    VERCEL_PROJECT,
+    VERCEL_TEAM,
 )
-FATAL_FILTER = " ".join(f'?"{pattern}"' for pattern in FATAL_PATTERNS)
-PROGRESS_FILTER = '"tenant_work_progress"'
-PROGRESS_LINE = re.compile(r"tenant_work_progress outcome=(\w+) succeeded=(\d+) failed=(\d+)")
-SCHEMA_FILTER = '"tenant_schema_state"'
-SCHEMA_LINE = re.compile(r"tenant_schema_state unready_tenants=(\d+) supported=(\d+)\.\.(\d+) active_versions=(\S+)")
-SCHEMA_LOOKBACK = datetime.timedelta(minutes=10)
-FINGERPRINT = re.compile(r"[0-9a-f]{64}")
-
-LAB_DIR = Path(__file__).resolve().parents[1]
-CFG = LAB_DIR / "config"
-TF_ROOT = (LAB_DIR / ".." / "terraform" / "standard").resolve()
-BROWSER_CHECKS = CFG / "release-browser-checks.json"
-SMOKE_SCRIPT = LAB_DIR.parents[1] / "frontend" / "e2e" / "lab-smoke.mjs"
-SMOKE_TIMEOUT_SECONDS = 600
-REPO_ROOT = LAB_DIR.parents[2]
-spec = importlib.util.spec_from_file_location("publication_provenance", REPO_ROOT / ".github/scripts/publication_provenance.py")
-provenance = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(provenance)
-
-# The lab frontend: Vercel project scout-frontend, production domain scoutgrid.io.
-VERCEL_CLI = "vercel@65.9.0"
-VERCEL_API = "https://api.vercel.com"
-VERCEL_TEAM = "team_kaGUpiyT7rWaj2XZlCnsB7Mx"
-VERCEL_PROJECT = "prj_BTTCC6KBOQSkBaihL6MZd07ezJn2"
-APP_DOMAIN = "scoutgrid.io"
-APP_ORIGIN = f"https://{APP_DOMAIN}"
-DEPLOYMENT_ID = re.compile(r"dpl_[A-Za-z0-9]+")
-
-TASK = 'aws_ecs_task_definition.backend["{}"]'
-SERVICE = 'aws_ecs_service.backend["{}"]'
-REPLACE = {("create",), ("delete", "create"), ("create", "delete")}
-# Exactly what each Terraform step may change; anything else stops the release.
-PHASES = {
-    "migrator": {TASK.format("migrator"): REPLACE},
-    "runtime": {**{TASK.format(role): REPLACE for role in SERVICES},
-                **{SERVICE.format(role): {("update",)} for role in SERVICES}},
-}
-TARGETS = {
-    "migrator": [TASK.format("migrator")],
-    "runtime": [TASK.format(role) for role in SERVICES] + [SERVICE.format(role) for role in SERVICES],
-}
-# Steps that only a release with schema or migrator authority takes; a runtime-only release has none.
-MIGRATOR_STEPS = {"stopped", "snapshot", "migrator", "migrated"}
-# reconcile's planned refusals (CD plan 4.4): nothing changed, so the command succeeds and says why.
-RECONCILE_BLOCKED = ("parked", "awaiting_acceptance", "superseded", "schema_changed", "schema_unverified",
-                     "migrator_drift")
-NEXT_ACTION = {
-    ("verified", None): "run the browser checks, then record them locally with release.py accept",
-    ("verified", "no_change"): "nothing to do: the lab already runs this pair",
-    ("blocked", "parked"): "start the lab with lab.sh up, then reconcile again",
-    ("blocked", "awaiting_acceptance"): "record the live release's browser checks with release.py accept "
-                                        "(or roll it back), then reconcile again",
-    ("blocked", "superseded"): "wait until main's head is published to the lab, then reconcile again",
-    ("blocked", "schema_changed"): "a schema change: release it locally with release.py deploy (owner-run)",
-    ("blocked", "schema_unverified"): "inspect the worker's tenant_schema_state line and the migration catalog, "
-                                      "then reconcile again, or release locally with release.py deploy",
-    ("blocked", "migrator_drift"): "review the migrator change, then release it locally with release.py deploy",
-    ("failed", "frontend_pending"): "reconcile again to promote the recorded frontend, or run release.py rollback",
-    ("failed", "check_failed"): "run release.py rollback, or fix forward",
-    ("failed", "step_failed"): "inspect the record, then reconcile again to resume, or run release.py rollback",
-}
-
-
-class ReleaseError(Exception):
-    """A stopped command. outcome and reason follow CD plan 4.4; the default is a refusal before any change."""
-
-    def __init__(self, message, outcome="blocked", reason="refused"):
-        super().__init__(message)
-        self.outcome, self.reason = outcome, reason
-
-
-def utc_now():
-    return datetime.datetime.now(datetime.timezone.utc)
-
-
-def stamp(moment=None):
-    return (moment or utc_now()).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def release_id(sha, moment):
-    # Lower case so it also forms a valid RDS snapshot identifier.
-    return moment.strftime("%Y%m%dt%H%M%Sz") + "-" + sha[:7]
-
-
-def short(digest):
-    return digest.split(":", 1)[1][:12] if digest else "-"
-
-
-def heads_valid(heads):
-    return (isinstance(heads, dict) and set(heads) == {"platform", "tenant"} and
-            all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in heads.values()))
-
-
-def schema_mode(database, candidate):
-    """neutral: same schema, rolling release. forward: the migrator moves the schema ahead."""
-    if not heads_valid(database) or not heads_valid(candidate):
-        raise ReleaseError(f"migration heads must be positive platform and tenant versions: {database} {candidate}")
-    if any(candidate[key] < database[key] for key in database):
-        raise ReleaseError(f"candidate schema {candidate} is behind the database {database}; migrations only move forward")
-    return "neutral" if candidate == database else "forward"
-
-
-def check_plan(plan, phase):
-    allowed = PHASES[phase]
-    changes, refused = [], []
-    for change in plan.get("resource_changes", []):
-        actions = tuple(change["change"]["actions"])
-        if actions in {("no-op",), ("read",)}:
-            continue
-        line = f"{'+'.join(actions):>14}  {change['address']}"
-        changes.append(line)
-        if actions not in allowed.get(change["address"], set()):
-            refused.append(line)
-    return changes, refused
-
-
-def check_publication(record, sha):
-    digest = record.get("image_digest", "")
-    problems = []
-    if record.get("source_sha") != sha:
-        problems.append(f"source {record.get('source_sha')} is not {sha}")
-    if record.get("target") != "lab" or record.get("aws_region") != REGION:
-        problems.append(f"published to {record.get('target')} in {record.get('aws_region')}, not lab in {REGION}")
-    if not DIGEST.fullmatch(digest):
-        problems.append("image is not pinned by digest")
-    if record.get("ecr_image") != f"{REGISTRY}/{ECR_REPOSITORY}@{digest}":
-        problems.append(f"image {record.get('ecr_image')} is not in {REGISTRY}/{ECR_REPOSITORY}")
-    if not heads_valid(record.get("migration_heads")):
-        problems.append("migration heads are missing")
-    if problems:
-        raise ReleaseError("publication record rejected: " + "; ".join(problems))
-
-
-def migrator_outcome(task):
-    """None while running; otherwise (succeeded, detail)."""
-    if task.get("lastStatus") != "STOPPED":
-        return None
-    container = task["containers"][0]
-    succeeded = container.get("exitCode") == 0 and task.get("stopCode") == "EssentialContainerExited"
-    return succeeded, f"exit {container.get('exitCode')}, {task.get('stopCode')}: {task.get('stoppedReason', '')}".strip()
-
-
-def service_settled(service, task_definition):
-    deployments = service.get("deployments", [])
-    return (len(deployments) == 1 and deployments[0]["taskDefinition"] == task_definition and
-            deployments[0].get("rolloutState") == "COMPLETED" and
-            service["desiredCount"] >= 1 and service["runningCount"] == service["desiredCount"])
-
-
-def task_definition_arns(state):
-    """Current task-definition ARNs from `terraform show -json` state. Root outputs are not
-    recomputed by a targeted apply, so they still name the revision a replacement retired."""
-    arns = {}
-    for resource in state.get("values", {}).get("root_module", {}).get("resources", []):
-        if resource.get("type") == "aws_ecs_task_definition" and resource.get("name") == "backend":
-            arns[resource["index"]] = resource["values"]["arn"]
-    return arns
-
-
-def progress_check(messages, required=True):
-    """Worker progress over the bake: at least one cycle with succeeding tenant work, none where all failed."""
-    outcomes = [match.group(1) for match in map(PROGRESS_LINE.search, messages) if match]
-    counts = {outcome: outcomes.count(outcome) for outcome in sorted(set(outcomes))}
-    if not outcomes:
-        if required:
-            return False, "no tenant_work_progress line from the worker"
-        return True, "no tenant_work_progress line; the operator recorded that this image predates the signal"
-    if "failing" in counts:
-        return False, f"a cycle had tenant work failing and none succeeding: {json.dumps(counts)}"
-    if not counts.get("healthy") and not counts.get("degraded"):
-        return False, f"no cycle with succeeding tenant work: {json.dumps(counts)}"
-    return True, json.dumps(counts)
-
-
-def catalog_check(database, candidate):
-    """same / changed / unverified: the packaged migration catalog against the one the database ran."""
-    if not (isinstance(database, str) and FINGERPRINT.fullmatch(database)) or \
-            not (isinstance(candidate, str) and FINGERPRINT.fullmatch(candidate)):
-        return "unverified"
-    return "same" if database == candidate else "changed"
-
-
-def schema_state_check(messages, tenant_head, required=True):
-    """The latest worker schema-state line: no unready tenant, and the supported range holds the head.
-
-    Readiness stays UP while tenants are unready, so this is the evidence; the 2026-11-15 V23..V20
-    range would fail here before a person found it.
-    """
-    states = [match for match in map(SCHEMA_LINE.search, messages) if match]
-    if not states:
-        if any("tenant_schema_state unavailable" in message for message in messages):
-            return False, "the worker could not read the tenant schema control plane"
-        if required:
-            return False, "no tenant_schema_state line from the worker"
-        return True, "no tenant_schema_state line; the operator recorded that this image predates the signal"
-    unready, low, high, active = states[-1].groups()
-    detail = f"unready_tenants={unready} supported=V{low}..V{high} active_versions={active} database tenant head=V{tenant_head}"
-    if int(unready) != 0:
-        return False, detail
-    if not int(low) <= tenant_head <= int(high):
-        return False, detail + " (outside the supported range)"
-    return True, detail
-
-
-def smoke_check(result):
-    """The signed-in smoke's verdict. Unconfigured does not block a release; its detail records the detection gap."""
-    if result is None:
-        return True, "not configured (LAB_SMOKE_CONFIG unset): signed-in writes unverified, a recorded detection gap"
-    failed = [f"{item.get('name')}: {item.get('detail')}" for item in result.get("checks", []) if not item.get("ok")]
-    if result.get("passed") is True and result.get("checks") and not failed:
-        return True, f"{len(result['checks'])} checks passed"
-    return False, "; ".join(failed)[:600] or "the smoke reported no checks"
-
-
-def fatal_check(messages):
-    if not messages:
-        return True, "none"
-    return False, f"{len(messages)} line(s), first: {messages[0].strip()[:300]}"
-
-
-def frontend_id(frontend):
-    return (frontend or {}).get("deployment_id")
-
-
-def live_differs(inputs, entry):
-    """Whether the lab runs something other than entry's pair. A frontend counts once release.py tracks one."""
-    if entry["runtime_image_digest"] != inputs["runtime_image_digest"]:
-        return True
-    live = frontend_id(inputs.get("frontend"))
-    return bool(inputs.get("frontend_promoting")) or (live is not None and live != frontend_id(entry.get("frontend")))
-
-
-def rollback_target(inputs):
-    """The release to return to: the accepted one while a release is unfinished or the lab has
-    left it (failed or rejected), otherwise the accepted release before it."""
-    accepted = inputs.get("accepted")
-    if accepted and (inputs.get("pending") or live_differs(inputs, accepted)):
-        return accepted
-    return inputs.get("previous_accepted")
-
-
-def staged_reference(output):
-    """The deployment `vercel deploy --json` created: its dpl_ ID, else its *.vercel.app host."""
-    try:
-        found = json.loads(output)
-    except json.JSONDecodeError:
-        found = None
-    candidates = [found.get("id"), (found.get("deployment") or {}).get("id")] if isinstance(found, dict) else []
-    for candidate in candidates:
-        if isinstance(candidate, str) and DEPLOYMENT_ID.fullmatch(candidate):
-            return candidate
-    match = DEPLOYMENT_ID.search(output) or re.search(r"[a-z0-9-]+\.vercel\.app", output)
-    if not match:
-        raise ReleaseError(f"vercel deploy reported no deployment: {output.strip()[-300:]}")
-    return match.group(0)
+from release_lib.checks import (
+    utc_now,
+    stamp,
+    release_id,
+    short,
+    heads_valid,
+    schema_mode,
+    check_plan,
+    check_publication,
+    migrator_outcome,
+    service_settled,
+    task_definition_arns,
+    progress_check,
+    catalog_check,
+    schema_state_check,
+    smoke_check,
+    fatal_check,
+    frontend_id,
+    live_differs,
+    rollback_target,
+    staged_reference,
+)
 
 
 def parse_options(args, flags=(), valued=()):
@@ -1183,15 +982,19 @@ class Release:
         return checks
 
 
-class AwsLab:
+class AwsLab(PublicationSource, Frontend):
     """The real lab: AWS CLI, Terraform and GitHub CLI calls."""
 
     def __init__(self, profile, terraform):
         # An empty profile uses the ambient credentials: a GitHub runner's short-lived OIDC session.
         self.profile, self.terraform = profile, terraform
-        self.work = Path(tempfile.mkdtemp(prefix="scoutgrid-release."))
+        self.workspace = tempfile.TemporaryDirectory(prefix="scoutgrid-release.")
+        self.work = Path(self.workspace.name)
         os.chmod(self.work, 0o700)
         self.initialised = False
+
+    def close(self):
+        self.workspace.cleanup()
 
     # ---- process helpers ----------------------------------------------------------------
     def log(self, message):
@@ -1267,43 +1070,6 @@ class AwsLab:
         self.aws("s3api", "delete-object", "--bucket", STATE_BUCKET, "--key", key, "--expected-bucket-owner", ACCOUNT_ID)
 
     # ---- inputs to a release ------------------------------------------------------------
-    def resolve_sha(self, ref):
-        sha = self.run(["gh", "api", f"repos/{REPO}/commits/{ref}", "--jq", ".sha"]).strip()
-        if not FULL_SHA.fullmatch(sha):
-            raise ReleaseError(f"cannot resolve {ref} to a commit")
-        return sha
-
-    def github_api(self, path, params=None):
-        command = ["gh", "api", "--method", "GET", path]
-        for key, value in (params or {}).items():
-            command += ["-f", f"{key}={value}"]
-        return json.loads(self.run(command))
-
-    def publication(self, sha, required=True):
-        """The lab publication record for sha; None when there is none and it is not required."""
-        name = f"aws-publication-lab-{sha}"
-        artifacts = json.loads(self.run(["gh", "api", "--method", "GET", f"repos/{REPO}/actions/artifacts",
-                                         "-f", f"name={name}", "-f", "per_page=100"]))["artifacts"]
-        live = provenance.trusted_artifacts(self.github_api, REPO, artifacts, sha)
-        if not live and not required:
-            return None
-        if not live:
-            raise ReleaseError(f"{sha[:7]} has no lab publication record; it is published once its main checks pass")
-        # Download this immutable artifact, not another artifact selected again by name.
-        payload = subprocess.run(["gh", "api", f"repos/{REPO}/actions/artifacts/{live[-1]['id']}/zip"],
-                                 check=True, capture_output=True).stdout
-        with zipfile.ZipFile(io.BytesIO(payload)) as zipped:
-            record = json.loads(zipped.read("aws-publication.json"))
-        try:
-            provenance.validate_candidate(self.github_api, REPO, record, sha)
-            producing = self.github_api(f"repos/{REPO}/actions/runs/{live[-1]['workflow_run']['id']}")
-            if producing.get("event") == "push" and str(record.get("candidate_run")) != str(producing.get("id")):
-                raise ValueError("publication is not bound to its producing Quality run")
-        except ValueError as error:
-            raise ReleaseError(f"publication provenance rejected: {error}") from error
-        check_publication(record, sha)
-        return record
-
     def ecr_has(self, digest):
         try:
             found = self.aws("ecr", "describe-images", "--repository-name", ECR_REPOSITORY, "--image-ids", f"imageDigest={digest}")
@@ -1350,9 +1116,11 @@ class AwsLab:
             self.initialised = True
         variables = self.work / f"{phase}-images.tfvars.json"
         variables.write_text(json.dumps({"backend_images": images}))
+        runtime = self.work / "runtime.tfvars.json"
+        runtime.write_text(json.dumps(runtime_config("running", CFG)))
         plan = self.work / f"{phase}.tfplan"
         self.tf("plan", "-input=false", "-no-color", "-lock-timeout=60s", f"-out={plan}",
-                f"-var-file={CFG / 'sydney-lab.foundation.tfvars'}", f"-var-file={CFG / 'runtime-running.tfvars'}",
+                f"-var-file={CFG / 'sydney-lab.foundation.tfvars'}", f"-var-file={runtime}",
                 f"-var-file={variables}", *[f"-target={target}" for target in targets])
         return plan, json.loads(self.tf("show", "-json", str(plan)))
 
@@ -1440,101 +1208,6 @@ class AwsLab:
             return json.loads(result.stdout)
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as error:
             return {"passed": False, "checks": [{"name": "smoke run", "ok": False, "detail": type(error).__name__}]}
-
-    # ---- the frontend (Vercel) ----------------------------------------------------------
-    @staticmethod
-    def vercel_token(required=True):
-        token = os.environ.get("VERCEL_TOKEN")
-        if not token and required:
-            raise ReleaseError("VERCEL_TOKEN is not set; the frontend half of a release needs it")
-        return token
-
-    def vercel(self, *args):
-        """The pinned Vercel CLI from the repository root, without AWS credentials. The token is an argument
-        (the CLI's documented way), so it is never echoed: failures report only the command name and stderr."""
-        env = {key: value for key, value in os.environ.items() if not key.startswith("AWS_") and key != "VERCEL_TOKEN"}
-        env.update(VERCEL_ORG_ID=VERCEL_TEAM, VERCEL_PROJECT_ID=VERCEL_PROJECT, VERCEL_TELEMETRY_DISABLED="1")
-        return self.run(["npx", "--yes", VERCEL_CLI, *args, "--token", self.vercel_token()], env=env, cwd=REPO_ROOT)
-
-    def vercel_api(self, method, path, body=None):
-        separator = "&" if "?" in path else "?"
-        request = urllib.request.Request(
-            f"{VERCEL_API}{path}{separator}teamId={VERCEL_TEAM}", method=method,
-            data=None if body is None else json.dumps(body).encode(),
-            headers={"Authorization": f"Bearer {self.vercel_token()}", "Content-Type": "application/json",
-                     "User-Agent": "scoutgrid-lab-release"})
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                text = response.read()
-        except urllib.error.HTTPError as error:
-            raise ReleaseError(f"Vercel {method} {path} returned {error.code}: {error.read()[:300]!r}")
-        except (urllib.error.URLError, TimeoutError) as error:
-            raise ReleaseError(f"Vercel {method} {path} unreachable: {error}")
-        return json.loads(text) if text.strip() else {}
-
-    def frontend_deployment(self, deployment):
-        found = self.vercel_api("GET", f"/v13/deployments/{deployment}")
-        return {"deployment_id": found.get("id"), "url": found.get("url"), "ready_state": found.get("readyState"),
-                "target": found.get("target"), "source_sha": (found.get("meta") or {}).get("githubCommitSha")}
-
-    def checkout(self):
-        """(HEAD commit, whether tracked files are unchanged) of the checkout this script runs from."""
-        head = self.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"]).strip()
-        return head, not self.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain", "--untracked-files=no"]).strip()
-
-    def frontend_stage(self, sha):
-        """Build this checkout for production and upload it without assigning a domain (CD plan 4.5, step 1-2)."""
-        head, clean = self.checkout()
-        if head != sha:
-            raise ReleaseError(f"this checkout is at {head[:7]}; check out {sha[:7]} to build its frontend")
-        if not clean:
-            raise ReleaseError("this checkout has uncommitted changes; the frontend must be built from the commit alone")
-        self.log(f"Building the frontend for {sha[:7]} with {VERCEL_CLI} (production settings).")
-        try:
-            self.vercel("pull", "--yes", "--environment=production")
-            self.vercel("build", "--prod")
-        finally:
-            # The pulled environment includes a short-lived Vercel OIDC token; the build no longer needs it.
-            for pulled in (REPO_ROOT / ".vercel").glob(".env*.local"):
-                pulled.unlink()
-        reference = staged_reference(self.vercel("deploy", "--prebuilt", "--prod", "--skip-domain", "--json"))
-        deadline = time.time() + 900
-        while True:
-            deployment = self.frontend_deployment(reference)
-            if deployment["ready_state"] == "READY":
-                break
-            if deployment["ready_state"] in ("ERROR", "CANCELED") or time.time() > deadline:
-                raise ReleaseError(f"the staged frontend {deployment['deployment_id']} is {deployment['ready_state']}")
-            time.sleep(10)
-        if deployment["target"] != "production":
-            raise ReleaseError(f"the staged frontend {deployment['deployment_id']} targets {deployment['target']}")
-        if deployment["source_sha"] not in (None, sha):
-            raise ReleaseError(f"the staged frontend {deployment['deployment_id']} names commit {deployment['source_sha']}")
-        return {"deployment_id": deployment["deployment_id"], "url": deployment["url"], "source_sha": sha,
-                "cli": VERCEL_CLI, "staged_at": stamp()}
-
-    def frontend_live(self, required=True):
-        """The deployment the production domain serves now; None without a token when not required."""
-        if not self.vercel_token(required):
-            return None
-        return self.vercel_api("GET", f"/v4/aliases/{APP_DOMAIN}").get("deploymentId")
-
-    def frontend_promote(self, deployment, timeout=300):
-        self.log(f"Promoting {deployment} to {APP_DOMAIN}.")
-        self.vercel_api("POST", f"/v10/projects/{VERCEL_PROJECT}/promote/{deployment}")
-        deadline = time.time() + timeout
-        while self.frontend_live() != deployment and time.time() < deadline:
-            time.sleep(5)
-
-    def app_status(self, path):
-        request = urllib.request.Request(APP_ORIGIN + path, headers={"User-Agent": "scoutgrid-lab-release"})
-        try:
-            with urllib.request.urlopen(request, timeout=15) as response:
-                return response.status
-        except urllib.error.HTTPError as error:
-            return error.code
-        except (urllib.error.URLError, TimeoutError) as error:
-            return f"unreachable: {error}"
 
     def startup_errors(self, since):
         start = int(datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ")
@@ -1624,6 +1297,8 @@ def main(argv):
     except ValueError as error:
         lab.log(f"ERROR: {error}")
         return 2
+    finally:
+        lab.close()
     return 0
 
 

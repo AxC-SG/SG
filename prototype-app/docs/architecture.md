@@ -311,6 +311,8 @@ For deployment-facing environment variables and operational endpoints, see [Back
 
 ---
 
+The AWS lab release CLI delegates pure qualification checks, GitHub publication lookup and Vercel operations to `infrastructure/lab/scripts/release_lib/`. Candidate selection and release consumption share one Quality-run validator in `.github/scripts/publication_provenance.py`. Common runtime references and mode overrides are explicitly merged into one temporary Terraform JSON var file; the Terraform module interface and durable release record format are unchanged. CI shares the checksum-verified Terraform installer and manifest. See the [lab operations guide](../infrastructure/lab/README.md#runtime-configuration-and-tooling).
+
 ## Key Constraints and Design Decisions
 
 1. **CPE-based correlation only** — matching uses normalized CPE strings. No fuzzy name matching. This makes false positives rare but requires good CPE coverage in the vulnerability feeds.

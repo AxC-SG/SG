@@ -1,0 +1,11 @@
+{
+  "runtime_ingress_enabled": true,
+  "nat_gateway_mode": "single",
+  "backend_candidate": {
+    "start_services": false,
+    "managed_installation": {
+      "secret_arn": "arn:aws:secretsmanager:ap-southeast-2:736486260824:secret:scoutgrid-lab/managed-installation-jbAtYE",
+      "version_id": "884b5bcc-83c3-49ec-ba3c-22c950aaff1b"
+    }
+  }
+}

@@ -24,8 +24,8 @@ spec = importlib.util.spec_from_file_location("publication_provenance", Path(__f
 provenance = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(provenance)
 
-QUALITY = "quality.yml"
-GATE_JOB = "Quality gate"
+QUALITY = provenance.QUALITY
+GATE_JOB = provenance.GATE_JOB
 AUTOMATIC_TARGET = "lab"
 
 
@@ -41,20 +41,11 @@ def publication_name(target, sha):
     return f"aws-publication-{target}-{sha}"
 
 
-def quality_run(api, repo, run_id):
-    """Return the run if it is a Quality push run on main whose gate job succeeded."""
-    if not re.fullmatch(r"[0-9]+", run_id or ""):
-        raise Rejected("candidate_run must be a workflow run ID")
-    quality_id = api(f"repos/{repo}/actions/workflows/{QUALITY}")["id"]
-    run = api(f"repos/{repo}/actions/runs/{run_id}")
-    if not (run["workflow_id"] == quality_id and run["head_repository"]["full_name"] == repo
-            and run["head_branch"] == "main" and run["event"] == "push"):
-        raise Rejected(f"run {run_id} is not a Quality push run on main")
-    jobs = api(f"repos/{repo}/actions/runs/{run_id}/jobs", {"filter": "latest", "per_page": "100"})["jobs"]
-    gates = [job for job in jobs if job["name"] == GATE_JOB]
-    if len(gates) != 1 or gates[0]["conclusion"] != "success":
-        raise Rejected(f"the {GATE_JOB} has not passed in run {run_id}")
-    return run
+def quality_run(api, repo, run_id, expected_sha=None):
+    try:
+        return provenance.quality_run(api, repo, run_id, expected_sha)
+    except ValueError as error:
+        raise Rejected(str(error)) from error
 
 
 def manual(api, repo, target, candidate_run):
@@ -65,9 +56,7 @@ def manual(api, repo, target, candidate_run):
 def called(api, repo, target, run_id, sha):
     if target != AUTOMATIC_TARGET:
         raise Rejected(f"automatic publication targets {AUTOMATIC_TARGET} only")
-    run = quality_run(api, repo, run_id)
-    if run["head_sha"] != sha:
-        raise Rejected(f"run {run_id} is for {run['head_sha']}, not {sha}")
+    quality_run(api, repo, run_id, expected_sha=sha)
     head = api(f"repos/{repo}/commits/main")["sha"]
     if head != sha:
         raise Skip(f"{sha} is superseded by {head}")

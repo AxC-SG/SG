@@ -6,14 +6,37 @@ Runnable tooling for the Sydney AWS lab, ScoutGrid's only environment (account `
 |---|---|
 | `scripts/lab.sh` | Lab up, down, status, plan-only and IAM simulation |
 | `scripts/release.py` | Lab releases: move the lab to a published `main` commit (backend, or backend and frontend as a pair), roll back, show release status, and the runtime-only `reconcile` that the manual Actions workflow runs |
+| `scripts/release_lib/` | Pure release checks, settings, GitHub publication lookup, Vercel adapter, and runtime configuration renderer |
+| `scripts/tests/support.py` | Shared offline lab fixtures; test suites do not import each other |
 | `scripts/tests/lab.test.sh` | Offline tests for `lab.sh` failure handling; AWS, Terraform and Cloudflare are stubbed. CI runs it. |
 | `scripts/tests/test_release.py` | Offline tests for `release.py` against a fake lab. CI runs it. |
 | `scripts/bootstrap-sydney-state.sh` | Creates or verifies the encrypted Terraform state bucket |
 | `scripts/sydney-plan-role-*.json` | Trust and permission policy for the read-only plan role |
-| `config/` | Lab tfvars per stage, the S3 backend config, the post-release browser checks, and captured service and task-definition requests |
+| `config/` | Common runtime JSON and per-mode overrides, foundation tfvars, the S3 backend config, the post-release browser checks, and captured service and task-definition requests |
 | `grants/` | Every IAM grant used or corrected in the lab, with the [cycle matrix](grants/LAB_CYCLE_MATRIX.md) |
 
 How to run the cycle, the budget rule and the lab's history are in the [lab record](<../../Working Knowledge/AWS/aws-lab/README.md>) and [findings](<../../Working Knowledge/AWS/aws-lab/FINDINGS.md>). Evidence from the lab runs stays there too.
+
+## Runtime configuration and tooling
+
+`config/runtime-common.json` owns shared certificate, secret and KMS references and feature flags. Each `runtime-{running,down,noenroll,stopped}.json` supplies only its lifecycle settings; only `stopped` adds the pinned enrollment reference. These are renderer inputs, not standalone Terraform var files. `lab.sh` and `release.py` render the same configuration into a private temporary `*.tfvars.json` file. The renderer explicitly merges `backend_candidate`, because Terraform replaces whole object values across var files.
+
+For a manual Bootstrap plan, render the selected mode first (from the repository root), then pass the result after the foundation var file, together with the released `backend_images`:
+
+```sh
+umask 077
+python3 -I prototype-app/infrastructure/lab/scripts/release_lib/runtime_config.py stopped > /tmp/scoutgrid-runtime.tfvars.json
+# terraform plan ... -var-file=<foundation> -var-file=/tmp/scoutgrid-runtime.tfvars.json -var-file=<released-images>
+# Remove the rendered file after reviewing/applying the plan.
+```
+
+Historical evidence names `runtime-*.tfvars`; use the renderer above for current operations. Existing state addresses, image inputs, release records, locks and CLI commands are unchanged. `release.py` removes its temporary plans and downloaded objects on normal success, exceptions and interruption; durable recovery data remains in S3.
+
+The Terraform version and Linux archive checksum are pinned in [`.github/tool-versions.json`](../../../.github/tool-versions.json). Both workflows use the local setup action, and both operator scripts read the required version from that manifest. The installer checks the archive before extracting it.
+
+Runtime task definitions now add Cognito hosts through `HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS`; the backend owns its default provider catalogue. This setting is supported by source since `bf179fa4`. Apply this task configuration only with an image containing that support, including when choosing rollback images. `lab.sh` continues to refuse task-definition changes; the first rollout of the environment change goes through the reviewed release path.
+
+CI contract tests parse YAML with the pinned dependency in `.github/scripts/requirements-ci.txt`. Install it into a virtual environment before running `.github/scripts/test-ci-contracts.py`. `.github/scripts/test-cleanup-tooling.py` exercises runtime rendering, installer checksum rejection, CLI workspace cleanup and the reconcile shell's tenant-only smoke configuration with offline stubs.
 
 ## Releases
 
@@ -119,7 +142,7 @@ What it checks:
 - **Platform owner, no workspace:** sign-in; Platform Audit, End-of-Life, the Vulnerability Repository dashboard and the feeds pages load with no API 5xx or managed-session 403; reject one and delete one disposable demo request (the 2026-11-15 `audit_events` failure); sign-out.
 - **Tenant admin:** enters the workspace; Findings loads; an invite to `delivered+smoke@resend.dev` reaches `SENT` (Resend accepted it), then is cancelled; sign-out.
 
-The demo requests come from `POST /api/platform/demo-requests/smoke-fixtures`: platform-owner only, at most five pending, `.invalid` addresses, audited. The route answers 404 unless `enable_smoke_fixtures` is set, and Terraform refuses that flag in production. The runtime tfvars set it for the lab api; the next `release.py deploy` registers it. Until then `lab.sh` plans show the api and worker task-definition change and refuse, as for any env change.
+The demo requests come from `POST /api/platform/demo-requests/smoke-fixtures`: platform-owner only, at most five pending, `.invalid` addresses, audited. The route answers 404 unless `enable_smoke_fixtures` is set, and Terraform refuses that flag in production. The common runtime configuration sets it for the lab api; the next `release.py deploy` registers it. Until then `lab.sh` plans show the api and worker task-definition change and refuse, as for any env change.
 
 Privacy (public repository): it records no trace, screenshot, video, HAR or storage state, prints only check names and statuses, and runs without AWS credentials. No workflow runs it directly. The one workflow that may give release.py a config is the manual lab reconcile (below): tenant part only (owner decision S1), written to a private temporary file that is removed afterwards, never printed or uploaded. `.github/scripts/test-ci-contracts.py` enforces all of this.
 

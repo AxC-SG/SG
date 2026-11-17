@@ -11,7 +11,7 @@ locals {
   release_alarms       = var.release_alarms_enabled && local.backend_enabled ? toset(["standard"]) : toset([])
   release_alarm_prefix = "${local.name}-release"
   release_namespace    = "ScoutGrid/${local.name}/release"
-  # The defined failures: keep in step with FATAL_PATTERNS in infrastructure/lab/scripts/release.py.
+  # The defined failures: keep in step with FATAL_PATTERNS in infrastructure/lab/scripts/release_lib/settings.py.
   release_fatal_pattern = join(" ", [
     "?\"outside this release's supported range\"",
     "?\"violates row-level security policy\"",
