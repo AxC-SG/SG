@@ -23,7 +23,6 @@ set -euo pipefail
 
 readonly ACCOUNT_ID="736486260824"
 readonly REGION="ap-southeast-2"
-readonly TF_REQUIRED="1.13.5"
 readonly DB_ID="scoutgrid-lab"
 readonly CLUSTER="scoutgrid-lab"
 readonly TARGET_GROUP="scoutgrid-lab-api"
@@ -42,6 +41,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly LAB_DIR="${SCRIPT_DIR%/scripts}"
 readonly CFG="${LAB_DIR}/config"
+TF_REQUIRED="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["terraform"]["version"])' "${LAB_DIR}/../../../.github/tool-versions.json")"
+readonly TF_REQUIRED
 TF_ROOT="$(cd "${LAB_DIR}/../terraform/standard" && pwd)"
 readonly TF_ROOT
 readonly PROFILE="${LAB_PROFILE:-sglab-cycle}"
@@ -128,14 +129,18 @@ tf_init() {
     -backend-config="${CFG}/sydney-lab.s3.tfbackend" >/dev/null
 }
 
-# Exact var-file arguments for each mode. Later files win; each runtime file sets
-# start_services, runtime_ingress_enabled and nat_gateway_mode explicitly.
+# Render common references and one mode into a single Terraform var file.
 runtime_file() {
+  local mode
   case "$1" in
-    up) printf '%s' "${CFG}/runtime-running.tfvars" ;;
-    down) printf '%s' "${CFG}/runtime-down.tfvars" ;;
+    up) mode=running ;;
+    down) mode=down ;;
     *) die "unknown mode $1" ;;
   esac
+  local file="${WORK}/runtime-${mode}.tfvars.json"
+  python3 -I "${SCRIPT_DIR}/release_lib/runtime_config.py" "${mode}" >"${file}" ||
+    die "Cannot render runtime mode ${mode}."
+  printf '%s' "${file}"
 }
 
 # Refuse any plan that touches something outside the mode's billable runtime set,

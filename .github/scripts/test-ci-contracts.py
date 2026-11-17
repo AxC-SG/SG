@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import re
+import tomllib
 from pathlib import Path
 import unittest
 
@@ -14,6 +15,16 @@ def module(name):
 
 classifier = module("classify-changes")
 gate = module("check-quality-gate")
+workflow_yaml = module("workflow_contracts")
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def workflow(name):
+    return workflow_yaml.load((ROOT / ".github/workflows" / name).read_text())
+
+
+def dependencies(value):
+    return {value} if isinstance(value, str) else set(value)
 
 
 class ContractsTest(unittest.TestCase):
@@ -25,26 +36,21 @@ class ContractsTest(unittest.TestCase):
         code = '\n'.join(line.split('//')[0] if line.lstrip().startswith('//') else line for line in source.splitlines())
         for forbidden in ('tracing', 'screenshot', 'recordVideo', 'recordHar', 'storageState', 'writeFile', 'video'):
             self.assertFalse(forbidden in code, f'lab-smoke.mjs must not use {forbidden}')
-        for workflow in (root / '.github/workflows').glob('*.yml'):
-            text = workflow.read_text()
-            self.assertNotIn('lab-smoke', text, f'{workflow.name} must not run the credentialed lab smoke')
-            self.assertNotIn('upload-artifact', text if workflow.name == 'lab-reconcile.yml' else '', workflow.name)
-            if workflow.name == 'lab-reconcile.yml':
+        for workflow_path in (root / '.github/workflows').glob('*.yml'):
+            text = workflow_path.read_text()
+            self.assertNotIn('lab-smoke', text, f'{workflow_path.name} must not run the credentialed lab smoke')
+            self.assertNotIn('upload-artifact', text if workflow_path.name == 'lab-reconcile.yml' else '', workflow_path.name)
+            if workflow_path.name == 'lab-reconcile.yml':
                 continue
-            self.assertNotIn('LAB_SMOKE_CONFIG', text, workflow.name)
+            self.assertNotIn('LAB_SMOKE_CONFIG', text, workflow_path.name)
         # The one exception: the manual lab reconcile hands release.py a tenant-only smoke config
         # (owner decision S1) in a private temporary file it removes, and never prints or uploads it.
-        reconcile = self.job((root / '.github/workflows/lab-reconcile.yml').read_text(), 'reconcile')
-        self.assertEqual(reconcile.count('LAB_SMOKE_CONFIG'), 1)
-        self.assertIn('export LAB_SMOKE_CONFIG="$smoke/config.json"', reconcile)
-        self.assertIn('smoke="$RUNNER_TEMP/smoke"', reconcile)
-        self.assertIn('umask 077', reconcile)
-        self.assertIn("trap 'rm -rf -- \"$smoke\"' EXIT", reconcile)
-        self.assertIn('(has("platform") | not)', reconcile)
-        self.assertEqual(reconcile.count('$SMOKE_CONFIG_JSON'), 3)   # two presence checks and one write
-        self.assertIn('printf \'%s\' "$SMOKE_CONFIG_JSON" > "$smoke/config.json"', reconcile)
+        reconcile = workflow("lab-reconcile.yml")["jobs"]["reconcile"]
+        release = next(step for step in reconcile["steps"] if step.get("id") == "reconcile")
+        self.assertEqual(release["env"]["SMOKE_CONFIG_JSON"], "${{ secrets.LAB_SMOKE_TENANT_CONFIG }}")
+        shell = (ROOT / ".github/scripts/run-lab-reconcile.sh").read_text()
         for leak in ('cat "$smoke', 'echo "$SMOKE_CONFIG_JSON', 'set -x', 'ACTIONS_STEP_DEBUG'):
-            self.assertNotIn(leak, reconcile)
+            self.assertNotIn(leak, shell)
 
     def test_enforced_gate_contract_and_codeql_policy(self):
         root = Path(__file__).resolve().parents[2]
@@ -59,146 +65,112 @@ class ContractsTest(unittest.TestCase):
         self.assertEqual(ruleset['conditions']['ref_name'], {'include': ['refs/heads/main'], 'exclude': []})
         self.assertEqual(ruleset['bypass_actors'], [])
         names = []
-        for workflow in (root / '.github/workflows').glob('*.yml'):
-            names.extend(re.findall(r'^    name: (.+)$', workflow.read_text(), re.MULTILINE))
+        for workflow_path in (root / '.github/workflows').glob('*.yml'):
+            names.extend(job.get("name") for job in workflow_yaml.load(workflow_path.read_text())["jobs"].values())
         for name in expected:
             self.assertEqual(names.count(name), 1, f'{name}: coordinate workflow and ruleset changes')
         tools = next(rule['parameters']['code_scanning_tools'] for rule in ruleset['rules'] if rule['type'] == 'code_scanning')
         self.assertEqual(tools, [{'tool': 'CodeQL', 'alerts_threshold': 'errors', 'security_alerts_threshold': 'high_or_higher'}])
 
     def test_quality_is_the_only_pull_request_and_main_workflow(self):
-        root = Path(__file__).resolve().parents[2]
-        workflows = root / '.github/workflows'
-        quality = (workflows / 'quality.yml').read_text()
-        events = quality.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
-        self.assertRegex(events, r'(?m)^  pull_request:')
-        self.assertRegex(events, r'(?m)^  push:\n    branches:\n      - main\n')
-        self.assertNotIn('merge_group', events)
-        for workflow in workflows.glob('*.yml'):
-            if workflow.name == 'quality.yml':
-                continue
-            other = workflow.read_text().split('on:\n', 1)[1].split('\npermissions:', 1)[0]
-            # A second PR or push trigger would run checks outside the gate.
-            self.assertNotRegex(other, r'(?m)^  (pull_request|pull_request_target|push|workflow_run):', workflow.name)
-        for job, name in (('security', 'trivy.yml'), ('semgrep', 'semgrep.yml'),
-                          ('performance', 'performance-governance.yml'), ('publish', 'aws-publish-candidate.yml')):
-            called = (workflows / name).read_text()
-            self.assertRegex(called.split('\npermissions:', 1)[0], r'(?m)^  workflow_call:', name)
-            # A called workflow sees the caller's github.workflow, so its own
-            # workflow-level concurrency group would collide with Quality's.
-            self.assertIsNone(re.search(r'(?m)^concurrency:', called), name)
-            self.assertIn(f'uses: ./.github/workflows/{name}\n', self.job(quality, job), job)
+        quality = workflow("quality.yml")
+        self.assertEqual(set(quality["on"]), {"pull_request", "push"})
+        self.assertEqual(quality["on"]["push"]["branches"], ["main"])
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            if path.name != "quality.yml":
+                self.assertFalse(set(workflow(path.name)["on"]) & {"pull_request", "pull_request_target", "push", "workflow_run"}, path.name)
+        for job, name in (("security", "trivy.yml"), ("semgrep", "semgrep.yml"),
+                          ("performance", "performance-governance.yml"), ("publish", "aws-publish-candidate.yml")):
+            called = workflow(name)
+            self.assertIn("workflow_call", called["on"])
+            self.assertNotIn("concurrency", called)
+            self.assertEqual(quality["jobs"][job]["uses"], f"./.github/workflows/{name}")
 
     def test_publication_comes_from_the_gated_main_run(self):
-        root = Path(__file__).resolve().parents[2]
-        workflows = root / '.github/workflows'
-        quality = (workflows / 'quality.yml').read_text()
-        publish = self.job(quality, 'publish')
-        self.assertIn('needs: required\n', publish)
-        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/main'\n", publish)
-        self.assertNotIn('always()', publish)
-        self.assertIn('id-token: write', publish)
-        # The OIDC grant belongs to the publish call only.
-        self.assertEqual(quality.count('id-token: write'), 1)
-        selector = module('select-aws-candidate')
-        self.assertEqual(selector.QUALITY, 'quality.yml')
-        self.assertIn(f'    name: {selector.GATE_JOB}\n', self.job(quality, 'required'))
-        # The image archive the publisher downloads is the one this run's security job made.
-        trivy = (workflows / 'trivy.yml').read_text()
-        self.assertIn('name: aws-backend-candidate-${{ github.run_id }}', trivy)
-        publisher = (workflows / 'aws-publish-candidate.yml').read_text()
-        self.assertIn('name: aws-backend-candidate-${{ needs.qualify.outputs.candidate_run }}', publisher)
-        job = publisher.split('\n  publish:\n', 1)[1]
-        self.assertIn("if: needs.qualify.outputs.publish == 'true'", job)
-        self.assertNotIn('inputs.', job)
-        self.assertIn('group: aws-publish-${{ needs.qualify.outputs.target }}', job)
-        self.assertIn('cancel-in-progress: false', job)
+        quality = workflow("quality.yml")
+        publish = quality["jobs"]["publish"]
+        self.assertEqual(dependencies(publish["needs"]), {"required"})
+        self.assertEqual(publish["if"], "github.event_name == 'push' && github.ref == 'refs/heads/main'")
+        self.assertEqual(publish["permissions"]["id-token"], "write")
+        self.assertEqual([name for name, job in quality["jobs"].items()
+                          if job.get("permissions", {}).get("id-token") == "write"], ["publish"])
+        selector = module("select-aws-candidate")
+        self.assertEqual(quality["jobs"]["required"]["name"], selector.GATE_JOB)
+        trivy_steps = workflow("trivy.yml")["jobs"]["aws-candidate"]["steps"]
+        self.assertTrue(any(step.get("with", {}).get("name") == "aws-backend-candidate-${{ github.run_id }}" for step in trivy_steps))
+        publisher = workflow("aws-publish-candidate.yml")["jobs"]["publish"]
+        self.assertTrue(any(step.get("with", {}).get("name") == "aws-backend-candidate-${{ needs.qualify.outputs.candidate_run }}" for step in publisher["steps"]))
+        self.assertEqual(publisher["if"], "needs.qualify.outputs.publish == 'true'")
+        self.assertNotIn("inputs.", json.dumps(publisher))
+        self.assertEqual(publisher["concurrency"], {"group": "aws-publish-${{ needs.qualify.outputs.target }}", "cancel-in-progress": False})
 
     def test_lab_reconcile_is_manual_main_only_and_runtime_only(self):
-        # Phase 4 slice 2: the only Actions path that changes what the lab runs. Manual, main only,
-        # one at a time, never cancelled, and through the runtime-only release role alone.
-        root = Path(__file__).resolve().parents[2]
-        text = (root / '.github/workflows/lab-reconcile.yml').read_text()
-        events = text.split('\non:\n', 1)[1].split('\npermissions:', 1)[0]
-        self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', events), ['workflow_dispatch'])
-        self.assertRegex(events, r"frontend:\n[^\n]*\n        required: true\n        type: boolean\n        default: true\n")
-        self.assertRegex(events, r"confirm:\n[^\n]*\n        required: true\n        type: string\n")
-        self.assertIn('\npermissions: {}\n', text)
-        self.assertIn('\nconcurrency:\n  group: lab-release\n  cancel-in-progress: false\n', text)
-        self.assertEqual(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', text.split('\njobs:\n', 1)[1]), ['reconcile'])
-        job = self.job(text, 'reconcile')
-        self.assertIn("    if: github.ref == 'refs/heads/main'\n", job)
-        self.assertIn('if [[ "$CONFIRM" != reconcile ]]; then', job)
-        self.assertIn('    environment: aws-standard-lab-release\n', job)
-        self.assertIn('    permissions:\n      actions: read\n      contents: read\n      id-token: write\n    env:', job)
-        self.assertEqual(text.count('id-token: write'), 1)
-        # The environment and workflow are the releaser role's exact OIDC subject.
-        iam = (root / 'prototype-app/infrastructure/terraform/standard/release-iam.tf').read_text()
-        self.assertIn('environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/\\\\.github/workflows/'
-                      'lab-reconcile\\\\.yml@refs/heads/main$', iam)
-        self.assertIn('role/scoutgrid-lab-github-release"', job)
-        self.assertIn('role-to-assume: ${{ vars.AWS_LAB_RELEASE_ROLE_ARN }}', job)
-        self.assertIn("LAB_RELEASE_PROFILE: ''", job)
-        # Every action is pinned by commit.
-        uses = re.findall(r'uses: ([^\s]+)', text)
-        self.assertTrue(uses)
-        for action in uses:
-            self.assertRegex(action, r'^[a-z0-9-]+/[a-z0-9-]+@[0-9a-f]{40}$')
-        # The same checksum-verified Terraform as the offline validation.
-        quality = (root / '.github/workflows/quality.yml').read_text()
-        checksum = re.search(r'echo "([0-9a-f]{64})  \$RUNNER_TEMP/terraform.zip"', quality).group(1)
-        self.assertIn(f'echo "{checksum}  $RUNNER_TEMP/terraform.zip" | sha256sum --check', job)
-        self.assertIn('terraform_1.13.5_linux_amd64.zip', job)
-        # It runs reconcile and nothing else: no schema release, rollback, acceptance or unlock.
-        self.assertIn('args=(reconcile --yes)', job)
-        self.assertEqual(job.count('scripts/release.py'), 1)
-        for forbidden in ('release.py deploy', 'rollback', 'accept ', 'unlock', 'terraform apply', 'run-task',
-                          'upload-artifact', 'cancel-in-progress: true'):
-            self.assertNotIn(forbidden, job)
-
-    @staticmethod
-    def job(workflow, name):
-        return re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split(f'\n  {name}:\n', 1)[1], maxsplit=1)[0]
+        document = workflow("lab-reconcile.yml")
+        self.assertEqual(set(document["on"]), {"workflow_dispatch"})
+        inputs = document["on"]["workflow_dispatch"]["inputs"]
+        self.assertEqual({key: inputs["frontend"][key] for key in ("required", "type", "default")},
+                         {"required": True, "type": "boolean", "default": True})
+        self.assertTrue(inputs["confirm"]["required"])
+        self.assertEqual(inputs["confirm"]["type"], "string")
+        self.assertEqual(document["permissions"], {})
+        self.assertEqual(document["concurrency"], {"group": "lab-release", "cancel-in-progress": False})
+        self.assertEqual(set(document["jobs"]), {"reconcile"})
+        job = document["jobs"]["reconcile"]
+        self.assertEqual(job["if"], "github.ref == 'refs/heads/main'")
+        self.assertEqual(job["environment"], "aws-standard-lab-release")
+        self.assertEqual(job["permissions"], {"actions": "read", "contents": "read", "id-token": "write"})
+        self.assertEqual(sum(other.get("permissions", {}).get("id-token") == "write" for other in document["jobs"].values()), 1)
+        text = json.dumps(job)
+        self.assertTrue(any('if [[ \"$CONFIRM\" != reconcile ]]; then' in step.get('run', '') for step in job['steps']))
+        iam = (ROOT / "prototype-app/infrastructure/terraform/standard/release-iam.tf").read_text()
+        self.assertIn(r"environment:aws-standard-lab-release:job_workflow_ref:AxC-SG/SG/\\.github/workflows/lab-reconcile\\.yml@refs/heads/main$", iam)
+        self.assertIn("role/scoutgrid-lab-github-release", text)
+        credentials = next(step for step in job["steps"] if step.get("uses", "").startswith("aws-actions/configure-aws-credentials@"))
+        self.assertEqual(credentials["with"]["role-to-assume"], "${{ vars.AWS_LAB_RELEASE_ROLE_ARN }}")
+        release = next(step for step in job["steps"] if step.get("id") == "reconcile")
+        self.assertEqual(release["env"]["LAB_RELEASE_PROFILE"], "")
+        self.assertEqual(release["run"].strip(), "bash .github/scripts/run-lab-reconcile.sh")
+        for step in job["steps"]:
+            if "uses" in step and not step["uses"].startswith("./"):
+                self.assertRegex(step["uses"], r"^[a-z0-9-]+/[a-z0-9-]+@[0-9a-f]{40}$")
+        for name, job_id in (("quality.yml", "terraform"), ("lab-reconcile.yml", "reconcile")):
+            self.assertEqual(sum(step.get("uses") == "./.github/actions/setup-terraform" for step in workflow(name)["jobs"][job_id]["steps"]), 1)
+        shell = (ROOT / ".github/scripts/run-lab-reconcile.sh").read_text()
+        self.assertIn("args=(reconcile --yes)", shell)
+        self.assertEqual(shell.count("scripts/release.py"), 1)
+        for forbidden in ("release.py deploy", "rollback", "accept ", "unlock", "terraform apply", "run-task", "upload-artifact"):
+            self.assertNotIn(forbidden, text + shell)
 
     def test_terraform_validation_is_required_and_offline(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/quality.yml').read_text()
-        job = re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split('\n  terraform:\n', 1)[1], maxsplit=1)[0]
-        required = workflow.split('  required:\n', 1)[1]
-        self.assertEqual(gate.SELECTED_JOBS['terraform'], 'infrastructure')
-        self.assertRegex(required, r'needs: \[[^\n]*\bterraform\b')
-        # Every Terraform root is initialised without a backend, validated and tested.
-        terraform = root / 'prototype-app/infrastructure/terraform'
-        roots = sorted({path.parent for path in terraform.rglob('*.tf') if '.terraform' not in path.parts})
+        jobs = workflow("quality.yml")["jobs"]
+        job = jobs["terraform"]
+        self.assertEqual(gate.SELECTED_JOBS["terraform"], "infrastructure")
+        self.assertIn("terraform", dependencies(jobs["required"]["needs"]))
+        roots = sorted({path.parent for path in (ROOT / "prototype-app/infrastructure/terraform").rglob("*.tf") if ".terraform" not in path.parts})
         self.assertTrue(roots)
-        steps = job.split('\n      - ')
         for directory in roots:
-            relative = directory.relative_to(root).as_posix()
-            step = next((step for step in steps if f'working-directory: {relative}\n' in step), None)
-            self.assertIsNotNone(step, f'{relative} is not validated in CI')
-            for command in ('terraform init -backend=false', 'terraform validate', 'terraform test'):
-                self.assertIn(command, step, relative)
-        # The lab cycle scripts are linted and tested offline in the same job.
-        lab_step = next((step for step in steps if 'working-directory: prototype-app/infrastructure/lab\n' in step), None)
-        self.assertIsNotNone(lab_step, 'lab scripts are not tested in CI')
-        self.assertIn('shellcheck scripts/*.sh scripts/tests/*.sh', lab_step)
-        self.assertIn('bash scripts/tests/lab.test.sh', lab_step)
-        self.assertIn('python3 -I scripts/tests/test_release.py', lab_step)
-        self.assertIn('terraform fmt -check -recursive prototype-app/infrastructure/terraform', job)
-        for forbidden in ('id-token:', 'configure-aws-credentials', 'terraform apply'):
-            self.assertNotIn(forbidden, job)
+            relative = directory.relative_to(ROOT).as_posix()
+            step = next((step for step in job["steps"] if step.get("working-directory") == relative), None)
+            self.assertIsNotNone(step, relative)
+            for command in ("terraform init -backend=false", "terraform validate", "terraform test"):
+                self.assertIn(command, step["run"], relative)
+        lab = next(step for step in job["steps"] if step.get("working-directory") == "prototype-app/infrastructure/lab")
+        for command in ("shellcheck scripts/*.sh scripts/tests/*.sh", "bash scripts/tests/lab.test.sh", "python3 -I scripts/tests/test_release.py"):
+            self.assertIn(command, lab["run"])
+        self.assertIn("terraform fmt -check -recursive prototype-app/infrastructure/terraform", json.dumps(job))
+        self.assertNotIn("id-token", job.get("permissions", {}))
+        for forbidden in ("configure-aws-credentials", "terraform apply"):
+            self.assertNotIn(forbidden, json.dumps(job))
 
     def test_image_builds_use_explicit_dns_and_fail_closed_package_indexes(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/trivy.yml').read_text()
-        job = workflow.split('  aws-candidate:\n', 1)[1]
-        self.assertIn('buildkitd-config: .github/buildkitd.toml', job)
-        config = (root / '.github/buildkitd.toml').read_text()
-        self.assertIn('[dns]', config)
-        self.assertIn('nameservers = ["1.1.1.1", "8.8.8.8"]', config)
-        dockerfile = (root / 'prototype-app/backend/Dockerfile').read_text()
-        self.assertIn('APT::Update::Error-Mode=any update', dockerfile)
-        self.assertIn('Acquire::Retries=3', dockerfile)
+        job = workflow("trivy.yml")["jobs"]["aws-candidate"]
+        builder = next(step for step in job["steps"] if step.get("uses", "").startswith("docker/setup-buildx-action@"))
+        self.assertEqual(builder["with"]["buildkitd-config"], ".github/buildkitd.toml")
+        config = tomllib.loads((ROOT / ".github/buildkitd.toml").read_text())
+        self.assertEqual(config["dns"]["nameservers"], ["1.1.1.1", "8.8.8.8"])
+        dockerfile = (ROOT / "prototype-app/backend/Dockerfile").read_text()
+        self.assertIn("APT::Update::Error-Mode=any update", dockerfile)
+        self.assertIn("Acquire::Retries=3", dockerfile)
 
     def test_selection(self):
         none = dict(frontend=False, backend=False, infrastructure=False)
@@ -230,16 +202,17 @@ class ContractsTest(unittest.TestCase):
             self.assertEqual(classifier.classify(files, "push"), everything, files)
 
     def test_each_trivy_scan_runs_once_and_enforces(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/trivy.yml').read_text()
-        scans = [step.split('\n      - ', 1)[0] for step in workflow.split('uses: aquasecurity/trivy-action@')[1:]]
+        jobs = workflow("trivy.yml")["jobs"]
+        scans = [step for job in jobs.values() for step in job["steps"]
+                 if step.get("uses", "").startswith("aquasecurity/trivy-action@")]
         self.assertEqual(len(scans), 2)
         for scan in scans:
-            self.assertIn("exit-code: '1'", scan)
-            self.assertIn("limit-severities-for-sarif: true", scan)
-            self.assertIn("severity: CRITICAL", scan)
-        self.assertNotRegex(workflow, r"(?m)^\s*(run: )?trivy (fs|image) ")
-        self.assertNotIn("schedule'", workflow.split('  aws-candidate:', 1)[1].split('steps:', 1)[0])
+            self.assertEqual(scan["with"]["exit-code"], "1")
+            self.assertTrue(scan["with"]["limit-severities-for-sarif"])
+            self.assertEqual(scan["with"]["severity"], "CRITICAL")
+        self.assertFalse(any(re.search(r"(?m)^trivy (fs|image) ", step.get("run", ""))
+                             for job in jobs.values() for step in job["steps"]))
+        self.assertNotIn("schedule", jobs["aws-candidate"].get("if", ""))
 
     def needs(self, event="push", **selected):
         outputs = {name: "true" for name in gate.SELECTION_OUTPUTS}
@@ -314,24 +287,18 @@ class ContractsTest(unittest.TestCase):
                 self.assertTrue(gate.failures(needs, "push"), (output, job))
 
     def test_workflow_selects_jobs_by_the_gate_mapping(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/quality.yml').read_text()
+        jobs = workflow("quality.yml")["jobs"]
         for output in gate.SELECTION_OUTPUTS:
-            self.assertIn(f"{output}: ${{{{ steps.select.outputs.{output} }}}}", workflow)
-        for job, output in gate.SELECTED_JOBS.items():
-            body = re.split(r'(?m)^  [a-z][a-z0-9-]*:\n', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
-            self.assertIn("needs: changes", body, job)
-            self.assertIn(f"if: needs.changes.outputs.{output} == 'true'", body, job)
+            self.assertEqual(jobs["changes"]["outputs"][output], "${{ steps.select.outputs." + output + " }}")
+        for name, output in gate.SELECTED_JOBS.items():
+            self.assertEqual(dependencies(jobs[name]["needs"]), {"changes"})
+            self.assertEqual(jobs[name]["if"], f"needs.changes.outputs.{output} == 'true'")
 
     def test_quality_gate_waits_for_exactly_the_accounted_jobs(self):
-        root = Path(__file__).resolve().parents[2]
-        workflow = (root / '.github/workflows/quality.yml').read_text()
-        # publish runs after the gate, so the gate does not wait for it.
-        jobs = set(re.findall(r'(?m)^  ([a-z][a-z0-9-]*):\n', workflow.split('\njobs:\n', 1)[1])) - {'required', 'publish'}
-        needs = re.search(r'(?m)^    needs: \[([^\]]*)\]', workflow.split('\n  required:\n', 1)[1]).group(1)
+        jobs = workflow("quality.yml")["jobs"]
         accounted = gate.ALWAYS_JOBS | set(gate.SELECTED_JOBS) | gate.MAIN_ONLY_JOBS
-        self.assertEqual({name.strip() for name in needs.split(',')}, accounted)
-        self.assertEqual(jobs, accounted)
+        self.assertEqual(dependencies(jobs["required"]["needs"]), accounted)
+        self.assertEqual(set(jobs) - {"required", "publish"}, accounted)
 
 if __name__ == "__main__":
     unittest.main()

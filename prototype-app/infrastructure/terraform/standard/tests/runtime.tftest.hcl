@@ -234,16 +234,13 @@ run "separate_runtime_roles" {
   assert {
     condition = alltrue([
       for role, task in aws_ecs_task_definition.backend : (
-        toset(split(";", one([for entry in one(jsondecode(task.container_definitions)).environment :
-          entry.value if entry.name == "HTTP_OUTBOUND_ALLOWED_HOSTS"
-        ]))) ==
-        setunion(
-          toset(flatten(regexall("\"([a-z-]+=[^\"]+)\"", regex("(?s)DEFAULT_ALLOWLIST = String\\.join\\(\";\",(.*?)\\);", file("${path.module}/../../../backend/src/main/java/com/prototype/vulnwatch/client/http/OutboundHostPolicy.java"))[0]))),
-          toset(["cognito=scoutgrid-runtime-test.auth.us-east-1.amazoncognito.com,cognito-idp.us-east-1.amazonaws.com"])
-        )
+        one([for entry in one(jsondecode(task.container_definitions)).environment :
+          entry.value if entry.name == "HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS"
+        ]) == "cognito=scoutgrid-runtime-test.auth.us-east-1.amazoncognito.com,cognito-idp.us-east-1.amazonaws.com" &&
+        !contains([for entry in one(jsondecode(task.container_definitions)).environment : entry.name], "HTTP_OUTBOUND_ALLOWED_HOSTS")
       ) if role != "migrator"
     ])
-    error_message = "API and worker must allow the backend's default outbound hosts plus the Cognito login and signing-key hosts used by managed sign-in."
+    error_message = "API and worker add Cognito hosts without replacing the backend's default provider catalogue."
   }
 
   assert {

@@ -1,0 +1,7 @@
+{
+  "runtime_ingress_enabled": false,
+  "nat_gateway_mode": "none",
+  "backend_candidate": {
+    "start_services": false
+  }
+}
