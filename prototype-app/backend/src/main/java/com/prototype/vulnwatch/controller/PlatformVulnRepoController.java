@@ -1,6 +1,10 @@
 package com.prototype.vulnwatch.controller;
 
 import com.prototype.vulnwatch.dto.PlatformVulnIntelDetailResponse;
+import com.prototype.vulnwatch.dto.PlatformObservationPageResponse;
+import com.prototype.vulnwatch.dto.CentralCatalogPageResponse;
+import com.prototype.vulnwatch.dto.CentralCatalogCursorResponse;
+import java.util.UUID;
 import com.prototype.vulnwatch.dto.PlatformVulnRepoPageResponse;
 import com.prototype.vulnwatch.dto.VulnRepoDashboardResponse;
 import com.prototype.vulnwatch.service.PlatformVulnRepoService;
@@ -20,6 +24,34 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformVulnRepoController {
 
     private final PlatformVulnRepoService platformVulnRepoService;
+
+    @GetMapping("/records/cursor")
+    public CentralCatalogCursorResponse scanCentralRecords(
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Boolean inKev,
+            @RequestParam(required = false) String severity,
+            @RequestParam(required = false) String source,
+            @RequestParam(defaultValue = "ALL") CentralCatalogPageResponse.Kind kind,
+            @RequestParam(defaultValue = "ACTIVE") CentralCatalogPageResponse.Status status,
+            @RequestParam(required = false) String afterExternalId,
+            @RequestParam(required = false) UUID afterId) {
+        return platformVulnRepoService.scanCentralRecords(size, query, inKev, severity, source,
+                kind, status, afterExternalId, afterId);
+    }
+
+    @GetMapping("/records")
+    public CentralCatalogPageResponse listCentralRecords(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Boolean inKev,
+            @RequestParam(required = false) String severity,
+            @RequestParam(required = false) String source,
+            @RequestParam(defaultValue = "ALL") CentralCatalogPageResponse.Kind kind,
+            @RequestParam(defaultValue = "ACTIVE") CentralCatalogPageResponse.Status status) {
+        return platformVulnRepoService.listCentralRecords(page, size, query, inKev, severity, source, kind, status);
+    }
 
     @GetMapping("/dashboard")
     public VulnRepoDashboardResponse getDashboard() {
@@ -44,7 +76,15 @@ public class PlatformVulnRepoController {
     }
 
     @GetMapping("/intel/{externalId}")
-    public PlatformVulnIntelDetailResponse getIntelDetail(@PathVariable String externalId) {
-        return platformVulnRepoService.getIntelDetail(externalId);
+    public PlatformVulnIntelDetailResponse getIntelDetail(@PathVariable String externalId,
+            @RequestParam(defaultValue = "true") boolean includeObservations) {
+        return platformVulnRepoService.getIntelDetail(externalId, includeObservations);
+    }
+
+    @GetMapping("/intel/{externalId}/observations")
+    public PlatformObservationPageResponse getIntelObservations(@PathVariable String externalId,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(required = false) UUID afterId) {
+        return platformVulnRepoService.getIntelObservations(externalId, size, afterId);
     }
 }

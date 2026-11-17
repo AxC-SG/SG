@@ -72,14 +72,16 @@ class ObservationIngestionServiceTest {
                         "CVE-2026-4827",
                         null,
                         null,
-                        "{\"aliases\":[\"CVE-2026-4827\"]}"
+                        "{\"aliases\":[\"CVE-2026-4827\"]}",
+                        "3.1"
                 )
         );
 
         assertNull(result.vulnerability());
         assertTrue(result.observationCreated());
         verify(vulnerabilityRepository, never()).save(any());
-        verify(observationRepository).save(any(VulnerabilityIntelObservation.class));
+        verify(observationRepository).save(org.mockito.ArgumentMatchers.argThat(
+                observation -> "3.1".equals(observation.getCvssVersion())));
         verify(summaryService, never()).mergeCanonicalAndRefresh(any());
         verify(correlationService).correlateObservation(any(VulnerabilityIntelObservation.class));
     }

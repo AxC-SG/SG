@@ -115,7 +115,7 @@ import type {
   InventoryComponentFilterValues,
   InventoryComponentPage
 } from '../features/inventory/api-types';
-import type { PlatformVulnIntelDetail, PlatformVulnSourceStats, VulnRepoDashboard } from '../features/vuln-repo-dashboard/types';
+import type { PlatformObservationPage, PlatformVulnIntelDetail, PlatformVulnSourceStats, VulnRepoDashboard } from '../features/vuln-repo-dashboard/types';
 import type {
   CbomComponentDetail,
   CbomInventoryFilters,
@@ -1259,7 +1259,12 @@ export const api = {
   getVulnRepoDashboard: () => request<VulnRepoDashboard>('/vuln-repo/dashboard'),
   getPlatformVulnRepoDashboard: () => request<VulnRepoDashboard>('/platform/vuln-repo/dashboard'),
   getPlatformVulnSourceStats: () => request<PlatformVulnSourceStats>('/platform/vuln-repo/source-stats'),
-  getPlatformVulnIntelDetail: (externalId: string) => request<PlatformVulnIntelDetail>(`/platform/vuln-repo/intel/${encodeURIComponent(externalId)}`),
+  getPlatformVulnIntelDetail: (externalId: string) => request<PlatformVulnIntelDetail>(`/platform/vuln-repo/intel/${encodeURIComponent(externalId)}?includeObservations=false`),
+  getPlatformVulnIntelObservations: (externalId: string, afterId?: string) => {
+    const params = new URLSearchParams({ size: '25' });
+    if (afterId) params.set('afterId', afterId);
+    return request<PlatformObservationPage>(`/platform/vuln-repo/intel/${encodeURIComponent(externalId)}/observations?${params}`);
+  },
   listApplicableSoftware: (params?: { page?: number; size?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.page != null) searchParams.set('page', String(params.page));

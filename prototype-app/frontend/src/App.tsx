@@ -121,6 +121,15 @@ const PlatformVulnIntelDetailPage = React.lazy(async () => ({
 const VulnRepoVulnerabilitiesPage = React.lazy(async () => ({
   default: (await import('./pages/VulnRepoVulnerabilitiesPage')).VulnRepoVulnerabilitiesPage
 }));
+const CentralCatalogPage = React.lazy(async () => ({
+  default: (await import('./pages/CentralCatalogPage')).CentralCatalogPage
+}));
+const CatalogPolicyPreviewPage = React.lazy(async () => ({
+  default: (await import('./pages/CatalogPolicyPreviewPage')).CatalogPolicyPreviewPage
+}));
+const TenantCatalogPage = React.lazy(async () => ({
+  default: (await import('./pages/TenantCatalogPage')).TenantCatalogPage
+}));
 const CampaignsPage = React.lazy(async () => ({
   default: (await import('./pages/CampaignsPage')).CampaignsPage
 }));
@@ -1264,12 +1273,21 @@ function AppShell() {
                 <button
                   key={item.key}
                   type="button"
-                  className={activeVulnRepoView === item.key ? 'section-tab-btn active' : 'section-tab-btn'}
+                  className={!['catalog', 'catalog-policy', 'tenant-catalog'].includes(vulnRepoSegment ?? '') && activeVulnRepoView === item.key ? 'section-tab-btn active' : 'section-tab-btn'}
                   onClick={() => navigate(pathForVulnRepoView(item.key))}
                 >
                   {item.label}
                 </button>
               ))}
+              {platformScopeOwner ? <button type="button"
+                className={vulnRepoSegment === 'catalog' ? 'section-tab-btn active' : 'section-tab-btn'}
+                onClick={() => navigate('/vuln-repo/catalog')}>Central catalog</button> : null}
+              {!isPlatformScope && canManageTenant(actor) ? <button type="button"
+                className={vulnRepoSegment === 'catalog-policy' ? 'section-tab-btn active' : 'section-tab-btn'}
+                onClick={() => navigate('/vuln-repo/catalog-policy')}>Catalog policy preview</button> : null}
+              {!isPlatformScope && canManageTenant(actor) ? <button type="button"
+                className={vulnRepoSegment === 'tenant-catalog' ? 'section-tab-btn active' : 'section-tab-btn'}
+                onClick={() => navigate('/vuln-repo/tenant-catalog')}>Tenant catalog workspace</button> : null}
             </div>
           )}
 
@@ -1298,6 +1316,9 @@ function AppShell() {
               <Route path="/vuln-repo/policies" element={<Navigate to="/platform/ai-policies" replace />} />
               <Route path="/vuln-repo/intel/:externalId" element={<PlatformVulnIntelDetailPage />} />
               <Route path="/vuln-repo/vulnerabilities" element={<VulnRepoVulnerabilitiesPage />} />
+              <Route path="/vuln-repo/catalog" element={platformScopeOwner ? <CentralCatalogPage /> : <Navigate to="/vuln-repo" replace />} />
+              <Route path="/vuln-repo/catalog-policy" element={!isPlatformScope && canManageTenant(actor) && actor?.tenantId ? <CatalogPolicyPreviewPage key={actor.tenantId} tenantId={actor.tenantId} /> : <Navigate to="/vuln-repo" replace />} />
+              <Route path="/vuln-repo/tenant-catalog" element={!isPlatformScope && canManageTenant(actor) && actor?.tenantId ? <TenantCatalogPage key={actor.tenantId} tenantId={actor.tenantId} /> : <Navigate to="/vuln-repo" replace />} />
               <Route path="/vuln-repo/campaigns" element={<CampaignsPage />} />
               <Route path="/vuln-repo/campaigns/:id" element={<CampaignDetailPage />} />
               <Route path="/vuln-repo/software-assets" element={<VulnRepoSoftwareAssetsPage />} />

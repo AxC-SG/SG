@@ -103,9 +103,13 @@ export type PlatformVulnIntelSourceObservation = {
   description?: string;
   severity?: string;
   cvssScore?: number;
+  cvssVersion?: string;
   cvssVector?: string;
   publishedAt?: string;
   lastModifiedAt?: string;
+  observedAt?: string;
+  lastSeenAt?: string;
+  payloadHash?: string;
 };
 
 export type PlatformVulnIntelDetail = {
@@ -131,4 +135,11 @@ export type PlatformVulnIntelDetail = {
   cpes: string[];
   references: string[];
   observations: PlatformVulnIntelSourceObservation[];
+};
+
+export type PlatformObservationPage = {
+  items: { id: string; observation: PlatformVulnIntelSourceObservation }[];
+  size: number;
+  hasMore: boolean;
+  nextAfterId: string | null;
 };

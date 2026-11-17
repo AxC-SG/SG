@@ -1,5 +1,7 @@
 # VulnWatch Architecture
 
+> Planning update (2026-11-14): the owner reports infrastructure has moved to AWS. Historical hosting labels below have not been revalidated against the live deployment. See the [central vulnerability intelligence improvement plan](vulnerability-intelligence/README.md) for the proposed multi-source, tenant catalog, UI, and AWS changes. Proposed behavior is separate from implemented behavior documented here.
+
 Last updated: 2026-10-28 (UI 2.0 documentation alignment)
 
 ---

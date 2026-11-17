@@ -127,7 +127,7 @@ public class JvnApiClient {
 
     private JvnPage parsePage(String body, int startItem) {
         if (body == null || body.isBlank()) {
-            return new JvnPage(List.of(), 0, startItem, perPage());
+            throw new IllegalArgumentException("JVN returned an empty response");
         }
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -143,15 +143,16 @@ public class JvnApiClient {
             List<JvnRecord> records = new ArrayList<>();
             // RDF feed uses <item> (RSS 1.0), not <entry> (Atom)
             NodeList items = doc.getElementsByTagNameNS("*", "item");
+            if (items.getLength() == 0 && doc.getElementsByTagNameNS("*", "Status").getLength() == 0) {
+                throw new IllegalArgumentException("JVN response has neither items nor status");
+            }
             for (int i = 0; i < items.getLength(); i++) {
                 JvnRecord record = parseItem((Element) items.item(i));
                 if (record != null) {
                     records.add(record);
                 }
             }
-            if (totalResults == 0) {
-                totalResults = records.size();
-            }
+            // Keep an absent total unknown; substituting one page's size truncates multi-page feeds.
             return new JvnPage(records, totalResults, startItem, perPage());
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse JVN response", e);
@@ -164,11 +165,15 @@ public class JvnApiClient {
         if (statusNodes.getLength() > 0) {
             Element status = (Element) statusNodes.item(0);
             String total = status.getAttribute("totalRes");
-            if (total != null && !total.isBlank()) {
-                try {
-                    return Integer.parseInt(total.trim());
-                } catch (NumberFormatException ignored) {
-                }
+            if (total == null || total.isBlank()) {
+                throw new IllegalArgumentException("JVN status is missing totalRes");
+            }
+            try {
+                int parsed = Integer.parseInt(total.trim());
+                if (parsed < 0) throw new IllegalArgumentException("JVN status has a negative totalRes");
+                return parsed;
+            } catch (NumberFormatException invalid) {
+                throw new IllegalArgumentException("JVN status has an invalid totalRes", invalid);
             }
         }
         return 0;

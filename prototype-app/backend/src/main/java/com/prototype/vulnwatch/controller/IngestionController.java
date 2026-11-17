@@ -17,6 +17,7 @@ import com.prototype.vulnwatch.service.VulnerabilityIngestionService;
 import com.prototype.vulnwatch.service.RequestActorService;
 import com.prototype.vulnwatch.service.WorkspaceService;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -84,6 +85,16 @@ public class IngestionController {
         SyncTriggerResponse response = vulnerabilityIngestionService.triggerNvdSync(lookbackHours);
         auditEventService.record("platform.vulnerability_feed.nvd_sync", "sync_run", response.runId() == null ? null : response.runId().toString(),
                 "{\"lookbackHours\":" + lookbackHours + "}");
+        return response;
+    }
+
+    @PostMapping("/ingestion/nvd-historical-window")
+    @PreAuthorize("hasRole('PLATFORM_OWNER')")
+    public SyncTriggerResponse syncNvdHistoricalWindow(@RequestParam Instant from, @RequestParam Instant to) {
+        SyncTriggerResponse response = vulnerabilityIngestionService.triggerNvdHistoricalWindow(from, to);
+        auditEventService.record("platform.vulnerability_feed.nvd_historical_window", "sync_run",
+                response.runId() == null ? null : response.runId().toString(),
+                "{\"from\":\"" + from + "\",\"to\":\"" + to + "\"}");
         return response;
     }
 
