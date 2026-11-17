@@ -106,35 +106,11 @@ locals {
   cognito_issuer = "https://${aws_cognito_user_pool.humans.endpoint}"
   cognito_login  = "${aws_cognito_user_pool_domain.login.domain}.auth.${var.aws_region}.amazoncognito.com"
 
-  # Setting HTTP_OUTBOUND_ALLOWED_HOSTS replaces the backend default, so this repeats
-  # OutboundHostPolicy.DEFAULT_ALLOWLIST and adds the Cognito hosts that managed sign-in calls
-  # for the token exchange and signing keys. tests/runtime.tftest.hcl fails if the two drift.
-  # Once a backend image that reads HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS is deployed, set
-  # only the Cognito entry there instead and drop this copy.
-  outbound_allowed_hosts = join(";", [
-    "github=api.github.com",
-    "nvd=services.nvd.nist.gov",
-    "epss=api.first.org",
-    "eol=endoflife.date",
-    "openai=api.openai.com",
-    "resend=api.resend.com",
-    "turnstile=challenges.cloudflare.com",
-    "kev=www.cisa.gov",
-    "jvn=jvndb.jvn.jp",
-    "euvd=euvdservices.enisa.europa.eu",
-    "csaf-microsoft=msrc.microsoft.com",
-    "csaf-redhat=security.access.redhat.com",
-    "csaf-cisa=www.cisa.gov",
-    "osv=api.osv.dev",
-    "msrc=api.msrc.microsoft.com",
-    "azure-management=management.azure.com",
-    "gcp=cloudasset.googleapis.com,compute.googleapis.com,osconfig.googleapis.com,cloudresourcemanager.googleapis.com",
-    "intune=graph.microsoft.com,login.microsoftonline.com",
-    "cognito=${local.cognito_login},cognito-idp.${var.aws_region}.amazonaws.com",
-  ])
+  # The backend owns its provider catalogue; the runtime adds only Cognito hosts.
+  outbound_additional_allowed_hosts = "cognito=${local.cognito_login},cognito-idp.${var.aws_region}.amazonaws.com"
 
   runtime_environment = {
-    HTTP_OUTBOUND_ALLOWED_HOSTS               = local.outbound_allowed_hosts
+    HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS    = local.outbound_additional_allowed_hosts
     SPRING_PROFILES_ACTIVE                    = "prod"
     APP_ENVIRONMENT                           = local.is_production ? "production" : "preproduction"
     SERVER_PORT                               = tostring(local.app_port)

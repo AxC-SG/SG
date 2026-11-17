@@ -17,7 +17,6 @@ public final class OutboundHostPolicy {
     /**
      * The one catalogue of default provider hosts. HTTP_OUTBOUND_ALLOWED_HOSTS replaces it;
      * HTTP_OUTBOUND_ADDITIONAL_ALLOWED_HOSTS adds hosts on top of whichever base applies.
-     * Terraform's runtime test parses this list, so keep one quoted entry per line.
      */
     private static final String DEFAULT_ALLOWLIST = String.join(";",
             "github=api.github.com",

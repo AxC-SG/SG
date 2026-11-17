@@ -1,0 +1,8 @@
+name: Set up verified Terraform
+description: Install the Terraform version and checksum pinned in tool-versions.json
+runs:
+  using: composite
+  steps:
+    - name: Install verified Terraform CLI
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../../scripts/install-terraform.sh"

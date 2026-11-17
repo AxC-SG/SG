@@ -14,7 +14,7 @@ RUN = "103"
 
 
 def run(sha=SHA, workflow_id=QUALITY_ID, event="push", branch="main", repo=REPO):
-    return {"id": int(RUN), "workflow_id": workflow_id, "head_sha": sha, "event": event,
+    return {"id": int(RUN), "workflow_id": workflow_id, "path": ".github/workflows/quality.yml", "head_sha": sha, "event": event,
             "head_branch": branch, "head_repository": {"full_name": repo}}
 
 
@@ -52,7 +52,7 @@ class FakeApi:
 
 
 NOT_QUALITY_PUSHES = (run(workflow_id=QUALITY_ID + 1), run(event="pull_request"), run(event="schedule"),
-                      run(branch="feature"), run(repo="fork/SG"))
+                      run(branch="feature"), run(repo="fork/SG"), {**run(), "path": ".github/workflows/unrelated.yml"})
 GATE_NOT_PASSED = ([], [gate("failure")], [gate("cancelled")], [gate("skipped")], [gate(None)],
                    [gate(), gate()], [gate(name="Performance gate")])
 
