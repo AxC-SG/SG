@@ -220,7 +220,7 @@ class AiBomLifecycleBaselinePostgresIntegrationTest {
     }
 
     private Flyway platform(LocalPostgresTestDatabase.DatabaseConfig db) {
-        return Flyway.configure().dataSource(db.url(), db.username(), db.password())
+        return Flyway.configure().configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false")).dataSource(db.url(), db.username(), db.password())
                 .defaultSchema("public").locations("filesystem:src/main/resources/db/migration/postgres_reset")
                 .validateOnMigrate(true).load();
     }

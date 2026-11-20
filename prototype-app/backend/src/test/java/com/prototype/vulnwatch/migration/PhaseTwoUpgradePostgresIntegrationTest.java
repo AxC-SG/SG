@@ -107,7 +107,7 @@ class PhaseTwoUpgradePostgresIntegrationTest {
     }
 
     private Flyway platform(String target) {
-        return Flyway.configure().dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
+        return Flyway.configure().configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false")).dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
                 .locations("classpath:db/migration/postgres_reset").defaultSchema("public")
                 .target(target).load();
     }

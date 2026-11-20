@@ -144,7 +144,7 @@ class AiGridPolicyPortfolioPostgresIntegrationTest {
     }
 
     private void migrate() {
-        Flyway.configure().dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
+        Flyway.configure().configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false")).dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
                 .defaultSchema("public").locations("filesystem:src/main/resources/db/migration/postgres_reset")
                 .validateOnMigrate(true).load().migrate();
         Flyway.configure().dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
