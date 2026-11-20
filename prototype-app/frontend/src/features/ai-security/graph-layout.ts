@@ -1,6 +1,6 @@
 import dagre from '@dagrejs/dagre';
 import type { Edge, Node } from '@xyflow/react';
-import type { AiSecurityGraph } from './types';
+import type { AiSecurityGraph, AiSecurityGraphFindingSummary } from './types';
 
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 56;
@@ -12,12 +12,24 @@ export type DependencyGraphNodeData = {
   active: boolean;
   isRoot: boolean;
   nodeKind: 'ARTIFACT';
+  findingsCount: number;
+  openFindings: number;
+  deferredFindings: number;
+  highestFindingSeverity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | null;
 };
 
 export type DependencyGraphLayout = {
   nodes: Node<DependencyGraphNodeData>[];
   edges: Edge[];
 };
+
+function highestFindingSeverity(summary?: AiSecurityGraphFindingSummary): DependencyGraphNodeData['highestFindingSeverity'] {
+  if (!summary || summary.totalFindings === 0) return null;
+  if (summary.criticalFindings > 0) return 'CRITICAL';
+  if (summary.highFindings > 0) return 'HIGH';
+  if (summary.mediumFindings > 0) return 'MEDIUM';
+  return 'LOW';
+}
 
 /** Pure layout math: turns the graph API's flat nodes/edges into positioned React Flow
  * nodes via dagre. No JSX — icon/label rendering lives in the node component. */
@@ -37,6 +49,7 @@ export function layoutDependencyGraph(graph: AiSecurityGraph, rootArtifactId?: s
     }
   });
   dagre.layout(dagreGraph);
+  const findingsByArtifactId = new Map((graph.findingSummaries ?? []).map((summary) => [summary.artifactId, summary]));
 
   const nodes: Node<DependencyGraphNodeData>[] = graph.nodes.map((node) => {
     const position = dagreGraph.node(node.id);
@@ -53,6 +66,10 @@ export function layoutDependencyGraph(graph: AiSecurityGraph, rootArtifactId?: s
         active: node.active,
         isRoot: node.id === rootArtifactId,
         nodeKind: 'ARTIFACT',
+        findingsCount: findingsByArtifactId.get(node.id)?.totalFindings ?? 0,
+        openFindings: findingsByArtifactId.get(node.id)?.openFindings ?? 0,
+        deferredFindings: findingsByArtifactId.get(node.id)?.deferredFindings ?? 0,
+        highestFindingSeverity: highestFindingSeverity(findingsByArtifactId.get(node.id)),
       },
       style: { width: NODE_WIDTH },
     };

@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { intelligenceApi, type Candidate } from '../features/intelligence/api';
+import { PublicationOperations } from './PublicationOperations';
+import { IntelligenceImportProfiles } from './IntelligenceImportProfiles';
 
 export function IntelligenceReviewPanel() {
   const client = useQueryClient();
@@ -32,6 +34,8 @@ export function IntelligenceReviewPanel() {
   return <section className="panel">
     <div className="panel-header"><h3>Review and publish intelligence</h3><button type="button" className="btn btn-secondary" onClick={() => void runs.refetch()}>Refresh runs</button></div>
     <p>Select completed feed runs. Required unpublished predecessors are included in the candidate for review.</p>
+    <IntelligenceImportProfiles />
+    {candidateId && <PublicationOperations candidateId={candidateId} />}
     {errors.map((error, index) => <p className="notice error" role="alert" key={index}>{error instanceof Error ? error.message : 'Request failed'}</p>)}
     {runs.isLoading && <p role="status">Loading feed runs…</p>}
     <fieldset disabled={build.isPending}><legend>Completed runs</legend>

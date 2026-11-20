@@ -13,6 +13,9 @@ import com.prototype.vulnwatch.client.http.OutboundHttpClient;
 import com.prototype.vulnwatch.client.http.OutboundPolicyDefaults;
 import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -36,6 +39,8 @@ class EuvdApiClientTest {
         server = MockRestServiceServer.createServer(restTemplate);
         ReflectionTestUtils.setField(client, "apiUrl", "https://euvdservices.enisa.europa.eu/api/search");
         ReflectionTestUtils.setField(client, "perPage", 50);
+        ReflectionTestUtils.setField(client, "updatedWindowDays", 0);
+        ReflectionTestUtils.setField(client, "clock", Clock.fixed(Instant.parse("2026-11-17T00:00:00Z"), ZoneOffset.UTC));
         ReflectionTestUtils.setField(client, "minRequestIntervalMs", 0L);
         ReflectionTestUtils.setField(client, "maxRetries", 1);
         ReflectionTestUtils.setField(client, "retryBaseBackoffMs", 1L);

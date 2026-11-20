@@ -563,6 +563,18 @@ export type AiSecurityGraph = {
   edges: AiSecurityRelationship[];
   truncated: boolean;
   runtimeOverlay?: AiRuntimeGraphOverlay;
+  findingSummaries?: AiSecurityGraphFindingSummary[];
+};
+
+export type AiSecurityGraphFindingSummary = {
+  artifactId: string;
+  totalFindings: number;
+  openFindings: number;
+  deferredFindings: number;
+  criticalFindings: number;
+  highFindings: number;
+  mediumFindings: number;
+  lowFindings: number;
 };
 
 export type AiRuntimeGraphGroup = {

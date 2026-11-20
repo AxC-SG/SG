@@ -196,11 +196,41 @@ public class EolRefreshService {
             catch (com.prototype.vulnwatch.service.vulningestion.VulnerabilityAttemptService.StaleAttemptException stale) {
                 throw stale;
             } catch (RuntimeException failure) {
-                if (incomplete == null) incomplete = new IllegalStateException("EOL tenant publication is incomplete");
-                incomplete.addSuppressed(failure);
+                String tenantRef = tenantReference(tenant);
+                String detail = failureDetail(failure);
+                IllegalStateException tenantFailure = new IllegalStateException(
+                        "EOL tenant publication failed for " + tenantRef + ": " + detail,
+                        failure);
+                LOG.warn(tenantFailure.getMessage(), failure);
+                if (incomplete == null) {
+                    incomplete = new IllegalStateException(
+                            "EOL tenant publication is incomplete; first failure for " + tenantRef + ": " + detail,
+                            tenantFailure);
+                } else {
+                    incomplete.addSuppressed(tenantFailure);
+                }
             }
         }
         if (incomplete != null) throw incomplete;
+    }
+
+    private String tenantReference(Tenant tenant) {
+        if (tenant == null) {
+            return "unknown tenant";
+        }
+        String schema = tenant.getSchemaName();
+        return "tenant " + tenant.getId()
+                + (schema == null || schema.isBlank() ? "" : " (schema " + schema + ")");
+    }
+
+    private String failureDetail(Throwable failure) {
+        Throwable current = failure;
+        while (current.getCause() != null
+                && (current.getMessage() == null || current.getMessage().isBlank())) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank() ? current.getClass().getSimpleName() : message;
     }
 
     // -------------------------------------------------------------------------
@@ -367,18 +397,22 @@ public class EolRefreshService {
 
     private int runDenormalizeAcrossTenants() {
         DenormalizeAccumulator accumulator = new DenormalizeAccumulator();
-        forEachTenant(tenant -> accumulator.add(runDenormalize()));
+        forEachTenant(tenant -> accumulator.add(runDenormalize(tenant)));
         return accumulator.count();
     }
 
-    private int runDenormalize() {
+    private int runDenormalize(Tenant tenant) {
         LOG.info("Starting EOL status denormalization");
         int instancesUpdated = denormalizeSoftwareInstances();
         int componentsUpdated = denormalizeInventoryComponents();
         LOG.info("EOL denormalization — updated {} software_instances, {} inventory_components",
                 instancesUpdated, componentsUpdated);
         enqueueLifecycleDeltasForTrackedComponents("eol-denormalize");
-        softwareIdentitySummaryProjectionService.refreshAll();
+        // This method is already running inside the tenant's transaction. Calling
+        // refreshAll() would switch to platform context inside that transaction,
+        // which is rejected by TenantSchemaExecutionService. Refresh only the
+        // tenant currently being processed instead.
+        softwareIdentitySummaryProjectionService.refreshTenant(tenant);
         return instancesUpdated + componentsUpdated;
     }
 

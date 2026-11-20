@@ -33,9 +33,11 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 /**
- * Client for the JVN Vulnerability Database (JVNdb) MyJVN API v3.3.
- * Endpoint: https://jvndb.jvn.jp/myjvn?method=getVulnOverviewList&version=3.3&feed=hnd
- * Response: RDF/RSS 1.0 with sec:, dc:, dcterms: namespaces.
+ * Client for the JVN Vulnerability Database (JVNdb).
+ *
+ * The legacy MyJVN endpoint is retained for explicit deployments that still
+ * provide it, but the default is the live JVNDBRSS updated feed. JVNDBRSS is
+ * also RDF/RSS 1.0 with sec:, dc:, and dcterms: namespaces.
  */
 @Component
 public class JvnApiClient {
@@ -65,7 +67,7 @@ public class JvnApiClient {
     private final OutboundHttpClient outboundHttpClient;
     private final OutboundPolicyFactory outboundPolicyFactory;
 
-    @Value("${app.jvn.api-url:https://jvndb.jvn.jp/myjvn}")
+    @Value("${app.jvn.api-url:https://jvndb.jvn.jp/en/rss/jvndb.rdf}")
     private String apiUrl;
 
     @Value("${app.jvn.per-page:50}")
@@ -94,21 +96,20 @@ public class JvnApiClient {
         return Math.max(1, Math.min(50, perPage));
     }
 
-    /**
-     * Fetches one page from the JVN MyJVN API.
-     * @param startItem 1-based start index (JVN convention)
-     */
+    /** Fetches one page from either the legacy MyJVN API or a JVNDBRSS feed. */
     public JvnPage fetchPage(int startItem) {
         int safeStart = Math.max(1, startItem);
-        String uri = UriComponentsBuilder.fromUriString(apiUrl)
-                .queryParam("method", "getVulnOverviewList")
-                .queryParam("version", "3.3")
-                .queryParam("lang", "en")
-                .queryParam("feed", "hnd")
-                .queryParam("startItem", safeStart)
-                .queryParam("maxCountItem", perPage())
-                .build()
-                .toUriString();
+        String uri = isRssFeedUrl(apiUrl)
+                ? apiUrl
+                : UriComponentsBuilder.fromUriString(apiUrl)
+                        .queryParam("method", "getVulnOverviewList")
+                        .queryParam("version", "3.3")
+                        .queryParam("lang", "en")
+                        .queryParam("feed", "hnd")
+                        .queryParam("startItem", safeStart)
+                        .queryParam("maxCountItem", perPage())
+                        .build()
+                        .toUriString();
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.ALL));
         headers.set("User-Agent", "VulnWatch/1.0");
@@ -122,10 +123,10 @@ public class JvnApiClient {
                 this::classifyFailure,
                 response -> response.getBody() == null ? "" : response.getBody()
         );
-        return parsePage(body, safeStart);
+        return parsePage(body, safeStart, isRssFeedUrl(apiUrl));
     }
 
-    private JvnPage parsePage(String body, int startItem) {
+    private JvnPage parsePage(String body, int startItem, boolean rssFeed) {
         if (body == null || body.isBlank()) {
             throw new IllegalArgumentException("JVN returned an empty response");
         }
@@ -137,13 +138,11 @@ public class JvnApiClient {
             Document doc = builder.parse(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
             doc.getDocumentElement().normalize();
 
-            // Parse pagination from <status:Status totalRes="..." totalResRet="..." .../>
-            int totalResults = parseStatusTotalRes(doc);
-
             List<JvnRecord> records = new ArrayList<>();
             // RDF feed uses <item> (RSS 1.0), not <entry> (Atom)
             NodeList items = doc.getElementsByTagNameNS("*", "item");
-            if (items.getLength() == 0 && doc.getElementsByTagNameNS("*", "Status").getLength() == 0) {
+            if (items.getLength() == 0 && !rssFeed
+                    && doc.getElementsByTagNameNS("*", "Status").getLength() == 0) {
                 throw new IllegalArgumentException("JVN response has neither items nor status");
             }
             for (int i = 0; i < items.getLength(); i++) {
@@ -152,11 +151,19 @@ public class JvnApiClient {
                     records.add(record);
                 }
             }
+            // JVNDBRSS is a bounded feed rather than a paginated MyJVN response.
+            // The feed has no status:Status total, so its parsed item count is the
+            // authoritative batch size for the sync service.
+            int totalResults = rssFeed ? records.size() : parseStatusTotalRes(doc);
             // Keep an absent total unknown; substituting one page's size truncates multi-page feeds.
-            return new JvnPage(records, totalResults, startItem, perPage());
+            return new JvnPage(records, totalResults, startItem, rssFeed ? Math.max(1, records.size()) : perPage());
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse JVN response", e);
         }
+    }
+
+    private boolean isRssFeedUrl(String value) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(".rdf");
     }
 
     private int parseStatusTotalRes(Document doc) {

@@ -23,12 +23,16 @@ class OsvPlatformServiceTest {
     private OsvPlatformService service;
     @BeforeEach void setup() {
         service=new OsvPlatformService(client,approved,equivalences,software);service.configureStaging(staging);
-        var identity=new SoftwareIdentity();identity.setPurl("pkg:npm/lodash@4.17.20");
-        when(software.findAll()).thenReturn(List.of(identity));
     }
     private void response(List<String> aliases) {
         var vulnerability=OsvApiClient.OsvVulnerability.builder().id("GHSA-35jh-r3h4-6jhm").summary("Command injection").aliases(aliases).build();
-        when(client.queryByPackageVersion("npm","lodash",null)).thenReturn(OsvApiClient.OsvQueryResponse.builder().vulns(List.of(vulnerability)).build());
+        var affected=new OsvApiClient.OsvAffected();
+        affected.setPackage_info(OsvApiClient.OsvPackage.builder().ecosystem("npm").name("lodash").build());
+        vulnerability.setAffected(List.of(affected));
+        when(client.streamDataset(any())).thenAnswer(call -> {
+            ((java.util.function.Consumer<OsvApiClient.OsvVulnerability>)call.getArgument(0)).accept(vulnerability);
+            return 1;
+        });
     }
     @Test void fetchedAdvisoriesAndStructuredAliasesArePreparedWithoutApprovedWrites() {
         response(List.of("CVE-2021-23337"));service.syncOsvAdvisories();
@@ -53,32 +57,14 @@ class OsvPlatformServiceTest {
         assertEquals(Set.of("CVE-2021-23337","CVE-2021-23338"),cves);
     }
 
-    @Test void supportedPurlTypesMapToOsvEcosystemsAndKeepScopedNames() {
-        List<SoftwareIdentity> inventory = new ArrayList<>();
-        for (String purl : List.of(
-                "pkg:npm/%40angular/core@17.0.0",
-                "pkg:pypi/Django@4.0.0",
-                "pkg:golang/github.com/Example/Module@v1.0.0",
-                "pkg:cargo/serde@1.0.0",
-                "pkg:gem/rails@7.0.0",
-                "pkg:maven/org.example/unhandled@1.0")) {
-            SoftwareIdentity identity = new SoftwareIdentity();
-            identity.setPurl(purl);
-            inventory.add(identity);
-        }
-        when(software.findAll()).thenReturn(inventory);
-        when(client.queryByPackageVersion(anyString(), anyString(), isNull()))
-                .thenReturn(OsvApiClient.OsvQueryResponse.builder().vulns(List.of()).build());
-
-        service.syncOsvAdvisories();
-
-        verify(software).findAll();
-        verify(client).queryByPackageVersion("npm", "@angular/core", null);
-        verify(client).queryByPackageVersion("PyPI", "Django", null);
-        verify(client).queryByPackageVersion("Go", "github.com/Example/Module", null);
-        verify(client).queryByPackageVersion("crates.io", "serde", null);
-        verify(client).queryByPackageVersion("RubyGems", "rails", null);
-        verify(client, times(5)).queryByPackageVersion(anyString(), anyString(), isNull());
-        verifyNoInteractions(staging);
+    @Test void importsWithoutReadingInventory() {
+        response(List.of());
+        assertEquals(1,service.syncDataset().fetched());
+        verifyNoInteractions(software);
+        verify(client,never()).queryByPackageVersion(anyString(),anyString(),any());
+    }
+    @Test void datasetFailureDoesNotReportSuccess() {
+        when(client.streamDataset(any())).thenThrow(new IllegalStateException("interrupted archive"));
+        assertThrows(IllegalStateException.class,service::syncDataset);
     }
 }

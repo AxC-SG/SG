@@ -184,7 +184,7 @@ public class CsafSyncService {
 
             for (CsafDocumentRef document : documents) {
                 diagnostics.markDocumentAttempt();
-                CsafDocumentFetchResult fetchResult = documentFetcher.fetch(document.url());
+                CsafDocumentFetchResult fetchResult = documentFetcher.fetch(document.url(), provider.providerKey());
                 if (!fetchResult.success()) {
                     failed++;
                     diagnostics.markDocumentFailure(fetchResult.failureCategory(), fetchResult.attempts());

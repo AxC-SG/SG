@@ -30,6 +30,10 @@ const ARTIFACT_TYPE_ICON: Record<string, string> = {
   OTHER_AI_ARTIFACT: '📦',
 };
 
+// SUPPRESSED is the backend's deferred/accepted-risk state. Keep DEFERRED here as
+// forward-compatible input for older or migrated finding records.
+const ACTIONABLE_FINDING_STATUSES = new Set(['OPEN', 'SUPPRESSED', 'DEFERRED']);
+
 function formatTimestamp(value?: string | null): string {
   if (!value) return '—';
   const parsed = new Date(value);
@@ -166,7 +170,7 @@ export function AiAssetDetailPage({ artifactId }: AiAssetDetailPageProps) {
   const findingsCountByArtifactId = React.useMemo(() => {
     const counts: Record<string, number> = {};
     for (const finding of findingsQuery.data?.items ?? []) {
-      if (!finding.artifactId) continue;
+      if (!finding.artifactId || !ACTIONABLE_FINDING_STATUSES.has(finding.status)) continue;
       counts[finding.artifactId] = (counts[finding.artifactId] ?? 0) + 1;
     }
     return counts;

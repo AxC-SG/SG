@@ -25,6 +25,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -539,7 +540,13 @@ public class NvdApiClient {
     private OutboundFailureDecision<RuntimeException> classifyFailure(OutboundFailureContext context) {
         Integer statusCode = context.statusCodeValue();
         if (statusCode != null) {
-            RuntimeException terminal = new RuntimeException("NVD request failed with status " + statusCode, context.error());
+            String message = "NVD request failed with status " + statusCode;
+            if (statusCode == 404 && context.error() instanceof HttpStatusCodeException httpStatusError
+                    && httpStatusError.getResponseBodyAsString().contains("Invalid apiKey")) {
+                message = "NVD rejected the configured API key (HTTP 404: Invalid apiKey). "
+                        + "Replace the NVD API key and retry the full ingest.";
+            }
+            RuntimeException terminal = new RuntimeException(message, context.error());
             return new OutboundFailureDecision<>(
                     context.isRetryableByDefault(),
                     context.retryAfterDelayMs(),

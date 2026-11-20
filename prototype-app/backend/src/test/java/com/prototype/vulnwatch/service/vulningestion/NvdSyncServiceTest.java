@@ -40,6 +40,38 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class NvdSyncServiceTest {
 
+    @Test
+    void profileExecutionFiltersBeforeObservationAndKeepsWatermarkIsolated() throws Exception {
+        UUID id=UUID.randomUUID();
+        UUID profileId=UUID.randomUUID();
+        SyncRun queued=run("NVD_FULL");
+        ReflectionTestUtils.setField(queued,"id",id);
+        queued.setMetadataJson(new ObjectMapper().writeValueAsString(Map.of("importProfile",Map.of(
+                "id",profileId.toString(),"name","2025","sources",List.of("NVD"),
+                "publicationYearFrom",2025,"publicationYearTo",2025,"severities",List.of(),"includeUnknownScores",true))));
+        var selected=new NvdApiClient.NvdRecord("CVE-1999-12345",null,null,null,null,
+                "REJECTED",null,null,null,null,null,null,null,null,null,null,null,null,
+                Instant.parse("2025-06-01T00:00:00Z"),null,List.of(),null);
+        var excluded=new NvdApiClient.NvdRecord("CVE-2025-12345",null,null,null,null,
+                null,null,null,null,null,null,null,null,null,null,null,null,null,
+                Instant.parse("2024-06-01T00:00:00Z"),null,List.of(),null);
+        when(syncRunService.markRunning(id)).thenReturn(queued);
+        when(nvdApiClient.hasApiKey(null)).thenReturn(true);
+        when(syncRunService.nvdFiltersMetadata(any(),isNull(),isNull())).thenReturn(Map.of());
+        when(nvdApiClient.fetchPage(eq(0),isNull(),isNull(),any(),isNull()))
+                .thenReturn(new NvdApiClient.NvdPage(List.of(selected,excluded),2,0,2));
+        when(support.hasText(any())).thenAnswer(i->i.getArgument(0)!=null && !i.<String>getArgument(0).isBlank());
+        var vulnerability=new com.prototype.vulnwatch.domain.Vulnerability();
+        when(observationIngestionService.upsertObservation(any())).thenReturn(
+                new com.prototype.vulnwatch.service.VulnerabilityIntelligenceService.ObservationUpsertResult(vulnerability,false,true));
+        service.executeQueuedNvdFullSyncAsync(id);
+        verify(observationIngestionService).upsertObservation(org.mockito.ArgumentMatchers.argThat(r->"CVE-1999-12345".equals(r.externalId())));
+        verify(syncRunService).completeRun(queued,"completed",2,0,1,0,null);
+        verify(feedWatermarks).complete(eq("profile:"+profileId),any());
+        org.mockito.Mockito.verifyNoMoreInteractions(feedWatermarks);
+        verifyNoInteractions(vulnerabilitySourceFilterConfigService);
+    }
+
     @Mock
     private NvdApiClient nvdApiClient;
 
@@ -311,10 +343,9 @@ class NvdSyncServiceTest {
     }
 
     @Test
-    void paginationRejectsChangingTotalBetweenPages() {
+    void paginationAllowsChangingTotalBetweenPages() {
         NvdSyncService.validateNvdPage(new NvdApiClient.NvdPage(List.of(), 0, 0, 0), 0, null);
-        assertThrows(IllegalStateException.class, () -> NvdSyncService.validateNvdPage(
-                new NvdApiClient.NvdPage(List.of(), 1, 0, 0), 1, 2));
+        NvdSyncService.validateNvdPage(new NvdApiClient.NvdPage(List.of(), 2, 1, 0), 1, null);
     }
 
     @Test
@@ -329,6 +360,7 @@ class NvdSyncServiceTest {
     void paginationCompletionRequiresExactReportedTotal() {
         NvdSyncService.validateNvdCompletion(0, 0);
         NvdSyncService.validateNvdCompletion(4, 4);
+        NvdSyncService.validateNvdCompletion(5, 4);
         assertThrows(IllegalStateException.class, () -> NvdSyncService.validateNvdCompletion(3, 4));
         assertThrows(IllegalStateException.class, () -> NvdSyncService.validateNvdCompletion(0, null));
     }

@@ -155,7 +155,9 @@ public class NvdSyncService {
         SyncRun run = syncRunService.markRunning(runId);
         JsonNode metadata = readQueuedMetadata(run);
         String mode = metadata == null ? "incremental" : metadata.path("triggerMode").asText("incremental");
-        if ("historical_window".equals(mode)) {
+        if ("profile_baseline".equals(mode)) {
+            executeNvdFullSync(run,null);
+        } else if ("historical_window".equals(mode)) {
             final Instant from;
             final Instant to;
             try {
@@ -300,8 +302,12 @@ public class NvdSyncService {
             syncRunService.completeRun(run, "failed", 0, 0, 0, 0, message);
             return new IngestionResult("failed", 0, 0, 0, message);
         }
-        return executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true,
-                vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters(), null);
+        boolean scoped=readQueuedMetadata(run)!=null && readQueuedMetadata(run).has("importProfile");
+        IngestionResult result=executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true,
+                scoped ? new VulnerabilitySourceFilterConfigService.NvdFilters(null,false,false,null,null)
+                        : vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters(), null);
+        if(scoped && "ok".equals(result.status())) feedWatermarks.complete("profile:"+readQueuedMetadata(run).path("importProfile").path("id").asText(),Instant.now());
+        return result;
     }
 
     private Map<String, Object> queuedIncrementalMetadata(int lookbackHours) {
@@ -376,7 +382,7 @@ public class NvdSyncService {
         );
         try {
             int startIndex = 0;
-            Integer expectedTotal = null;
+            Integer lastObservedTotal = null;
             while (true) {
                 NvdApiClient.NvdPage page = nvdApiClient.fetchPage(
                         startIndex,
@@ -392,11 +398,13 @@ public class NvdSyncService {
                         apiKeyOverride
                 );
                 List<NvdApiClient.NvdRecord> records = page.records();
-                validateNvdPage(page, startIndex, expectedTotal);
+                // NVD does not provide a snapshot token. Its corpus can change while a full
+                // scan is paging, so validate each page against its own response metadata.
+                validateNvdPage(page, startIndex, null);
                 for (NvdApiClient.NvdRecord record : records) {
                     validateNvdIdentity(record == null ? null : record.cveId(), seenCveIds);
                 }
-                if (expectedTotal == null) expectedTotal = page.totalResults();
+                lastObservedTotal = page.totalResults();
                 if (records.isEmpty()) {
                     if (page.totalResults() > startIndex) {
                         throw new IllegalStateException("NVD returned an incomplete empty page");
@@ -406,6 +414,7 @@ public class NvdSyncService {
 
                 fetched += records.size();
                 for (NvdApiClient.NvdRecord record : records) {
+                    if (!matchesImportProfile(run,record)) continue;
                     boolean created = upsertNvdRecord(record);
                     if (created) {
                         inserted++;
@@ -434,7 +443,7 @@ public class NvdSyncService {
                 }
                 startIndex = nextStart;
             }
-            validateNvdCompletion(fetched, expectedTotal);
+            validateNvdCompletion(fetched, lastObservedTotal);
             if (!changedVulnerabilityIds.isEmpty()) {
                 effectsService.recomputeCveDeltas(changedVulnerabilityIds);
             }
@@ -454,14 +463,17 @@ public class NvdSyncService {
         if (expectedTotal != null && page.totalResults() != expectedTotal) {
             throw new IllegalStateException("NVD reported a changing total during pagination");
         }
-        if (page.resultsPerPage() < 0 || page.totalResults() < requestedStart
-                || page.records().size() != Math.min(page.resultsPerPage(), page.totalResults() - requestedStart)) {
+        int available = Math.max(0, page.totalResults() - requestedStart);
+        int expectedRecords = Math.min(page.resultsPerPage(), available);
+        if (page.resultsPerPage() < 0
+                || (page.totalResults() < requestedStart && !page.records().isEmpty())
+                || page.records().size() != expectedRecords) {
             throw new IllegalStateException("NVD returned an incomplete interval page");
         }
     }
 
-    static void validateNvdCompletion(int fetched, Integer expectedTotal) {
-        if (expectedTotal == null || fetched != expectedTotal) {
+    static void validateNvdCompletion(int fetched, Integer lastObservedTotal) {
+        if (lastObservedTotal == null || fetched < lastObservedTotal) {
             throw new IllegalStateException("NVD pagination ended before the reported total was fetched");
         }
     }
@@ -567,6 +579,16 @@ public class NvdSyncService {
                     kbVersion
             ));
         }
+    }
+
+    private boolean matchesImportProfile(SyncRun run, NvdApiClient.NvdRecord record) {
+        JsonNode metadata=readQueuedMetadata(run);
+        if(metadata==null || !metadata.has("importProfile")) return true;
+        try {
+            var p=objectMapper.treeToValue(metadata.get("importProfile"),com.prototype.vulnwatch.service.IntelligenceImportProfileService.Profile.class);
+            var predicate=new com.prototype.vulnwatch.service.IntelligenceImportProfile(p.id(),p.name(),new java.util.ArrayList<>(p.sources()),p.publicationYearFrom(),p.publicationYearTo(),p.minCvss(),p.maxCvss(),p.severities(),p.includeUnknownScores());
+            return predicate.matches(new VulnerabilityIntelligenceService.ObservationUpsertRequest(record.cveId(),"nvd",record.cveId(),null,null,null,record.severity(),record.cvssScore(),null,null,null,null,null,null,null,record.published(),record.lastModified(),null));
+        } catch(java.io.IOException failure) { throw new IllegalStateException("Invalid immutable import profile snapshot",failure); }
     }
 
     private boolean upsertNvdRecord(NvdApiClient.NvdRecord record) {

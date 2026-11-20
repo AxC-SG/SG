@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 @PostgresIntegrationTest
 @WithMockUser(roles="PLATFORM_OWNER")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class IntelligencePublicationRecoveryPostgresIntegrationTest {
     private static final LocalPostgresTestDatabase.DatabaseConfig DB=LocalPostgresTestDatabase.provision("publication_recovery");
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {PostgresITSupport.registerDatabaseProperties(registry,DB);}
@@ -34,7 +35,29 @@ class IntelligencePublicationRecoveryPostgresIntegrationTest {
     @Autowired PlatformTransactionManager manager;
     @Autowired VulnerabilityIntelSummaryService summaries;
 
-    @Test void thousandRecordPublicationRollsBackRetriesAndSerializesDuplicateApproval() throws Exception {
+    @Test @Order(2) void profileCandidateDoesNotExpandUnfilteredOrOtherProfileRuns() {
+        var worker=new IntelligencePublicationService(jdbc,mapper,observations,vex,entities,BackgroundTaskExecutionPolicy.allowAll(),manager);
+        ReflectionTestUtils.setField(worker,"summaries",summaries);
+        var runs=new ArrayList<UUID>();
+        for(int n=0;n<4;n++) {
+            ingestion.ingestAdvisories(new AdvisoryBatchRequest(List.of(new AdvisoryRequest("CVE-2098-"+(90000+n),"Scope fixture","Scope isolation",8.1,"HIGH",List.of()))));
+            UUID run=jdbc.queryForObject("select id from platform.sync_runs where sync_type='ADVISORY' order by started_at desc limit 1",UUID.class);
+            runs.add(run);
+            if(n>0) jdbc.update("update platform.sync_runs set metadata_json=? where id=?","{\"importScopeKey\":\"profile:"+(n==1?"other":"selected")+"\"}",run);
+            jdbc.update("update platform.sync_runs set started_at=now()-(? * interval '1 minute') where id=?",4-n,run);
+        }
+        UUID candidate=(UUID)publications.createCandidate(List.of(runs.get(3)),"owner").get("id");
+        worker.poll();
+        var expanded=jdbc.queryForList("select distinct sync_run_id from platform.intelligence_candidate_records where candidate_id=?",UUID.class,candidate);
+        assertEquals(Set.of(runs.get(2),runs.get(3)),new HashSet<>(expanded));
+        var declared=jdbc.queryForList("select unnest(expanded_run_ids) from platform.intelligence_candidates where id=?",UUID.class,candidate);
+        assertEquals(new HashSet<>(expanded),new HashSet<>(declared));
+        UUID unscoped=(UUID)publications.createCandidate(List.of(runs.get(0)),"owner").get("id");
+        worker.poll();
+        assertEquals(List.of(runs.get(0)),jdbc.queryForList("select distinct sync_run_id from platform.intelligence_candidate_records where candidate_id=?",UUID.class,unscoped));
+    }
+
+    @Test @Order(1) void thousandRecordPublicationRollsBackRetriesAndSerializesDuplicateApproval() throws Exception {
         var worker=new IntelligencePublicationService(jdbc,mapper,observations,vex,entities,BackgroundTaskExecutionPolicy.allowAll(),manager);
         ReflectionTestUtils.setField(worker,"summaries",summaries);
         var batch=new ArrayList<AdvisoryRequest>();

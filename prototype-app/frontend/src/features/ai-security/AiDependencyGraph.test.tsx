@@ -75,6 +75,38 @@ describe('AiDependencyGraph', () => {
     expect(await screen.findByText('depth-fn')).toBeInTheDocument();
   });
 
+  it('highlights finding dependencies and filters the graph to them while retaining the root', async () => {
+    const graph = buildGraph({
+      nodes: [
+        buildNode(),
+        buildNode({ id: 'artifact-2', name: 'guardrail', artifactType: 'AI_GUARDRAIL', nativeKind: 'AZURE_RAI_POLICY' }),
+        buildNode({ id: 'artifact-3', name: 'clean-tool', artifactType: 'AI_TOOL', nativeKind: 'AZURE_FOUNDRY_AGENT_TOOL' }),
+      ],
+      findingSummaries: [{
+        artifactId: 'artifact-2', totalFindings: 2, openFindings: 1, deferredFindings: 1,
+        criticalFindings: 1, highFindings: 1, mediumFindings: 0, lowFindings: 0,
+      }],
+    });
+    const { container } = renderWithProviders(
+      <AiDependencyGraph
+        graph={graph}
+        rootArtifactId="artifact-1"
+        findingsCountByArtifactId={{ 'artifact-not-in-this-graph': 4 }}
+      />,
+    );
+
+    const findingNode = container.querySelector<HTMLElement>('.react-flow__node[data-id="artifact-2"]')!;
+    expect(findingNode.querySelector('.ai-dependency-graph-node--has-findings')).toBeInTheDocument();
+    expect(within(findingNode).getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('1 dependencies with active/deferred findings')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show dependencies with findings' }));
+    expect(screen.getByRole('button', { name: 'Show dependencies with findings' })).toHaveAttribute('aria-pressed', 'true');
+    expect(container.querySelector('.react-flow__node[data-id="artifact-1"]')).toBeInTheDocument();
+    expect(container.querySelector('.react-flow__node[data-id="artifact-2"]')).toBeInTheDocument();
+    expect(container.querySelector('.react-flow__node[data-id="artifact-3"]')).not.toBeInTheDocument();
+  });
+
   it('opens a details popup with key facts when a node is clicked, without account/region/owner or a close button', async () => {
     renderWithProviders(
       <AiDependencyGraph
@@ -89,7 +121,7 @@ describe('AiDependencyGraph', () => {
     const dialog = await screen.findByRole('dialog', { name: 'depth-fn details' });
     expect(within(dialog).getByText('Aws Lambda Function')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(within(dialog).getAllByText('3').length).toBeGreaterThan(0);
     expect(screen.getByText('Not classified')).toBeInTheDocument();
     expect(screen.getByText('Not applicable')).toBeInTheDocument();
     expect(await screen.findByText('0')).toBeInTheDocument();
@@ -227,6 +259,27 @@ describe('AiDependencyGraph', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Graph' }));
     expect(await screen.findByRole('region', { name: 'AI artifact dependency graph' })).toBeInTheDocument();
+  });
+
+  it('shows isolated visible components in the list view', async () => {
+    const graph = buildGraph({
+      nodes: [
+        buildNode(),
+        buildNode({ id: 'artifact-2', name: 'clean-tool', artifactType: 'AI_TOOL', nativeKind: 'AZURE_FOUNDRY_AGENT_TOOL' }),
+        buildNode({ id: 'artifact-3', name: 'guardrail', artifactType: 'AI_GUARDRAIL', nativeKind: 'AZURE_RAI_POLICY' }),
+      ],
+      findingSummaries: [{
+        artifactId: 'artifact-3', totalFindings: 1, openFindings: 1, deferredFindings: 0,
+        criticalFindings: 0, highFindings: 1, mediumFindings: 0, lowFindings: 0,
+      }],
+    });
+    renderWithProviders(<AiDependencyGraph graph={graph} rootArtifactId="artifact-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show dependencies with findings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+
+    expect(screen.getByRole('table', { name: 'AI artifact relationships' })).toHaveTextContent('guardrail');
+    expect(screen.getAllByText('No visible relationship').length).toBeGreaterThan(0);
   });
 
   it('does not show runtime controls', () => {

@@ -76,6 +76,27 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         for(var row:rows) assertEquals(0.75,vulnerabilities.findById(row.getId()).orElseThrow().getEpssScore());
     }
 
+    @Test void aValidResponseWithoutEveryRequestedScoreCompletesTheRun() {
+        for (int n = 1; n <= 5; n++) row(n);
+        AtomicInteger calls = new AtomicInteger();
+        when(transport.exchange(anyString(), any(), any(), eq(String.class), anyString(), any(), any()))
+                .thenAnswer(call -> {
+                    int page = calls.incrementAndGet();
+                    return ResponseEntity.ok(page == 1 ? payloadFor(0, 1) : "{\"data\":[]}");
+                });
+
+        var complete = runs.requireRun(execute());
+        assertEquals("completed", complete.getStatus());
+        assertEquals(5, complete.getRecordsFetched());
+        assertEquals(2, complete.getRecordsUpdated());
+        assertEquals(0, complete.getRecordsFailed());
+
+        ReviewedIntelligenceTestSupport.publishAll(reviewContext);
+        assertEquals(0.75, vulnerabilities.findById(rows.get(0).getId()).orElseThrow().getEpssScore());
+        assertEquals(0.75, vulnerabilities.findById(rows.get(1).getId()).orElseThrow().getEpssScore());
+        assertNull(vulnerabilities.findById(rows.get(2).getId()).orElseThrow().getEpssScore());
+    }
+
     private UUID execute() {
         UUID id = TenantContext.runAsPlatform(() -> runs.prepareQueuedRun("EPSS", List.of("EPSS"), Map.of()).run().getId());
         worker.pollQueuedRuns(); return id;
@@ -96,6 +117,13 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
     private String payload() {
         return "{\"data\":[" + rows.stream().map(row -> "{\"cve\":\"" + row.getExternalId()
                 + "\",\"epss\":\"0.75\"}").collect(java.util.stream.Collectors.joining(",")) + "]}";
+    }
+
+    private String payloadFor(int... indexes) {
+        return "{\"data\":[" + java.util.Arrays.stream(indexes)
+                .mapToObj(index -> "{\"cve\":\"" + rows.get(index).getExternalId()
+                        + "\",\"epss\":\"0.75\"}")
+                .collect(java.util.stream.Collectors.joining(",")) + "]}";
     }
     private void respond(String payload) {
         when(transport.exchange(anyString(), any(), any(), eq(String.class), anyString(), any(), any()))

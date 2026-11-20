@@ -188,4 +188,37 @@ describe('VulnRepoVulnerabilitiesPage', () => {
     expect(screen.getByText('Low')).toBeVisible();
     expect(screen.getByText('Unknown')).toBeVisible();
   });
+
+  it('keeps a selected source filter when the repository search changes', async () => {
+    const listVulnRepoSpy = vi.spyOn(cveWorkbenchApi, 'listVulnRepoVulnerabilities').mockResolvedValue({
+      summary: {
+        reviewQueueCount: 0,
+        applicableCount: 0,
+        impactedCount: 0,
+        underInvestigationCount: 0,
+        resolvedCount: 0,
+      },
+      items: [],
+      page: 0,
+      size: 25,
+      totalItems: 0,
+      totalPages: 0,
+    });
+
+    renderWithProviders(<VulnRepoVulnerabilitiesPage />);
+
+    const nvdButton = await screen.findByRole('button', { name: 'NVD' });
+    fireEvent.click(nvdButton);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search CVE / Description' }), {
+      target: { value: 'microsoft' },
+    });
+
+    await waitFor(() => {
+      expect(listVulnRepoSpy).toHaveBeenCalledWith(expect.objectContaining({
+        query: 'microsoft',
+        source: expect.stringMatching(/^nvd$/i),
+      }));
+    });
+    expect(screen.getByRole('button', { name: 'NVD' })).toHaveClass('is-active');
+  });
 });

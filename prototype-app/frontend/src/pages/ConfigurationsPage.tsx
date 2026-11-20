@@ -2782,6 +2782,7 @@ interface AutoFindingRule {
   lastRunInvestigated?: number;
   lastRunIncidents?: number;
   lastRunSkipped?: number;
+  lastRunFailed?: number;
 }
 
 type AutoFindingRuleInput = Partial<Omit<AutoFindingRule, 'cveConditions' | 'selectedSoftware'>> & {
@@ -2857,6 +2858,7 @@ function normalizeAutoFindingRule(rule: AutoFindingRuleInput): AutoFindingRule {
     lastRunInvestigated: rule.lastRunInvestigated,
     lastRunIncidents: rule.lastRunIncidents,
     lastRunSkipped: rule.lastRunSkipped,
+    lastRunFailed: rule.lastRunFailed,
   };
   if (normalized.createFindings) normalized.investigate = true;
   return normalized;
@@ -2885,6 +2887,50 @@ function buildCriteriaFromCveDetail(detail: CveDetail): AssetCriterion[] {
     criteria.push({ id: matched.componentId, software, version, vendor });
   }
   return criteria;
+}
+
+const AUTO_INVESTIGATION_PAGE_SIZE = 200;
+type AutoInvestigationCveListParams = NonNullable<Parameters<typeof cveWorkbenchApi.listOrgSpecificCves>[0]>;
+
+/**
+ * The backend caps this endpoint at 200 rows per page. Auto-investigation must
+ * walk the complete result set because includeAll intentionally includes both
+ * applicable and non-applicable CVEs.
+ */
+async function listAllAutoInvestigationCves(
+  params: Omit<AutoInvestigationCveListParams, 'page' | 'size'>
+): Promise<OrgSpecificCveExposureRecord[]> {
+  const all: OrgSpecificCveExposureRecord[] = [];
+  const seen = new Set<string>();
+  let page = 0;
+  let totalPages: number | null = null;
+
+  while (totalPages == null || page < totalPages) {
+    const result = await cveWorkbenchApi.listOrgSpecificCves({
+      ...params,
+      page,
+      size: AUTO_INVESTIGATION_PAGE_SIZE,
+      includeAll: true,
+    });
+
+    for (const cve of result.items) {
+      const key = cve.externalId || cve.vulnerabilityId || cve.recordId;
+      if (!seen.has(key)) {
+        seen.add(key);
+        all.push(cve);
+      }
+    }
+
+    const reportedTotalPages = Number(result.totalPages);
+    totalPages = Number.isFinite(reportedTotalPages) && reportedTotalPages > 0
+      ? reportedTotalPages
+      : result.items.length < AUTO_INVESTIGATION_PAGE_SIZE ? page + 1 : null;
+
+    page += 1;
+    if (result.items.length === 0) break;
+  }
+
+  return all;
 }
 
 function priorityFromSeverity(severity: string): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
@@ -2952,8 +2998,8 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
       }
 
       // ── 1. Build API query params from CVE conditions ──────────────────
-      const apiParams: Parameters<typeof cveWorkbenchApi.listOrgSpecificCves>[0] = {
-        page: 0, size: 500, includeAll: true,
+      const apiParams: Omit<AutoInvestigationCveListParams, 'page' | 'size'> = {
+        includeAll: true,
       };
       for (const cond of rule.cveConditions) {
         if (cond.column === 'severity' && cond.operator === '=') {
@@ -2969,8 +3015,10 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
       }
 
       // ── 2. Fetch matching CVEs ─────────────────────────────────────────
-      const page = await cveWorkbenchApi.listOrgSpecificCves(apiParams);
-      let cves: OrgSpecificCveExposureRecord[] = page.items;
+      // Keep includeAll=true by design: this rule is allowed to investigate
+      // non-applicable CVEs too. Pagination is required because the backend
+      // clamps the endpoint to 200 rows per request.
+      let cves: OrgSpecificCveExposureRecord[] = await listAllAutoInvestigationCves(apiParams);
 
       // ── 3. Client-side filter for numeric/text conditions not in API ───
       for (const cond of rule.cveConditions) {
@@ -3027,6 +3075,7 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
       let totalInvestigated = 0;
       let totalIncidents = 0;
       let totalSkipped = 0;
+      let totalFailed = 0;
       const cveErrors: string[] = [];
 
       const buildServiceNowIncidentPayload = (
@@ -3331,6 +3380,7 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
             }
           }
         } catch (err) {
+          totalFailed += 1;
           cveErrors.push(`${cve.externalId}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
@@ -3350,6 +3400,7 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
             lastRunInvestigated: totalInvestigated,
             lastRunIncidents: totalIncidents,
             lastRunSkipped: totalSkipped,
+            lastRunFailed: totalFailed,
           }
         : r
       ));
@@ -3400,13 +3451,15 @@ function AutoFindingRulesSection({ canEdit }: { canEdit: boolean }) {
                       const investigated = rule.lastRunInvestigated ?? 0;
                       const incidents = rule.lastRunIncidents ?? 0;
                       const skipped = rule.lastRunSkipped ?? 0;
+                      const failed = rule.lastRunFailed ?? 0;
                       const parts: string[] = [];
-                      if (investigated > 0) parts.push(`${investigated} investigated`);
+                      if (investigated > 0) parts.push(`${investigated} CVEs investigated`);
                       if (created > 0) parts.push(`${created} created`);
                       if (reopened > 0) parts.push(`${reopened} reopened`);
-                      if (alreadyOpen > 0) parts.push(`${alreadyOpen} already open`);
+                      if (alreadyOpen > 0) parts.push(`${alreadyOpen} findings already open`);
                       if (incidents > 0) parts.push(`${incidents} incidents`);
                       if (skipped > 0) parts.push(`${skipped} skipped`);
+                      if (failed > 0) parts.push(`${failed} failed`);
                       if (parts.length === 0) parts.push('0 created');
                       return (
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--dp-low) 12%, transparent)', color: 'var(--dp-low)', border: '1px solid color-mix(in srgb, var(--dp-low) 28%, transparent)' }}>

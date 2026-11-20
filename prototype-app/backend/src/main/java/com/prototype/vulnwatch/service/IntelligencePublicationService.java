@@ -24,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 /** Immutable review evidence and PostgreSQL-owned, atomic asynchronous publication. */
 @Service
 public class IntelligencePublicationService {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private IntelligencePublicationProgressService progress;
     private static final Map<String,String> ARTIFACT_TABLES=Map.of(
             "TARGET","platform.vulnerability_targets","RULE","platform.vulnerability_rules","CONFIG","platform.vulnerability_config_expr","OSV","platform.osv_advisories","EQUIVALENCE","platform.advisory_equivalences");
     private static final Set<String> RESTORABLE=Set.of("platform.vulnerabilities","platform.vulnerability_targets","platform.vulnerability_rules",
@@ -134,6 +136,7 @@ public class IntelligencePublicationService {
     public void poll() {
         if(!background.allowsBackgroundTask("intelligence.publication")) return;
         TenantContext.runAsPlatform(() -> {
+            transactions.executeWithoutResult(status -> advanceScheduledPublication());
             // The row lock is the durable ownership fence. A process crash rolls the
             // publication and job acknowledgement back together, leaving PENDING work.
             for(int i=0;i<3;i++) {
@@ -141,6 +144,11 @@ public class IntelligencePublicationService {
                 if(job==null) break;
                 try { transactions.executeWithoutResult(status -> process(job)); }
                 catch(RuntimeException failure) {
+                    if(failure instanceof IntelligencePublicationProgressService.ControlInterrupt) continue;
+                    if(progress!=null) {
+                        UUID failedCandidate=jdbc.queryForObject("select candidate_id from platform.intelligence_publication_outbox where id=?",UUID.class,job);
+                        progress.event(failedCandidate,"ERROR","Publication attempt failed; catalog changes rolled back");
+                    }
                     transactions.executeWithoutResult(status -> {
                         boolean terminal=failure instanceof ResponseStatusException;
                         jdbc.update("update platform.intelligence_publication_outbox set attempt_count=attempt_count+1,status=case when ? or attempt_count>=2 then 'FAILED' else 'PENDING' end,visible_at=now()+interval '30 seconds',last_error=? where id=? and status='PENDING'",terminal,safeError(failure),job);
@@ -151,10 +159,78 @@ public class IntelligencePublicationService {
         });
     }
 
+    /** One correlated daily release; persisted candidates survive worker restarts. */
+    private void advanceScheduledPublication() {
+        jdbc.queryForObject("select pg_advisory_xact_lock(741926582)", Object.class);
+        String actor="scheduled-intelligence-publisher";
+        var pending=jdbc.queryForList("select * from platform.intelligence_candidates where created_by=? and status in ('BUILDING','READY','PUBLICATION_QUEUED') order by created_at limit 1",actor);
+        if(!pending.isEmpty()) {
+            var candidate=pending.get(0);
+            if("READY".equals(candidate.get("status"))) {
+                if(Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from platform.intelligence_candidate_records where candidate_id=? and validation<>'VALID')",Boolean.class,candidate.get("id")))) {
+                    jdbc.update("update platform.intelligence_candidates set status='FAILED',error_code='SCHEDULED_VALIDATION_FAILED' where id=?",candidate.get("id"));
+                    return;
+                }
+                if(!Objects.equals(candidate.get("base_release_id"),activeRelease())) {
+                    jdbc.update("update platform.intelligence_candidates set status='FAILED',error_code='STALE_BASE_RELEASE' where id=?",candidate.get("id"));
+                    return;
+                }
+                publish((UUID)candidate.get("id"),(String)candidate.get("digest"),(UUID)candidate.get("base_release_id"),"scheduled:"+candidate.get("id"),actor);
+            }
+            return;
+        }
+        // Close yesterday's collection window only when every enabled catalog feed succeeded.
+        var selected=jdbc.queryForList("""
+                select r.id from platform.intelligence_feed_schedules f
+                left join lateral (
+                  select s.* from platform.sync_runs s
+                  where s.sync_type=f.sync_type and s.tenant_id is null
+                    and s.run_scope='PLATFORM_VULNERABILITY'
+                    and s.metadata_json::jsonb->>'scheduleOccurrence' is not null
+                    and s.started_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'-interval '1 day'
+                    and s.started_at<date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'
+                  order by s.started_at desc limit 1
+                ) r on true
+                where f.enabled and f.sync_type not like 'EOL_%' and f.sync_type<>'NVD_FULL'
+                """
+        );
+        if(selected.isEmpty() || selected.stream().anyMatch(row -> row.get("id")==null)) return;
+        var ids=selected.stream().map(row -> (UUID)row.get("id")).toList();
+        for(UUID id:ids) {
+            if(!Boolean.TRUE.equals(jdbc.queryForObject("select lower(status) in ('completed','success') from platform.sync_runs where id=?",Boolean.class,id))) return;
+        }
+        // Never let continuity expansion silently approve a manual/full predecessor.
+        for(UUID id:ids) {
+            if(Boolean.TRUE.equals(jdbc.queryForObject("""
+                    select exists(select 1 from platform.sync_runs r join platform.sync_runs chosen on chosen.id=?
+                    where replace(r.sync_type,'_FULL','')=replace(chosen.sync_type,'_FULL','')
+                    and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
+                    and r.started_at<=chosen.started_at and lower(r.status) in ('completed','success')
+                    and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
+                    and (r.sync_type='NVD_FULL' or r.metadata_json::jsonb->>'scheduleOccurrence' is null)
+                    and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id))
+                    """,Boolean.class,id))) return;
+        }
+        boolean unpublished=ids.stream().anyMatch(id -> !Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from platform.intelligence_published_runs where sync_run_id=?)",Boolean.class,id)));
+        if(unpublished) createCandidate(ids,actor);
+    }
+
     private void process(UUID id) {
         var jobs=jdbc.queryForList("select * from platform.intelligence_publication_outbox where id=? and status='PENDING' for update skip locked",id);
         if(jobs.isEmpty()) return;
         var job=jobs.get(0);
+        UUID progressCandidate=(UUID)job.get("candidate_id");
+        if(progress!=null && progress.held(progressCandidate)) return;
+        if(progress!=null) progress.update(progressCandidate,"STARTING",0,0,0);
+        if(progress!=null && progressCandidate!=null) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override public void afterCompletion(int status) {
+                        progress.event(progressCandidate,status==STATUS_COMMITTED?"SUCCESS":"WARNING",
+                            status==STATUS_COMMITTED?"Job committed":"Attempt rolled back; no partial catalog published");
+                    }
+                });
+        }
         if("BUILD".equals(job.get("kind"))) build((UUID)job.get("candidate_id"));
         else apply(job);
         jdbc.update("update platform.intelligence_publication_outbox set status='COMPLETED',completed_at=now(),last_error=null where id=?",id);
@@ -181,7 +257,9 @@ public class IntelligencePublicationService {
                 where lower(r.status) in ('completed','success') and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
                   and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id)
                   and exists(select 1 from platform.sync_runs chosen where chosen.id=any(?) and
-                    replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','') and r.started_at<=chosen.started_at)
+                    replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','')
+                    and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
+                    and r.started_at<=chosen.started_at)
                 order by r.started_at,r.id,s.id
                 """,id,candidate.get("selected_run_ids"));
         jdbc.update("""
@@ -190,7 +268,9 @@ public class IntelligencePublicationService {
                   where lower(r.status) in ('completed','success') and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
                    and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id)
                    and exists(select 1 from platform.sync_runs chosen where chosen.id=any(?) and
-                     replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','') and r.started_at<=chosen.started_at)),'{}') where id=?
+                     replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','')
+                     and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
+                     and r.started_at<=chosen.started_at)),'{}') where id=?
                 """,candidate.get("selected_run_ids"),id);
         var report=jdbc.queryForMap("""
                 select count(*) records,count(distinct canonical_id) canonical_records,
@@ -241,6 +321,7 @@ public class IntelligencePublicationService {
             entities.flush();
             entities.clear();
         }
+        if(progress!=null && candidate!=null) progress.activationFence(candidate);
         jdbc.update("update platform.intelligence_releases set status='PUBLISHED' where id=?",release);
         jdbc.update("update platform.intelligence_active_state set release_id=?,generation=? where singleton=true",release,generation);
         if(!withdrawal) {
@@ -254,19 +335,38 @@ public class IntelligencePublicationService {
 
     private void applyRecords(UUID candidate) {
         long after=0;
+        long processed=0;
+        long total=progress==null ? 0L : jdbc.queryForObject("select count(*) from platform.intelligence_candidate_records where candidate_id=? and validation='VALID'",Long.class,candidate);
+        if(progress!=null) progress.update(candidate,"APPLYING_RECORDS",0,total,0);
         while(true) {
             var rows=jdbc.queryForList("select * from platform.intelligence_candidate_records where candidate_id=? and id>? and validation='VALID' order by id limit 100",candidate,after);
             if(rows.isEmpty()) break;
+            // Bound memory to this page. Only plain artefacts can share resolutions:
+            // ALIAS (and any future non-artefact handler) may change redirects.
+            Map<UUID,UUID> artifactCanonicals=new HashMap<>();
             for(var row:rows) {
                 after=((Number)row.get("id")).longValue();
-                applyRecord(row);
+                UUID original=(UUID)row.get("canonical_id");
+                UUID canonical;
+                if(ARTIFACT_TABLES.containsKey((String)row.get("kind"))) {
+                    canonical=original==null ? null : artifactCanonicals.computeIfAbsent(original,this::resolveCanonical);
+                } else {
+                    artifactCanonicals.clear();
+                    canonical=resolveCanonical(original);
+                }
+                applyRecord(row,canonical);
                 entities.flush();
                 entities.clear();
+                processed++;
             }
+            if(progress!=null) progress.update(candidate,"APPLYING_RECORDS",processed,total,after);
         }
+        if(progress!=null) progress.update(candidate,"REFRESHING_ASSERTIONS",processed,total,after);
         UUID afterVulnerability=null;
         while(true) {
-            var ids=jdbc.queryForList("select distinct canonical_id from platform.intelligence_candidate_records where candidate_id=? and canonical_id is not null and (?::uuid is null or canonical_id>?::uuid) order by canonical_id limit 100",UUID.class,candidate,afterVulnerability,afterVulnerability);
+            var ids=afterVulnerability==null
+                    ? jdbc.queryForList("select distinct canonical_id from platform.intelligence_candidate_records where candidate_id=? and canonical_id is not null order by canonical_id limit 100",UUID.class,candidate)
+                    : jdbc.queryForList("select distinct canonical_id from platform.intelligence_candidate_records where candidate_id=? and canonical_id>? order by canonical_id limit 100",UUID.class,candidate,afterVulnerability);
             if(ids.isEmpty()) break;
             vex.refreshAssertionsForVulnerabilityIdsDetailed(ids);
             afterVulnerability=ids.get(ids.size()-1);entities.flush();entities.clear();
@@ -274,16 +374,17 @@ public class IntelligencePublicationService {
         if(Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from platform.intelligence_candidate_records where candidate_id=? and kind='VEX_REBUILD')",Boolean.class,candidate))) {
             afterVulnerability=null;
             while(true) {
-                var ids=jdbc.queryForList("select distinct vulnerability_id from platform.vulnerability_targets where (?::uuid is null or vulnerability_id>?::uuid) order by vulnerability_id limit 100",UUID.class,afterVulnerability,afterVulnerability);
+                var ids=afterVulnerability==null
+                        ? jdbc.queryForList("select distinct vulnerability_id from platform.vulnerability_targets where vulnerability_id is not null order by vulnerability_id limit 100",UUID.class)
+                        : jdbc.queryForList("select distinct vulnerability_id from platform.vulnerability_targets where vulnerability_id>? order by vulnerability_id limit 100",UUID.class,afterVulnerability);
                 if(ids.isEmpty()) break;
                 vex.refreshAssertionsForVulnerabilityIdsDetailed(ids);afterVulnerability=ids.get(ids.size()-1);entities.flush();entities.clear();
             }
         }
     }
 
-    private void applyRecord(Map<String,Object> row) {
+    private void applyRecord(Map<String,Object> row,UUID canonical) {
         String kind=(String)row.get("kind");
-        UUID canonical=resolveCanonical((UUID)row.get("canonical_id"));
         JsonNode payload=parse(row.get("payload"));
         if(canonical!=null && payload.isObject() && payload.has("vulnerability_id")) ((com.fasterxml.jackson.databind.node.ObjectNode)payload).put("vulnerability_id",canonical.toString());
         if(ARTIFACT_TABLES.containsKey(kind)) { upsert(ARTIFACT_TABLES.get(kind),payload); return; }

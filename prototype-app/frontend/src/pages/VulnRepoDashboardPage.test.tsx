@@ -72,6 +72,27 @@ describe('VulnRepoDashboardPage', () => {
     }
   });
 
+  it('drills from a critical CVE finding count into the filtered findings list', async () => {
+    vi.spyOn(api, 'getVulnRepoDashboard').mockResolvedValue(buildVulnRepoDashboard({
+      criticalUnresolved: [{
+        externalId: 'CVE-2026-126919',
+        title: 'Example vulnerability',
+        severity: 'CRITICAL',
+        statusLabel: 'OPEN',
+        exploitKnown: false,
+        findingCount: 2,
+      }],
+    }));
+
+    renderWithProviders(<><VulnRepoDashboardPage /><LocationProbe /></>);
+
+    const findingsLink = await screen.findByRole('button', { name: /2\s*findings/ });
+    fireEvent.click(findingsLink);
+    expect(screen.getByTestId('destination')).toHaveTextContent(
+      '/findings?vulnerabilityId=CVE-2026-126919&status=OPEN'
+    );
+  });
+
   it('renders loading state while data is pending', () => {
     vi.spyOn(api, 'getVulnRepoDashboard').mockReturnValue(new Promise(() => {}));
 

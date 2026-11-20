@@ -64,6 +64,22 @@ describe('Platform feed catalog', () => {
     expect(card('CISA KEV Feed')).toHaveFocus();
   });
 
+  it('exposes the full NVD corpus ingest separately from the daily sync', async () => {
+    vi.spyOn(api, 'syncNvdFull').mockResolvedValue({ runId: 'nvd-full-run', status: 'QUEUED', message: 'Queued' });
+    renderWithProviders(<VulnIntelConfigPage vulnSummary={summary} />, { route: '/platform/vuln-intel?feed=nvd' });
+
+    expect(screen.getByRole('heading', { name: 'NVD Vulnerability Feed' })).toBeInTheDocument();
+    const fullSyncButton = screen.getByRole('button', { name: 'Run full NVD ingest' });
+    expect(fullSyncButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/NVD API Key/), { target: { value: 'test-nvd-key' } });
+    fireEvent.click(screen.getByLabelText('I understand the runtime and database impact.'));
+    fireEvent.click(fullSyncButton);
+
+    await waitFor(() => expect(api.syncNvdFull).toHaveBeenCalledWith({ apiKey: 'test-nvd-key' }));
+    expect(await screen.findByText('Integration queued.')).toBeInTheDocument();
+  });
+
   it('supports direct feed links and reports integration errors', async () => {
     vi.spyOn(intelligenceApi, 'trigger').mockRejectedValue(new Error('Feed temporarily unavailable'));
     renderWithProviders(<VulnIntelConfigPage vulnSummary={summary} />, { route: '/platform/vuln-intel?feed=osv' });

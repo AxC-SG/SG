@@ -23,14 +23,23 @@ public class IntelligenceStagingService {
     public UUID epssUpperId() { return jdbc.queryForObject("select max(id::text)::uuid from (select canonical_id id from platform.intelligence_identifiers union select id from platform.vulnerabilities) ids",UUID.class); }
     public java.util.List<Vulnerability> epssCandidates(java.time.Instant stale,UUID after,UUID upper,int size) {
         return jdbc.query("""
-                select distinct i.canonical_id,i.identifier from (select canonical_id,identifier from platform.intelligence_identifiers union select id,external_id from platform.vulnerabilities) i
+                select distinct i.canonical_id,i.identifier,v.epss_score,v.epss_updated_at
+                from (select canonical_id,identifier from platform.intelligence_identifiers union select id,external_id from platform.vulnerabilities) i
                 left join platform.vulnerabilities v on v.id=i.canonical_id
                 where i.identifier ~ '^CVE-[0-9]{4}-[0-9]{4,}$' and i.canonical_id<=? and (?::uuid is null or i.canonical_id>?::uuid)
                   and (v.epss_updated_at is null or v.epss_updated_at<?)
                   and (v.id is not null or exists(select 1 from platform.intelligence_staged_records s join platform.sync_runs r on r.id=s.sync_run_id
                        where s.canonical_id=i.canonical_id and s.kind='OBSERVATION' and lower(r.status) in ('completed','success')))
                 order by i.canonical_id limit ?
-                """,(rs,row) -> { Vulnerability value=new Vulnerability();value.setId(rs.getObject(1,UUID.class));value.setExternalId(rs.getString(2));return value; },upper,after,after,java.sql.Timestamp.from(stale),size);
+                """,(rs,row) -> {
+                    Vulnerability value=new Vulnerability();
+                    value.setId(rs.getObject(1,UUID.class));
+                    value.setExternalId(rs.getString(2));
+                    value.setEpssScore((Double) rs.getObject(3));
+                    java.sql.Timestamp refreshedAt=rs.getTimestamp(4);
+                    value.setEpssUpdatedAt(refreshedAt == null ? null : refreshedAt.toInstant());
+                    return value;
+                },upper,after,after,java.sql.Timestamp.from(stale),size);
     }
 
     @Transactional

@@ -74,6 +74,7 @@ public class EuvdSyncService {
                 "euvd",
                 Map.of(
                         "pageSize", euvdApiClient.perPage(),
+                        "updatedWindowDays", euvdApiClient.updatedWindowDays(),
                         "maxPagesPerSync", maxPagesPerSync
                 )
         );

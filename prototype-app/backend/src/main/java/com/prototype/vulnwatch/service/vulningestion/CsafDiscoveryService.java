@@ -122,8 +122,28 @@ public class CsafDiscoveryService {
         LinkedHashSet<String> urls = new LinkedHashSet<>();
         String normalizedRoot = normalizeDistributionRoot(distributionRoot);
 
-        appendFromCsv(urls, normalizedRoot + "/changes.csv", normalizedRoot, provider);
-        appendFromTextIndex(urls, normalizedRoot + "/index.txt", normalizedRoot, provider);
+        if (provider == CsafProvider.REDHAT) {
+            // Red Hat's changes.csv can briefly advertise documents before they are
+            // published into index.txt. Filter that transient window so a refresh does
+            // not spend its entire document budget on guaranteed 404s.
+            LinkedHashSet<String> indexedUrls = new LinkedHashSet<>();
+            appendFromTextIndex(indexedUrls, normalizedRoot + "/index.txt", normalizedRoot, provider);
+            if (!indexedUrls.isEmpty()) {
+                LinkedHashSet<String> changedUrls = new LinkedHashSet<>();
+                appendFromCsv(changedUrls, normalizedRoot + "/changes.csv", normalizedRoot, provider);
+                for (String url : changedUrls) {
+                    if (indexedUrls.contains(url)) {
+                        urls.add(url);
+                    }
+                }
+                urls.addAll(indexedUrls);
+            } else {
+                appendFromCsv(urls, normalizedRoot + "/changes.csv", normalizedRoot, provider);
+            }
+        } else {
+            appendFromCsv(urls, normalizedRoot + "/changes.csv", normalizedRoot, provider);
+            appendFromTextIndex(urls, normalizedRoot + "/index.txt", normalizedRoot, provider);
+        }
         appendFromJsonIndex(urls, normalizedRoot, normalizedRoot, provider);
 
         if (urls.isEmpty() && provider == CsafProvider.REDHAT) {
