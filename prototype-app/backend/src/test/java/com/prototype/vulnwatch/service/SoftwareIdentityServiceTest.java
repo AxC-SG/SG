@@ -100,6 +100,10 @@ class SoftwareIdentityServiceTest {
         assertEquals(Set.of(), resolution.cpeCandidates());
         assertEquals("pkg:generic:microsoft:office", resolution.identity().getCanonicalKey());
         verify(identityLinkRepository).save(any(IdentityLink.class));
+
+        var rediscovered = service.resolveHostSoftwareIdentity(instance, null, normalized, "servicenow");
+        assertSame(resolution.identity(), rediscovered.identity());
+        verify(softwareIdentityRepository).save(any(SoftwareIdentity.class));
     }
 
     @Test
