@@ -15,6 +15,8 @@ import com.prototype.vulnwatch.client.http.OutboundPolicyDefaults;
 import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -116,6 +118,38 @@ class NvdApiClientTest {
         );
 
         assertEquals(0, page.records().size());
+        assertEquals(0, page.totalResults());
+        assertEquals(0, page.startIndex());
+        assertEquals(0, page.resultsPerPage());
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{}",
+            "null",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":0}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":0,\"vulnerabilities\":{}}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":\"0\",\"vulnerabilities\":[]}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":-1,\"vulnerabilities\":[]}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":2147483648,\"vulnerabilities\":[]}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":0,\"vulnerabilities\":[{}]}",
+            "{\"resultsPerPage\":0,\"startIndex\":0,\"totalResults\":0,\"vulnerabilities\":[]} {}"
+    })
+    void fetchPage_rejectsMalformedFirstPage(String body) {
+        server.expect(requestTo("https://services.nvd.nist.gov/rest/json/cves/2.0?startIndex=0&resultsPerPage=2000"))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        assertThrows(RuntimeException.class, () -> client.fetchPage(0, null, null));
+        server.verify();
+    }
+
+    @Test
+    void fetchPage_rejectsMissingPaginationOnLaterPage() {
+        server.expect(requestTo("https://services.nvd.nist.gov/rest/json/cves/2.0?startIndex=2000&resultsPerPage=2000"))
+                .andRespond(withSuccess("{\"vulnerabilities\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThrows(RuntimeException.class, () -> client.fetchPage(2000, null, null));
         server.verify();
     }
 

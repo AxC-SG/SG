@@ -1,5 +1,6 @@
 package com.prototype.vulnwatch.client;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.http.OutboundFailureContext;
@@ -171,7 +172,7 @@ public class NvdApiClient {
     ) {
         String uri = buildUri(startIndex, startInclusive, endExclusive, filters);
         String body = fetchRaw(uri, apiKeyOverride);
-        return parsePage(body, startIndex);
+        return parsePage(body);
     }
 
     /** Fetch a single CVE by ID directly from NVD API (no date-range restriction). */
@@ -180,7 +181,7 @@ public class NvdApiClient {
                 .queryParam("cveId", cveId.trim().toUpperCase(Locale.ROOT))
                 .build().toUriString();
         String body = fetchRaw(uri, null);
-        NvdPage page = parsePage(body, 0);
+        NvdPage page = parsePage(body);
         return page.records().isEmpty() ? null : page.records().get(0);
     }
 
@@ -239,27 +240,39 @@ public class NvdApiClient {
         );
     }
 
-    private NvdPage parsePage(String body, int requestedStartIndex) {
+    private NvdPage parsePage(String body) {
         try {
-            JsonNode root = objectMapper.readTree(body);
-            JsonNode vulnerabilities = root.path("vulnerabilities");
-            List<NvdRecord> records = new ArrayList<>();
-            if (vulnerabilities.isArray()) {
-                for (JsonNode wrapper : vulnerabilities) {
-                    JsonNode cve = wrapper.path("cve");
-                    if (!cve.isMissingNode() && !cve.isNull()) {
-                        records.add(parseRecord(cve));
-                    }
-                }
+            JsonNode root = objectMapper.reader().with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(body);
+            if (root == null || !root.isObject()) {
+                throw new IllegalArgumentException("NVD response must be an object");
             }
-
-            int total = root.path("totalResults").asInt(0);
-            int startIndex = root.path("startIndex").asInt(requestedStartIndex);
-            int pageSize = root.path("resultsPerPage").asInt(resultsPerPage());
+            int total = readPageNumber(root, "totalResults");
+            int startIndex = readPageNumber(root, "startIndex");
+            int pageSize = readPageNumber(root, "resultsPerPage");
+            JsonNode vulnerabilities = root.path("vulnerabilities");
+            if (!vulnerabilities.isArray()) {
+                throw new IllegalArgumentException("NVD response must include a vulnerabilities array");
+            }
+            List<NvdRecord> records = new ArrayList<>();
+            for (JsonNode wrapper : vulnerabilities) {
+                JsonNode cve = wrapper.path("cve");
+                if (!cve.isObject()) {
+                    throw new IllegalArgumentException("NVD vulnerability entry must contain a CVE object");
+                }
+                records.add(parseRecord(cve));
+            }
             return new NvdPage(records, total, startIndex, pageSize);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse NVD response", e);
         }
+    }
+
+    private static int readPageNumber(JsonNode root, String field) {
+        JsonNode value = root.path(field);
+        if (!value.isIntegralNumber() || !value.canConvertToInt() || value.intValue() < 0) {
+            throw new IllegalArgumentException("NVD " + field + " must be a nonnegative integer");
+        }
+        return value.intValue();
     }
 
     private NvdRecord parseRecord(JsonNode cve) {
