@@ -83,6 +83,13 @@ class IntelligencePublicationPostgresIntegrationTest {
             assertThrows(org.springframework.dao.DataAccessException.class,() -> jdbc.update("update platform.intelligence_staged_records set validation='VALID' where sync_run_id=?",run));
             var queued=publications.publish(candidate,digest,null,"reviewed-publication","test-owner");
             assertEquals(queued.get("id"),publications.publish(candidate,digest,null,"reviewed-publication","test-owner").get("id"));
+            assertEquals(1, jdbc.queryForObject("""
+                    select count(*) from platform.intelligence_audit_events
+                    where action='PUBLICATION_QUEUED' and candidate_id=?
+                      and detail->>'approvalMode'='OWNER_REVIEW'
+                      and detail->'feedReviewWait'->0->>'runId'=?
+                      and (detail->'feedReviewWait'->0->>'waitMillis')::bigint>=0
+                    """, Integer.class, candidate, run.toString()));
             worker.poll();
             assertEquals("PUBLISHED",publications.candidate(candidate).get("status"));
             assertEquals(1,count("platform.vulnerabilities"));assertEquals(1,count("platform.vulnerability_targets"));

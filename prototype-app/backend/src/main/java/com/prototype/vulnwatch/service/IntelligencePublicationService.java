@@ -111,8 +111,18 @@ public class IntelligencePublicationService {
             throw conflict("Candidate digest or base release changed; rebuild and review the candidate");
         UUID job=enqueue("PUBLISH",candidate,null,key,digest,base,actor);
         jdbc.update("update platform.intelligence_candidates set status='PUBLICATION_QUEUED' where id=?",candidate);
-        audit("PUBLICATION_QUEUED",actor,candidate,null,"{}");
+        audit("PUBLICATION_QUEUED", actor, candidate, null, publicationApprovalDetail(candidate, actor));
         return apiRow(jdbc.queryForMap("select * from platform.intelligence_publication_outbox where id=?",job));
+    }
+
+    private String publicationApprovalDetail(UUID candidate, String actor) {
+        if (SCHEDULED_PUBLISHER.equals(actor)) return json(Map.of("approvalMode", "SCHEDULED"));
+        var waits = jdbc.query("""
+                select r.id, greatest(0, extract(epoch from (statement_timestamp() - r.completed_at)) * 1000)::bigint
+                from platform.intelligence_candidates c join platform.sync_runs r on r.id=any(c.expanded_run_ids)
+                where c.id=? and r.completed_at is not null order by r.started_at,r.id
+                """, (rs, index) -> Map.of("runId", rs.getObject(1, UUID.class), "waitMillis", rs.getLong(2)), candidate);
+        return json(Map.of("approvalMode", "OWNER_REVIEW", "feedReviewWait", waits));
     }
     @PreAuthorize("hasRole('PLATFORM_OWNER')")
     @Transactional
