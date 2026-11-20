@@ -7,12 +7,13 @@ import org.springframework.jdbc.datasource.*;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.core.io.ClassPathResource;
 import com.prototype.vulnwatch.support.LocalPostgresTestDatabase;
-class CandidateProjectionBuilderPostgresTest {
+@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "run.postgres.it", matches = "true")
+class CandidateProjectionBuilderPostgresIntegrationTest {
  @Test void candidateEvidenceCarriesForwardAndReplacesOnlySameSource() {
   var db=LocalPostgresTestDatabase.provision("candidate_projection_builder");
   var ds=new DriverManagerDataSource(db.url(),db.username(),db.password());var jdbc=new JdbcTemplate(ds);
   jdbc.execute("create schema platform");
-  new ResourceDatabasePopulator(new ClassPathResource("db/migration/postgres_reset/V25__isolated_catalog_versions.sql"),new ClassPathResource("db/migration/postgres_reset/V26__projection_candidate_builder.sql")).execute(ds);
+  new ResourceDatabasePopulator(new ClassPathResource("db/migration/postgres_reset/V25__isolated_catalog_versions.sql"),new ClassPathResource("db/migration/postgres_reset/V27__projection_candidate_builder.sql")).execute(ds);
   jdbc.execute("create table platform.intelligence_candidates(id uuid primary key,status text)");
   jdbc.execute("create table platform.intelligence_candidate_records(id bigserial primary key,candidate_id uuid,canonical_id uuid,validation text,kind text,source_system text,payload jsonb)");
   var manager=new DataSourceTransactionManager(ds);var versions=new IsolatedCatalogVersionService(jdbc,manager);

@@ -7,7 +7,8 @@ import org.springframework.jdbc.datasource.*;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.core.io.ClassPathResource;
 import com.prototype.vulnwatch.support.LocalPostgresTestDatabase;
-class IsolatedCatalogVersionPostgresTest {
+@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "run.postgres.it", matches = "true")
+class IsolatedCatalogVersionPostgresIntegrationTest {
  @Test void durableResumeFencingReplayAndAtomicActivation() {
   var db=LocalPostgresTestDatabase.provision("isolated_catalog_v25");
   var ds=new DriverManagerDataSource(db.url(),db.username(),db.password());

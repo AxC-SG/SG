@@ -10,7 +10,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import com.prototype.vulnwatch.support.LocalPostgresTestDatabase;
 
-class PublicationProgressDatabaseTest {
+@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "run.postgres.it", matches = "true")
+class PublicationProgressPostgresIntegrationTest {
  @Test void telemetryDoesNotBlockOnCandidateAndControlsAreVisible() throws Exception {
   var db=LocalPostgresTestDatabase.provision("progress_controls_isolated");
   var ds=new DriverManagerDataSource(db.url(),db.username(),db.password());

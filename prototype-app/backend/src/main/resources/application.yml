@@ -17,6 +17,9 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
   flyway:
+    postgresql:
+      # Concurrent index creation must not wait on Flyway's own transaction lock.
+      transactional-lock: false
     enabled: true
     locations: classpath:db/migration/postgres_reset
     # Platform migrations must never inherit the tenant-aware connection's
@@ -220,8 +223,8 @@ app:
     default-schema: ${APP_DEFAULT_TENANT_SCHEMA:tenant_default}
     enforce-schema-version: ${APP_ENFORCE_TENANT_SCHEMA_VERSION:false}
     # Defaults must equal TenantSchemaCompatibility; MigrationCatalogTest fails when they drift.
-    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:30}
-    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:30}
+    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:75}
+    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:75}
   test-personas:
     enabled: ${APP_TEST_PERSONAS_ENABLED:false}
     token-ttl-minutes: ${APP_TEST_PERSONA_TOKEN_TTL_MINUTES:60}

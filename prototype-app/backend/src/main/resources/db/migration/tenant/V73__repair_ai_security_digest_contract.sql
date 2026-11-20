@@ -33,6 +33,7 @@ CREATE INDEX IF NOT EXISTS ai_security_baseline_history_artifact_id_recorded_at_
 ALTER TABLE ${tenantSchema}.ai_security_baseline_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ${tenantSchema}.ai_security_baseline_history FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_security_baseline_history;
+DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_security_baseline_history;
 CREATE POLICY tenant_isolation ON ${tenantSchema}.ai_security_baseline_history
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);

@@ -69,12 +69,14 @@ CREATE INDEX IF NOT EXISTS idx_ai_bom_gaps_resource
 
 ALTER TABLE ${tenantSchema}.ai_bom_correlation_paths ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ${tenantSchema}.ai_bom_correlation_paths FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_bom_correlation_paths;
 CREATE POLICY tenant_isolation ON ${tenantSchema}.ai_bom_correlation_paths
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 ALTER TABLE ${tenantSchema}.ai_bom_correlation_gaps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ${tenantSchema}.ai_bom_correlation_gaps FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_bom_correlation_gaps;
 CREATE POLICY tenant_isolation ON ${tenantSchema}.ai_bom_correlation_gaps
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
