@@ -51,6 +51,7 @@ class IntelligenceImportProfileServiceTest {
         assertEquals(409,assertThrows(ResponseStatusException.class,()->service.run(id)).getStatusCode().value());
     }
     @Test void scheduleReadHydratesEnabledAndInterval() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "scheduledProfilesEnabled", true);
         UUID id=UUID.randomUUID();
         when(jdbc.queryForList(anyString(),eq(UUID.class),eq(id))).thenReturn(List.of(id));
         when(jdbc.queryForList(anyString(),eq(id))).thenReturn(List.of(Map.of("enabled",true,"interval_hours",12)));
@@ -60,5 +61,15 @@ class IntelligenceImportProfileServiceTest {
         UUID id=UUID.randomUUID();
         when(jdbc.queryForList(anyString(),eq(UUID.class),eq(id))).thenReturn(List.of(id));
         assertEquals(Map.of("id",id,"enabled",false,"intervalHours",24),service.schedule(id));
+    }
+
+    @Test void profileSchedulingRequiresExplicitEnablement() {
+        UUID id = UUID.randomUUID();
+        when(jdbc.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<IntelligenceImportProfileService.Profile>>any(), eq(id)))
+                .thenReturn(List.of(profile(id)));
+
+        assertEquals(409, assertThrows(ResponseStatusException.class, () -> service.schedule(id, true, 24))
+                .getStatusCode().value());
+        verify(jdbc, never()).update(anyString(), any(), any(), any(), any());
     }
 }

@@ -3,6 +3,7 @@ package com.prototype.vulnwatch.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.service.vulningestion.VulnerabilitySyncRunService;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,8 @@ public class IntelligenceImportProfileService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final VulnerabilitySyncRunService runs;
+    @Value("${app.intelligence.scheduled-nvd-profiles.enabled:false}")
+    private boolean scheduledProfilesEnabled;
     public IntelligenceImportProfileService(JdbcTemplate jdbc, ObjectMapper mapper, VulnerabilitySyncRunService runs) {
         this.jdbc=jdbc; this.mapper=mapper; this.runs=runs;
     }
@@ -64,7 +67,8 @@ public class IntelligenceImportProfileService {
         if(profiles.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Import profile not found");
         var rows=jdbc.queryForList("select enabled,interval_hours from platform.intelligence_feed_schedules where sync_type='NVD' and import_profile_id=?",id);
         if(rows.isEmpty()) return Map.of("id",id,"enabled",false,"intervalHours",24);
-        return Map.of("id",id,"enabled",rows.get(0).get("enabled"),"intervalHours",rows.get(0).get("interval_hours"));
+        return Map.of("id",id,"enabled",scheduledProfilesEnabled && Boolean.TRUE.equals(rows.get(0).get("enabled")),
+                "intervalHours",rows.get(0).get("interval_hours"));
     }
     @Transactional
     public Object schedule(UUID id,boolean enabled,int intervalHours) {
@@ -72,6 +76,9 @@ public class IntelligenceImportProfileService {
         var profiles=jdbc.query("select profile::text from platform.intelligence_import_profiles where id=?",(rs,n)->decode(rs.getString(1)),id);
         if(profiles.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Import profile not found");
         validate(profiles.get(0));
+        if (enabled && !scheduledProfilesEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Scheduled NVD profiles are disabled");
+        }
         int changed=jdbc.update("update platform.intelligence_feed_schedules set import_profile_id=?,enabled=?,interval_hours=?,next_due_at=clock_timestamp()+make_interval(hours=>?) where sync_type='NVD'",id,enabled,intervalHours,intervalHours);
         if(changed!=1) throw new ResponseStatusException(HttpStatus.CONFLICT,"NVD schedule has not been initialized");
         return Map.of("id",id,"enabled",enabled,"intervalHours",intervalHours);

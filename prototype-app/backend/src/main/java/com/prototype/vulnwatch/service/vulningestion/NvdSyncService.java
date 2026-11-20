@@ -65,6 +65,9 @@ public class NvdSyncService {
     @Value("${app.nvd.default-lookback-hours:24}")
     private int defaultNvdLookbackHours;
 
+    @Value("${app.intelligence.scheduled-nvd-profiles.enabled:false}")
+    private boolean scheduledProfilesEnabled;
+
     @Value("${app.nvd.cve-delta-recompute-page-interval:5}")
     private int cveDeltaRecomputePageInterval;
 
@@ -156,7 +159,11 @@ public class NvdSyncService {
         JsonNode metadata = readQueuedMetadata(run);
         String mode = metadata == null ? "incremental" : metadata.path("triggerMode").asText("incremental");
         if ("profile_baseline".equals(mode)) {
-            executeNvdFullSync(run,null);
+            if (scheduledProfilesEnabled) {
+                executeNvdFullSync(run, null);
+            } else {
+                syncRunService.completeRun(run, "failed", 0, 0, 0, 0, "Scheduled NVD profiles are disabled");
+            }
         } else if ("historical_window".equals(mode)) {
             final Instant from;
             final Instant to;

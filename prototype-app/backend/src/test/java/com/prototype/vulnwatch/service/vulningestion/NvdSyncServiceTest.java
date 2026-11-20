@@ -377,6 +377,20 @@ class NvdSyncServiceTest {
     }
 
     @Test
+    void queuedScheduledProfileDoesNotFetchWhenSchedulingIsDisabled() {
+        UUID runId = UUID.randomUUID();
+        SyncRun run = run("NVD");
+        run.setMetadataJson("{\"triggerMode\":\"profile_baseline\"}");
+        when(syncRunService.markRunning(runId)).thenReturn(run);
+        when(support.hasText(run.getMetadataJson())).thenReturn(true);
+
+        service.executeQueuedNvdSyncAsync(runId);
+
+        verify(syncRunService).completeRun(run, "failed", 0, 0, 0, 0, "Scheduled NVD profiles are disabled");
+        verifyNoInteractions(nvdApiClient, feedWatermarks);
+    }
+
+    @Test
     void paginationAllowsChangingTotalBetweenPages() {
         NvdSyncService.validateNvdPage(new NvdApiClient.NvdPage(List.of(), 0, 0, 0), 0, null);
         NvdSyncService.validateNvdPage(new NvdApiClient.NvdPage(List.of(), 2, 1, 0), 1, null);

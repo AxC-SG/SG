@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Array;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -24,8 +25,12 @@ import org.springframework.web.server.ResponseStatusException;
 /** Immutable review evidence and PostgreSQL-owned, atomic asynchronous publication. */
 @Service
 public class IntelligencePublicationService {
+    private static final String SCHEDULED_PUBLISHER = "scheduled-intelligence-publisher";
+
     @org.springframework.beans.factory.annotation.Autowired(required=false)
     private IntelligencePublicationProgressService progress;
+    @Value("${app.intelligence.scheduled-auto-publication.enabled:false}")
+    private boolean scheduledAutoPublicationEnabled;
     private static final Map<String,String> ARTIFACT_TABLES=Map.of(
             "TARGET","platform.vulnerability_targets","RULE","platform.vulnerability_rules","CONFIG","platform.vulnerability_config_expr","OSV","platform.osv_advisories","EQUIVALENCE","platform.advisory_equivalences");
     private static final Set<String> RESTORABLE=Set.of("platform.vulnerabilities","platform.vulnerability_targets","platform.vulnerability_rules",
@@ -136,11 +141,19 @@ public class IntelligencePublicationService {
     public void poll() {
         if(!background.allowsBackgroundTask("intelligence.publication")) return;
         TenantContext.runAsPlatform(() -> {
-            transactions.executeWithoutResult(status -> advanceScheduledPublication());
+            if (scheduledAutoPublicationEnabled) {
+                transactions.executeWithoutResult(status -> advanceScheduledPublication());
+            }
             // The row lock is the durable ownership fence. A process crash rolls the
             // publication and job acknowledgement back together, leaving PENDING work.
             for(int i=0;i<3;i++) {
-                UUID job=transactions.execute(status -> jdbc.query("select id from platform.intelligence_publication_outbox where status='PENDING' and kind<>'FANOUT' and visible_at<=now() order by created_at,id for update skip locked limit 1",(rs,row)->rs.getObject(1,UUID.class)).stream().findFirst().orElse(null));
+                UUID job = transactions.execute(status -> jdbc.query("""
+                        select id from platform.intelligence_publication_outbox
+                        where status='PENDING' and kind<>'FANOUT' and visible_at<=now()
+                          and (? or kind<>'PUBLISH' or actor is distinct from ?)
+                        order by created_at,id for update skip locked limit 1
+                        """, (rs, row) -> rs.getObject(1, UUID.class),
+                        scheduledAutoPublicationEnabled, SCHEDULED_PUBLISHER).stream().findFirst().orElse(null));
                 if(job==null) break;
                 try { transactions.executeWithoutResult(status -> process(job)); }
                 catch(RuntimeException failure) {
@@ -162,11 +175,16 @@ public class IntelligencePublicationService {
     /** One correlated daily release; persisted candidates survive worker restarts. */
     private void advanceScheduledPublication() {
         jdbc.queryForObject("select pg_advisory_xact_lock(741926582)", Object.class);
-        String actor="scheduled-intelligence-publisher";
+        String actor=SCHEDULED_PUBLISHER;
         var pending=jdbc.queryForList("select * from platform.intelligence_candidates where created_by=? and status in ('BUILDING','READY','PUBLICATION_QUEUED') order by created_at limit 1",actor);
         if(!pending.isEmpty()) {
             var candidate=pending.get(0);
             if("READY".equals(candidate.get("status"))) {
+                if (!scheduledCandidateContainsOnlyEligibleRuns((UUID) candidate.get("id"))) {
+                    jdbc.update("update platform.intelligence_candidates set status='FAILED',error_code='SCHEDULED_SCOPE_REVIEW_REQUIRED' where id=?",
+                            candidate.get("id"));
+                    return;
+                }
                 if(Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from platform.intelligence_candidate_records where candidate_id=? and validation<>'VALID')",Boolean.class,candidate.get("id")))) {
                     jdbc.update("update platform.intelligence_candidates set status='FAILED',error_code='SCHEDULED_VALIDATION_FAILED' where id=?",candidate.get("id"));
                     return;
@@ -187,11 +205,15 @@ public class IntelligencePublicationService {
                   where s.sync_type=f.sync_type and s.tenant_id is null
                     and s.run_scope='PLATFORM_VULNERABILITY'
                     and s.metadata_json::jsonb->>'scheduleOccurrence' is not null
+                    and coalesce(s.metadata_json::jsonb->>'publicationMode','') <> 'MANUAL'
+                    and coalesce(s.metadata_json::jsonb->>'triggerMode','') not in ('full','profile_baseline')
+                    and coalesce(s.metadata_json::jsonb->>'importScopeKey','default') = 'default'
                     and s.started_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'-interval '1 day'
                     and s.started_at<date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'
                   order by s.started_at desc limit 1
                 ) r on true
                 where f.enabled and f.sync_type not like 'EOL_%' and f.sync_type<>'NVD_FULL'
+                    and f.import_profile_id is null
                 """
         );
         if(selected.isEmpty() || selected.stream().anyMatch(row -> row.get("id")==null)) return;
@@ -207,7 +229,9 @@ public class IntelligencePublicationService {
                     and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
                     and r.started_at<=chosen.started_at and lower(r.status) in ('completed','success')
                     and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
-                    and (r.sync_type='NVD_FULL' or r.metadata_json::jsonb->>'scheduleOccurrence' is null)
+                    and (r.sync_type='NVD_FULL' or r.metadata_json::jsonb->>'scheduleOccurrence' is null
+                        or r.metadata_json::jsonb->>'publicationMode'='MANUAL'
+                        or r.metadata_json::jsonb->>'triggerMode' in ('full','profile_baseline'))
                     and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id))
                     """,Boolean.class,id))) return;
         }
@@ -215,11 +239,33 @@ public class IntelligencePublicationService {
         if(unpublished) createCandidate(ids,actor);
     }
 
+    private boolean scheduledCandidateContainsOnlyEligibleRuns(UUID candidate) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
+                select not exists (
+                    select 1 from platform.intelligence_candidates c
+                    cross join lateral unnest(c.selected_run_ids || c.expanded_run_ids) included(run_id)
+                    left join platform.sync_runs r on r.id=included.run_id
+                    where c.id=? and (r.id is null or lower(r.status) not in ('completed','success')
+                        or r.run_scope is distinct from 'PLATFORM_VULNERABILITY' or r.tenant_id is not null
+                        or r.sync_type='NVD_FULL' or r.metadata_json::jsonb->>'scheduleOccurrence' is null
+                        or coalesce(r.metadata_json::jsonb->>'publicationMode','')='MANUAL'
+                        or coalesce(r.metadata_json::jsonb->>'triggerMode','') in ('full','profile_baseline')
+                        or coalesce(r.metadata_json::jsonb->>'importScopeKey','default')<>'default')
+                )
+                """, Boolean.class, candidate));
+    }
+
     private void process(UUID id) {
         var jobs=jdbc.queryForList("select * from platform.intelligence_publication_outbox where id=? and status='PENDING' for update skip locked",id);
         if(jobs.isEmpty()) return;
         var job=jobs.get(0);
         UUID progressCandidate=(UUID)job.get("candidate_id");
+        if ("PUBLISH".equals(job.get("kind")) && SCHEDULED_PUBLISHER.equals(job.get("actor"))) {
+            if (!scheduledAutoPublicationEnabled) return;
+            if (!scheduledCandidateContainsOnlyEligibleRuns(progressCandidate)) {
+                throw conflict("SCHEDULED_SCOPE_REVIEW_REQUIRED");
+            }
+        }
         if(progress!=null && progress.held(progressCandidate)) return;
         if(progress!=null) progress.update(progressCandidate,"STARTING",0,0,0);
         if(progress!=null && progressCandidate!=null) {

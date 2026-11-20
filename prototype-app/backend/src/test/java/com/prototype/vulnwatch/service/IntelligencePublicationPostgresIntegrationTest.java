@@ -144,6 +144,45 @@ class IntelligencePublicationPostgresIntegrationTest {
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 ()->platformController.changeScope(UUID.randomUUID(),null));
     }
+
+    @Test void scheduledPublicationRequiresOptInAndNeverIncludesAnUnreviewedFullRun() {
+        TenantContext.runAsPlatform(() -> {
+            UUID scheduled = UUID.randomUUID();
+            UUID manual = UUID.randomUUID();
+            jdbc.update("update platform.intelligence_feed_schedules set enabled = (sync_type = 'NVD')");
+            jdbc.update("""
+                    insert into platform.sync_runs (id, sync_type, run_scope, status, started_at, metadata_json,
+                                                    records_failed, records_fetched, records_inserted, records_updated)
+                    values
+                        (?, 'NVD_FULL', 'PLATFORM_VULNERABILITY', 'completed', now() - interval '3 days', null, 0, 0, 0, 0),
+                        (?, 'NVD', 'PLATFORM_VULNERABILITY', 'completed', now() - interval '1 day',
+                            '{"scheduleOccurrence":"NVD:scheduled-publication-test"}', 0, 0, 0, 0)
+                    """, manual, scheduled);
+            try {
+                worker.poll();
+                assertEquals(0, scheduledCandidates(scheduled));
+
+                org.springframework.test.util.ReflectionTestUtils.setField(worker, "scheduledAutoPublicationEnabled", true);
+                worker.poll();
+                assertEquals(0, scheduledCandidates(scheduled));
+
+                jdbc.update("update platform.sync_runs set status='failed' where id=?", manual);
+                worker.poll();
+                assertEquals(1, scheduledCandidates(scheduled));
+                assertEquals(0, scheduledCandidates(manual));
+            } finally {
+                jdbc.update("update platform.intelligence_feed_schedules set enabled = false where sync_type = 'NVD'");
+            }
+        });
+    }
+
+    private int scheduledCandidates(UUID run) {
+        return jdbc.queryForObject("""
+                select count(*) from platform.intelligence_candidates where created_by='scheduled-intelligence-publisher'
+                  and (?=any(selected_run_ids) or ?=any(expanded_run_ids))
+                """, Integer.class, run, run);
+    }
+
     @Test void malformedJournalReferenceIsUnresolvedWithoutBreakingThePageOrLeakingPayload() {
         TenantContext.runAsPlatform(() -> {
             UUID release=UUID.randomUUID();
