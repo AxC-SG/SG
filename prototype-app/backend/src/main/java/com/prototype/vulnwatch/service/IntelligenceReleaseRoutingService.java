@@ -1,6 +1,11 @@
 package com.prototype.vulnwatch.service;
 
+import com.prototype.vulnwatch.util.IdentityUtil;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -101,41 +106,93 @@ public class IntelligenceReleaseRoutingService {
                 cross join lateral (values
                     ('CPE', case when t.target_type='CPE' then t.cpe_id end),
                     ('PURL', case when t.target_type='PURL' then t.normalized_target_key end),
-                    ('ECOSYSTEM', case when t.target_type in ('COORD','ADVISORY_PACKAGE')
-                        then split_part(t.normalized_target_key, ':', 1) end),
+                    ('COORD', case when t.target_type in ('COORD','ADVISORY_PACKAGE')
+                        then t.normalized_target_key end),
                     ('IDENTITY', t.software_identity_id)) key(kind,value)
                 where nullif(key.value,'') is not null
                 """, release, release, release);
     }
 
-    List<UUID> componentPage(UUID release, UUID after) {
-        return jdbc.queryForList("""
+    record ComponentPage(List<UUID> examined, List<UUID> affected) {}
+    private record Component(UUID id, boolean direct, String ecosystem, String name, String purl) {}
+    private record MatchKey(String kind, String value) {}
+
+    ComponentPage componentPage(UUID release, UUID after) {
+        List<Component> components = jdbc.query("""
                 with keys as (select key_kind, match_key from platform.intelligence_release_route_targets where release_id=?),
-                changed as (select vulnerability_id from platform.intelligence_release_route_vulnerabilities where release_id=?)
-                select id from (
-                    select i.id from inventory_components i join keys k
-                      on k.key_kind='PURL' and (k.match_key=i.normalized_purl
+                changed as (select vulnerability_id from platform.intelligence_release_route_vulnerabilities where release_id=?),
+                ecosystems as (
+                    select split_part(match_key, ':', 1) as name, bool_or(key_kind='ECOSYSTEM') as legacy
+                    from keys where key_kind in ('COORD','ECOSYSTEM') group by 1
+                ),
+                candidates as (
+                    select i.id, false as direct from inventory_components i where exists (
+                      select 1 from keys k where k.key_kind='PURL' and (k.match_key=i.normalized_purl
                           or lower(regexp_replace(i.purl, '^[[:space:][:cntrl:]]+|[[:space:][:cntrl:]]+$', '', 'g'))=k.match_key
-                          or octet_length(i.purl)<>char_length(i.purl))
-                    union
-                    select i.id from inventory_components i join keys k
+                          or octet_length(i.purl)<>char_length(i.purl)))
+                    union all
+                    select i.id, true from inventory_components i join keys k
                       on k.key_kind='IDENTITY' and i.software_identity_id=case when k.key_kind='IDENTITY' then k.match_key::uuid end
-                    union
-                    select i.id from inventory_components i join keys k on k.key_kind='ECOSYSTEM'
-                      and (lower(regexp_replace(i.ecosystem, '^[[:space:][:cntrl:]]+|[[:space:][:cntrl:]]+$', '', 'g'))=k.match_key
-                           or octet_length(i.ecosystem)<>char_length(i.ecosystem)
-                           or starts_with(lower(i.purl), 'pkg:' || k.match_key || '/'))
-                    union
-                    select m.component_id from inventory_component_cpe_map m join keys k
+                    union all
+                    select i.id, e.legacy from inventory_components i join ecosystems e
+                      on (
+                          lower(regexp_replace(i.ecosystem, '^[[:space:][:cntrl:]]+|[[:space:][:cntrl:]]+$', '', 'g'))
+                              =e.name
+                          or octet_length(i.ecosystem)<>char_length(i.ecosystem)
+                          or (starts_with(i.purl,'pkg:') and (
+                              lower(regexp_replace(regexp_replace(substr(i.purl,5), '[/@?#].*$', ''),
+                                  '^[[:space:][:cntrl:]]+|[[:space:][:cntrl:]]+$', '', 'g'))=e.name
+                              or octet_length(i.purl)<>char_length(i.purl))))
+                    union all
+                    select m.component_id, true from inventory_component_cpe_map m join keys k
                       on k.key_kind='CPE' and m.cpe_id=case when k.key_kind='CPE' then k.match_key::uuid end
-                    union
-                    select s.component_id from component_vulnerability_states s join changed c using (vulnerability_id)
-                    union
-                    select f.component_id from findings f join changed c using (vulnerability_id)
+                    union all
+                    select s.component_id, true from component_vulnerability_states s join changed c using (vulnerability_id)
+                    union all
+                    select f.component_id, true from findings f join changed c using (vulnerability_id)
                     where f.component_id is not null
-                ) affected
-                where (?::uuid is null or id>?::uuid) order by id limit 100
-                """, UUID.class, release, release, after, after);
+                ), page as (
+                    select id, bool_or(direct) as direct from candidates
+                    where (?::uuid is null or id>?::uuid) group by id order by id limit 100
+                ) select page.id,page.direct,i.ecosystem,i.package_name,i.purl from page
+                  join inventory_components i using (id) order by page.id
+                """, (rs, index) -> new Component(rs.getObject(1, UUID.class), rs.getBoolean(2),
+                rs.getString(3), rs.getString(4), rs.getString(5)), release, release, after, after);
+
+        Map<UUID, Set<MatchKey>> componentKeys = new HashMap<>();
+        Set<String> lookups = new HashSet<>();
+        for (Component component : components) {
+            if (component.direct()) continue;
+            Set<MatchKey> matches = new HashSet<>();
+            for (String coord : IdentityUtil.correlationCoordKeys(component.ecosystem(), component.name(), component.purl())) {
+                matches.add(new MatchKey("COORD", coord));
+                lookups.add(coord);
+            }
+            String purl = IdentityUtil.normalizePurl(component.purl());
+            if (!purl.isBlank()) {
+                matches.add(new MatchKey("PURL", purl));
+                lookups.add(purl);
+            }
+            componentKeys.put(component.id(), matches);
+        }
+        Set<MatchKey> applicableKeys = findMatchingKeys(release, lookups);
+        return new ComponentPage(components.stream().map(Component::id).toList(),
+                components.stream().filter(component -> component.direct()
+                        || componentKeys.get(component.id()).stream().anyMatch(applicableKeys::contains))
+                        .map(Component::id).toList());
+    }
+
+    private Set<MatchKey> findMatchingKeys(UUID release, Set<String> lookups) {
+        if (lookups.isEmpty()) return Set.of();
+        return new HashSet<>(jdbc.query(connection -> {
+            var statement = connection.prepareStatement("""
+                    select key_kind,match_key from platform.intelligence_release_route_targets
+                    where release_id=? and key_kind in ('COORD','PURL') and match_key=any(?)
+                    """);
+            statement.setObject(1, release);
+            statement.setArray(2, connection.createArrayOf("text", lookups.toArray()));
+            return statement;
+        }, (rs, index) -> new MatchKey(rs.getString(1), rs.getString(2))));
     }
 
     List<UUID> findingScorePage(UUID release, UUID after) {

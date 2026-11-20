@@ -99,7 +99,9 @@ public class TenantIntelligenceProcessingService {
         } else {
             if ("APPLICABILITY".equals(mode)) {
                 try (var scope = evaluationFence.open(tenant)) {
-                    page = releaseRouting.componentPage(releaseId, after);
+                    var routed = releaseRouting.componentPage(releaseId, after);
+                    page = routed.examined();
+                    if (!routed.affected().isEmpty()) recompute.recomputeOnSoftwareDeltaBatch(tenant, routed.affected());
                 }
             } else {
                 if (plannedTargeted) {
@@ -110,8 +112,8 @@ public class TenantIntelligenceProcessingService {
                 }
                 page = jdbc.queryForList("select id from inventory_components where (?::uuid is null or id>?::uuid) order by id limit 100",
                         UUID.class, after, after);
+                if (!page.isEmpty()) recompute.recomputeOnSoftwareDeltaBatch(tenant, page);
             }
-            if (!page.isEmpty()) recompute.recomputeOnSoftwareDeltaBatch(tenant, page);
         }
         if (page.size() < 100) {
             findingQueue.enqueueNoiseReductionRefresh(tenant,"intelligence-evaluation");

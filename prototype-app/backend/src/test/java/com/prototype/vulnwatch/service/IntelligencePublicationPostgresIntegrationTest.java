@@ -68,6 +68,10 @@ class IntelligencePublicationPostgresIntegrationTest {
                 var asset=new com.prototype.vulnwatch.domain.Asset();asset.setTenant(tenant);asset.setType(com.prototype.vulnwatch.domain.AssetType.HOST);asset.setName("Publication test");asset.setIdentifier("publication-test");asset=assets.save(asset);
                 var upload=new com.prototype.vulnwatch.domain.SbomUpload();upload.setTenant(tenant);upload.setAsset(asset);upload.setOriginalFilename("publication-test.json");upload=uploads.save(upload);
                 var component=new com.prototype.vulnwatch.domain.InventoryComponent();component.setTenant(tenant);component.setAsset(asset);component.setSbomUpload(upload);component.setEcosystem("npm");component.setPackageName("sg-review-test");component.setVersion("1.0.0");component.setPurl("pkg:npm/sg-review-test@1.0.0");inventory.saveAndFlush(component);
+                var unrelated = new com.prototype.vulnwatch.domain.InventoryComponent();
+                unrelated.setTenant(tenant); unrelated.setAsset(asset); unrelated.setSbomUpload(upload);
+                unrelated.setEcosystem("npm"); unrelated.setPackageName("unrelated"); unrelated.setVersion("1.0.0");
+                unrelated.setPurl("pkg:npm/unrelated@1.0.0"); inventory.saveAndFlush(unrelated);
             });
             ingestion.ingestAdvisories(new AdvisoryBatchRequest(List.of(new AdvisoryRequest(external,"Reviewed advisory","A prepared applicability rule",9.1,"CRITICAL",
                     List.of(new AdvisoryRuleRequest("npm","sg-review-test","1.0.0",null,null,null))))));
@@ -110,7 +114,7 @@ class IntelligencePublicationPostgresIntegrationTest {
                     ()->changeScope.inspect(UUID.randomUUID(),null)).getStatusCode().value());
             assertEquals(1,jdbc.queryForObject("select count(*) from platform.intelligence_publication_outbox where kind='FANOUT' and release_id=?",Integer.class,release));
             assertThrows(org.springframework.dao.DataAccessException.class,() -> jdbc.update("update platform.intelligence_releases set digest=? where id=?","f".repeat(64),release));
-            jdbc.update("update tenant_default.inventory_components set software_identity_id=(select software_identity_id from platform.vulnerability_targets limit 1)");
+            jdbc.update("update tenant_default.inventory_components set software_identity_id=(select software_identity_id from platform.vulnerability_targets limit 1) where package_name='sg-review-test'");
             String peerSlug="publication-peer-"+UUID.randomUUID().toString().substring(0,8);
             var peer=tenants.createTenant(peerSlug,peerSlug,"ENTERPRISE",null);migrations.provisionNewTenant(peer);
             peer=tenants.resolveTenantUuid(peer.getId());
@@ -151,8 +155,14 @@ class IntelligencePublicationPostgresIntegrationTest {
             assertTrue(changeScope.inspect(withdrawal, null).routingReady());
             assertTrue(jdbc.queryForList("""
                     select match_key from platform.intelligence_release_route_targets
-                    where release_id=? and key_kind='ECOSYSTEM'
-                    """, String.class, withdrawal).contains("npm"));
+                    where release_id=? and key_kind='COORD'
+                    """, String.class, withdrawal).contains(targetKey));
+            tenantWork.runScoped(tenant, () -> {
+                var page = routing.componentPage(withdrawal, null);
+                assertEquals(2, page.examined().size());
+                assertEquals(List.of(jdbc.queryForObject("select id from inventory_components where package_name='sg-review-test'",
+                        UUID.class)), page.affected());
+            });
             tenantWorker.poll();
             assertEquals("INTELLIGENCE_WITHDRAWN",jdbc.queryForObject("select intelligence_eligibility from tenant_default.findings where id=?",String.class,finding));
             assertEquals(0,count("platform.vulnerability_targets"));assertEquals(canonical,jdbc.queryForObject("select id from platform.vulnerabilities where external_id=?",UUID.class,external));
