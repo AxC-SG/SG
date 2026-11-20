@@ -329,6 +329,7 @@ public class CmdbInventoryIngestionRunner {
             }
 
             int findingsRecomputed = uniqueComponents.isEmpty()
+                    || findingDeltaQueueService.usesIncrementalInventoryCorrelation(tenant.getId())
                     ? 0
                     : recomputeTouchedComponents(tenant, uniqueComponents.keySet());
             softwareIdentitySummaryProjectionService.refreshTenant(tenant);

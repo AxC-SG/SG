@@ -11,6 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface FindingDeltaQueueEntryRepository extends JpaRepository<FindingDeltaQueueEntry, Long> {
     boolean existsByDedupeKeyAndStatus(String dedupeKey,String status);
+
+    @Query(value = """
+            SELECT coalesce((SELECT inventory_incremental_correlation_enabled
+                             FROM inventory_correlation_settings WHERE tenant_id = :tenantId), false)
+            """, nativeQuery = true)
+    boolean usesIncrementalInventoryCorrelation(@Param("tenantId") java.util.UUID tenantId);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from FindingDeltaQueueEntry e where e.id=:id and e.status='PROCESSING' and e.attemptCount=:attempt")
     java.util.Optional<FindingDeltaQueueEntry> lockProcessingAttempt(@Param("id") Long id, @Param("attempt") int attempt);
