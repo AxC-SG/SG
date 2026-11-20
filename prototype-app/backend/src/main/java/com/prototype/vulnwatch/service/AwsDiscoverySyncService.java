@@ -416,12 +416,18 @@ public class AwsDiscoverySyncService {
             }
 
             Instant completedAt = Instant.now();
-            boolean warning = !fetchResult.regionErrors().isEmpty();
+            boolean warning = !fetchResult.regionErrors().isEmpty() || ssmSummary.failedInstances() > 0;
+            String warningMessage = regionErrorSummary;
+            if (ssmSummary.failedInstances() > 0) {
+                String ssmWarning = "SSM inventory incomplete for " + ssmSummary.failedInstances() + " instance(s)";
+                warningMessage = hasText(regionErrorSummary) ? regionErrorSummary + ". " + ssmWarning : ssmWarning;
+            }
             metadata.put("status", warning ? "completed_with_errors" : "completed");
             metadata.put("recordsFetched", allRecords.size());
             metadata.put("assetsIngested", result.assetsUpserted());
             metadata.put("assetsUpserted", result.assetsUpserted());
             metadata.put("ssmAssetsIngested", ssmSummary.assetsIngested());
+            metadata.put("ssmFailedInstances", ssmSummary.failedInstances());
             metadata.put("softwareInstancesCreated", ssmSummary.softwareInstancesCreated());
             metadata.put("softwareInstancesUpdated", ssmSummary.softwareInstancesUpdated());
             metadata.put("componentsIngested", ssmSummary.inventoryComponentsCreated() + ssmSummary.inventoryComponentsUpdated());
@@ -431,7 +437,7 @@ public class AwsDiscoverySyncService {
             metadata.put("assetsMarkedInactive", result.assetsMarkedInactive());
             if (warning) {
                 metadata.put("regionErrors", fetchResult.regionErrors());
-                metadata.put("warning", regionErrorSummary);
+                metadata.put("warning", warningMessage);
             }
             if (target.getId() != null) {
                 transactionTemplate.executeWithoutResult(status -> {
@@ -447,7 +453,7 @@ public class AwsDiscoverySyncService {
             List<com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope> scopes = ec2Records.stream()
                     .map(r -> new com.prototype.vulnwatch.service.ownership.CloudOwnershipProducer.Scope(accountId, r.resourceType(), r.region()))
                     .distinct().toList();
-            return new TargetRunResult(allRecords.size(), false, warning, result, ssmSummary, metadata, warning ? regionErrorSummary : null, scopes);
+            return new TargetRunResult(allRecords.size(), false, warning, result, ssmSummary, metadata, warning ? warningMessage : null, scopes);
         } catch (Exception e) {
             LOG.warn("AWS Discovery run {} target {} failed: {}", runId, accountId, e.getMessage(), e);
             metadata.put("status", "failed");

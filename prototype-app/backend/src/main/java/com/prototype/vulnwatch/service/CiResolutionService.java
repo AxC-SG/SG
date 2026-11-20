@@ -36,6 +36,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -501,9 +502,16 @@ public class CiResolutionService {
             boolean lowConfidence,
             String method
     ) {
-        return tenantSchemaExecutionService.run(tenant, () -> executeWrite(() ->
-                upsertCiInCurrentTenantSchema(context, tenant, sysId, hostName, environment, ownership, businessCriticality, sourceSystem, lowConfidence, method)
-        ));
+        return tenantSchemaExecutionService.run(tenant, () -> {
+            java.util.function.Supplier<Resolution> write = () -> upsertCiInCurrentTenantSchema(
+                    context, tenant, sysId, hostName, environment, ownership, businessCriticality, sourceSystem, lowConfidence, method);
+            // Batch inventory owns the transaction for both this CI and its observations.
+            if (TransactionSynchronizationManager.isActualTransactionActive()
+                    && !TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+                return write.get();
+            }
+            return executeWrite(write);
+        });
     }
 
     private Resolution upsertCiInCurrentTenantSchema(

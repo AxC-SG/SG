@@ -147,6 +147,18 @@ public class HttpClientConfig {
         return executor;
     }
 
+    @Bean(name = "ssmInventoryExecutor")
+    public ThreadPoolTaskExecutor ssmInventoryExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(16);
+        executor.setThreadNamePrefix("ssm-inventory-");
+        configureShutdown(executor);
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "aiSecurityJobExecutor")
     @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor aiSecurityJobExecutor() {

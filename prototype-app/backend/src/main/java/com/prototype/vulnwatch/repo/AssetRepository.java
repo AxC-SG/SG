@@ -48,6 +48,10 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     List<Asset> findByIdentifierIn(Collection<String> identifiers);
     Optional<Asset> findByIdentifier(String identifier);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select asset from Asset asset where asset.identifier = :identifier")
+    Optional<Asset> lockByIdentifier(@Param("identifier") String identifier);
+
     /** Host assets whose name is the given short hostname, or that hostname plus a domain. */
     @Query("""
             select a from Asset a
