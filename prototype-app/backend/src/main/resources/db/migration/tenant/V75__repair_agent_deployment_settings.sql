@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS ${tenantSchema}.ai_agent_deployment_settings (
 ALTER TABLE ${tenantSchema}.ai_agent_deployment_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ${tenantSchema}.ai_agent_deployment_settings FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_agent_deployment_settings;
-DROP POLICY IF EXISTS tenant_isolation ON ${tenantSchema}.ai_agent_deployment_settings;
 CREATE POLICY tenant_isolation ON ${tenantSchema}.ai_agent_deployment_settings
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);

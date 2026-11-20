@@ -576,7 +576,7 @@ public class EolRefreshService {
                             OR (m.software_identity_id IS NULL AND m.normalized_key = %s)
                     )
                     JOIN eol_release r           ON r.product_slug = m.eol_slug
-                                                AND (   si2.normalized_version LIKE r.cycle || '%'
+                                                AND (   si2.normalized_version LIKE r.cycle || '%%'
                                                      OR si2.normalized_version = r.cycle)
                     WHERE m.eol_slug IS NOT NULL
                     %s
@@ -626,7 +626,7 @@ public class EolRefreshService {
                             OR (m.software_identity_id IS NULL AND m.normalized_key = %s)
                     )
                     JOIN eol_release r           ON r.product_slug = m.eol_slug
-                                                AND (   ic2.normalized_version LIKE r.cycle || '%'
+                                                AND (   ic2.normalized_version LIKE r.cycle || '%%'
                                                      OR ic2.normalized_version = r.cycle)
                     WHERE m.eol_slug IS NOT NULL
                     %s

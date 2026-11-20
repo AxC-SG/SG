@@ -22,11 +22,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @PostgresIntegrationTest
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class EpssPublicationRecoveryPostgresIntegrationTest {
-    private static final LocalPostgresTestDatabase.DatabaseConfig DB =
-            LocalPostgresTestDatabase.provision("phase3_epss_publication");
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
-        PostgresITSupport.registerDatabaseProperties(registry, DB);
+        PostgresITSupport.registerDatabaseProperties(registry,
+                LocalPostgresTestDatabase.provision("phase3_epss_" + UUID.randomUUID().toString().substring(0, 8)));
     }
     @Autowired TenantService tenants;
     @Autowired TenantSchemaMigrationService migrations;
@@ -44,7 +44,7 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
 
     @BeforeEach void setup() {
         TenantContext.clear();
-        jdbc.update("delete from platform.sync_runs where sync_type='EPSS'");
+        // Each method gets a fresh catalog, preserving immutable publication history.
         jdbc.update("delete from platform.vulnerabilities");
         first = tenant(); second = tenant();
         rows = new ArrayList<>();
@@ -65,7 +65,8 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         var partial = runs.requireRun(execute());
         assertEquals("partial", partial.getStatus());
         assertEquals(5, partial.getRecordsFetched()); assertEquals(2, partial.getRecordsUpdated());
-        assertEquals(3, partial.getRecordsFailed()); assertEquals(3, calls.get());
+        // Only the two CVEs in the failed request count as failures; a valid empty page does not.
+        assertEquals(2, partial.getRecordsFailed()); assertEquals(3, calls.get());
         respond(payload());
         var complete = runs.requireRun(execute());
         assertEquals("completed", complete.getStatus());
