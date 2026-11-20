@@ -223,8 +223,8 @@ app:
     default-schema: ${APP_DEFAULT_TENANT_SCHEMA:tenant_default}
     enforce-schema-version: ${APP_ENFORCE_TENANT_SCHEMA_VERSION:false}
     # Defaults must equal TenantSchemaCompatibility; MigrationCatalogTest fails when they drift.
-    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:77}
-    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:77}
+    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:78}
+    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:78}
   test-personas:
     enabled: ${APP_TEST_PERSONAS_ENABLED:false}
     token-ttl-minutes: ${APP_TEST_PERSONA_TOKEN_TTL_MINUTES:60}
@@ -316,6 +316,8 @@ app:
     delta-queue-sweep-budget-ms: ${APP_CORRELATION_DELTA_QUEUE_SWEEP_BUDGET_MS:2000}
     delta-queue-transaction-timeout-seconds: ${APP_CORRELATION_DELTA_QUEUE_TRANSACTION_TIMEOUT_SECONDS:15}
   intelligence:
+    targeted-publication:
+      enabled: ${APP_INTELLIGENCE_TARGETED_PUBLICATION_ENABLED:false}
     scheduled-auto-publication:
       enabled: ${APP_INTELLIGENCE_SCHEDULED_AUTO_PUBLICATION_ENABLED:false}
     scheduled-nvd-profiles:

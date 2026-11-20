@@ -4,9 +4,14 @@ import com.prototype.vulnwatch.domain.Finding;
 import com.prototype.vulnwatch.domain.FindingStatus;
 import com.prototype.vulnwatch.domain.RiskPolicy;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.domain.Vulnerability;
 import com.prototype.vulnwatch.repo.FindingRepository;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,6 +34,17 @@ public class FindingsScoreRecomputeService {
     private final FindingSlaService findingSlaService;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
     private final TransactionTemplate writeTransactionTemplate;
+    private TenantApprovedIntelligenceService approvedIntelligence;
+    private VulnerabilitySourceFilterConfigService sourceSettings;
+    private IntelligenceEvaluationFence evaluationFence;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configurePublicationScoring(TenantApprovedIntelligenceService approvedIntelligence,
+            VulnerabilitySourceFilterConfigService sourceSettings, IntelligenceEvaluationFence evaluationFence) {
+        this.approvedIntelligence = approvedIntelligence;
+        this.sourceSettings = sourceSettings;
+        this.evaluationFence = evaluationFence;
+    }
 
     public FindingsScoreRecomputeService(
             FindingRepository findingRepository,
@@ -64,6 +80,34 @@ public class FindingsScoreRecomputeService {
         });
         LOG.info("FindingsScoreRecompute tenant={} updated={}", tenant.getName(), updated);
         return updated;
+    }
+
+    /** Refreshes ranking metadata without applying finding observation or closure rules. */
+    void refreshPublishedScores(UUID tenantId, List<UUID> findingIds) {
+        try (var scope = evaluationFence.open(tenantId)) {
+            List<Finding> findings = findingRepository.lockFindingsForPublishedScoring(findingIds);
+            if (findings.isEmpty()) return;
+            Tenant tenant = findings.get(0).getTenant();
+            RiskPolicy policy = riskPolicyService.getOrCreate(tenant);
+            var enabledSources = sourceSettings.enabledSourcesForCorrelation(tenant);
+            Map<UUID, Vulnerability> effectiveById = new HashMap<>();
+            for (Finding finding : findings) {
+                var vulnerability = finding.getVulnerability();
+                var effective = effectiveById.computeIfAbsent(vulnerability.getId(),
+                        ignored -> approvedIntelligence.resolve(vulnerability, enabledSources));
+                double score = findingsScoreService.computeFromParts(policy.getFindingsScoreConfig(), effective,
+                        finding.getAsset(), finding.getComponent(), finding.getSeverityOverride());
+                var dueAt = findingSlaService.deriveDueAt(finding.getFirstObservedAt(), score, finding.getAsset(), policy);
+                if (Double.compare(finding.getRiskScore(), score) != 0 || !Objects.equals(finding.getDueAt(), dueAt)
+                        || !Objects.equals(finding.getIntelligenceEpss(), effective.getEpssScore())) {
+                    finding.setRiskScore(score);
+                    finding.setDueAt(dueAt);
+                    finding.setIntelligenceEpss(effective.getEpssScore());
+                    evaluationFence.stamp(finding);
+                    finding.touch();
+                }
+            }
+        }
     }
 
     private int recomputeAllInCurrentTenantSchema(RiskPolicy policy, String scoreConfig) {

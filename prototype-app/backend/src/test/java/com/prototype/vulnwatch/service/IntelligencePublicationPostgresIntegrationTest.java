@@ -42,6 +42,8 @@ class IntelligencePublicationPostgresIntegrationTest {
     @Autowired TenantSchemaExecutionService schemas;
     @Autowired FindingComponentRecomputeService recompute;
     @Autowired FindingDeltaQueueService findingQueue;
+    @Autowired IntelligenceEvaluationFence evaluationFence;
+    @Autowired FindingsScoreRecomputeService findingScores;
     @Autowired VulnerabilitySourceFilterConfigService settings;
     @Autowired com.prototype.vulnwatch.repo.AssetRepository assets;
     @Autowired com.prototype.vulnwatch.repo.SbomUploadRepository uploads;
@@ -131,12 +133,73 @@ class IntelligencePublicationPostgresIntegrationTest {
             assertEquals(1,count("tenant_default.findings"));
             assertEquals("ELIGIBLE",jdbc.queryForObject("select intelligence_eligibility from tenant_default.findings where id=?",String.class,finding));
             assertEquals("SUPPRESSED",jdbc.queryForObject("select status from tenant_default.findings where id=?",String.class,finding));
-            publications.withdraw(release,"withdraw-first-release","test-owner");worker.poll();tenantWorker.poll();
+            var routing = enableTargetedDelivery();
+            tenantWork.runScoped(tenant, () -> jdbc.update("""
+                    insert into inventory_correlation_settings (tenant_id,inventory_incremental_correlation_enabled)
+                    values (?,true)
+                    """, tenant.getId()));
+            publications.withdraw(release,"withdraw-first-release","test-owner");worker.poll();
+            UUID withdrawal = jdbc.queryForObject("select release_id from platform.intelligence_active_state", UUID.class);
+            assertEquals("APPLICABILITY", routing.mode(withdrawal));
+            assertTrue(changeScope.inspect(withdrawal, null).routingReady());
+            assertTrue(jdbc.queryForList("""
+                    select match_key from platform.intelligence_release_route_targets
+                    where release_id=? and key_kind='ECOSYSTEM'
+                    """, String.class, withdrawal).contains("npm"));
+            tenantWorker.poll();
             assertEquals("INTELLIGENCE_WITHDRAWN",jdbc.queryForObject("select intelligence_eligibility from tenant_default.findings where id=?",String.class,finding));
             assertEquals(0,count("platform.vulnerability_targets"));assertEquals(canonical,jdbc.queryForObject("select id from platform.vulnerabilities where external_id=?",UUID.class,external));
             assertTrue(jdbc.queryForObject("select intelligence_withdrawn from platform.vulnerabilities where id=?",Boolean.class,canonical));
             assertEquals(2L,jdbc.queryForObject("select generation from platform.intelligence_active_state",Long.class));
         });
+    }
+
+    @Test void capturesRankingOnlyAndFallsBackForUnresolvedJournalRows() {
+        TenantContext.runAsPlatform(() -> {
+            UUID parent = UUID.randomUUID();
+            UUID scoped = UUID.randomUUID();
+            UUID unresolved = UUID.randomUUID();
+            UUID vulnerability = UUID.randomUUID();
+            for (UUID release : List.of(parent, scoped, unresolved)) {
+                jdbc.update("""
+                        insert into platform.intelligence_releases(id,generation,digest,actor,status)
+                        values (?, (select coalesce(max(generation),0)+100 from platform.intelligence_releases),
+                            ?, 'manifest-test', 'PUBLISHED')
+                        """, release, "0".repeat(64));
+            }
+            jdbc.update("""
+                    insert into platform.intelligence_release_changes
+                        (release_id,table_schema,table_name,row_id,previous_value,new_value)
+                    values (?,'platform','vulnerabilities',?,
+                        '{"epss_score":0.1,"severity":"HIGH"}'::jsonb,
+                        '{"epss_score":0.9,"severity":"HIGH"}'::jsonb)
+                    """, scoped, vulnerability);
+            jdbc.update("""
+                    insert into platform.intelligence_release_changes
+                        (release_id,table_schema,table_name,row_id,previous_value,new_value)
+                    values (?,'platform','vulnerability_targets',?,null,'{"vulnerability_id":"invalid"}'::jsonb)
+                    """, unresolved, UUID.randomUUID());
+            var routing = new IntelligenceReleaseRoutingService(jdbc, true);
+            new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(status -> {
+                routing.capture(scoped, parent);
+                routing.capture(unresolved, parent);
+            });
+
+            assertEquals("RANKING", routing.mode(scoped));
+            assertEquals(List.of(vulnerability), jdbc.queryForList("""
+                    select vulnerability_id from platform.intelligence_release_route_vulnerabilities where release_id=?
+                    """, UUID.class, scoped));
+            assertNull(routing.mode(unresolved));
+        });
+    }
+
+    private IntelligenceReleaseRoutingService enableTargetedDelivery() {
+        var routing = new IntelligenceReleaseRoutingService(jdbc, true);
+        org.springframework.test.util.ReflectionTestUtils.setField(worker, "releaseRouting", routing);
+        org.springframework.test.util.ReflectionTestUtils.setField(tenantWorker, "releaseRouting", routing);
+        org.springframework.test.util.ReflectionTestUtils.setField(tenantWorker, "evaluationFence", evaluationFence);
+        org.springframework.test.util.ReflectionTestUtils.setField(tenantWorker, "findingScores", findingScores);
+        return routing;
     }
     @Test
     @WithMockUser(roles="TENANT_ADMIN")
@@ -189,7 +252,7 @@ class IntelligencePublicationPostgresIntegrationTest {
             UUID canonical=UUID.randomUUID();
             jdbc.update("""
                     insert into platform.intelligence_releases(id,generation,digest,actor,status)
-                    values (?,(select generation+100 from platform.intelligence_active_state where singleton=true),?,?,'PUBLISHED')
+                    values (?,(select coalesce(max(generation),0)+100 from platform.intelligence_releases),?,?,'PUBLISHED')
                     """,release,"0".repeat(64),"scope-test");
             jdbc.update("""
                     insert into platform.intelligence_release_changes

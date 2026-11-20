@@ -29,6 +29,8 @@ public class IntelligencePublicationService {
 
     @org.springframework.beans.factory.annotation.Autowired(required=false)
     private IntelligencePublicationProgressService progress;
+    @org.springframework.beans.factory.annotation.Autowired
+    private IntelligenceReleaseRoutingService releaseRouting;
     @Value("${app.intelligence.scheduled-auto-publication.enabled:false}")
     private boolean scheduledAutoPublicationEnabled;
     private static final Map<String,String> ARTIFACT_TABLES=Map.of(
@@ -368,6 +370,7 @@ public class IntelligencePublicationService {
             entities.clear();
         }
         if(progress!=null && candidate!=null) progress.activationFence(candidate);
+        if (releaseRouting != null) releaseRouting.capture(release, base);
         jdbc.update("update platform.intelligence_releases set status='PUBLISHED' where id=?",release);
         jdbc.update("update platform.intelligence_active_state set release_id=?,generation=? where singleton=true",release,generation);
         if(!withdrawal) {

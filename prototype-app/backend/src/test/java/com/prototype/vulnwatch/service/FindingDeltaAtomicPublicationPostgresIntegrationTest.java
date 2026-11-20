@@ -22,6 +22,7 @@ class FindingDeltaAtomicPublicationPostgresIntegrationTest {
     @Autowired TenantSchemaMigrationService migrations;
     @Autowired TenantSchemaExecutionService scoped;
     @Autowired FindingDeltaQueueService deltas;
+    @Autowired InventoryRollupWorker rollups;
     @Autowired PlatformTransactionManager manager;
     @Autowired JdbcTemplate jdbc;
     Tenant tenant;
@@ -58,6 +59,7 @@ class FindingDeltaAtomicPublicationPostgresIntegrationTest {
         UUID component = UUID.randomUUID();
         UUID cpe = UUID.randomUUID();
         UUID mapping = UUID.randomUUID();
+        UUID identity = UUID.randomUUID();
         TransactionTemplate transactions = new TransactionTemplate(manager);
 
         scoped.run(tenant, () -> transactions.executeWithoutResult(status -> {
@@ -72,10 +74,16 @@ class FindingDeltaAtomicPublicationPostgresIntegrationTest {
                     values (?, ?, 'HOST_INVENTORY', 'inventory.json', 'SUCCESS', now())
                     """, upload, asset);
             jdbc.update("""
+                    insert into platform.software_identities (id, canonical_key, display_name, vendor, product,
+                                                              created_at, updated_at)
+                    values (?, ?, 'Inventory fixture', 'test', 'fixture', now(), now())
+                    """, identity, identity.toString());
+            jdbc.update("""
                     insert into inventory_components (id, component_status, ecosystem, package_name, purl,
-                                                      version, asset_id, sbom_upload_id, ingested_at, last_observed_at)
-                    values (?, 'ACTIVE', 'maven', 'fixture', 'pkg:maven/test/fixture@1', '1', ?, ?, now(), now())
-                    """, component, asset, upload);
+                                                      version, asset_id, sbom_upload_id, software_identity_id,
+                                                      ingested_at, last_observed_at)
+                    values (?, 'ACTIVE', 'maven', 'fixture', 'pkg:maven/test/fixture@1', '1', ?, ?, ?, now(), now())
+                    """, component, asset, upload, identity);
             assertEquals(revision + 1, requiredRevision());
             assertEquals(0, published());
             jdbc.update("""
@@ -92,6 +100,7 @@ class FindingDeltaAtomicPublicationPostgresIntegrationTest {
             assertEquals(0, jdbc.queryForObject("select count(*) from finding_delta_queue", Integer.class));
             jdbc.update("update inventory_components set version = '2' where id = ?", component);
             assertEquals(0, published());
+            assertEquals(1, jdbc.queryForObject("select count(*) from inventory_rollup_queue", Integer.class));
             status.setRollbackOnly();
         }));
         assertEquals(0, published());
@@ -113,8 +122,17 @@ class FindingDeltaAtomicPublicationPostgresIntegrationTest {
                     where component_id = ? and event_type = 'SOFTWARE_DELTA' and status = 'PENDING'
                     """, Integer.class, component));
             assertEquals(revision, requiredRevision());
+            assertEquals(1, jdbc.queryForObject("select count(*) from inventory_rollup_queue", Integer.class));
+            assertEquals(0, jdbc.queryForObject("select count(*) from software_identity_summary", Integer.class));
         }));
         assertEquals(1, published());
+        rollups.drainBatch(tenant);
+        scoped.run(tenant, () -> transactions.executeWithoutResult(status -> {
+            assertEquals(0, jdbc.queryForObject("select count(*) from inventory_rollup_queue", Integer.class));
+            assertEquals(1, jdbc.queryForObject("""
+                    select component_count from software_identity_summary where software_identity_id = ?
+                    """, Integer.class, identity));
+        }));
 
         scoped.run(tenant, () -> transactions.executeWithoutResult(status -> {
             jdbc.update("update finding_delta_queue set status = 'PROCESSING' where component_id = ?", component);

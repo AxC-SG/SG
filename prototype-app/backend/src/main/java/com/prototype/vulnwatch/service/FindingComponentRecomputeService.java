@@ -108,6 +108,12 @@ public class FindingComponentRecomputeService {
 
     private TenantApprovedIntelligenceService approvedIntelligence;
     private IntelligenceEvaluationFence evaluationFence;
+    private InventoryRollupWorker inventoryRollups;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureInventoryRollups(InventoryRollupWorker inventoryRollups) {
+        this.inventoryRollups = inventoryRollups;
+    }
     @org.springframework.beans.factory.annotation.Autowired
     void configureIntelligence(TenantApprovedIntelligenceService approvedIntelligence,IntelligenceEvaluationFence evaluationFence) {
         this.approvedIntelligence=approvedIntelligence;this.evaluationFence=evaluationFence;
@@ -187,7 +193,8 @@ public class FindingComponentRecomputeService {
                 touchedVulnerabilityIds.addAll(result.touchedVulnerabilityIds());
             }
             entityManager.flush();
-            if (!touchedVulnerabilityIds.isEmpty()) {
+            if (!touchedVulnerabilityIds.isEmpty() && (inventoryRollups == null
+                    || !inventoryRollups.enqueueOrgCveRollups(tenantId, touchedVulnerabilityIds))) {
                 orgCveRecordService.refreshForTenantAndVulnerabilities(tenantId, touchedVulnerabilityIds);
             }
             return total;
