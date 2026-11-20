@@ -71,7 +71,7 @@ class FreshBaselineBootstrapPostgresIntegrationTest {
     }
 
     private Flyway configuredFlyway() {
-        var config = Flyway.configure()
+        var config = Flyway.configure().configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false"))
                 .dataSource(DATABASE.url(), DATABASE.username(), DATABASE.password())
                 .defaultSchema("public")
                 .locations("filesystem:src/main/resources/db/migration/postgres_reset")

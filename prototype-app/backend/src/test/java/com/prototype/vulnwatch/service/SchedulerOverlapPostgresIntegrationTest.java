@@ -135,6 +135,22 @@ class SchedulerOverlapPostgresIntegrationTest {
         assertEquals(1,jdbc.queryForObject("select count(*) from platform.eol_product_catalog where slug='offline-product'",Integer.class));
     }
 
+    @Test void fullEolRefreshCompletesTenantDenormalizationInTenantScope() {
+        when(eolApi.fetchAllProducts()).thenReturn(List.of(
+                new EolApiClient.EolProductSummary("offline-product", "Offline product", null, null, List.of())
+        ));
+        when(eolApi.fetchProductReleasesConditional(anyString(), any()))
+                .thenReturn(new EolApiClient.EolReleaseFetchResult(false, List.of(), null));
+
+        UUID id = eol.triggerFullRefresh().runId();
+        doAnswer(call -> { ((Runnable)call.getArgument(0)).run(); return null; }).when(executor).execute(any(Runnable.class));
+        worker.pollQueuedRuns();
+
+        assertEquals("completed", runs.requireRun(id).getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from platform.eol_product_catalog where slug='offline-product'", Integer.class));
+    }
+
     @Test void differentManualEolStagesRetainTheirOwnAcceptedIntent() {
         UUID catalog=eol.triggerCatalogRefresh().runId();
         UUID denormalize=eol.triggerDenormalize().runId();

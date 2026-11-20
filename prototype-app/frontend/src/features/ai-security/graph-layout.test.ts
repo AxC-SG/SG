@@ -67,6 +67,26 @@ describe('layoutDependencyGraph', () => {
     expect(child?.position).not.toEqual(root?.position);
   });
 
+  it('carries actionable finding counts and highest severity into node data', () => {
+    const graph: AiSecurityGraph = {
+      nodes: [buildNode(), buildNode({ id: 'artifact-2', name: 'guardrail' })],
+      edges: [buildEdge()],
+      truncated: false,
+      findingSummaries: [{
+        artifactId: 'artifact-2', totalFindings: 2, openFindings: 1, deferredFindings: 1,
+        criticalFindings: 0, highFindings: 2, mediumFindings: 0, lowFindings: 0,
+      }],
+    };
+
+    const { nodes } = layoutDependencyGraph(graph, 'artifact-1');
+    expect(nodes.find((node) => node.id === 'artifact-2')?.data).toEqual(expect.objectContaining({
+      findingsCount: 2,
+      openFindings: 1,
+      deferredFindings: 1,
+      highestFindingSeverity: 'HIGH',
+    }));
+  });
+
   it('formats relationship types into readable edge labels', () => {
     const graph: AiSecurityGraph = {
       nodes: [buildNode(), buildNode({ id: 'artifact-2', name: 'depth-fn' })],

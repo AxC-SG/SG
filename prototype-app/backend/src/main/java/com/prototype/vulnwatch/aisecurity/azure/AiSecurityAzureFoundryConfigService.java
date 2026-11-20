@@ -90,7 +90,7 @@ public class AiSecurityAzureFoundryConfigService {
         // the moment anything reads the config, and self-conflicts if we also explicitly create a
         // target for a subscription that's already listed here. Populate the list (step 2, below)
         // only once the target genuinely exists, so that legacy bootstrap has nothing left to do.
-        discoveryConfigService.save(tenant, new AzureDiscoveryConfigRequest(
+        discoveryConfigService.saveForAiSecurity(tenant, new AzureDiscoveryConfigRequest(
                 AzureAuthType.CLIENT_SECRET,
                 request.azureTenantId(),
                 request.clientId(),
@@ -101,7 +101,7 @@ public class AiSecurityAzureFoundryConfigService {
 
         AzureDiscoveryTargetResponse target = resolveTarget(tenant, primarySubscriptionId, resolvedRegions);
 
-        discoveryConfigService.save(tenant, new AzureDiscoveryConfigRequest(
+        discoveryConfigService.saveForAiSecurity(tenant, new AzureDiscoveryConfigRequest(
                 AzureAuthType.CLIENT_SECRET,
                 request.azureTenantId(),
                 request.clientId(),
@@ -137,19 +137,19 @@ public class AiSecurityAzureFoundryConfigService {
      * recover by re-reading rather than surfacing the resulting unique-constraint conflict.
      */
     private AzureDiscoveryTargetResponse resolveTarget(Tenant tenant, String subscriptionId, List<String> regions) {
-        AzureDiscoveryTargetResponse target = findTarget(discoveryTargetService.list(tenant), subscriptionId);
+        AzureDiscoveryTargetResponse target = findTarget(discoveryTargetService.listForAiSecurity(tenant), subscriptionId);
         if (target != null) {
             return target;
         }
-        target = findTarget(discoveryTargetService.list(tenant), subscriptionId);
+        target = findTarget(discoveryTargetService.listForAiSecurity(tenant), subscriptionId);
         if (target != null) {
             return target;
         }
         try {
-            return discoveryTargetService.create(tenant, new AzureDiscoveryTargetRequest(
+            return discoveryTargetService.createForAiSecurity(tenant, new AzureDiscoveryTargetRequest(
                     subscriptionId, null, true, toJsonArray(regions)));
         } catch (DataIntegrityViolationException raced) {
-            AzureDiscoveryTargetResponse recovered = findTarget(discoveryTargetService.list(tenant), subscriptionId);
+            AzureDiscoveryTargetResponse recovered = findTarget(discoveryTargetService.listForAiSecurity(tenant), subscriptionId);
             if (recovered == null) {
                 throw raced;
             }

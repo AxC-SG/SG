@@ -211,6 +211,7 @@ public final class ProductionBootstrapCli {
                 .defaultSchema("public")
                 .table("flyway_schema_history")
                 .locations("classpath:db/migration/postgres_reset")
+                .configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false"))
                 .baselineOnMigrate(false)
                 .validateOnMigrate(true)
                 .outOfOrder(false)

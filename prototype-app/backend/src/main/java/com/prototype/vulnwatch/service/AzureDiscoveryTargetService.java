@@ -58,7 +58,18 @@ public class AzureDiscoveryTargetService {
 
     @Transactional(readOnly = true)
     public List<AzureDiscoveryTargetResponse> list(Tenant tenant) {
-        AzureDiscoveryConfig config = requireConfig(tenant);
+        AzureDiscoveryConfig config = findConfigForRead(tenant);
+        return listTargets(config);
+    }
+
+    /** Shared target persistence used by Azure AI Security while generic Azure discovery is paused. */
+    @Transactional(readOnly = true)
+    public List<AzureDiscoveryTargetResponse> listForAiSecurity(Tenant tenant) {
+        AzureDiscoveryConfig config = requireConfig(tenant, true);
+        return listTargets(config);
+    }
+
+    private List<AzureDiscoveryTargetResponse> listTargets(AzureDiscoveryConfig config) {
         return targetRepository.findByConfigOrderBySubscriptionNameAscSubscriptionIdAsc(config).stream()
                 .map(this::toResponse)
                 .toList();
@@ -68,7 +79,18 @@ public class AzureDiscoveryTargetService {
     public AzureDiscoveryTargetResponse create(Tenant tenant, AzureDiscoveryTargetRequest request) {
         GenericAzureDiscoveryPolicy.requireAvailable();
 
-        AzureDiscoveryConfig config = requireConfig(tenant);
+        return createInternal(tenant, request, false);
+    }
+
+    /** Creates a shared Azure target for Azure AI Security without enabling generic discovery. */
+    @Transactional
+    public AzureDiscoveryTargetResponse createForAiSecurity(Tenant tenant, AzureDiscoveryTargetRequest request) {
+        return createInternal(tenant, request, true);
+    }
+
+    private AzureDiscoveryTargetResponse createInternal(
+            Tenant tenant, AzureDiscoveryTargetRequest request, boolean aiSecurityPath) {
+        AzureDiscoveryConfig config = requireConfig(tenant, aiSecurityPath);
         tenantQuotaService.assertCanCreateConnector(tenant, "azure-target");
         AzureDiscoveryTarget target = new AzureDiscoveryTarget();
         target.setTenant(tenant);
@@ -119,6 +141,17 @@ public class AzureDiscoveryTargetService {
     public void ensureLegacyTarget(AzureDiscoveryConfig config) {
         GenericAzureDiscoveryPolicy.requireAvailable();
 
+        ensureLegacyTargetInternal(config);
+    }
+
+    /** Ensures shared target rows exist for Azure AI Security without opening generic discovery. */
+    @Transactional
+    public void ensureLegacyTargetForAiSecurity(AzureDiscoveryConfig config) {
+        ensureLegacyTargetInternal(config);
+    }
+
+    private void ensureLegacyTargetInternal(AzureDiscoveryConfig config) {
+
         if (config == null || config.getTenant() == null || targetRepository.countByConfig(config) > 0) {
             return;
         }
@@ -146,14 +179,31 @@ public class AzureDiscoveryTargetService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Azure discovery target not found: " + targetId));
     }
 
-    private AzureDiscoveryConfig requireConfig(Tenant tenant) {
+    private AzureDiscoveryConfig requireConfig(Tenant tenant, boolean aiSecurityPath) {
         if (tenant == null || tenant.getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Workspace is not available");
         }
         AzureDiscoveryConfig config = configRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "azure")
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Azure Cloud Discovery connector is not configured yet"));
-        ensureLegacyTarget(config);
+        if (aiSecurityPath) {
+            ensureLegacyTargetForAiSecurity(config);
+        } else {
+            ensureLegacyTarget(config);
+        }
         return config;
+    }
+
+    /**
+     * Read-only retained settings must remain visible while generic discovery is paused. Do not
+     * call ensureLegacyTarget here: that method is an active capability gate and may create rows.
+     */
+    private AzureDiscoveryConfig findConfigForRead(Tenant tenant) {
+        if (tenant == null || tenant.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Workspace is not available");
+        }
+        return configRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "azure")
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Azure Cloud Discovery connector is not configured yet"));
     }
 
     private void apply(AzureDiscoveryTarget target, AzureDiscoveryTargetRequest request, AzureDiscoveryConfig config) {

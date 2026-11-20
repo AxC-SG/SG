@@ -33,9 +33,9 @@ public class CsafDocumentFetcher {
         this.outboundPolicyFactory = outboundPolicyFactory;
     }
 
-    public CsafDocumentFetchResult fetch(String url) {
+    public CsafDocumentFetchResult fetch(String url, String providerKey) {
         OutboundPolicy policy = outboundPolicyFactory.forProvider(
-                "csaf-document",
+                "csaf-" + (providerKey == null ? "" : providerKey.trim().toLowerCase(Locale.ROOT)),
                 0L,
                 Math.max(1, csafDocumentFetchMaxAttempts),
                 Math.max(0L, csafDocumentRetryBackoffMs)

@@ -9,6 +9,9 @@ import com.prototype.vulnwatch.client.http.OutboundPolicy;
 import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -64,6 +67,12 @@ public class EuvdApiClient {
     @Value("${app.euvd.per-page:100}")
     private int perPage;
 
+    /** Number of days of updated EUVD records to request on each incremental refresh. */
+    @Value("${app.euvd.updated-window-days:7}")
+    private int updatedWindowDays;
+
+    private Clock clock = Clock.systemUTC();
+
     @Value("${app.euvd.min-request-interval-ms:${app.http.outbound.min-request-interval-ms:0}}")
     private long minRequestIntervalMs;
 
@@ -87,11 +96,22 @@ public class EuvdApiClient {
         return Math.max(1, Math.min(500, perPage));
     }
 
+    public int updatedWindowDays() {
+        return Math.max(0, updatedWindowDays);
+    }
+
     public EuvdPage fetchPage(int pageNumber) {
         int safePage = Math.max(0, pageNumber);
-        String uri = UriComponentsBuilder.fromUriString(apiUrl)
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(apiUrl)
                 .queryParam("fromScore", 0)
                 .queryParam("toScore", 10)
+                ;
+        if (updatedWindowDays() > 0) {
+            LocalDate toDate = LocalDate.now(clock.withZone(ZoneOffset.UTC));
+            uriBuilder.queryParam("fromUpdatedDate", toDate.minusDays(updatedWindowDays()).toString())
+                    .queryParam("toUpdatedDate", toDate.toString());
+        }
+        String uri = uriBuilder
                 .queryParam("page", safePage)
                 .queryParam("size", perPage())
                 .build()

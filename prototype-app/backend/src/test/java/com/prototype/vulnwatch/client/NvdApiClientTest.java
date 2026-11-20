@@ -1,11 +1,13 @@
 package com.prototype.vulnwatch.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.client.http.OutboundHttpClient;
@@ -14,6 +16,7 @@ import com.prototype.vulnwatch.client.http.OutboundPolicyFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -113,6 +116,21 @@ class NvdApiClientTest {
         );
 
         assertEquals(0, page.records().size());
+        server.verify();
+    }
+
+    @Test
+    void fetchPage_explainsNvdInvalidApiKey404() {
+        server.expect(requestTo("https://services.nvd.nist.gov/rest/json/cves/2.0?startIndex=0&resultsPerPage=2000"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body("Invalid apiKey."));
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> client.fetchPage(0, null, null, "invalid-key"));
+
+        assertTrue(error.getMessage().contains("Replace the NVD API key and retry the full ingest"));
         server.verify();
     }
 }

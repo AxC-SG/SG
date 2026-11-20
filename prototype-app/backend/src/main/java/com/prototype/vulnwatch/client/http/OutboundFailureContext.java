@@ -26,6 +26,10 @@ public record OutboundFailureContext(
         return null;
     }
 
+    public String responseBody() {
+        return error instanceof HttpStatusCodeException httpError ? httpError.getResponseBodyAsString() : "";
+    }
+
     public String retryAfterHeader() {
         if (error instanceof HttpStatusCodeException httpStatusError) {
             HttpHeaders headers = httpStatusError.getResponseHeaders();

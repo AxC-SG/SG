@@ -61,6 +61,21 @@ public class AzureDiscoveryConfigService {
     public AzureDiscoveryConfigResponse save(Tenant tenant, AzureDiscoveryConfigRequest request) {
         GenericAzureDiscoveryPolicy.requireAvailable();
 
+        return saveInternal(tenant, request);
+    }
+
+    /**
+     * Persists the shared Azure credential/configuration row for the Azure AI Security connector.
+     * Generic Azure Cloud Discovery remains disabled by the pilot policy; AI Security has its own
+     * entitlement and execution path and must not be blocked by that unrelated capability gate.
+     */
+    @Transactional
+    public AzureDiscoveryConfigResponse saveForAiSecurity(Tenant tenant, AzureDiscoveryConfigRequest request) {
+        return saveInternal(tenant, request);
+    }
+
+    private AzureDiscoveryConfigResponse saveInternal(Tenant tenant, AzureDiscoveryConfigRequest request) {
+
         AzureDiscoveryConfig config = findConfig(tenant)
                 .orElseGet(() -> {
                     tenantQuotaService.assertCanCreateConnector(tenant, "azure");

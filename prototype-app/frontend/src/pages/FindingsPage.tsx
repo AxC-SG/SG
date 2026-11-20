@@ -128,21 +128,25 @@ const DEFAULT_COL_FILTERS: ColFilters = {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(v: string): string {
-  return v.replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+function textValue(v: unknown): string {
+  return v == null ? '' : String(v);
 }
-function severityClass(s: string) { return `severity-pill severity-${s.toLowerCase()}`; }
-function statusClass(s: string)   { return `status-pill status-${s.toLowerCase()}`; }
+function fmt(v: string | null | undefined): string {
+  return textValue(v).replace(/[_-]+/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+function severityClass(s: string | null | undefined) { return `severity-pill severity-${textValue(s || 'UNKNOWN').toLowerCase()}`; }
+function statusClass(s: string | null | undefined)   { return `status-pill status-${textValue(s || 'UNKNOWN').toLowerCase()}`; }
 function statusLabel(row: Finding): string {
-  if (row.status === 'SUPPRESSED') {
+  const status = textValue(row.status).toUpperCase();
+  if (status === 'SUPPRESSED') {
     if (row.suppressedByRuleId) return 'Suppressed';
     const r = (row.suppressionReason ?? '').toUpperCase();
     if (r.includes('FALSE_POSITIVE')) return 'False Positive';
     if (r.includes('DUPLICATE')) return 'Duplicate';
     return 'Deferred';
   }
-  if (row.status === 'AUTO_CLOSED') return 'Closed';
-  return fmt(row.status);
+  if (status === 'AUTO_CLOSED') return 'Closed';
+  return fmt(status);
 }
 
 function loadVis(): Set<ColKey> {
@@ -165,12 +169,12 @@ function applyColFilters(rows: Finding[], f: ColFilters, dueDateBand: DueDateBan
   const now = Date.now();
   const sevenDays = 7 * 24 * 3600 * 1000;
   return rows.filter(r => {
-    if (f.findingId && !(r.displayId || r.id).toLowerCase().includes(f.findingId.toLowerCase())) return false;
-    if (f.cveId && !r.vulnerabilityId.toLowerCase().includes(f.cveId.toLowerCase())) return false;
-    if (f.asset && !r.assetName.toLowerCase().includes(f.asset.toLowerCase())) return false;
+    if (f.findingId && !textValue(r.displayId || r.id).toLowerCase().includes(f.findingId.toLowerCase())) return false;
+    if (f.cveId && !textValue(r.vulnerabilityId).toLowerCase().includes(f.cveId.toLowerCase())) return false;
+    if (f.asset && !textValue(r.assetName).toLowerCase().includes(f.asset.toLowerCase())) return false;
     if (f.owner && !ownershipDisplayName(r).toLowerCase().includes(f.owner.toLowerCase())) return false;
     if (f.supportGroup && !ownershipSupportGroup(r).toLowerCase().includes(f.supportGroup.toLowerCase())) return false;
-    if (f.package && !r.packageName.toLowerCase().includes(f.package.toLowerCase())) return false;
+    if (f.package && !textValue(r.packageName).toLowerCase().includes(f.package.toLowerCase())) return false;
     if (f.severity.length > 0 && !f.severity.includes(r.severity)) return false;
     if (f.status.length > 0 && !f.status.includes(r.status)) return false;
     if (f.creationSource.length > 0 && !f.creationSource.includes(r.creationSource)) return false;
@@ -883,7 +887,10 @@ export function FindingsPage() {
     if (key==='severity') return <span className={severityClass(row.severity)}>{row.severity}</span>;
     if (key==='status') return <span className={statusClass(row.status)}>{statusLabel(row)}</span>;
     if (key==='creationSource') return <span className="fpl-assigned">{row.creationSource === 'MANUAL' ? 'Manual' : 'Automatic'}</span>;
-    if (key==='risk') return <span className="fpl-risk">{row.riskScore.toFixed(1)}</span>;
+    if (key==='risk') {
+      const riskScore = Number(row.riskScore);
+      return <span className="fpl-risk">{Number.isFinite(riskScore) ? riskScore.toFixed(1) : '—'}</span>;
+    }
     if (key==='priority') {
       const p = computeFindingPriorityScore(row, policyQuery.data);
       const cls = `risk-score-badge risk-score-badge--${riskScoreLabel(p.score).toLowerCase()}`;

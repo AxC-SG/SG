@@ -149,10 +149,12 @@ public class EpssRefreshService {
             while (true) {
                 List<Vulnerability> stale = staging.epssCandidates(staleBefore,afterId,upperId,Math.max(1,Math.min(100,batchSize)));
                 if (stale.isEmpty()) break;
-                int batchUpdated = refreshBatch(stale);
-                updated += batchUpdated;
+                BatchRefreshResult batchResult = refreshBatchResult(stale);
+                updated += batchResult.updated();
                 attempted += stale.size();
-                incomplete += stale.size() - batchUpdated;
+                if (!batchResult.responseAvailable()) {
+                    incomplete += stale.size();
+                }
                 afterId = stale.get(stale.size() - 1).getId();
             }
         }
@@ -172,8 +174,12 @@ public class EpssRefreshService {
     // -------------------------------------------------------------------------
 
     int refreshBatch(List<Vulnerability> vulnerabilities) {
+        return refreshBatchResult(vulnerabilities).updated();
+    }
+
+    private BatchRefreshResult refreshBatchResult(List<Vulnerability> vulnerabilities) {
         if (vulnerabilities == null || vulnerabilities.isEmpty()) {
-            return 0;
+            return new BatchRefreshResult(0, true);
         }
         List<String> cveIds = vulnerabilities.stream()
                 .map(Vulnerability::getExternalId)
@@ -181,7 +187,7 @@ public class EpssRefreshService {
                 .collect(Collectors.toList());
 
         if (cveIds.isEmpty()) {
-            return 0;
+            return new BatchRefreshResult(0, true);
         }
 
         String url = UriComponentsBuilder.fromUriString(epssBaseUrl)
@@ -212,38 +218,45 @@ public class EpssRefreshService {
             payload = response.getBody();
         } catch (Exception e) {
             LOG.warn("EPSS API request failed for batch of {} CVEs: {}", cveIds.size(), e.getMessage());
-            return 0;
+            return new BatchRefreshResult(0, false);
         }
 
         if (payload == null || payload.isBlank()) {
-            return 0;
+            return new BatchRefreshResult(0, false);
         }
 
-        java.util.Map<String, Double> epssMap = parseEpssResponse(payload);
-        if (epssMap.isEmpty()) {
-            return 0;
+        ParsedEpssResponse parsedResponse = parseEpssResponse(payload);
+        if (!parsedResponse.valid()) {
+            return new BatchRefreshResult(0, false);
         }
 
         int updated=0;
+        Instant refreshedAt = Instant.now();
         for(Vulnerability vulnerability:vulnerabilities) {
-            Double score=epssMap.get(vulnerability.getExternalId().toUpperCase(Locale.ROOT));
+            Double score=parsedResponse.scores().get(vulnerability.getExternalId().toUpperCase(Locale.ROOT));
             if(score!=null) {
                 staging.observation(new VulnerabilityIntelligenceService.ObservationUpsertRequest(
                         vulnerability.getExternalId(),"epss",vulnerability.getExternalId(),null,null,null,null,null,null,
-                        score,null,null,null,null,null,null,Instant.now(),null));
+                        score,null,null,null,null,null,null,refreshedAt,null));
+                vulnerability.setEpssScore(score);
                 updated++;
             }
+            // A valid response with no entry means FIRST has no score for this
+            // CVE today. Stage the freshness marker so it is not retried as a
+            // failed request, while retaining any previous score.
+            vulnerability.setEpssUpdatedAt(refreshedAt);
+            staging.metadata(vulnerability, "epss");
         }
-        return updated;
+        return new BatchRefreshResult(updated, true);
     }
 
-    private java.util.Map<String, Double> parseEpssResponse(String json) {
+    private ParsedEpssResponse parseEpssResponse(String json) {
         java.util.Map<String, Double> result = new java.util.HashMap<>();
         try {
             JsonNode root = objectMapper.readTree(json);
             JsonNode data = root.path("data");
             if (!data.isArray()) {
-                return result;
+                return new ParsedEpssResponse(result, false);
             }
             for (JsonNode entry : data) {
                 String cve = entry.path("cve").asText("").toUpperCase(Locale.ROOT);
@@ -260,9 +273,13 @@ public class EpssRefreshService {
             }
         } catch (Exception e) {
             LOG.warn("Failed to parse EPSS API response: {}", e.getMessage());
+            return new ParsedEpssResponse(result, false);
         }
-        return result;
+        return new ParsedEpssResponse(result, true);
     }
+
+    private record ParsedEpssResponse(java.util.Map<String, Double> scores, boolean valid) {}
+    private record BatchRefreshResult(int updated, boolean responseAvailable) {}
 
     private OutboundPolicy outboundPolicy() {
         return outboundPolicyFactory.forProvider("epss", 0L, null, null);

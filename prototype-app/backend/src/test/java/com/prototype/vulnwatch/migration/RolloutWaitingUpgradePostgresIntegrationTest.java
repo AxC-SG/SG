@@ -16,7 +16,7 @@ class RolloutWaitingUpgradePostgresIntegrationTest {
     @Test void forwardMigrationRetainsClaimsAndMakesLegacyProcessingRecoverable() {
         var db = LocalPostgresTestDatabase.provision("closure_rollout_upgrade");
         var jdbc = new JdbcTemplate(new DriverManagerDataSource(db.url(), db.username(), db.password()));
-        var config = Flyway.configure().dataSource(db.url(), db.username(), db.password())
+        var config = Flyway.configure().configuration(java.util.Map.of("flyway.postgresql.transactional.lock", "false")).dataSource(db.url(), db.username(), db.password())
                 .locations("classpath:db/migration/postgres_reset").defaultSchema("public");
         config.target("5").load().migrate();
         UUID approval = UUID.randomUUID(), rollout = UUID.randomUUID(), owner = UUID.randomUUID();

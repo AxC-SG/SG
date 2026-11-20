@@ -17,14 +17,25 @@ type SourceSectionProps = {
   lastRun?: VulnIntelSourceStatus;
   configFields?: React.ReactNode;
   triggerSync?: () => Promise<SyncTriggerResponse>;
+  fullSyncTrigger?: (apiKey: string) => Promise<SyncTriggerResponse>;
+  fullSyncApiKey?: string;
   note?: string;
 };
 
-function SourceSection({ lastRun, configFields, triggerSync, note, syncType }: SourceSectionProps) {
+function SourceSection({
+  lastRun,
+  configFields,
+  triggerSync,
+  fullSyncTrigger,
+  fullSyncApiKey = '',
+  note,
+  syncType,
+}: SourceSectionProps) {
   const client = useQueryClient();
   const [running, setRunning] = React.useState(false);
   const [result, setResult] = React.useState<SyncTriggerResponse | null>(null);
   const [error, setError] = React.useState('');
+  const [confirmFullSync, setConfirmFullSync] = React.useState(false);
 
   const trigger = async () => {
     if (!triggerSync) return;
@@ -33,6 +44,26 @@ function SourceSection({ lastRun, configFields, triggerSync, note, syncType }: S
     setResult(null);
     try {
       const res = await triggerSync();
+      setResult(res);
+      void client.invalidateQueries({ queryKey: ['vuln-intel-sources-summary'] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const triggerFullSync = async () => {
+    if (!fullSyncTrigger) return;
+    if (!fullSyncApiKey.trim()) {
+      setError('Enter an NVD API key before starting the full corpus sync.');
+      return;
+    }
+    setRunning(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await fullSyncTrigger(fullSyncApiKey.trim());
       setResult(res);
       void client.invalidateQueries({ queryKey: ['vuln-intel-sources-summary'] });
     } catch (e) {
@@ -107,6 +138,33 @@ function SourceSection({ lastRun, configFields, triggerSync, note, syncType }: S
             {running ? 'Queueing…' : 'Run integration now'}
           </button>
         </div>
+      )}
+
+      {fullSyncTrigger && (
+        <section className="vi-source-full-sync" aria-label="NVD full corpus ingestion">
+          <div>
+            <h4>Full NVD corpus ingestion</h4>
+            <p className="panel-caption">
+              Fetch the complete NVD history, potentially 400,000+ CVE records. This is separate from the scheduled delta sync and may take significant time and database capacity.
+            </p>
+          </div>
+          <label className="bulk-checkbox">
+            <input
+              type="checkbox"
+              checked={confirmFullSync}
+              onChange={(event) => setConfirmFullSync(event.target.checked)}
+            />
+            <span>I understand the runtime and database impact.</span>
+          </label>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void triggerFullSync()}
+            disabled={running || !confirmFullSync || !fullSyncApiKey.trim()}
+          >
+            {running ? 'Queueing…' : 'Run full NVD ingest'}
+          </button>
+        </section>
       )}
     </div>
   );
@@ -194,6 +252,8 @@ export function VulnIntelConfigPage({ vulnSummary, isLoading = false, loadError 
       lastRun: s?.['NVD'],
       configFields: nvdConfigFields,
       triggerSync: () => api.syncNvd(),
+      fullSyncTrigger: (apiKey) => api.syncNvdFull({ apiKey }),
+      fullSyncApiKey: nvdApiKey,
       syncType: 'NVD',
     },
     {

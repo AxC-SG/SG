@@ -1,10 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { Background, Controls, Handle, Position, ReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { Background, Controls, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import React from 'react';
 import { api } from '../../api/client';
 import { formatLabel } from '../cve-workbench/formatting';
 import { layoutDependencyGraph, type DependencyGraphNodeData } from './graph-layout';
-import type { AiSecurityArtifact, AiSecurityGraph, AiSecurityPolicy } from './types';
+import type {
+  AiSecurityArtifact,
+  AiSecurityGraph,
+  AiSecurityGraphFindingSummary,
+  AiSecurityPolicy,
+} from './types';
 
 const ARTIFACT_TYPE_ICON: Record<string, string> = {
   AI_AGENT: '🤖',
@@ -53,13 +58,13 @@ function countCriticalPolicyFailures(
 type GraphNodeDetailsPopupProps = {
   artifact: AiSecurityArtifact;
   isRoot: boolean;
-  findingsCount: number;
+  findingSummary: AiSecurityGraphFindingSummary;
   policies: AiSecurityPolicy[];
   onViewDetails: (artifactId: string) => void;
   onDismiss: () => void;
 };
 
-function GraphNodeDetailsPopup({ artifact, isRoot, findingsCount, policies, onViewDetails, onDismiss }: GraphNodeDetailsPopupProps) {
+function GraphNodeDetailsPopup({ artifact, isRoot, findingSummary, policies, onViewDetails, onDismiss }: GraphNodeDetailsPopupProps) {
   const popupRef = React.useRef<HTMLDivElement>(null);
   // Non-modal: move focus in so keyboard and screen-reader users land on the details; Escape returns.
   React.useEffect(() => {
@@ -100,7 +105,9 @@ function GraphNodeDetailsPopup({ artifact, isRoot, findingsCount, policies, onVi
             {artifact.active ? 'Active' : 'Inactive'}
           </span>
         </dd>
-        <dt>Findings</dt><dd>{findingsCount}</dd>
+        <dt>Active findings</dt><dd>{findingSummary.totalFindings}</dd>
+        <dt>Open</dt><dd>{findingSummary.openFindings} open</dd>
+        <dt>Deferred</dt><dd>{findingSummary.deferredFindings} deferred</dd>
         <dt>Criticality</dt><dd>{artifact.businessCriticality ? formatLabel(artifact.businessCriticality) : 'Not classified'}</dd>
         <dt>PII</dt><dd>{formatPiiStatus(artifact)}</dd>
         <dt>Critical policies failed</dt>
@@ -123,14 +130,28 @@ function AiArtifactNode({ data }: { data: DependencyGraphNodeData }) {
   const classes = ['ai-dependency-graph-node'];
   if (data.isRoot) classes.push('ai-dependency-graph-node--root');
   if (!data.active) classes.push('ai-dependency-graph-node--inactive');
+  if (data.findingsCount > 0) {
+    classes.push('ai-dependency-graph-node--has-findings');
+    if (data.highestFindingSeverity) classes.push(`ai-dependency-graph-node--finding-${data.highestFindingSeverity.toLowerCase()}`);
+  }
   return (
-    <div className={classes.join(' ')}>
+    <div
+      className={classes.join(' ')}
+      aria-label={data.findingsCount > 0
+        ? `${data.label}; ${data.findingsCount} active or deferred findings`
+        : data.label}
+    >
       <Handle type="target" position={Position.Left} />
       <span aria-hidden="true">{ARTIFACT_TYPE_ICON[data.artifactType] ?? '📦'}</span>
       <div className="ai-dependency-graph-node-text">
         <strong>{data.label}</strong>
         <small>{formatLabel(data.nativeKind)}</small>
       </div>
+      {data.findingsCount > 0 && (
+        <span className="ai-dependency-graph-node-findings" aria-label={`${data.findingsCount} active or deferred findings`}>
+          {data.findingsCount}
+        </span>
+      )}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -138,20 +159,75 @@ function AiArtifactNode({ data }: { data: DependencyGraphNodeData }) {
 
 const NODE_TYPES = { aiArtifact: AiArtifactNode };
 
+type GraphLayout = ReturnType<typeof layoutDependencyGraph>;
+
+function DependencyGraphCanvas({
+  nodes,
+  edges,
+  onNodeClick,
+  onPaneClick,
+}: Pick<GraphLayout, 'nodes' | 'edges'> & {
+  onNodeClick: (artifactId: string) => void;
+  onPaneClick: () => void;
+}) {
+  const { fitView } = useReactFlow();
+
+  // React Flow's `fitView` prop runs during initialization. The graph data is loaded
+  // asynchronously, so fit again after the measured nodes are available; otherwise
+  // the canvas can look empty until the user clicks the Fit View control.
+  React.useEffect(() => {
+    if (nodes.length === 0) return undefined;
+    let frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => {
+        void fitView({ padding: 0.2, duration: 0 });
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [fitView, nodes]);
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={NODE_TYPES}
+      fitView
+      nodesDraggable={false}
+      nodesConnectable={false}
+      onNodeClick={(_event, node) => onNodeClick(node.id)}
+      onPaneClick={onPaneClick}
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background />
+      <Controls showInteractive={false} />
+    </ReactFlow>
+  );
+}
+
 // Readable alternative to the canvas: every edge as a row, with the same destination as View Details.
-function RelationshipList({ graph, rootArtifactId, onNodeClick }: {
+function RelationshipList({ graph, rootArtifactId, onNodeClick, findingsByArtifactId }: {
   graph: AiSecurityGraph;
   rootArtifactId?: string;
   onNodeClick?: (artifactId: string) => void;
+  findingsByArtifactId: Map<string, AiSecurityGraphFindingSummary>;
 }) {
   const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+  const connectedNodeIds = new Set(
+    graph.edges.flatMap((edge) => [edge.sourceArtifactId, edge.targetArtifactId]),
+  );
+  const isolatedNodes = graph.nodes.filter((node) => !connectedNodeIds.has(node.id));
+  const endpointFindingBadge = (artifactId: string) => {
+    const summary = findingsByArtifactId.get(artifactId);
+    if (!summary || summary.totalFindings === 0) return null;
+    return <span className="ai-dependency-graph-finding-badge">{summary.totalFindings} findings</span>;
+  };
   const endpoint = (artifactId: string, fallbackName: string) => {
     const name = namesById.get(artifactId) ?? fallbackName;
-    if (artifactId === rootArtifactId) return <span>{name} <span className="panel-caption">(this asset)</span></span>;
-    if (!onNodeClick) return <span>{name}</span>;
-    return <button type="button" className="btn-link" onClick={() => onNodeClick(artifactId)}>{name}</button>;
+    const badge = endpointFindingBadge(artifactId);
+    if (artifactId === rootArtifactId) return <span>{name} <span className="panel-caption">(this asset)</span>{badge}</span>;
+    if (!onNodeClick) return <span>{name}{badge}</span>;
+    return <button type="button" className="btn-link" aria-label={name} onClick={() => onNodeClick(artifactId)}>{name}{badge}</button>;
   };
-  if (graph.edges.length === 0) {
+  if (graph.edges.length === 0 && graph.nodes.length === 0) {
     return <div className="empty-state" role="status"><p>No relationships observed.</p></div>;
   }
   return (
@@ -167,6 +243,13 @@ function RelationshipList({ graph, rootArtifactId, onNodeClick }: {
               <td>{endpoint(edge.sourceArtifactId, edge.sourceName)}</td>
               <td>{formatLabel(edge.relationshipType)}</td>
               <td>{endpoint(edge.targetArtifactId, edge.targetName)}</td>
+            </tr>
+          ))}
+          {isolatedNodes.map((node) => (
+            <tr key={`isolated-${node.id}`}>
+              <td>{endpoint(node.id, node.name)}</td>
+              <td><span className="panel-caption">No visible relationship</span></td>
+              <td>—</td>
             </tr>
           ))}
         </tbody>
@@ -190,16 +273,57 @@ export function AiDependencyGraph({
   findingsCountByArtifactId = {},
   policies = [],
 }: AiDependencyGraphProps) {
+  const findingsByArtifactId = React.useMemo(() => {
+    const summaries = new Map((graph.findingSummaries ?? []).map((summary) => [summary.artifactId, summary]));
+    Object.entries(findingsCountByArtifactId).forEach(([artifactId, count]) => {
+      if (summaries.has(artifactId)) return;
+      summaries.set(artifactId, {
+        artifactId,
+        totalFindings: count,
+        openFindings: count,
+        deferredFindings: 0,
+        criticalFindings: 0,
+        highFindings: 0,
+        mediumFindings: 0,
+        lowFindings: count,
+      });
+    });
+    return summaries;
+  }, [graph.findingSummaries, findingsCountByArtifactId]);
+  const [findingsOnly, setFindingsOnly] = React.useState(false);
+  const findingBearingDependencyCount = React.useMemo(
+    () => graph.nodes.filter(
+      (node) => node.id !== rootArtifactId && (findingsByArtifactId.get(node.id)?.totalFindings ?? 0) > 0,
+    ).length,
+    [graph.nodes, rootArtifactId, findingsByArtifactId],
+  );
+  const visibleGraph = React.useMemo(() => {
+    const graphWithFindings = {
+      ...graph,
+      findingSummaries: Array.from(findingsByArtifactId.values()),
+    };
+    if (!findingsOnly) return graphWithFindings;
+    const visibleIds = new Set(
+      graphWithFindings.nodes
+        .filter((node) => node.id === rootArtifactId || (findingsByArtifactId.get(node.id)?.totalFindings ?? 0) > 0)
+        .map((node) => node.id),
+    );
+    return {
+      ...graphWithFindings,
+      nodes: graphWithFindings.nodes.filter((node) => visibleIds.has(node.id)),
+      edges: graphWithFindings.edges.filter((edge) => visibleIds.has(edge.sourceArtifactId) && visibleIds.has(edge.targetArtifactId)),
+    };
+  }, [findingsOnly, graph, rootArtifactId, findingsByArtifactId]);
   const { nodes, edges } = React.useMemo(
-    () => layoutDependencyGraph(graph, rootArtifactId),
-    [graph, rootArtifactId],
+    () => layoutDependencyGraph(visibleGraph, rootArtifactId),
+    [visibleGraph, rootArtifactId],
   );
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [selectedArtifactId, setSelectedArtifactId] = React.useState<string | null>(null);
   const [view, setView] = React.useState<'graph' | 'list'>('graph');
   const selectedArtifact = React.useMemo(
-    () => graph.nodes.find((node) => node.id === selectedArtifactId) ?? null,
-    [graph.nodes, selectedArtifactId],
+    () => visibleGraph.nodes.find((node) => node.id === selectedArtifactId) ?? null,
+    [visibleGraph.nodes, selectedArtifactId],
   );
 
   // React Flow nodes are focusable and Enter/Space selects them, but only a click reaches
@@ -220,7 +344,7 @@ export function AiDependencyGraph({
 
   return (
     <div className="ai-dependency-graph-view">
-      <div className="ai-dependency-graph-toolbar" role="group" aria-label="Relationship view">
+      <div className="ai-dependency-graph-toolbar" role="group" aria-label="Relationship view and finding filter">
         <button type="button" className="btn btn-secondary btn-sm" aria-pressed={view === 'graph'} onClick={() => setView('graph')}>
           Graph
         </button>
@@ -235,9 +359,24 @@ export function AiDependencyGraph({
         >
           List
         </button>
+        <div className="ai-dependency-graph-findings-toggle" role="group" aria-label="Finding filter">
+          <span>Show dependencies with findings</span>
+          <button
+            type="button"
+            className={`ai-dependency-graph-toggle${findingsOnly ? ' is-on' : ''}`}
+            aria-label="Show dependencies with findings"
+            aria-pressed={findingsOnly}
+            onClick={() => setFindingsOnly((current) => !current)}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        <span className="panel-caption" role="status">
+          {findingBearingDependencyCount} dependencies with active/deferred findings
+        </span>
       </div>
       {view === 'list' ? (
-        <RelationshipList graph={graph} rootArtifactId={rootArtifactId} onNodeClick={onNodeClick} />
+        <RelationshipList graph={visibleGraph} rootArtifactId={rootArtifactId} onNodeClick={onNodeClick} findingsByArtifactId={findingsByArtifactId} />
       ) : (
         <div
           ref={containerRef}
@@ -247,26 +386,27 @@ export function AiDependencyGraph({
           onKeyDown={handleKeyDown}
         >
           <ReactFlowProvider>
-            <ReactFlow
+            <DependencyGraphCanvas
               nodes={nodes}
               edges={edges}
-              nodeTypes={NODE_TYPES}
-              fitView
-              nodesDraggable={false}
-              nodesConnectable={false}
-              onNodeClick={(_event, node) => setSelectedArtifactId(node.id)}
+              onNodeClick={setSelectedArtifactId}
               onPaneClick={() => setSelectedArtifactId(null)}
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background />
-              <Controls showInteractive={false} />
-            </ReactFlow>
+            />
           </ReactFlowProvider>
           {selectedArtifact && (
             <GraphNodeDetailsPopup
               artifact={selectedArtifact}
               isRoot={selectedArtifact.id === rootArtifactId}
-              findingsCount={findingsCountByArtifactId[selectedArtifact.id] ?? 0}
+              findingSummary={findingsByArtifactId.get(selectedArtifact.id) ?? {
+                artifactId: selectedArtifact.id,
+                totalFindings: 0,
+                openFindings: 0,
+                deferredFindings: 0,
+                criticalFindings: 0,
+                highFindings: 0,
+                mediumFindings: 0,
+                lowFindings: 0,
+              }}
               policies={policies}
               onDismiss={dismissPopup}
               onViewDetails={(artifactId) => {

@@ -81,7 +81,10 @@ public class GhsaSyncService {
     @Value("${app.ghsa.per-page:100}")
     private int ghsaPerPage;
 
-    @Value("${app.ghsa.max-pages-per-sync:40}")
+    // Keep the default aligned with the GitHub collection cap. 40 pages only
+    // permits 4,000 advisories at the API's maximum page size and can truncate
+    // a normal modified-window sync before its checkpoint is complete.
+    @Value("${app.ghsa.max-pages-per-sync:250}")
     private int ghsaMaxPagesPerSync;
 
     @Value("${app.github.max-retries:4}")

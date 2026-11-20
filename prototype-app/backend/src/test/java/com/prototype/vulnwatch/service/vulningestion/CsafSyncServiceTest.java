@@ -59,8 +59,8 @@ class CsafSyncServiceTest {
         var documents = List.of(new CsafDocumentRef("https://example.test/advisories/one.json", false),
                 new CsafDocumentRef("https://example.test/advisories/two.json", false));
         when(discovery.collectDocumentRefs(distributions, CsafProvider.REDHAT)).thenReturn(documents);
-        when(fetcher.fetch(documents.get(0).url())).thenReturn(CsafDocumentFetchResult.failure(1, "HTTP_ERROR", "Unavailable"));
-        when(fetcher.fetch(documents.get(1).url())).thenReturn(CsafDocumentFetchResult.success("{}", 1));
+        when(fetcher.fetch(documents.get(0).url(), CsafProvider.REDHAT.providerKey())).thenReturn(CsafDocumentFetchResult.failure(1, "HTTP_ERROR", "Unavailable"));
+        when(fetcher.fetch(documents.get(1).url(), CsafProvider.REDHAT.providerKey())).thenReturn(CsafDocumentFetchResult.success("{}", 1));
         when(ingestor.ingestDocument(eq(CsafProvider.REDHAT), any(), eq(documents.get(1).url()), eq(false), any(), any()))
                 .thenReturn(new CsafIngestionCounters(0, 0, java.util.Set.of()));
         CsafSyncService service = new CsafSyncService(filterConfig, tenantService, executor, runs, effects,
@@ -107,7 +107,7 @@ class CsafSyncServiceTest {
             when(vulnerabilities.findAllCveExternalIds()).thenReturn(List.of());
         }
         for (CsafDocumentRef document : documents) {
-            when(fetcher.fetch(document.url())).thenReturn(CsafDocumentFetchResult.failure(1, "HTTP_ERROR", "Unavailable"));
+            when(fetcher.fetch(document.url(), provider.providerKey())).thenReturn(CsafDocumentFetchResult.failure(1, "HTTP_ERROR", "Unavailable"));
         }
         CsafSyncService service = new CsafSyncService(filterConfig, tenantService, executor, runs, effects,
                 discovery, fetcher, ingestor, new ObjectMapper(), vulnerabilities);

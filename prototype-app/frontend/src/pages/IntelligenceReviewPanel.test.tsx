@@ -8,6 +8,8 @@ import { IntelligenceReviewPanel } from './IntelligenceReviewPanel';
 const ready: Candidate = { id: 'candidate-1', status: 'READY', base_release_id: null, digest: 'a'.repeat(64), selected_run_ids: ['run-1'], expanded_run_ids: ['run-0', 'run-1'], normalization_policy: 'sg-normalization-1', quality_report: { canonical_records: 1, exclusions: 1 }, error_code: null, published_release_id: null };
 describe('reviewed intelligence publication', () => {
   beforeEach(() => {
+    vi.spyOn(intelligenceApi, 'profiles').mockResolvedValue([]);
+    vi.spyOn(intelligenceApi, 'progress').mockResolvedValue({ status: 'READY', phase: 'READY', processed: 0, total: null, heartbeat_at: null, started_at: null, checkpoint: null, attempt_count: 0, events: [] });
     vi.spyOn(api, 'listSyncRuns').mockResolvedValue([
       { id: 'run-1', syncType: 'NVD', status: 'completed', recordsFetched: 1, recordsInserted: 0, recordsUpdated: 1, recordsFailed: 0, startedAt: '2026-10-22T00:00:00Z', runDomain: 'VULN_INTEL', runClass: 'INGESTION' },
       { id: 'failed', syncType: 'GHSA', status: 'failed', recordsFetched: 1, recordsInserted: 0, recordsUpdated: 0, recordsFailed: 1, startedAt: '2026-10-22T00:00:00Z', runDomain: 'VULN_INTEL', runClass: 'INGESTION' },
@@ -21,8 +23,8 @@ describe('reviewed intelligence publication', () => {
   afterEach(() => vi.restoreAllMocks());
   it('shows expanded checkpoints and requires review of the exact candidate before approval', async () => {
     renderWithProviders(<IntelligenceReviewPanel />);
-    expect(screen.queryByLabelText(/GHSA/)).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByLabelText(/NVD/));
+    expect(screen.queryByLabelText(/GHSA ·/)).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByLabelText(/NVD ·/));
     fireEvent.click(screen.getByRole('button', { name: 'Build review candidate' }));
     expect(await screen.findByText('Candidate · READY')).toBeInTheDocument();
     expect(screen.getByText('Selected runs: 1 · Expanded runs: 2')).toBeInTheDocument();
@@ -51,7 +53,7 @@ describe('reviewed intelligence publication', () => {
   it('keeps stale approval errors visible for a rebuild', async () => {
     vi.mocked(intelligenceApi.publish).mockRejectedValue(new Error('Candidate base release changed; rebuild and review'));
     renderWithProviders(<IntelligenceReviewPanel />);
-    fireEvent.click(await screen.findByLabelText(/NVD/));
+    fireEvent.click(await screen.findByLabelText(/NVD ·/));
     fireEvent.click(screen.getByRole('button', { name: 'Build review candidate' }));
     fireEvent.click(await screen.findByLabelText(/I reviewed the expanded selection/));
     fireEvent.click(screen.getByRole('button', { name: 'Approve and publish' }));

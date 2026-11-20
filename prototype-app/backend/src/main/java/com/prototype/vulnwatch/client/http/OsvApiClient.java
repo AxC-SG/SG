@@ -30,6 +30,33 @@ public class OsvApiClient {
     this.restTemplate = restTemplate;
   }
 
+  /** Stream the complete public dataset without buffering the archive in heap. */
+  public int streamDataset(java.util.function.Consumer<OsvVulnerability> sink) {
+    Integer count = restTemplate.execute("https://storage.googleapis.com/osv-vulnerabilities/all.zip",
+        org.springframework.http.HttpMethod.GET, null, response -> {
+          var mapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules()
+              .disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+          int records = 0;
+          try (var zip = new java.util.zip.ZipInputStream(response.getBody())) {
+            java.util.zip.ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+              if (entry.isDirectory() || !entry.getName().endsWith(".json")) continue;
+              byte[] bytes = zip.readNBytes(16 * 1024 * 1024 + 1);
+              if (bytes.length > 16 * 1024 * 1024) throw new java.io.IOException("OSV record exceeds size limit");
+              OsvVulnerability value = mapper.readValue(bytes, OsvVulnerability.class);
+              if (value.getId() == null || value.getId().isBlank() || value.getModified() == null)
+                throw new java.io.IOException("OSV record has no identifier or modification time");
+              sink.accept(value);
+              records++;
+            }
+          }
+          if (records == 0) throw new java.io.IOException("OSV dataset contained no records");
+          return records;
+        });
+    if (count == null) throw new IllegalStateException("OSV dataset unavailable");
+    return count;
+  }
+
   public OsvQueryResponse queryByPackageVersion(String ecosystem, String packageName, String version) {
     log.debug("Querying OSV: {}:{}@{}", ecosystem, packageName, version);
 

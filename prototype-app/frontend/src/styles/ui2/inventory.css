@@ -386,8 +386,15 @@ html[data-ui='2'] .ui2-inventory-family .cloud-resources-title {
 /* Relationship view switch: the list is the readable alternative to the dependency canvas. */
 html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-toolbar {
   display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: var(--dp-space-2, 8px);
   margin-bottom: var(--dp-space-3, 12px);
+}
+
+html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-toolbar > .panel-caption {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 html[data-ui='2'] .ui2-inventory-family .ai-dependency-graph-toolbar [aria-pressed='true'] {

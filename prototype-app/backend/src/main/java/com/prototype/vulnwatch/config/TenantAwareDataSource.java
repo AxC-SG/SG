@@ -96,8 +96,9 @@ public class TenantAwareDataSource extends DelegatingDataSource {
         String value = tenantId != null
                 ? tenantId.toString()
                 : requireTenantContext && !platformContext && !preAuthenticationContext ? NO_TENANT_SENTINEL : "";
+        // A migration or previous borrower may have disabled RLS on the pooled session.
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT set_config('app.current_tenant_id', ?, FALSE)")) {
+                "SELECT set_config('app.current_tenant_id', ?, FALSE), set_config('row_security', 'on', FALSE)")) {
             ps.setString(1, value);
             ps.execute();
         }

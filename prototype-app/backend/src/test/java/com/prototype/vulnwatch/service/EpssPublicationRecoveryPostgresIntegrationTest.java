@@ -22,11 +22,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @PostgresIntegrationTest
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class EpssPublicationRecoveryPostgresIntegrationTest {
-    private static final LocalPostgresTestDatabase.DatabaseConfig DB =
-            LocalPostgresTestDatabase.provision("phase3_epss_publication");
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
-        PostgresITSupport.registerDatabaseProperties(registry, DB);
+        PostgresITSupport.registerDatabaseProperties(registry,
+                LocalPostgresTestDatabase.provision("phase3_epss_" + UUID.randomUUID().toString().substring(0, 8)));
     }
     @Autowired TenantService tenants;
     @Autowired TenantSchemaMigrationService migrations;
@@ -44,7 +44,7 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
 
     @BeforeEach void setup() {
         TenantContext.clear();
-        jdbc.update("delete from platform.sync_runs where sync_type='EPSS'");
+        // Each method gets a fresh catalog, preserving immutable publication history.
         jdbc.update("delete from platform.vulnerabilities");
         first = tenant(); second = tenant();
         rows = new ArrayList<>();
@@ -65,7 +65,8 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         var partial = runs.requireRun(execute());
         assertEquals("partial", partial.getStatus());
         assertEquals(5, partial.getRecordsFetched()); assertEquals(2, partial.getRecordsUpdated());
-        assertEquals(3, partial.getRecordsFailed()); assertEquals(3, calls.get());
+        // Only the two CVEs in the failed request count as failures; a valid empty page does not.
+        assertEquals(2, partial.getRecordsFailed()); assertEquals(3, calls.get());
         respond(payload());
         var complete = runs.requireRun(execute());
         assertEquals("completed", complete.getStatus());
@@ -74,6 +75,27 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
         for(var row:rows) assertNull(vulnerabilities.findById(row.getId()).orElseThrow().getEpssScore());
         ReviewedIntelligenceTestSupport.publishAll(reviewContext);
         for(var row:rows) assertEquals(0.75,vulnerabilities.findById(row.getId()).orElseThrow().getEpssScore());
+    }
+
+    @Test void aValidResponseWithoutEveryRequestedScoreCompletesTheRun() {
+        for (int n = 1; n <= 5; n++) row(n);
+        AtomicInteger calls = new AtomicInteger();
+        when(transport.exchange(anyString(), any(), any(), eq(String.class), anyString(), any(), any()))
+                .thenAnswer(call -> {
+                    int page = calls.incrementAndGet();
+                    return ResponseEntity.ok(page == 1 ? payloadFor(0, 1) : "{\"data\":[]}");
+                });
+
+        var complete = runs.requireRun(execute());
+        assertEquals("completed", complete.getStatus());
+        assertEquals(5, complete.getRecordsFetched());
+        assertEquals(2, complete.getRecordsUpdated());
+        assertEquals(0, complete.getRecordsFailed());
+
+        ReviewedIntelligenceTestSupport.publishAll(reviewContext);
+        assertEquals(0.75, vulnerabilities.findById(rows.get(0).getId()).orElseThrow().getEpssScore());
+        assertEquals(0.75, vulnerabilities.findById(rows.get(1).getId()).orElseThrow().getEpssScore());
+        assertNull(vulnerabilities.findById(rows.get(2).getId()).orElseThrow().getEpssScore());
     }
 
     private UUID execute() {
@@ -96,6 +118,13 @@ class EpssPublicationRecoveryPostgresIntegrationTest {
     private String payload() {
         return "{\"data\":[" + rows.stream().map(row -> "{\"cve\":\"" + row.getExternalId()
                 + "\",\"epss\":\"0.75\"}").collect(java.util.stream.Collectors.joining(",")) + "]}";
+    }
+
+    private String payloadFor(int... indexes) {
+        return "{\"data\":[" + java.util.Arrays.stream(indexes)
+                .mapToObj(index -> "{\"cve\":\"" + rows.get(index).getExternalId()
+                        + "\",\"epss\":\"0.75\"}")
+                .collect(java.util.stream.Collectors.joining(",")) + "]}";
     }
     private void respond(String payload) {
         when(transport.exchange(anyString(), any(), any(), eq(String.class), anyString(), any(), any()))

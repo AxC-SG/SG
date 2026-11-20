@@ -150,18 +150,21 @@ describe('ConfigurationsPage', () => {
   it('persists a reviewed investigation when the rule runs investigation', async () => {
     mockBaseApis();
     vi.spyOn(api, 'listSoftwareIdentities').mockResolvedValue({ content: [] } as never);
-    vi.spyOn(cveWorkbenchApi, 'listOrgSpecificCves').mockResolvedValue({
-      items: [
-        {
-          externalId: 'CVE-2026-9999',
-          severity: 'CRITICAL',
-          cvssScore: 9.8,
-          epssScore: 0.91,
-          inKev: true,
-          matchedSoftwareCount: 1,
-        },
-      ],
-    } as never);
+    const cveListItem = {
+      externalId: 'CVE-2026-9999',
+      severity: 'CRITICAL',
+      cvssScore: 9.8,
+      epssScore: 0.91,
+      inKev: true,
+      matchedSoftwareCount: 1,
+    };
+    const listOrgSpecificCves = vi.spyOn(cveWorkbenchApi, 'listOrgSpecificCves').mockImplementation(async (params) => ({
+      items: params?.page === 0 ? Array.from({ length: 200 }, () => cveListItem) : [cveListItem],
+      page: params?.page ?? 0,
+      size: params?.size ?? 200,
+      totalItems: 201,
+      totalPages: 2,
+    } as never));
     vi.spyOn(cveWorkbenchApi, 'getCveDetail').mockResolvedValue({
       summary: {
         externalId: 'CVE-2026-9999',
@@ -316,6 +319,9 @@ describe('ConfigurationsPage', () => {
       expect(cveWorkbenchApi.generateInvestigationSummary).toHaveBeenCalled();
       expect(cveWorkbenchApi.createServiceNowIncident).toHaveBeenCalled();
     });
+    expect(listOrgSpecificCves).toHaveBeenCalledTimes(2);
+    expect(listOrgSpecificCves).toHaveBeenNthCalledWith(1, expect.objectContaining({ page: 0, size: 200, includeAll: true }));
+    expect(listOrgSpecificCves).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: 1, size: 200, includeAll: true }));
   });
 
   function suppressionRule(overrides: Partial<SuppressionRule> = {}): SuppressionRule {

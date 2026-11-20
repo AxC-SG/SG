@@ -1399,6 +1399,27 @@
   padding: var(--dp-space-3) 0;
 }
 
+:where(html[data-ui='2']) .vi-source-full-sync {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--dp-critical) 18%, var(--dp-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dp-critical) 5%, var(--dp-surface));
+}
+
+:where(html[data-ui='2']) .vi-source-full-sync h4 {
+  margin: 0 0 4px;
+  color: var(--dp-text);
+}
+
+:where(html[data-ui='2']) .vi-source-full-sync .bulk-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 :where(html[data-ui='2']) .vi-source-header {
   display: flex;
   align-items: center;

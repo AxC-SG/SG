@@ -258,7 +258,10 @@ export function VulnRepoVulnerabilitiesPage() {
     if (v === 'false') return 'no';
     return null;
   }, [searchParams]);
-  const initialSources = React.useMemo(() => parseCsvParam(searchParams.get('source')), [searchParams]);
+  const initialSources = React.useMemo(
+    () => parseCsvParam(searchParams.get('source')).map((source) => source.toLowerCase()),
+    [searchParams]
+  );
   const [page, setPage] = React.useState(0);
   const [queryInput, setQueryInput] = React.useState(initialQuery);
   const [query, setQuery] = React.useState(initialQuery);
@@ -864,7 +867,21 @@ export function VulnRepoVulnerabilitiesPage() {
     }
     const SOURCE_LABELS: Record<string, string> = { nvd: 'NVD', euvd: 'EUVD', ghsa: 'GHSA', kev: 'KEV', 'csaf-redhat': 'Red Hat', 'vex-microsoft': 'Microsoft', advisory: 'Advisory', 'japan-vulndb': 'JVNDB' };
     sourceFilters.forEach((s) => {
-      chips.push({ label: `Source: ${SOURCE_LABELS[s.toLowerCase()] ?? s}`, onRemove: () => { setSourceFilters((f) => f.filter((x) => x !== s)); setPage(0); } });
+      chips.push({
+        label: `Source: ${SOURCE_LABELS[s.toLowerCase()] ?? s}`,
+        onRemove: () => {
+          const nextSourceFilters = sourceFilters.filter((x) => x !== s);
+          setSourceFilters(nextSourceFilters);
+          const nextParams = new URLSearchParams(searchParams);
+          if (nextSourceFilters.length > 0) {
+            nextParams.set('source', nextSourceFilters.join(','));
+          } else {
+            nextParams.delete('source');
+          }
+          setPage(0);
+          setSearchParams(nextParams);
+        },
+      });
     });
     return chips;
   }, [initialApplicable, severityFilters, statusFilters, sourceFilters, colFilters, searchParams, setSearchParams, updateSeverityFilters, updateStatusFilters]);
@@ -891,6 +908,7 @@ export function VulnRepoVulnerabilitiesPage() {
     nextParams.delete('applicable');
     nextParams.delete('impactedOnly');
     nextParams.delete('hasFindings');
+    nextParams.delete('source');
     setPage(0);
     setSearchParams(nextParams);
   }, [searchParams, setSearchParams]);
@@ -1035,8 +1053,18 @@ export function VulnRepoVulnerabilitiesPage() {
                     type="button"
                     className={`vuln-repo-source-pill${active ? ' is-active' : ''}`}
                     onClick={() => {
-                      setSourceFilters((f) => f.includes(value) ? f.filter((x) => x !== value) : [...f, value]);
+                      const nextSourceFilters = active
+                        ? sourceFilters.filter((x) => x !== value)
+                        : [...sourceFilters, value];
+                      setSourceFilters(nextSourceFilters);
+                      const nextParams = new URLSearchParams(searchParams);
+                      if (nextSourceFilters.length > 0) {
+                        nextParams.set('source', nextSourceFilters.join(','));
+                      } else {
+                        nextParams.delete('source');
+                      }
                       setPage(0);
+                      setSearchParams(nextParams);
                     }}
                   >
                     {label}

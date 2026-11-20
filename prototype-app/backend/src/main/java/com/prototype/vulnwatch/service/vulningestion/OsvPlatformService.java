@@ -35,7 +35,6 @@ public class OsvPlatformService {
   private final OsvApiClient osvApiClient;
   private final OsvAdvisoryRepository osvAdvisoryRepository;
   private final AdvisoryEquivalenceRepository equivalenceRepository;
-  private final SoftwareIdentityRepository softwareIdentityRepository;
   private final ObjectMapper objectMapper;
 
   @Autowired
@@ -47,28 +46,41 @@ public class OsvPlatformService {
     this.osvApiClient = osvApiClient;
     this.osvAdvisoryRepository = osvAdvisoryRepository;
     this.equivalenceRepository = equivalenceRepository;
-    this.softwareIdentityRepository = softwareIdentityRepository;
     this.objectMapper = new ObjectMapper().findAndRegisterModules();
   }
 
   private com.prototype.vulnwatch.service.IntelligenceStagingService staging;
+  public record SyncResult(int fetched, int staged) {}
+  public SyncResult syncDataset() {
+    int[] count={0};
+    syncOsvAdvisories(value -> count[0]++);
+    return new SyncResult(count[0], count[0]);
+  }
   @Autowired void configureStaging(com.prototype.vulnwatch.service.IntelligenceStagingService staging) { this.staging=staging; }
 
   @Transactional
   public void syncOsvAdvisories() {
+    syncOsvAdvisories(value -> {});
+  }
+
+  private void syncOsvAdvisories(java.util.function.Consumer<OsvVulnerability> progress) {
     log.info("Starting OSV advisory sync");
 
     try {
-      Map<String, Set<String>> inventoryPackages = getInventoryPackages();
-      List<String> ecosystems = List.of("npm", "PyPI", "Go", "crates.io", "RubyGems");
-
-      for (String ecosystem : ecosystems) {
-        try {
-          syncEcosystemPackages(ecosystem, inventoryPackages.getOrDefault(ecosystem, Set.of()));
-        } catch (Exception e) {
-          throw new IllegalStateException("OSV ecosystem retrieval is incomplete: " + ecosystem, e);
+      osvApiClient.streamDataset(vuln -> {
+        String ecosystem = "UNKNOWN", packageName = vuln.getId();
+        if (vuln.getAffected() != null) {
+          for (var affected : vuln.getAffected()) {
+            var pkg = affected.getPackage_info();
+            if (pkg != null && pkg.getName() != null && pkg.getEcosystem() != null) {
+              ecosystem = pkg.getEcosystem(); packageName = pkg.getName(); break;
+            }
+          }
         }
-      }
+        // Keep every affected package and range in affectedRanges and osvData.
+        saveOsvAdvisory(ecosystem, packageName, vuln);
+        progress.accept(vuln);
+      });
 
       // Structured aliases are staged with each fetched record below.
 
@@ -76,82 +88,6 @@ public class OsvPlatformService {
 
     } catch (Exception e) {
       throw new IllegalStateException("OSV advisory sync failed; previous intelligence is retained", e);
-    }
-  }
-
-  private void syncEcosystemPackages(String ecosystem, Set<String> packages) {
-    log.debug("Syncing OSV for ecosystem: {}", ecosystem);
-
-    try {
-      if (packages.isEmpty()) {
-        log.debug("No packages found for ecosystem: {}", ecosystem);
-        return;
-      }
-
-      log.info("Querying OSV for {} packages in ecosystem: {}", packages.size(), ecosystem);
-
-      for (String packageName : packages) {
-        try {
-          OsvQueryResponse response = osvApiClient.queryByPackageVersion(
-              ecosystem,
-              packageName,
-              null
-          );
-
-          if (response != null && response.getVulns() != null) {
-            for (OsvVulnerability vuln : response.getVulns()) {
-              saveOsvAdvisory(ecosystem, packageName, vuln);
-            }
-          }
-        } catch (Exception e) {
-          throw new IllegalStateException("OSV package retrieval is incomplete", e);
-        }
-      }
-
-      log.debug("Completed OSV sync for ecosystem: {}", ecosystem);
-
-    } catch (Exception e) {
-      throw new IllegalStateException("OSV ecosystem retrieval is incomplete", e);
-    }
-  }
-
-  private Map<String, Set<String>> getInventoryPackages() {
-    log.debug("Fetching unique packages from inventory");
-    Map<String, Set<String>> result = new HashMap<>();
-
-    try {
-      for (SoftwareIdentity identity : softwareIdentityRepository.findAll()) {
-        String purl = identity.getPurl();
-        if (purl == null || !purl.startsWith("pkg:")) {
-          continue;
-        }
-        int slash = purl.indexOf('/');
-        if (slash < 5) {
-          continue;
-        }
-        String ecosystem = switch (purl.substring(4, slash).toLowerCase(java.util.Locale.ROOT)) {
-          case "npm" -> "npm";
-          case "pypi" -> "PyPI";
-          case "golang" -> "Go";
-          case "cargo" -> "crates.io";
-          case "gem" -> "RubyGems";
-          default -> null;
-        };
-        if (ecosystem == null) {
-          continue;
-        }
-        String encodedName = purl.substring(slash + 1).split("[@?\\#]", 2)[0];
-        String packageName = URLDecoder.decode(encodedName.replace("+", "%2B"), StandardCharsets.UTF_8);
-        if (!packageName.isBlank()) {
-          result.computeIfAbsent(ecosystem, ignored -> new HashSet<>()).add(packageName);
-        }
-      }
-
-      log.debug("Found {} ecosystems with packages", result.size());
-      return result;
-
-    } catch (Exception e) {
-      throw new IllegalStateException("OSV package inventory is unavailable", e);
     }
   }
 

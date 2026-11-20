@@ -789,9 +789,55 @@ public class AiSecurityApiService {
                 }
             }
             boolean truncated = nodes.size() >= 500 || edges.size() > 1000;
+            List<GraphFindingSummary> findingSummaries = graphFindingSummaries(nodes.stream()
+                    .map(ArtifactResponse::id).toList());
             return new GraphResponse(nodes.stream().limit(500).toList(), edges.stream().limit(1000).toList(),
-                    truncated, runtimeOverlay);
+                    truncated, runtimeOverlay, findingSummaries);
         });
+    }
+
+    /**
+     * Graph highlighting must not depend on the paginated findings list.  The graph is scoped to
+     * the current tenant and reports findings that are still actionable: OPEN findings plus
+     * SUPPRESSED findings, which are the product's deferred/accepted-risk state. Resolved and
+     * auto-closed findings deliberately do not make a dependency appear risky.
+     */
+    private List<GraphFindingSummary> graphFindingSummaries(List<UUID> artifactIds) {
+        if (artifactIds.isEmpty()) return List.of();
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("ids", artifactIds)
+                .addValue("provider", null, Types.VARCHAR)
+                .addValue("subscription", null, Types.VARCHAR)
+                .addValue("nativeKind", null, Types.VARCHAR);
+        return jdbc.query("""
+                select fs.artifact_id,
+                       count(*) as total_findings,
+                       count(*) filter (where f.status = 'OPEN') as open_findings,
+                       count(*) filter (where f.status = 'SUPPRESSED') as deferred_findings,
+                       count(*) filter (where coalesce(f.severity_override, case when f.risk_score >= 9 then 'CRITICAL'
+                           when f.risk_score >= 7 then 'HIGH' when f.risk_score >= 4 then 'MEDIUM' else 'LOW' end) = 'CRITICAL') as critical_findings,
+                       count(*) filter (where coalesce(f.severity_override, case when f.risk_score >= 9 then 'CRITICAL'
+                           when f.risk_score >= 7 then 'HIGH' when f.risk_score >= 4 then 'MEDIUM' else 'LOW' end) = 'HIGH') as high_findings,
+                       count(*) filter (where coalesce(f.severity_override, case when f.risk_score >= 9 then 'CRITICAL'
+                           when f.risk_score >= 7 then 'HIGH' when f.risk_score >= 4 then 'MEDIUM' else 'LOW' end) = 'MEDIUM') as medium_findings,
+                       count(*) filter (where coalesce(f.severity_override, case when f.risk_score >= 9 then 'CRITICAL'
+                           when f.risk_score >= 7 then 'HIGH' when f.risk_score >= 4 then 'MEDIUM' else 'LOW' end) = 'LOW') as low_findings
+                  from findings f
+                  """ + FINDING_CONTEXT + """
+                 where fs.artifact_id in (:ids)
+                   and f.finding_kind in ('AI_POSTURE', 'AI_EXPOSURE')
+                   and f.status in ('OPEN', 'SUPPRESSED')
+                 group by fs.artifact_id
+                 order by fs.artifact_id
+                """, params, (rs, rowNum) -> new GraphFindingSummary(
+                rs.getObject("artifact_id", UUID.class),
+                rs.getLong("total_findings"),
+                rs.getLong("open_findings"),
+                rs.getLong("deferred_findings"),
+                rs.getLong("critical_findings"),
+                rs.getLong("high_findings"),
+                rs.getLong("medium_findings"),
+                rs.getLong("low_findings")));
     }
 
     static RuntimeWindow runtimeWindow(UUID rootArtifactId, boolean includeRuntime,
@@ -1871,7 +1917,19 @@ public class AiSecurityApiService {
             List<RelationshipResponse> edges,
             boolean truncated,
             @JsonInclude(JsonInclude.Include.NON_NULL)
-            AiAgentExecutionRelationshipProjectionService.RuntimeOverlay runtimeOverlay
+            AiAgentExecutionRelationshipProjectionService.RuntimeOverlay runtimeOverlay,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY)
+            List<GraphFindingSummary> findingSummaries
+    ) {
+        public GraphResponse(List<ArtifactResponse> nodes, List<RelationshipResponse> edges, boolean truncated,
+                             AiAgentExecutionRelationshipProjectionService.RuntimeOverlay runtimeOverlay) {
+            this(nodes, edges, truncated, runtimeOverlay, List.of());
+        }
+    }
+
+    public record GraphFindingSummary(
+            UUID artifactId, long totalFindings, long openFindings, long deferredFindings,
+            long criticalFindings, long highFindings, long mediumFindings, long lowFindings
     ) {
     }
 

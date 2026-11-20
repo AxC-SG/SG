@@ -201,6 +201,24 @@ describe('FindingsPage', () => {
     expect(await screen.findByText('F-001')).toBeInTheDocument();
   });
 
+  it('renders partially populated imported findings without crashing the drill-down page', async () => {
+    const { listFindings } = mockFindingsWorkspace();
+    listFindings.mockResolvedValue(pageOf([buildFinding({
+      assetName: null as unknown as string,
+      assetType: null as unknown as string,
+      packageName: null as unknown as string,
+      packageVersion: null as unknown as string,
+      vulnerabilityId: null as unknown as string,
+      severity: null as unknown as string,
+      riskScore: null as unknown as number,
+    })]));
+
+    renderWithProviders(<FindingsPage />, { route: '/findings?status=OPEN' });
+
+    expect(await screen.findByText('F-001')).toBeInTheDocument();
+    expect(screen.queryByText(/This page could not be loaded/i)).not.toBeInTheDocument();
+  });
+
   it('keeps rows visible when a widget source fails and shows unavailable indicators instead of zero', async () => {
     const { summary, distributions } = mockFindingsWorkspace();
     summary.mockRejectedValue(new Error('summary down'));

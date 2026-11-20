@@ -17,6 +17,9 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
   flyway:
+    postgresql:
+      # Concurrent index creation must not wait on Flyway's own transaction lock.
+      transactional-lock: false
     enabled: true
     locations: classpath:db/migration/postgres_reset
     # Platform migrations must never inherit the tenant-aware connection's
@@ -178,6 +181,7 @@ app:
     bootstrap:
       platform-owners:
         enabled: ${APP_PLATFORM_OWNER_BOOTSTRAP_ENABLED:false}
+
         local-password: ${APP_LOCAL_PLATFORM_OWNER_PASSWORD:}
         users: []
     playground:
@@ -207,6 +211,11 @@ app:
       enabled: ${APP_TURNSTILE_ENABLED:false}
       secret-key: ${APP_TURNSTILE_SECRET_KEY:}
       expected-hostname: ${APP_TURNSTILE_EXPECTED_HOSTNAME:}
+  vulnerability-intel:
+    # Tenant delivery refreshes the current central vulnerability repository.
+    # Feed acquisition/publication remains a separate platform concern.
+    tenant-refresh-interval-ms: ${APP_VULNERABILITY_INTEL_TENANT_REFRESH_INTERVAL_MS:86400000}
+    tenant-refresh-initial-delay-ms: ${APP_VULNERABILITY_INTEL_TENANT_REFRESH_INITIAL_DELAY_MS:86400000}
   tenancy:
     tenant-switch-guard-mode: ${APP_TENANT_SWITCH_GUARD_MODE:FAIL}
     allow-header-tenant-selection: ${APP_ALLOW_HEADER_TENANT_SELECTION:false}
@@ -214,8 +223,8 @@ app:
     default-schema: ${APP_DEFAULT_TENANT_SCHEMA:tenant_default}
     enforce-schema-version: ${APP_ENFORCE_TENANT_SCHEMA_VERSION:false}
     # Defaults must equal TenantSchemaCompatibility; MigrationCatalogTest fails when they drift.
-    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:30}
-    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:30}
+    minimum-compatible-schema-version: ${APP_MINIMUM_TENANT_SCHEMA_VERSION:76}
+    maximum-compatible-schema-version: ${APP_MAXIMUM_TENANT_SCHEMA_VERSION:76}
   test-personas:
     enabled: ${APP_TEST_PERSONAS_ENABLED:false}
     token-ttl-minutes: ${APP_TEST_PERSONA_TOKEN_TTL_MINUTES:60}
@@ -264,6 +273,14 @@ app:
     min-request-interval-ms: ${NVD_MIN_REQUEST_INTERVAL_MS:700}
     max-retries: ${NVD_MAX_RETRIES:5}
     retry-base-backoff-ms: ${NVD_RETRY_BASE_BACKOFF_MS:1000}
+  jvn:
+    # MyJVN's legacy endpoint is unavailable; consume the live JVNDBRSS update feed.
+    api-url: ${JVN_API_URL:https://jvndb.jvn.jp/en/rss/jvndb.rdf}
+    per-page: ${JVN_PER_PAGE:50}
+    max-pages-per-sync: ${JVN_MAX_PAGES_PER_SYNC:100}
+    min-request-interval-ms: ${JVN_MIN_REQUEST_INTERVAL_MS:${HTTP_OUTBOUND_MIN_REQUEST_INTERVAL_MS:200}}
+    max-retries: ${JVN_MAX_RETRIES:${HTTP_OUTBOUND_MAX_RETRIES:3}}
+    retry-base-backoff-ms: ${JVN_RETRY_BASE_BACKOFF_MS:${HTTP_OUTBOUND_RETRY_BASE_BACKOFF_MS:500}}
   csaf:
     max-documents-per-sync: ${CSAF_MAX_DOCUMENTS_PER_SYNC:300}
     document-fetch-max-attempts: ${CSAF_DOCUMENT_FETCH_MAX_ATTEMPTS:3}
@@ -280,10 +297,13 @@ app:
     api-url: ${GHSA_API_URL:https://api.github.com/advisories}
     default-lookback-days: ${GHSA_DEFAULT_LOOKBACK_DAYS:7}
     per-page: ${GHSA_PER_PAGE:100}
-    max-pages-per-sync: ${GHSA_MAX_PAGES_PER_SYNC:40}
+    max-pages-per-sync: ${GHSA_MAX_PAGES_PER_SYNC:250}
   euvd:
     api-url: ${EUVD_API_URL:https://euvdservices.enisa.europa.eu/api/search}
     per-page: ${EUVD_PER_PAGE:100}
+    # EUVD's unfiltered catalog is much larger than one bounded sync. The API supports
+    # updated-date filters, so refresh a rolling window and retain strict pagination checks.
+    updated-window-days: ${EUVD_UPDATED_WINDOW_DAYS:7}
     max-pages-per-sync: ${EUVD_MAX_PAGES_PER_SYNC:200}
     min-request-interval-ms: ${EUVD_MIN_REQUEST_INTERVAL_MS:${HTTP_OUTBOUND_MIN_REQUEST_INTERVAL_MS:0}}
     max-retries: ${EUVD_MAX_RETRIES:${HTTP_OUTBOUND_MAX_RETRIES:3}}
@@ -305,6 +325,10 @@ app:
       poll-batch-size: ${APP_INGESTION_JOB_POLL_BATCH_SIZE:10}
       max-concurrent-per-tenant: ${APP_INGESTION_JOB_MAX_CONCURRENT_PER_TENANT:1}
       retry-delay-ms: ${APP_INGESTION_JOB_RETRY_DELAY_MS:5000}
+  vulnerability-ingestion:
+    # CSAF discovery can download multi-megabyte provider indexes before the first
+    # document is committed; the lease must cover that bounded discovery phase.
+    lease-seconds: ${APP_VULNERABILITY_INGESTION_LEASE_SECONDS:900}
   epss:
     # BLG-016: EPSS (Exploit Prediction Scoring System) integration
     base-url: ${EPSS_BASE_URL:https://api.first.org/data/v1/epss}
