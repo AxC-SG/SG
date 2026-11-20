@@ -1,4 +1,5 @@
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { BrandMark } from './components/BrandMark';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1437,8 +1438,12 @@ function AppShell() {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isPublicMarketingRoute = /^\/demo(?:\/|$)/i.test(location.pathname);
+
   return (
     <React.Suspense fallback={routeLoadingFallback()}>
+      {isPublicMarketingRoute && <Analytics />}
       <PerformanceInstrumentation />
       <Routes>
         <Route path="/demo" element={<DemoLandingPage />} />
