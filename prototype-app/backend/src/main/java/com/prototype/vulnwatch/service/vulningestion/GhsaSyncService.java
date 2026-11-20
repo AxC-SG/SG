@@ -33,7 +33,8 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -71,6 +72,10 @@ public class GhsaSyncService {
     private final OutboundPolicyFactory outboundPolicyFactory;
     private final ObjectMapper objectMapper;
     private final GithubTokenProvider githubTokenProvider;
+    private final FeedRunCheckpointService checkpoints;
+    private final FeedWatermarkService watermarks;
+
+    private record Scope(String firstUrl, String severity, String coverageKey, String through, int maxPages, int pageSize) {}
 
     @Value("${app.ghsa.api-url:" + GHSA_DEFAULT_API_URL + "}")
     private String ghsaApiUrl;
@@ -108,7 +113,9 @@ public class GhsaSyncService {
             OutboundHttpClient outboundHttpClient,
             OutboundPolicyFactory outboundPolicyFactory,
             ObjectMapper objectMapper,
-            GithubTokenProvider githubTokenProvider
+            GithubTokenProvider githubTokenProvider,
+            FeedRunCheckpointService checkpoints,
+            FeedWatermarkService watermarks
     ) {
         this.vulnerabilityIntelObservationRepository = vulnerabilityIntelObservationRepository;
         this.vulnerabilityRepository = vulnerabilityRepository;
@@ -125,6 +132,8 @@ public class GhsaSyncService {
         this.outboundPolicyFactory = outboundPolicyFactory;
         this.objectMapper = objectMapper;
         this.githubTokenProvider = githubTokenProvider;
+        this.checkpoints = checkpoints;
+        this.watermarks = watermarks;
     }
 
     public void runScheduledSync() {
@@ -148,81 +157,105 @@ public class GhsaSyncService {
     }
 
     private IngestionResult executeGhsaSync(SyncRun run) {
-        int fetched = 0;
+        var progress = FeedRunCheckpointService.Progress.initial();
+        Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
+        try {
+            var saved = checkpoints.open(run, "ghsa", Scope.class, this::scan);
+            Scope scope = saved.input();
+            progress = saved.progress();
+            var metadata = new LinkedHashMap<>(syncRunService.ghsaFiltersMetadata(
+                    new VulnerabilitySourceFilterConfigService.GhsaFilters(scope.severity())));
+            metadata.put("modifiedWindow", UriComponentsBuilder.fromUriString(scope.firstUrl()).build()
+                    .getQueryParams().getFirst("modified"));
+            metadata.put("pageSize", scope.pageSize());
+            metadata.put("maxPagesPerSync", scope.maxPages());
+            syncRunService.applyRunMetadata(run, "ghsa", metadata);
+
+            while (!progress.finished() && progress.nextBatch() < scope.maxPages()) {
+                String current = progress.nextBatch() == 0 ? scope.firstUrl() : progress.cursor();
+                validateCursor(scope.firstUrl(), current);
+                ResponseEntity<String> response = exchangeJson(current);
+                String body = response.getBody();
+                JsonNode records = body == null ? null : objectMapper.readTree(body);
+                String next = parseLinkNext(response.getHeaders().getFirst(HttpHeaders.LINK));
+                if (records == null || !records.isArray() || records.size() > scope.pageSize()
+                        || (records.isEmpty() && next != null)) {
+                    throw new IllegalStateException("GHSA returned a malformed or incomplete page");
+                }
+                if (next != null) validateCursor(scope.firstUrl(), next);
+                List<String> ids = new java.util.ArrayList<>(records.size());
+                records.forEach(advisory -> {
+                    String id = advisory.path("ghsa_id").asText("").trim().toUpperCase(Locale.ROOT);
+                    if (!id.matches("GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}")) {
+                        throw new IllegalStateException("GHSA returned an invalid advisory ID");
+                    }
+                    ids.add(id);
+                });
+                progress = checkpoints.commit(run, progress, current, ids, next, null, next == null,
+                        () -> stagePage(records, changedVulnerabilityIds));
+            }
+            if (!progress.finished()) throw new IllegalStateException("GHSA page limit reached before the feed ended");
+            effectsService.recomputeCveDeltas(changedVulnerabilityIds);
+            var completed = progress;
+            checkpoints.finish(() -> {
+                syncRunService.completeRun(run, "completed", completed.fetched(), completed.inserted(), completed.updated(), 0, null);
+                watermarks.complete(scope.coverageKey(), Instant.parse(scope.through()));
+            });
+            return new IngestionResult("ok", progress.fetched(), progress.inserted(), progress.updated(), "GHSA sync complete");
+        } catch (VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (Exception failure) {
+            syncRunService.completeRun(run, "failed", progress.fetched(), progress.inserted(), progress.updated(), 0, failure.getMessage());
+            return new IngestionResult("failed", progress.fetched(), progress.inserted(), progress.updated(), failure.getMessage());
+        }
+    }
+
+    private Scope scan() {
+        var filters = vulnerabilitySourceFilterConfigService.resolvePlatformGhsaFilters();
+        String severity = support.hasText(filters.severity()) ? filters.severity().trim().toLowerCase(Locale.ROOT) : "";
+        String scope = ghsaApiUrl + "\n" + severity;
+        String coverageKey = "ghsa:" + org.springframework.util.DigestUtils.md5DigestAsHex(
+                scope.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Instant now = Instant.now();
+        Instant modifiedStart = watermarks.completedUntil(coverageKey)
+                .map(watermark -> watermark.minus(1, ChronoUnit.DAYS))
+                .orElseGet(() -> now.minus(Math.max(1, ghsaDefaultLookbackDays), ChronoUnit.DAYS));
+        LocalDate from = modifiedStart.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate through = now.atZone(ZoneOffset.UTC).toLocalDate();
+        int pageSize = Math.max(1, Math.min(100, ghsaPerPage));
+        var uri = UriComponentsBuilder.fromUriString(ghsaApiUrl)
+                .queryParam("per_page", pageSize).queryParam("sort", "updated").queryParam("direction", "asc")
+                .queryParam("modified", from + ".." + through);
+        if (!severity.isEmpty()) uri.queryParam("severity", severity);
+        return new Scope(uri.build().toUriString(), severity, coverageKey, now.toString(), Math.max(1, ghsaMaxPagesPerSync), pageSize);
+    }
+
+    private void validateCursor(String firstUrl, String cursor) {
+        URI first = URI.create(firstUrl);
+        URI next = URI.create(cursor);
+        if (first.getHost() == null || next.getHost() == null || !first.getHost().equalsIgnoreCase(next.getHost())
+                || !Objects.equals(first.getScheme(), next.getScheme()) || first.getPort() != next.getPort()
+                || !Objects.equals(first.getPath(), next.getPath()) || next.getRawUserInfo() != null
+                || next.getRawFragment() != null) {
+            throw new IllegalStateException("GHSA pagination left the original feed endpoint");
+        }
+    }
+
+    private FeedRunCheckpointService.Counts stagePage(JsonNode advisories, Set<UUID> changed) {
         int inserted = 0;
         int updated = 0;
-        Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
-        VulnerabilitySourceFilterConfigService.GhsaFilters filters =
-                vulnerabilitySourceFilterConfigService.resolvePlatformGhsaFilters();
-        syncRunService.applyRunMetadata(run, "ghsa", syncRunService.ghsaFiltersMetadata(filters));
-        try {
-            int safePerPage = Math.max(1, Math.min(100, ghsaPerPage));
-            int safeMaxPages = Math.max(1, ghsaMaxPagesPerSync);
-
-            Instant now = Instant.now();
-            Instant modifiedStart = now.minus(Math.max(1, ghsaDefaultLookbackDays), ChronoUnit.DAYS);
-            Optional<Instant> watermark=support.latestSuccessfulModified("ghsa");
-            if (watermark.isPresent()) {
-                modifiedStart = watermark.get().minus(1, ChronoUnit.DAYS);
+        for (JsonNode advisory : advisories) {
+            GhsaIngestionCounters counters = upsertGhsaAdvisory(advisory);
+            inserted += counters.inserted();
+            updated += counters.updated();
+            String cveId = support.firstNonBlank(support.textValue(advisory.path("cve_id")),
+                    firstCveIdentifier(advisory.path("identifiers")));
+            if (support.hasText(cveId)) {
+                vulnerabilityRepository.findByExternalId(cveId.trim().toUpperCase(Locale.ROOT))
+                        .map(Vulnerability::getId).ifPresent(changed::add);
             }
-
-            LocalDate modifiedFromDate = modifiedStart.atZone(ZoneOffset.UTC).toLocalDate();
-            LocalDate modifiedToDate = now.atZone(ZoneOffset.UTC).toLocalDate();
-            String modifiedWindow = modifiedFromDate + ".." + modifiedToDate;
-            String nextUrl = UriComponentsBuilder.fromUriString(ghsaApiUrl)
-                    .queryParam("per_page", safePerPage)
-                    .queryParam("sort", "updated")
-                    .queryParam("direction", "asc")
-                    .queryParam("modified", modifiedWindow)
-                    .build()
-                    .toUriString();
-            if (support.hasText(filters.severity())) {
-                nextUrl = UriComponentsBuilder.fromUriString(nextUrl)
-                        .queryParam("severity", filters.severity().toLowerCase(Locale.ROOT))
-                        .build()
-                        .toUriString();
-            }
-
-            int pageCount = 0;
-            while (support.hasText(nextUrl) && pageCount < safeMaxPages) {
-                ResponseEntity<String> response = exchangeJson(nextUrl);
-                JsonNode advisoriesNode = objectMapper.readTree(response.getBody() == null ? "[]" : response.getBody());
-                if (!advisoriesNode.isArray() || advisoriesNode.isEmpty()) {
-                    break;
-                }
-
-                fetched += advisoriesNode.size();
-                for (JsonNode advisoryNode : advisoriesNode) {
-                    GhsaIngestionCounters counters = upsertGhsaAdvisory(advisoryNode);
-                    inserted += counters.inserted();
-                    updated += counters.updated();
-                    String cveId = support.firstNonBlank(
-                            support.textValue(advisoryNode.path("cve_id")),
-                            firstCveIdentifier(advisoryNode.path("identifiers"))
-                    );
-                    if (support.hasText(cveId)) {
-                        vulnerabilityRepository.findByExternalId(cveId.trim().toUpperCase(Locale.ROOT))
-                                .map(Vulnerability::getId)
-                                .ifPresent(changedVulnerabilityIds::add);
-                    }
-                }
-
-                pageCount++;
-                run.setRecordsFetched(fetched);
-                run.setRecordsInserted(inserted);
-                run.setRecordsUpdated(updated);
-                syncRunService.save(run);
-                nextUrl = parseLinkNext(response.getHeaders().getFirst(HttpHeaders.LINK));
-            }
-
-            if(support.hasText(nextUrl)) throw new IllegalStateException("GHSA page limit reached before the full checkpoint was staged");
-            effectsService.recomputeCveDeltas(changedVulnerabilityIds);
-            syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
-            return new IngestionResult("ok", fetched, inserted, updated, "GHSA sync complete");
-        } catch (Exception e) {
-            syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
-            return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
         }
+        return new FeedRunCheckpointService.Counts(advisories.size(), inserted, updated, 0);
     }
 
     private GhsaIngestionCounters upsertGhsaAdvisory(JsonNode advisoryNode) {
