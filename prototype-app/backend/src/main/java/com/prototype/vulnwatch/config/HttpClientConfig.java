@@ -119,6 +119,20 @@ public class HttpClientConfig {
         return executor;
     }
 
+    @Bean(name = "vulnerabilityBackfillExecutor")
+    @org.springframework.context.annotation.DependsOn({"dataSource", "vulnerabilityAttemptService"})
+    public ThreadPoolTaskExecutor vulnerabilityBackfillExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(0);
+        executor.setThreadNamePrefix("vulnerability-backfill-");
+        executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "connectorSyncExecutor")
     @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor connectorSyncExecutor() {
