@@ -23,8 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -56,6 +59,7 @@ class SccmInventoryCapturePostgresIntegrationTest {
     @Autowired private SyncRunRepository runs;
     @Autowired private AssetRepository assets;
     @Autowired private InventoryComponentRepository components;
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private TransactionTemplate transactions;
     @Autowired private SccmInventoryCaptureService captures;
     @MockitoSpyBean private SccmQueryService query;
@@ -95,20 +99,23 @@ class SccmInventoryCapturePostgresIntegrationTest {
         });
     }
 
-    @Test
-    void resumingASealedRunReusesItsCaptureAndCommittedCounts() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void resumingASealedRunReusesItsCaptureAndCommittedCounts(boolean beforeCursorMigration) throws Exception {
         var tenant = tenants.getDefaultTenant();
         var config = config(tenant);
         UUID run = schemas.run(tenant, () -> run(tenant));
+        String firstHost = beforeCursorMigration ? "31" : "21";
+        String secondHost = beforeCursorMigration ? "32" : "22";
         doAnswer(call -> {
             call.<Consumer<List<Map<String, String>>>>getArgument(1)
-                    .accept(List.of(install("21", "cached"), install("22", "pending")));
+                    .accept(List.of(install(secondHost, "pending"), install(firstHost, "cached")));
             return null;
         }).when(query).forEachInstallPage(eq(config), any());
         var interrupt = new AtomicBoolean(true);
         doAnswer(call -> {
             var rows = call.<List<Map<String, String>>>getArgument(2);
-            if (!rows.isEmpty() && "22".equals(rows.get(0).get("sys_id")) && interrupt.getAndSet(false)) {
+            if (!rows.isEmpty() && secondHost.equals(rows.get(0).get("sys_id")) && interrupt.getAndSet(false)) {
                 throw new AssertionError("Worker was interrupted");
             }
             return call.callRealMethod();
@@ -117,9 +124,14 @@ class SccmInventoryCapturePostgresIntegrationTest {
         schemas.run(tenant, () -> {
             assertThrows(AssertionError.class,
                     () -> captures.collectAndIngest(config, run, "sccm", DESCRIPTOR, ignored -> {}));
-            var accepted = assets.findByIdentifier("ci:21").orElseThrow();
+            var accepted = assets.findByIdentifier("ci:" + firstHost).orElseThrow();
             var originalUpload = components.findByAsset_IdIn(List.of(accepted.getId())).get(0).getSbomUpload().getId();
-            assertFalse(assets.findByIdentifier("ci:22").isPresent());
+            assertFalse(assets.findByIdentifier("ci:" + secondHost).isPresent());
+            assertEquals(firstHost, jdbc.queryForObject("select last_install_key from sccm_inventory_captures where run_id=?",
+                    String.class, run));
+            if (beforeCursorMigration) {
+                jdbc.update("update sccm_inventory_captures set last_install_key=null where run_id=?", run);
+            }
 
             var completed = assertDoesNotThrow(() ->
                     captures.collectAndIngest(config, run, "sccm", DESCRIPTOR, ignored -> {}));
@@ -128,6 +140,8 @@ class SccmInventoryCapturePostgresIntegrationTest {
             assertEquals(completed, replayed);
             assertEquals(2, completed.assetsIngested());
             assertEquals(2, completed.discoveryRowsProcessed());
+            assertEquals(secondHost, jdbc.queryForObject("select last_install_key from sccm_inventory_captures where run_id=?",
+                    String.class, run));
             assertEquals(originalUpload, components.findByAsset_IdIn(List.of(accepted.getId()))
                     .get(0).getSbomUpload().getId());
             transactions.executeWithoutResult(status -> captures.finish(run));

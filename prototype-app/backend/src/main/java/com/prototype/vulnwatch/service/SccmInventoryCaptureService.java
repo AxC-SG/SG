@@ -96,26 +96,20 @@ public class SccmInventoryCaptureService {
 
     private boolean applyNext(SccmCmdbConfig config, UUID runId, String source,
             CmdbIngestionService.HostInventorySourceDescriptor descriptor) {
-        String prior = jdbc.queryForObject("""
-                select result::text from sccm_inventory_captures where run_id=? and sealed for update
-                """, String.class, runId);
-        List<StagedRow> rows = jdbc.query("""
-                select row_key, payload::text from sccm_inventory_capture_rows
-                where run_id=? and section='DISCOVERY' order by row_key limit ?
-                """, (rs, index) -> new StagedRow(rs.getString(1), decodeRow(rs.getString(2))), runId, DISCOVERY_BATCH_SIZE);
-        if (!rows.isEmpty()) {
-            var result = inventory.ingestRows(config.getTenant(), source, List.of(),
-                    rows.stream().map(StagedRow::payload).toList(), descriptor);
-            jdbc.batchUpdate("""
-                    delete from sccm_inventory_capture_rows where run_id=? and section='DISCOVERY' and row_key=?
-                    """, rows.stream().map(row -> new Object[] {runId, row.key()}).toList());
-            saveProgress(runId, prior, result);
-            return true;
-        }
+        var progress = jdbc.queryForObject("""
+                select result::text, last_install_key from sccm_inventory_captures
+                where run_id=? and sealed for update
+                """, (rs, index) -> new CaptureProgress(rs.getString(1), rs.getString(2)), runId);
+        // Discovery models are drained before the first install transaction.
+        if (progress.lastInstallKey() == null && applyDiscoveryPage(config, runId, source, descriptor, progress)) return true;
+
+        // Walk past already-consumed index entries, including deletes that vacuum has not reclaimed.
+        // The empty boundary is lower than every valid numeric resource ID.
         List<String> nextHost = jdbc.queryForList("""
                 select row_key from sccm_inventory_capture_rows where run_id=? and section='INSTALL'
+                and row_key>coalesce(?, '')
                 order by row_key limit 1
-                """, String.class, runId);
+                """, String.class, runId, progress.lastInstallKey());
         if (nextHost.isEmpty()) return false;
         String host = nextHost.get(0);
         List<Map<String, String>> installs = jdbc.query("""
@@ -125,7 +119,24 @@ public class SccmInventoryCaptureService {
         var result = inventory.ingestRows(config.getTenant(), source, installs, List.of(), descriptor);
         jdbc.update("delete from sccm_inventory_capture_rows where run_id=? and section='INSTALL' and row_key=?",
                 runId, host);
-        saveProgress(runId, prior, result);
+        saveProgress(runId, progress, result, host);
+        return true;
+    }
+
+    private boolean applyDiscoveryPage(SccmCmdbConfig config, UUID runId, String source,
+            CmdbIngestionService.HostInventorySourceDescriptor descriptor, CaptureProgress progress) {
+        List<StagedRow> rows = jdbc.query("""
+                select row_key, payload::text from sccm_inventory_capture_rows
+                where run_id=? and section='DISCOVERY' order by row_key limit ?
+                """, (rs, index) -> new StagedRow(rs.getString(1), decodeRow(rs.getString(2))), runId, DISCOVERY_BATCH_SIZE);
+        if (rows.isEmpty()) return false;
+
+        var result = inventory.ingestRows(config.getTenant(), source, List.of(),
+                rows.stream().map(StagedRow::payload).toList(), descriptor);
+        jdbc.batchUpdate("""
+                delete from sccm_inventory_capture_rows where run_id=? and section='DISCOVERY' and row_key=?
+                """, rows.stream().map(row -> new Object[] {runId, row.key()}).toList());
+        saveProgress(runId, progress, result, null);
         return true;
     }
 
@@ -171,9 +182,11 @@ public class SccmInventoryCaptureService {
                 """, runId, PURGE_BATCH_SIZE);
     }
 
-    private void saveProgress(UUID runId, String prior, CmdbInventorySyncResponse delta) {
-        var total = prior == null ? delta : plus(decodeResult(prior), delta);
-        jdbc.update("update sccm_inventory_captures set result=cast(? as jsonb) where run_id=?", json(total), runId);
+    private void saveProgress(UUID runId, CaptureProgress progress, CmdbInventorySyncResponse delta, String installKey) {
+        var total = progress.result() == null ? delta : plus(decodeResult(progress.result()), delta);
+        jdbc.update("""
+                update sccm_inventory_captures set result=cast(? as jsonb), last_install_key=? where run_id=?
+                """, json(total), installKey, runId);
     }
 
     private static CmdbInventorySyncResponse plus(CmdbInventorySyncResponse a, CmdbInventorySyncResponse b) {
@@ -215,6 +228,7 @@ public class SccmInventoryCaptureService {
         }
     }
 
+    private record CaptureProgress(String result, String lastInstallKey) {}
     private record StagedRow(String key, Map<String, String> payload) {}
 
     private final class Collector {
