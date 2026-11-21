@@ -44,7 +44,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @PostgresControllerIntegrationTest
 @EnabledIfSystemProperty(named = "firstCustomerQualification", matches = "true")
 @WithMockUser(roles = "PLATFORM_OWNER")
-class FirstCustomerReadinessPostgresIntegrationTest {
+class FirstCustomerReadinessQualificationIT {
     private static final int CVES = Integer.getInteger("firstCustomerCves", FirstCustomerCatalogFixture.CVES);
     private static final String OWNER = "qualification-owner";
     private static final String BASELINE = "CVE-2025-99999";

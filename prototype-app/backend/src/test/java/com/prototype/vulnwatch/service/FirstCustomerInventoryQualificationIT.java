@@ -36,6 +36,7 @@ import com.prototype.vulnwatch.support.PostgresITSupport;
 import com.prototype.vulnwatch.util.IdentityUtil;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,10 +61,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 @PostgresControllerIntegrationTest
 @EnabledIfSystemProperty(named = "firstCustomerQualification", matches = "true")
 @WithMockUser(roles = "PLATFORM_OWNER")
-class FirstCustomerInventoryPostgresIntegrationTest {
+class FirstCustomerInventoryQualificationIT {
     private static final int ASSETS = Integer.getInteger("firstCustomerAssets", FirstCustomerInventoryFixture.ASSETS);
     private static final int PRODUCTS = FirstCustomerInventoryFixture.SOFTWARE_PER_ASSET;
     private static final int UNCHANGED_ASSETS = Math.min(25, ASSETS);
+    private static final boolean OVERLAP_INTAKE = Boolean.getBoolean("firstCustomerOverlapIntake");
     private static final String PROBE = "CVE-2025-88888";
     private static final String PROBE_CPE = "cpe:2.3:a:" + PROBE_VENDOR + ":" + PROBE_PRODUCT + ":*:*:*:*:*:*:*:*";
     private static final String OWNER = "qualification-owner";
@@ -71,8 +73,9 @@ class FirstCustomerInventoryPostgresIntegrationTest {
             new CmdbIngestionService.HostInventorySourceDescriptor(
                     "qualification.json", "sccm-jdbc", "sccm", "qualification", null, "application/json", null);
     private static final LocalPostgresTestDatabase.DatabaseConfig DATABASE =
-            FirstCustomerQualificationMetrics.provision(ASSETS == FirstCustomerInventoryFixture.ASSETS
-                    ? "first_customer_inventory" : "first_customer_inventory_smoke");
+            FirstCustomerQualificationMetrics.provision((ASSETS == FirstCustomerInventoryFixture.ASSETS
+                    ? "first_customer_inventory" : "first_customer_inventory_smoke")
+                    + (OVERLAP_INTAKE ? "_overlap" : ""));
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private TenantService tenants;
@@ -130,13 +133,18 @@ class FirstCustomerInventoryPostgresIntegrationTest {
                 null, "initial");
         settle(primary, peer);
         long revision = revision(primary);
+        OffsetDateTime intakeStarted = jdbc.queryForObject("select clock_timestamp()", OffsetDateTime.class);
         try (var measurements = metrics("inventory_initial_capture")) {
-            capture(primary, ASSETS);
+            if (OVERLAP_INTAKE) {
+                captureWithTraffic(primary, peer, measurements);
+            } else {
+                capture(primary, ASSETS);
+                markNormalized(measurements);
+            }
             assertEquals(ASSETS, tenantCount(primary, "select count(*) from assets"));
             assertEquals((long) ASSETS * PRODUCTS, tenantCount(primary, "select count(*) from inventory_components"));
             assertEquals((long) ASSETS * PRODUCTS, tenantCount(primary, "select count(*) from software_instances"));
             assertEquals(revision, revision(primary));
-            measurements.mark("normalized", "assets=" + ASSETS + " observations=" + (long) ASSETS * PRODUCTS);
             printBatchStatistics();
         }
         try (var measurements = metrics("inventory_correlation")) {
@@ -144,6 +152,7 @@ class FirstCustomerInventoryPostgresIntegrationTest {
             assertEquals(Math.min(8, ASSETS), openFindings(primary));
             assertEquals(0L, openFindings(peer));
             measurements.mark("settled", "findings=" + openFindings(primary));
+            printInitialFreshness(primary, intakeStarted);
         }
 
         try (var measurements = metrics("inventory_unchanged_rediscovery")) {
@@ -218,6 +227,96 @@ class FirstCustomerInventoryPostgresIntegrationTest {
         System.out.println("QUALIFICATION fallback=explicit_reevaluation_scheduled");
     }
 
+    private void captureWithTraffic(Tenant primary, Tenant peer, FirstCustomerQualificationMetrics measurements)
+            throws Exception {
+        var executor = Executors.newFixedThreadPool(2);
+        var started = new CountDownLatch(2);
+        var stopWorker = new AtomicBoolean();
+        var stopTraffic = new AtomicBoolean();
+        var latencies = new ArrayList<Long>();
+        try {
+            var correlation = executor.submit(() -> {
+                started.countDown();
+                while (!stopWorker.get()) {
+                    deltas.processPendingDeltas();
+                    rollups.poll();
+                    Thread.sleep(75);
+                }
+                settle(primary, peer);
+                return null;
+            });
+            var traffic = executor.submit(() -> {
+                sampleTraffic(primary, peer, started, stopTraffic, latencies);
+                return null;
+            });
+            assertTrue(started.await(10, TimeUnit.SECONDS));
+            capture(primary, ASSETS);
+            markNormalized(measurements);
+            stopWorker.set(true);
+            correlation.get(30, TimeUnit.MINUTES);
+            stopTraffic.set(true);
+            traffic.get(2, TimeUnit.MINUTES);
+            latencies.sort(Long::compareTo);
+            measurements.mark("overlap_settled", "ui_requests=" + latencies.size()
+                    + " ui_p95_ms=" + latencies.get((int) Math.ceil(latencies.size() * 0.95) - 1));
+        } finally {
+            stopWorker.set(true);
+            stopTraffic.set(true);
+            executor.shutdownNow();
+        }
+    }
+
+    private void markNormalized(FirstCustomerQualificationMetrics measurements) {
+        measurements.mark("normalized", "assets=" + ASSETS + " observations=" + (long) ASSETS * PRODUCTS);
+    }
+
+    private void printInitialFreshness(Tenant tenant, OffsetDateTime intakeStarted) {
+        schemas.run(tenant, () -> {
+            var hosts = jdbc.queryForMap("""
+                    select count(*) hosts,
+                        percentile_cont(0.95) within group (
+                            order by extract(epoch from (completed-uploaded_at))) merge_p95_s,
+                        percentile_cont(0.95) within group (
+                            order by extract(epoch from (completed-min_uploaded))) normalized_p95_from_first_merge_s,
+                        percentile_cont(0.95) within group (
+                            order by extract(epoch from (completed-?))) normalized_p95_from_intake_s
+                    from (
+                        select uploaded_at, min(uploaded_at) over () min_uploaded,
+                            (evidence_json::jsonb->>'completedAt')::timestamptz completed
+                        from sbom_uploads where ingestion_source_system='sccm' and status='SUCCESS'
+                    ) capture
+                    """, intakeStarted);
+            var queue = jdbc.queryForMap("""
+                    select count(*) deltas, max(attempt_count) max_attempts,
+                        percentile_cont(0.95) within group (
+                            order by extract(epoch from (completed_at-enqueued_at))) queue_to_completion_p95_s,
+                        percentile_cont(0.95) within group (
+                            order by extract(epoch from (completed_at-?))) intake_to_delta_completion_p95_s
+                    from finding_delta_queue where source_tag='inventory-write' and event_type='SOFTWARE_DELTA'
+                      and status='DONE'
+                    """, intakeStarted);
+            assertEquals((long) ASSETS, hosts.get("hosts"));
+            assertEquals((long) ASSETS * PRODUCTS, queue.get("deltas"));
+            System.out.println("QUALIFICATION initial_host_freshness=" + hosts);
+            System.out.println("QUALIFICATION initial_delta_freshness=" + queue);
+        });
+    }
+
+    private void sampleTraffic(Tenant primary, Tenant peer, CountDownLatch started,
+            AtomicBoolean done, List<Long> latencies) throws Exception {
+        String[] routes = {"/api/dashboard", "/api/inventory/components?page=0&size=25",
+                "/api/vuln-repo/org-cves?page=0&size=25", "/api/findings?page=0&size=25"};
+        for (int i = 0; i < routes.length || !done.get(); i++) {
+            Tenant tenant = (i / routes.length) % 2 == 0 ? primary : peer;
+            long start = System.nanoTime();
+            if (i == 0) started.countDown();
+            mvc.perform(withTenant(asAnalyst(authedGet(routes[i % routes.length])),
+                    tenant.getId().toString())).andExpect(status().isOk());
+            latencies.add(elapsedMillis(start));
+            Thread.sleep(75);
+        }
+    }
+
     private UUID withdraw(Tenant primary, Tenant peer, UUID release, String key) {
         publications.withdraw(release, key, OWNER);
         publications.poll();
@@ -253,17 +352,7 @@ class FirstCustomerInventoryPostgresIntegrationTest {
                     } while (!done.get());
                 });
                 var traffic = executor.submit(() -> {
-                    String[] routes = {"/api/dashboard", "/api/inventory/components?page=0&size=25",
-                            "/api/vuln-repo/org-cves?page=0&size=25", "/api/findings?page=0&size=25"};
-                    for (int i = 0; i < routes.length || !done.get(); i++) {
-                        Tenant tenant = (i / routes.length) % 2 == 0 ? primary : peer;
-                        long start = System.nanoTime();
-                        if (i == 0) started.countDown();
-                        mvc.perform(withTenant(asAnalyst(authedGet(routes[i % routes.length])),
-                                tenant.getId().toString())).andExpect(status().isOk());
-                        latencies.add(elapsedMillis(start));
-                        Thread.sleep(75);
-                    }
+                    sampleTraffic(primary, peer, started, done, latencies);
                     return null;
                 });
                 assertTrue(started.await(10, TimeUnit.SECONDS));
