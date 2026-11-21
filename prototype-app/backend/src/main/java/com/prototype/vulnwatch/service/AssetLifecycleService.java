@@ -24,6 +24,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
@@ -130,7 +131,7 @@ public class AssetLifecycleService {
         if (asset == null || asset.getTenant() == null) {
             return;
         }
-        tenantSchemaExecutionService.run(asset.getTenant(), () -> executeWrite(() -> {
+        java.util.function.Supplier<Void> write = () -> {
             AssetState previousState = asset.getState();
             asset.setLastInventoryAt(Instant.now());
             asset.setState(AssetState.ACTIVE);
@@ -139,7 +140,14 @@ public class AssetLifecycleService {
                 handleStateTransitionInCurrentTenantSchema(asset, previousState, AssetState.ACTIVE, "inventory-ingest");
             }
             return null;
-        }));
+        };
+        tenantSchemaExecutionService.run(asset.getTenant(), () -> {
+            if (TransactionSynchronizationManager.isActualTransactionActive()
+                    && !TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+                return write.get();
+            }
+            return executeWrite(write);
+        });
     }
 
     public void handleStateTransition(Asset asset, AssetState from, AssetState to, String actor) {

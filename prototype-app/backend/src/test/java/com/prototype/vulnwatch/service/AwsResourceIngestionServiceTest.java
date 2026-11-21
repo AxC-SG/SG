@@ -6,6 +6,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +19,7 @@ import com.prototype.vulnwatch.domain.AssetType;
 import com.prototype.vulnwatch.domain.AwsDiscoveryConfig;
 import com.prototype.vulnwatch.domain.Ci;
 import com.prototype.vulnwatch.domain.Tenant;
+import com.prototype.vulnwatch.dto.CmdbInventorySyncResponse;
 import com.prototype.vulnwatch.repo.AssetRepository;
 import com.prototype.vulnwatch.repo.CiRepository;
 import jakarta.persistence.EntityManager;
@@ -24,8 +28,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.services.ssm.SsmClient;
+import software.amazon.awssdk.services.ssm.model.DescribeInstanceInformationRequest;
+import software.amazon.awssdk.services.ssm.model.DescribeInstanceInformationResponse;
+import software.amazon.awssdk.services.ssm.model.InstanceInformation;
+import software.amazon.awssdk.services.ssm.model.ListInventoryEntriesRequest;
+import software.amazon.awssdk.services.ssm.model.ListInventoryEntriesResponse;
 
 class AwsResourceIngestionServiceTest {
 
@@ -85,6 +103,97 @@ class AwsResourceIngestionServiceTest {
         assertEquals(existingAsset, existingCi.getAsset());
     }
 
+    @Test
+    void ssmFetchesHostsConcurrentlyAndMergesCompleteResultsIndividually() {
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var fixture = ssmFixture(pool);
+            var eachHostStarted = new CountDownLatch(2);
+            when(fixture.ssm().describeInstanceInformation(any(DescribeInstanceInformationRequest.class))).thenAnswer(call -> {
+                eachHostStarted.countDown();
+                if (!eachHostStarted.await(3, TimeUnit.SECONDS)) throw new IllegalStateException("Expected parallel host fetches");
+                return registered(call.getArgument(0));
+            });
+            when(fixture.ssm().listInventoryEntries(any(ListInventoryEntriesRequest.class))).thenReturn(packagePage(null));
+            when(fixture.cmdb().ingestRows(any(), eq("aws"), any(), eq(List.of()), any())).thenReturn(
+                    new CmdbInventorySyncResponse("aws", 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, "complete"));
+
+            var result = fixture.service().ingestEc2SsmPackages(List.of(ec2Record(CANONICAL_EC2_ARN),
+                            ec2Record("arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef1")),
+                    fixture.credentials(), List.of("us-east-1"), tenant(), ACCOUNT_ID);
+
+            assertEquals(2, result.assetsIngested());
+            assertEquals(0, result.failedInstances());
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void ssmFailureOnALaterPageLeavesTheHostInventoryUntouched() {
+        var fixture = ssmFixture(Runnable::run);
+        when(fixture.ssm().describeInstanceInformation(any(DescribeInstanceInformationRequest.class)))
+                .thenAnswer(call -> registered(call.getArgument(0)));
+        when(fixture.ssm().listInventoryEntries(any(ListInventoryEntriesRequest.class)))
+                .thenReturn(packagePage("next")).thenThrow(new IllegalStateException("Second page unavailable"));
+
+        var result = fixture.service().ingestEc2SsmPackages(List.of(ec2Record(CANONICAL_EC2_ARN)), fixture.credentials(),
+                List.of("us-east-1"), tenant(), ACCOUNT_ID);
+
+        assertEquals(1, result.failedInstances());
+        assertEquals(0, result.assetsIngested());
+        verifyNoInteractions(fixture.assets(), fixture.cmdb());
+    }
+
+    @Test
+    void ssmAnOlderCaptureCannotOverwriteTheLatestHostInventory() {
+        var fixture = ssmFixture(Runnable::run);
+        Tenant tenant = tenant();
+        Instant previousCapture = Instant.parse("2026-04-25T00:00:00Z");
+        var existing = cloudAsset(tenant, CANONICAL_EC2_ARN, "EC2", "us-east-1", previousCapture);
+        existing.setSsmInventoryLastCapturedAt(previousCapture);
+        when(fixture.assets().lockByIdentifier(CANONICAL_EC2_ARN)).thenReturn(Optional.of(existing));
+        when(fixture.ssm().describeInstanceInformation(any(DescribeInstanceInformationRequest.class)))
+                .thenAnswer(call -> registered(call.getArgument(0)));
+        when(fixture.ssm().listInventoryEntries(any(ListInventoryEntriesRequest.class))).thenReturn(packagePage(null));
+
+        var result = fixture.service().ingestEc2SsmPackages(List.of(ec2Record(CANONICAL_EC2_ARN)), fixture.credentials(),
+                List.of("us-east-1"), tenant, ACCOUNT_ID);
+
+        assertEquals(0, result.assetsIngested());
+        assertEquals(previousCapture, existing.getSsmInventoryLastCapturedAt());
+        verifyNoInteractions(fixture.cmdb());
+    }
+
+    private SsmFixture ssmFixture(Executor executor) {
+        var assets = mock(AssetRepository.class);
+        var cmdb = mock(CmdbIngestionService.class);
+        var schemas = mock(TenantSchemaExecutionService.class);
+        doAnswer(call -> call.<java.util.function.Supplier<?>>getArgument(1).get())
+                .when(schemas).run(any(Tenant.class), any(java.util.function.Supplier.class));
+        var manager = mock(PlatformTransactionManager.class);
+        when(manager.getTransaction(any())).thenAnswer(call -> new SimpleTransactionStatus());
+        var ssm = mock(SsmClient.class);
+        var credentials = mock(AwsCredentialsProvider.class);
+        var service = spy(new AwsResourceIngestionService(assets, mock(CiRepository.class), cmdb, new ObjectMapper(),
+                mock(EntityManager.class), schemas, executor, new TransactionTemplate(manager)));
+        doReturn(ssm).when(service).openSsm("us-east-1", credentials);
+        return new SsmFixture(service, ssm, credentials, assets, cmdb);
+    }
+
+    private static DescribeInstanceInformationResponse registered(DescribeInstanceInformationRequest request) {
+        return DescribeInstanceInformationResponse.builder().instanceInformationList(InstanceInformation.builder()
+                .instanceId(request.filters().get(0).values().get(0)).build()).build();
+    }
+
+    private static ListInventoryEntriesResponse packagePage(String next) {
+        return ListInventoryEntriesResponse.builder().entries(List.of(Map.of("Name", "fixture", "Version", "1")))
+                .captureTime("2026-04-24T00:00:00Z").nextToken(next).build();
+    }
+
+    private record SsmFixture(AwsResourceIngestionService service, SsmClient ssm, AwsCredentialsProvider credentials,
+                              AssetRepository assets, CmdbIngestionService cmdb) {}
+
     private AwsResourceIngestionService service(Tenant tenant, List<Asset> existingAssets) {
         AssetRepository assetRepository = mock(AssetRepository.class);
         CiRepository ciRepository = mock(CiRepository.class);
@@ -107,7 +216,9 @@ class AwsResourceIngestionServiceTest {
                 mock(CmdbIngestionService.class),
                 new ObjectMapper(),
                 mock(EntityManager.class),
-                tenantSchemaExecutionService
+                tenantSchemaExecutionService,
+                Runnable::run,
+                mock(TransactionTemplate.class)
         );
     }
 

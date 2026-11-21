@@ -32,6 +32,15 @@ public class JvnSyncService {
     @Value("${app.jvn.max-pages-per-sync:100}")
     private int maxPagesPerSync;
 
+    private FeedRunCheckpointService checkpoints;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureCheckpoints(FeedRunCheckpointService checkpoints) {
+        this.checkpoints = checkpoints;
+    }
+
+    private record Scope(JvnApiClient.Scan request, int maxPages) {}
+
     public JvnSyncService(
             JvnApiClient jvnApiClient,
             ObservationIngestionService observationIngestionService,
@@ -65,109 +74,102 @@ public class JvnSyncService {
     }
 
     private IngestionResult executeJvnSync(SyncRun run) {
-        int fetched = 0;
-        int inserted = 0;
-        int updated = 0;
+        var progress = FeedRunCheckpointService.Progress.initial();
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
-        Set<String> seenSourceRecordIds = new HashSet<>();
-        syncRunService.applyRunMetadata(
-                run,
-                "jvn",
-                Map.of(
-                        "pageSize", jvnApiClient.perPage(),
-                        "maxPagesPerSync", maxPagesPerSync
-                )
-        );
+        Set<String> seen = new HashSet<>();
         try {
-            int pageIndex = 0;
-            boolean reachedEnd = false;
-            Integer reportedTotal = null;
-            while (pageIndex < Math.max(1, maxPagesPerSync)) {
-                int startItem = pageIndex * jvnApiClient.perPage() + 1;
-                JvnApiClient.JvnPage page = jvnApiClient.fetchPage(startItem);
-                if (reportedTotal != null && page.totalResults() != reportedTotal) {
+            var scope = checkpoints == null
+                    ? new FeedRunCheckpointService.RunScope<>(new Scope(null, Math.max(1, maxPagesPerSync)), progress)
+                    : checkpoints.open(run, "jvn", Scope.class,
+                            () -> new Scope(jvnApiClient.scan(), Math.max(1, maxPagesPerSync)));
+            progress = scope.progress();
+            Map<String, Object> metadata = new java.util.LinkedHashMap<>();
+            metadata.put("pageSize", scope.input().request() == null ? jvnApiClient.perPage() : scope.input().request().pageSize());
+            metadata.put("maxPagesPerSync", scope.input().maxPages());
+            syncRunService.applyRunMetadata(run, "jvn", metadata);
+
+            while (!progress.finished() && progress.nextBatch() < scope.input().maxPages()) {
+                int position = Math.addExact(Math.multiplyExact(progress.nextBatch(),
+                        checkpoints == null ? jvnApiClient.perPage() : scope.input().request().pageSize()), 1);
+                var page = checkpoints == null ? jvnApiClient.fetchPage(position) : jvnApiClient.fetchPage(position, scope.input().request());
+                if (page.startItem() != position) throw new IllegalStateException("JVN returned an unexpected page position");
+                Integer total = page.totalResults();
+                if (progress.reportedTotal() != null && !progress.reportedTotal().equals(total)) {
                     throw new IllegalStateException("JVN reported total changed during pagination");
                 }
-                if (reportedTotal == null && page.totalResults() > 0) reportedTotal = page.totalResults();
-                if (page.records().isEmpty()) {
-                    if (page.totalResults() > fetched) throw new IllegalStateException("JVN returned an incomplete empty page");
-                    reachedEnd = true;
-                    break;
+                int fetched = Math.addExact(progress.fetched(), page.records().size());
+                if (total != null && fetched > total) throw new IllegalStateException("JVN returned more records than its reported total");
+                boolean finished = total != null && fetched == total;
+                if (page.records().isEmpty() || page.records().size() < page.maxCountItem()) {
+                    if (total != null && fetched < total) throw new IllegalStateException("JVN returned an incomplete page");
+                    finished = true;
                 }
-
-                for (JvnApiClient.JvnRecord record : page.records()) {
-                    if (record.sourceRecordId() == null || record.sourceRecordId().isBlank()
-                            || !seenSourceRecordIds.add(record.sourceRecordId())) {
-                        throw new IllegalStateException("JVN returned a missing or repeated source record ID");
+                var keys = page.records().stream().map(JvnApiClient.JvnRecord::sourceRecordId).toList();
+                java.util.function.Supplier<FeedRunCheckpointService.Counts> stage =
+                        () -> stagePage(page.records(), changedVulnerabilityIds);
+                if (checkpoints != null) {
+                    progress = checkpoints.commit(run, progress, null, keys, null, total, finished, stage);
+                } else {
+                    for (String key : keys) {
+                        if (key == null || key.isBlank() || !seen.add(key)) {
+                            throw new IllegalStateException("JVN returned a missing or repeated source record ID");
+                        }
                     }
+                    progress = progress.advance(null, total, stage.get(), finished);
+                    run.setRecordsFetched(progress.fetched());
+                    run.setRecordsInserted(progress.inserted());
+                    run.setRecordsUpdated(progress.updated());
+                    syncRunService.save(run);
                 }
-                if (page.totalResults() > 0 && fetched + page.records().size() > page.totalResults()) {
-                    throw new IllegalStateException("JVN returned more records than its reported total");
-                }
-
-                fetched += page.records().size();
-                for (JvnApiClient.JvnRecord record : page.records()) {
-                    VulnerabilityIntelligenceService.ObservationUpsertResult result =
-                            observationIngestionService.upsertObservation(
-                                    new VulnerabilityIntelligenceService.ObservationUpsertRequest(
-                                            record.externalId(),
-                                            "japan-vulndb",
-                                            record.sourceRecordId(),
-                                            record.sourceUrl(),
-                                            record.title(),
-                                            record.description(),
-                                            record.severity() == null ? "UNKNOWN" : record.severity(),
-                                            record.cvssScore(),
-                                            record.cvssVector(),
-                                            null,
-                                            Boolean.FALSE,
-                                            null,
-                                            null,
-                                            null,
-                                            record.sourceRecordId(),
-                                            record.publishedAt(),
-                                            record.lastModifiedAt(),
-                                            record.rawJson()
-                                    )
-                            );
-                    Vulnerability vulnerability = result.vulnerability();
-                    if (vulnerability != null && vulnerability.getId() != null) {
-                        changedVulnerabilityIds.add(vulnerability.getId());
-                    }
-                    if (result.vulnerabilityCreated()) {
-                        inserted++;
-                    } else {
-                        updated++;
-                    }
-                }
-
-                run.setRecordsFetched(fetched);
-                run.setRecordsInserted(inserted);
-                run.setRecordsUpdated(updated);
-                syncRunService.save(run);
-
-                int pageSize = page.maxCountItem();
-                int totalResults = page.totalResults();
-                if (totalResults > 0 && fetched >= totalResults) {
-                    reachedEnd = true;
-                    break;
-                }
-                if (page.records().size() < pageSize) {
-                    if (totalResults > fetched) throw new IllegalStateException("JVN returned an incomplete page");
-                    reachedEnd = true;
-                    break;
-                }
-                pageIndex++;
             }
-
-            if (!reachedEnd) throw new IllegalStateException("JVN page limit reached before the feed ended");
-
+            if (!progress.finished()) throw new IllegalStateException("JVN page limit reached before the feed ended");
             effectsService.enqueueCveMetadataDeltas(changedVulnerabilityIds);
-            syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
-            return new IngestionResult("ok", fetched, inserted, updated, "JVN sync complete");
-        } catch (Exception e) {
-            syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
-            return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
+            return complete(run, progress, "completed", "JVN sync complete");
+        } catch (VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (Exception failure) {
+            return complete(run, progress, "failed", failure.getMessage());
         }
+    }
+
+    private FeedRunCheckpointService.Counts stagePage(List<JvnApiClient.JvnRecord> records, Set<UUID> changed) {
+        int inserted = 0;
+        int updated = 0;
+        for (var record : records) {
+            VulnerabilityIntelligenceService.ObservationUpsertResult result =
+                observationIngestionService.upsertObservation(
+                        new VulnerabilityIntelligenceService.ObservationUpsertRequest(
+                                record.externalId(),
+                                "japan-vulndb",
+                                record.sourceRecordId(),
+                                record.sourceUrl(),
+                                record.title(),
+                                record.description(),
+                                record.severity() == null ? "UNKNOWN" : record.severity(),
+                                record.cvssScore(),
+                                record.cvssVector(),
+                                null,
+                                Boolean.FALSE,
+                                null,
+                                null,
+                                null,
+                                record.sourceRecordId(),
+                                record.publishedAt(),
+                                record.lastModifiedAt(),
+                                record.rawJson()
+                        )
+                );
+            Vulnerability vulnerability = result.vulnerability();
+            if (vulnerability != null && vulnerability.getId() != null) changed.add(vulnerability.getId());
+            if (result.vulnerabilityCreated()) inserted++;
+            else updated++;
+        }
+        return new FeedRunCheckpointService.Counts(records.size(), inserted, updated, 0);
+    }
+
+    private IngestionResult complete(SyncRun run, FeedRunCheckpointService.Progress progress, String status, String message) {
+        boolean ok = "completed".equals(status);
+        syncRunService.completeRun(run, status, progress.fetched(), progress.inserted(), progress.updated(), 0, ok ? null : message);
+        return new IngestionResult(ok ? "ok" : status, progress.fetched(), progress.inserted(), progress.updated(), message);
     }
 }

@@ -119,6 +119,20 @@ public class HttpClientConfig {
         return executor;
     }
 
+    @Bean(name = "vulnerabilityBackfillExecutor")
+    @org.springframework.context.annotation.DependsOn({"dataSource", "vulnerabilityAttemptService"})
+    public ThreadPoolTaskExecutor vulnerabilityBackfillExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(0);
+        executor.setThreadNamePrefix("vulnerability-backfill-");
+        executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "connectorSyncExecutor")
     @org.springframework.context.annotation.DependsOn({"dataSource", "ingestionAttemptService"})
     public ThreadPoolTaskExecutor connectorSyncExecutor() {
@@ -128,6 +142,18 @@ public class HttpClientConfig {
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("connector-sync-");
         executor.setTaskDecorator(tenantContextTaskDecorator());
+        configureShutdown(executor);
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "ssmInventoryExecutor")
+    public ThreadPoolTaskExecutor ssmInventoryExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(16);
+        executor.setThreadNamePrefix("ssm-inventory-");
         configureShutdown(executor);
         executor.initialize();
         return executor;

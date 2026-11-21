@@ -100,20 +100,31 @@ public class EuvdApiClient {
         return Math.max(0, updatedWindowDays);
     }
 
+    public record Scan(String endpoint, int pageSize, String fromUpdatedDate, String toUpdatedDate) {}
+
+    public Scan scan() {
+        LocalDate toDate = LocalDate.now(clock.withZone(ZoneOffset.UTC));
+        return updatedWindowDays() > 0
+                ? new Scan(apiUrl, perPage(), toDate.minusDays(updatedWindowDays()).toString(), toDate.toString())
+                : new Scan(apiUrl, perPage(), null, null);
+    }
+
     public EuvdPage fetchPage(int pageNumber) {
+        return fetchPage(pageNumber, scan());
+    }
+
+    public EuvdPage fetchPage(int pageNumber, Scan scan) {
         int safePage = Math.max(0, pageNumber);
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(apiUrl)
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(scan.endpoint())
                 .queryParam("fromScore", 0)
-                .queryParam("toScore", 10)
-                ;
-        if (updatedWindowDays() > 0) {
-            LocalDate toDate = LocalDate.now(clock.withZone(ZoneOffset.UTC));
-            uriBuilder.queryParam("fromUpdatedDate", toDate.minusDays(updatedWindowDays()).toString())
-                    .queryParam("toUpdatedDate", toDate.toString());
+                .queryParam("toScore", 10);
+        if (scan.fromUpdatedDate() != null) {
+            uriBuilder.queryParam("fromUpdatedDate", scan.fromUpdatedDate())
+                    .queryParam("toUpdatedDate", scan.toUpdatedDate());
         }
         String uri = uriBuilder
                 .queryParam("page", safePage)
-                .queryParam("size", perPage())
+                .queryParam("size", scan.pageSize())
                 .build()
                 .toUriString();
         HttpHeaders headers = new HttpHeaders();
@@ -132,10 +143,10 @@ public class EuvdApiClient {
                 this::classifyFailure,
                 response -> response.getBody() == null ? "" : response.getBody()
         );
-        return parsePage(body, safePage);
+        return parsePage(body, safePage, scan);
     }
 
-    private EuvdPage parsePage(String body, int requestedPage) {
+    private EuvdPage parsePage(String body, int requestedPage, Scan scan) {
         try {
             if (body == null || body.isBlank()) {
                 throw new IllegalArgumentException("EUVD returned an empty response");
@@ -147,7 +158,7 @@ public class EuvdApiClient {
             }
             List<EuvdRecord> records = new ArrayList<>();
             for (JsonNode recordNode : recordsNode) {
-                records.add(parseRecord(recordNode));
+                records.add(parseRecord(recordNode, scan.endpoint()));
             }
             Integer total = parseTotalResults(root);
             // Null means the feed did not provide a total; explicit zero remains distinct.
@@ -157,7 +168,7 @@ public class EuvdApiClient {
             }
             int pageSize = intValue(root, "size", "pageSize", "perPage", "limit");
             if (pageSize <= 0) {
-                pageSize = perPage();
+                pageSize = scan.pageSize();
             }
             return new EuvdPage(records, total, pageNumber, pageSize);
         } catch (Exception e) {
@@ -181,7 +192,7 @@ public class EuvdApiClient {
         return null;
     }
 
-    private EuvdRecord parseRecord(JsonNode recordNode) {
+    private EuvdRecord parseRecord(JsonNode recordNode, String endpoint) {
         String sourceRecordId = firstText(recordNode,
                 "id",
                 "euvdId",
@@ -238,7 +249,7 @@ public class EuvdApiClient {
         );
         String sourceUrl = firstText(recordNode, "url", "sourceUrl", "detailUrl", "selfUrl", "link");
         if (sourceUrl == null) {
-            sourceUrl = apiUrl + "/" + sourceRecordId;
+            sourceUrl = endpoint + "/" + sourceRecordId;
         }
         String referencesJson = extractReferencesJson(recordNode);
         return new EuvdRecord(

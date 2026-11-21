@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -32,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskExecutor;
@@ -276,6 +279,37 @@ class NvdSyncServiceTest {
         org.mockito.Mockito.verify(feedWatermarks, org.mockito.Mockito.never()).complete(any(), any());
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void malformedProviderPageFailsWithoutAdvancingWatermark(int failedPageIndex) {
+        UUID runId = UUID.randomUUID();
+        SyncRun run = run("NVD");
+        var filters = new VulnerabilitySourceFilterConfigService.NvdFilters(null, false, false, null, null);
+        String scope = NvdSyncService.nvdScopeKey(filters);
+        when(syncRunService.markRunning(runId)).thenReturn(run);
+        when(vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters()).thenReturn(filters);
+        when(feedWatermarks.completedUntil(scope)).thenReturn(java.util.Optional.of(Instant.now().minus(Duration.ofDays(1))));
+        when(nvdApiClient.fetchPage(eq(failedPageIndex), any(), any(), any(NvdApiClient.NvdQueryFilters.class), isNull()))
+                .thenThrow(new IllegalStateException("Failed to parse NVD response"));
+        if (failedPageIndex == 1) {
+            var record = new NvdApiClient.NvdRecord("CVE-2025-12345", null, null, null, null,
+                    "REJECTED", null, null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, List.of(), null);
+            when(nvdApiClient.fetchPage(eq(0), any(), any(), any(NvdApiClient.NvdQueryFilters.class), isNull()))
+                    .thenReturn(new NvdApiClient.NvdPage(List.of(record), 2, 0, 1));
+            when(observationIngestionService.upsertObservation(any())).thenReturn(
+                    new com.prototype.vulnwatch.service.VulnerabilityIntelligenceService.ObservationUpsertResult(
+                            new com.prototype.vulnwatch.domain.Vulnerability(), false, true));
+        }
+
+        service.executeQueuedNvdSyncAsync(runId);
+
+        verify(syncRunService).completeRun(run, "failed", failedPageIndex, 0, failedPageIndex, 0,
+                "Failed to parse NVD response");
+        verify(feedWatermarks, never()).complete(any(), any());
+        verifyNoInteractions(coverageLedger);
+    }
+
     @Test
     void executeQueuedNvdFullSyncUsesQueuedApiKeyOverride() {
         UUID runId = UUID.randomUUID();
@@ -340,6 +374,20 @@ class NvdSyncServiceTest {
         run.setSyncType(syncType);
         run.setStatus("queued");
         return run;
+    }
+
+    @Test
+    void queuedScheduledProfileDoesNotFetchWhenSchedulingIsDisabled() {
+        UUID runId = UUID.randomUUID();
+        SyncRun run = run("NVD");
+        run.setMetadataJson("{\"triggerMode\":\"profile_baseline\"}");
+        when(syncRunService.markRunning(runId)).thenReturn(run);
+        when(support.hasText(run.getMetadataJson())).thenReturn(true);
+
+        service.executeQueuedNvdSyncAsync(runId);
+
+        verify(syncRunService).completeRun(run, "failed", 0, 0, 0, 0, "Scheduled NVD profiles are disabled");
+        verifyNoInteractions(nvdApiClient, feedWatermarks);
     }
 
     @Test

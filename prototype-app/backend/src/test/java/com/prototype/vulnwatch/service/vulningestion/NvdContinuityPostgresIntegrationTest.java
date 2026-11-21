@@ -200,6 +200,82 @@ class NvdContinuityPostgresIntegrationTest {
         assertTrue(watermarks.completedUntil(key(original)).isEmpty());
     }
 
+    @Test void workerReplacementResumesTheCommittedPageWithItsOriginalIntervalAndFilters() {
+        UUID runId = nvd.triggerNvdSync(24).runId();
+        var initialBounds = new ArrayList<Instant>();
+        when(provider.fetchPage(eq(0), any(), any(), any(), any())).thenAnswer(call -> {
+            initialBounds.add(call.getArgument(1));
+            initialBounds.add(call.getArgument(2));
+            return new NvdApiClient.NvdPage(List.of(resumeRecord("CVE-2026-91001")), 2, 0, 1);
+        });
+        doThrow(new AssertionError("worker stopped")).when(provider).fetchPage(eq(1), any(), any(), any(), any());
+
+        assertThrows(AssertionError.class, () -> executeClaimed(runId));
+        assertEquals(1, jdbc.queryForObject("select count(*) from platform.nvd_page_checkpoints where run_id=?",
+                Integer.class, runId));
+        assertEquals(1, stagedObservations(runId));
+        assertTrue(watermarks.completedUntil(key(original)).isEmpty());
+
+        jdbc.update("update platform.sync_runs set lease_expires_at=now()-interval '1 second' where id=?", runId);
+        syncRuns.recoverStaleRuns();
+        when(filters.resolvePlatformNvdFilters()).thenReturn(changed);
+        doAnswer(call -> {
+            assertEquals(initialBounds.get(0), call.getArgument(1));
+            assertEquals(initialBounds.get(1), call.getArgument(2));
+            assertFalse(call.<NvdApiClient.NvdQueryFilters>getArgument(3).hasKev());
+            return new NvdApiClient.NvdPage(List.of(resumeRecord("CVE-2026-91002")), 2, 1, 1);
+        }).when(provider).fetchPage(eq(1), any(), any(), any(), any());
+        executeClaimed(runId);
+
+        verify(provider, times(1)).fetchPage(eq(0), any(), any(), any(), any());
+        assertEquals(2, stagedObservations(runId));
+        assertEquals(Set.of("CVE-2026-91001", "CVE-2026-91002"), new HashSet<>(jdbc.queryForList("""
+                select cve_id from platform.nvd_observed_interval_ids where run_id=?
+                """, String.class, runId)));
+        assertEquals(initialBounds.get(1), watermarks.completedUntil(key(original)).orElseThrow());
+        assertTrue(watermarks.completedUntil(key(changed)).isEmpty());
+    }
+
+    @Test void failedCheckpointWriteRollsBackTheStagedPageAndKeepsTheWatermark() {
+        Instant prior = Instant.now().minus(Duration.ofDays(1)).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        watermarks.complete(key(original), prior);
+        UUID runId = nvd.triggerNvdSync(24).runId();
+        when(provider.fetchPage(eq(0), any(), any(), any(), any())).thenReturn(new NvdApiClient.NvdPage(
+                List.of(resumeRecord("CVE-2026-91003")), 1, 0, 1));
+        jdbc.execute("""
+                create function platform.reject_nvd_checkpoint_test() returns trigger language plpgsql as $$
+                begin raise exception 'forced checkpoint failure'; end $$
+                """);
+        jdbc.execute("""
+                create trigger reject_nvd_checkpoint_test before insert on platform.nvd_page_checkpoints
+                for each row execute function platform.reject_nvd_checkpoint_test()
+                """);
+        try {
+            executeClaimed(runId);
+            assertEquals("failed", jdbc.queryForObject("select status from platform.sync_runs where id=?",
+                    String.class, runId));
+            assertEquals(0, stagedObservations(runId));
+            assertEquals(0, jdbc.queryForObject("select count(*) from platform.nvd_page_checkpoints where run_id=?",
+                    Integer.class, runId));
+            assertEquals(prior, watermarks.completedUntil(key(original)).orElseThrow());
+        } finally {
+            jdbc.execute("drop trigger reject_nvd_checkpoint_test on platform.nvd_page_checkpoints");
+            jdbc.execute("drop function platform.reject_nvd_checkpoint_test()");
+        }
+    }
+
+    private NvdApiClient.NvdRecord resumeRecord(String cveId) {
+        return new NvdApiClient.NvdRecord(cveId, cveId, "Fixture", 8.0, "HIGH",
+                "Analyzed", null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, List.of(), "{}");
+    }
+
+    private int stagedObservations(UUID runId) {
+        return jdbc.queryForObject("""
+                select count(*) from platform.intelligence_staged_records where sync_run_id=? and kind='OBSERVATION'
+                """, Integer.class, runId);
+    }
+
     @Test
     @org.springframework.security.test.context.support.WithMockUser(roles = "PLATFORM_OWNER")
     void baselinePlanPartitionsLongRangeAndLeavesUnobservedTailExplicit() {

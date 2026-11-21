@@ -12,7 +12,6 @@ import com.prototype.vulnwatch.repo.InventoryComponentCpeMapRepository;
 import com.prototype.vulnwatch.repo.SoftwareInstanceRepository;
 import com.prototype.vulnwatch.repo.VulnerabilityTargetRepository;
 import com.prototype.vulnwatch.util.IdentityUtil;
-import com.prototype.vulnwatch.util.PurlUtil;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -95,7 +94,8 @@ public class CorrelationCandidateService {
                 purlKeys.add(normalizedPurl);
             }
 
-            Set<String> resolvedCoordKeys = deriveCoordKeys(component);
+            Set<String> resolvedCoordKeys = IdentityUtil.correlationCoordKeys(
+                    component.getEcosystem(), component.getPackageName(), component.getPurl());
             if (!resolvedCoordKeys.isEmpty()) {
                 componentCoordKeys.computeIfAbsent(component.getId(), ignored -> new HashSet<>()).addAll(resolvedCoordKeys);
                 coordKeys.addAll(resolvedCoordKeys);
@@ -386,32 +386,6 @@ public class CorrelationCandidateService {
         }
         int index = matchedBy.indexOf('+');
         return index >= 0 ? matchedBy.substring(0, index) : matchedBy;
-    }
-
-    private Set<String> deriveCoordKeys(InventoryComponent component) {
-        Set<String> keys = new HashSet<>();
-        if (component == null) {
-            return keys;
-        }
-
-        String ecosystem = IdentityUtil.normalize(component.getEcosystem());
-        String packageName = IdentityUtil.normalize(component.getPackageName());
-        if (!ecosystem.isBlank() && !packageName.isBlank()) {
-            keys.add(IdentityUtil.coordKey(ecosystem, packageName));
-        }
-
-        PurlUtil.ParsedPurl parsedPurl = PurlUtil.parse(component.getPurl());
-        String purlEcosystem = IdentityUtil.normalize(parsedPurl.ecosystem());
-        String purlPackage = IdentityUtil.normalize(parsedPurl.packageName());
-        String purlNamespace = IdentityUtil.normalize(parsedPurl.namespace());
-        if (!purlEcosystem.isBlank()
-                && !purlPackage.isBlank()
-                && !"unknown".equals(purlEcosystem)
-                && !"unknown".equals(purlPackage)) {
-            keys.add(IdentityUtil.coordKey(purlEcosystem, purlNamespace, purlPackage));
-            keys.add(IdentityUtil.coordKey(purlEcosystem, "", purlPackage));
-        }
-        return keys;
     }
 
     private Map<UUID, List<VulnerabilityTarget>> groupByCpeId(List<VulnerabilityTarget> targets) {

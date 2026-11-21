@@ -29,6 +29,16 @@ public interface FindingRepository extends JpaRepository<Finding, UUID>, JpaSpec
     @Query("select f from Finding f where f.status = :status and (:assetId is null or f.asset.id = :assetId) order by f.id")
     List<Finding> findForMaintenance(@Param("status") FindingStatus status, @Param("assetId") UUID assetId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select f from Finding f where f.id in :ids and f.vulnerability is not null and f.asset is not null
+                and f.component is not null and f.intelligenceEligibility = 'ELIGIBLE'
+                and f.status in (com.prototype.vulnwatch.domain.FindingStatus.OPEN,
+                                 com.prototype.vulnwatch.domain.FindingStatus.SUPPRESSED)
+            order by f.id
+            """)
+    List<Finding> lockFindingsForPublishedScoring(@Param("ids") List<UUID> ids);
+
     interface VulnerabilityFindingCountRow {
         UUID getVulnerabilityId();
         long getFindingCount();

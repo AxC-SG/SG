@@ -156,6 +156,11 @@ public class FindingDeltaQueueService {
     // Public enqueueing API — same signatures as before
     // -------------------------------------------------------------------------
 
+    /** When enabled, inventory and CPE triggers enqueue correlation in the writer's transaction. */
+    public boolean usesIncrementalInventoryCorrelation(UUID tenantId) {
+        return tenantId != null && repository.usesIncrementalInventoryCorrelation(tenantId);
+    }
+
     public int enqueueSoftwareDeltas(UUID tenantId, Collection<UUID> componentIds, String sourceTag) {
         if (tenantId == null || componentIds == null || componentIds.isEmpty()) {
             return 0;

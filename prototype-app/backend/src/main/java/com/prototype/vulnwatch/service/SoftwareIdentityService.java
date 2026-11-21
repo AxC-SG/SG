@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -81,9 +82,10 @@ public class SoftwareIdentityService {
         IdentityMatchRule rule = existing == null ? IdentityMatchRule.NORMALIZED_KEY : existing.matchRule();
         double confidence = existing == null ? 0.90 : existing.confidence();
 
-        hydrateIdentity(identity, normalized, discoveryModel);
-        identity.touch();
-        identity = softwareIdentityRepository.save(identity);
+        if (hydrateIdentity(identity, normalized, discoveryModel)) {
+            identity.touch();
+            identity = softwareIdentityRepository.save(identity);
+        }
         cacheIdentity(identity, normalized, discoveryModel, instance);
 
         if (allowIdentifierRepositoryLookup) {
@@ -232,21 +234,37 @@ public class SoftwareIdentityService {
         return identity;
     }
 
-    private void hydrateIdentity(
+    private boolean hydrateIdentity(
             SoftwareIdentity identity,
             HostSoftwareNormalizationService.NormalizedHostSoftware normalized,
             DiscoveryModel discoveryModel
     ) {
-        identity.setDisplayName(displayName(normalized));
+        String productHash = identity.getProductHash();
+        String vendorProductId = identity.getVendorProductId();
+        if (discoveryModel != null) {
+            if (!hasText(productHash)) {
+                productHash = normalizeText(discoveryModel.getProductHash());
+            }
+            if (!hasText(vendorProductId)) {
+                vendorProductId = trimToNull(discoveryModel.getPrimaryKey());
+            }
+        }
+        String displayName = displayName(normalized);
+        if (Objects.equals(identity.getDisplayName(), displayName)
+                && Objects.equals(identity.getVendor(), normalized.normalizedPublisher())
+                && Objects.equals(identity.getProduct(), normalized.normalizedProduct())
+                && Objects.equals(identity.getPurl(), normalized.purl())
+                && Objects.equals(identity.getProductHash(), productHash)
+                && Objects.equals(identity.getVendorProductId(), vendorProductId)) {
+            return false;
+        }
+        identity.setDisplayName(displayName);
         identity.setVendor(normalized.normalizedPublisher());
         identity.setProduct(normalized.normalizedProduct());
         identity.setPurl(normalized.purl());
-        if (!hasText(identity.getProductHash()) && discoveryModel != null) {
-            identity.setProductHash(normalizeText(discoveryModel.getProductHash()));
-        }
-        if (!hasText(identity.getVendorProductId()) && discoveryModel != null) {
-            identity.setVendorProductId(trimToNull(discoveryModel.getPrimaryKey()));
-        }
+        identity.setProductHash(productHash);
+        identity.setVendorProductId(vendorProductId);
+        return true;
     }
 
     private void upsertIdentifiers(

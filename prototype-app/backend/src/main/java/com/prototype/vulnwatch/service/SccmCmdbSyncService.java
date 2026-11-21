@@ -34,6 +34,8 @@ public class SccmCmdbSyncService {
     private final SccmQueryService sccmQueryService;
     private final SyncRunRepository syncRunRepository;
     private final CmdbIngestionService cmdbIngestionService;
+    private final SccmInventoryCaptureService captures;
+    private final FindingDeltaQueueService findingDeltas;
     private final ObjectMapper objectMapper;
     private final IngestionJobService jobs;
     private final TransactionTemplate transactionTemplate;
@@ -53,7 +55,9 @@ public class SccmCmdbSyncService {
             WorkspaceService workspaceService,
             TenantService tenantService,
             TenantSchemaExecutionService tenantSchemaExecutionService,
-            IngestionJobService jobs
+            IngestionJobService jobs,
+            SccmInventoryCaptureService captures,
+            FindingDeltaQueueService findingDeltas
     ) {
         this.sccmCmdbConfigRepository = sccmCmdbConfigRepository;
         this.sccmCmdbConfigService = sccmCmdbConfigService;
@@ -66,6 +70,8 @@ public class SccmCmdbSyncService {
         this.workspaceService = workspaceService;
         this.tenantService = tenantService;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.captures = captures;
+        this.findingDeltas = findingDeltas;
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -98,6 +104,11 @@ public class SccmCmdbSyncService {
             List<ConfigRef> scheduledConfigs = new java.util.ArrayList<>();
             for (var tenant : tenantService.listActiveTenants()) {
                 tenantSchemaExecutionService.run(tenant, () -> {
+                    try {
+                        captures.pruneTerminalCaptures();
+                    } catch (RuntimeException cleanupFailure) {
+                        LOG.warn("SCCM staging cleanup deferred for tenant {}", tenant.getId());
+                    }
                     sccmCmdbConfigRepository.findByTenant_IdAndSourceSystemIgnoreCase(tenant.getId(), "sccm")
                             .filter(config -> config.isEnabled() && config.isAutoSyncEnabled())
                             .ifPresent(config -> scheduledConfigs.add(new ConfigRef(config.getId(), tenant.getId())));
@@ -202,12 +213,29 @@ public class SccmCmdbSyncService {
 
     public void executeQueuedRun(UUID tenantId, UUID configId, UUID runId, String triggerMode) {
         tenantSchemaExecutionService.run(tenantId, () -> {
+            String existingStatus = requireRun(runId).getStatus();
+            if ("completed".equals(existingStatus) || "failed".equals(existingStatus)) return null;
             markRunRunning(runId, triggerMode);
             try {
                 SccmCmdbConfig config = sccmCmdbConfigRepository.findById(configId)
                         .orElseThrow(() -> new EntityNotFoundException("SCCM CMDB config not found: " + configId));
 
                 LOG.info("SCCM sync run {} starting (trigger={})", runId, triggerMode);
+                String source = defaultIfBlank(config.getSourceSystem(), "sccm");
+                var descriptor = new CmdbIngestionService.HostInventorySourceDescriptor(
+                        "sccm-live-sync", "sccm-jdbc", source, "v_GS_INSTALLED_SOFTWARE",
+                        defaultIfBlank(config.getJdbcUrl(), ""), MediaType.APPLICATION_JSON_VALUE, null);
+                if (findingDeltas.usesIncrementalInventoryCorrelation(tenantId) || captures.exists(runId)) {
+                    var response = captures.collectAndIngest(config, runId, source, descriptor,
+                            collected -> updateRunProgress(runId, collected, "capturing-inventory"));
+                    transactionTemplate.executeWithoutResult(status -> {
+                        completeRun(configId, runId, response,
+                                response.installRowsProcessed() + response.discoveryRowsProcessed(), triggerMode);
+                        captures.finish(runId);
+                    });
+                    return null;
+                }
+
                 List<Map<String, String>> installRows = sccmQueryService.fetchInstallRows(config);
                 updateRunProgress(runId, installRows.size(), "building-discovery");
 
@@ -216,24 +244,27 @@ public class SccmCmdbSyncService {
 
                 CmdbInventorySyncResponse response = cmdbIngestionService.ingestRows(
                         config.getTenant(),
-                        defaultIfBlank(config.getSourceSystem(), "sccm"),
+                        source,
                         installRows,
                         discoveryRows,
-                        new CmdbIngestionService.HostInventorySourceDescriptor(
-                                "sccm-live-sync",
-                                "sccm-jdbc",
-                                defaultIfBlank(config.getSourceSystem(), "sccm"),
-                                "v_GS_INSTALLED_SOFTWARE",
-                                defaultIfBlank(config.getJdbcUrl(), ""),
-                                MediaType.APPLICATION_JSON_VALUE,
-                                null
-                        )
+                        descriptor
                 );
 
                 completeRun(configId, runId, response, installRows.size() + discoveryRows.size(), triggerMode);
+            } catch (IngestionAttemptService.StaleAttemptException stale) {
+                throw stale;
             } catch (Exception e) {
-                LOG.error("SCCM sync run {} failed: {}", runId, e.getMessage(), e);
-                failRun(runId, e.getMessage(), triggerMode);
+                String message = e instanceof org.springframework.dao.DataAccessException
+                        ? "SCCM inventory could not be persisted" : e.getMessage();
+                LOG.warn("SCCM sync run {} failed ({})", runId, e.getClass().getSimpleName());
+                failRun(runId, message, triggerMode);
+                try {
+                    captures.discard(runId);
+                } catch (IngestionAttemptService.StaleAttemptException stale) {
+                    throw stale;
+                } catch (RuntimeException cleanupFailure) {
+                    LOG.warn("SCCM run {} staging cleanup deferred", runId);
+                }
             }
             return null;
         });

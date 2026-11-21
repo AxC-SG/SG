@@ -17,9 +17,6 @@ public class IntelligenceStagingService {
     private final ObjectMapper mapper;
     public IntelligenceStagingService(JdbcTemplate jdbc,ObjectMapper mapper) { this.jdbc=jdbc;this.mapper=mapper; }
 
-    public java.util.Optional<java.time.Instant> latestSuccessfulModified(String source) {
-        return java.util.Optional.ofNullable(jdbc.queryForObject("select max((s.payload->>'lastModifiedAt')::timestamptz) from platform.intelligence_staged_records s join platform.sync_runs r on r.id=s.sync_run_id where s.kind='OBSERVATION' and s.source_system=? and lower(r.status) in ('completed','success')",java.sql.Timestamp.class,source)).map(java.sql.Timestamp::toInstant);
-    }
     public UUID epssUpperId() { return jdbc.queryForObject("select max(id::text)::uuid from (select canonical_id id from platform.intelligence_identifiers union select id from platform.vulnerabilities) ids",UUID.class); }
     public java.util.List<Vulnerability> epssCandidates(java.time.Instant stale,UUID after,UUID upper,int size) {
         return jdbc.query("""

@@ -72,9 +72,11 @@ public class IntelligenceReleaseChangeScopeService {
         },releaseId,afterId==null?0L:afterId);
         boolean complete=rows.size()<=100;
         var page=new ArrayList<>(rows.subList(0,Math.min(100,rows.size())));
-        // Even directly mapped rows do not capture product keys or prove that other
-        // journal rows are complete. No selective fanout consumes this endpoint.
-        return new Page(releaseId,List.copyOf(page),complete || page.isEmpty()?null:page.get(page.size()-1).id(),complete,false);
+        // Routing readiness comes from the manifest committed at activation, independently of this page.
+        boolean routingReady = Boolean.TRUE.equals(jdbc.queryForObject("""
+                select exists(select 1 from platform.intelligence_release_routes where release_id=?)
+                """, Boolean.class, releaseId));
+        return new Page(releaseId,List.copyOf(page),complete || page.isEmpty()?null:page.get(page.size()-1).id(),complete,routingReady);
     }
 
     private static boolean addId(LinkedHashSet<UUID> ids,String value) {

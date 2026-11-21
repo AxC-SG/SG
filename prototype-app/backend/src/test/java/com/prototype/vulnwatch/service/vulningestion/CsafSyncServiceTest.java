@@ -51,7 +51,7 @@ class CsafSyncServiceTest {
     }
 
     @Test
-    void oneSuccessfulDocumentRetainsPartialSuccessWithFailureCount() {
+    void oneFailedDocumentLeavesTheRunPartialAndIneligibleForPublication() {
         SyncRun run = new SyncRun();
         when(runs.createRunningRun("CSAF_REDHAT")).thenReturn(run);
         CsafDistributionSet distributions = new CsafDistributionSet("https://example.test/advisories", "https://example.test/vex");
@@ -60,7 +60,8 @@ class CsafSyncServiceTest {
                 new CsafDocumentRef("https://example.test/advisories/two.json", false));
         when(discovery.collectDocumentRefs(distributions, CsafProvider.REDHAT)).thenReturn(documents);
         when(fetcher.fetch(documents.get(0).url(), CsafProvider.REDHAT.providerKey())).thenReturn(CsafDocumentFetchResult.failure(1, "HTTP_ERROR", "Unavailable"));
-        when(fetcher.fetch(documents.get(1).url(), CsafProvider.REDHAT.providerKey())).thenReturn(CsafDocumentFetchResult.success("{}", 1));
+        when(fetcher.fetch(documents.get(1).url(), CsafProvider.REDHAT.providerKey())).thenReturn(
+                CsafDocumentFetchResult.success("{\"document\":{\"tracking\":{\"id\":\"test\"}}}", 1));
         when(ingestor.ingestDocument(eq(CsafProvider.REDHAT), any(), eq(documents.get(1).url()), eq(false), any(), any()))
                 .thenReturn(new CsafIngestionCounters(0, 0, java.util.Set.of()));
         CsafSyncService service = new CsafSyncService(filterConfig, tenantService, executor, runs, effects,
@@ -69,9 +70,34 @@ class CsafSyncServiceTest {
 
         var result = service.syncRedhatCsaf();
 
-        assertEquals("ok", result.status());
+        assertEquals("partial", result.status());
         assertEquals(1, result.fetched());
-        verify(runs).completeRun(eq(run), eq("completed"), eq(1), eq(0), eq(0), eq(1), contains("documentsFailed=1"));
+        verify(runs).completeRun(eq(run), eq("partial"), eq(1), eq(0), eq(0), eq(1), contains("documentsFailed=1"));
+        verifyNoInteractions(effects);
+    }
+
+    @Test
+    void cappedDiscoveryRemainsPartialEvenWhenSelectedDocumentsSucceed() {
+        SyncRun run = new SyncRun();
+        when(runs.createRunningRun("CSAF_REDHAT")).thenReturn(run);
+        var provider = CsafProvider.REDHAT;
+        var distribution = new CsafDistributionSet("https://example.test/advisories", "https://example.test/vex");
+        var selected = new CsafDocumentRef("https://example.test/advisories/first.json", false);
+        var skipped = new CsafDocumentRef("https://example.test/advisories/second.json", false);
+        when(discovery.discoverDistributions(provider)).thenReturn(distribution);
+        when(discovery.collectDocumentRefs(distribution, provider)).thenReturn(List.of(selected, skipped));
+        when(fetcher.fetch(selected.url(), provider.providerKey())).thenReturn(
+                CsafDocumentFetchResult.success("{\"document\":{\"tracking\":{\"id\":\"test\"}}}", 1));
+        when(ingestor.ingestDocument(eq(provider), any(), eq(selected.url()), eq(false), any(), any()))
+                .thenReturn(new CsafIngestionCounters(0, 0, java.util.Set.of()));
+        var service = new CsafSyncService(filterConfig, tenantService, executor, runs, effects,
+                discovery, fetcher, ingestor, new ObjectMapper(), vulnerabilities);
+        ReflectionTestUtils.setField(service, "csafMaxDocumentsPerSync", 1);
+
+        assertEquals("partial", service.syncRedhatCsaf().status());
+        verify(runs).completeRun(eq(run), eq("partial"), eq(1), eq(0), eq(0), eq(0), contains("selected 1 of 2"));
+        verify(fetcher, never()).fetch(eq(skipped.url()), anyString());
+        verifyNoInteractions(effects);
     }
 
     private void assertEmptyDiscoveryFails(CsafProvider provider) {

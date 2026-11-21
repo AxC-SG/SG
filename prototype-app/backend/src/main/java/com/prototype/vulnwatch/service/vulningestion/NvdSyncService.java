@@ -61,9 +61,18 @@ public class NvdSyncService {
     private final VulnerabilityIngestionEffectsService effectsService;
     private final VulnerabilityIngestionCommonSupport support;
     private final ObjectMapper objectMapper;
+    private NvdPageCheckpointService checkpoints;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureCheckpoints(NvdPageCheckpointService checkpoints) {
+        this.checkpoints = checkpoints;
+    }
 
     @Value("${app.nvd.default-lookback-hours:24}")
     private int defaultNvdLookbackHours;
+
+    @Value("${app.intelligence.scheduled-nvd-profiles.enabled:false}")
+    private boolean scheduledProfilesEnabled;
 
     @Value("${app.nvd.cve-delta-recompute-page-interval:5}")
     private int cveDeltaRecomputePageInterval;
@@ -156,7 +165,11 @@ public class NvdSyncService {
         JsonNode metadata = readQueuedMetadata(run);
         String mode = metadata == null ? "incremental" : metadata.path("triggerMode").asText("incremental");
         if ("profile_baseline".equals(mode)) {
-            executeNvdFullSync(run,null);
+            if (scheduledProfilesEnabled) {
+                executeNvdFullSync(run, null);
+            } else {
+                syncRunService.completeRun(run, "failed", 0, 0, 0, 0, "Scheduled NVD profiles are disabled");
+            }
         } else if ("historical_window".equals(mode)) {
             final Instant from;
             final Instant to;
@@ -195,6 +208,12 @@ public class NvdSyncService {
             return new IngestionResult("failed", 0, 0, 0,
                     "NVD platform filter scope changed before baseline window execution");
         }
+        var scan = openScan(run, from, to, filters);
+        if (scan == null) return unavailableCheckpoint();
+        from = scan.start();
+        to = scan.end();
+        filters = scan.filters();
+        key = nvdScopeKey(filters);
         Set<String> observedIds = new HashSet<>();
         IngestionResult result = executeNvdSyncInternal(run, from, to, null,
                 "NVD historical window complete", false, filters, observedIds);
@@ -264,10 +283,15 @@ public class NvdSyncService {
         Instant start = feedWatermarks.completedUntil(key)
                 .map(value -> value.minus(1, ChronoUnit.HOURS))
                 .orElseGet(() -> end.minus(Math.max(1, lookbackHours), ChronoUnit.HOURS));
+        var scan = openScan(run, start, end, filters);
+        if (scan == null) return unavailableCheckpoint();
+        start = scan.start();
+        filters = scan.filters();
+        key = nvdScopeKey(filters);
         int fetched = 0, inserted = 0, updated = 0;
-        while (start.isBefore(end)) {
+        while (start.isBefore(scan.end())) {
             Instant intervalEnd = start.plus(120, ChronoUnit.DAYS);
-            if (intervalEnd.isAfter(end)) intervalEnd = end;
+            if (intervalEnd.isAfter(scan.end())) intervalEnd = scan.end();
             Set<String> observedIds = new HashSet<>();
             IngestionResult result = executeNvdSyncInternal(run, start, intervalEnd, null,
                     "NVD interval complete", false, filters, observedIds);
@@ -286,8 +310,7 @@ public class NvdSyncService {
             }
             start = intervalEnd;
         }
-        syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
-        feedWatermarks.complete(key,end);
+        completeWithWatermark(run, key, scan.end(), fetched, inserted, updated);
         return new IngestionResult("ok", fetched, inserted, updated, "NVD incremental coverage complete");
     }
 
@@ -303,11 +326,46 @@ public class NvdSyncService {
             return new IngestionResult("failed", 0, 0, 0, message);
         }
         boolean scoped=readQueuedMetadata(run)!=null && readQueuedMetadata(run).has("importProfile");
-        IngestionResult result=executeNvdSyncInternal(run, null, null, apiKeyOverride, "NVD full sync complete", true,
-                scoped ? new VulnerabilitySourceFilterConfigService.NvdFilters(null,false,false,null,null)
-                        : vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters(), null);
-        if(scoped && "ok".equals(result.status())) feedWatermarks.complete("profile:"+readQueuedMetadata(run).path("importProfile").path("id").asText(),Instant.now());
+        var scan = openScan(run, null, null, scoped
+                ? new VulnerabilitySourceFilterConfigService.NvdFilters(null, false, false, null, null)
+                : vulnerabilitySourceFilterConfigService.resolvePlatformNvdFilters());
+        if (scan == null) return unavailableCheckpoint();
+        IngestionResult result = executeNvdSyncInternal(run, null, null, apiKeyOverride,
+                "NVD full sync complete", !scoped, scan.filters(), null);
+        if (scoped && "ok".equals(result.status())) {
+            completeWithWatermark(run, "profile:" + readQueuedMetadata(run).path("importProfile").path("id").asText(),
+                    Instant.now(), result.fetched(), result.inserted(), result.updated());
+        } else if (scoped) {
+            syncRunService.completeRun(run, "failed", result.fetched(), result.inserted(), result.updated(), 0, result.message());
+        }
         return result;
+    }
+
+    private NvdPageCheckpointService.Scan openScan(SyncRun run, Instant start, Instant end,
+            VulnerabilitySourceFilterConfigService.NvdFilters filters) {
+        var proposed = new NvdPageCheckpointService.Scan(start, end, filters);
+        if (checkpoints == null) return proposed;
+        try {
+            return checkpoints.open(run.getId(), proposed);
+        } catch (VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (RuntimeException failure) {
+            syncRunService.completeRun(run, "failed", 0, 0, 0, 0, unavailableCheckpoint().message());
+            return null;
+        }
+    }
+
+    private static IngestionResult unavailableCheckpoint() {
+        return new IngestionResult("failed", 0, 0, 0, "NVD scan checkpoint could not be established safely");
+    }
+
+    private void completeWithWatermark(SyncRun run, String scope, Instant until, int fetched, int inserted, int updated) {
+        Runnable complete = () -> {
+            syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
+            feedWatermarks.complete(scope, until);
+        };
+        if (checkpoints == null) complete.run();
+        else checkpoints.finish(complete);
     }
 
     private Map<String, Object> queuedIncrementalMetadata(int lookbackHours) {
@@ -368,91 +426,78 @@ public class NvdSyncService {
             VulnerabilitySourceFilterConfigService.NvdFilters filters,
             Set<String> observedIds
     ) {
-        int fetched = 0;
-        int inserted = 0;
-        int updated = 0;
         int pagesProcessed = 0;
         int recomputeInterval = Math.max(1, cveDeltaRecomputePageInterval);
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
         Set<String> seenCveIds = observedIds == null ? new HashSet<>() : observedIds;
-        syncRunService.applyRunMetadata(
-                run,
-                "nvd",
-                syncRunService.nvdFiltersMetadata(filters, startInclusive, endExclusive)
-        );
+        String window = startInclusive == null ? "full" : startInclusive.toString();
+        var progress = NvdPageCheckpointService.Progress.initial();
         try {
-            int startIndex = 0;
-            Integer lastObservedTotal = null;
-            while (true) {
-                NvdApiClient.NvdPage page = nvdApiClient.fetchPage(
-                        startIndex,
-                        startInclusive,
-                        endExclusive,
-                        new NvdApiClient.NvdQueryFilters(
-                                filters.cpeName(),
-                                filters.isVulnerable(),
-                                filters.hasKev(),
-                                filters.cvssV3Severity(),
-                                filters.cvssV4Severity()
-                        ),
-                        apiKeyOverride
-                );
-                List<NvdApiClient.NvdRecord> records = page.records();
-                // NVD does not provide a snapshot token. Its corpus can change while a full
-                // scan is paging, so validate each page against its own response metadata.
+            syncRunService.applyRunMetadata(run, "nvd",
+                    syncRunService.nvdFiltersMetadata(filters, startInclusive, endExclusive));
+            if (checkpoints != null) progress = checkpoints.load(run.getId(), window, seenCveIds);
+            while (!progress.finished()) {
+                int startIndex = progress.nextIndex();
+                var page = nvdApiClient.fetchPage(startIndex, startInclusive, endExclusive,
+                        new NvdApiClient.NvdQueryFilters(filters.cpeName(), filters.isVulnerable(), filters.hasKev(),
+                                filters.cvssV3Severity(), filters.cvssV4Severity()), apiKeyOverride);
+                // NVD does not expose a snapshot token, so validate each response before staging it.
                 validateNvdPage(page, startIndex, null);
-                for (NvdApiClient.NvdRecord record : records) {
-                    validateNvdIdentity(record == null ? null : record.cveId(), seenCveIds);
+                List<String> pageIds = new ArrayList<>(page.records().size());
+                for (NvdApiClient.NvdRecord record : page.records()) {
+                    String cveId = record == null ? null : record.cveId();
+                    validateNvdIdentity(cveId, seenCveIds);
+                    pageIds.add(cveId);
                 }
-                lastObservedTotal = page.totalResults();
-                if (records.isEmpty()) {
-                    if (page.totalResults() > startIndex) {
-                        throw new IllegalStateException("NVD returned an incomplete empty page");
+                if (page.records().isEmpty() && page.totalResults() > startIndex) {
+                    throw new IllegalStateException("NVD returned an incomplete empty page");
+                }
+                int nextIndex = Math.addExact(startIndex, Math.max(1, page.resultsPerPage()));
+                boolean finished = nextIndex >= page.totalResults();
+                int fetched = Math.addExact(progress.fetched(), page.records().size());
+                if (finished) validateNvdCompletion(fetched, page.totalResults());
+
+                var previous = progress;
+                java.util.function.Supplier<NvdPageCheckpointService.Progress> stage = () -> {
+                    int inserted = previous.inserted();
+                    int updated = previous.updated();
+                    for (NvdApiClient.NvdRecord record : page.records()) {
+                        if (!matchesImportProfile(run, record)) continue;
+                        if (upsertNvdRecord(record)) inserted++;
+                        else updated++;
+                        vulnerabilityRepository.findByExternalId(record.cveId()).map(Vulnerability::getId)
+                                .ifPresent(changedVulnerabilityIds::add);
                     }
-                    break;
-                }
-
-                fetched += records.size();
-                for (NvdApiClient.NvdRecord record : records) {
-                    if (!matchesImportProfile(run,record)) continue;
-                    boolean created = upsertNvdRecord(record);
-                    if (created) {
-                        inserted++;
-                    } else {
-                        updated++;
+                    if (!page.records().isEmpty()) {
+                        run.setRecordsFetched(fetched);
+                        run.setRecordsInserted(inserted);
+                        run.setRecordsUpdated(updated);
+                        syncRunService.save(run);
                     }
-                    vulnerabilityRepository.findByExternalId(record.cveId())
-                            .map(Vulnerability::getId)
-                            .ifPresent(changedVulnerabilityIds::add);
-                }
-
-                run.setRecordsFetched(fetched);
-                run.setRecordsInserted(inserted);
-                run.setRecordsUpdated(updated);
-                syncRunService.save(run);
-                pagesProcessed++;
-
-                if (pagesProcessed % recomputeInterval == 0 && !changedVulnerabilityIds.isEmpty()) {
+                    return new NvdPageCheckpointService.Progress(nextIndex, fetched, inserted, updated,
+                            page.totalResults(), finished);
+                };
+                progress = checkpoints == null ? stage.get()
+                        : checkpoints.commit(run.getId(), window, startIndex, pageIds, stage);
+                if (++pagesProcessed % recomputeInterval == 0 && !changedVulnerabilityIds.isEmpty()) {
                     effectsService.recomputeCveDeltas(changedVulnerabilityIds);
                     changedVulnerabilityIds.clear();
                 }
-
-                int nextStart = page.startIndex() + Math.max(1, page.resultsPerPage());
-                if (nextStart >= page.totalResults()) {
-                    break;
-                }
-                startIndex = nextStart;
             }
-            validateNvdCompletion(fetched, lastObservedTotal);
-            if (!changedVulnerabilityIds.isEmpty()) {
-                effectsService.recomputeCveDeltas(changedVulnerabilityIds);
+            validateNvdCompletion(progress.fetched(), progress.reportedTotal());
+            if (!changedVulnerabilityIds.isEmpty()) effectsService.recomputeCveDeltas(changedVulnerabilityIds);
+            if (terminal) {
+                syncRunService.completeRun(run, "completed", progress.fetched(), progress.inserted(), progress.updated(), 0, null);
             }
-
-            if (terminal) syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
-            return new IngestionResult("ok", fetched, inserted, updated, successMessage);
-        } catch (Exception e) {
-            if (terminal) syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
-            return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
+            return new IngestionResult("ok", progress.fetched(), progress.inserted(), progress.updated(), successMessage);
+        } catch (VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (Exception failure) {
+            if (terminal) {
+                syncRunService.completeRun(run, "failed", progress.fetched(), progress.inserted(), progress.updated(), 0,
+                        failure.getMessage());
+            }
+            return new IngestionResult("failed", progress.fetched(), progress.inserted(), progress.updated(), failure.getMessage());
         }
     }
 

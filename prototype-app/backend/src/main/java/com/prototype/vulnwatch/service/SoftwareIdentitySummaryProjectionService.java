@@ -2,7 +2,9 @@ package com.prototype.vulnwatch.service;
 
 import com.prototype.vulnwatch.domain.Tenant;
 import com.prototype.vulnwatch.repo.TenantRepository;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -68,6 +70,19 @@ public class SoftwareIdentitySummaryProjectionService {
                 total += refreshByNormalizedKeyForTenant(tenant, normalized);
             }
             return total;
+        });
+    }
+
+    int refreshByIdentityIds(UUID tenantId, List<UUID> identityIds) {
+        return executeInTransaction(() -> {
+            var params = new MapSqlParameterSource("tenantId", tenantId)
+                    .addValue("identityIds", identityIds)
+                    .addValue("nearEolThresholdDays", NEAR_EOL_THRESHOLD_DAYS);
+            jdbcTemplate.update("""
+                    DELETE FROM software_identity_summary
+                    WHERE tenant_id = :tenantId AND software_identity_id IN (:identityIds)
+                    """, params);
+            return insertSummaryRows(params, "AND ic.software_identity_id IN (:identityIds)");
         });
     }
 

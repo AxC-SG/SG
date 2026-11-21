@@ -298,18 +298,19 @@ public class SbomContentIngestionService {
             entityManager.flush();
             entityManager.clear();
 
-            Set<UUID> recomputedComponentIds = new LinkedHashSet<>();
-            for (InventoryComponent component : toPersist) {
-                if (component.getId() != null) {
-                    recomputedComponentIds.add(component.getId());
+            boolean incremental = findingDeltaQueueService.usesIncrementalInventoryCorrelation(tenant.getId());
+            if (!toPersist.isEmpty() && !incremental) {
+                Set<UUID> recomputedComponentIds = new LinkedHashSet<>();
+                for (InventoryComponent component : toPersist) {
+                    if (component.getId() != null) {
+                        recomputedComponentIds.add(component.getId());
+                    }
                 }
+                findingDeltaQueueService.enqueueSoftwareDeltas(tenant.getId(), recomputedComponentIds, "sbom-ingestion");
             }
-            findingDeltaQueueService.enqueueSoftwareDeltas(
-                    tenant.getId(),
-                    recomputedComponentIds,
-                    "sbom-ingestion"
-            );
-            softwareIdentitySummaryProjectionService.refreshTenant(tenant);
+            if (!incremental) {
+                softwareIdentitySummaryProjectionService.refreshTenant(tenant);
+            }
             upload.setFormat(format);
             upload.setComponentCount(components.size());
             upload.setFindingsGenerated(0);

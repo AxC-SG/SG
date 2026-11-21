@@ -31,6 +31,15 @@ public class EuvdSyncService {
     @org.springframework.beans.factory.annotation.Value("${app.euvd.max-pages-per-sync:200}")
     private int maxPagesPerSync;
 
+    private FeedRunCheckpointService checkpoints;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void configureCheckpoints(FeedRunCheckpointService checkpoints) {
+        this.checkpoints = checkpoints;
+    }
+
+    private record Scope(EuvdApiClient.Scan request, int maxPages) {}
+
     public EuvdSyncService(
             EuvdApiClient euvdApiClient,
             ObservationIngestionService observationIngestionService,
@@ -64,111 +73,107 @@ public class EuvdSyncService {
     }
 
     private IngestionResult executeEuvdSync(SyncRun run) {
-        int fetched = 0;
-        int inserted = 0;
-        int updated = 0;
+        var progress = FeedRunCheckpointService.Progress.initial();
         Set<UUID> changedVulnerabilityIds = new LinkedHashSet<>();
-        Set<String> seenSourceRecordIds = new HashSet<>();
-        syncRunService.applyRunMetadata(
-                run,
-                "euvd",
-                Map.of(
-                        "pageSize", euvdApiClient.perPage(),
-                        "updatedWindowDays", euvdApiClient.updatedWindowDays(),
-                        "maxPagesPerSync", maxPagesPerSync
-                )
-        );
+        Set<String> seen = new HashSet<>();
         try {
-            int pageNumber = 0;
-            boolean reachedEnd = false;
-            Integer reportedTotal = null;
-            while (pageNumber < Math.max(1, maxPagesPerSync)) {
-                EuvdApiClient.EuvdPage page = euvdApiClient.fetchPage(pageNumber);
-                Integer pageTotal = page.totalResults();
-                if (reportedTotal != null && !reportedTotal.equals(pageTotal)) {
+            var scope = checkpoints == null
+                    ? new FeedRunCheckpointService.RunScope<>(new Scope(null, Math.max(1, maxPagesPerSync)), progress)
+                    : checkpoints.open(run, "euvd", Scope.class,
+                            () -> new Scope(euvdApiClient.scan(), Math.max(1, maxPagesPerSync)));
+            progress = scope.progress();
+            Map<String, Object> metadata = new java.util.LinkedHashMap<>();
+            metadata.put("pageSize", scope.input().request() == null ? euvdApiClient.perPage() : scope.input().request().pageSize());
+            metadata.put("maxPagesPerSync", scope.input().maxPages());
+            if (scope.input().request() != null && scope.input().request().fromUpdatedDate() != null) {
+                metadata.put("fromUpdatedDate", scope.input().request().fromUpdatedDate());
+                metadata.put("toUpdatedDate", scope.input().request().toUpdatedDate());
+            } else if (checkpoints == null) {
+                metadata.put("updatedWindowDays", euvdApiClient.updatedWindowDays());
+            }
+            syncRunService.applyRunMetadata(run, "euvd", metadata);
+
+            while (!progress.finished() && progress.nextBatch() < scope.input().maxPages()) {
+                int position = progress.nextBatch();
+                var page = checkpoints == null ? euvdApiClient.fetchPage(position) : euvdApiClient.fetchPage(position, scope.input().request());
+                if (page.pageNumber() != position) throw new IllegalStateException("EUVD returned an unexpected page position");
+                Integer total = page.totalResults();
+                if (progress.reportedTotal() != null && !progress.reportedTotal().equals(total)) {
                     throw new IllegalStateException("EUVD reported total changed during pagination");
                 }
-                if (reportedTotal == null && pageTotal != null) reportedTotal = pageTotal;
-                if (pageTotal != null && pageTotal < fetched) {
-                    throw new IllegalStateException("EUVD reported total is below records already fetched");
+                int fetched = Math.addExact(progress.fetched(), page.records().size());
+                if (total != null && fetched > total) throw new IllegalStateException("EUVD returned more records than its reported total");
+                boolean finished = total != null && fetched == total;
+                if (page.records().isEmpty() || page.records().size() < page.pageSize()) {
+                    if (total != null && fetched < total) throw new IllegalStateException("EUVD returned an incomplete page");
+                    finished = true;
                 }
-                if (page.records().isEmpty()) {
-                    if (pageTotal != null && pageTotal > fetched) throw new IllegalStateException("EUVD returned an incomplete empty page");
-                    reachedEnd = true;
-                    break;
-                }
-
-                for (EuvdApiClient.EuvdRecord record : page.records()) {
-                    if (record.sourceRecordId() == null || record.sourceRecordId().isBlank()
-                            || !seenSourceRecordIds.add(record.sourceRecordId())) {
-                        throw new IllegalStateException("EUVD returned a missing or repeated source record ID");
+                var keys = page.records().stream().map(EuvdApiClient.EuvdRecord::sourceRecordId).toList();
+                java.util.function.Supplier<FeedRunCheckpointService.Counts> stage =
+                        () -> stagePage(page.records(), changedVulnerabilityIds);
+                if (checkpoints != null) {
+                    progress = checkpoints.commit(run, progress, null, keys, null, total, finished, stage);
+                } else {
+                    for (String key : keys) {
+                        if (key == null || key.isBlank() || !seen.add(key)) {
+                            throw new IllegalStateException("EUVD returned a missing or repeated source record ID");
+                        }
                     }
+                    progress = progress.advance(null, total, stage.get(), finished);
+                    run.setRecordsFetched(progress.fetched());
+                    run.setRecordsInserted(progress.inserted());
+                    run.setRecordsUpdated(progress.updated());
+                    syncRunService.save(run);
                 }
-                if (pageTotal != null && fetched + page.records().size() > pageTotal) {
-                    throw new IllegalStateException("EUVD returned more records than its reported total");
-                }
-
-                fetched += page.records().size();
-                for (EuvdApiClient.EuvdRecord record : page.records()) {
-                    VulnerabilityIntelligenceService.ObservationUpsertResult result =
-                            observationIngestionService.upsertObservation(
-                                    new VulnerabilityIntelligenceService.ObservationUpsertRequest(
-                                            record.externalId(),
-                                            "euvd",
-                                            record.sourceRecordId(),
-                                            record.sourceUrl(),
-                                            record.title(),
-                                            record.description(),
-                                            record.severity() == null ? "UNKNOWN" : record.severity(),
-                                            record.cvssScore(),
-                                            record.cvssVector(),
-                                            null,
-                                            Boolean.FALSE,
-                                            null,
-                                            null,
-                                            record.referencesJson(),
-                                            record.sourceRecordId(),
-                                            record.publishedAt(),
-                                            record.lastModifiedAt(),
-                                            record.rawJson()
-                                    )
-                            );
-                    Vulnerability vulnerability = result.vulnerability();
-                    if (vulnerability != null && vulnerability.getId() != null) {
-                        changedVulnerabilityIds.add(vulnerability.getId());
-                    }
-                    if (result.vulnerabilityCreated()) {
-                        inserted++;
-                    } else {
-                        updated++;
-                    }
-                }
-
-                run.setRecordsFetched(fetched);
-                run.setRecordsInserted(inserted);
-                run.setRecordsUpdated(updated);
-                syncRunService.save(run);
-
-                if (pageTotal != null && fetched >= pageTotal) {
-                    reachedEnd = true;
-                    break;
-                }
-                if (page.records().size() < page.pageSize()) {
-                    if (pageTotal != null && pageTotal > fetched) throw new IllegalStateException("EUVD returned an incomplete page");
-                    reachedEnd = true;
-                    break;
-                }
-                pageNumber++;
             }
-
-            if (!reachedEnd) throw new IllegalStateException("EUVD page limit reached before the feed ended");
-
+            if (!progress.finished()) throw new IllegalStateException("EUVD page limit reached before the feed ended");
             effectsService.recomputeCveDeltas(changedVulnerabilityIds);
-            syncRunService.completeRun(run, "completed", fetched, inserted, updated, 0, null);
-            return new IngestionResult("ok", fetched, inserted, updated, "EUVD sync complete");
-        } catch (Exception e) {
-            syncRunService.completeRun(run, "failed", fetched, inserted, updated, 0, e.getMessage());
-            return new IngestionResult("failed", fetched, inserted, updated, e.getMessage());
+            return complete(run, progress, "completed", "EUVD sync complete");
+        } catch (VulnerabilityAttemptService.StaleAttemptException stale) {
+            throw stale;
+        } catch (Exception failure) {
+            return complete(run, progress, "failed", failure.getMessage());
         }
+    }
+
+    private FeedRunCheckpointService.Counts stagePage(List<EuvdApiClient.EuvdRecord> records, Set<UUID> changed) {
+        int inserted = 0;
+        int updated = 0;
+        for (var record : records) {
+            VulnerabilityIntelligenceService.ObservationUpsertResult result =
+                observationIngestionService.upsertObservation(
+                        new VulnerabilityIntelligenceService.ObservationUpsertRequest(
+                                record.externalId(),
+                                "euvd",
+                                record.sourceRecordId(),
+                                record.sourceUrl(),
+                                record.title(),
+                                record.description(),
+                                record.severity() == null ? "UNKNOWN" : record.severity(),
+                                record.cvssScore(),
+                                record.cvssVector(),
+                                null,
+                                Boolean.FALSE,
+                                null,
+                                null,
+                                record.referencesJson(),
+                                record.sourceRecordId(),
+                                record.publishedAt(),
+                                record.lastModifiedAt(),
+                                record.rawJson()
+                        )
+                );
+            Vulnerability vulnerability = result.vulnerability();
+            if (vulnerability != null && vulnerability.getId() != null) changed.add(vulnerability.getId());
+            if (result.vulnerabilityCreated()) inserted++;
+            else updated++;
+        }
+        return new FeedRunCheckpointService.Counts(records.size(), inserted, updated, 0);
+    }
+
+    private IngestionResult complete(SyncRun run, FeedRunCheckpointService.Progress progress, String status, String message) {
+        boolean ok = "completed".equals(status);
+        syncRunService.completeRun(run, status, progress.fetched(), progress.inserted(), progress.updated(), 0, ok ? null : message);
+        return new IngestionResult(ok ? "ok" : status, progress.fetched(), progress.inserted(), progress.updated(), message);
     }
 }

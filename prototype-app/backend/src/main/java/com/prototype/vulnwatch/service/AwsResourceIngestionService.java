@@ -19,6 +19,7 @@ import com.prototype.vulnwatch.dto.CmdbInventorySyncResponse;
 import com.prototype.vulnwatch.repo.AssetRepository;
 import com.prototype.vulnwatch.repo.CiRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,10 +31,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Core ingestion service for AWS cloud resources. Upserts {@link Asset} records
@@ -47,6 +53,9 @@ public class AwsResourceIngestionService {
 
     private static final Logger LOG = LoggerFactory.getLogger(AwsResourceIngestionService.class);
     private static final int FLUSH_INTERVAL = 100;
+    private static final int SSM_FETCH_WINDOW = 4;
+    private static final int SSM_MAX_PAGES_PER_HOST = 100;
+    private static final int SSM_MAX_APPLICATIONS_PER_HOST = 10_000;
 
     private final AssetRepository assetRepository;
     private final CiRepository ciRepository;
@@ -55,13 +64,18 @@ public class AwsResourceIngestionService {
     private final EntityManager entityManager;
     private final TenantSchemaExecutionService tenantSchemaExecutionService;
 
+    private final Executor ssmExecutor;
+    private final TransactionTemplate ssmMergeTransactions;
+
     public AwsResourceIngestionService(
             AssetRepository assetRepository,
             CiRepository ciRepository,
             CmdbIngestionService cmdbIngestionService,
             ObjectMapper objectMapper,
             EntityManager entityManager,
-            TenantSchemaExecutionService tenantSchemaExecutionService
+            TenantSchemaExecutionService tenantSchemaExecutionService,
+            @Qualifier("ssmInventoryExecutor") Executor ssmExecutor,
+            TransactionTemplate ssmMergeTransactions
     ) {
         this.assetRepository = assetRepository;
         this.ciRepository = ciRepository;
@@ -69,6 +83,8 @@ public class AwsResourceIngestionService {
         this.objectMapper = objectMapper;
         this.entityManager = entityManager;
         this.tenantSchemaExecutionService = tenantSchemaExecutionService;
+        this.ssmExecutor = ssmExecutor;
+        this.ssmMergeTransactions = ssmMergeTransactions;
     }
 
     public record IngestionResult(
@@ -84,8 +100,24 @@ public class AwsResourceIngestionService {
             int softwareInstancesUpdated,
             int inventoryComponentsCreated,
             int inventoryComponentsUpdated,
-            int findingsGenerated
-    ) {}
+            int findingsGenerated,
+            int failedInstances
+    ) {
+        public SsmInventoryIngestionSummary(int assetsIngested, int softwareInstancesCreated, int softwareInstancesUpdated,
+                int inventoryComponentsCreated, int inventoryComponentsUpdated, int findingsGenerated) {
+            this(assetsIngested, softwareInstancesCreated, softwareInstancesUpdated, inventoryComponentsCreated,
+                    inventoryComponentsUpdated, findingsGenerated, 0);
+        }
+
+        SsmInventoryIngestionSummary plus(SsmInventoryIngestionSummary other) {
+            return new SsmInventoryIngestionSummary(assetsIngested + other.assetsIngested,
+                    softwareInstancesCreated + other.softwareInstancesCreated,
+                    softwareInstancesUpdated + other.softwareInstancesUpdated,
+                    inventoryComponentsCreated + other.inventoryComponentsCreated,
+                    inventoryComponentsUpdated + other.inventoryComponentsUpdated,
+                    findingsGenerated + other.findingsGenerated, failedInstances + other.failedInstances);
+        }
+    }
 
     // ── Main entry point ────────────────────────────────────────────────────────────────────────
 
@@ -165,6 +197,8 @@ public class AwsResourceIngestionService {
                     Asset a = new Asset();
                     a.setTenant(tenant);
                     a.setCloudProvider("aws");
+                    a.setSsmManaged(false);
+                    a.setSsmInventoryAvailable(false);
                     return a;
                 });
         asset.setIdentifier(resourceIdentifier);
@@ -185,8 +219,6 @@ public class AwsResourceIngestionService {
         asset.setCloudArn(resourceIdentifier);
         asset.setCloudLaunchTime(record.launchTime());
         asset.setMissingIamInstanceProfile(!hasText(record.iamInstanceProfileArn()));
-        asset.setSsmManaged(false);
-        asset.setSsmInventoryAvailable(false);
 
         // Serialize all tags to JSON
         if (record.tags() != null && !record.tags().isEmpty()) {
@@ -238,7 +270,6 @@ public class AwsResourceIngestionService {
      * AWS SSM and feed it into {@link CmdbIngestionService} exactly as SCCM does —
      * enabling full CPE-based vulnerability correlation for those instances.
      */
-    @Transactional
     public SsmInventoryIngestionSummary ingestEc2SsmPackages(
             List<AwsResourceRecord> ec2Records,
             AwsCredentialsProvider creds,
@@ -246,155 +277,144 @@ public class AwsResourceIngestionService {
             Tenant tenant,
             String awsAccountId
     ) {
-        int assetsIngested = 0;
-        int softwareInstancesCreated = 0;
-        int softwareInstancesUpdated = 0;
-        int inventoryComponentsCreated = 0;
-        int inventoryComponentsUpdated = 0;
-        int findingsGenerated = 0;
-
+        var total = new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0);
         for (String region : regions) {
-            try (SsmClient ssm = SsmClient.builder()
-                    .region(Region.of(region))
-                    .credentialsProvider(creds)
-                    .build()) {
-
-                for (AwsResourceRecord ec2 : ec2Records) {
-                    if (!"EC2".equals(ec2.resourceType()) || !region.equals(ec2.region())) continue;
-                    String instanceId = extractInstanceId(ec2.arn());
-                    if (!hasText(instanceId)) continue;
-
-                    try {
-                        InstanceInformation ssmInfo = describeSsmInstance(ssm, instanceId);
-                        updateSsmRegistrationState(ec2, awsAccountId, ssmInfo);
-                        if (ssmInfo == null) continue;
-
-                        SsmPackageFetch packageFetch = fetchSsmPackageRows(ssm, instanceId, ec2, awsAccountId);
-                        updateSsmInventoryState(ec2, awsAccountId, !packageFetch.rows().isEmpty(), packageFetch.captureTime());
-                        if (packageFetch.rows().isEmpty()) continue;
-
-                        List<Map<String, String>> discoveryRows = List.of(); // SSM has no separate discovery model
-                        CmdbInventorySyncResponse response = cmdbIngestionService.ingestRows(
-                                tenant,
-                                "aws",
-                                packageFetch.rows(),
-                                discoveryRows,
-                                new CmdbIngestionService.HostInventorySourceDescriptor(
-                                        "aws-ssm-inventory",
-                                        "aws-ssm",
-                                        "aws",
-                                        "AWS:Application",
-                                        "https://ssm." + region + ".amazonaws.com",
-                                        "application/json",
-                                        null
-                                )
-                        );
-                        assetsIngested += response.assetsIngested();
-                        softwareInstancesCreated += response.softwareInstancesCreated();
-                        softwareInstancesUpdated += response.softwareInstancesUpdated();
-                        inventoryComponentsCreated += response.inventoryComponentsCreated();
-                        inventoryComponentsUpdated += response.inventoryComponentsUpdated();
-                        findingsGenerated += response.findingsRecomputed();
-                        LOG.debug("SSM package ingestion complete for EC2 instance {}", instanceId);
-                    } catch (Exception e) {
-                        LOG.warn("SSM package ingestion failed for EC2 {}: {}", instanceId, e.getMessage());
+            var hosts = ec2Records.stream().filter(record -> "EC2".equals(record.resourceType())
+                    && region.equals(record.region()) && hasText(extractInstanceId(record.arn()))).toList();
+            if (hosts.isEmpty()) continue;
+            int processed = 0;
+            try (SsmClient ssm = openSsm(region, creds)) {
+                for (int start = 0; start < hosts.size(); start += SSM_FETCH_WINDOW) {
+                    var window = hosts.subList(start, Math.min(start + SSM_FETCH_WINDOW, hosts.size()));
+                    var fetches = new ArrayList<CompletableFuture<SsmHostInventory>>(window.size());
+                    window.forEach(host -> fetches.add(fetchAsync(ssm, host, awsAccountId)));
+                    for (int index = 0; index < fetches.size(); index++) {
+                        AwsResourceRecord host = window.get(index);
+                        try {
+                            SsmHostInventory inventory = fetches.get(index).join();
+                            var merged = tenantSchemaExecutionService.run(tenant, () -> ssmMergeTransactions.execute(
+                                    status -> mergeSsmHost(tenant, host, awsAccountId, inventory)));
+                            total = total.plus(merged);
+                        } catch (RuntimeException failure) {
+                            total = total.plus(ssmFailures(1));
+                            LOG.warn("SSM inventory incomplete for EC2 {}: {}", extractInstanceId(host.arn()),
+                                    failure.getCause() == null ? failure.getClass().getSimpleName()
+                                            : failure.getCause().getClass().getSimpleName());
+                        }
+                        processed++;
                     }
                 }
-            } catch (Exception e) {
-                LOG.warn("SSM client setup failed for region {}: {}", region, e.getMessage());
+            } catch (RuntimeException failure) {
+                total = total.plus(ssmFailures(hosts.size() - processed));
+                LOG.warn("SSM inventory could not finish in region {}: {}", region, failure.getClass().getSimpleName());
             }
         }
-        return new SsmInventoryIngestionSummary(
-                assetsIngested,
-                softwareInstancesCreated,
-                softwareInstancesUpdated,
-                inventoryComponentsCreated,
-                inventoryComponentsUpdated,
-                findingsGenerated
-        );
+        return total;
+    }
+
+    SsmClient openSsm(String region, AwsCredentialsProvider credentials) {
+        return SsmClient.builder().region(Region.of(region)).credentialsProvider(credentials)
+                .overrideConfiguration(config -> config.apiCallTimeout(Duration.ofSeconds(30))
+                        .apiCallAttemptTimeout(Duration.ofSeconds(10))).build();
+    }
+
+    private CompletableFuture<SsmHostInventory> fetchAsync(SsmClient ssm, AwsResourceRecord host, String awsAccountId) {
+        try {
+            return CompletableFuture.supplyAsync(() -> {
+                String instanceId = extractInstanceId(host.arn());
+                long deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+                InstanceInformation info = describeSsmInstance(ssm, instanceId);
+                var packages = info == null ? null : fetchSsmPackageRows(ssm, instanceId, host, awsAccountId, deadline);
+                return new SsmHostInventory(info, packages);
+            }, ssmExecutor);
+        } catch (RejectedExecutionException saturated) {
+            return CompletableFuture.failedFuture(saturated);
+        }
     }
 
     private InstanceInformation describeSsmInstance(SsmClient ssm, String instanceId) {
-        try {
-            return ssm.describeInstanceInformationPaginator(DescribeInstanceInformationRequest.builder()
-                    .filters(software.amazon.awssdk.services.ssm.model.InstanceInformationStringFilter.builder()
-                            .key("InstanceIds")
-                            .values(instanceId)
-                            .build())
-                    .build()
-            ).instanceInformationList().stream().findFirst().orElse(null);
-        } catch (Exception e) {
-            LOG.debug("SSM DescribeInstanceInformation failed for {}: {}", instanceId, e.getMessage());
-            return null;
+        var response = ssm.describeInstanceInformation(DescribeInstanceInformationRequest.builder()
+                .filters(software.amazon.awssdk.services.ssm.model.InstanceInformationStringFilter.builder()
+                        .key("InstanceIds").values(instanceId).build()).build());
+        InstanceInformation matched = response.instanceInformationList().stream()
+                .filter(info -> instanceId.equals(info.instanceId())).findFirst().orElse(null);
+        if (matched == null && hasText(response.nextToken())) {
+            throw new IllegalStateException("SSM registration lookup was incomplete");
         }
+        return matched;
     }
 
-    private SsmPackageFetch fetchSsmPackageRows(
-            SsmClient ssm,
-            String instanceId,
-            AwsResourceRecord ec2,
-            String awsAccountId
-    ) {
-        List<Map<String, String>> rows = new ArrayList<>();
-        Instant[] captureTimeHolder = new Instant[1];
-        String ciSysId = canonicalResourceIdentifier(ec2, awsAccountId);
-        try {
-            String nextToken = null;
-            do {
-                ListInventoryEntriesResponse page = ssm.listInventoryEntries(ListInventoryEntriesRequest.builder()
-                        .instanceId(instanceId)
-                        .typeName("AWS:Application")
-                        .nextToken(nextToken)
-                        .build());
-                if (captureTimeHolder[0] == null) {
-                    captureTimeHolder[0] = parseInstant(page.captureTime());
-                }
-                if (page.entries() != null) {
-                    page.entries().forEach(item -> {
-                        Map<String, String> row = new HashMap<>();
-                        row.put("hostname", ec2.name());
-                        row.put("ci_sys_id", ciSysId);
-                        row.put("display_name", item.getOrDefault("Name", ""));
-                        row.put("publisher", item.getOrDefault("Publisher", ""));
-                        row.put("version", item.getOrDefault("Version", ""));
-                        row.put("environment", ec2.tags() != null ? ec2.tags().getOrDefault("Environment", "") : "");
-                        rows.add(row);
-                    });
-                }
-                nextToken = page.nextToken();
-            } while (hasText(nextToken));
-        } catch (Exception e) {
-            LOG.warn("SSM ListInventoryEntries failed for {}: {}", instanceId, e.getMessage(), e);
+    private SsmPackageFetch fetchSsmPackageRows(SsmClient ssm, String instanceId, AwsResourceRecord host, String awsAccountId,
+            long deadline) {
+        var rows = new ArrayList<Map<String, String>>();
+        Set<String> seenTokens = new HashSet<>();
+        Instant capturedAt = null;
+        String ciSysId = canonicalResourceIdentifier(host, awsAccountId);
+        String nextToken = null;
+        for (int pageNumber = 0; pageNumber < SSM_MAX_PAGES_PER_HOST; pageNumber++) {
+            if (System.nanoTime() - deadline >= 0) throw new IllegalStateException("SSM host inventory exceeded its time budget");
+            ListInventoryEntriesResponse page = ssm.listInventoryEntries(ListInventoryEntriesRequest.builder()
+                    .instanceId(instanceId).typeName("AWS:Application").nextToken(nextToken).build());
+            Instant pageCapture = parseInstant(page.captureTime());
+            if (capturedAt == null) capturedAt = pageCapture;
+            else if (pageCapture != null && !capturedAt.equals(pageCapture)) {
+                throw new IllegalStateException("SSM capture changed during pagination");
+            }
+            if (page.entries().size() > SSM_MAX_APPLICATIONS_PER_HOST - rows.size()) {
+                throw new IllegalStateException("SSM host inventory exceeded its application limit");
+            }
+            for (var item : page.entries()) {
+                Map<String, String> row = new HashMap<>();
+                row.put("hostname", host.name());
+                row.put("ci_sys_id", ciSysId);
+                row.put("display_name", item.getOrDefault("Name", ""));
+                row.put("publisher", item.getOrDefault("Publisher", ""));
+                row.put("version", item.getOrDefault("Version", ""));
+                row.put("environment", host.tags() == null ? "" : host.tags().getOrDefault("Environment", ""));
+                rows.add(row);
+            }
+            nextToken = page.nextToken();
+            if (!hasText(nextToken)) return new SsmPackageFetch(rows, capturedAt);
+            if (!seenTokens.add(nextToken)) throw new IllegalStateException("SSM repeated an inventory continuation token");
         }
-        return new SsmPackageFetch(rows, captureTimeHolder[0]);
+        throw new IllegalStateException("SSM host inventory exceeded its page limit");
     }
 
-    private void updateSsmRegistrationState(AwsResourceRecord ec2, String awsAccountId, InstanceInformation info) {
-        updateSsmAsset(ec2, awsAccountId, asset -> {
+    private SsmInventoryIngestionSummary mergeSsmHost(Tenant tenant, AwsResourceRecord host, String accountId,
+            SsmHostInventory inventory) {
+        String identifier = canonicalResourceIdentifier(host, accountId);
+        InstanceInformation info = inventory.registration();
+        SsmPackageFetch packages = inventory.packages();
+        var existing = assetRepository.lockByIdentifier(identifier);
+        Instant priorCapture = existing.map(Asset::getSsmInventoryLastCapturedAt).orElse(null);
+        if (packages != null && priorCapture != null
+                && (packages.captureTime() == null || packages.captureTime().isBefore(priorCapture))) {
+            return new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0);
+        }
+
+        boolean available = packages != null && !packages.rows().isEmpty();
+        existing.ifPresent(asset -> {
             asset.setSsmManaged(info != null);
             asset.setSsmPingStatus(info == null ? null : info.pingStatusAsString());
             asset.setSsmLastPingAt(info == null ? null : info.lastPingDateTime());
-            if (info == null) {
-                asset.setSsmInventoryAvailable(false);
-                asset.setSsmInventoryLastCapturedAt(null);
-            }
-        });
-    }
-
-    private void updateSsmInventoryState(AwsResourceRecord ec2, String awsAccountId, boolean available, Instant capturedAt) {
-        updateSsmAsset(ec2, awsAccountId, asset -> {
             asset.setSsmInventoryAvailable(available);
-            asset.setSsmInventoryLastCapturedAt(available ? capturedAt : null);
-        });
-    }
-
-    private void updateSsmAsset(AwsResourceRecord ec2, String awsAccountId, java.util.function.Consumer<Asset> updater) {
-        String identifier = canonicalResourceIdentifier(ec2, awsAccountId);
-        assetRepository.findByIdentifier(identifier).ifPresent(asset -> {
-            updater.accept(asset);
+            if (packages != null) asset.setSsmInventoryLastCapturedAt(packages.captureTime());
             assetRepository.save(asset);
         });
+        if (!available) return new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0);
+        CmdbInventorySyncResponse response = cmdbIngestionService.ingestRows(tenant, "aws", packages.rows(), List.of(),
+                new CmdbIngestionService.HostInventorySourceDescriptor("aws-ssm-inventory", "aws-ssm", "aws",
+                        "AWS:Application", "https://ssm." + host.region() + ".amazonaws.com", "application/json", null));
+        return new SsmInventoryIngestionSummary(response.assetsIngested(), response.softwareInstancesCreated(),
+                response.softwareInstancesUpdated(), response.inventoryComponentsCreated(), response.inventoryComponentsUpdated(),
+                response.findingsRecomputed());
     }
+
+    private static SsmInventoryIngestionSummary ssmFailures(int count) {
+        return new SsmInventoryIngestionSummary(0, 0, 0, 0, 0, 0, count);
+    }
+
+    private record SsmHostInventory(InstanceInformation registration, SsmPackageFetch packages) {}
 
     private String extractInstanceId(String arn) {
         if (!hasText(arn)) return null;

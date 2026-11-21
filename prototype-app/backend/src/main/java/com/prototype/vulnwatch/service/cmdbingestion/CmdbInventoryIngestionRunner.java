@@ -328,10 +328,13 @@ public class CmdbInventoryIngestionRunner {
                 supportService.saveUpload(upload);
             }
 
-            int findingsRecomputed = uniqueComponents.isEmpty()
+            boolean incremental = findingDeltaQueueService.usesIncrementalInventoryCorrelation(tenant.getId());
+            int findingsRecomputed = uniqueComponents.isEmpty() || incremental
                     ? 0
                     : recomputeTouchedComponents(tenant, uniqueComponents.keySet());
-            softwareIdentitySummaryProjectionService.refreshTenant(tenant);
+            if (!incremental) {
+                softwareIdentitySummaryProjectionService.refreshTenant(tenant);
+            }
 
             Instant completedAt = Instant.now();
             for (Map.Entry<UUID, SbomUpload> entry : uploadByAssetId.entrySet()) {

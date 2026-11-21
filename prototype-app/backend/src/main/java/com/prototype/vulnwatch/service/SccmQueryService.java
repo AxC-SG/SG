@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -79,8 +80,34 @@ public class SccmQueryService {
      * {@code version}, {@code install_date}, {@code version_evidence}.
      */
     public List<Map<String, String>> fetchInstallRows(SccmCmdbConfig config) throws Exception {
+        List<Map<String, String>> rows = new ArrayList<>();
+        forEachInstallPage(config, rows::addAll);
+        return rows;
+    }
+
+    void forEachInstallPage(SccmCmdbConfig config, Consumer<List<Map<String, String>>> pageConsumer) throws Exception {
         LOG.info("SCCM: executing install query against {}", safeJdbcUrl(config.getJdbcUrl()));
-        return executeQuery(config, INSTALL_SQL);
+        int pageSize = config.getFetchSize() == null ? 500 : Math.max(1, Math.min(1000, config.getFetchSize()));
+        try (Connection conn = openConnection(config);
+             Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(pageSize);
+            stmt.setQueryTimeout(config.getQueryTimeoutSeconds() == null ? 120 : Math.max(1, config.getQueryTimeoutSeconds()));
+            try (ResultSet rs = stmt.executeQuery(INSTALL_SQL)) {
+                ResultSetMetaData metadata = rs.getMetaData();
+                List<Map<String, String>> page = new ArrayList<>(pageSize);
+                int rows = 0;
+                while (rs.next()) {
+                    page.add(readRow(rs, metadata));
+                    rows++;
+                    if (page.size() == pageSize) {
+                        pageConsumer.accept(page);
+                        page = new ArrayList<>(pageSize);
+                    }
+                }
+                if (!page.isEmpty()) pageConsumer.accept(page);
+                LOG.info("SCCM query returned {} rows", rows);
+            }
+        }
     }
 
     /**
@@ -159,20 +186,12 @@ public class SccmQueryService {
             stmt.setMaxRows(maxRows + 1);
             try (ResultSet rs = stmt.executeQuery(sql)) {
                 ResultSetMetaData meta = rs.getMetaData();
-                int colCount = meta.getColumnCount();
                 while (rs.next()) {
                     if (rows.size() >= maxRows) {
                         truncated = true;
                         break;
                     }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= colCount; i++) {
-                        String value = rs.getString(i);
-                        if (value != null) {
-                            row.put(meta.getColumnLabel(i).toLowerCase(Locale.ROOT), value.trim());
-                        }
-                    }
-                    rows.add(row);
+                    rows.add(readRow(rs, meta));
                 }
             }
         }
@@ -181,30 +200,14 @@ public class SccmQueryService {
 
     // ── Private helpers ────────────────────────────────────────────────────────────────────────
 
-    private List<Map<String, String>> executeQuery(SccmCmdbConfig config, String sql) throws Exception {
-        List<Map<String, String>> rows = new ArrayList<>();
-        try (Connection conn = openConnection(config);
-             Statement stmt = conn.createStatement()) {
-            stmt.setFetchSize(config.getFetchSize() == null ? 500 : Math.max(1, config.getFetchSize()));
-            stmt.setQueryTimeout(config.getQueryTimeoutSeconds() == null ? 120 : Math.max(1, config.getQueryTimeoutSeconds()));
-            try (ResultSet rs = stmt.executeQuery(sql)) {
-                ResultSetMetaData meta = rs.getMetaData();
-                int colCount = meta.getColumnCount();
-                while (rs.next()) {
-                    Map<String, String> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= colCount; i++) {
-                        String colName = meta.getColumnLabel(i).toLowerCase(Locale.ROOT);
-                        String value = rs.getString(i);
-                        if (value != null) {
-                            row.put(colName, value.trim());
-                        }
-                    }
-                    rows.add(row);
-                }
-            }
+    private Map<String, String> readRow(ResultSet results, ResultSetMetaData metadata) throws java.sql.SQLException {
+        int columns = metadata.getColumnCount();
+        Map<String, String> row = new LinkedHashMap<>();
+        for (int index = 1; index <= columns; index++) {
+            String value = results.getString(index);
+            if (value != null) row.put(metadata.getColumnLabel(index).toLowerCase(Locale.ROOT), value.trim());
         }
-        LOG.info("SCCM query returned {} rows", rows.size());
-        return rows;
+        return row;
     }
 
     private Connection openConnection(SccmCmdbConfig config) throws Exception {
@@ -231,6 +234,7 @@ public class SccmQueryService {
         props.setProperty("password", password);
         // Bound the connect phase; an unreachable host must not hold a worker for the driver default.
         props.setProperty("loginTimeout", "15");
+        props.setProperty("responseBuffering", "adaptive");
         return DriverManager.getConnection(target.url(), props);
     }
 
