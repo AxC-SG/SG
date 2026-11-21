@@ -48,9 +48,43 @@ public class IntelligenceReleaseRoutingService {
 
     void capture(UUID release, UUID baseRelease) {
         if (!enabled || baseRelease == null) return;
+        // EPSS normalization also writes source provenance. Only a reviewed
+        // score-only candidate can classify those derived rows as ranking work.
+        boolean epssOnly = Boolean.TRUE.equals(jdbc.queryForObject("""
+                select exists(
+                    select 1 from platform.intelligence_releases l
+                    where l.id=? and l.candidate_id is not null
+                      and exists(select 1 from platform.intelligence_candidate_records c
+                                 where c.candidate_id=l.candidate_id and c.validation='VALID')
+                      and not exists (
+                          select 1 from platform.intelligence_candidate_records c
+                          where c.candidate_id=l.candidate_id and c.validation='VALID' and not (
+                            c.source_system='epss' and (
+                              (c.kind='METADATA' and c.payload - array['epss_score','epss_updated_at']='{}'::jsonb)
+                              or (c.kind='OBSERVATION' and
+                                jsonb_strip_nulls(c.payload) - array['externalId','sourceSystem','sourceRecordId',
+                                    'epssScore','lastModifiedAt']='{}'::jsonb)
+                            )
+                          )
+                      )
+                )
+                """, Boolean.class, release));
+        String[] rankingFields = epssOnly
+                ? new String[] {"epss_score","epss_updated_at","updated_at","summary_updated_at","last_modified_at","source_count"}
+                : new String[] {"epss_score","epss_updated_at","updated_at","summary_updated_at"};
         String mode = jdbc.queryForObject("""
                 select case
-                    when count(*)=0 or not bool_and(table_schema='platform'
+                    when count(*)=0 then null
+                    when bool_and(table_schema='platform' and case
+                        when table_name in ('vulnerabilities','vulnerability_intel_summary') then
+                            previous_value is not null and new_value is not null
+                            and previous_value - ?::text[] = new_value - ?::text[]
+                        when table_name in ('vulnerability_intel_observations','vulnerability_intel_relations') then
+                            ? and coalesce(previous_value->>'source_system','epss')='epss'
+                              and coalesce(new_value->>'source_system','epss')='epss'
+                        when table_name='vulnerability_intel_summary_sources' then ?
+                        else false end) then 'RANKING'
+                    when not bool_and(table_schema='platform'
                         and (previous_value is not null or new_value is not null)
                         and (table_name='vulnerabilities' or (
                             table_name in ('vulnerability_targets','vulnerability_rules','vulnerability_config_expr',
@@ -60,14 +94,9 @@ public class IntelligenceReleaseRoutingService {
                                 ~ '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$')
                             and (new_value is null or coalesce(new_value->>'vulnerability_id','')
                                 ~ '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$')))) then null
-                    when bool_and(table_name in ('vulnerabilities','vulnerability_intel_summary')
-                        and previous_value is not null and new_value is not null
-                        and previous_value - array['epss_score','epss_updated_at','updated_at','summary_updated_at']
-                            = new_value - array['epss_score','epss_updated_at','updated_at','summary_updated_at'])
-                        then 'RANKING'
                     else 'APPLICABILITY' end
                 from platform.intelligence_release_changes where release_id=?
-                """, String.class, release);
+                """, String.class, rankingFields, rankingFields, epssOnly, epssOnly, release);
         if (mode == null) return;
 
         jdbc.update("insert into platform.intelligence_release_routes (release_id,mode) values (?,?)", release, mode);

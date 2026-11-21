@@ -306,20 +306,28 @@ public class IntelligencePublicationService {
         // Continuity is conservative: include all successful unpublished predecessors
         // for selected sources. Absence from any incremental run never deletes data.
         jdbc.update("""
+                with eligible_runs as materialized (
+                    select r.id,r.started_at from platform.sync_runs r
+                    where lower(r.status) in ('completed','success')
+                      and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
+                      and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id)
+                      and exists(select 1 from platform.sync_runs chosen where chosen.id=any(?) and
+                        replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','')
+                        and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
+                        and r.started_at<=chosen.started_at)
+                ), invalid_canonicals as materialized (
+                    select distinct s.sync_run_id,s.canonical_id
+                    from platform.intelligence_staged_records s join eligible_runs r on r.id=s.sync_run_id
+                    where s.kind='OBSERVATION' and s.validation<>'VALID' and s.canonical_id is not null
+                )
                 insert into platform.intelligence_candidate_records(candidate_id,staged_record_id,sync_run_id,kind,external_id,canonical_id,source_system,payload,validation)
-                select ?,s.id,s.sync_run_id,s.kind,s.external_id,s.canonical_id,s.source_system,s.payload,case when s.validation='VALID' and exists(
-                     select 1 from platform.intelligence_staged_records invalid where invalid.sync_run_id=s.sync_run_id
-                      and invalid.canonical_id=s.canonical_id and invalid.kind='OBSERVATION' and invalid.validation<>'VALID')
-                     then 'INVALID_CANONICAL_RECORD' else s.validation end
-                from platform.intelligence_staged_records s join platform.sync_runs r on r.id=s.sync_run_id
-                where lower(r.status) in ('completed','success') and r.run_scope='PLATFORM_VULNERABILITY' and r.tenant_id is null
-                  and not exists(select 1 from platform.intelligence_published_runs p where p.sync_run_id=r.id)
-                  and exists(select 1 from platform.sync_runs chosen where chosen.id=any(?) and
-                    replace(chosen.sync_type,'_FULL','')=replace(r.sync_type,'_FULL','')
-                    and coalesce(chosen.metadata_json::jsonb->>'importScopeKey','default')=coalesce(r.metadata_json::jsonb->>'importScopeKey','default')
-                    and r.started_at<=chosen.started_at)
+                select ?,s.id,s.sync_run_id,s.kind,s.external_id,s.canonical_id,s.source_system,s.payload,
+                    case when s.validation='VALID' and invalid.canonical_id is not null
+                         then 'INVALID_CANONICAL_RECORD' else s.validation end
+                from platform.intelligence_staged_records s join eligible_runs r on r.id=s.sync_run_id
+                left join invalid_canonicals invalid on invalid.sync_run_id=s.sync_run_id and invalid.canonical_id=s.canonical_id
                 order by r.started_at,r.id,s.id
-                """,id,candidate.get("selected_run_ids"));
+                """,candidate.get("selected_run_ids"),id);
         jdbc.update("""
                 update platform.intelligence_candidates set expanded_run_ids=coalesce(
                  (select array_agg(r.id order by r.id) from platform.sync_runs r
@@ -453,7 +461,7 @@ public class IntelligencePublicationService {
                 if(!Objects.equals(canonical,row.get("canonical_id"))) initial.setExternalId(jdbc.queryForObject("select external_id from platform.vulnerabilities where id=?",String.class,canonical));
                 initial.setSource(VulnerabilitySource.NVD);initial.setTitle(initial.getExternalId());initial.setSeverity("UNKNOWN");
                 insertCanonical(initial);
-                jdbc.update("update platform.vulnerabilities set intelligence_withdrawn=false where id=?",canonical);
+                jdbc.update("update platform.vulnerabilities set intelligence_withdrawn=false where id=? and intelligence_withdrawn",canonical);
                 ((com.fasterxml.jackson.databind.node.ObjectNode)payload).put("externalId",initial.getExternalId());
                 try { observations.upsertObservation(mapper.treeToValue(payload,VulnerabilityIntelligenceService.ObservationUpsertRequest.class)); }
                 catch(java.io.IOException failure) { throw new IllegalStateException("Invalid prepared observation",failure); }
@@ -461,19 +469,22 @@ public class IntelligencePublicationService {
             case "REPLACE_TARGETS" -> {
                 JsonNode sources=payload.isArray() ? payload : payload.path("sources");
                 String sourceRecord=payload.isArray() ? null : payload.path("sourceRecordId").asText(null);
-                for(JsonNode source:sources) {
-                    jdbc.update("delete from platform.vex_assertions where target_id in (select id from platform.vulnerability_targets where vulnerability_id=? and source=? and (?::text is null or source_record_id=?))",canonical,source.asText(),sourceRecord,sourceRecord);
-                    jdbc.update("delete from platform.vulnerability_targets where vulnerability_id=? and source=? and (?::text is null or source_record_id=?)",canonical,source.asText(),sourceRecord,sourceRecord);
-                }
+                replaceTargets(canonical, sources, sourceRecord);
             }
             case "REPLACE_RULES" -> jdbc.update("delete from platform.vulnerability_rules where vulnerability_id=?",canonical);
             case "REPLACE_CONFIG" -> jdbc.update("delete from platform.vulnerability_config_expr where vulnerability_id=?",canonical);
             case "METADATA" -> {
                 if(!payload.isObject()) throw new IllegalStateException("Invalid metadata row");
+                List<String> assignments = new ArrayList<>();
                 payload.fieldNames().forEachRemaining(column -> {
                     if(!column.matches("[a-z_]+")) throw new IllegalStateException("Invalid prepared column");
-                    jdbc.update("update platform.vulnerabilities set "+column+"=(jsonb_populate_record(null::platform.vulnerabilities,?::jsonb))."+column+" where id=?",payload.toString(),canonical);
+                    assignments.add(column + "=prepared." + column);
                 });
+                if (!assignments.isEmpty()) {
+                    jdbc.update("update platform.vulnerabilities set " + String.join(",", assignments)
+                            + " from jsonb_populate_record(null::platform.vulnerabilities,?::jsonb) prepared"
+                            + " where vulnerabilities.id=?", payload.toString(), canonical);
+                }
             }
             case "ALIAS" -> consolidateAlias(canonical,payload.path("identifier").asText());
             case "ALIAS_RELATIONSHIP" -> { /* One advisory may support multiple distinct CVEs. */ }
@@ -482,6 +493,31 @@ public class IntelligencePublicationService {
             default -> throw new IllegalStateException("Unsupported staged artefact: "+kind);
         }
     }
+
+    private void replaceTargets(UUID canonical, JsonNode sources, String sourceRecord) {
+        List<String> normalizedSources = new ArrayList<>();
+        sources.forEach(source -> normalizedSources.add(source.asText()));
+        if (normalizedSources.isEmpty()) return;
+        String[] sourceKeys = normalizedSources.toArray(String[]::new);
+        int batchSize = 250;
+        while (true) {
+            // Start from the indexed vulnerability scope. A semijoin from VEX
+            // can repeatedly scan unpublished targets while their statistics
+            // still describe the previous generation.
+            var obsolete = jdbc.queryForList("""
+                    select id from platform.vulnerability_targets
+                    where vulnerability_id=? and source=any(?::text[])
+                      and (?::text is null or source_record_id=?)
+                    limit ?
+                    """, UUID.class, canonical, sourceKeys, sourceRecord, sourceRecord, batchSize);
+            if (obsolete.isEmpty()) return;
+            UUID[] ids = obsolete.toArray(UUID[]::new);
+            jdbc.update("delete from platform.vex_assertions where target_id=any(?::uuid[])", (Object) ids);
+            jdbc.update("delete from platform.vulnerability_targets where id=any(?::uuid[])", (Object) ids);
+            if (obsolete.size() < batchSize) return;
+        }
+    }
+
     private UUID resolveCanonical(UUID id) {
         if(id==null) return null;
         var seen=new HashSet<UUID>();
@@ -535,7 +571,13 @@ public class IntelligencePublicationService {
 
     private void insertCanonical(Vulnerability vulnerability) {
         String row=json(IntelligenceEntityCodec.row(vulnerability));
-        jdbc.update("insert into platform.vulnerabilities select (jsonb_populate_record(null::platform.vulnerabilities,?::jsonb)).* on conflict(id) do nothing",row);
+        // The BEFORE INSERT journal fires even when ON CONFLICT skips the insert.
+        jdbc.update("""
+                insert into platform.vulnerabilities
+                select (jsonb_populate_record(null::platform.vulnerabilities,?::jsonb)).*
+                where not exists(select 1 from platform.vulnerabilities where id=?)
+                on conflict(id) do nothing
+                """, row, vulnerability.getId());
     }
     private void restore(UUID withdrawn) {
         long before=Long.MAX_VALUE;

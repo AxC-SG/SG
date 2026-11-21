@@ -1,8 +1,13 @@
 package com.prototype.vulnwatch.service;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.prototype.vulnwatch.domain.Vulnerability;
+import com.prototype.vulnwatch.domain.VulnerabilityTarget;
+import com.prototype.vulnwatch.domain.VulnerabilityTargetType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prototype.vulnwatch.dto.*;
+import com.prototype.vulnwatch.repo.VulnerabilityRepository;
+import com.prototype.vulnwatch.service.vulningestion.VulnerabilitySyncRunService;
 import com.prototype.vulnwatch.support.*;
 import jakarta.persistence.EntityManager;
 import java.util.*;
@@ -34,6 +39,9 @@ class IntelligencePublicationRecoveryPostgresIntegrationTest {
     @Autowired EntityManager entities;
     @Autowired PlatformTransactionManager manager;
     @Autowired VulnerabilityIntelSummaryService summaries;
+    @Autowired VulnerabilitySyncRunService syncRuns;
+    @Autowired IntelligenceStagingService staging;
+    @Autowired VulnerabilityRepository vulnerabilities;
 
     @Test @Order(2) void profileCandidateDoesNotExpandUnfilteredOrOtherProfileRuns() {
         var worker=new IntelligencePublicationService(jdbc,mapper,observations,vex,entities,BackgroundTaskExecutionPolicy.allowAll(),manager);
@@ -101,4 +109,106 @@ class IntelligencePublicationRecoveryPostgresIntegrationTest {
         System.out.println("reviewed_publication_fixture_records=1000 publication_ms="+TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-started));
     }
     private int count(String table) {return jdbc.queryForObject("select count(*) from "+table,Integer.class);}
+
+    @Test @Order(3)
+    void buildQuarantinesInvalidObservationSiblingsWithinTheirRunWithoutDuplicatingRows() {
+        UUID canonical = UUID.randomUUID();
+        String external = "CVE-2099-79999";
+        var invalid = syncRuns.createRunningRun("NVD");
+        try {
+            staging.append("OBSERVATION", external, canonical, "nvd", Map.of(), "INVALID_SCORE");
+            staging.append("OBSERVATION", external, canonical, "nvd", Map.of(), "INVALID_IDENTIFIER");
+            staging.append("TARGET", external, canonical, "nvd", Map.of(), "VALID");
+            staging.append("RULE", external, canonical, "nvd", Map.of(), "INVALID_RULE");
+            syncRuns.completeRun(invalid, "completed", 2, 0, 0, 0, null);
+        } finally {
+            IntelligenceWriteContext.endRun(invalid.getId());
+        }
+        var valid = syncRuns.createRunningRun("NVD");
+        try {
+            staging.append("OBSERVATION", external, canonical, "nvd", Map.of(), "VALID");
+            staging.append("TARGET", external, canonical, "nvd", Map.of(), "VALID");
+            syncRuns.completeRun(valid, "completed", 1, 1, 0, 0, null);
+        } finally {
+            IntelligenceWriteContext.endRun(valid.getId());
+        }
+
+        UUID candidate = (UUID) publications.createCandidate(List.of(valid.getId()), "owner").get("id");
+        publications.poll();
+        assertEquals("READY", publications.candidate(candidate).get("status"));
+        assertEquals(List.of("INVALID_SCORE", "INVALID_IDENTIFIER", "INVALID_CANONICAL_RECORD", "INVALID_RULE"),
+                validations(candidate, invalid.getId()));
+        assertEquals(List.of("VALID", "VALID"), validations(candidate, valid.getId()));
+    }
+
+    private List<String> validations(UUID candidate, UUID run) {
+        return jdbc.queryForList("""
+                select validation from platform.intelligence_candidate_records
+                where candidate_id=? and sync_run_id=? order by staged_record_id
+                """, String.class, candidate, run);
+    }
+
+    @Test @Order(4)
+    void replacesOnlyTargetsAndAssertionsInTheSelectedSourceRecordAndWithdrawalRestoresThem() {
+        Vulnerability vulnerability = vulnerabilities.findByExternalId("CVE-2099-80000").orElseThrow();
+        String source = "microsoft-vex";
+        var initial = syncRuns.createRunningRun("CSAF_MICROSOFT");
+        try {
+            for (String record : List.of("qualification-remove", "qualification-retain")) {
+                IntelligenceWriteContext.sourceRecord(record);
+                var target = new VulnerabilityTarget();
+                target.setVulnerability(vulnerability);
+                target.setTargetType(VulnerabilityTargetType.PURL);
+                target.setNormalizedTargetKey("pkg:npm/" + record + "@1");
+                target.setSource(source);
+                target.setQualifiersJson("""
+                        {"vexStatus":"KNOWN_NOT_AFFECTED","vexProvider":"microsoft",
+                         "advisoryDocumentId":"%s"}
+                        """.formatted(record));
+                staging.entity("TARGET", vulnerability, source, target);
+            }
+            syncRuns.completeRun(initial, "completed", 2, 0, 2, 0, null);
+        } finally {
+            IntelligenceWriteContext.endRun(initial.getId());
+        }
+        UUID base = jdbc.queryForObject("select release_id from platform.intelligence_active_state", UUID.class);
+        base = publishFixture(initial.getId(), base);
+        assertEquals(2, matchingAssertions(vulnerability.getId(), source).size());
+
+        var replace = syncRuns.createRunningRun("CSAF_MICROSOFT");
+        try {
+            staging.replaceForRecord(vulnerability, List.of(source), "qualification-remove");
+            syncRuns.completeRun(replace, "completed", 1, 0, 1, 0, null);
+        } finally {
+            IntelligenceWriteContext.endRun(replace.getId());
+        }
+        UUID removed = publishFixture(replace.getId(), base);
+        assertEquals(List.of("qualification-retain"), matchingAssertions(vulnerability.getId(), source));
+        assertEquals(List.of("qualification-retain"), jdbc.queryForList("""
+                select source_record_id from platform.vulnerability_targets where vulnerability_id=? and source=?
+                """, String.class, vulnerability.getId(), source));
+
+        publications.withdraw(removed, "restore-scoped-vex", "owner");
+        publications.poll();
+        assertEquals(List.of("qualification-remove", "qualification-retain"),
+                matchingAssertions(vulnerability.getId(), source));
+    }
+
+    private UUID publishFixture(UUID run, UUID base) {
+        UUID candidate = (UUID) publications.createCandidate(List.of(run), "owner").get("id");
+        publications.poll();
+        var reviewed = publications.candidate(candidate);
+        assertEquals("READY", reviewed.get("status"));
+        publications.publish(candidate, (String) reviewed.get("digest"), base, "release:" + run, "owner");
+        publications.poll();
+        assertEquals("PUBLISHED", publications.candidate(candidate).get("status"));
+        return jdbc.queryForObject("select release_id from platform.intelligence_active_state", UUID.class);
+    }
+
+    private List<String> matchingAssertions(UUID vulnerability, String source) {
+        return jdbc.queryForList("""
+                select document_id from platform.vex_assertions where vulnerability_id=? and source_system=?
+                order by document_id
+                """, String.class, vulnerability, source);
+    }
 }
