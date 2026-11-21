@@ -63,7 +63,7 @@ class AwsSsmInventoryPostgresIntegrationTest {
 
     @Test
     @Timeout(45)
-    void commitsACompleteCaptureAndPreservesItOnALaterPageFailure() {
+    void commitsACompleteCaptureAndPreservesItOnPartialOrStaleRefresh() {
         var tenant = tenants.getDefaultTenant();
         var config = new AwsDiscoveryConfig();
         config.setTenant(tenant);
@@ -80,7 +80,8 @@ class AwsSsmInventoryPostgresIntegrationTest {
         when(ssm.listInventoryEntries(any(ListInventoryEntriesRequest.class)))
                 .thenReturn(page("first-package", ORIGINAL_CAPTURE, null))
                 .thenReturn(page("partial-package", ORIGINAL_CAPTURE.plusSeconds(3600), "next"))
-                .thenThrow(new IllegalStateException("Next page unavailable"));
+                .thenThrow(new IllegalStateException("Next page unavailable"))
+                .thenReturn(page("older-package", ORIGINAL_CAPTURE.minusSeconds(3600), null));
 
         schemas.run(tenant, () -> {
             ingestion.ingestAll(List.of(host), config, tenant, Instant.now(), ACCOUNT);
@@ -90,12 +91,19 @@ class AwsSsmInventoryPostgresIntegrationTest {
             ingestion.ingestAll(List.of(host), config, tenant, Instant.now(), ACCOUNT);
             var partial = ingestion.ingestEc2SsmPackages(List.of(host), credentials, List.of(REGION), tenant, ACCOUNT);
             assertEquals(1, partial.failedInstances());
-            var asset = assets.findByIdentifier(ARN).orElseThrow();
-            assertEquals(ORIGINAL_CAPTURE, asset.getSsmInventoryLastCapturedAt());
-            assertEquals(true, asset.getSsmInventoryAvailable());
-            assertEquals(List.of("first_package"), components.findByAsset_IdIn(List.of(asset.getId())).stream()
-                    .map(component -> component.getPackageName()).toList());
+            assertOriginalInventory();
+            var stale = ingestion.ingestEc2SsmPackages(List.of(host), credentials, List.of(REGION), tenant, ACCOUNT);
+            assertEquals(0, stale.assetsIngested());
+            assertOriginalInventory();
         });
+    }
+
+    private void assertOriginalInventory() {
+        var asset = assets.findByIdentifier(ARN).orElseThrow();
+        assertEquals(ORIGINAL_CAPTURE, asset.getSsmInventoryLastCapturedAt());
+        assertEquals(true, asset.getSsmInventoryAvailable());
+        assertEquals(List.of("first_package"), components.findByAsset_IdIn(List.of(asset.getId())).stream()
+                .map(component -> component.getPackageName()).toList());
     }
 
     private static ListInventoryEntriesResponse page(String name, Instant capture, String nextToken) {
